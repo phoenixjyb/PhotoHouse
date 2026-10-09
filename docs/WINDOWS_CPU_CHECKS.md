@@ -14,12 +14,21 @@ the ordinary CPU test environment. Inherited database/provider/plugin settings
 are excluded. It loads no model, opens no listening service, contacts no
 production endpoint and starts no scheduled task.
 
-The command is portable; its local Mac run passed 64 tests and 25 subtests.
+The command is portable; its local Mac run passed 65 tests and 25 subtests.
 Running it on a Mac is not Windows evidence. The separate `windows-cpu` job in
 the public source workflow runs this cohort on `windows-latest` with a fresh
 hash-locked installation and a 15-minute job limit. Its native result belongs
 to the exact hosted commit, independently of the existing Windows private-reader
 job, full Ubuntu API profile and Android profile.
+
+The first native run at `9154e59` found two fixture portability defects: its
+network guard prevented Windows asyncio from creating its internal socket pair,
+and one failed-backup check interpreted Windows mode bits as POSIX permissions.
+The adapter fixture now initializes a shared test portal before installing the
+guards; application socket binding and connecting remain explicitly forbidden.
+POSIX mode assertions apply only on POSIX hosts. Windows ACL qualification of
+the installed backup directory remains a private deployment check, not a claim
+made by this generated cohort.
 
 ## What it establishes
 

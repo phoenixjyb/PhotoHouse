@@ -44,9 +44,12 @@ publish OTA or establish family/device acceptance.
 
 ## Generated Windows CPU profile
 
-The optional [Windows CPU profile](WINDOWS_CPU_CHECKS.md) passed 64 tests and
+The optional [Windows CPU profile](WINDOWS_CPU_CHECKS.md) passed 65 tests and
 25 subtests locally on macOS. Its new hosted Windows job is a separate gate and
 does not replace qualification of the private installed runtime.
+The first hosted run exposed Windows event-loop setup and POSIX mode-bit
+assumptions in test fixtures; the [profile notes](WINDOWS_CPU_CHECKS.md) explain
+the repair and the separate installed-directory ACL gate.
 
 ## Web assistant transcript acceptance (October 10)
 

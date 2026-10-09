@@ -8186,6 +8186,35 @@
       "provider_called": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "windows-cpu-fixture-portal-and-mode-portability",
+      "source_commit": "9154e591e83432891097c906024f754762afbb72",
+      "files": [
+        {
+          "path": "server/tests/security/test_database_preparation.py",
+          "before_sha256": "e0f2d54f9afaaa9e7ebaba3baf0ae43b1a1861fa4aae7f0c3b6b9e31a026bb63",
+          "sha256": "4ca41a26bb75361eea36e025bbcb6bfced6e7e29e6c28de3ccac58b9980adf27"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "4cac679dcc9a6395bb05a0f78721886ff9f62b95f318addaea60ab61773c39c2",
+          "sha256": "10b76dd40f84b2bd9489e77adb6d7f2f297fb4a120756a381be6a115acde9753"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "100f9cc86eb9532bc587d2e59e323f4cf24b65ebfcbc38b2df5421e7cbc4297e",
+          "sha256": "c060e4c9ae4413adbb1c3fe9a1117569f47189b66941aa6c43de0737fc0900b2"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "bfb28f1bdf6419234aa93409fcfd034755546ba12f45d635024f53a454c9f73b",
+          "sha256": "4b81741ecadcae813c7dd332e41d9a888869c14dee50488c3b90e8488df0700f"
+        }
+      ],
+      "application_changed": false,
+      "api_deployed": false,
+      "provider_called": false
     }
   ]
 }
