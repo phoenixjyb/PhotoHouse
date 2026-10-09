@@ -78,6 +78,7 @@ FILES = (
     'backend/app/access/private_storage.py',
     'backend/app/access/model_deployment.py',
     'backend/app/access/model_binding.py',
+    'backend/app/access/model_qualification.py',
     'backend/app/access/promotion.py',
     'backend/app/access/provisioning.py',
     'backend/app/access/provisioning_apply.py',

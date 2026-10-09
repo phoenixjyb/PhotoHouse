@@ -58,6 +58,12 @@ identities unset.
 
 ## Qualification
 
+The [qualification evidence checker](../docs/MODEL_QUALIFICATION.md) now reviews
+scoped current/rollback identity observations, resource samples and human reviews
+of Chinese ASR/TTS and the existing memoir cases. Optional explicit hashing
+checks named files without loading them as models. Reports keep recorded claims,
+file checks and provider/device/quality acceptance separate; no setting is applied.
+
 1. Validate the configured provider without family data.
 2. Run bounded synthetic ASR, narration or story/conversation examples.
 3. Record response schema, attribution, uncertainty, latency and resource use.

@@ -127,6 +127,11 @@ declared metadata or its mapping passed these offline checks; neither means
 
 ## Typed runtime projection and lifecycle gates
 
+The separate [qualification checker](MODEL_QUALIFICATION.md) records the next
+review tier: branch-specific identity observations, sampled resources and human
+review of pinned synthetic inputs. Optional hashing checks explicitly named
+files; it never proves which artifacts a process loaded or activates a provider.
+
 The typed bridge in [`model_binding.py`](../server/backend/app/access/model_binding.py)
 projects a validated manifest into private copies of the existing assistant or
 memory-worker configuration. Validated snapshots come from the manifest validator;

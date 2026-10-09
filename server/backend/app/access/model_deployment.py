@@ -371,8 +371,8 @@ def _strict_json(payload):
         _fail('manifest_json')
 
 
-def load_private_deployment(path, catalog, *, source_root) -> ValidatedDeployment:
-    """Read one owner-private metadata file outside the source checkout, stably."""
+def _load_private_document(path, *, source_root):
+    """Read bounded private JSON; shared by offline selection/evidence readers."""
     path = Path(path)
     if not path.is_absolute() or '..' in path.parts or path.is_relative_to(Path(source_root).resolve()):
         _fail('manifest_location')
@@ -408,4 +408,9 @@ def load_private_deployment(path, catalog, *, source_root) -> ValidatedDeploymen
         if isinstance(error, DeploymentError):
             raise
         _fail('private_manifest_unavailable')
-    return validate_deployment(_strict_json(payload), catalog)
+    return _strict_json(payload)
+
+
+def load_private_deployment(path, catalog, *, source_root) -> ValidatedDeployment:
+    """Read one owner-private metadata file outside the source checkout, stably."""
+    return validate_deployment(_load_private_document(path, source_root=source_root), catalog)

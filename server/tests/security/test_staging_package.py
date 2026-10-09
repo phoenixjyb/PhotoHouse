@@ -44,6 +44,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/private_storage.py',
             'backend/app/access/model_deployment.py',
             'backend/app/access/model_binding.py',
+            'backend/app/access/model_qualification.py',
             'backend/app/access/promotion.py',
             'backend/app/access/story_outline.py',
             'backend/app/access/story_titles.py',
@@ -103,6 +104,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.runtime import RuntimeConfiguration\n'
                 'from app.access.model_binding import project_configuration\n'
                 'from app.access.model_deployment import validate_deployment\n'
+                'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
