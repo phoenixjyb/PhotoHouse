@@ -16,7 +16,7 @@ API_TESTS = (
     "test_original_deletions.py", "test_original_deletion_integration.py",
     "test_private_storage.py", "test_model_deployment.py", "test_model_binding.py", "test_model_qualification.py", "test_model_topology.py", "test_apply_memory_editorial_schema.py",
     "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_books.py",
-    "test_memoir_quality_cases.py",
+    "test_memoir_quality_cases.py", "test_memoir_quality_canary.py",
     "test_memory_book_editorial_service.py", "test_memory_book_editorial_http.py",
     "test_memory_book_editorial_migration.py", "test_model_diagnostics.py",
     "test_memory_book_edition_contract.py", "test_memory_book_edition_schema.py",

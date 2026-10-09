@@ -62,6 +62,14 @@ installing, building or contacting a service. A detected prerequisite is not a
 test pass. Thirteen doctor tests passed, including timeout, version mismatch,
 truncated probes and module paths with spaces.
 
+The standalone [memoir canary](MODEL_QUALIFICATION.md#capture-one-synthetic-story-output)
+has 15 focused source tests covering pinned cases, narrative/companion routing,
+strict private settings, sanitized CLI failures, output reservation, exact file
+hashes, private-file checks and separate provider/persistence failures. They use
+fake adapters and block HTTP client construction. The command defaults to a
+plan and has an explicit execution mode for one synthetic case. No model quality
+or native runtime is qualified by these tests.
+
 ## CPU quick start
 
 From the repository root:

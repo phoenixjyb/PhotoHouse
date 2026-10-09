@@ -72,6 +72,60 @@ operator procedure; the checker does not prove when the inventory was created.
 
 ## Record observations and review
 
+### Capture one synthetic story output
+
+The separate [`run_memoir_quality_canary.py`](../server/scripts/run_memoir_quality_canary.py)
+can submit one pinned generated bundle without a family database, API, or worker.
+Its default command validates the three source cases and prints a redacted plan:
+
+```sh
+python3 server/scripts/run_memoir_quality_canary.py
+```
+
+Execution requires an explicit operator action and authority for that provider
+request. Create an owner-private configuration outside the checkout with exactly
+these fields, substituting an already installed model:
+
+```json
+{
+  "format_version": 1,
+  "ollama_url": "http://127.0.0.1:11434",
+  "ollama_model": "operator-selected-model",
+  "timeout_seconds": 30
+}
+```
+
+The URL must be an explicit loopback HTTP endpoint. No credential or ambient
+configuration is read, and no model is downloaded or service started. Then select
+one case and a **new** output directory under an existing owner-private parent:
+
+```sh
+python3 server/scripts/run_memoir_quality_canary.py --run \
+  --case synthetic-coherence \
+  --configuration /absolute/private/canary-config.json \
+  --output-directory /absolute/private/new-coherence-run
+```
+
+The coherence and conflict cases use the narrative contract; the provenance
+case uses the companion contract and can return an answer, clarification, or
+proposal. The command makes one request without retries or fallback. Client
+timeouts are at most 30 seconds; the adapter also checks an elapsed deadline.
+This does not prove server cancellation or enforce GPU/RAM budgets. Use a
+supervised execution boundary when needed and inspect failures before another
+explicit run.
+
+The private directory retains the exact canonical input and output bytes, their
+hashes, selected provider configuration and its canonical identity, timestamps,
+duration, and every quality criterion as `unreviewed`. Standard output contains
+only case/task IDs, hashes and fixed status flags. Existing output directories
+are refused before any provider request, and partial files remain after a
+persistence failure. `captured_for_human_review` establishes capture only.
+
+The canary's `record.json` is **not** a qualification document. Supply separately
+observed runtime/artifact/device/resource identities and human review in the
+qualification schema below. A captured proposal does not enable generation,
+alter library stories, or establish story quality.
+
 The private evidence document uses schema version 1 and has these top-level
 fields: `schema`, `kind`, `selection_sha256`, `selection`, `case_plan_sha256`,
 `audio_plan_sha256`, `scope_roles`, `platform`, `started_at`, `ended_at`, and
