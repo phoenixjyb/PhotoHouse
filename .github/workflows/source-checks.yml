@@ -36,7 +36,12 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Install explicit Android SDK components
-        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+        run: |
+          ph_sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$ph_sdk_root"
+          ph_sdk_manager="$ph_sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$ph_sdk_manager"
+          "$ph_sdk_manager" 'platforms;android-34' 'build-tools;34.0.0'
       - run: python3 tools/check.py android
       - name: Summarize existing Android unit reports
         if: always()
