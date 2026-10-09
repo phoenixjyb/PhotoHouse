@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "kind": "offline-source-inventory",
+  "weights_in_repository": false,
+  "runtime_controller": false,
+  "capabilities": [
+    {
+      "id": "vlm_caption",
+      "purpose": "Single-image visual evidence and bilingual captions",
+      "contract": "caption-text-v1",
+      "integration_stage": "caption_adapter",
+      "execution_modes": [
+        "http_service"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/caption_service.py",
+          "symbol": "HTTPCaptionProvider"
+        },
+        {
+          "source": "server/backend/app/caption_subprocess.py",
+          "symbol": "CaptionSubprocessProvider"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/config.py"
+      ],
+      "runtime_requirements": [
+        "Transformers/PyTorch or a separately managed caption service"
+      ],
+      "replacement_note": "Keep source/user wording distinct from AI captions; a successful caption is not a coherent event story."
+    },
+    {
+      "id": "assistant_asr",
+      "purpose": "Transient assistant utterance transcription",
+      "contract": "assistant-wav-transcript-v1",
+      "integration_stage": "protected_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/assistant_speech.py",
+          "symbol": "LocalAssistantAsr"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/access/runtime.py"
+      ],
+      "runtime_requirements": [
+        "Separate ASR service/runtime"
+      ],
+      "replacement_note": "Raw WAV request; recognized text is reviewed before explicit command submission."
+    },
+    {
+      "id": "memory_asr",
+      "purpose": "Retained family-note recording transcription",
+      "contract": "memory-multipart-transcript-v1",
+      "integration_stage": "worker_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/annotation_local.py",
+          "symbol": "LocalAnnotationModels"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_memory_worker.py"
+      ],
+      "runtime_requirements": [
+        "Separate ASR service/runtime"
+      ],
+      "replacement_note": "Multipart audio request differs from assistant ASR; preserve original recording and version derived text."
+    },
+    {
+      "id": "annotation_polish",
+      "purpose": "Reviewable wording and factual tags",
+      "contract": "annotation-polish-tags-v1",
+      "integration_stage": "worker_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/annotation_local.py",
+          "symbol": "LocalAnnotationModels"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_memory_worker.py"
+      ],
+      "runtime_requirements": [
+        "Separate Ollama-compatible service/runtime"
+      ],
+      "replacement_note": "No invented facts; preserve source contribution separately from polished text and tags."
+    },
+    {
+      "id": "narrative",
+      "purpose": "Grounded story proposals and follow-up conversation",
+      "contract": "memory-narrative-companion-v1",
+      "integration_stage": "worker_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/memory_narrative.py",
+          "symbol": "LocalMemoryNarrator"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_memory_worker.py"
+      ],
+      "runtime_requirements": [
+        "Separate Ollama-compatible service/runtime"
+      ],
+      "replacement_note": "Structured, revision-bound citations and explicit review; generation stays gated."
+    },
+    {
+      "id": "title_suggestions",
+      "purpose": "Suggested titles grounded in selected media and prose",
+      "contract": "story-title-suggestions-v1",
+      "integration_stage": "protected_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/story_titles.py",
+          "symbol": "LocalStoryTitleSuggester"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/main.py"
+      ],
+      "runtime_requirements": [
+        "Separate Ollama-compatible service/runtime"
+      ],
+      "replacement_note": "Capability-controlled, cited proposals; explicitly adopted by the user. Adapter injection exists at create_app; staging/provider wiring is not implemented by this inventory."
+    },
+    {
+      "id": "assistant_tts",
+      "purpose": "Explicit spoken assistant reply",
+      "contract": "assistant-reply-wav-v1",
+      "integration_stage": "protected_adapter",
+      "execution_modes": [
+        "loopback_http"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/access/assistant_speech.py",
+          "symbol": "LocalAssistantTts"
+        },
+        {
+          "source": "server/backend/app/access/windows_tts.py",
+          "symbol": "WindowsSystemSpeech"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/access/runtime.py"
+      ],
+      "runtime_requirements": [
+        "Separate speech service; current Windows implementation needs installed System.Speech voices"
+      ],
+      "replacement_note": "No automatic playback; installed voice/language quality needs audible review."
+    },
+    {
+      "id": "face_detection",
+      "purpose": "Face bounding boxes and landmarks",
+      "contract": "face-box-landmarks-v1",
+      "integration_stage": "approved_worker_adapter",
+      "execution_modes": [
+        "bounded_child"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/face_detection_service.py",
+          "symbol": "InsightFaceDetectionProvider"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_approved_face_worker.py"
+      ],
+      "runtime_requirements": [
+        "Isolated ONNX Runtime / InsightFace runtime and preinstalled detector weights"
+      ],
+      "replacement_note": "Detects faces, not family identities; detector/alignment compatibility must be qualified."
+    },
+    {
+      "id": "face_embedding",
+      "purpose": "Versioned face vectors for reviewed person association",
+      "contract": "face-vector-artifact-v1",
+      "integration_stage": "approved_worker_adapter",
+      "execution_modes": [
+        "bounded_child"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/face_embedding_service.py",
+          "symbol": "LVFaceEmbeddingProvider"
+        },
+        {
+          "source": "server/backend/app/lvface_subprocess.py",
+          "symbol": "LVFaceSubprocessProvider"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_approved_face_worker.py"
+      ],
+      "runtime_requirements": [
+        "Isolated ONNX Runtime / external LVFace installation"
+      ],
+      "replacement_note": "Current approved worker uses strict 512-dimensional LVFace vectors; alternatives require worker qualification and versioned artifacts."
+    },
+    {
+      "id": "image_embedding",
+      "purpose": "Image similarity/search vectors",
+      "contract": "image-vector-artifact-v1",
+      "integration_stage": "approved_worker_adapter",
+      "execution_modes": [
+        "bounded_child"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/vector_index.py",
+          "symbol": "EmbeddingService"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_approved_image_embed_worker.py"
+      ],
+      "runtime_requirements": [
+        "Isolated OpenCLIP / PyTorch runtime with local checkpoint"
+      ],
+      "replacement_note": "Model/preprocessing identity defines the vector space, not dimension alone."
+    },
+    {
+      "id": "video_embedding",
+      "purpose": "Vectors derived from approved video keyframes",
+      "contract": "video-vector-artifact-v1",
+      "integration_stage": "approved_worker_adapter",
+      "execution_modes": [
+        "bounded_child"
+      ],
+      "adapters": [
+        {
+          "source": "server/scripts/run_approved_video_embed_worker.py",
+          "symbol": "_run_inference"
+        },
+        {
+          "source": "server/backend/app/vector_index.py",
+          "symbol": "EmbeddingService"
+        }
+      ],
+      "configuration_sources": [
+        "server/scripts/run_approved_video_embed_worker.py"
+      ],
+      "runtime_requirements": [
+        "Qualified image embedding runtime plus bounded frame aggregation"
+      ],
+      "replacement_note": "Match keyframe/preprocessing/model-version identity; do not treat arbitrary video models as drop-in."
+    },
+    {
+      "id": "text_embedding",
+      "purpose": "Optional text vectors in the legacy search adapter",
+      "contract": "text-vector-legacy-v1",
+      "integration_stage": "legacy_adapter",
+      "execution_modes": [
+        "in_process"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/vector_index.py",
+          "symbol": "EmbeddingService"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/config.py"
+      ],
+      "runtime_requirements": [
+        "Separate sentence-transformers / PyTorch runtime if selected"
+      ],
+      "replacement_note": "Legacy path; no approved text-embedding worker or live availability is established by this catalog."
+    },
+    {
+      "id": "image_tags",
+      "purpose": "Optional image tag suggestions from a separately managed service",
+      "contract": "image-tags-legacy-v1",
+      "integration_stage": "legacy_adapter",
+      "execution_modes": [
+        "http_service"
+      ],
+      "adapters": [
+        {
+          "source": "server/backend/app/image_tag_service.py",
+          "symbol": "HTTPImageTagProvider"
+        }
+      ],
+      "configuration_sources": [
+        "server/backend/app/config.py"
+      ],
+      "runtime_requirements": [
+        "Separate image-tag HTTP service/runtime if selected"
+      ],
+      "replacement_note": "Legacy factory has stub fallback; tag proposals are not confirmed family facts, and service availability is not approved worker qualification."
+    }
+  ]
+}

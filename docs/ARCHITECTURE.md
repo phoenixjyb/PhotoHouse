@@ -4,6 +4,12 @@ The [public monorepo is the development home](REPOSITORY_TRANSITION.md).
 Legacy application histories and private operator configuration remain outside
 its source lifecycle. Optional inference providers retain separate installations.
 
+The [model/provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) maps captions,
+speech, narrative, face detection/recognition and embeddings to source adapters
+and isolated inference runtimes. The offline catalog is descriptive; it does not
+load weights or select a live deployment. New embedding spaces require versioned
+artifacts and explicit comparison/reindex qualification.
+
 ## Product concepts
 
 A **library** is an access boundary. An **album** is a deliberate collection of media. A **memory** is an original contribution, in text or audio, from a family member. A **story** is an editable, revisioned narrative with chapters and media selection. A **memory book** organizes related chapters for a longer reading experience.

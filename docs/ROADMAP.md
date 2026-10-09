@@ -2,6 +2,14 @@
 
 ## October 9 development home and next slice
 
+The [provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and offline model
+catalog now identify thirteen source capabilities with isolated runtime and
+versioned-output replacement rules. Actual selection still uses the existing
+feature-specific configuration/worker arguments. The next model-infra slice is
+a reviewed private deployment manifest that validates those bindings, exact
+artifact/runtime identities, resource budgets and rollback targets. Inventory
+validation does not establish installed models or allow automatic activation.
+
 The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
 Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery
 gate. The legacy application repositories remain retained references; runtime,
