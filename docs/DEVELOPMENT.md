@@ -32,6 +32,13 @@ command checks configuration only; it does not read credentials, verify installe
 weights, probe a runtime or apply selections. The public synthetic example has
 all bindings disabled and invented artifact identities.
 
+The typed assistant/memory bridge has a focused 15-test, 19-subtest source cohort
+covering independent opt-ins, private credential injection, atomic conflict
+refusal, parser/adapter timeout propagation and the existing shared worker
+deadline. Three additional tool tests cover target/platform flags, redacted
+projection and absent ambient credential resolution. These are configuration
+checks; installed artifact/runtime identity and quality remain unverified.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package

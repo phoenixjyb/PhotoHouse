@@ -16,7 +16,10 @@ availability. [`models/providers.example.json`](../models/providers.example.json
 is a disabled configuration example. Neither file selects or deploys a provider.
 The separate private deployment manifest records declared runtime/artifact/provider
 choices and role bindings; see the [manifest guide](MODEL_DEPLOYMENT_MANIFEST.md).
-It is not yet projected into application runtime settings or worker arguments.
+An explicit typed bridge can now project selected assistant and memory roles into
+private in-memory configuration copies. It is not consumed automatically at app
+startup or worker launch, and projection does not establish runtime readiness or
+activate the provider.
 
 Run `python3 tools/model_catalog.py --json` for the offline inventory check.
 It verifies source-defined adapter symbols, the complete role inventory and
@@ -26,9 +29,14 @@ It neither validates a private installation profile nor changes runtime selectio
 The development [`tools/doctor.py`](../tools/doctor.py) checks the pinned local
 development toolchain. It is not a model, GPU, checkpoint, or endpoint doctor.
 Run `python3 tools/check_model_deployment.py --manifest /absolute/private/path --json`
-for the private metadata graph check. Its redacted `configuration_valid` report
-does not probe runtimes, verify artifacts, evaluate quality, or activate bindings.
-Runtime health and quality qualification are separate evidence.
+for the private metadata graph check. To inspect a target mapping, add
+`--project assistant|memory-contributions|memory-narrative --platform windows|linux|macos`
+and, when that feature is already opted in, `--feature-enabled`. Its redacted
+`configuration_valid` or `projection_valid` report does not probe runtimes, verify
+artifacts, resolve tokens, evaluate quality, or activate bindings. Runtime health
+and quality qualification are separate evidence. The CLI reads no existing
+application or worker configuration, so its projection report does not check for
+conflicts with legacy provider settings.
 
 ## Current source map
 
@@ -94,11 +102,34 @@ reindex/re-embedding comparison. Preserve the old version for rollback until the
 new one passes the relevant retrieval, recognition, and resource checks. Do not
 blend vector spaces based on dimension alone.
 
-The private manifest now validates declared selections and rollback metadata, but
-provider selection is not yet applied to runtime configuration: application
-adapters still use explicit runtime construction and feature-specific settings,
-while approved workers receive model identity through their own arguments and
-receipts. The next gate is a reviewed typed bridge from validated bindings to
-those interfaces, followed by measured provider qualification and explicit
-activation. Preserve current opt-ins, loopback restrictions, and per-feature
-contracts; metadata validation does not prove a model is installed or qualified.
+The explicit projection methods in
+[`model_binding.py`](../server/backend/app/access/model_binding.py) map assistant
+and memory selections into copies of the current `RuntimeConfiguration`, staging
+configuration, or worker configuration. The assistant target allows a partial
+selection of ASR and TTS, but the existing assistant feature opt-in must already
+be enabled. The memory contribution target requires both memory ASR and
+annotation-polish bindings; narrative requires its own binding. Memory projection
+also requires a caller-supplied processing opt-in. These feature flags are
+independent and the bridge never changes them.
+
+The source API requires the intended platform explicitly and rejects a selected
+runtime declared for another platform. Credential references are resolved only
+from an explicit `credential_values` dictionary supplied by the caller; the
+bridge and CLI do not read ambient environment variables. If existing endpoint,
+model, token, or timeout settings conflict with the selected provider, projection
+refuses. Clear old provider fields deliberately before replacement. Rollback is
+an explicit projection from the declared rollback bindings; it is not automatic
+failover. Reports omit model names, endpoints, credential references, and token
+values.
+
+Projection returns configuration values only. It does not build or serve the app,
+open worker storage, start a worker, contact providers, verify model/runtime
+artifacts, or evaluate quality. It maps request timeout limits (assistant at most
+60 seconds; memory provider requests at most 30 seconds) but does not enforce
+declared RAM, GPU, or concurrency budgets. Existing worker limits remain in force,
+including the 32-item and 1,800-second run bounds. The API staging package
+allowlist includes the bridge and manifest loader, while the source catalog is
+still stored in the monorepo; packaging a private manifest/catalog for independent
+deployment remains future work. Provider activation still requires measured
+runtime/artifact and resource checks, bounded quality evaluation, shadow outputs,
+and an explicit owner decision.

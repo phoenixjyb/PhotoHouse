@@ -39,6 +39,14 @@ activate any binding. [`deployment.synthetic.json`](deployment.synthetic.json)
 is fake schema-validation data with all bindings disabled; use it only as a
 starting template for a separate private file, never as a runtime profile.
 
+Add `--project assistant --platform windows --feature-enabled --json` to inspect
+an opted-in assistant mapping. Memory targets are `memory-contributions` and
+`memory-narrative`. The source bridge returns private in-memory configuration
+copies, refuses conflicting legacy settings, and preserves feature flags and
+worker deadlines. It does not start a service or resolve tokens in the offline
+command. See the [typed projection guide](../docs/MODEL_DEPLOYMENT_MANIFEST.md#typed-runtime-projection-and-lifecycle-gates)
+for the explicit source APIs and remaining runtime qualification gates.
+
 For each selected provider record its exact adapter, endpoint, runtime version,
 dependency lock identity, checkpoint or service identity, license source,
 permitted use, preprocessing/vector identity and resource budget outside source
@@ -58,6 +66,7 @@ identities unset.
 
 A model availability check is separate from quality acceptance. Processing
 failures retain an honest state; source memories and failed proposals are not
-replaced. Runtime-selection projection and provider qualification remain separate
-gates after offline manifest validation. No model weights, household endpoints,
+replaced. Explicit assistant and memory projections are implemented; independent
+runtime catalog packaging, face/embedding projection, measured provider
+qualification and activation remain separate gates. No model weights, household endpoints,
 private deployment manifests or provider tokens belong in this checkout.

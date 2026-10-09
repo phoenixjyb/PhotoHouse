@@ -87,6 +87,24 @@ From the repository root, select the private manifest explicitly:
 python3 tools/check_model_deployment.py --manifest /absolute/private/path --json
 ```
 
+To inspect a target-specific projection, also supply the target, its platform,
+and an explicit feature opt-in assertion:
+
+```sh
+python3 tools/check_model_deployment.py --manifest /absolute/private/path \
+  --project assistant --platform windows --feature-enabled --json
+```
+
+Supported targets are `assistant`, `memory-contributions`, and
+`memory-narrative`; platforms are `windows`, `linux`, and `macos`. The projection
+command reports only role IDs, selection hash, declared request timeouts, and
+fixed status flags. It never prints model names, endpoints, credential references,
+or credential values. `--feature-enabled` permits the projection check; it does
+not edit a feature flag, grant operational authority, or start an application or
+worker. The command accepts no credential-value argument and never resolves an
+environment variable. The CLI does not load an application or worker config, so
+its projection report does not check for conflicts with existing legacy settings.
+
 The command uses the source-maintained catalog and the offline graph validator. It
 checks strict JSON syntax (including duplicate keys), field sets and types,
 catalog role/adapter/contract matches, declared cross-references, hash formats,
@@ -96,25 +114,70 @@ credentials, inspect checkpoint or installation paths, calculate artifact hashes
 probe services, inspect devices, install dependencies, make model calls, qualify
 quality, or activate a selection.
 
-The redacted JSON report contains a canonical selection hash, role names, counts,
-and explicit false values for runtime probing, artifact verification, quality
-evaluation, and activation. It omits endpoint strings, implementation URLs,
-model names, artifact paths, and credential references. Keep the manifest itself
-private even though the report is designed for safe review. `configuration_valid`
-means only that declared metadata passed these offline checks; it must never be
-shown as `ready` or `active`.
+The graph report contains a canonical selection hash, role names, counts, and
+explicit false values for runtime probing, artifact verification, quality
+evaluation, and activation. The projection report uses `projection_valid` and
+contains fixed false flags for resource enforcement, runtime probing, artifact
+verification, quality evaluation, and activation. Both omit endpoint strings,
+implementation URLs, model names, artifact paths, credential references, and
+secret values. Keep the manifest itself private even though reports are designed
+for safe review. `configuration_valid` and `projection_valid` mean only that
+declared metadata or its mapping passed these offline checks; neither means
+`ready` or `active`.
 
-## Runtime projection and lifecycle gates
+## Typed runtime projection and lifecycle gates
 
-The graph is not yet applied to the application or worker settings. Existing
-`RuntimeConfiguration`, protected staging JSON, memory-worker JSON, and approved
-worker arguments remain the runtime inputs. The next integration step is a typed,
-explicit bridge from a validated role selection to those interfaces. It must
-preserve each feature's opt-ins, local endpoint restrictions, request/response
-contracts, and worker authorization. It must not discover configuration from
-ambient environment defaults. Credential references should be resolved only at
-the protected runtime boundary; never materialize their values in a manifest,
-report, command log, or source file.
+The typed bridge in [`model_binding.py`](../server/backend/app/access/model_binding.py)
+projects a validated manifest into private copies of the existing assistant or
+memory-worker configuration. Validated snapshots come from the manifest validator;
+their public constructor is disabled and their integrity is checked before
+projection. This is a source API invariant, not a permission or execution boundary.
+`RuntimeConfiguration.with_model_deployment`,
+`StagingConfiguration.with_model_deployment`, and
+`run_memory_worker.with_model_deployment` return configured copies; they do not
+build or serve the app, open worker storage, start a worker, call a provider, or
+activate a selection. Startup does not consume these projections automatically,
+and there are no new serve/run flags. The API staging package allowlist includes
+the bridge and manifest loader, but the source catalog stays in this monorepo;
+packaging an independently deployed manifest loader and catalog remains a gate.
+
+Projection is deliberately narrow:
+
+- The assistant target permits either or both selected roles to be enabled;
+  `assistant_enabled` must already be true when any role is projected. Its ASR
+  model name maps from the declared artifact, while the current TTS interface has
+  no model-name field. Assistant request timeouts are capped at 60 seconds and
+  use the declared runtime timeout (the existing default is 45 seconds).
+- `memory-contributions` requires both `memory_asr` and `annotation_polish`
+  bindings enabled; `memory-narrative` requires its `narrative` binding enabled.
+  The caller must separately pass `processing_enabled=True` for either memory
+  projection. Existing worker phase caps remain: at most 30 seconds per provider
+  request, with ASR and polishing sharing one 30-second item budget. A bounded
+  run permits at most 32 items and 1,800 seconds. The projection does not extend
+  these item or run limits.
+- Every source API call requires an explicit platform. A declared runtime for a
+  different platform is refused. Feature opt-ins remain independent and are
+  never changed by projection.
+- Credential environment names are references only. The source API accepts a
+  caller-supplied `credential_values` dictionary as an explicit argument; it
+  does not inspect ambient environment. The CLI never accepts or resolves these
+  values. Keep tokens out of manifests, reports, command lines, and logs.
+- Existing provider settings are not silently overwritten. If settings are
+  present, they must match the selected provider tuple; when replacing a provider,
+  clear the old endpoint/model/token fields explicitly first. A disabled assistant
+  binding also refuses conflicting existing provider fields. Rollback is an
+  explicit `rollback=True` projection against the separately declared rollback
+  bindings; it is not automatic failover.
+
+The projection can map request timeouts, but does not enforce declared RAM, GPU,
+or concurrency budgets. The offline projection does not resolve credentials;
+binding into a config copy uses only the caller's supplied private dictionary.
+Neither step verifies actual runtime or checkpoint identity, performs storage
+checks, or establishes quality. A successful
+projection is source-level configuration evidence only, not permission to serve
+or process data. The next gates remain installed-runtime and artifact verification,
+measured resource/adapter checks, bounded synthetic quality, shadow outputs, and
+an explicit activation decision.
 
 Before activating a replacement, separately verify installed runtime and artifact
 identity, effective device and resource budget, adapter behavior, and bounded

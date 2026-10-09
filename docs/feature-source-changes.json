@@ -6293,6 +6293,91 @@
           "before_sha256": "a1a4e27105be9a226f5597bc8c9ef84fd401c4f5c7d95dfb8ac6a699f944c4b6"
         }
       ]
+    },
+    {
+      "feature": "explicit-assistant-memory-model-projections-v1",
+      "files": [
+        {
+          "path": "server/backend/app/access/model_binding.py",
+          "sha256": "488efe6f6355458f3571c881d62fe7b52930fa1d55e132bf243b7e4ba16c697f",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/model_deployment.py",
+          "sha256": "14d2cae253f3a2ce8dbbdad73b12276bbf33c57cad3fc2642b4b9f605e7b5a8f",
+          "before_sha256": "6e25fe4cc30f83aad1a7dd98321224a4bef99419aec27fd7727e05f2f24de346"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "57d6f16f7d8a9cbc2eae2bafd975a0beb36695534433dde9f35bc74225d006bb",
+          "before_sha256": "4635422e702b82ece69b52a0d05e50362bcc2c610869fdb81fccc7ad01156381"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "63f58f84f1d8876cf3df0808d75f64e3a96ddf00dfbc7c871ea8aa3f0c26c219",
+          "before_sha256": "8dad9dba3aa0b6ab9941c871c616b6fb2233706bfc18f079b5327bdb276af62f"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "sha256": "b0e6fed1f85fc3860ac3894b65b7aaf80f90b38ed2da04600406f475b66f61fa",
+          "before_sha256": "630900db3b158e35a682393fdb82156ffbcd1d072612e78dffbd165efae4d03b"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "sha256": "8d87db6145d4b9a1c30dfe6ec636192c9b4ba6eedebbf28ddf47a1bc747570aa",
+          "before_sha256": "962cbdf74a44b91f8a8ce3e97ef8155e914644712b731c7d07a4e12ad2f273fc"
+        },
+        {
+          "path": "server/tests/security/test_model_binding.py",
+          "sha256": "fc3f2d40cae6811eb23194129f114c244f73a1584f9064b2d7b53652372760fc",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "a5ecf85e6dac7889c5cdf34f414e3011c35f7ad54fc9eb31ce49750007e3e142",
+          "before_sha256": "c844f31d741ceb5f6ef1aef51c4ed0ea63e19a912b2bebcd2d9e5e764dcaf45b"
+        },
+        {
+          "path": "tools/check_model_deployment.py",
+          "sha256": "c7213de62b53830110fd8b089b2fd2156e79009ab68b56d793a47562f8bbc67c",
+          "before_sha256": "36fc9bddcc822a027d911315c4b3ecc42653c8167441b3d94dcacf92d865daa5"
+        },
+        {
+          "path": "tools/tests/test_check_model_deployment.py",
+          "sha256": "0806d4e59bb115fd350121c23a6285816e585966698cfca915cdc71e50cfba36",
+          "before_sha256": "cb30deb8267278783eafd0603aef62a69111017412c2f8286f3569b0b695d1fa"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "726d7a69e1700bcae5f2570ff6778e05cd46092bdc6bd13232582120721d9b9a",
+          "before_sha256": "0c5dc3fee9da14ba94d3c303a82950b1113cb3f2a345a7c24b68f826988e34e6"
+        },
+        {
+          "path": "models/README.md",
+          "sha256": "4b51efd502ba778eeb67dd0df33b958e4ff32c48e162ac63810efeae33e96600",
+          "before_sha256": "552362f4639459848ca1267f559fc3e3a9f4ccd014d25431fb49ce4c2a19a3a3"
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "sha256": "c68c15fcb8c17cadc3c45532110119f533ebb814a662ccb977b3f8410302c485",
+          "before_sha256": "5f377a6bbb9242abb909993c32235d8a251085888404dac62092d863f06205b8"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "12c133dce90b3a2af2a13edcb00cc336714143814f5f1103f4bf12e7614fe97f",
+          "before_sha256": "5e57db620c8e15e308ad1e6b67453625b49b8acf87800968623f1d7763b73a55"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "dec2d6752f1699a34fba532a6625c286db601081d19fdf2825931a08b27720bd",
+          "before_sha256": "36a76fd19adc2231243627ed81469fbe2167038315e9a1031402ab3e90220b72"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "fc4c749552641597eccf831bb60f89da6b813e88ebd52896b084954d4286fdfa",
+          "before_sha256": "b3036cc6a725a6410f8a9f2c594f38982a9938eb5acd5e3a92e6cb0ce331b904"
+        }
+      ]
     }
   ]
 }

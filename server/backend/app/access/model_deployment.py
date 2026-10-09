@@ -26,6 +26,7 @@ TEXT_ROLES = {'annotation_polish', 'narrative', 'title_suggestions'}
 # The inventory also names implementations behind adapters. These are not
 # interchangeable with the reviewed HTTP request adapters for these roles.
 INVENTORY_ONLY_ADAPTERS = {'CaptionSubprocessProvider', 'WindowsSystemSpeech'}
+_VALIDATION_SEAL = object()
 
 
 class DeploymentError(ValueError):
@@ -176,13 +177,19 @@ def _bindings(value, providers, roles, *, allow_empty=False):
     return result
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class ValidatedDeployment:
     """An immutable private snapshot; repr/report cannot reveal its selections."""
     selection_sha256: str
     _payload: bytes = field(repr=False)
+    _seal: object = field(repr=False, compare=False)
+
+    def __init__(self, *args, **kwargs):
+        raise TypeError('Use validate_deployment to create a validated snapshot')
 
     def report(self):
+        if not _validated_snapshot(self):
+            _fail('validated_deployment_required')
         doc = json.loads(self._payload)
         return {'status': 'configuration_valid', 'selection_sha256': self.selection_sha256,
                 'selected_roles': sorted(binding['role'] for binding in doc['bindings']),
@@ -194,6 +201,8 @@ class ValidatedDeployment:
 
     def resolve(self, role, *, rollback=False):
         """Return a private metadata copy for an explicit caller, without applying it."""
+        if not _validated_snapshot(self):
+            _fail('validated_deployment_required')
         doc = json.loads(self._payload)
         key = 'rollback_bindings' if rollback else 'bindings'
         binding = next((item for item in doc[key] if item['role'] == role), None)
@@ -203,6 +212,15 @@ class ValidatedDeployment:
         return {'binding': binding, 'provider': provider,
                 'runtime': next(item for item in doc['runtimes'] if item['id'] == provider['runtime']),
                 'artifact': next(item for item in doc['artifacts'] if item['id'] == provider['artifact'])}
+
+
+def _validated_snapshot(value):
+    """Factory/integrity invariant, not a sandbox against code in this process."""
+    return (type(value) is ValidatedDeployment
+            and getattr(value, '_seal', None) is _VALIDATION_SEAL
+            and type(getattr(value, '_payload', None)) is bytes
+            and type(getattr(value, 'selection_sha256', None)) is str
+            and hashlib.sha256(value._payload).hexdigest() == value.selection_sha256)
 
 
 def validate_deployment(document, catalog) -> ValidatedDeployment:
@@ -315,7 +333,11 @@ def validate_deployment(document, catalog) -> ValidatedDeployment:
         _fail('manifest_encoding')
     if len(payload) > MAX_BYTES:
         _fail('manifest_too_large')
-    return ValidatedDeployment(hashlib.sha256(payload).hexdigest(), payload)
+    result = object.__new__(ValidatedDeployment)
+    object.__setattr__(result, 'selection_sha256', hashlib.sha256(payload).hexdigest())
+    object.__setattr__(result, '_payload', payload)
+    object.__setattr__(result, '_seal', _VALIDATION_SEAL)
+    return result
 
 
 def _strict_json(payload):

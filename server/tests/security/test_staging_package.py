@@ -42,6 +42,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/original_deletions.py',
             'backend/app/access/prepared_video.py',
             'backend/app/access/private_storage.py',
+            'backend/app/access/model_deployment.py',
+            'backend/app/access/model_binding.py',
             'backend/app/access/promotion.py',
             'backend/app/access/story_outline.py',
             'backend/app/access/story_titles.py',
@@ -99,6 +101,8 @@ class StagingPackageTests(unittest.TestCase):
                 "sys.path[:0]=[str(root/'scripts'),str(root/'backend')]\n"
                 'from staging_app import load_configuration\n'
                 'from app.access.runtime import RuntimeConfiguration\n'
+                'from app.access.model_binding import project_configuration\n'
+                'from app.access.model_deployment import validate_deployment\n'
                 'from app.main import create_app\n'
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'

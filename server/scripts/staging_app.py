@@ -27,6 +27,7 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'memory_editions_enabled', 'assistant_asr_url',
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
+                   'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
                    'original_deletion_journal_path', 'original_deletion_namespace'}
 PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network,
     ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
@@ -78,6 +79,17 @@ class StagingConfiguration:
     assistant_tts_url: str | None = None
     assistant_tts_token: str | None = None
     update_root: Path | None = None
+    assistant_asr_timeout_seconds: float = 45
+    assistant_tts_timeout_seconds: float = 45
+
+    def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
+        """Project private provider settings explicitly without constructing the app."""
+        from dataclasses import replace
+        sys.path.insert(0, str(ROOT/'backend'))
+        from app.access.model_binding import project_configuration
+        projection = project_configuration(deployment, target='assistant', platform=platform,
+            feature_enabled=self.assistant_enabled, rollback=rollback)
+        return replace(self, **projection.bind_fields(vars(self), credential_values=credential_values))
 
     def __post_init__(self):
         try:
@@ -158,6 +170,9 @@ class StagingConfiguration:
                     raise InvalidConfiguration()
             if type(self.assistant_enabled) is not bool:
                 raise InvalidConfiguration()
+            for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
+                if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+                    raise InvalidConfiguration()
             if (self.assistant_asr_url is None) != (self.assistant_asr_model is None):
                 raise InvalidConfiguration()
             if self.assistant_asr_url is not None:
@@ -232,6 +247,8 @@ class StagingConfiguration:
             assistant_asr_token=self.assistant_asr_token,
             assistant_tts_url=self.assistant_tts_url,
             assistant_tts_token=self.assistant_tts_token,
+            assistant_asr_timeout_seconds=self.assistant_asr_timeout_seconds,
+            assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
             update_root=self.update_root).build_app()
 
     def server_options(self):
@@ -276,6 +293,8 @@ def parse_configuration(value):
             assistant_asr_token=value.get('assistant_asr_token'),
             assistant_tts_url=value.get('assistant_tts_url'),
             assistant_tts_token=value.get('assistant_tts_token'),
+            assistant_asr_timeout_seconds=value.get('assistant_asr_timeout_seconds', 45),
+            assistant_tts_timeout_seconds=value.get('assistant_tts_timeout_seconds', 45),
             update_root=None if value.get('update_root') is None else _path(value['update_root']))
     except (TypeError, ValueError, KeyError):
         raise InvalidConfiguration() from None

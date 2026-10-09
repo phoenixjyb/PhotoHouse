@@ -132,7 +132,7 @@ class ExistingDatabase:
             connection.close()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class RuntimeConfiguration:
     database: Path
     web_origin: str
@@ -158,6 +158,16 @@ class RuntimeConfiguration:
     assistant_tts_url: str | None = None
     assistant_tts_token: str | None = None
     update_root: Path | None = None
+    assistant_asr_timeout_seconds: float = 45
+    assistant_tts_timeout_seconds: float = 45
+
+    def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
+        """Return explicit provider settings only; never build/serve or enable features."""
+        from dataclasses import replace
+        from .model_binding import project_configuration
+        projection = project_configuration(deployment, target='assistant', platform=platform,
+            feature_enabled=self.assistant_enabled, rollback=rollback)
+        return replace(self, **projection.bind_fields(vars(self), credential_values=credential_values))
 
     def build_app(self, *, clock=time.time):
         """Build only; catalog storage opens lazily in the request worker.
@@ -212,6 +222,9 @@ class RuntimeConfiguration:
             raise ValueError('Explicit annotation intake opt-in required')
         if type(self.assistant_enabled) is not bool:
             raise ValueError('Explicit assistant opt-in required')
+        for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
+            if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+                raise ValueError('Invalid assistant provider timeout')
         if (self.assistant_asr_url is None) != (self.assistant_asr_model is None):
             raise ValueError('ASR URL and model must be selected together')
         if self.assistant_asr_url is not None and not self.assistant_enabled:
@@ -236,12 +249,13 @@ class RuntimeConfiguration:
         if self.assistant_asr_url is not None:
             from .assistant_speech import LocalAssistantAsr
             assistant_asr = LocalAssistantAsr(url=self.assistant_asr_url,
-                model=self.assistant_asr_model, token=self.assistant_asr_token)
+                model=self.assistant_asr_model, token=self.assistant_asr_token,
+                timeout=self.assistant_asr_timeout_seconds)
         assistant_tts = None
         if self.assistant_tts_url is not None:
             from .assistant_speech import LocalAssistantTts
             assistant_tts = LocalAssistantTts(url=self.assistant_tts_url,
-                                              token=self.assistant_tts_token)
+                token=self.assistant_tts_token, timeout=self.assistant_tts_timeout_seconds)
         review = None
         if self.upload_review_enabled:
             from .upload_review import UploadReviewRuntime
