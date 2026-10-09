@@ -14,7 +14,7 @@ import re
 import stat
 from urllib.parse import urlsplit
 
-from .private_storage import require_private_directory, require_private_file
+from .private_storage import require_private_directory, require_private_file, stable_stat_identity
 
 MAX_BYTES = 128 * 1024
 ID = re.compile(r'[a-z0-9][a-z0-9._-]{0,63}\Z', re.ASCII)
@@ -425,8 +425,10 @@ def _load_private_document(path, *, source_root):
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
                 _fail('manifest_link')
         final = path.stat()
-        identity = lambda value: (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
-        if identity(before) != identity(opened) or identity(opened) != identity(after) or identity(after) != identity(final):
+        if (stable_stat_identity(before) != stable_stat_identity(opened) or
+                stable_stat_identity(opened) != stable_stat_identity(after) or
+                stable_stat_identity(after) != stable_stat_identity(final) or
+                opened.st_ctime_ns != after.st_ctime_ns):
             _fail('manifest_changed')
         if len(payload) > MAX_BYTES:
             _fail('manifest_too_large')

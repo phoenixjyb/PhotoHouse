@@ -6618,6 +6618,66 @@
           "before_sha256": "f8288cd344c7044a9c00e803f7e4c754536a321c574ef03f8aa526306860eae4"
         }
       ]
+    },
+    {
+      "feature": "windows-private-reader-stable-identity-v1",
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "sha256": "c953408ff177427363760cfe0fa5cfce6fcd24b9f6876dc676ebe8b5fb2e1bac",
+          "before_sha256": "8eec4cc76db54066ee5899407ac68cdc0c71c3fd8e99e7fd28b099ab45961076"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "dc8ef2f7e4540aef9cf143c3f2dc470b8d7b84e535191405ccd3c8637846aeaa",
+          "before_sha256": "4b3da760ff3c3300ac9f3b0e9f09b6286f2a4c8346635ea7d71b7b46181697a6"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "793d41b33d4662226c0b6c4ef11bbc8803c76269c151efe3ca2c5dc318cc7248",
+          "before_sha256": "97059c6f177f2ab4d6d6241aee88401147fb733b137d0872a1842ac8912b88bb"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "97fde4c74cd3813fce7e8645416e5197a0b02a8046f214924a2c397ebfb8de28",
+          "before_sha256": "4efd49e723e2d30de33c90f6e15df245cfe6b4eafc2d3b848a008d5684a2ffed"
+        },
+        {
+          "path": "server/backend/app/access/model_deployment.py",
+          "sha256": "7e7ac23632617d5ac809a9f9bc0602be9e0fe487ea43cd14e3cb8f281c8320b8",
+          "before_sha256": "009677f9a1c48313386b4c12de1c353ca343aa8e12591a133433a841d3d7f490"
+        },
+        {
+          "path": "server/backend/app/access/model_qualification.py",
+          "sha256": "1d9856cb283aa44752ece7d210d8a4fd361e1ee026ab8fe56b11069aca1d4a73",
+          "before_sha256": "461c34efe3a8901919b1f71520b62b237c9c71cbd236e3fe66d1fd8eba575b75"
+        },
+        {
+          "path": "server/backend/app/access/private_storage.py",
+          "sha256": "1ac05f1959c13510b83e45618120250cd35a052b6fcc762afa50d295852a2db0",
+          "before_sha256": "213bb8686341810b5cfdec876edbdc536ca0ac1615188596b654e8101267a75a"
+        },
+        {
+          "path": "server/backend/app/access/windows_tts.py",
+          "sha256": "13336cf72293347cd8824a3db3d297b331f0c32bb6557d8787042877b230dc82",
+          "before_sha256": "b27827763f78626ff1091e1872c02cade833de2fd8cfaf33a3cd66a3f5890983"
+        },
+        {
+          "path": "server/tests/security/test_model_deployment.py",
+          "sha256": "2876269c2bd245f5086f98b3859ff7b343ef935b6d2428418b5fec19aee24a1e",
+          "before_sha256": "cf8376809f5f6307aaecc316609164448cb6b374f5d2d850a5efcec813395c98"
+        },
+        {
+          "path": "server/tests/security/test_private_storage.py",
+          "sha256": "ae340bcbdb4043cbf305b6fffd4f0dd3b5e4ce4567088d57e1c5de732078cf39",
+          "before_sha256": "b275a4349dabd927a56e8a228b07e3f10cf428f118cd9ccb4bf09a60cf75a5da"
+        },
+        {
+          "path": "server/tests/security/test_windows_tts.py",
+          "sha256": "ca1f3be48626672273360207e074bb6b89647ecb76b73b8576d5613c81834254",
+          "before_sha256": "dadddfca26f20e812a368f1514c4836c35578e48c10c0aeb840a7e8e48db396d"
+        }
+      ]
     }
   ]
 }

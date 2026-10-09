@@ -11,6 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
 import wave
 from unittest.mock import patch
 from urllib.parse import urlencode
@@ -113,6 +114,15 @@ class FakeSynthesis:
 class WindowsSpeechChildTests(unittest.TestCase):
     FIELDS = {'text': 'synthetic phrase', 'language': 'en',
               'voice_speed': '1.0', 'output_format': 'wav'}
+
+    def test_windows_token_ancestor_guard_checks_stat_mode_and_reparse_flag(self):
+        # lstat returns a stat_result-like value, not a Path with is_dir().
+        directory = SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_file_attributes=0)
+        regular = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_file_attributes=0)
+        reparse = SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_file_attributes=0x400)
+        self.assertTrue(tts._safe_windows_directory(directory))
+        self.assertFalse(tts._safe_windows_directory(regular))
+        self.assertFalse(tts._safe_windows_directory(reparse))
 
     def test_synthesis_sends_text_only_on_stdin_and_preserves_valid_wav(self):
         audio = wav_bytes()

@@ -10,6 +10,25 @@ import os
 import stat
 
 
+def stable_stat_identity(info, *, windows=None):
+    """Return stable file identity fields across pathname and open-handle stats.
+
+    Some Windows Python builds report different ``st_ctime_ns`` meanings for
+    pathname ``stat`` and handle ``fstat``. Use ``st_birthtime_ns`` for stable
+    identity there and fail closed if the runtime does not provide it. POSIX
+    keeps ctime.
+    """
+    if windows is None:
+        windows = os.name == 'nt'
+    identity = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+    if windows:
+        birthtime = getattr(info, 'st_birthtime_ns', None)
+        if type(birthtime) is not int:
+            raise ValueError('Stable file identity unavailable')
+        return identity + (birthtime,)
+    return identity + (info.st_ctime_ns,)
+
+
 def _refused():
     return ValueError('Private recovery storage unavailable')
 

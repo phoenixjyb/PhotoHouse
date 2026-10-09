@@ -23,6 +23,9 @@ can select Linux WSL loopback services alongside native Windows services without
 changing schema 1. Qualification records bind the placement and keep Linux ASR
 and Windows TTS in separate scopes. This describes topology only; loopback
 forwarding, installed identities and voice quality still require native checks.
+Private readers now account for Windows path/handle timestamp differences,
+retain replacement and modification checks, and have a separate Windows CI
+cohort. This improves metadata intake; it does not qualify generated stories.
 The next model-infra slice is native installed-provider/device verification and
 bounded Chinese voice/story evaluation, then separately approved activation.
 The standalone [story canary](MODEL_QUALIFICATION.md#capture-one-synthetic-story-output)
