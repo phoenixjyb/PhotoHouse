@@ -11,6 +11,9 @@ interface StoryWorkspaceApi {
     suspend fun storyTitleCapabilities(token: Bearer, library: String): ByteArray
     suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray
     suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray
+    /** Optional v1 same-recorded-day candidate lookup; legacy adapters remain unsupported. */
+    suspend fun relatedStoryMedia(token: Bearer, library: String, json: String): ByteArray =
+        throw ApiFailure(FailureKind.INVALID_INPUT)
 }
 
 /** Frozen, process-only body. A retry sends these exact bytes with the same mutation ID. */
@@ -100,6 +103,18 @@ class StoryWorkspaceRepository(
             draft.chapters.map { ProtectedStoryWorkspaceChapterInput(it.id, it.narration) })
         owned({ api.storyTitles(bound.token, bound.libraryId, body) }) {
             ProtectedStoryWorkspaceWire.decodeTitles(it, draft)
+        }
+    }
+
+    suspend fun relatedMedia(
+        seedAssetIds: List<String>, beforeId: String?, editorCurrent: () -> Boolean,
+    ): StoryRelatedMediaPage {
+        val ids = seedAssetIds.toList()
+        val body = StoryRelatedMediaWire.encodeRequest(ids, beforeId)
+        return scoped(editorCurrent = editorCurrent) { bound ->
+            owned({ api.relatedStoryMedia(bound.token, bound.libraryId, body) }) {
+                StoryRelatedMediaWire.decode(it, bound.libraryId, ids, beforeId)
+            }
         }
     }
 

@@ -277,7 +277,7 @@ class ConnectedUiTest {
             capabilities = AssistantCapabilities(true, true, true, false, 30),
             context = lastContext, transcript = AssistantTranscript(prompt, "zh",
                 AssistantRequestReceipt(transcriptId, "enabled", "succeeded")),
-            confirmedTranscriptRequestId = transcriptId,
+            confirmedTranscriptRequestId = null,
             lastRequestReceipt = AssistantRequestReceipt(transcriptId, "enabled", "succeeded")))
         var checks = 0
         var sends = 0
@@ -298,9 +298,26 @@ class ConnectedUiTest {
                     receiptDetail = AssistantReceipt(turnId, "turn", transcriptId, "succeeded", "2026-10-03T00:00:00Z",
                         "2026-10-03T00:00:01Z", "2026-11-02T00:00:00Z", 200, null, prompt, null, "results", 1, null)) },
                 onRetryCapabilities={}, recording=false, recordError=false, onRecord={}, onStopRecording={},
-                onCancelRecording={}, onClearTranscript={ clientState.value = clientState.value.copy(transcript = null, confirmedTranscriptRequestId = null) }, onPlaySpeech={}, onStopSpeech={}) }
+                onCancelRecording={}, onClearTranscript={ clientState.value = clientState.value.copy(transcript = null, confirmedTranscriptRequestId = null) },
+                onUseTranscript={ expected ->
+                    val current = clientState.value
+                    if (current.transcript !== expected || current.confirmedTranscriptRequestId != null) null
+                    else {
+                        clientState.value = current.copy(transcript = null, confirmedTranscriptRequestId = expected.receipt?.requestId)
+                        expected.text
+                    }
+                }, onPlaySpeech={}, onStopSpeech={}) }
         } }
+        rule.onNodeWithTag("assistant-text").assertTextContains("询问相册内容", substring = true)
+        assertEquals("A transcript is not prefilled into the message", "", rule.onNodeWithTag("assistant-text").fetchSemanticsNode().config[
+            androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+        rule.onNodeWithTag("assistant-send").assertIsNotEnabled()
+        assertNull(clientState.value.confirmedTranscriptRequestId)
+        rule.onNodeWithTag("assistant-turns").performScrollToNode(hasTestTag("assistant-transcript-review"))
+        rule.onNodeWithTag("assistant-insert-transcript").assertIsEnabled().performClick()
         rule.onNodeWithTag("assistant-text").assertTextContains(prompt)
+        assertNull(clientState.value.transcript)
+        assertEquals(transcriptId, clientState.value.confirmedTranscriptRequestId)
         rule.onNodeWithTag("assistant-text").performImeAction()
         assertEquals(1, sends)
         val pending = clientState.value.pendingTurn!!

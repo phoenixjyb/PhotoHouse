@@ -33,6 +33,42 @@ def base():
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_title_configuration_is_independent_optional_and_passed_to_runtime(self):
+        default = s.parse_configuration(base())
+        self.assertFalse(default.story_title_suggestions_enabled)
+        self.assertIsNone(default.story_title_url)
+        enabled = s.parse_configuration(dict(base(), story_title_suggestions_enabled=True,
+            story_title_url='http://127.0.0.1:19002', story_title_model='synthetic-titles',
+            story_title_timeout_seconds=7))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            enabled.build_app()
+        fields = runtime.call_args.kwargs
+        self.assertTrue(fields['story_title_suggestions_enabled'])
+        self.assertEqual(fields['story_title_url'], 'http://127.0.0.1:19002')
+        self.assertEqual(fields['story_title_model'], 'synthetic-titles')
+        self.assertEqual(fields['story_title_timeout_seconds'], 7)
+        for name in ('assistant_enabled', 'annotation_intake_enabled', 'memory_generation_enabled'):
+            self.assertFalse(fields[name])
+        # Opt-in alone is allowed for explicit later model projection; it exposes no provider.
+        self.assertIsNone(s.parse_configuration(dict(base(), story_title_suggestions_enabled=True)).story_title_url)
+
+    def test_title_configuration_refuses_partial_disabled_or_unbounded_settings(self):
+        valid = dict(story_title_suggestions_enabled=True,
+                     story_title_url='http://localhost:19002/api/generate', story_title_model='synthetic')
+        invalid = [dict(story_title_suggestions_enabled=False),
+                   dict(story_title_suggestions_enabled=1), dict(story_title_url=None),
+                   dict(story_title_model=None), dict(story_title_model=' '),
+                   dict(story_title_model=' synthetic'), dict(story_title_model='bad\nname')]
+        invalid += [dict(story_title_timeout_seconds=t) for t in (0, True, 31, float('nan'), float('inf'), '30')]
+        invalid += [dict(story_title_url=u) for u in ('https://localhost:19002',
+            'http://192.0.2.1:19002', 'http://localhost:19002/other',
+            'http://name:secret@localhost:19002', 'http://localhost:19002?token=secret',
+            'http://localhost:19002#fragment', 5)]
+        invalid.append(dict(story_title_token='secret'))
+        for change in invalid:
+            with self.subTest(change=change), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **(valid | change)))
+
     def test_reviewed_editions_are_default_off_and_require_collaboration_and_journal(self):
         self.assertFalse(s.parse_configuration(base()).memory_editions_enabled)
         for flag in ('true', 1, None):
@@ -51,6 +87,25 @@ class StagingConfigurationTests(unittest.TestCase):
             selected.build_app()
         self.assertTrue(runtime.call_args.kwargs['memory_editions_enabled'])
         self.assertFalse(runtime.call_args.kwargs['memory_generation_enabled'])
+
+    def test_family_note_erasure_false_key_remains_compatible_and_true_is_default_off(self):
+        self.assertFalse(s.parse_configuration(base()).family_note_erasure_enabled)
+        disabled = s.parse_configuration(dict(base(), family_note_erasure_enabled=False))
+        self.assertFalse(disabled.family_note_erasure_enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            disabled.build_app()
+        self.assertIs(runtime.call_args.kwargs['family_note_erasure_enabled'], False)
+        for invalid in ('false', 0, None):
+            with self.subTest(value=invalid), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), family_note_erasure_enabled=invalid))
+        with self.assertRaises(s.InvalidConfiguration):
+            s.parse_configuration(dict(base(), family_note_erasure_enabled=True))
+        enabled = s.parse_configuration(dict(base(), family_note_erasure_enabled=True,
+            original_deletion_journal_path='/synthetic/private/deletions.sqlite',
+            original_deletion_namespace='00000000-0000-4000-8000-000000000001'))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            enabled.build_app()
+        self.assertIs(runtime.call_args.kwargs['family_note_erasure_enabled'], True)
 
     def test_assistant_journal_is_explicit_separate_and_passed_to_runtime(self):
         self.assertIsNone(s.parse_configuration(base()).assistant_journal_path)

@@ -24,11 +24,13 @@ FIELDS = {'format_version', 'database', 'web_origin', 'original_roots', 'derived
 OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled',
                    'annotation_intake_enabled', 'assistant_enabled', 'memory_collaboration_enabled',
                    'memory_originals_enabled', 'memory_generation_enabled', 'memory_editorial_enabled',
-                   'memory_editions_enabled', 'assistant_asr_url',
+                   'memory_editions_enabled', 'family_note_erasure_enabled', 'assistant_asr_url',
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
-                   'original_deletion_journal_path', 'original_deletion_namespace'}
+                   'original_deletion_journal_path', 'original_deletion_namespace',
+                   'story_title_suggestions_enabled', 'story_title_url', 'story_title_model',
+                   'story_title_timeout_seconds'}
 PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network,
     ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
      '127.0.0.0/8', 'fc00::/7', '::1/128')))
@@ -70,6 +72,11 @@ class StagingConfiguration:
     memory_generation_enabled: bool = False
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
+    family_note_erasure_enabled: bool = False
+    story_title_suggestions_enabled: bool = False
+    story_title_url: str | None = None
+    story_title_model: str | None = None
+    story_title_timeout_seconds: float = 30
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
@@ -145,7 +152,7 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if any(type(flag) is not bool for flag in (self.memory_collaboration_enabled,
                     self.memory_originals_enabled, self.memory_generation_enabled, self.memory_editorial_enabled,
-                    self.memory_editions_enabled)):
+                    self.memory_editions_enabled, self.family_note_erasure_enabled)):
                 raise InvalidConfiguration()
             if (self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and not self.memory_collaboration_enabled:
                 raise InvalidConfiguration()
@@ -153,7 +160,7 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
                 raise InvalidConfiguration()
-            if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and self.original_deletion_journal_path is None:
+            if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
                 raise InvalidConfiguration()
             if self.original_deletion_journal_path is not None:
                 import uuid
@@ -167,6 +174,24 @@ class StagingConfiguration:
                                      *((self.incoming_root,) if self.incoming_root else ()),
                                      *((self.update_root,) if self.update_root else ()),
                                      *((self.assistant_journal_path,) if self.assistant_journal_path else ()))):
+                    raise InvalidConfiguration()
+            if type(self.story_title_suggestions_enabled) is not bool:
+                raise InvalidConfiguration()
+            if type(self.story_title_timeout_seconds) not in (int, float) or not 0 < self.story_title_timeout_seconds <= 30:
+                raise InvalidConfiguration()
+            if (self.story_title_url is None) != (self.story_title_model is None):
+                raise InvalidConfiguration()
+            if self.story_title_url is not None:
+                import unicodedata
+                if type(self.story_title_url) is not str or not self.story_title_suggestions_enabled:
+                    raise InvalidConfiguration()
+                title = urlsplit(self.story_title_url)
+                if (title.scheme != 'http' or title.hostname not in {'127.0.0.1', 'localhost'}
+                        or not title.port or title.username or title.password or title.query or title.fragment
+                        or title.path.rstrip('/') not in {'', '/api/generate'}
+                        or type(self.story_title_model) is not str or not self.story_title_model
+                        or self.story_title_model != self.story_title_model.strip() or len(self.story_title_model) > 120
+                        or any(unicodedata.category(ch) == 'Cc' for ch in self.story_title_model)):
                     raise InvalidConfiguration()
             if type(self.assistant_enabled) is not bool:
                 raise InvalidConfiguration()
@@ -224,6 +249,15 @@ class StagingConfiguration:
         except (TypeError, ValueError):
             raise InvalidConfiguration() from None
 
+    def with_story_title_model_deployment(self, deployment, *, platform, rollback=False):
+        """Select only the explicit title role; never enable it or invoke a model."""
+        from dataclasses import replace
+        sys.path.insert(0, str(ROOT / "backend"))
+        from app.access.model_binding import project_configuration
+        projection = project_configuration(deployment, target='story-titles', platform=platform,
+            feature_enabled=self.story_title_suggestions_enabled, rollback=rollback)
+        return replace(self, **projection.bind_fields(vars(self)))
+
     def build_app(self):
         # Deliberate source root; no .env, legacy config or model entry point.
         sys.path.insert(0, str(ROOT/'backend'))
@@ -239,6 +273,10 @@ class StagingConfiguration:
             memory_generation_enabled=self.memory_generation_enabled,
             memory_editorial_enabled=self.memory_editorial_enabled,
             memory_editions_enabled=self.memory_editions_enabled,
+            family_note_erasure_enabled=self.family_note_erasure_enabled,
+            story_title_suggestions_enabled=self.story_title_suggestions_enabled,
+            story_title_url=self.story_title_url, story_title_model=self.story_title_model,
+            story_title_timeout_seconds=self.story_title_timeout_seconds,
             original_deletion_journal_path=self.original_deletion_journal_path,
             original_deletion_namespace=self.original_deletion_namespace,
             assistant_journal_path=self.assistant_journal_path,
@@ -285,6 +323,10 @@ def parse_configuration(value):
             memory_generation_enabled=value.get('memory_generation_enabled', False),
             memory_editorial_enabled=value.get('memory_editorial_enabled', False),
             memory_editions_enabled=value.get('memory_editions_enabled', False),
+            family_note_erasure_enabled=value.get('family_note_erasure_enabled', False),
+            story_title_suggestions_enabled=value.get('story_title_suggestions_enabled', False),
+            story_title_url=value.get('story_title_url'), story_title_model=value.get('story_title_model'),
+            story_title_timeout_seconds=value.get('story_title_timeout_seconds', 30),
             original_deletion_journal_path=_path(value['original_deletion_journal_path']) if value.get('original_deletion_journal_path') is not None else None,
             original_deletion_namespace=value.get('original_deletion_namespace'),
             assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,

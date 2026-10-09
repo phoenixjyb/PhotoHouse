@@ -113,8 +113,8 @@ python3 tools/check_model_deployment.py --manifest /absolute/private/path \
   --project assistant --platform windows --feature-enabled --json
 ```
 
-Supported targets are `assistant`, `memory-contributions`, and
-`memory-narrative`; host platforms are `windows`, `linux`, and `macos`. For
+Supported targets are `assistant`, `memory-contributions`, `memory-narrative`,
+and `story-titles`; host platforms are `windows`, `linux`, and `macos`. For
 schema 1 and native schema 2 runtimes, host and execution platforms match. A
 schema 2 WSL2 runtime keeps `platform` as its Linux execution platform while
 projection uses its Windows `host_platform`. The projection report includes the
@@ -183,6 +183,16 @@ Projection is deliberately narrow:
   request, with ASR and polishing sharing one 30-second item budget. A bounded
   run permits at most 32 items and 1,800 seconds. The projection does not extend
   these item or run limits.
+- `story-titles` requires its own enabled `title_suggestions` binding and the
+  independent `story_title_suggestions_enabled` flag. Runtime/staging callers
+  use `with_story_title_model_deployment`; the existing `with_model_deployment`
+  method still maps only assistant providers. Projection maps `story_title_url`,
+  `story_title_model`, and `story_title_timeout_seconds` (at most 30 seconds).
+  No token/credential field is supported for this local adapter. A disabled
+  flag refuses provider fields; an enabled flag with neither URL nor model keeps
+  the provider unavailable until explicit selection. URL and model must be paired.
+  Startup constructs the adapter without contacting it; no title is generated,
+  adopted, saved or published automatically.
 - Every source API call requires an explicit platform, which means the
   application-facing host platform. Projection matches it against the effective
   host: schema 1 and native schema 2 use the runtime `platform`, while WSL2 uses

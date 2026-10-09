@@ -190,12 +190,24 @@ private fun memoirReplySourceLabels(
 @OptIn(ExperimentalLayoutApi::class)
 private fun ReplyContextControls(
     tagPrefix: String, context: MemoryReplyContext, sourceLabels: List<String>, enabled: Boolean,
-    zh: Boolean, onChoose: (String) -> MemoryChatFollowupResult,
+    zh: Boolean, clarification: Boolean, onChoose: (String) -> MemoryChatFollowupResult,
 ) {
     var expanded by remember(tagPrefix) { mutableStateOf(false) }
     var status by remember(tagPrefix) { mutableStateOf("") }
     val t = { en: String, cn: String -> if (zh) cn else en }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (clarification) {
+            Text(t("AI would like to know more", "AI 想再了解一点"),
+                style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.testTag("$tagPrefix-clarification"))
+            Text(if (context.questions.isEmpty())
+                t("Add the missing detail in your own words. Review your message before sending.",
+                    "可以用自己的话补充细节，检查消息后再发送。")
+                else t("Add details in your own words, or choose a question below as an editable draft. Send when ready.",
+                    "可以用自己的话补充细节，也可以选下面的问题作为可编辑草稿，准备好后再发送。"),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("$tagPrefix-clarification-help"))
+        }
         if (context.questions.isNotEmpty()) {
             Text(t("Suggested follow-up questions", "还可以这样问"), style = MaterialTheme.typography.labelMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -253,6 +265,7 @@ internal val LocalMemoryContributionCaptureFactory = staticCompositionLocalOf<Me
     DefaultMemoryContributionCaptureFactory
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MemoryCommunityPanel(store: ConnectedStore, reading: SavedMemoryStoriesReading, zh: Boolean) {
     val live by store.state.collectAsState()
@@ -272,8 +285,10 @@ internal fun MemoryCommunityPanel(store: ConnectedStore, reading: SavedMemorySto
                 style = MaterialTheme.typography.bodyMedium)
             return@Column
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("共同讲述", "聊聊故事", "整理建议").forEachIndexed { index, label ->
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(t("Family memories", "共同讲述"), t("Story chat", "聊聊故事"),
+                t("Draft suggestions", "整理建议")).forEachIndexed { index, label ->
                 FilterChip(selected = community.tab == index, onClick = { store.selectMemoryCommunityTab(index) },
                     enabled = (!community.contributionAudioBusy || community.tab == index) && (index != 2 || reading.detail?.canEdit == true),
                     label = { Text(label) }, modifier = Modifier.testTag("memory-community-tab-$index"))
@@ -680,6 +695,10 @@ private fun StoryChatPanel(
                 modifier = Modifier.testTag("memory-chat-new")) { Text(t("New chat", "新对话")) }
         }
     }
+    if (community.conversationRestored) Text(
+        t("Back in the conversation you last selected.", "已回到上次选择的对话。"),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag("memory-chat-restored").semantics { liveRegion = LiveRegionMode.Polite })
     if (community.conversationId == null) {
         Text(t("Start a private conversation about this story.", "开始一段只围绕这个故事的对话。"))
         Button(onClick = store::startMemoryConversation, enabled = canChangeThread,
@@ -730,14 +749,15 @@ private fun StoryChatPanel(
                     Text(reply, style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.testTag("memory-chat-reply"))
                     val replyContext = if (turn.state == "ready") memoryReplyContext(turn, community.job, revision) else null
-                    if (replyContext != null && (replyContext.questions.isNotEmpty() || replyContext.sourceIds.isNotEmpty())) {
+                    if (replyContext != null && (turn.replyKind == "clarification" || replyContext.questions.isNotEmpty() || replyContext.sourceIds.isNotEmpty())) {
                         val canChooseQuestion = canReplaceComposerWithReplyQuestion(composerValue) &&
                             !community.busy && community.pendingConversation == null && community.pendingTurn == null &&
                             community.pendingText == null && community.pendingAudio == null && community.pendingNarrative == null &&
                             !community.contributionAudioBusy && !hasActiveMemoryChatJob(community.job, community.turns) &&
                             !hasUnfinishedMemoryDictation(dictationState)
                         ReplyContextControls("memory-chat-followup-${turn.sequence}", replyContext,
-                            storyReplySourceLabels(replyContext.sourceIds, detail, community, zh), canChooseQuestion, zh) { question ->
+                            storyReplySourceLabels(replyContext.sourceIds, detail, community, zh), canChooseQuestion, zh,
+                            clarification = turn.replyKind == "clarification") { question ->
                             if (!canReplaceComposerWithReplyQuestion(composerValue)) MemoryChatFollowupResult.BLOCKED
                             else store.chooseMemoryChatFollowup(
                                 accountId, generation, library, readerScopeId, community.storyId, revision,
@@ -936,6 +956,10 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
                     modifier = Modifier.testTag("memory-book-chat-new")) { Text(t("New chat", "新对话")) }
             }
         }
+        if (chat.conversationRestored) Text(
+            t("Back in the conversation you last selected.", "已回到上次选择的对话。"),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("memory-book-chat-restored").semantics { liveRegion = LiveRegionMode.Polite })
         if (chat.failure != null) Text(communityMessage(chat.failure!!, zh), color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag("memory-book-chat-failure"))
         if (chat.conversationId == null) {
@@ -959,13 +983,14 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
                                 color = MaterialTheme.colorScheme.primary, modifier = Modifier.testTag("memory-book-chat-assistant-speaker"))
                             Text(reply, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("memory-book-chat-turn-reply"))
                             val replyContext = if (turn.state == "ready") memoryReplyContext(turn, chat.job, chat.bookRevision) else null
-                            if (replyContext != null && (replyContext.questions.isNotEmpty() || replyContext.sourceIds.isNotEmpty())) {
+                            if (replyContext != null && (turn.replyKind == "clarification" || replyContext.questions.isNotEmpty() || replyContext.sourceIds.isNotEmpty())) {
                                 val canChooseQuestion = canReplaceComposerWithReplyQuestion(bookComposerValue) &&
                                     !live.busy && !reading.busy && !reading.readerBusy && !chat.busy &&
                                     chat.pendingConversation == null && chat.pendingTurn == null &&
                                     !hasActiveMemoryChatJob(chat.job, chat.turns) && !hasUnfinishedMemoryDictation(dictationState)
                                 ReplyContextControls("memory-book-chat-followup-${turn.sequence}", replyContext,
-                                    memoirReplySourceLabels(replyContext.sourceIds, reading, zh), canChooseQuestion, zh) { question ->
+                                    memoirReplySourceLabels(replyContext.sourceIds, reading, zh), canChooseQuestion, zh,
+                                    clarification = turn.replyKind == "clarification") { question ->
                                     if (!canReplaceComposerWithReplyQuestion(bookComposerValue)) MemoryChatFollowupResult.BLOCKED
                                     else store.chooseMemoryBookChatFollowup(
                                         accountId, live.generation, reading.library, reading.readerScopeId, chat.bookId,

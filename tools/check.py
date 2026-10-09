@@ -14,6 +14,9 @@ API_TESTS = (
     "test_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_retry.py", "test_upload_review.py",
     "test_original_deletions.py", "test_original_deletion_integration.py",
+    "test_family_note_identity.py", "test_family_note_identity_migration.py",
+    "test_family_note_deletions.py", "test_family_note_deletion_boundaries.py",
+    "test_family_note_erasure_api.py", "test_upgrade_original_deletion_journal.py",
     "test_private_storage.py", "test_model_deployment.py", "test_model_binding.py", "test_model_qualification.py", "test_model_topology.py", "test_apply_memory_editorial_schema.py",
     "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_books.py",
     "test_memoir_quality_cases.py", "test_memoir_quality_canary.py",
@@ -27,17 +30,23 @@ API_TESTS = (
     "test_orm_migrations.py", "test_runtime_adapter.py", "test_windows_tts.py",
     "test_memory_worker_launcher.py",
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
-    "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_related_media.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
+    "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_related_media.py", "test_visual_candidates.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_assistant_http.py", "test_assistant_journal.py", "test_memory_transport.py",
     "test_approved_face_queue.py", "test_approved_worker_package.py",
-    "test_approved_workers_c2_compatibility.py", "test_initialize_original_deletions.py",
+    "test_approved_worker_failure_reports.py",
+    "test_approved_workers_c2_compatibility.py", "test_approved_workers_d1_compatibility.py",
+    "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",
+    "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_editorial_rehearsal_database_guard.py",
 )
 MEMORY_TESTS = (
     "test_private_storage.py", "test_memory_contributions.py", "test_memory_contribution_refs.py",
     "test_memory_books.py", "test_memory_book_editorial_service.py", "test_memory_book_editorial_http.py",
+    "test_family_note_identity.py", "test_family_note_identity_migration.py",
+    "test_family_note_deletions.py", "test_family_note_deletion_boundaries.py",
+    "test_family_note_erasure_api.py",
     "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
     "test_memory_book_edition_contract.py", "test_memory_book_edition_schema.py",
     "test_memory_book_edition_provenance.py", "test_memory_book_editions.py",
@@ -55,12 +64,15 @@ ANDROID_TASKS = (
 )
 WEB_TESTS = (
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
+    "server/tests/security/test_assistant_turn_trail_browser.cjs",
+    "server/tests/security/test_assistant_transcript_browser.cjs",
     "server/tests/security/test_memory_book_editorial_browser.cjs",
     "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
     "server/tests/security/test_memory_book_edition_browser.cjs",
     "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
     "server/tests/security/test_memory_book_edition_sources_browser.cjs",
     "server/tests/security/test_memory_community_browser.cjs",
+    "server/tests/security/test_memory_conversation_navigation_browser.cjs",
     "server/tests/security/test_story_titles_browser.cjs",
     "server/tests/security/test_story_related_media_browser.cjs",
 )
@@ -145,7 +157,14 @@ def web():
     env["PH_BROWSER_PYTHON"] = env.get("PH_BROWSER_PYTHON") or sys.executable
 
     for path in paths:
-        run([node, str(path)], env=env)
+        suite_env = env.copy()
+        if env.get("PH_BROWSER_ARTIFACTS"):
+            # Suites use common result filenames. Give each its own directory
+            # so a later journey cannot replace an earlier acceptance record.
+            suite_env["PH_BROWSER_ARTIFACTS"] = str(
+                Path(env["PH_BROWSER_ARTIFACTS"]) / path.stem
+            )
+        run([node, str(path)], env=suite_env)
 
 
 if __name__ == "__main__":

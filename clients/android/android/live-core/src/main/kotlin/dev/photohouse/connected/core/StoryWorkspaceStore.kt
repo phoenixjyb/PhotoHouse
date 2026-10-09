@@ -26,6 +26,10 @@ data class StoryWorkspaceStoreState(
     val savedStory: SavedMemoryStory? = null,
     val titleCapabilities: ProtectedStoryWorkspaceTitleCapabilities? = null,
     val titleCandidates: List<ProtectedStoryWorkspaceTitle> = emptyList(),
+    val relatedCandidates: List<StoryRelatedMediaCandidate> = emptyList(),
+    val relatedBusy: Boolean = false,
+    val relatedHasMore: Boolean = false,
+    val relatedFailure: Boolean = false,
     val reviewed: Boolean = false,
     val sourcesReloaded: Boolean = false,
     val composing: Boolean = false,
@@ -54,6 +58,16 @@ class StoryWorkspaceStore(
     private var operation: Job? = null
     private var pending: PendingGroupedStorySave? = null
     private var titleRevision = 0L
+    private var relatedOperation: Job? = null
+    private var relatedRequestRevision = 0L
+    private var relatedCursor: String? = null
+    private var relatedSeedIds: List<String> = emptyList()
+    private var relatedCandidatesChanged: (List<StoryRelatedMediaCandidate>) -> Unit = {}
+
+    /** Set by the owning connected editor without changing its UUID supplier API. */
+    internal fun observeRelatedCandidates(listener: (List<StoryRelatedMediaCandidate>) -> Unit) {
+        relatedCandidatesChanged = listener
+    }
 
     private fun sameBinding(left: MemoryCommunityBinding?, right: MemoryCommunityBinding?): Boolean =
         left != null && right != null && left.token === right.token && left.libraryId == right.libraryId &&
@@ -121,6 +135,64 @@ class StoryWorkspaceStore(
         operation?.cancel(); operation = null
         bound = null
         titleRevision++
+        clearRelated()
+    }
+
+    /** Explicit same-recorded-day lookup. Opening the picker never calls this automatically. */
+    fun loadRelatedMedia(nextPage: Boolean = false): Boolean {
+        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.SELECTION || state.value.busy || state.value.composing) return false
+        val seeds = state.value.selectedAssetIds.toList()
+        if (seeds.isEmpty() || seeds.size > MAX_ASSETS || state.value.relatedBusy ||
+            (nextPage && !state.value.relatedHasMore)) return false
+        val expected = snapshotBinding() ?: return false
+        bound = expected
+        val cursor = if (nextPage && relatedSeedIds == seeds) relatedCursor else null
+        if (!nextPage || relatedSeedIds != seeds) {
+            relatedSeedIds = seeds
+            relatedCursor = null
+            relatedCandidatesChanged(emptyList())
+            mutable.value = state.value.copy(relatedCandidates = emptyList(), relatedHasMore = false, relatedFailure = false)
+        }
+        relatedOperation?.cancel()
+        val relatedTicket = ++relatedRequestRevision
+        val ticket = epoch
+        mutable.value = state.value.copy(relatedBusy = true, relatedFailure = false)
+        relatedOperation = scope.launch {
+            try {
+                val page = repository.relatedMedia(seeds, cursor) { current(expected, ticket) }
+                if (relatedTicket == relatedRequestRevision && current(expected, ticket) && state.value.selectedAssetIds == seeds) {
+                    relatedCursor = page.nextBeforeId
+                    val unique = page.items
+                    mutable.value = state.value.copy(relatedCandidates = immutable(unique), relatedBusy = false,
+                        relatedHasMore = page.hasMore, relatedFailure = false)
+                    relatedCandidatesChanged(unique)
+                }
+            } catch (_: CancellationException) {
+                if (relatedTicket == relatedRequestRevision && ticket == epoch) {
+                    stale(ticket)
+                    if (state.value.status == StoryWorkspaceStoreStatus.SELECTION) mutable.value = state.value.copy(relatedBusy = false)
+                }
+            } catch (failure: ApiFailure) {
+                if (relatedTicket == relatedRequestRevision && current(expected, ticket)) {
+                    mutable.value = state.value.copy(relatedBusy = false, relatedFailure = true)
+                }
+            } catch (_: Exception) {
+                if (relatedTicket == relatedRequestRevision && current(expected, ticket)) mutable.value = state.value.copy(relatedBusy = false, relatedFailure = true)
+            } finally { if (relatedTicket == relatedRequestRevision && ticket == epoch) relatedOperation = null }
+        }
+        return true
+    }
+
+    /** Retries the same page cursor that failed, including an empty intermediate page. */
+    fun retryRelatedMedia(): Boolean = if (!state.value.relatedFailure) false else loadRelatedMedia(nextPage = relatedCursor != null)
+
+    private fun clearRelated() {
+        relatedRequestRevision++
+        relatedOperation?.cancel(); relatedOperation = null
+        relatedCursor = null; relatedSeedIds = emptyList()
+        relatedCandidatesChanged(emptyList())
+        if (state.value.relatedCandidates.isNotEmpty() || state.value.relatedBusy || state.value.relatedHasMore || state.value.relatedFailure)
+            mutable.value = state.value.copy(relatedCandidates = emptyList(), relatedBusy = false, relatedHasMore = false, relatedFailure = false)
     }
 
     /** Makes one explicit protected preview request for the current ordered selection. */
@@ -154,6 +226,7 @@ class StoryWorkspaceStore(
         val oldDraft = previous.draft?.let(::detachDraft)
         val oldChapters = previous.editableChapters.map(::detachChapter)
         if (reloadSources && (oldDraft == null || oldDraft.items.map { it.asset.id } != ids)) return false
+        clearRelated()
         clearOperationOnly()
         bound = expected
         val ticket = epoch
@@ -395,6 +468,7 @@ class StoryWorkspaceStore(
         bound = null
         pending = null
         titleRevision++
+        clearRelated()
         mutable.value = StoryWorkspaceStoreState()
     }
 

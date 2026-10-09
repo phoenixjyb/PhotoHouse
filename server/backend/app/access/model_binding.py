@@ -13,6 +13,7 @@ TARGET_ROLES = {
     'assistant': ('assistant_asr', 'assistant_tts'),
     'memory-contributions': ('memory_asr', 'annotation_polish'),
     'memory-narrative': ('narrative',),
+    'story-titles': ('title_suggestions',),
 }
 FIELDS = {
     'assistant_asr': ('assistant_asr_url', 'assistant_asr_model', 'assistant_asr_token', 'assistant_asr_timeout_seconds'),
@@ -20,6 +21,7 @@ FIELDS = {
     'memory_asr': ('asr_url', 'asr_model', 'asr_token', 'asr_timeout_seconds'),
     'annotation_polish': ('ollama_url', 'ollama_model', None, 'ollama_timeout_seconds'),
     'narrative': ('ollama_url', 'ollama_model', None, 'ollama_timeout_seconds'),
+    'title_suggestions': ('story_title_url', 'story_title_model', None, 'story_title_timeout_seconds'),
 }
 
 

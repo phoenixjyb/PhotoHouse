@@ -130,7 +130,8 @@ class NativeCanarySchemaTests(unittest.TestCase):
 
     def test_cli_preserves_a0_default_and_accepts_explicit_b1(self):
         for option, expected in (([], 'a0c9d2e4f817'),
-                                 (['--schema-revision', 'b1d7e4a9c230'], 'b1d7e4a9c230')):
+                                 (['--schema-revision', 'b1d7e4a9c230'], 'b1d7e4a9c230'),
+                                 (['--schema-revision', 'd1f6a8c3e920'], 'd1f6a8c3e920')):
             with (self.subTest(option=option), patch.object(canary, 'run', return_value={}) as run,
                   patch.object(sys, 'stdout', io.StringIO())):
                 self.assertEqual(canary.main(['--ffmpeg', 'fake', '--ffprobe', 'fake', *option]), 0)

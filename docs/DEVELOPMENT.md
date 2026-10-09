@@ -15,7 +15,191 @@ passed with inspected desktop and bilingual 390px/150% renders. These cohorts
 overlap and are not added together. It does not deploy the picker, change a
 schema, enable a model, or integrate a native phone picker.
 
+The subsequent phone picker source passed 591 live-core JVM tests, phone debug
+and Android-test Kotlin compilation, and phone lint. Two bilingual generated-data
+journeys passed on an API 36 emulator at 150% text, covering explicit lookup,
+ordered video inclusion, preview clearing, save and fresh reader reopen. See the
+[phone evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md)
+for the exact acceptance boundary. This is an unconfigured QA build, not a new
+signed or published phone release.
+
+The worker packager now reads immutable Git blobs under the monorepo's `server/`
+prefix while retaining the standalone repository and existing archive layout.
+Its eight focused tests cover actual disposable Git repositories in both layouts,
+dirty/untracked preservation, exact source-only contents and refusal cases.
+An actual pinned `aa108411` source lookup now finds all 21 declared files; it
+previously failed with `Worker source files missing`. No Windows worker was
+started by this repair. The unchanged API route suite was not rerun locally
+because the current system Python lacks Alembic; its earlier profile result
+above remains bound to that source snapshot.
+
+## Web assistant transcript acceptance (October 10)
+
+The focused generated-browser journey passed six scenario groups covering
+preserved typed text, explicit insertion and successful ASR receipt links,
+1,024-byte boundaries, discard, malformed/untracked replies, invalid generated
+WAV rejection before POST and overlapping old/current account requests. English
+and Chinese 390 px/150% captures were inspected; detected-language labels update
+with the UI language. No browser errors or external requests occurred. The
+standard-library Web dispatcher suite passed 12 tests. These are local synthetic
+checks, not a real microphone, provider, served UI or signed APK result. See
+[the review contract](ASSISTANT_TRANSCRIPT_REVIEW.md).
+
+The complete twelve-suite Web profile also passed. Its transcript suite preceded
+the final detected-language label correction; the corrected fixture then passed
+separately with six scenario groups and fresh inspected bilingual captures.
+These overlapping checks are not combined into an additional total.
+
+## D1 family-note lifecycle qualification
+
+Pinned monorepo source `28f543c989230c8148c0af9c1300322aa8d604e5`
+passed the complete Python 3.12 API profile: **876 tests and 502 subtests**,
+followed by the generated no-listener demo. This includes the immutable extracted
+API package check, default-off erasure route, historical-scope owner checks,
+whole-edition prose erasure, journal failure fencing and explicit V1-to-V2 upgrade.
+A preservation regression confirms unrelated upload annotations, contributions
+and independent family notes survive erasure and replay. These cohorts use
+synthetic databases; no live schema, journal or household content changed.
+Native migration, paired backup/recovery and explicit live activation remain
+separate delivery gates. See [the lifecycle contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
+
+## Older-schema preparation repair
+
+The revision-aware preparation repair passed **50 tests and 12 subtests** across
+small preparation, full-size preparation and runtime adapter suites. Both paths
+perform actual Alembic migration to a0 on generated databases and refuse a
+missing required a0 table. Later B1/C2/D1 tables are not required at a0; supported
+revisions and exact D1 runtime checks stay unchanged. The supported API profile
+now includes both preparation suites and a fresh-process extracted-package smoke
+journey. Native/live preparation and migration remain separate gates.
+
+## Independent title-provider wiring
+
+Runtime and staging configurations now accept optional title provider settings
+and their own default-off flag. The dedicated model projection requires the
+`title_suggestions` role and an explicit opt-in, preserves conflict/rollback
+checks and limits the timeout to 30 seconds. Default startup constructs no title
+adapter; explicit construction performs no provider request. Title proposals
+still require explicit selection and save in the existing Web/phone editors.
+The runtime/staging cohort passed **38 tests and 100 subtests**; projection
+checks passed **19 tests and 22 subtests**, with nine separate CLI tests. These
+overlap the integrated six-suite run (**102 tests and 196 subtests**) and are
+not combined into a total. No model,
+GPU, native service or title quality is qualified by these fixtures.
+
+## Conversation navigation qualification
+
+The October 9–10 Web/phone slice keeps at most sixteen process-memory
+conversation selections bound to current account, library, membership and
+story/memoir revisions. Reopening uses a fresh authorized directory and history,
+with an empty composer and no automatic recording or submission. Current access
+denial clears the reader; delayed denial from an old phone reader cannot close
+its replacement. See the [shared contract](CONVERSATION_NAVIGATION.md) and
+[phone evidence](../clients/android/docs/ANDROID_CONVERSATION_NAVIGATION_2026-10-10.md).
+
+The complete live-core cohort passed **610 JVM tests** with no failures or
+errors. Phone debug and Android-test Kotlin compilation, lint and QA APK/test
+assembly passed. **Five API 36 emulator tests** passed, including story and
+memoir reopening in Chinese and English at 150% text; the four reader renders
+were inspected. These use generated data and a separate QA application ID.
+Earlier fixture-navigation and Android system-overlay failures remain separate
+failed evidence. Keyboard/physical-device behavior, production signing, served
+Web delivery and Windows OTA publication are not qualified by this cohort.
+
+The complete ten-suite Web profile passed with cached Node 22, Playwright Core
+1.55 and Chromium, using generated fixtures and an in-process ASGI bridge with
+no listening server or production endpoint. Its navigation journey passed 23
+checkpoint groups; Chinese and English 390 px/150% captures were inspected.
+The profile also rechecked existing assistant recovery, memoir editors/readers,
+edition inspection, title suggestions and related-media selection. Two stale
+fixture issues were corrected without changing their assertions: deterministic
+recovery-control scrolling and the current optional picker DOM in the shelf.
+
+The check dispatcher has twelve passing tests. When a Web artifact directory is
+selected, each suite now receives its own child directory so common result
+filenames cannot replace another journey's evidence.
+
+## Clarification presentation qualification
+
+The subsequent Web/phone clarification slice passed the Web community contract
+harness and **24 generated browser checkpoint groups**, with no page errors or
+external-origin requests. Chinese and English captures use an actual 390 px
+viewport and 150% text; the cue, help and suggested question remain visible
+without horizontal overflow. Four focused API 36 phone journeys passed for
+story and memoir readers in both languages at 150% text. Original-resolution
+captures were inspected, with unclipped bounds checked inside the reader.
+
+The journeys cover a passive ready-reply cue, preserving an existing draft,
+explicit question insertion and Send, and hiding stale or invalid reply context.
+Earlier fixture timing, Android system-overlay and capture-measurement failures
+are retained separately from the passing journeys. These are generated browser
+and unconfigured emulator results, not served Web files, a signed APK or family
+acceptance. See [the presentation contract](CONVERSATION_CLARIFICATION.md).
+
+## Visual grouping foundation
+
+The new [visual grouping foundation](ACTIVITY_GROUPING_DESIGN.md) passed **14
+synthetic CPU tests and 11 subtests** through the supported stripped environment.
+They cover exact order, tolerated-norm normalization, ties, identity/checksum
+refusal, foreign IDs before scoring, duplicate representations, nonconsumption
+of lazy authorization inputs and hard cohort/dimension/result bounds. I/O and
+process hooks are refused in the pure-function journey. The helper opens no
+files or database and runs no provider. Its authorization snapshot records a
+caller assertion; only later current-library integration can establish access.
+
+## Web assistant trail qualification
+
+The subsequent complete **eleven-suite Web profile passed**, including the new
+[assistant turn trail](ASSISTANT_TURN_TRAIL.md). Five trail scenario groups cover
+bounded plain-text exchanges, structured context, uncertain/malformed responses,
+reload and delayed old-scope completion. The actual 390 px/150% Chinese/English
+captures were inspected. Keyboard scrolling, newest-reply visibility, focus and
+page-position preservation are checked without external-origin requests. The
+dispatcher retains twelve passing standard-library tests. This generated profile
+does not serve an update or qualify a production provider.
+
+## Phone assistant transcript qualification
+
+The subsequent phone assistant transcript slice passed **102 ConnectedStore JVM
+tests**, three draft helper tests, phone lint and QA debug/test APK assembly.
+**Six focused API 36 UI journeys** passed with fake adapters. Chinese and English
+150% text captures were inspected; an overlapping two-case rerun preserved the
+actual images after the test runner removed app-private files. Explicit Add
+preserves typed words, Discard clears the parent link, overflow keeps both inputs,
+and recording/review cannot submit. See [phone transcript evidence](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
+for the source, emulator and release boundaries.
+
 ## Inspect the local environment
+
+## Worker diagnostics and matched picker qualification
+
+The October 9 terminal-diagnostics slice passed the complete hash-locked Python
+3.12 API profile: **802 tests and 473 independently reported subtests**, followed
+by the generated no-listener demo. It includes 38 generated worker-report cases
+and a new actual-migration a0 fixture that exercises the related-media route
+through the existing-database adapter with generation/editorial/edition features
+off. The fixture confirms its complete database dump is unchanged by lookup.
+Focused cohorts overlap this profile and are not added to its count.
+
+The separate seven-suite preparation cohort passed **102 tests and 37 subtests**,
+including generated thumbnail/hash processing and fake embedding/face providers.
+It used the same Python 3.12 environment with four additional hash-checked test
+dependencies from the existing editorial lock: ImageHash, NumPy, PyWavelets and
+SciPy. This is not GPU inference or a new serving environment. The eleven
+standalone check-dispatch tests also passed.
+
+Worker reports distinguish fixed refusal, SQLite, permission, I/O, interruption
+and resource identifiers without copying private exception details. Child-mode
+routing and terminal exit codes retain their existing behavior. See the
+[report contract](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md).
+These source checks do not explain an old installed scheduler failure or restart
+a worker. Native package qualification, release parity review, service control,
+phone signing/publication and household acceptance remain separate gates.
+
+The earlier missing-Alembic collection limitation was resolved by restoring the
+existing development lock into the monorepo's ignored environment with the
+installed Python 3.12 interpreter. No model or GPU dependency is needed by the
+ordinary API profile.
 
 For the model source inventory, run `python3 tools/model_catalog.py --json`.
 This standard-library check parses thirteen capability references and disabled
@@ -637,3 +821,20 @@ journey has 22 checkpoints, no page errors or external requests, and reviewed
 question without switching the whole-book conversation or sending anything.
 Opening prompts now share draft/IME/voice/send guards with follow-up questions.
 Fifty standalone tooling tests passed, including ten report-inventory checks.
+
+## Independent title qualification cases (October 10)
+
+The source planner now retains the original three memoir bundle hashes and tasks
+and adds three title-only bundles. A combined offline run of planner, canary,
+qualification, checker and human-review worksheet tests passed **68 tests and
+59 subtests**. The title cases cover Chinese family/draft input, conflicting
+English recollections and empty-source abstention. The real title adapter handles
+the empty case without constructing an HTTP client; nonempty canary contract
+checks use fake providers and keep every semantic criterion unreviewed.
+
+The canary dispatches each pinned case to its explicit role/task, refuses input
+or rubric substitution before output/provider construction, and validates cited,
+revision-bound, review-required title outputs before private capture. No native
+inference, household material, provider activation or live configuration change
+was performed. Current and rollback title provider observations and human review
+remain open. See [model qualification](MODEL_QUALIFICATION.md).

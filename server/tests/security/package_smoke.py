@@ -68,9 +68,10 @@ with ExitStack() as guards:
     from app.access.runtime import RuntimeConfiguration, REQUIRED_REVISION
     import provision_access
     import staging_app
-    import export_protected_videos
-    import stage_protected_video_collection
     import home_memory_envelope
+    import apply_memory_collaboration_schema
+    import apply_memory_sources_schema
+    import apply_memory_editorial_schema
     import serve_windows_tts
     import app.access.windows_tts as windows_tts
     import app.access.memory_book_planning as memory_book_planning
@@ -78,8 +79,9 @@ with ExitStack() as guards:
     import prepare_access_database
     from app.access import (captions, duplicates, promotion, task_recovery,
                             upload, upload_schema, upload_transport)
-    for module in (app,provision_access,staging_app,prepare_access_database,export_protected_videos,prepared_video,
-                   stage_protected_video_collection, home_memory_envelope, memory_book_planning,
+    for module in (app,provision_access,staging_app,prepare_access_database,prepared_video,
+                   home_memory_envelope, memory_book_planning, apply_memory_collaboration_schema,
+                   apply_memory_sources_schema, apply_memory_editorial_schema,
                    serve_windows_tts, windows_tts,
                    captions, duplicates, promotion, task_recovery,
                    upload, upload_schema, upload_transport):
@@ -218,8 +220,7 @@ with ExitStack() as guards:
             assert connection.execute("SELECT library_id FROM access_person_libraries WHERE person_id=92").fetchall()==[('synthetic-family',)]
             assert connection.execute("SELECT status FROM assets WHERE id=94").fetchall()==[('suppressed',)]
         from app.access import memory_stories, memory_schema
-        import apply_memory_stories_schema
-        for module in (memory_stories, memory_schema, apply_memory_stories_schema):
+        for module in (memory_stories, memory_schema):
             assert Path(module.__file__).resolve().is_relative_to(root)
         # The recovered database intentionally remains quarantined. Exercise
         # saved stories in the separate, still-active synthetic owner database.

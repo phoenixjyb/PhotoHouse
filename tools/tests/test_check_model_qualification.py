@@ -48,7 +48,8 @@ class QualificationDoctorTests(unittest.TestCase):
     def test_plan_binds_selected_roles_and_hashes_without_observations(self):
         code,report=self.call('--manifest',str(self.paths['manifest']))
         self.assertEqual(code,0);self.assertEqual(report['status'],'qualification_plan')
-        self.assertEqual(set(report['selection_identities']),{'assistant_asr','assistant_tts','memory_asr','narrative'})
+        self.assertEqual(set(report['selection_identities']),
+                         {'assistant_asr','assistant_tts','memory_asr','narrative','title_suggestions'})
         self.assertFalse(report['observations_collected']);self.assertFalse(report['activation_performed'])
         with patch.object(self.doctor,'verify_identity_files') as verifier:
             code,report=self.call('--manifest',str(self.paths['manifest']),'--audio-inputs',str(self.paths['inputs']))

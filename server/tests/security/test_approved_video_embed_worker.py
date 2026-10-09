@@ -71,7 +71,7 @@ class ApprovedVideoEmbedWorkerTests(unittest.TestCase):
 
     def test_default_preflight_counts_only_approved_videos_with_bounded_frames(self):
         self.assertEqual(worker.REVISIONS,
-                         {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'})
+                         {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'})
         self.task('video_embed', {'asset_id': 99})
         self.task('video_embed', {'asset_id': 1})
         before = self.db.execute('SELECT id,state FROM tasks ORDER BY id').fetchall()
@@ -88,7 +88,7 @@ class ApprovedVideoEmbedWorkerTests(unittest.TestCase):
 
     def test_preflight_reports_actual_previous_revision_when_supported(self):
         args = self.args()
-        for revision in ('a8d4c2e6f901', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'):
+        for revision in ('a8d4c2e6f901', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'):
             with self.subTest(revision=revision):
                 self.db.execute('UPDATE alembic_version SET version_num=?', (revision,)); self.db.commit()
                 result = worker.preflight(args.database, args.originals_root, args.derived_root,

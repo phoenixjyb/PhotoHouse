@@ -6813,6 +6813,1223 @@
           "before_sha256": "bdc47a07445040f3deb855e552be9ebb63e21cbe6a43f905b9f20e215730c76a"
         }
       ]
+    },
+    {
+      "feature": "phone-related-moments-and-worker-package-layout-v1",
+      "base_commit": "aa1084112995cc5efe4f93a0ce3ff405d2e3dad2",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "ef4d5762660d7af62a2ac1c232e1ca2d80bb45c7a559266db3c682d133716d98",
+          "sha256": "45ccf3dea912c6819d8b4eecd46eeb402278f763447d6998e2ba097d9629de77"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "421cba97ecbcc3d8a54e461d331d186343d448ff94c81d12f6f3243f6924e188",
+          "sha256": "2e5e6c96b6b1d3e103829580baa060ec75f75adb954453983c36d91462db5ef4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "eeb899f08c92f0750cd49dc30f17bf3855baa99ec1ecb6bf3736c866edf8556b",
+          "sha256": "b07fb01ba87dee55d48c229280e7f3025217fd4579df21c2e6647344a6d5e7bf"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "908529b9081172a89673314fbbab26d4f3811bea366cb93b33281ee8c9561cc9",
+          "sha256": "e4dd086603a62e6825b8bc2d7e11242c96acab5a4456f21a08d744aa2607bd05"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryRelatedMedia.kt",
+          "before_sha256": null,
+          "sha256": "3e7ef259a83f3358ccb68db8b25534f9f01d44ae6932db5e959cbae18aff3eac"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepository.kt",
+          "before_sha256": "01eb1cafb0862f431f4921c3c0972b803f18e6e90600478236c185b8db13b1cf",
+          "sha256": "77ba76e40c88ae18458635fe5d3e67bb24f14a33be996419cc2b871cee5d1bf3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "f2841c2d01873f40981e33d02bee9414fd53cf7e7c1e1e5faa5e29328eb363ae",
+          "sha256": "2af2a8d52ba7f09b75f5f3e5c6224410a1bea510c54078c8d2f046a0558fc03e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsStoryWorkspaceTest.kt",
+          "before_sha256": "5b4c5e5117938ba9d4f53e09c385f8e6bf4a2d56c3e95a73e5f616b70a11d02b",
+          "sha256": "ef9ac28186d1de3e59cead4d018b6c7666eb007126f534a15eee59b09347f4ba"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryRelatedMediaTest.kt",
+          "before_sha256": null,
+          "sha256": "107cc6c14005daf2af21b0aff26281222b1bde99e23589c8c06436d7d6c0e6ac"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "1aafef8dc36ef8f190dd4f0b402e7fdef8a9bc8d7a426b757fbae3bdd2023308",
+          "sha256": "711c455e32edb75479a88af2f98f5115e1fc6f32ee01210b36c8a23a86d15961"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md",
+          "before_sha256": null,
+          "sha256": "b43bd1bf47286f9cf35d69c7fb7482fd74303a53f50dd2e91df89cbb472781d8"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "4fe5ce7c81e51792c5a414d862e23dc1640c114f504059047350ba726f633ca9",
+          "sha256": "d5dd15b807e65975f946b3b60bc5b06b6a4f1f8ad6809afc94ec852d65deb49b"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "a14ee596aba1921c0f889de223e9eea9bc50d5efe35e8c49e7563c47222bd686",
+          "sha256": "5b957e752e5559e858a152751339d0fe97bb87a51d8d534ba30dea4fd51023d8"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4921579477b5a9d156731371cfbb3658d8bd7cef9ee8f9ec138e66d3e219484d",
+          "sha256": "8fc21f07d026ace994ad1f4a1cafa71f8369aaf556b0547aba291dabd8b967bd"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "ee3c274b7a303b4273e5841fa0fe46581e16202ffb91691cc7fa842c0ec8f9a9",
+          "sha256": "fea4c4eb64986f023a748bfd18b38ecd2f64da1ea1e052e04c5da09c82ac672a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "83d2ae260e5139956d5cfe8cf20c995c0485db53bd30dd0fb7881a1054da467e",
+          "sha256": "d3c1854cfd1fd0cc5eee798e5d05991b719872e3d7132dcf05bfffbfbbc76cd7"
+        },
+        {
+          "path": "server/docs/security/STORY_RELATED_MEDIA_V1.md",
+          "before_sha256": "6a1f42132941865c1c9c8920edb484849501a4a8d3128bb15313f258a4495bad",
+          "sha256": "4e48a1e7f14f790604557692c2429211f0d84db9015c72235c06887ae56c630b"
+        },
+        {
+          "path": "server/scripts/build_approved_worker_package.py",
+          "before_sha256": "99fab2f4205ab246b4b55fa6fd90f2a9a61caf4ba77a654e46f5f96f004dee61",
+          "sha256": "4684702dcea524ec6c0c9f816c05348efe822c5adb495ca99e3944e82d050606"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_package.py",
+          "before_sha256": "0ee01d1046a6f58157fe114c564c396de9710575e2cb97c6d341538afa6167d5",
+          "sha256": "c3a9f4715081152b67f86d09e4cd3c6cc38a774bb1acd123b502b094027c7f6b"
+        }
+      ],
+      "server_contract_changed": false,
+      "schema_changed": false,
+      "model_activation": false,
+      "workers_activated": false,
+      "apk_published": false
+    },
+    {
+      "feature": "approved-worker-terminal-diagnostics-and-a0-picker-qualification-v1",
+      "base_commit": "7069166f9e9a8c176946532b9a6e8ea4d4dd68f6",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5b957e752e5559e858a152751339d0fe97bb87a51d8d534ba30dea4fd51023d8",
+          "sha256": "9924b82bfbfa8c565e4c12b791a4847e52f114f2f42c3c129f978b45980d9f44"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8fc21f07d026ace994ad1f4a1cafa71f8369aaf556b0547aba291dabd8b967bd",
+          "sha256": "48519c1a432d45344459bcc00276929f0645f211dc660eb540ad46ac46a0967f"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "fea4c4eb64986f023a748bfd18b38ecd2f64da1ea1e052e04c5da09c82ac672a",
+          "sha256": "d8eadfbad2f688f71b315379ef066ecd88d973077dd009dec39a5f37e6d1795a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "d3c1854cfd1fd0cc5eee798e5d05991b719872e3d7132dcf05bfffbfbbc76cd7",
+          "sha256": "862b743d44a58a0a9fdb6879b2db5d440ec4377164f21153782085ac8182cf9f"
+        },
+        {
+          "path": "server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md",
+          "before_sha256": null,
+          "sha256": "c4facd870cf532140c785120fa4007456321982a421643d01b8bc93aa1c17451"
+        },
+        {
+          "path": "server/scripts/home_preparation_resources.py",
+          "before_sha256": "dbc3cbc9a9609a2ad314385f123b0b0d87c8a9513d8680eebe2c9076239b50a8",
+          "sha256": "9b2061fab9af17aaa4280c47c50c9a305d9cc00ffd577476b15532707a182512"
+        },
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "before_sha256": "e2439f25dcbd0c21ebad777252037d9f05bd0adab6d4899ab3a41cf40170f3c5",
+          "sha256": "888bf774421694f10aed3893f835c2adc35a3e518960b9e78f7231c16abc9d66"
+        },
+        {
+          "path": "server/scripts/run_approved_face_pipeline.py",
+          "before_sha256": "c6fa4e43b6b5746bcee267f9e98cad7925cad064ed6731c013cb91c1203a49c0",
+          "sha256": "98581b70e93e617cb7387d30c97290aaf2b4dd5c044d7a0a25e1cff66e1b640b"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "before_sha256": "71eeb23e02bd3c9bd084607aa4db2019be36e24972164d01316d8ebe4aae05bb",
+          "sha256": "8c428c2588f9585c2a7b05840dc4dc59db66f3dc9b7e8dd3f7ab6c958c373a16"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "before_sha256": "9f86218e5a3193bf1adcf78b3de0fac9a02e2d4ac87276b86b8a5ca92d8f4518",
+          "sha256": "a5e3a1c38275b28671b516e40282678b295524399e0373f8a53b25dea177b71c"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_failure_reports.py",
+          "before_sha256": null,
+          "sha256": "ed0cf7370c4347d3595bfe7ab1ad3ae12f786ab8a0f131d25cd1866b3dd2b234"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "fcf49e482613490dee35402d095aaa662ebcbc4a949aaebc0bb691113512479a",
+          "sha256": "b5eff2d33d12554ace8632dcb45c37b97e0ad40c6e93d68287b91f1716d8ca68"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9adaf36a6861df2e0a1e95965d4f53672c15d5804d542e60d4fd84e8e37e96ce",
+          "sha256": "d01716579bbecdc617b3a8e8f50a004a1d7e35ea7a31c3a8cededdfa86997a7f"
+        }
+      ],
+      "worker_processing_changed": false,
+      "schema_changed": false,
+      "workers_activated": false,
+      "model_activation": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "scoped-conversation-navigation-and-browser-fixture-qualification-v1",
+      "base_commit": "747c05099dc62cac36fe439c5019d4ddf6554ea2",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "3a3a8f34d6b0b392294a0472f6ebe2f8527c4e395ffdb1be0d9c412e9e11e22c",
+          "sha256": "12646ad56278f16ad10c8daac2d58ae467a748fa29c220d3da311b9cab2ae53a"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryCommunityUiTest.kt",
+          "before_sha256": "7ac3d8a5637684cc0df82064c61ee619503de4bf87791e3abdf3e342bd1b9401",
+          "sha256": "db0b8c073736f100ba2e63f47b68ac260614ec4f2db8dc026d343613c7abf92c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "64373a69772181ea6fb7fbdebcdf25d8669c19a503905bf3b1f29b8b628baf76",
+          "sha256": "566824282f1976327cbbb9ea6ec66e8fbd0b1fca2f6b98a9422f7e9bc179cacd"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "b07fb01ba87dee55d48c229280e7f3025217fd4579df21c2e6647344a6d5e7bf",
+          "sha256": "59fceb879f99397d97b3dba8ddd8017616f799e8c3e0dc6d6a89497101077025"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryCommunityRepository.kt",
+          "before_sha256": "5501481faa3ffa4876acbe473c0f957e7d79d4f17d4274a66e5720ea0134ae18",
+          "sha256": "0e262af19c5646eae200b492f85507897034bc7642418b4870710dd8d1f3988c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryConversationNavigation.kt",
+          "before_sha256": null,
+          "sha256": "0e519c1819104eb999bdd70af2559b1e985106b5f8a9b4a6d36a6af5459df852"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityRepositoryTest.kt",
+          "before_sha256": "579728a908dfb80cbdec57846296b3d547845b222f767735e31e30b91109c83f",
+          "sha256": "4e9c0074725424c5ce135f215b5dbf4dc23ae9271d99786e673184e5f6403d29"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "8cfa7245d48a917d89f64738f021688e53a0809b74452baff8cbbcfc86e7dbcc",
+          "sha256": "e5eb8cec1e2dea565b45f54e0a54dda070e401161019ecafc92019cc08f86c31"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryConversationNavigationTest.kt",
+          "before_sha256": null,
+          "sha256": "b2bae4bca246c99575d70660d10ff41ac3772a76f40aa2c7630da5e69251d578"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_CONVERSATION_NAVIGATION_2026-10-10.md",
+          "before_sha256": null,
+          "sha256": "32eae63e404eafae7cb99e3d93c8dce8b6fafa9f5cf0df1ca78f8e8e92954efc"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "d5dd15b807e65975f946b3b60bc5b06b6a4f1f8ad6809afc94ec852d65deb49b",
+          "sha256": "e31546161a2c4c70955bf8943e62b3a19f301725918f1c54aecdfd7f266e918c"
+        },
+        {
+          "path": "docs/CONVERSATION_NAVIGATION.md",
+          "before_sha256": null,
+          "sha256": "62c06c24cad9b09382795c55f11ca107b6f431b78933f4eb91a0c7515456c968"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "9924b82bfbfa8c565e4c12b791a4847e52f114f2f42c3c129f978b45980d9f44",
+          "sha256": "de18489ec923865d1608df1d8ee178213201b39aa8d6e0a27950538ade16906a"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "48519c1a432d45344459bcc00276929f0645f211dc660eb540ad46ac46a0967f",
+          "sha256": "d649784ef7b7bc8eddd7facad35eb27065a62ba06d77dfa64743daa01609cc5c"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "before_sha256": "11dc503f8672aad3f98bf9ea5c8258046b1ac04659a5e600b2ea569205cfa6b0",
+          "sha256": "7dc5ea9e21b3acca38d34e22fd42c59ee6da677a1368fee72a670cc919222f03"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "862b743d44a58a0a9fdb6879b2db5d440ec4377164f21153782085ac8182cf9f",
+          "sha256": "f5ca827e4bf947bb09405189762b491917e4ac1095e97922a2736294a7ff5cd9"
+        },
+        {
+          "path": "docs/STORY_EXPERIENCE.md",
+          "before_sha256": "24b41907ea012b439e7677875ada141419e81fc2ec3c0ce4687348794564b483",
+          "sha256": "6ca5f14ead7d62c150c1fd504de9cfebdd2c9f02ee5fb8cf5aac13685fe99bf8"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "e5759dea369403270d063451eb12b0b49891a9e5cbd9a37991d1cf5054f21632",
+          "sha256": "ca134d3e2da0ad15d37477ad3cf69d7a5c6cce617904d8e18ca59ce3b7db0a52"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9832e2771852b68f0fb47149735eb3e7db82638ee8aad7a1c63528532de1fee8",
+          "sha256": "41f5283955e79698d6f51b6861c62bcbac771608f29f720a37bf3802c07122d6"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "1e3eb6ae69eb9c5482577dfa0037b83f3a9d90a21ef8c0c1e9f7795ddc6e4dc4",
+          "sha256": "f92cbd21aafd78cab27b58471df0168c919eb8b146d63b2f82119a8f1301523a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_recovery_browser.cjs",
+          "before_sha256": "a99337fb7a72147ec9f241df28489abd19d3fcb6b1fa0daac0e53ff5feb56018",
+          "sha256": "19a8aa9568407942c7f5e157efbfe3ee285105e18f7537a3451a08f38a96dd98"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "45cddb6f3a7c8d01d6000db3a0ae96aa985619e7af0c97947baad66ca1003d31",
+          "sha256": "7613dcb59647e5ff8542f6f2413315d412e2e619fff58d7e6e12e9646c799fe0"
+        },
+        {
+          "path": "server/tests/security/test_memory_conversation_navigation_browser.cjs",
+          "before_sha256": null,
+          "sha256": "5c113d525672c7227d76b4219eccd3c05e67990adab62cd15c3b7cc1a1b869a0"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d01716579bbecdc617b3a8e8f50a004a1d7e35ea7a31c3a8cededdfa86997a7f",
+          "sha256": "aa6d1af44664017164093c144433c4d94f577c6fb93eae08da5409317cabdf18"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "016c577f3d57c96e878fd654d09c85053665d8f60b565be4f893ad5a3a5abb98",
+          "sha256": "dcfc01af3856de6d782864fc9d3e14b3392806b2469e165225715a9f900831af"
+        }
+      ],
+      "server_routes_changed": false,
+      "schema_changed": false,
+      "recordings_retained": false,
+      "navigation_persisted": false,
+      "model_activation": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "family-note-identity-erasure-and-offline-journal-upgrade-d1",
+      "base_commit": "0c67bba64e30b179a384921f8a26f9f6e3cfbcb8",
+      "legacy_source_commit": "f282472a29d291a8b7ffae1cf6c6ccddd07dc15a",
+      "legacy_feature_commits": [
+        "a59fac08b69a5dea0b7734ab493d0b3dc0131b83",
+        "e1d941dbf6f164bc1817c22d30edfe85273fc292",
+        "7c05ec3e0124f89a45fd9f9dc556710be4b29805"
+      ],
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "e31546161a2c4c70955bf8943e62b3a19f301725918f1c54aecdfd7f266e918c",
+          "sha256": "2177dc6db5ffe76ab6c3eb1313c31a346b17b4d634c77ac501adad72eee69302"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "d649784ef7b7bc8eddd7facad35eb27065a62ba06d77dfa64743daa01609cc5c",
+          "sha256": "7feb0ad145214f9dc9e3eda1747bc6e3ca0945b229f37b12ca49a985937cf00e"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "before_sha256": "7dc5ea9e21b3acca38d34e22fd42c59ee6da677a1368fee72a670cc919222f03",
+          "sha256": "469bbf46f0b9c1bdaf79a608afaef8d82017bd02ac0d10935824f162782f1cf8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "f5ca827e4bf947bb09405189762b491917e4ac1095e97922a2736294a7ff5cd9",
+          "sha256": "9730aa36c5c960dd27eb2be949df8e0a279c6b61c8b80f914c1d309e848c5791"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "5d6ae7291c14870da8a1d030a95033ad3b043237fa75430b9526d6cc0bbb1e74",
+          "sha256": "d7a6359c73f469d308375c4c7faa248ac943053421e002b4a47334f2a6e8c81c"
+        },
+        {
+          "path": "server/backend/app/access/family_note_deletions.py",
+          "before_sha256": null,
+          "sha256": "3019ba360e6656871575486cd3bdd5011169dfe6d5c6b11e062bb5026176d87a"
+        },
+        {
+          "path": "server/backend/app/access/family_note_identity.py",
+          "before_sha256": null,
+          "sha256": "50b36e632cab9ab3386a2910d2e8f25d21e631d81e8582613b366c0411eabde1"
+        },
+        {
+          "path": "server/backend/app/access/family_note_identity_schema.py",
+          "before_sha256": null,
+          "sha256": "678e8b474c62cb8f0277fd2fdf2026d8af87767b383a769c00dc6d366d232c5d"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_edition_provenance.py",
+          "before_sha256": "0aa1f5e827d4a0b51ecd836cc1d56e2fb4632eb5a9601a4ea00c80e3b0a812fd",
+          "sha256": "9c82e8761f187cf1898c00385ca05eac3d5f11f70de34e2e6fbd5e52893cfa61"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editions.py",
+          "before_sha256": "a77b387dac455ce67b2fc2d318d89b0177791bff114bb81d2665036dc9bf099e",
+          "sha256": "12ceef85f52ccd993b22ac84f0bd7ebcd5c5a400647bb2a3a79b84899a42ca20"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editorial_schema.py",
+          "before_sha256": "3bedfafe69719db75b3c31fa9d99941723ca8e5b7c92127f638055eca3e7e977",
+          "sha256": "8224bdd70f0a5ecc18516b3a20da6dd4581e912a35b937cad6fde87eea8e14d2"
+        },
+        {
+          "path": "server/backend/app/access/memory_source_refs.py",
+          "before_sha256": "7d339452dcad08886839a827282c55ab86d7464296810e979d60981b6cd134d5",
+          "sha256": "49144c668fd0ef45a08700c799718ce65106f04df05201eb541d152f7e778b42"
+        },
+        {
+          "path": "server/backend/app/access/metadata.py",
+          "before_sha256": "673d166a1dc23e01df7b0887887e5e6810c397c92adfd21586e2144e57ab9e41",
+          "sha256": "fb2f5ac1cd5d31f7d18c4af3ac1603cdc0e207d26b4ab53f495300b39462f38d"
+        },
+        {
+          "path": "server/backend/app/access/original_deletions.py",
+          "before_sha256": "a3a484542e415f6d558a6b8b54010b79aac3f9d8bda798907229c0d5dbb011ed",
+          "sha256": "2e883e4978eaf723dcd97d2debfebf4498da19565aa3cb008b334962520714a7"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "before_sha256": "a2ccf2778536bf0cb15b63be275de8252895c4c3ca66a33e5f61f3437bd162d6",
+          "sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "57d6f16f7d8a9cbc2eae2bafd975a0beb36695534433dde9f35bc74225d006bb",
+          "sha256": "24355d3572adc70ae93222f0e04e8e5754fed1222f5997f8133293aca3347c4c"
+        },
+        {
+          "path": "server/backend/app/access/stories.py",
+          "before_sha256": "cc9cd8adda72683fcd51bc7578695c8ab32324580d47e5821456fac2fad1cc0c",
+          "sha256": "5b4950565e86f413ae7585203f5b9ca1c57ff76d879f79139671a00b832221c0"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "e85ed9793fee6ca3edb0a3529c1dd08080c3766bc34ce42673f48eb4332915b7",
+          "sha256": "100b81726c676387a81dc20a222fe37fd7b4592ea5ed090da1d4058b06e8c355"
+        },
+        {
+          "path": "server/backend/migrations/versions/d1f6a8c3e920_family_note_identities.py",
+          "before_sha256": null,
+          "sha256": "0e31347884ed8ff4fb5de444f8ea167907e4b73fdec6495b4e0fb5afab681642"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_ERASURE_V2.md",
+          "before_sha256": null,
+          "sha256": "c549f59152cf77e9103c21c836e285b672cf657cc72df94df17a5ef2c6858b52"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_IDENTITIES_V1.md",
+          "before_sha256": null,
+          "sha256": "ebbca1cbeceb4d03a171ccd0905aace4b058fb39814f0dc61c4b22bb38125b06"
+        },
+        {
+          "path": "server/docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md",
+          "before_sha256": null,
+          "sha256": "4a58c58580d3930dd38d7bc84241e79ccba82b98f123c750682ff668404eda13"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "b8348e2f7ec6bf02964117fcfac4c0560e08563cc1acea658617c907ed32c2d5",
+          "sha256": "e62c8505af1f42d9b9313b66422f0e80bde26345259db8e40f707c4940b19db2"
+        },
+        {
+          "path": "server/scripts/approved_face_queue.py",
+          "before_sha256": "97f2a414714c0ff3b208a2d226f4f81a0231f55e59b1cd948f49a3de9acd099b",
+          "sha256": "b1eee0c3f8638dad3279762fadc711f03cb593ea32d9a3d17035da56209bc65a"
+        },
+        {
+          "path": "server/scripts/build_approved_worker_package.py",
+          "before_sha256": "4684702dcea524ec6c0c9f816c05348efe822c5adb495ca99e3944e82d050606",
+          "sha256": "1c908d801a10797a701f71447bd13e2da948d9104dc8bd3aac3a2e6229432ec4"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8aacb773379d0fb668ec6feab91d75479dea4a5b8d41a8112e256f19d70f0afc",
+          "sha256": "2de752815610d4aca86c80255878e2f4a005e161832787f8a4f0b370a0b07f70"
+        },
+        {
+          "path": "server/scripts/initialize_original_deletions.py",
+          "before_sha256": "fd973efcf6bce790577a5eb91535f13c213dbd0836bc7f45ec03216b49fbde83",
+          "sha256": "e437ac43feeea4b37896d5c2c1c5e9ea88492480b2951cfd6977451e7db91b11"
+        },
+        {
+          "path": "server/scripts/qualify_approved_workers_windows.py",
+          "before_sha256": "895be85fb93458850ee2978afd544a9882155c8c1809892721738c71a4e45ef6",
+          "sha256": "031eee8111bfa60cf626fe0e46281dc86356cc52e8c8296e6e04094a87c5b88f"
+        },
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "before_sha256": "888bf774421694f10aed3893f835c2adc35a3e518960b9e78f7231c16abc9d66",
+          "sha256": "ad91a0b8e1c8467e3e24be6d4f2011d41fc21ad028b1fc7a6cdf343f204a3df0"
+        },
+        {
+          "path": "server/scripts/run_approved_face_worker.py",
+          "before_sha256": "4bdb2b2ae6e8ce1948b59b14de556675ed70f417e48b047debc065ab8e98a73b",
+          "sha256": "74044b4508936a55224daaeadd766b03aeefb6b36d43425ede122bd3d627a01e"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "before_sha256": "8c428c2588f9585c2a7b05840dc4dc59db66f3dc9b7e8dd3f7ab6c958c373a16",
+          "sha256": "738bddf534cc2719cecf9768b5ae1810cdcce73e0a5dcc3eb61b2d73ba3ac580"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "before_sha256": "a5e3a1c38275b28671b516e40282678b295524399e0373f8a53b25dea177b71c",
+          "sha256": "9004114e70d4b6b4b65cfc66c0c10d4d92d72f4a4af2f29be6cf86f04fb1d618"
+        },
+        {
+          "path": "server/scripts/run_approved_video_worker.py",
+          "before_sha256": "c19add245da563c93c0bdf84e240ff9194e5f92a111478b05124e9452375e9f8",
+          "sha256": "99490e6b1c48c2af5a78ae1d71f931448abae5700ac79ca9a3bbe99f6aa53c2e"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "before_sha256": "b0e6fed1f85fc3860ac3894b65b7aaf80f90b38ed2da04600406f475b66f61fa",
+          "sha256": "721e14b88f9428e96fbce2db95e7a6c8e0579c903ed165cd5e293c5e357b8299"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "8d87db6145d4b9a1c30dfe6ec636192c9b4ba6eedebbf28ddf47a1bc747570aa",
+          "sha256": "2e101309d7b4bcc5768c010ec8751bfd35b803260ac9f29ac35e74a8f531ac2d"
+        },
+        {
+          "path": "server/scripts/upgrade_original_deletion_journal.py",
+          "before_sha256": null,
+          "sha256": "ffb70a0b52c2d0f651c259b83be29800bdf62113ddab31759ed68e8d1407f25a"
+        },
+        {
+          "path": "server/tests/security/test_approved_cpu_worker.py",
+          "before_sha256": "d8797e2dcc136761f1b9224cae82594fa5b5b8c21e9aac904ab7b0d6df7fad86",
+          "sha256": "2df964ae6222e31fa2e3e27ec560ea1e191064bbccc430afb7886fad7ae0d5b5"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_queue.py",
+          "before_sha256": "91534c089d099f0f8cf675d0975a8392322898da0e7211f58315b7e6c4600056",
+          "sha256": "59d84b26ad52d8be3bed1bd2e76c0fd9176feeb05d0baa69f7006e2548650102"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_worker.py",
+          "before_sha256": "60a71223ea8851ddbcf3467387ad61e380506b8647136ee072f74a5dccc4bc3f",
+          "sha256": "a0af2c0d33f4d6b22739c1e9c703e45e42eff6ffe53985d01ebbec0f5281dc80"
+        },
+        {
+          "path": "server/tests/security/test_approved_image_embed_worker.py",
+          "before_sha256": "6513cfba196e3db77aed2232d3a9097faecfd0c4ef9591ba24f9582478224dab",
+          "sha256": "09b5ba79984ad07d125c9b47b9efadf6ec90e30547c61b15522d04d5f5d1679e"
+        },
+        {
+          "path": "server/tests/security/test_approved_native_canary_schema.py",
+          "before_sha256": "3dea37ac5e7a4d7e572f32e555f33d5f1030b0bd5e580b92a6e5f7e0aa32b7ae",
+          "sha256": "dbd8f209c7c11511301e4aca33bf0548641fe651871d76451b15356427831640"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_embed_worker.py",
+          "before_sha256": "38e020a08f3819c60be2cb1f367ba678c9336af2b16b7447022bcea9c6a38ea0",
+          "sha256": "2a1a4b7bd16b4ab4ec65eccb2ac4db861855f10fde86a431a79027318b43f4b8"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_worker.py",
+          "before_sha256": "857c9eee957cf7eabca6d591faa468b109fbf06d25fc0479edba1e2394d0ff10",
+          "sha256": "28e874ea96d7fc77b19cbb0a2262a5d32d45207cbdcc802f27b1162212060c8f"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_package.py",
+          "before_sha256": "c3a9f4715081152b67f86d09e4cd3c6cc38a774bb1acd123b502b094027c7f6b",
+          "sha256": "1f0790f9e40c4285401db7a8b73ef5ada8d5c1d45585b09f590b34e9ebe8d5ce"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_d1_compatibility.py",
+          "before_sha256": null,
+          "sha256": "f4c06d6c15a850dd9430f480006f35b4636b65027219032de0d5afa42aba18af"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "aedc6aad3e0c0e4503237037dd30ead00fa19b0d7b5198a174aa7e9a13610502",
+          "sha256": "ae67ee6fc8396b9137041bc64d79af157c1d4af82056b2baa301e1a02cac56da"
+        },
+        {
+          "path": "server/tests/security/test_family_note_deletion_boundaries.py",
+          "before_sha256": null,
+          "sha256": "c0de7d7de4fded6a1443fd42562d57c447ea7cba9fb13172b9562ca9ae2ecc61"
+        },
+        {
+          "path": "server/tests/security/test_family_note_deletions.py",
+          "before_sha256": null,
+          "sha256": "8e2ffcca78fd14594bb04e0096b71dbf8a96a5c46a08bc42240fd9ab404dd82e"
+        },
+        {
+          "path": "server/tests/security/test_family_note_erasure_api.py",
+          "before_sha256": null,
+          "sha256": "2842bacaca4331bbb33483c627feb5ab3979b41478aa623b7ab3c309f5ca312a"
+        },
+        {
+          "path": "server/tests/security/test_family_note_identity.py",
+          "before_sha256": null,
+          "sha256": "d7f49329911c86b16e1cf5bfc463695050a4992c015b2c823b388d0e36a5eb28"
+        },
+        {
+          "path": "server/tests/security/test_family_note_identity_migration.py",
+          "before_sha256": null,
+          "sha256": "086c62a2554d71bc8126f296305392cbe8cd406843f4d097d1c3106315ba657e"
+        },
+        {
+          "path": "server/tests/security/test_initialize_original_deletions.py",
+          "before_sha256": "f2a15aa28ac73764886c9dc4e4c3e7e4639065b72f7cc1d115f605a61e785eff",
+          "sha256": "54ba12a294cba417d7b408754ec391e89771d4f16e24cf39682242857d7a0ab6"
+        },
+        {
+          "path": "server/tests/security/test_memory_jobs.py",
+          "before_sha256": "ddcced801c5f736381b2752384829cb2efcf0601a082c631aec78864c9f42a3e",
+          "sha256": "329630801ae77870398492d9a3b2b500927f65ae590902b5522f85bf7da83109"
+        },
+        {
+          "path": "server/tests/security/test_orm_migrations.py",
+          "before_sha256": "2665b55ae907bf6b6e87b549a972060678337f41c09df08bc9de885b5d724fe1",
+          "sha256": "4e0d7215af17c04dcbe16021ee111d6ad932d2ab33d7a5b7c79a6374f93c6c70"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "b5eff2d33d12554ace8632dcb45c37b97e0ad40c6e93d68287b91f1716d8ca68",
+          "sha256": "a65c3394f7317b06be41efe56641b87051ba972b771c426c51444ff7063132eb"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "b99bd23b2b9680c4aeadc1705ed745d3ac6b357fb05f3d122ad63e7e4211b266",
+          "sha256": "4489c1630ef4822b9880447ea0f9c7cce6a5ea97aed5da9b0ce8bdf9af7db3a0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "366607b62ff1bd2e02efa63fa6b8aaeba0bbc6d65ce0fc8e434d4899658fb084",
+          "sha256": "f0a564486fbd4216c4f0709f1295f3032c2f152f4e866dc8935a9cb86c6672a6"
+        },
+        {
+          "path": "server/tests/security/test_upgrade_original_deletion_journal.py",
+          "before_sha256": null,
+          "sha256": "b637cdbe9b07935c58026c5dbccfcd4664cdad07ed5ad0e05665abaea641e7b1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "aa6d1af44664017164093c144433c4d94f577c6fb93eae08da5409317cabdf18",
+          "sha256": "f5d2ce7148ba4245173bd6139d0a88e5b492981d8bc3ccbf4929cf98f62b04c7"
+        }
+      ],
+      "server_routes_changed": true,
+      "migration_source_added": "d1f6a8c3e920",
+      "live_schema_changed": false,
+      "journal_upgraded": false,
+      "historical_notes_backfilled": false,
+      "erasure_enabled": false,
+      "api_deployed": false,
+      "workers_started": false,
+      "apk_published": false
+    },
+    {
+      "feature": "independent-default-off-story-title-provider-wiring-v1",
+      "base_commit": "28f543c989230c8148c0af9c1300322aa8d604e5",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "de18489ec923865d1608df1d8ee178213201b39aa8d6e0a27950538ade16906a",
+          "sha256": "715a3b34490848b2b4af21755fb934b1d49756f7e00f23cdce139318c2f452c7"
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "before_sha256": "0fc1e8afe42295872d5dd6a0cd6deec7b0e5ad426fdcb6d0b1b6056b9a12f28b",
+          "sha256": "fc4e14520fcdc6c16e23128c5592dfb6209fa8340412614a2d3a63fd30c56b36"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "8c99c8388bf24181addbad8ab26b88122ba6b1011a5b3edf7d0b7ddfc7f41e2b",
+          "sha256": "f8c26cc9a8abc0beb6a552a21b41bb59ab21f3754dabd25da4a60074d1e60b84"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9730aa36c5c960dd27eb2be949df8e0a279c6b61c8b80f914c1d309e848c5791",
+          "sha256": "262146f98483ba52983743de9efe231ebea5f07c99bbaf09169c5bb93feb283e"
+        },
+        {
+          "path": "models/catalog.json",
+          "before_sha256": "40e883c3af461961a05ee90d9dd64c38ba53a43124d6baabd84a8f19e296c227",
+          "sha256": "39da234a1c2cdbf2cfbf6209311b8ef1fe46b05c3dcae31a0089e4dfae90f767"
+        },
+        {
+          "path": "server/backend/app/access/model_binding.py",
+          "before_sha256": "8a13aac6bdd15be5b4e94e46c5bf120061773ddd745e6857911400df8093081c",
+          "sha256": "841e5decbff4cb171fef70ab4f83b14b84bf69a25a563b3aa2eb881dd0d0f480"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "24355d3572adc70ae93222f0e04e8e5754fed1222f5997f8133293aca3347c4c",
+          "sha256": "a91ac4fb2466a8874a37f5619d16cd1ebe7a211575f7c4f0d149b1f093ffdaab"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "2e101309d7b4bcc5768c010ec8751bfd35b803260ac9f29ac35e74a8f531ac2d",
+          "sha256": "391e644baaee7fced2ea3dcdca003cda5a4fac7cdfd57c34eeb5842359ca6850"
+        },
+        {
+          "path": "server/tests/security/test_model_binding.py",
+          "before_sha256": "fc3f2d40cae6811eb23194129f114c244f73a1584f9064b2d7b53652372760fc",
+          "sha256": "585d27b66e5eb48a2b409c148827823c088ed3cc878392a1d391022971963e9f"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "a65c3394f7317b06be41efe56641b87051ba972b771c426c51444ff7063132eb",
+          "sha256": "4cac679dcc9a6395bb05a0f78721886ff9f62b95f318addaea60ab61773c39c2"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "4489c1630ef4822b9880447ea0f9c7cce6a5ea97aed5da9b0ce8bdf9af7db3a0",
+          "sha256": "bb9e8c3a22335302cd3483e7f732e49b0be54bfc3b328cf0ea9de82f754d5a31"
+        },
+        {
+          "path": "tools/tests/test_check_model_deployment.py",
+          "before_sha256": "86c53717ff402b4be9a1d6a781c7146ba55a0c6a556e8ef8dd294602378bfd48",
+          "sha256": "de4f00bba292aaa2bbf12c9b8c7848cae34ed88f441816fd447b69b5f99ae02e"
+        }
+      ],
+      "server_routes_changed": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "revision-aware-a0-database-preparation-and-package-qualification",
+      "base_commit": "25aaeb66e242f00263e8d8a841c1c7596e9c96bd",
+      "files": [
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "a91ac4fb2466a8874a37f5619d16cd1ebe7a211575f7c4f0d149b1f093ffdaab",
+          "sha256": "679b43f62f5bcde40108e3ed1201eb3e45b49aa9d4ac5383bb8bc4046f5220aa"
+        },
+        {
+          "path": "server/scripts/prepare_access_database.py",
+          "before_sha256": "f59f818747ecf28b6af8b48e9edf8ac2035d05716e32396a94934489f15a6c79",
+          "sha256": "84146fce0965288dcad19b8031b612437c424e3ee857b27ba2578c2484927d1f"
+        },
+        {
+          "path": "server/scripts/rehearse_fullsize_database.py",
+          "before_sha256": "fd0f9caf1ca1f889ecbb2b8476cbb697ae4290294b57b6f2c2576677c3edf65d",
+          "sha256": "baa4c8c2aed44ea0ccbd91b2045869f779a6544ea5449e54db4f0d7937233c54"
+        },
+        {
+          "path": "server/tests/security/test_database_preparation.py",
+          "before_sha256": "40857af5d9d72e1a0387b0f48d0031297e583979f302b30e9b72ee9811277492",
+          "sha256": "e0f2d54f9afaaa9e7ebaba3baf0ae43b1a1861fa4aae7f0c3b6b9e31a026bb63"
+        },
+        {
+          "path": "server/tests/security/test_fullsize_preparation.py",
+          "before_sha256": "a86ef656bee7be1e79c06d4154a41c71d1015afefaeffdaf236f57198882b2ec",
+          "sha256": "72215171cdaf323f5a0240b323b3486ace2a1fc9da80c5fceb285df4e7d84045"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "f0a564486fbd4216c4f0709f1295f3032c2f152f4e866dc8935a9cb86c6672a6",
+          "sha256": "9c2b5d69aec26f04e17550faefef709e9e1c7c2008864db58d1740bd1974df48"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f5d2ce7148ba4245173bd6139d0a88e5b492981d8bc3ccbf4929cf98f62b04c7",
+          "sha256": "3cd0031a87ce8f57fb8188ee796bbe871944835496481520476f4f0f71ff149e"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "d8eadfbad2f688f71b315379ef066ecd88d973077dd009dec39a5f37e6d1795a",
+          "sha256": "a31c955960b54b28b84fa4866ff5ba3604543392d2d9f8607f8076f1757b0036"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "715a3b34490848b2b4af21755fb934b1d49756f7e00f23cdce139318c2f452c7",
+          "sha256": "09ac6407c4bc7dd38543169a345a5b8066f316566b44bda698a518d00ac868d3"
+        }
+      ],
+      "schema_target_changed": false,
+      "live_schema_changed": false,
+      "runtime_revisions_widened": false,
+      "api_deployed": false
+    },
+    {
+      "feature": "cpu-only-d1-worker-schema-and-current-extracted-package-smoke",
+      "base_commit": "efac9cbdc0b0b16dbdf6328174343e0e624a480a",
+      "files": [
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "c5f1c76173b9558326f5ac682756516953641c6a2cd13aaab42f122226f550e6",
+          "sha256": "d9b1ed4cca8c0cfb60c923b2b0aa44db8857c9cf256ffa50e634b5b6b39f5e3e"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_d1_compatibility.py",
+          "before_sha256": "f4c06d6c15a850dd9430f480006f35b4636b65027219032de0d5afa42aba18af",
+          "sha256": "5fe0ba8b51528689915ade13faf3600eabbc633e28f9c3dda0c6db99dba18b9f"
+        }
+      ],
+      "optional_inference_enabled": false,
+      "schema_changed": false,
+      "api_deployed": false
+    },
+    {
+      "feature": "independent-pinned-title-quality-cases-and-explicit-canary-capture",
+      "base_commit": "28cac878282a4ed6bde958022e17bbfd252a6bf8",
+      "files": [
+        {
+          "path": "models/catalog.json",
+          "before_sha256": "39da234a1c2cdbf2cfbf6209311b8ef1fe46b05c3dcae31a0089e4dfae90f767",
+          "sha256": "e403abb207123966c5fc9274f07e4f9f7c9a1b017ce0b0f92903bbbf19a9ee21"
+        },
+        {
+          "path": "models/quality-cases.json",
+          "before_sha256": "b8215c24da47b0f12be461ab8c3769e74f026d3efafa40116ea3782ad1ca9010",
+          "sha256": "1bb8215724322e11b09ea3b6d6506cfcecb8116c338bbf6e920105900af95a82"
+        },
+        {
+          "path": "server/backend/app/access/model_qualification.py",
+          "before_sha256": "1d9856cb283aa44752ece7d210d8a4fd361e1ee026ab8fe56b11069aca1d4a73",
+          "sha256": "f9f60bf24a12ac925e843b38e70c280c9cf6b929248b0a4d3e3f542eaa398452"
+        },
+        {
+          "path": "server/scripts/plan_memoir_quality_cases.py",
+          "before_sha256": "f6bb353110f0122f60cd9ee9084e1d37f34d0b82ea9cb024a3ad30bdbf185f8e",
+          "sha256": "5b751816dbca4ae2b9aa60a7a9399065063c81593004de43a1e4d9a4321b3289"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "before_sha256": "2935d549d9758a9e8b2e996e91192e0478ffd118251b4a58d82d8aabe8b45daa",
+          "sha256": "927000deb779aa70409bf9f74e6b4af87e5413002eb2653fd1e0b8f24520b810"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "before_sha256": "b265a9feb913316da105e913298ffcbc341718c32c201d2bf93d2eabcc008ed8",
+          "sha256": "a71dbe193a8be6e414fec765c45362e5f706324b6a2a422ab38049f3ed5fa6c6"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_cases.py",
+          "before_sha256": "1ba60c438aaca4f9b2f2db12744b139de9ea3ae8e189e2a8dde68f8d7ba809a9",
+          "sha256": "bcc975d034040611b285771255fc7592e5a27fa8863cf625f62f34053394fcdc"
+        },
+        {
+          "path": "server/tests/security/test_model_qualification.py",
+          "before_sha256": "a9ad34853ab429fd48b60ae2dd0c8c923c47041d1bca51647d5a47846e3bbd6e",
+          "sha256": "4f2255b67871aa0094af456a13cf3956924e9c7f27abc95cecbb8cadd41b3cda"
+        },
+        {
+          "path": "tools/tests/test_check_model_qualification.py",
+          "before_sha256": "7b363c78b6c7d1d5c807ad537112aff1a13d2d2e2a90115e64ee06b21e57ffaa",
+          "sha256": "4fddbc1fb8d2b56eb99d69ecff8fa7e204e69d59a21b9a3f431c0e8af5742b75"
+        },
+        {
+          "path": "tools/tests/test_review_model_qualification.py",
+          "before_sha256": "5077d98f30791e5cc306aa4fbc00b289c38aac662833b4764e6a0c7d19f0fb42",
+          "sha256": "73dc32abde412d539ab1a35b7f006a56f3199b34c741ff66b554d2129452d542"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "before_sha256": "14e1a4efe3ae32e4cfaddf9a2b2d223471daa3707468796fa3d6fb60381d85b3",
+          "sha256": "056fc937b8a0396f79f960d30a1bec458ea68ce741eb820ebfb1ea68d86afa06"
+        },
+        {
+          "path": "server/docs/security/MEMOIR_QUALITY_CASES_V1.md",
+          "before_sha256": "81816f4dc1f2b5f3e7f821aa6b26ec074691e650b347c563dd205645a5b3132b",
+          "sha256": "3fc224194a47c3be5fd5d4e658c2e3af4e799da0edbf2fc9c73a7c3e1289c28d"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "262146f98483ba52983743de9efe231ebea5f07c99bbaf09169c5bb93feb283e",
+          "sha256": "9ee3c1e3b8d609e5966bc2dcc7d9b21286b5b0d93ed42eca4a4d2b2ec760f176"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7feb0ad145214f9dc9e3eda1747bc6e3ca0945b229f37b12ca49a985937cf00e",
+          "sha256": "7fe4416ac6b82a4646da8d1d185047bebb48726351864709ec3391de942dd7f2"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "09ac6407c4bc7dd38543169a345a5b8066f316566b44bda698a518d00ac868d3",
+          "sha256": "e26ac1d250fb60d358dff6c93b02640c104b75ebae9f2e7b26aeb4476be6c0cc"
+        }
+      ],
+      "provider_called": false,
+      "generation_enabled": false,
+      "schema_changed": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "portable-private-journal-upgrade-fixture",
+      "source_commit": "77a3e11fffcf7e96938a398b239875695e5c72b9",
+      "files": [
+        {
+          "path": "server/tests/security/test_upgrade_original_deletion_journal.py",
+          "before_sha256": "b637cdbe9b07935c58026c5dbccfcd4664cdad07ed5ad0e05665abaea641e7b1",
+          "sha256": "fe3832c5dcea920dbfeab3ddb85bffd91187c521e1b174e20c057cbd7d38e913"
+        }
+      ],
+      "production_changed": false,
+      "schema_changed": false,
+      "api_deployed": false
+    },
+    {
+      "feature": "web-phone-current-reply-clarification-cue",
+      "source_commit": "eaf42357c8b6f9b34cdf0b32cf570ecd3e13b87e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "566824282f1976327cbbb9ea6ec66e8fbd0b1fca2f6b98a9422f7e9bc179cacd",
+          "sha256": "6793f6f265eb7bc769cc735c16f2f62d65cfb07ba6ad39c71dda6a789e88e558"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryCommunityUiTest.kt",
+          "before_sha256": "db0b8c073736f100ba2e63f47b68ac260614ec4f2db8dc026d343613c7abf92c",
+          "sha256": "9aabf21641880582c2fa22affc7162f1b30d6d97a33ea84d6e49f8bac31a7220"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "f92cbd21aafd78cab27b58471df0168c919eb8b146d63b2f82119a8f1301523a",
+          "sha256": "d30572cc0914d0f5050bd0701801093eaa348e08fe9efe9357a84ca7ba557685"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "e6813b5eae499935b02fd5bde4f5650e3ae77107e9c27adc10f617211a6ab04d",
+          "sha256": "125db35c5d41cbce52c18ff805f97fa8cfbaa57189a8103610f08ef0e735f575"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "ea09e10338c05527256aa5040ba37739222fcbec14d5a84c98420871ce0742f2",
+          "sha256": "2db7a4dec4246a49a285007e6f6a0d6c40c8caf26fcad3c7c4a79272c33f67ab"
+        },
+        {
+          "path": "docs/CONVERSATION_CLARIFICATION.md",
+          "before_sha256": null,
+          "sha256": "4fcecc70f8821b28c9005c902bc900b3fe6ee75caa23b439b200cda0f45392c2"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7fe4416ac6b82a4646da8d1d185047bebb48726351864709ec3391de942dd7f2",
+          "sha256": "dd9d9add776f55ad5b0088aad4a4eeb35a91e2dc7fb453e1e40e1b459e13c2fe"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9ee3c1e3b8d609e5966bc2dcc7d9b21286b5b0d93ed42eca4a4d2b2ec760f176",
+          "sha256": "bb5f99886afd36efa054e499c3fbea2243d65b3c6209fee3e393e3d8da666788"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "2177dc6db5ffe76ab6c3eb1313c31a346b17b4d634c77ac501adad72eee69302",
+          "sha256": "787637939b9d54dea9f58fd9da88b5037855e6686e09c36fcb25abf054d80025"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "e26ac1d250fb60d358dff6c93b02640c104b75ebae9f2e7b26aeb4476be6c0cc",
+          "sha256": "ce5582baa9adea10047eba9ae0c0a230e8cfe860d7978a452d73bd69d322c6c4"
+        }
+      ],
+      "schema_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "phone-explicit-assistant-transcript-acceptance",
+      "source_commit": "919d28a458e4fe4f98e9254b852a7720833ffc39",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "6a27753bbc217d735d016d5e73c5df6b07510f84aed52199a181424c1f2d0878",
+          "sha256": "4a106c27ca4a06ad27ef9a9547d6ecfe1ccdd1f5f087da90782b759d8c5f955c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "21b45e4f6893a399f7f68f5d27d4e7e959f39e9e7dd0ef1d0067cd621bc6c62e",
+          "sha256": "23a51ca54a5937a7486695f2affbf55a2c199c004aeb885435d5d109d3db2e35"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/AssistantDraftTest.kt",
+          "before_sha256": null,
+          "sha256": "7d84d57648296e008f76fe131c44dfe00a1f8dfccce0ea28d2619c1a5b309a07"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "416043d63ee7e5f844abcecd289d0e4354d067e535e48bcad2ca93c312f9c9ba",
+          "sha256": "cbfce3c982424ef7b1c71a52e5d8ac60ca4957f5ed7e37668a93f7f9a3454f90"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "before_sha256": null,
+          "sha256": "5469b98444984101df1aba15ca2ba944622719d9fcf49269b389999e0f74513f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "59fceb879f99397d97b3dba8ddd8017616f799e8c3e0dc6d6a89497101077025",
+          "sha256": "c7e3bc736183478e083e91d53d1b7c1c4cc8f72631cc71ac6b0c37822d56d15a"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "before_sha256": "62887d8bb134f7f0cb974fb484a01d9840e86f0bbb0ccedca1e38361f7262e38",
+          "sha256": "e2ae16002c683a12e13a8eda2eeea4625064ebef2821c2a83d0e13e4f17c5697"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md",
+          "before_sha256": null,
+          "sha256": "ba1c4cfdbb50aea85d4fc854d3e9ee469f9167559894474d813accc8ba24fad5"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "787637939b9d54dea9f58fd9da88b5037855e6686e09c36fcb25abf054d80025",
+          "sha256": "496ec41127c27729266072ce2f010993696c9110da29fe82dcc2e464f829f812"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "dd9d9add776f55ad5b0088aad4a4eeb35a91e2dc7fb453e1e40e1b459e13c2fe",
+          "sha256": "7513a610cfd1cfe1b4bbdafeb36608cf585fa2cd0a3bd31d353f849998449e60"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "ce5582baa9adea10047eba9ae0c0a230e8cfe860d7978a452d73bd69d322c6c4",
+          "sha256": "2e6c2548e196349dba33d275ea422af60272d81479de414208dadafeac0760ec"
+        }
+      ],
+      "server_contract_changed": false,
+      "recording_started": false,
+      "apk_published": false,
+      "api_deployed": false
+    },
+    {
+      "feature": "web-bounded-current-page-assistant-turn-trail",
+      "source_commit": "0e02603c8be33ae02c70e299e92a3734fb005d15",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "41f5283955e79698d6f51b6861c62bcbac771608f29f720a37bf3802c07122d6",
+          "sha256": "f6bd51193fa0bc6b6bf4bf5433be808c63562d83b1a85db135f04ac004d38caf"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "acd9b0578ef1af18e1d04349d268a11df492c242a27ef05227f102acb5a1f3eb",
+          "sha256": "e499adb0aae36d7e2f9a02148712d1bb617bffb48fcf8927bcb3aec3cd05d0bf"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "fd599fd0ac2b9ce323d00defb5925f1755e26d1a2549db99eb31fa2bbbb17836",
+          "sha256": "bef9668edde98ab50a84d37dca0ac8e7ee5cff0a944b41360c2a84e50c568df0"
+        },
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": null,
+          "sha256": "9a777da38698f57df79acb49f4c3783925ea7df22772a9552fc0f2ea53cf0c22"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3cd0031a87ce8f57fb8188ee796bbe871944835496481520476f4f0f71ff149e",
+          "sha256": "a9c20f7bae8aeb7bf5b846b5d7c7bd008fca15ac9c50651766fa6f61e4e84aa0"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "dcfc01af3856de6d782864fc9d3e14b3392806b2469e165225715a9f900831af",
+          "sha256": "0442b97813bace17e8ff1469200d1fc40ebeca4974f92f09161a23dd2836c019"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "ca134d3e2da0ad15d37477ad3cf69d7a5c6cce617904d8e18ca59ce3b7db0a52",
+          "sha256": "0734a1fb509a8cb03c4ffbbd4c6ab355e66a387528bb11f17796237b4abbf540"
+        },
+        {
+          "path": "docs/ASSISTANT_TURN_TRAIL.md",
+          "before_sha256": null,
+          "sha256": "1749670d9a1d63ecabab348729f85a32e1dd806f90d9c49bb14aa44f26993baf"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "496ec41127c27729266072ce2f010993696c9110da29fe82dcc2e464f829f812",
+          "sha256": "20102c1b09b4a8676936e0dff132b1900e55385150a1145c56303de5c957b20e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7513a610cfd1cfe1b4bbdafeb36608cf585fa2cd0a3bd31d353f849998449e60",
+          "sha256": "b86286e74f9cd451276454eefdfe6c8a2b752f43f7b016c2939cfb11217b2baa"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2e6c2548e196349dba33d275ea422af60272d81479de414208dadafeac0760ec",
+          "sha256": "fdbc7bdf8c700490edebcc7908bc65cae396ddbbfa46dc84fbe8a449c63752f2"
+        }
+      ],
+      "server_contract_changed": false,
+      "hidden_history_sent": false,
+      "provider_called": false,
+      "api_deployed": false
+    },
+    {
+      "feature": "chinese-product-story-experience-current-source-boundaries",
+      "source_commit": "554c11c128f4c18b63a7e0a8587ebc693d2defff",
+      "files": [
+        {
+          "path": "docs/STORY_EXPERIENCE.md",
+          "before_sha256": "6ca5f14ead7d62c150c1fd504de9cfebdd2c9f02ee5fb8cf5aac13685fe99bf8",
+          "sha256": "f89793fb15fe9bbfe499c8c81786743c10e35823059b1513a0c6870b7d4712b9"
+        }
+      ],
+      "documentation_only": true,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "phone-assistant-utf8-message-limit-before-insertion-and-send",
+      "source_commit": "43081a888945043ea307998745bf16040edeb8f6",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "4a106c27ca4a06ad27ef9a9547d6ecfe1ccdd1f5f087da90782b759d8c5f955c",
+          "sha256": "cf8d3156e0fd5c1c68ef182fdda4adad4162d6778aa045d22adc98b7f9f0ae63"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/AssistantDraftTest.kt",
+          "before_sha256": "7d84d57648296e008f76fe131c44dfe00a1f8dfccce0ea28d2619c1a5b309a07",
+          "sha256": "cb3c6442972bc4d7f2e72897bcae8697acb1224aababd1a65059492ac60a17ab"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "before_sha256": "5469b98444984101df1aba15ca2ba944622719d9fcf49269b389999e0f74513f",
+          "sha256": "1fad28714262834930163321347d7e671bf60cb6b4a45545f337ab0becbb074b"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md",
+          "before_sha256": "ba1c4cfdbb50aea85d4fc854d3e9ee469f9167559894474d813accc8ba24fad5",
+          "sha256": "2ec82f94428c89121d2ca5f52597676cc42f7f4372e41b4dd97a56c6752e522b"
+        }
+      ],
+      "server_contract_changed": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "pure-preauthorized-photo-vector-candidate-foundation",
+      "source_commit": "3a397ae9580980ae4daded122cffafe39b586b88",
+      "files": [
+        {
+          "path": "server/backend/app/access/visual_candidates.py",
+          "before_sha256": null,
+          "sha256": "8e40c95babcfe35c6f611dcc73c127ee264283e4b6541530b26fb18eaaef0d5f"
+        },
+        {
+          "path": "server/tests/security/test_visual_candidates.py",
+          "before_sha256": null,
+          "sha256": "e9c4074f355917d6093e8caef79625433637a6a26cdb5283327b1f8bb473a211"
+        },
+        {
+          "path": "docs/ACTIVITY_GROUPING_DESIGN.md",
+          "before_sha256": null,
+          "sha256": "475607878bfd1fb0e8c8b159d8622e50311b52709edcb93de98e0793e7319678"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a9c20f7bae8aeb7bf5b846b5d7c7bd008fca15ac9c50651766fa6f61e4e84aa0",
+          "sha256": "ce580c903974ddb50aba613e80ab3e9887653404048ed77f344c54f4b8c3ee44"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bb5f99886afd36efa054e499c3fbea2243d65b3c6209fee3e393e3d8da666788",
+          "sha256": "967194b8f6cefab73ded2b13a70a397cd42f3bab4e01ba82a838b249ac354ec4"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b86286e74f9cd451276454eefdfe6c8a2b752f43f7b016c2939cfb11217b2baa",
+          "sha256": "dee6d573f1b9a605db537f0cdfe0dbf35190f5b2fd6450abd293c17360a1d748"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "fdbc7bdf8c700490edebcc7908bc65cae396ddbbfa46dc84fbe8a449c63752f2",
+          "sha256": "20e99e065b6c3901e0874940c4d4deca21130ac2e50675451595683a6085015e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "runtime_integration_added": false
+    },
+    {
+      "feature": "web-assistant-explicit-transcript-acceptance-and-wav-validation",
+      "source_commit": "051ceb49bc03b594876276a99c966b170c1df144",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f6bd51193fa0bc6b6bf4bf5433be808c63562d83b1a85db135f04ac004d38caf",
+          "sha256": "a01f379c3ff302da866cc154b3619b8ffd7f9db925bc00bc5c90f837c5d41d9c"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e499adb0aae36d7e2f9a02148712d1bb617bffb48fcf8927bcb3aec3cd05d0bf",
+          "sha256": "61e87f8872fecd83d8d096a82f718a33795ed90a933a3cf1eaada22927d238f3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": null,
+          "sha256": "cf27d1618ca2f35bfeaa1347e76c093228b30c1c9c5a91066fa2ea611ab6901d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "ce580c903974ddb50aba613e80ab3e9887653404048ed77f344c54f4b8c3ee44",
+          "sha256": "7ca8ac177e7ec992a1d9d978dbd39dfdccd1c6a924ede432abaa8bcb2c9a44b0"
+        },
+        {
+          "path": "docs/ASSISTANT_TRANSCRIPT_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "7448151a5963746dc28f14ff888e36aff982615e38a43f6056b74e461d027592"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "20102c1b09b4a8676936e0dff132b1900e55385150a1145c56303de5c957b20e",
+          "sha256": "2c68c77fd09a7a0d88eb4edf73038f1c09c2e6c3d4493c7ede78644978500b54"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "0734a1fb509a8cb03c4ffbbd4c6ab355e66a387528bb11f17796237b4abbf540",
+          "sha256": "5208ad1ea24f4c8dd3ee0c1957672032ba0b1291dd00a9401ac5637ac0d29db8"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "dee6d573f1b9a605db537f0cdfe0dbf35190f5b2fd6450abd293c17360a1d748",
+          "sha256": "4b3906e8cefb01ae1e630cce8bb89e9a4747d835234ba1844ba26dda38ad63b3"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "20e99e065b6c3901e0874940c4d4deca21130ac2e50675451595683a6085015e",
+          "sha256": "caa6fabd01c998a2891caa2189e2a874f14eb1eb33d263e735fd2f85d78c5373"
+        }
+      ],
+      "server_contract_changed": false,
+      "api_deployed": false,
+      "provider_called": false,
+      "apk_published": false
     }
   ]
 }

@@ -180,7 +180,7 @@ def upgrade_copy(db, budget):
     from sqlalchemy import create_engine
     from sqlalchemy.pool import NullPool
     from alembic import command
-    from app.access.runtime import REQUIRED_REVISION, REQUIRED_TABLES
+    from app.access.runtime import REQUIRED_REVISION, required_tables_for_revision
     # Separate owned connection to the exclusively-created output; never ambient
     # DATABASE_URL or the source. The caller retains its own verification handle.
     path = Path(db.execute('PRAGMA database_list').fetchone()[2])
@@ -196,7 +196,8 @@ def upgrade_copy(db, budget):
         with engine.connect() as connection:
             config = small.migration_config(); config.attributes['connection'] = connection
             command.upgrade(config, REQUIRED_REVISION)
-        if validate(db, budget) != REQUIRED_REVISION or not REQUIRED_TABLES <= set(schema(db)):
+        if (validate(db, budget) != REQUIRED_REVISION or
+                not required_tables_for_revision(REQUIRED_REVISION) <= set(schema(db))):
             raise small.Refused('Migrated schema incomplete')
     finally:
         engine.dispose()

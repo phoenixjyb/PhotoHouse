@@ -267,8 +267,16 @@ class MemoryCommunityRepository(
         parseOwned({ response }, ProtectedMemoryCommunityWire::conversations)
     }
 
-    suspend fun turns(conversationId: String, page: Int = 1, replyContext: Boolean = false): MemoryTurnPage = withBinding { s ->
+    suspend fun turns(
+        conversationId: String, page: Int = 1, replyContext: Boolean = false,
+        currentRequest: (() -> Boolean)? = null,
+    ): MemoryTurnPage = withBinding(currentRequest) { s ->
         capabilities(s, Feature.COLLABORATION); requireUuid(conversationId); require(page in 1..100000)
+        currentCoroutineContext().ensureActive()
+        if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false)) {
+            throw CancellationException("Conversation reader changed")
+        }
+        current(s)
         parseOwned({
             if (replyContext) api.conversationTurnsWithReplyContext(s.token, s.libraryId, conversationId, page)
             else api.conversationTurns(s.token, s.libraryId, conversationId, page)

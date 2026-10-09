@@ -60,6 +60,42 @@ Assistant input records follow their retention policy; assistant recordings
 remain transient. Story contributions preserve their originals until authorized
 deletion. A source citation is a relationship, not ownership transfer.
 
+## Check a running installation
+
+Keep a dated, private deployment record outside Git. Record the exact source
+manifest and relevant file hashes, task action and process identity, listener,
+enabled feature flags, and published client version/hash. Do not export raw
+arguments, environment values, credentials, database rows or family catalogs
+while collecting an inventory.
+
+Probe the configured user-facing origin with normal certificate validation.
+Match served static-file hashes to the deployed candidate. A separate tunnel
+can target another service; its response does not describe the configured
+WebUI or OTA feed. A task marked running and an HTTP success establish only
+those observations. Authentication, authorized user journeys, provider quality,
+installed client versions and actual device playback need their own checks.
+
+Compare that record with the current source and roadmap before preparing a
+release. Downloaded model weights are an installed artifact, not an enabled
+provider; a successful OTA manifest read is publication evidence, not proof
+that a device installed that APK. An audit does not authorize restarts,
+scheduled-task changes, publication or model inference.
+
+For idle or failed media workers, follow the
+[terminal diagnostics contract](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md).
+Keep scheduler exit codes separate from current preflight results. Inspect the
+installed default mode before running it: embedding preflight can execute a
+model child. Capture schema metadata using the selected existing file and a
+proper SQLite read-only URI; do not create a database to diagnose one.
+
+The API staging package's `migration_revision` records its included migration
+head. Runtime admission uses the selected database's actual revision and
+revision-specific table guards; it does not apply migrations. A metadata-only
+story picker can run at a supported older schema with generation, editorial and
+edition features off. Qualify that exact source/database combination before a
+switch; do not migrate only to match a package label. A phone OTA also requires
+a version code above the currently published code and the established signer.
+
 ## Maintain public source
 
 New product changes belong in this monorepo. Follow the
@@ -80,3 +116,15 @@ public publication; review the complete package contents before sharing.
 Existing Gradle reports may come from an earlier or filtered run. The report
 inventory counts files only; keep the executed build command, source pin and
 artifact metadata with any acceptance claim. It never replaces a build result.
+
+## Revision-aware preparation contract
+
+The small in-memory and full-size disk-backed preparation tools retain their
+explicit a0 target. They now share the runtime's required-table set for that
+revision, instead of requiring the union of later editorial, edition and identity
+tables. Unsupported revisions and missing required a0 tables still refuse;
+D1 runtime admission retains its separate exact identity-schema guard. The
+package manifest's included migration head does not select or apply a migration.
+The ordinary API profile includes both generated preparation suites and an
+isolated extracted-package rehearsal. These commands use disposable candidates;
+they do not authorize migration or restore against installed storage.

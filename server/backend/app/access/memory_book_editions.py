@@ -13,6 +13,9 @@ from .memory_book_edition_contract import (
 )
 from .memory_book_edition_deletions import EditionDeletionError, verify_edition_schema
 from .memory_book_edition_provenance import build_edition_provenance
+from .family_note_identity import (identity_enabled, resolve_note_identity,
+    persist_edition_note_identities, edition_note_identities_match)
+from .family_note_identity_schema import IDENTITY_REVISION
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
 from .memory_jobs import (
     EDITORIAL_CONTEXT_PROFILE, MemoryJobs, context, digest, editorial_choice, parent,
@@ -43,9 +46,11 @@ class MemoryBookEditions:
         if not self.enabled:
             raise TransportError(503, 'Reviewed memoir editions unavailable')
         try:
-            if self.db.execute('SELECT version_num FROM alembic_version').fetchall() != [(EDITION_REVISION,)]:
+            if self.db.execute('SELECT version_num FROM alembic_version').fetchall() not in (
+                    [(EDITION_REVISION,)], [(IDENTITY_REVISION,)]):
                 raise EditionDeletionError('memoir_edition_schema_unavailable')
             verify_edition_schema(self.db)
+            identity_enabled(self.db)
         except (EditionDeletionError, sqlite3.DatabaseError):
             raise TransportError(503, 'Reviewed memoir editions unavailable') from None
 
@@ -77,7 +82,16 @@ class MemoryBookEditions:
             AND story_id IN (''' + ','.join('?' for _ in child_ids) + ''')
             AND id IN (''' + ','.join('?' for _ in source_ids) + ')',
             (library, *child_ids, *source_ids)).fetchall()) if source_ids else {}
-        return build_edition_provenance(bundle, children, contribution_owners=owners)
+        note_identities = None
+        if identity_enabled(self.db):
+            note_identities = {}
+            for source in bundle['sources']:
+                if source['id'].startswith('family-'):
+                    note_id = source['id'][len('family-'):]
+                    note_identities[note_id] = resolve_note_identity(
+                        self.db, note_id, library, source['asset_id'])
+        return build_edition_provenance(bundle, children, contribution_owners=owners,
+                                        family_note_identities=note_identities)
 
     def _job(self, library, member, book_id, job_id):
         MemoryJobs(self.access)._ready()
@@ -188,6 +202,7 @@ class MemoryBookEditions:
                     (ident, ordinal, source.source_id, source.kind, source.asset_id,
                      source.source_digest, _json_string(list(source.chapter_ids)),
                      source.contribution_id, source.contribution_story_id))
+            persist_edition_note_identities(self.db, ident, provenance.sources)
             self.access._audit(member['account_id'], 'memory.book_edition_save', library)
             return self._receipt(self.access._one(f'SELECT * FROM {EDITION_TABLE} WHERE id=?', (ident,)))
 
@@ -216,7 +231,8 @@ class MemoryBookEditions:
                 source.source_digest, _json_string(list(source.chapter_ids)),
                 source.contribution_id, source.contribution_story_id)
                 for ordinal, source in enumerate(provenance.sources)]
-            if [tuple(value) for value in persisted] != expected:
+            if ([tuple(value) for value in persisted] != expected or
+                    not edition_note_identities_match(self.db, row['id'], provenance.sources)):
                 return receipt, 'source_changed', None, None
             manuscript = validate_narrative(_json(row['manuscript_json']), bundle)
         except (ValueError, TypeError, UnicodeError, RecursionError):

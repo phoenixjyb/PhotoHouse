@@ -27,6 +27,7 @@ from app.access.memory_narrative import (  # noqa: E402
     MAX_SOURCES,
     _validate_bundle,
 )
+from app.access.story_titles import validate_bundle as _validate_title_bundle  # noqa: E402
 
 
 MAX_PLAN_BYTES = 256 * 1024
@@ -226,6 +227,68 @@ def _case_three() -> dict:
     }
 
 
+def _title_case(prefix: str, language: str, sources: list[dict], focus: str,
+                expectations: dict[str, str]) -> dict:
+    """Build an independent title API bundle; it contains no narrative fields."""
+    revision = hashlib.sha256((prefix + ":selection-v1").encode("ascii")).hexdigest()
+    bundle = {
+        "version": 1,
+        "language": language,
+        "theme": "everyday",
+        "selection_revision": revision,
+        "sources": sources,
+    }
+    return {
+        "case_id": prefix,
+        "focus": focus,
+        "task": "suggest",
+        "bundle": bundle,
+        "withheld_source_ids": [],
+        "human_review_expectations": expectations,
+    }
+
+
+def _title_family_case() -> dict:
+    prefix = "synthetic-title-family"
+    return _title_case(prefix, "zh", [
+        {"id": f"{prefix}-family", "source": "family",
+         "text": "周末我们和外婆在院子里种下了向日葵。"},
+        {"id": f"{prefix}-draft", "source": "draft",
+         "text": "孩子每天给花浇水。几周后花开了，我们一起拍照留念。"},
+    ], "grounded_chinese_family_and_draft_title", {
+        "grounding": "The title should reflect planting sunflowers with grandma in the yard or the later watering and bloom, without inventing a date, place detail, or event.",
+        "citations": "Each title must cite a supplied family or draft source that directly supports its wording; opaque source IDs must not appear in title text.",
+        "language": "Write a concise, natural Chinese family-memory title, not a source list or translation of metadata.",
+        "review_boundary": "Keep proposals as unapproved choices for family review; do not imply the title or draft was saved.",
+    })
+
+
+def _title_uncertainty_case() -> dict:
+    prefix = "synthetic-title-uncertainty"
+    return _title_case(prefix, "en", [
+        {"id": f"{prefix}-family", "source": "family",
+         "text": "I remember our lakeside picnic happened in 2018."},
+        {"id": f"{prefix}-ai", "source": "ai",
+         "text": "An AI observation estimates that the visible clothing may be from 2019; this estimate is uncertain."},
+        {"id": f"{prefix}-draft", "source": "draft",
+         "text": "We do not know whether the picnic was in 2018 or 2019."},
+    ], "preserve_conflicting_family_and_uncertain_ai_date", {
+        "grounding": "Use only the lakeside picnic and the supplied year recollections; do not add people, activities, or locations.",
+        "citations": "Each candidate must cite a supplied source that supports the wording; avoid citing the uncertain AI estimate as confirmed fact.",
+        "uncertainty": "Do not state that the picnic definitely happened in 2018 or 2019, and do not let the AI estimate override the family recollection or draft uncertainty.",
+        "language": "Use concise, natural English that frames the shared memory or open question rather than presenting source IDs.",
+        "review_boundary": "These are unapproved title proposals for family review, not a chosen or saved title.",
+    })
+
+
+def _title_abstention_case() -> dict:
+    prefix = "synthetic-title-abstention"
+    return _title_case(prefix, "en", [], "abstain_when_title_bundle_has_no_sources", {
+        "abstention": "Return zero title suggestions when the bundle has no sources; do not invent a memory title from the theme alone.",
+        "review_boundary": "The empty proposal list remains a review result and does not write or approve a title.",
+    })
+
+
 def _canonical_json(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=False, allow_nan=False,
                       separators=(",", ":"), sort_keys=True).encode("utf-8", errors="strict")
@@ -251,7 +314,8 @@ def _check_asset_crosslinks(bundle: dict) -> None:
 
 def build_plan() -> dict:
     """Return a deterministic plan containing fresh, validated synthetic bundles."""
-    cases = [_case_one(), _case_two(), _case_three()]
+    cases = [_case_one(), _case_two(), _case_three(), _title_family_case(),
+             _title_uncertainty_case(), _title_abstention_case()]
     case_ids: set[str] = set()
     all_bundle_ids: set[str] = set()
     planned_cases = []
@@ -259,16 +323,20 @@ def build_plan() -> dict:
         if case["case_id"] in case_ids:
             raise ValueError("synthetic case identifiers must be unique")
         case_ids.add(case["case_id"])
-        bundle = _validate_bundle(case["bundle"])
-        if len(bundle["chapters"]) > MAX_CHAPTERS or len(bundle["sources"]) > MAX_SOURCES:
-            raise ValueError("synthetic bundle exceeds narrative limits")
-        if len(bundle["recent_turns"]) > MAX_RECENT_TURNS:
-            raise ValueError("synthetic turns exceed narrative limits")
+        if case["task"] == "suggest":
+            bundle = _validate_title_bundle(case["bundle"])
+            identifier_list = [source["id"] for source in bundle["sources"]]
+        else:
+            bundle = _validate_bundle(case["bundle"])
+            if len(bundle["chapters"]) > MAX_CHAPTERS or len(bundle["sources"]) > MAX_SOURCES:
+                raise ValueError("synthetic bundle exceeds narrative limits")
+            if len(bundle["recent_turns"]) > MAX_RECENT_TURNS:
+                raise ValueError("synthetic turns exceed narrative limits")
+            _check_asset_crosslinks(bundle)
+            identifier_list = _bundle_id_list(bundle)
         bundle_bytes = _canonical_json(bundle)
         if len(bundle_bytes) > MAX_BUNDLE_BYTES:
             raise ValueError("synthetic bundle exceeds narrative byte limit")
-        _check_asset_crosslinks(bundle)
-        identifier_list = _bundle_id_list(bundle)
         identifiers = set(identifier_list)
         if len(identifier_list) != len(identifiers):
             raise ValueError("synthetic identifiers must be distinct within each bundle")

@@ -36,6 +36,8 @@ class MemoryCommunityStoreTest {
         var lateMediaBytes: ByteArray? = null
         var tenFrameStory = false
         var availableLibraries = listOf("family")
+        var membershipRevision = 1L
+        var accountId = "account"
         var storyRevision = 3L
         var storyChapterIds = listOf("chapter-1")
         val thumbnailReads = mutableListOf<String>()
@@ -52,8 +54,8 @@ class MemoryCommunityStoreTest {
         }
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
-        override suspend fun session(token: Bearer) = Session("account", "+12025550123", availableLibraries.map {
-            Membership(it, "approved", "owner", 1, null, 0, true)
+        override suspend fun session(token: Bearer) = Session(accountId, "+12025550123", availableLibraries.map {
+            Membership(it, "approved", "owner", membershipRevision, null, 0, true)
         })
         override suspend fun logout(token: Bearer) = Unit
         override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
@@ -95,9 +97,11 @@ class MemoryCommunityStoreTest {
         val turnPages = mutableListOf<Int>()
         var sentBodies = mutableListOf<String>()
         var conversationReads = 0
+        val turnConversationIds = mutableListOf<String>()
         var conversationGate: CompletableDeferred<Unit>? = null
         var turnGate: CompletableDeferred<Unit>? = null
         var conversationFailure: ApiFailure? = null
+        var turnFailure: ApiFailure? = null
         var existingConversation = false
         var extraConversationIds = emptyList<String>()
         var existingActiveTurn = false
@@ -118,6 +122,7 @@ class MemoryCommunityStoreTest {
         var narrativeWrites = 0
         var bookOrder = listOf(storyId, secondStoryId)
         var bookRevision = "1"
+        var bookChildRevisions = mutableMapOf(storyId to "3", secondStoryId to "3")
         var bookItemCount = 1
         var bookReads = 0
         var bookFailure: ApiFailure? = null
@@ -133,7 +138,8 @@ class MemoryCommunityStoreTest {
         private fun bookJson(): String {
             val entries = bookOrder.joinToString(prefix = "[", postfix = "]") { id ->
                 "{\"id\":\"" + id + "\",\"title\":\"" + (if (id == storyId) "Garden" else "Picnic") +
-                    "\",\"revision\":\"3\",\"item_count\":" + (if (id == storyId) bookItemCount else 1) + ",\"cover_asset_id\":\"1\"}"
+                    "\",\"revision\":\"" + (bookChildRevisions[id] ?: "3") + "\",\"item_count\":" +
+                    (if (id == storyId) bookItemCount else 1) + ",\"cover_asset_id\":\"1\"}"
             }
             return "{\"version\":1,\"type\":\"memoir\",\"id\":\"" + bookId +
                 "\",\"revision\":\"" + bookRevision + "\",\"can_edit\":true,\"title\":\"Garden memories\"," +
@@ -204,9 +210,12 @@ class MemoryCommunityStoreTest {
             return """{"version":1,"id":"$startedConversationId","target_type":"$type","target_id":"$target","expires_at":999}""".toByteArray()
         }
         override suspend fun conversationTurns(token: Bearer, library: String, conversationId: String, page: Int): ByteArray {
+            turnConversationIds += conversationId
             turnPages += page
             val gate = turnGate; turnGate = null
+            val failure = turnFailure; turnFailure = null
             gate?.let { withContext(NonCancellable) { it.await() } }
+            failure?.let { throw it }
             val item = when {
                 existingActiveTurn -> """{"id":"$jobId","sequence":$activeTurnSequence,"input_text":"Continue","reply_text":null,"reply_kind":null,"job_id":"$jobId","state":"queued"}"""
                 chatTurnText != null -> {
@@ -765,6 +774,113 @@ class MemoryCommunityStoreTest {
         runCurrent()
         assertNull(store.state.value.memoryBooks)
         assertNull(store.state.value.session)
+    }
+
+    @Test fun deniedFreshStoryTurnsClearRememberedSelectionAndRequireFreshReader() = runTest {
+        for (status in listOf(401, 403)) {
+            val api = StoryApi()
+            val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+            val store = newStore(api, community)
+            openStory(store)
+            store.selectMemoryConversation(secondConversationId); runCurrent()
+            store.closeSavedMemoryStoryDetail()
+            community.turnFailure = ApiFailure(FailureKind.HTTP, status)
+
+            store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+            assertNull(store.state.value.savedMemoryStories)
+            if (store.state.value.covered) store.foreground()
+            else if (store.state.value.library == null) store.selectLibrary("family")
+            runCurrent()
+            store.openSavedMemoryStories(); runCurrent()
+            store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+            val chat = store.state.value.savedMemoryStories!!.community!!
+            assertEquals(conversationId, chat.conversationId)
+            assertFalse("HTTP $status must not restore the invalidated hint", chat.conversationRestored)
+            assertEquals("", chat.chatDraft)
+            assertTrue(community.sentBodies.isEmpty())
+            assertEquals(0, community.startedPosts)
+        }
+    }
+
+    @Test fun deniedFreshMemoirTurnsClearRememberedSelectionAndRequireFreshReader() = runTest {
+        val api = StoryApi()
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(api, community)
+        openBookReader(store)
+        store.selectMemoryBookConversation(secondConversationId); runCurrent()
+        store.closeMemoryBook()
+        community.turnFailure = ApiFailure(FailureKind.HTTP, 403)
+
+        store.openMemoryBook(bookId); runCurrent()
+
+        assertTrue("HTTP 403 must cover the protected reader", store.state.value.covered)
+        assertNull(store.state.value.memoryBooks)
+        store.foreground(); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        val chat = store.state.value.memoryBooks!!.companion!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertEquals("", chat.draft)
+        assertTrue(community.sentBodies.isEmpty())
+        assertEquals(0, community.startedPosts)
+    }
+
+    @Test fun staleStoryTurnDenialCannotClearTheReopenedRestoredReader() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.closeSavedMemoryStoryDetail()
+
+        val staleGate = CompletableDeferred<Unit>()
+        community.turnGate = staleGate
+        community.turnFailure = ApiFailure(FailureKind.HTTP, 403)
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+        assertEquals(secondConversationId, community.turnConversationIds.last())
+        store.closeSavedMemoryStoryDetail()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+        assertEquals(secondConversationId, store.state.value.savedMemoryStories?.community?.conversationId)
+        assertTrue(store.state.value.savedMemoryStories?.community?.conversationRestored == true)
+
+        staleGate.complete(Unit); runCurrent()
+
+        assertFalse(store.state.value.covered)
+        assertEquals(storyId, store.state.value.savedMemoryStories?.detail?.id)
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(secondConversationId, chat.conversationId)
+        assertTrue(chat.conversationRestored)
+        assertTrue(community.sentBodies.isEmpty())
+        assertEquals(0, community.startedPosts)
+    }
+
+    @Test fun staleMemoirTurnDenialCannotClearTheReopenedRestoredReader() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openBookReader(store)
+        store.selectMemoryBookConversation(secondConversationId); runCurrent()
+        store.closeMemoryBook()
+
+        val staleGate = CompletableDeferred<Unit>()
+        community.turnGate = staleGate
+        community.turnFailure = ApiFailure(FailureKind.HTTP, 401)
+        store.openMemoryBook(bookId); runCurrent()
+        assertEquals(secondConversationId, community.turnConversationIds.last())
+        store.closeMemoryBook()
+        store.openMemoryBook(bookId); runCurrent()
+        assertEquals(secondConversationId, store.state.value.memoryBooks?.companion?.conversationId)
+        assertTrue(store.state.value.memoryBooks?.companion?.conversationRestored == true)
+
+        staleGate.complete(Unit); runCurrent()
+
+        assertFalse(store.state.value.covered)
+        assertEquals(bookId, store.state.value.memoryBooks?.selectedBook?.id)
+        val chat = store.state.value.memoryBooks!!.companion!!
+        assertEquals(secondConversationId, chat.conversationId)
+        assertTrue(chat.conversationRestored)
+        assertTrue(community.sentBodies.isEmpty())
+        assertEquals(0, community.startedPosts)
     }
 
     @Test fun deferredOldRevisionCannotOverwriteReopenedMemoirAndLibraryChangeDropsLateResult() = runTest {
@@ -1599,6 +1715,219 @@ class MemoryCommunityStoreTest {
         store.sendMemoryChat(); runCurrent()
         assertEquals(1, community.sentBodies.size)
         assertEquals("queued", store.state.value.savedMemoryStories?.community?.job?.state)
+    }
+
+    @Test fun selectedStoryConversationReopensFromFreshHistoryWithoutDraftOrWrites() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.updateMemoryChatDraft("private unsent words")
+        val reads = community.conversationReads
+        val turnReads = community.turnConversationIds.size
+
+        store.closeSavedMemoryStoryDetail()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(secondConversationId, chat.conversationId)
+        assertTrue(chat.conversationRestored)
+        assertEquals("", chat.chatDraft)
+        assertTrue(chat.threadDrafts.values.all { it.isEmpty() })
+        assertEquals(reads + 1, community.conversationReads)
+        assertEquals(secondConversationId, community.turnConversationIds.last())
+        assertEquals(turnReads + 1, community.turnConversationIds.size)
+        assertEquals(0, community.startedPosts)
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun missingSelectedStoryThreadFallsBackFromFreshHistoryWithoutReadingOldId() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.closeSavedMemoryStoryDetail()
+        community.extraConversationIds = emptyList()
+        val turnReads = community.turnConversationIds.size
+
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertEquals(listOf(conversationId), community.turnConversationIds.drop(turnReads))
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun selectedMemoirConversationReopensWithoutDraftOrResendingAndRecoversJob() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openBookReader(store)
+        store.selectMemoryBookConversation(secondConversationId); runCurrent()
+        store.updateMemoryBookChatDraft("unsent memoir words")
+        val reads = community.conversationReads
+        val turnReads = community.turnConversationIds.size
+
+        store.closeMemoryBook()
+        community.existingActiveTurn = true
+        store.openMemoryBook(bookId); runCurrent()
+
+        val chat = store.state.value.memoryBooks!!.companion!!
+        assertEquals(secondConversationId, chat.conversationId)
+        assertTrue(chat.conversationRestored)
+        assertEquals("", chat.draft)
+        assertTrue(chat.threadDrafts.isEmpty())
+        assertEquals(reads + 1, community.conversationReads)
+        assertEquals(secondConversationId, community.turnConversationIds.last())
+        assertEquals(turnReads + 1, community.turnConversationIds.size)
+        assertEquals("running", chat.job?.state)
+        assertEquals(1, community.jobReads)
+        assertTrue(community.sentBodies.isEmpty())
+        assertEquals(0, community.startedPosts)
+        assertEquals(0, community.cancelJobReads)
+    }
+
+    @Test fun backgroundRevalidatesMembershipBeforeRestoringConversation() = runTest {
+        val api = StoryApi()
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(api, community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.updateMemoryChatDraft("private words")
+
+        store.background()
+        api.membershipRevision = 2
+        store.foreground(); runCurrent()
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertEquals("", chat.chatDraft)
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun sameMembershipBackgroundRestoresSelectedStoryWithBlankComposer() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.updateMemoryChatDraft("unsent words")
+
+        store.background(); store.foreground(); runCurrent()
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(secondConversationId, chat.conversationId)
+        assertTrue(chat.conversationRestored)
+        assertEquals("", chat.chatDraft)
+        assertTrue(chat.threadDrafts.values.all { it.isEmpty() })
+        assertTrue(community.sentBodies.isEmpty())
+        assertEquals(0, community.startedPosts)
+    }
+
+    @Test fun failedFreshTurnsReadDoesNotClaimRestorationOrSend() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.closeSavedMemoryStoryDetail()
+        community.turnFailure = ApiFailure(FailureKind.OFFLINE)
+
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertFalse(chat.conversationRestored)
+        assertEquals("", chat.chatDraft)
+        assertEquals(0, community.startedPosts)
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun storyRevisionChangeInvalidatesSelectedConversationHint() = runTest {
+        val api = StoryApi()
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(api, community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.closeSavedMemoryStoryDetail()
+        api.storyRevision = 4
+
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertEquals(conversationId, community.turnConversationIds.last())
+    }
+
+    @Test fun deferredOldConversationTurnsCannotRestoreStaleHintAfterReopen() = runTest {
+        val api = StoryApi()
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(api, community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+        store.closeSavedMemoryStoryDetail()
+
+        val oldTurns = CompletableDeferred<Unit>()
+        community.turnGate = oldTurns
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+        assertEquals(secondConversationId, community.turnConversationIds.last())
+        store.closeSavedMemoryStoryDetail()
+        api.storyRevision = 4
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.first()); runCurrent()
+        assertEquals(conversationId, store.state.value.savedMemoryStories?.community?.conversationId)
+
+        oldTurns.complete(Unit); runCurrent()
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun memoirChildRevisionAndOrderChangesInvalidateSelectedConversationHint() = runTest {
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(StoryApi(), community)
+        openBookReader(store)
+        store.selectMemoryBookConversation(secondConversationId); runCurrent()
+        store.closeMemoryBook()
+        community.bookChildRevisions[storyId] = "4"
+
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        var chat = store.state.value.memoryBooks!!.companion!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+
+        store.selectMemoryBookConversation(secondConversationId); runCurrent()
+        store.closeMemoryBook()
+        community.bookOrder = listOf(secondStoryId, storyId)
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+
+        chat = store.state.value.memoryBooks!!.companion!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertTrue(community.sentBodies.isEmpty())
+    }
+
+    @Test fun logoutAndAccountChangeClearSelectedConversationHint() = runTest {
+        val api = StoryApi()
+        val community = CommunityApi().apply { existingConversation = true; extraConversationIds = listOf(secondConversationId) }
+        val store = newStore(api, community)
+        openStory(store)
+        store.selectMemoryConversation(secondConversationId); runCurrent()
+
+        store.logout(); runCurrent()
+        api.accountId = "different-account"
+        openStory(store)
+
+        val chat = store.state.value.savedMemoryStories!!.community!!
+        assertEquals(conversationId, chat.conversationId)
+        assertFalse(chat.conversationRestored)
+        assertTrue(community.sentBodies.isEmpty())
     }
 
     @Test fun textContributionUsesReviewConsentAndDetailScopeDropsLateResults() = runTest {

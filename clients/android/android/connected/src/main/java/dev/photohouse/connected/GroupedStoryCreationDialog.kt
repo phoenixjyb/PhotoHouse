@@ -166,6 +166,7 @@ private fun SelectionScreen(
     val selected = editorState.selectedAssetIds
     val canAct = !creation.pageBusy && !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
     var limitReached by remember(editor) { mutableStateOf(false) }
+    var relatedExpanded by remember(editor) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Header(t("Choose moments", "选择瞬间"), t("Close", "关闭"), onClose)
@@ -213,10 +214,64 @@ private fun SelectionScreen(
             Text(t("No moments are available on this page.", "此页没有可用的瞬间。"))
         }
         LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
+            Modifier.weight(1f).fillMaxWidth().testTag("grouped-story-selection-list"),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
+            item(key = "same-day-related-picker") {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { relatedExpanded = !relatedExpanded }, modifier = Modifier.fillMaxWidth()
+                        .testTag("grouped-story-related-toggle")) {
+                        Text(t("More moments from the same day", "同一天的更多瞬间"))
+                    }
+                    if (relatedExpanded) {
+                        Text(t("Suggestions use only recorded capture dates. A shared day does not prove one activity; review each item and add it explicitly.",
+                            "建议只依据记录的拍摄日期。同一天不代表同一次活动；请逐项核对并手动加入。"),
+                            style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = { editor.loadRelatedMedia(false) },
+                            enabled = canAct && selected.isNotEmpty() && !editorState.relatedBusy,
+                            modifier = Modifier.fillMaxWidth().testTag("grouped-story-related-lookup")) {
+                            Text(if (editorState.relatedCandidates.isEmpty()) t("Find same-day moments", "查找同一天的瞬间") else t("Refresh suggestions", "刷新建议"))
+                        }
+                        if (editorState.relatedBusy || creation.relatedPreviewBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        if (selected.size >= 24) Text(t("You have reached the 24 moment limit. Remove one before adding another.",
+                            "已达到 24 个瞬间上限。请先移除一个，再加入其他内容。"), color = MaterialTheme.colorScheme.error)
+                        if (editorState.relatedFailure) {
+                            Text(t("Suggestions are unavailable. Your selection is unchanged.", "暂时无法获取建议，所选内容保持不变。"),
+                                color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = { editor.retryRelatedMedia() },
+                                enabled = canAct && !editorState.relatedBusy,
+                                modifier = Modifier.testTag("grouped-story-related-retry")) { Text(t("Retry", "重试")) }
+                        }
+                        editorState.relatedCandidates.forEach { candidate ->
+                            Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+                                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Preview(candidate.asset, creation.relatedPreviews[candidate.asset.id], words,
+                                        modifier = Modifier.testTag("grouped-story-related-thumbnail-${candidate.asset.id}"))
+                                    Text(t("Recorded capture date: ${candidate.asset.taken_at?.take(10).orEmpty()}",
+                                        "记录的拍摄日期：${candidate.asset.taken_at?.take(10).orEmpty()}"), style = MaterialTheme.typography.bodySmall)
+                                    Text(t("This is a date match only. Filename or upload date is not proof.",
+                                        "这只是日期匹配；文件名日期或上传日期不能证明同一次活动。"), style = MaterialTheme.typography.bodySmall)
+                                    Button(onClick = {
+                                        val live = editor.state.value
+                                        if (latestEditorSelection(store, editor) && !live.relatedBusy &&
+                                            live.relatedCandidates.any { it.asset.id == candidate.asset.id } && candidate.asset.id !in live.selectedAssetIds) {
+                                            if (editor.selectAsset(candidate.asset.id)) limitReached = false else limitReached = true
+                                        }
+                                    }, enabled = canAct && candidate.asset.id !in selected && selected.size < 24,
+                                        modifier = Modifier.fillMaxWidth().testTag("grouped-story-related-add-${candidate.asset.id}")) {
+                                        Text(t("Add to story", "加入故事"))
+                                    }
+                                }
+                            }
+                        }
+                        if (editorState.relatedHasMore) OutlinedButton(onClick = { editor.loadRelatedMedia(true) },
+                            enabled = canAct && !editorState.relatedBusy, modifier = Modifier.fillMaxWidth().testTag("grouped-story-related-next")) {
+                            Text(t("More suggestions", "更多建议"))
+                        }
+                    }
+                }
+            }
             items(items, key = { it.id }) { asset ->
                 val position = selected.indexOf(asset.id)
                 SelectionAsset(

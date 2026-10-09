@@ -37,7 +37,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                annotation_intake_enabled=False, assistant_enabled=False,
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
-               memory_editions_enabled=False,
+               memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None, update_root=None,
                story_title_suggester=None):
     if story_title_suggester is not None and not callable(getattr(story_title_suggester, 'suggest', None)):
@@ -46,6 +46,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         raise ValueError('Explicit annotation intake opt-in required')
     if type(assistant_enabled) is not bool:
         raise ValueError('Explicit assistant opt-in required')
+    if type(family_note_erasure_enabled) is not bool:
+        raise ValueError('Explicit family note erasure opt-in required')
     if any(type(flag) is not bool for flag in (memory_collaboration_enabled,
             memory_originals_enabled, memory_generation_enabled, memory_editorial_enabled,
             memory_editions_enabled)):
@@ -111,6 +113,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.memory_generation_enabled = memory_generation_enabled
     app.state.memory_editorial_enabled = memory_editorial_enabled
     app.state.memory_editions_enabled = memory_editions_enabled
+    app.state.family_note_erasure_enabled = family_note_erasure_enabled
     app.state.memory_retention_healthy = True
     app.state.assistant_asr = assistant_asr
     app.state.assistant_tts = assistant_tts

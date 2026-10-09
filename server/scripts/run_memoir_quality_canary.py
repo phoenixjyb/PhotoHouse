@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan or make one bounded request for a synthetic memoir quality case.
+"""Plan or capture one bounded synthetic memoir or title quality case.
 
 Planning is offline. Execution requires an explicit private configuration file
 and a new private output directory; it never reads or writes family storage.
@@ -29,14 +29,16 @@ import plan_memoir_quality_cases as planner  # noqa: E402
 
 MAX_TIMEOUT_SECONDS = 30
 COLD_START_MAX_TIMEOUT_SECONDS = 90
-CASE_IDS = frozenset({
-    "synthetic-coherence", "synthetic-conflict", "synthetic-provenance",
-})
-EXPECTED_TASKS = {
-    "synthetic-coherence": "narrative",
-    "synthetic-conflict": "narrative",
-    "synthetic-provenance": "companion",
+CASE_BINDINGS = {
+    "synthetic-coherence": ("narrative", "narrative"),
+    "synthetic-conflict": ("narrative", "narrative"),
+    "synthetic-provenance": ("narrative", "companion"),
+    "synthetic-title-family": ("title_suggestions", "suggest"),
+    "synthetic-title-uncertainty": ("title_suggestions", "suggest"),
+    "synthetic-title-abstention": ("title_suggestions", "suggest"),
 }
+CASE_IDS = frozenset(CASE_BINDINGS)
+EXPECTED_TASKS = {case_id: binding[1] for case_id, binding in CASE_BINDINGS.items()}
 
 
 class CanaryError(ValueError):
@@ -106,17 +108,18 @@ def _load_configuration(path: Path, cold_start: bool = False) -> dict:
 
 def _case_plan(case_id: str) -> tuple[dict, list[str]]:
     try:
+        role, task = CASE_BINDINGS[case_id]
         plan = planner.build_plan()
         case = next(item for item in plan["cases"] if item["case_id"] == case_id)
         case_bytes = _canonical(case["bundle"])
         if _sha256(case_bytes) != case["bundle_sha256"]:
             raise ValueError("bundle hash")
         quality = json.loads((REPOSITORY_ROOT / "models" / "quality-cases.json").read_text(encoding="utf-8"))
-        quality_case = next(item for suite in quality["suites"] if suite["role"] == "narrative"
+        quality_case = next(item for suite in quality["suites"] if suite["role"] == role
                             for item in suite["cases"] if item["id"] == case_id)
         if quality_case["input_sha256"] != case["bundle_sha256"]:
             raise ValueError("quality case hash")
-        if case["task"] != EXPECTED_TASKS[case_id]:
+        if case["task"] != task:
             raise ValueError("task")
         return case, list(quality_case["criteria"])
     except (OSError, ValueError, KeyError, StopIteration, TypeError, RecursionError):
@@ -194,10 +197,20 @@ def _public_report(*, status: str, case_id: str | None = None, task: str | None 
 
 
 def _run_case(case: dict, criteria: list[str], configuration: dict,
-              output_path: Path, *, narrator_factory=None) -> dict:
-    case_id, task, bundle = case["case_id"], case["task"], case["bundle"]
-    input_bytes = _canonical(bundle)
-    input_hash = _sha256(input_bytes)
+              output_path: Path, *, narrator_factory=None, title_suggester_factory=None) -> dict:
+    # Refuse role/task/input substitution before reserving output or constructing
+    # either provider. The CLI and direct operator entry point share this binding.
+    try:
+        case_id, task, bundle = case["case_id"], case["task"], case["bundle"]
+        pinned_case, pinned_criteria = _case_plan(case_id)
+        role, expected_task = CASE_BINDINGS[case_id]
+        input_bytes = _canonical(bundle)
+        input_hash = _sha256(input_bytes)
+        if (task != expected_task or input_hash != pinned_case["bundle_sha256"]
+                or case["bundle_sha256"] != input_hash or criteria != pinned_criteria):
+            raise CanaryError("case_unavailable")
+    except (KeyError, TypeError, ValueError):
+        raise CanaryError("case_unavailable") from None
     configuration_hash = _sha256(_canonical(configuration))
     target = _validate_output_target(output_path)
     try:
@@ -213,24 +226,37 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
     except Exception:
         raise CanaryError("output_unavailable") from None
 
-    # Persist the exact submitted synthetic input before the sole request.
+    # Persist exact synthetic input before a bounded request. Empty title input
+    # is a local abstention check and the title adapter makes no HTTP request.
     _write_exclusive(target, "input-bundle.json", input_bytes)
-    if narrator_factory is None:
+    factory = title_suggester_factory if role == "title_suggestions" else narrator_factory
+    if factory is None:
         try:
-            from app.access.memory_narrative import LocalMemoryNarrator
-            narrator_factory = LocalMemoryNarrator
+            if role == "title_suggestions":
+                from app.access.story_titles import LocalStoryTitleSuggester
+                factory = LocalStoryTitleSuggester
+            else:
+                from app.access.memory_narrative import LocalMemoryNarrator
+                factory = LocalMemoryNarrator
         except Exception:
             raise CanaryError("internal_failure") from None
     try:
-        narrator = narrator_factory(configuration["ollama_url"], configuration["ollama_model"],
-                                    timeout=configuration["timeout_seconds"])
+        provider = factory(configuration["ollama_url"], configuration["ollama_model"],
+                           timeout=configuration["timeout_seconds"])
     except Exception:
         raise CanaryError("configuration_invalid") from None
 
     started = _utc_now()
     start_clock = time.monotonic()
     try:
-        result = getattr(narrator, task)(bundle)
+        result = getattr(provider, task)(bundle)
+        if role == "title_suggestions":
+            from app.access.story_titles import validate_suggestions
+            try:
+                result = validate_suggestions(result, bundle)
+            except ValueError:
+                from app.access.memory_narrative import LocalMemoryNarrativeError
+                raise LocalMemoryNarrativeError("invalid_response") from None
         output_bytes = _canonical(result)
     except Exception as error:
         ended = _utc_now()
@@ -244,6 +270,7 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
             "schema": 1,
             "status": "request_failed",
             "case_id": case_id,
+            "role": role,
             "task": task,
             "input_sha256": input_hash,
             "output_sha256": None,
@@ -270,6 +297,7 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
         "schema": 1,
         "status": "captured_for_human_review",
         "case_id": case_id,
+        "role": role,
         "task": task,
         "input_sha256": input_hash,
         "output_sha256": output_hash,
@@ -294,7 +322,7 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
 
 def _parser() -> argparse.ArgumentParser:
     parser = _SafeArgumentParser(description=__doc__)
-    parser.add_argument("--run", action="store_true", help="make one provider request for one case")
+    parser.add_argument("--run", action="store_true", help="capture one case; empty title sources abstain without a request")
     parser.add_argument("--cold-start", action="store_true",
                         help="allow the longer cold-start timeout for one explicit run")
     parser.add_argument("--case", choices=sorted(CASE_IDS))
@@ -315,7 +343,8 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
             cases = _validated_plan()
             report = {
                 "status": "plan_only",
-                "cases": [{"case_id": case["case_id"], "task": case["task"],
+                "cases": [{"case_id": case["case_id"], "role": CASE_BINDINGS[case["case_id"]][0],
+                           "task": case["task"],
                            "input_sha256": case["bundle_sha256"]} for case, _criteria in cases],
                 "quality_evaluated": False,
                 "activation_performed": False,

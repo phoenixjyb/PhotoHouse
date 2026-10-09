@@ -39,6 +39,18 @@ client: visible response → explicit speech request/playback
 
 A local ASR/model adapter is configurable. Recognition is not a submitted command. Continuous conversation retains explicit turn boundaries; it does not imply continuous microphone capture. Every accepted action must have a receipt and processing state.
 
+The [Web assistant](ASSISTANT_TRANSCRIPT_REVIEW.md) and
+[phone assistant's transcript review](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
+preserves typed text while ASR completes. Only explicit Add accepts the exact
+current reviewed transcript and its successful receipt into the editable command draft.
+Discard clears that link. Recording, recognition and review block Send until
+the user resolves the pending input; overflow preserves both texts.
+
+The Web [recent-turn list](ASSISTANT_TURN_TRAIL.md) keeps eight successful
+exchanges in page memory. It supplies no hidden chat history to the model;
+explicit subsequent commands retain the existing bounded structured context.
+Client clearing and server troubleshooting retention are separate lifecycles.
+
 | Step | Where it happens |
 |---|---|
 | Capture and transcript review | Web browser or Android phone; the user starts, stops and reviews. |
@@ -61,8 +73,32 @@ processing status for thirty days; they do not retain assistant recordings.
 Original deletion uses an external journal and verified recovery procedure.
 Operators must preserve that journal when restoring or changing a deployment.
 
+The default-off [D1 family-note erasure contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md)
+uses immutable note identity and recorded library lineage. Permanent erasure
+requires current owner rights in every historical scope and a version 2 journal
+append before secure primary deletion. It removes dependent generated editions
+and AI payloads while preserving independent original memories and manually
+saved story text. Ordinary story soft removal still retains history. The additive
+migration does not adopt old unbound notes, and startup never upgrades a journal.
+
 TV library publication is a separate contract. Private stories and recordings
 are not automatically added to an anonymous LAN catalog.
+
+## Choosing media for a story
+
+The [related-media contract](../server/docs/security/STORY_RELATED_MEDIA_V1.md)
+supports an explicit, read-only search inside the current library. It suggests
+photos and videos sharing a selected item's recorded capture calendar day.
+It reads catalog metadata after membership checks; it does not load images,
+compare embeddings, run a model or create a story.
+
+Web and phone selections use the same ordered limit of 24 items. Each candidate
+requires the user's choice before the ordinary story preview reloads current
+evidence. The phone keeps candidate pages and preview bytes bounded, and clears
+them when selection or access changes. Filename dates and receipt dates remain
+separate hints and cannot establish that two items depict the same activity.
+Activity grouping and coherent prose generation remain subsequent, separately
+qualified capabilities.
 
 ## Media pipeline
 
@@ -82,3 +118,17 @@ titles. It adds no narration or original contribution to that preparation and
 keeps the conversation attached to the whole memoir. The user reviews and sends
 through existing controls; server source checks still run at submission and
 processing. A loaded chapter is a reading position, not a new permission scope.
+
+The [conversation navigation hint](CONVERSATION_NAVIGATION.md) is client process
+state, separate from server conversation history and pending submission receipts.
+It stores at most 16 conversation IDs with account, library, membership and
+target revision bindings. Memoirs also bind ordered child story revisions.
+Reopening reads the authorized directory and current messages before reporting
+restoration. It clears composition and cannot replay a mutation. The hint does
+not survive a client restart or grant access to an omitted conversation.
+
+The [clarification cue](CONVERSATION_CLARIFICATION.md) is a passive presentation
+of a ready, current story or memoir reply. Both clients require valid bounded
+reply metadata before presenting the cue. A suggested follow-up prepares an
+editable draft only when existing draft, dictation and pending-send guards allow
+it. No cue starts recording, submits a message or applies a proposal.

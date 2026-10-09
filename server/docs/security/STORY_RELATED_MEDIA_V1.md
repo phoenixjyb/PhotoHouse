@@ -69,6 +69,22 @@ photo/video inclusion, filename-date exclusion, malformed foreign-library
 responses and malformed full timestamps, transient failure, stale selection/logout responses and the selection
 limit. The existing story-workspace browser regression also passed ten checks.
 Focused route/workspace/closed-application checks passed 38 tests and
-27 subtests. This is local source acceptance; the route and picker are absent
-from the deployed f282472 API and phone v45. No model, media mutation, or native
-phone picker is introduced.
+27 subtests. These Web checks are local source acceptance; the route and picker
+are absent from the deployed f282472 API and phone v45. No model or media
+mutation is introduced.
+
+## Android phone editor
+
+The phone source uses the same protected request/response contract. Opening its
+collapsed panel makes no request. Lookup and each “加入故事” are explicit;
+adding a candidate appends to the ordered selection within the 24-item limit.
+Pages replace the previous candidate page rather than accumulating an unbounded
+list. A failed page can be explicitly retried with its original cursor.
+
+The decoder rejects mismatched libraries/seeds, invalid full capture timestamps,
+duplicate JSON keys, foreign preview routes and nonadvancing cursors. Candidate
+preview storage is separate from ordinary selection previews. Membership,
+library, selection and editor changes invalidate delayed responses and zero
+candidate buffers. Read the [Android evidence note](../../../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md)
+for source and synthetic UI checks. Deployment of the route and signing/OTA
+publication of a matching client remain separate delivery gates.

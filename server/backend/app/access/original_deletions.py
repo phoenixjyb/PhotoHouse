@@ -32,6 +32,9 @@ _MAX_RECORDS = 100_000
 _MAX_JOURNAL_BYTES = 128 * 1024 * 1024
 _MAX_ID = 128
 _FORMAT = 'photohouse-original-deletion-journal-v1'
+_FORMAT_V2 = 'photohouse-original-deletion-journal-v2'
+_RECORD_COLUMNS = ('seq','collection','library_id','object_id','original_kind','original_sha256',
+                   'batch','asset_id','story_id','occurred_at','prev_digest','digest')
 _MARKER = 'access_original_deletion_state'
 
 
@@ -255,6 +258,32 @@ def erase_memory_original(db, contribution_id, story_id, library_id, now):
         raise JournalUnavailable('Memory erasure is unavailable') from None
 
 
+def _deletions_ddl(version):
+    if version == 1:
+        return '''CREATE TABLE deletions (
+                    seq INTEGER PRIMARY KEY CHECK(seq>0), collection TEXT NOT NULL CHECK(collection IN ('upload','memory')),
+                    library_id TEXT NOT NULL, object_id TEXT NOT NULL, original_kind TEXT NOT NULL CHECK(original_kind IN ('text','audio')),
+                    original_sha256 TEXT NOT NULL CHECK(length(original_sha256)=64 AND original_sha256 NOT GLOB '*[^0-9a-f]*'),
+                    batch TEXT, asset_id INTEGER, story_id TEXT, occurred_at INTEGER NOT NULL CHECK(occurred_at>=0),
+                    prev_digest TEXT NOT NULL CHECK(length(prev_digest)=64 AND prev_digest NOT GLOB '*[^0-9a-f]*'),
+                    digest TEXT NOT NULL CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'),
+                    UNIQUE(collection,library_id,object_id),
+                    CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL)
+                        OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL)))'''
+    return '''CREATE TABLE deletions (
+        seq INTEGER PRIMARY KEY CHECK(seq>0), collection TEXT NOT NULL CHECK(collection IN ('upload','memory','family_note')),
+        library_id TEXT NOT NULL, object_id TEXT NOT NULL, original_kind TEXT NOT NULL CHECK(original_kind IN ('text','audio')),
+        original_sha256 TEXT NOT NULL CHECK(length(original_sha256)=64 AND original_sha256 NOT GLOB '*[^0-9a-f]*'),
+        batch TEXT, asset_id INTEGER, story_id TEXT, occurred_at INTEGER NOT NULL CHECK(occurred_at>=0),
+        prev_digest TEXT NOT NULL CHECK(length(prev_digest)=64 AND prev_digest NOT GLOB '*[^0-9a-f]*'),
+        digest TEXT NOT NULL CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'), family_binding_json TEXT,
+        UNIQUE(collection,library_id,object_id),
+        CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL AND family_binding_json IS NULL)
+          OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL AND family_binding_json IS NULL)
+          OR (collection='family_note' AND batch IS NULL AND asset_id>0 AND story_id IS NULL
+              AND original_kind='text' AND family_binding_json IS NOT NULL)))'''
+
+
 class OriginalDeletionJournal:
     """Append-only external hash-chain with an explicitly bound primary marker."""
 
@@ -265,8 +294,10 @@ class OriginalDeletionJournal:
         self.head()  # bind supplied namespace to the verified ledger metadata
 
     @classmethod
-    def initialize(cls, path, namespace):
+    def initialize(cls, path, namespace, *, format_version=1):
         """Exclusively create a new private ledger; never create parent directories."""
+        if type(format_version) is not int or format_version not in {1, 2}:
+            raise OriginalDeletionError('Deletion journal version is invalid')
         namespace = _canonical_uuid(namespace)
         target = _no_symlink_path(path)
         _private_directory(target.parent)
@@ -300,19 +331,10 @@ class OriginalDeletionJournal:
                     id INTEGER PRIMARY KEY CHECK(id=1), format TEXT NOT NULL,
                     namespace TEXT NOT NULL, head_seq INTEGER NOT NULL CHECK(head_seq>=0),
                     head_digest TEXT NOT NULL CHECK(length(head_digest)=64 AND head_digest NOT GLOB '*[^0-9a-f]*'))''')
-                db.execute('''CREATE TABLE deletions (
-                    seq INTEGER PRIMARY KEY CHECK(seq>0), collection TEXT NOT NULL CHECK(collection IN ('upload','memory')),
-                    library_id TEXT NOT NULL, object_id TEXT NOT NULL, original_kind TEXT NOT NULL CHECK(original_kind IN ('text','audio')),
-                    original_sha256 TEXT NOT NULL CHECK(length(original_sha256)=64 AND original_sha256 NOT GLOB '*[^0-9a-f]*'),
-                    batch TEXT, asset_id INTEGER, story_id TEXT, occurred_at INTEGER NOT NULL CHECK(occurred_at>=0),
-                    prev_digest TEXT NOT NULL CHECK(length(prev_digest)=64 AND prev_digest NOT GLOB '*[^0-9a-f]*'),
-                    digest TEXT NOT NULL CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'),
-                    UNIQUE(collection,library_id,object_id),
-                    CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL)
-                        OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL)))''')
+                db.execute(_deletions_ddl(format_version))
                 db.execute('CREATE INDEX ix_deletions_library_seq ON deletions(library_id,seq)')
                 db.execute('INSERT INTO journal_meta VALUES (1,?,?,0,?)',
-                           (_FORMAT, namespace, _genesis(namespace)))
+                           (_FORMAT if format_version == 1 else _FORMAT_V2, namespace, _genesis(namespace)))
                 db.commit()
                 db.execute('PRAGMA journal_mode=DELETE')
                 if db.execute('PRAGMA synchronous').fetchone()[0] != 2:
@@ -377,6 +399,87 @@ class OriginalDeletionJournal:
         except sqlite3.Error:
             raise OriginalDeletionError('Deletion journal is unavailable or invalid') from None
 
+    @staticmethod
+    def _verify_columns(db, meta):
+        expected = set(_RECORD_COLUMNS)
+        if meta['format'] == _FORMAT_V2:
+            expected.add('family_binding_json')
+        if _columns(db, 'deletions') != expected:
+            raise OriginalDeletionError('Deletion journal format is invalid')
+
+    def upgrade_family_format(self, primary_db, *, expected_head, precommit_guard=None):
+        """Explicit offline capability upgrade; keeps all V1 bytes and marker digests.
+
+        The caller must hold the primary write transaction. No automatic upgrade,
+        primary commit, note adoption or deletion occurs here. The optional offline
+        guard runs under the journal write lock before any capability DDL.
+        """
+        if not primary_db.in_transaction:
+            raise OriginalDeletionError('Upgrade requires a primary write transaction')
+        _primary_file(primary_db, self.path)
+        from .family_note_identity import identity_enabled
+        if not identity_enabled(primary_db):
+            raise OriginalDeletionError('Family note identity schema is required')
+        marker = self._primary_marker(primary_db)
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN IMMEDIATE')
+            meta, _history = self._meta(ledger)
+            head = (self.namespace, meta['head_seq'], meta['head_digest'])
+            if head != expected_head or marker != head[1:]:
+                raise OriginalDeletionError('Journal changed after reviewed plan')
+            if precommit_guard is not None:
+                precommit_guard(primary_db)
+            if meta['format'] == _FORMAT_V2:
+                ledger.commit()
+                return head
+            ledger.execute('DROP INDEX ix_deletions_library_seq')
+            ledger.execute('ALTER TABLE deletions RENAME TO legacy_deletions')
+            ledger.execute(_deletions_ddl(2))
+            names = ','.join(_RECORD_COLUMNS)
+            ledger.execute('INSERT INTO deletions (' + names + ') SELECT ' + names + ' FROM legacy_deletions')
+            ledger.execute('DROP TABLE legacy_deletions')
+            ledger.execute('CREATE INDEX ix_deletions_library_seq ON deletions(library_id,seq)')
+            ledger.execute('UPDATE journal_meta SET format=? WHERE id=1', (_FORMAT_V2,))
+            checked, _history = self._meta(ledger)
+            if (self.namespace, checked['head_seq'], checked['head_digest']) != head:
+                raise OriginalDeletionError('Deletion journal upgrade changed history')
+            ledger.commit()
+            return head
+        except BaseException:
+            ledger.rollback()
+            raise
+        finally:
+            ledger.close()
+
+    def require_family_format(self):
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN')
+            meta, _ = self._meta(ledger)
+            if meta['format'] != _FORMAT_V2:
+                raise OriginalDeletionError('Family note deletion requires journal version 2')
+        finally:
+            ledger.close()
+
+    def family_record(self, primary_db, note_id):
+        """Internal content-free committed receipt for an exact idempotent retry."""
+        _canonical_uuid(note_id)
+        self.assert_current(primary_db)
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN')
+            meta, _ = self._meta(ledger)
+            if self._primary_marker(primary_db) != (meta['head_seq'], meta['head_digest']):
+                raise OriginalDeletionError('Primary deletion marker differs from journal head')
+            rows = ledger.execute("SELECT * FROM deletions WHERE collection='family_note' AND object_id=?",
+                                  (note_id,)).fetchall()
+            if len(rows) > 1:
+                raise OriginalDeletionError('Family note deletion history is ambiguous')
+            return dict(rows[0]) if rows else None
+        finally:
+            ledger.close()
+
     def _meta(self, db):
         try:
             objects = {(row[0], row[1]) for row in db.execute(
@@ -387,16 +490,13 @@ class OriginalDeletionJournal:
             if {row[1] for row in db.execute('PRAGMA table_info(journal_meta)')} != {
                     'id','format','namespace','head_seq','head_digest'}:
                 raise OriginalDeletionError('Deletion journal format is invalid')
-            if {row[1] for row in db.execute('PRAGMA table_info(deletions)')} != {
-                    'seq','collection','library_id','object_id','original_kind','original_sha256',
-                    'batch','asset_id','story_id','occurred_at','prev_digest','digest'}:
-                raise OriginalDeletionError('Deletion journal format is invalid')
             rows = db.execute('SELECT id,format,namespace,head_seq,head_digest FROM journal_meta').fetchall()
         except sqlite3.Error:
             raise OriginalDeletionError('Deletion journal format is invalid') from None
-        if len(rows) != 1 or rows[0]['id'] != 1 or rows[0]['format'] != _FORMAT:
+        if len(rows) != 1 or rows[0]['id'] != 1 or rows[0]['format'] not in {_FORMAT, _FORMAT_V2}:
             raise OriginalDeletionError('Deletion journal format is invalid')
         meta = rows[0]
+        self._verify_columns(db, meta)
         if meta['namespace'] != self.namespace:
             raise OriginalDeletionError('Deletion journal namespace mismatch')
         if (type(meta['head_seq']) is not int or not 0 <= meta['head_seq'] <= _MAX_RECORDS
@@ -417,6 +517,8 @@ class OriginalDeletionJournal:
                 if record['seq'] != number or record['prev_digest'] != previous:
                     raise OriginalDeletionError('Deletion journal hash chain mismatch')
                 self._validate_record(record)
+                if meta['format'] == _FORMAT and record['collection'] == 'family_note':
+                    raise OriginalDeletionError('Deletion journal format is invalid')
                 key = (record['collection'], record['library_id'], record['object_id'])
                 if key in seen:
                     raise OriginalDeletionError('Duplicate deletion journal object')
@@ -443,15 +545,12 @@ class OriginalDeletionJournal:
             if {row[1] for row in db.execute('PRAGMA table_info(journal_meta)')} != {
                     'id','format','namespace','head_seq','head_digest'}:
                 raise OriginalDeletionError('Deletion journal format is invalid')
-            if {row[1] for row in db.execute('PRAGMA table_info(deletions)')} != {
-                    'seq','collection','library_id','object_id','original_kind','original_sha256',
-                    'batch','asset_id','story_id','occurred_at','prev_digest','digest'}:
-                raise OriginalDeletionError('Deletion journal format is invalid')
             meta_rows = db.execute('SELECT id,format,namespace,head_seq,head_digest FROM journal_meta').fetchall()
             if len(meta_rows) != 1 or meta_rows[0]['id'] != 1:
                 raise OriginalDeletionError('Deletion journal format is invalid')
             meta = meta_rows[0]
-            if (meta['format'] != _FORMAT or meta['namespace'] != self.namespace
+            self._verify_columns(db, meta)
+            if (meta['format'] not in {_FORMAT, _FORMAT_V2} or meta['namespace'] != self.namespace
                     or type(meta['head_seq']) is not int or not 0 <= meta['head_seq'] <= _MAX_RECORDS
                     or type(meta['head_digest']) is not str or not _HEX64.fullmatch(meta['head_digest'])):
                 raise OriginalDeletionError('Deletion journal head is invalid')
@@ -485,7 +584,7 @@ class OriginalDeletionJournal:
         if (type(record.get('seq')) is not int or not 1 <= record['seq'] <= _MAX_RECORDS
                 or type(record.get('prev_digest')) is not str or not _HEX64.fullmatch(record['prev_digest'])
                 or type(record.get('digest')) is not str or not _HEX64.fullmatch(record['digest'])
-                or record.get('collection') not in {'upload', 'memory'}
+                or record.get('collection') not in {'upload', 'memory', 'family_note'}
                 or record.get('original_kind') not in {'text', 'audio'}
                 or type(record.get('object_id')) is not str
                 or len(record['object_id']) > _MAX_ID
@@ -495,7 +594,16 @@ class OriginalDeletionJournal:
             raise OriginalDeletionError('Deletion journal record is invalid')
         _bounded_id(record['library_id'])
         _canonical_uuid(record['object_id'])
-        if record['collection'] == 'upload':
+        if record['collection'] != 'family_note' and record.get('family_binding_json') is not None:
+            raise OriginalDeletionError('Unexpected family note binding')
+        if record['collection'] == 'family_note':
+            from .family_note_deletions import parse_family_binding
+            parse_family_binding(record.get('family_binding_json'))
+            if (record.get('batch') is not None or record.get('story_id') is not None
+                    or type(record.get('asset_id')) is not int or not 1 <= record['asset_id'] <= 2**63-1
+                    or record['original_kind'] != 'text'):
+                raise OriginalDeletionError('Family note deletion record is invalid')
+        elif record['collection'] == 'upload':
             if (type(record.get('batch')) is not str or not _BATCH.fullmatch(record['batch'])
                     or (record.get('asset_id') is not None and
                         (type(record['asset_id']) is not int or record['asset_id'] <= 0))
@@ -574,6 +682,10 @@ class OriginalDeletionJournal:
                         raise OriginalDeletionError('Required original tables are unavailable')
                     if primary_db.execute('SELECT count(*) FROM ' + table).fetchone()[0]:
                         raise OriginalDeletionError('Primary database originals prevent binding')
+                from .family_note_identity_schema import IDENTITY_TABLES
+                for table in IDENTITY_TABLES:
+                    if table in existing_tables and primary_db.execute('SELECT 1 FROM ' + table + ' LIMIT 1').fetchone():
+                        raise OriginalDeletionError('Family note history prevents binding')
                 primary_db.execute(f'INSERT INTO {_MARKER} (id,namespace,applied_seq,applied_digest) VALUES (1,?,?,?)',
                                    (self.namespace, 0, meta['head_digest']))
                 journal.commit()
@@ -654,6 +766,13 @@ class OriginalDeletionJournal:
         }
         try:
             for table, rowid, _parent, _fkid in violations:
+                if table == 'access_story_revisions':
+                    if _parent != 'access_stories' or type(rowid) is not int:
+                        return False
+                    row = db.execute('SELECT story_id FROM access_story_revisions WHERE rowid=?', (rowid,)).fetchone()
+                    if row is None or ('family_note', row[0]) not in pending:
+                        return False
+                    continue
                 if table == 'access_memory_book_editorial_refs':
                     # Only a missing contribution covered by the exact newer
                     # tombstone is recoverable. A missing book/story revision
@@ -716,7 +835,7 @@ class OriginalDeletionJournal:
         ``primary_db`` must be owned by an active ``BEGIN IMMEDIATE`` transaction.
         This method updates its marker but does not commit that transaction.
         """
-        if collection not in {'upload', 'memory'} or not (
+        if collection not in {'upload', 'memory', 'family_note'} or not (
                 isinstance(row, Mapping) or callable(getattr(row, 'keys', None))):
             raise OriginalDeletionError('Deletion request is invalid')
         try:
@@ -733,19 +852,26 @@ class OriginalDeletionJournal:
         marker_seq, marker_digest = self._primary_marker(primary_db)
         object_id = row.get('id')
         _canonical_uuid(object_id)
-        current = _source_row(primary_db, collection, object_id)
-        if current is None:
-            raise OriginalDeletionError('Original is already absent')
-        source_digest = _verify_original(current, collection, row)
-        if (current.get('kind') != row.get('kind') or row.get('sha256') != source_digest
-                or type(current.get('kind')) is not str):
-            raise OriginalDeletionError('Deletion source kind changed')
-        candidate = _journal_fields(collection, current, source_digest, occurred_at)
+        if collection == 'family_note':
+            from .family_note_deletions import prepare_family_tombstone, preflight_family_erasure
+            candidate = prepare_family_tombstone(primary_db, object_id, row.get('revision'), occurred_at)
+            preflight_family_erasure(primary_db, candidate)
+        else:
+            current = _source_row(primary_db, collection, object_id)
+            if current is None:
+                raise OriginalDeletionError('Original is already absent')
+            source_digest = _verify_original(current, collection, row)
+            if (current.get('kind') != row.get('kind') or row.get('sha256') != source_digest
+                    or type(current.get('kind')) is not str):
+                raise OriginalDeletionError('Deletion source kind changed')
+            candidate = _journal_fields(collection, current, source_digest, occurred_at)
 
         ledger = self._connect()
         try:
             ledger.execute('BEGIN IMMEDIATE')
             meta, history = self._meta(ledger)
+            if collection == 'family_note' and meta['format'] != _FORMAT_V2:
+                raise OriginalDeletionError('Family note deletion requires journal version 2')
             existing_row=ledger.execute('''SELECT * FROM deletions
                 WHERE collection=? AND library_id=? AND object_id=?''',
                 (collection,candidate['library_id'],object_id)).fetchone()
@@ -758,11 +884,11 @@ class OriginalDeletionJournal:
                          'prev_digest': meta['head_digest']}
                 entry['digest'] = _record_digest(entry['prev_digest'], entry)
                 self._validate_record(entry)
-                ledger.execute('''INSERT INTO deletions (seq,collection,library_id,object_id,original_kind,
-                    original_sha256,batch,asset_id,story_id,occurred_at,prev_digest,digest)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', tuple(entry[name] for name in (
-                    'seq','collection','library_id','object_id','original_kind','original_sha256',
-                    'batch','asset_id','story_id','occurred_at','prev_digest','digest')))
+                names = list(_RECORD_COLUMNS)
+                if meta['format'] == _FORMAT_V2:
+                    names.append('family_binding_json')
+                ledger.execute('INSERT INTO deletions (' + ','.join(names) + ') VALUES (' +
+                    ','.join('?' for _ in names) + ')', tuple(entry.get(name) for name in names))
                 ledger.execute('UPDATE journal_meta SET head_seq=?,head_digest=? WHERE id=1',
                                (entry['seq'], entry['digest']))
                 ledger.commit()  # durable before the primary transaction can erase original bytes
@@ -856,6 +982,11 @@ class OriginalDeletionJournal:
                     ledger.close()
 
     def _apply_record(self, db, record):
+        if record['collection'] == 'family_note':
+            self._validate_record(record)
+            from .family_note_deletions import erase_family_note_original
+            erase_family_note_original(db, record)
+            return
         row = self._verify_record(db, record)
         collection = record['collection']
         if row is None:
@@ -881,6 +1012,9 @@ class OriginalDeletionJournal:
     def _verify_record(self, db, record):
         self._validate_record(record)
         collection = record['collection']
+        if collection == 'family_note':
+            from .family_note_deletions import preflight_family_erasure
+            return preflight_family_erasure(db, record)[2]
         row = _source_row(db, collection, record['object_id'])
         if row is None:
             return None
@@ -914,10 +1048,15 @@ def _journal_fields(collection, row, digest, occurred_at):
 def _record_digest(previous, record):
     body = {key: record[key] for key in ('seq','collection','library_id','object_id',
         'original_kind','original_sha256','batch','asset_id','story_id','occurred_at')}
+    if record['collection'] == 'family_note':
+        body['family_binding_json'] = record['family_binding_json']
+        body['format'] = _FORMAT_V2
     return _digest(bytes.fromhex(previous) + _json(body))
 
 
 def _same_tombstone(existing, candidate):
+    if existing.get('family_binding_json') != candidate.get('family_binding_json'):
+        return False
     return all(existing[name] == candidate[name] for name in (
         'collection','library_id','object_id','original_kind','original_sha256',
         'batch','asset_id','story_id'))

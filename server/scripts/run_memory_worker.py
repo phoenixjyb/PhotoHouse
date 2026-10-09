@@ -149,6 +149,14 @@ def _check_schema(db, *, editorial_enabled=False):
         versions = db.execute('SELECT version_num FROM alembic_version').fetchall()
         if len(versions) != 1 or versions[0][0] not in COLLABORATION_REVISIONS:
             return False
+        from app.access.family_note_identity_schema import IDENTITY_REVISION
+        if versions[0][0] == IDENTITY_REVISION:
+            from app.access.family_note_identity import verify_family_note_identity_schema
+            from app.access.transport import TransportError
+            try:
+                verify_family_note_identity_schema(db)
+            except TransportError:
+                return False
         tables = {row[0] for row in db.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
         if (type(editorial_enabled) is not bool or (editorial_enabled and

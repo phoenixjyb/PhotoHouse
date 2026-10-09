@@ -46,14 +46,20 @@ private, and pin deployments to an explicit monorepo revision and artifact.
 
 The October 9 source comparison identified these concrete preservation items:
 
-- The legacy backend contains D1 original family-note identity, permanent
-  erasure, deletion-journal upgrade and schema application code. The public
-  baseline has ordinary story soft removal and separate memoir-contribution
-  deletion contracts; those do not provide the D1 family-note erasure route.
-  Import and qualify its dependency/schema/recovery closure as a separate slice.
-- The legacy Android checkout contains a process-memory conversation-navigation
-  helper and test absent from the public baseline. Review the behavior and its
-  dependent store before importing or explicitly superseding it.
+- The D1 original family-note identity, permanent-erasure route, additive
+  migration and offline deletion-journal upgrade are now imported from the
+  pinned legacy source, with their dependency and synthetic recovery checks.
+  This is separate from ordinary story soft removal and memoir-contribution
+  deletion. The erasure flag defaults off; historical notes are not backfilled.
+  Live migration, version 2 journal qualification, compatible deployment and
+  owner acceptance remain separate gates. See the
+  [erasure contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
+- The legacy Android process-memory conversation-navigation helper is now
+  imported with its dependent story/memoir store behavior and UI notice. The
+  matching Web implementation uses fresh directory/history reads and the same
+  membership and target revision boundaries. See [navigation](CONVERSATION_NAVIGATION.md)
+  and [current development evidence](DEVELOPMENT.md). Source preservation does
+  not replace signed delivery or installed-device acceptance.
 - Windows launchers, supervisors, worker packages and data-dependent repair
   utilities need individual disposition and an operator owner. Preserve the
   private originals while reviewing portable replacements.

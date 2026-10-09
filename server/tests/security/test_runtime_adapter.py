@@ -5,15 +5,21 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+import uuid
 from unittest.mock import patch
 
 import test_library_reads as library_fixture
 from app.access.runtime import EDITORIAL_REVISION, EDITION_REVISION, ExistingDatabase, RuntimeConfiguration, RuntimeUnavailable, REQUIRED_REVISION
+from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES, sqlite_family_note_identity_contract
 from app.main import create_app
 from fastapi.testclient import TestClient
+from alembic import command
 from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine
+from app.access.bootstrap import bootstrap_owner
+from app.access.service import AccessService
 from test_orm_migrations import config
-from test_access_foundation import MEMBER, PASSWORD, NOW
+from test_access_foundation import OWNER, MEMBER, PASSWORD, NOW
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -50,6 +56,35 @@ class RuntimeAdapterTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as db:
             db.execute(sql,args);db.commit()
 
+    def test_title_provider_build_is_explicit_and_never_runs_inference_at_startup(self):
+        from dataclasses import replace
+        from app.access.story_titles import LocalStoryTitleSuggester
+        with patch('app.access.story_titles.LocalStoryTitleSuggester', wraps=LocalStoryTitleSuggester) as adapter, \
+             patch('httpx.Client', side_effect=AssertionError('provider construction forbidden')):
+            disabled = self.settings.build_app(clock=lambda: NOW)
+            self.assertIsNone(disabled.state.story_title_suggester)
+            adapter.assert_not_called()
+            enabled = replace(self.settings, story_title_suggestions_enabled=True,
+                story_title_url='http://localhost:19002', story_title_model='synthetic-titles',
+                story_title_timeout_seconds=7).build_app(clock=lambda: NOW)
+            adapter.assert_called_once_with(url='http://localhost:19002', model='synthetic-titles', timeout=7)
+        self.assertEqual(enabled.state.story_title_suggester.timeout, 7)
+        self.assertEqual(enabled.state.story_title_suggester.model, 'synthetic-titles')
+        self.assertFalse(enabled.state.assistant_enabled)
+        self.assertFalse(enabled.state.memory_generation_enabled)
+
+    def test_runtime_title_provider_refuses_invalid_opt_in_and_configuration(self):
+        from dataclasses import replace
+        valid = dict(story_title_suggestions_enabled=True, story_title_url='http://localhost:19002',
+                     story_title_model='synthetic')
+        invalid = [dict(story_title_suggestions_enabled=False), dict(story_title_suggestions_enabled=1),
+                   dict(story_title_url=None), dict(story_title_model=None),
+                   dict(story_title_url='http://192.0.2.1:19002'), dict(story_title_model=' ')]
+        invalid += [dict(story_title_timeout_seconds=t) for t in (0, True, 31, float('nan'), float('inf'), '30')]
+        for change in invalid:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                replace(self.settings, **(valid | change)).build_app(clock=lambda: NOW)
+
     def test_real_adapter_login_and_scoped_reads_use_existing_migrated_database(self):
         response=self.client.post('/auth/login',json={'phone':MEMBER,'password':PASSWORD,'transport':'native'})
         self.assertEqual(response.status_code,200)
@@ -59,6 +94,46 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(response.json()['total'],2)
         self.assertEqual(response.headers['cache-control'],'no-store')
         self.assertNotIn(str(self.path),response.text)
+
+    def test_related_media_reads_actual_a0_without_generation_or_schema_changes(self):
+        # Build the actual older schema, rather than relabelling a head database.
+        path = self.root / 'a0-related.sqlite'
+        engine = create_engine('sqlite:///' + str(path))
+        try:
+            with engine.begin() as connection:
+                cfg = config(); cfg.attributes['connection'] = connection
+                command.upgrade(cfg, REQUIRED_REVISION)
+        finally:
+            engine.dispose()
+        with closing(sqlite3.connect(path)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            bootstrap_owner(db, phone=OWNER, password=PASSWORD, library_id='family-a')
+            token = AccessService(db, clock=lambda: NOW).login(OWNER, PASSWORD)
+            for asset_id, mime in ((101, 'image/jpeg'), (102, 'video/mp4')):
+                db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,taken_at)
+                    VALUES (?,?,?,'active',?,'2026-01-01')''',
+                    (asset_id, f'private-synthetic/{asset_id}', f'private-hash-{asset_id}', mime))
+                db.execute('INSERT INTO access_asset_libraries VALUES (?,?)', (asset_id, 'family-a'))
+            db.commit()
+            before = list(db.iterdump())
+        settings = RuntimeConfiguration(path, 'https://photohouse.test', (self.originals,), self.derived)
+        self.assertFalse(settings.memory_generation_enabled)
+        self.assertFalse(settings.memory_editorial_enabled)
+        self.assertFalse(settings.memory_editions_enabled)
+        with TestClient(settings.build_app(clock=lambda: NOW), base_url='https://photohouse.test',
+                        client=('192.0.2.40', 23456)) as client:
+            response = client.post('/story-workspace/related-media?library=family-a',
+                                   json={'asset_ids': '101', 'before_id': ''},
+                                   headers={'Authorization': 'Bearer ' + token, 'Sec-Fetch-Site': 'same-origin'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertEqual([item['id'] for item in response.json()['items']], ['102'])
+        self.assertEqual(response.json()['items'][0]['kind'], 'video')
+        self.assertTrue(response.json()['needs_review'])
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchall(),
+                             [(REQUIRED_REVISION,)])
+            self.assertEqual(list(db.iterdump()), before)
 
     def test_import_and_construction_open_no_storage_or_runtime_configuration(self):
         with patch('sqlite3.connect',side_effect=AssertionError('Connection during build')), \
@@ -146,11 +221,42 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.get('/assets?library=family-a',headers=self.headers()).status_code,200)
 
     def test_adapter_revision_pin_matches_actual_migration_head(self):
-        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[EDITION_REVISION])
+        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[IDENTITY_REVISION])
         for invalid in (Path('relative.sqlite'),':memory:'):
             with self.assertRaises(ValueError):ExistingDatabase(invalid)
         for timeout in (0,-1,11,float('nan'),True):
             with self.assertRaises(ValueError):ExistingDatabase(self.path,timeout=timeout)
+
+    def test_c2_database_without_identity_schema_remains_compatible_without_repair(self):
+        for kind, name, _ddl in sqlite_family_note_identity_contract():
+            if kind == 'trigger':
+                self.mutate('DROP TRIGGER ' + name)
+        for table in ('access_memory_book_edition_family_notes', 'access_family_note_scopes',
+                      'access_family_note_identities'):
+            self.mutate('DROP TABLE ' + table)
+        self.mutate('UPDATE alembic_version SET version_num=?', (EDITION_REVISION,))
+        self.assertEqual(self.client.get('/auth/session', headers=self.headers()).status_code, 200)
+        with ExistingDatabase(self.path)() as db:
+            from app.access.stories import Stories
+            note = Stories(AccessService(db, clock=lambda: NOW)).save(
+                library_fixture.LibraryReadTests.owner_token, 'family-a',
+                {'title': 'Legacy-compatible note', 'text': 'Synthetic source', 'language': 'en',
+                 'byline': '', 'mutation_id': str(uuid.uuid4())}, asset_id=101)
+            self.assertEqual(note['revision'], 1)
+            tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            self.assertFalse(IDENTITY_TABLES & tables)
+
+    def test_identity_revision_requires_complete_schema_without_repair(self):
+        self.mutate('DROP TABLE access_memory_book_edition_family_notes')
+        response = self.client.get('/auth/session', headers=self.headers())
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn('family_note', response.text)
+        with closing(sqlite3.connect(self.path)) as db:
+            self.assertFalse(db.execute("SELECT 1 FROM sqlite_master WHERE name='access_memory_book_edition_family_notes'").fetchall())
+
+    def test_identity_revision_refuses_missing_immutability_trigger(self):
+        self.mutate('DROP TRIGGER trg_family_note_no_reuse')
+        self.assertEqual(self.client.get('/auth/session', headers=self.headers()).status_code, 503)
 
     def test_f7_adapter_remains_compatible_without_the_new_reference_table(self):
         self.mutate('DROP TABLE access_memory_contribution_refs')

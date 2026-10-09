@@ -74,6 +74,8 @@ data class MemoryBookChatState(
     val chatDraftFocusRequestId: Int = 0,
     val draft: String = "", val dictation: MemoryDictationStore? = null,
     val busy: Boolean = false, val failure: LiveProblem? = null,
+    /** True only when a selected thread was reopened from a fresh protected directory. */
+    val conversationRestored: Boolean = false,
     /** Selected only after an explicit, scope-bound read of the saved editorial plan. */
     val editorialContext: MemoryBookChatEditorialContext = MemoryBookChatEditorialContext.BASIC,
 )
@@ -105,6 +107,8 @@ data class MemoryCommunityStoryState(
     val dictation: MemoryDictationStore? = null,
     val busy: Boolean = false,
     val failure: LiveProblem? = null,
+    /** True only when a selected thread was reopened from a fresh protected directory. */
+    val conversationRestored: Boolean = false,
 )
 
 enum class MemoryChatTurnSeedResult { SEEDED, BLOCKED, STALE }
@@ -209,6 +213,7 @@ data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
+    val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
     val problem: LiveProblem? = null,
 )
 data class LiveState(
@@ -262,6 +267,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private var uploadAnnotationAudioJob: Job? = null
     private var groupedStoryRequest = 0L
     private var groupedStoryPageRequest = 0L
+    private var groupedStoryRelatedPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
     private var savedMemoryDetailRequest = 0L
     private var savedMemoryReaderEpoch = 0L
@@ -290,6 +296,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private val memoryBookResume = LinkedHashMap<MemoryBookResumeKey, MemoryBookResumePosition>()
     private var communityEpoch = 0L
     private var bookChatEpoch = 0L
+    private val memoryConversationNavigation = MemoryConversationNavigation()
     private val bookChatJobs = mutableSetOf<Job>()
     private val communityJobs = mutableSetOf<Job>()
     private var communityPendingAudio: ByteArray? = null
@@ -364,12 +371,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     val hasSession get() = token != null
     val cachedBytes get() = state.value.previews.values.sumOf { it.size }
 
-    private fun invalidate(keepIdentity: Boolean, cover: Boolean = false) {
+    private fun invalidate(keepIdentity: Boolean, cover: Boolean = false, preserveConversationNavigation: Boolean = false) {
+        if (!keepIdentity || !preserveConversationNavigation) memoryConversationNavigation.clear()
         clearMemoryBookEditorial()
         val previous = state.value
         groupedStoryRequest++; groupedStoryPageRequest++
         previous.groupedStoryCreation?.editor?.clear()
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
+        groupedStoryRelatedPreviewRequest++
         previous.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
         previous.savedMemoryStories?.hero?.fill(0)
         previous.savedMemoryStories?.covers?.values?.forEach { it.fill(0) }
@@ -544,7 +554,11 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         retry = { foreground() }
                     }
                 })
-                val editor = StoryWorkspaceStore(repository, scope, binding)
+                val editor = StoryWorkspaceStore(repository, scope, binding).also { created ->
+                    created.observeRelatedCandidates { candidates ->
+                        updateGroupedStoryRelatedPreviews(created, candidates)
+                    }
+                }
                 mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor))
                 loadGroupedStorySelectionPage(1)
             } catch (failure: CancellationException) { throw failure }
@@ -601,11 +615,58 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         return true
     }
 
+    private fun updateGroupedStoryRelatedPreviews(editor: StoryWorkspaceStore, candidates: List<StoryRelatedMediaCandidate>) {
+        val creation = state.value.groupedStoryCreation ?: return
+        if (creation.editor !== editor) return
+        groupedStoryRelatedPreviewRequest++
+        val request = groupedStoryRelatedPreviewRequest
+        creation.relatedPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(relatedPreviews = emptyMap(), relatedPreviewBusy = candidates.isNotEmpty()))
+        if (candidates.isEmpty()) return
+        val credential = token ?: return
+        val library = state.value.library ?: return
+        val generation = state.value.generation
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryRelatedPreviewRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
+                editor.state.value.relatedCandidates.map { it.asset.id } == candidates.map { it.asset.id }
+            var total = 0
+            try {
+                for (candidate in candidates.take(StoryRelatedMediaWireLimit.MAX_PREVIEWS)) {
+                    if (!valid()) return@launch
+                    val bytes = try { api.thumbnail(credential, library, candidate.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || total + bytes.size > StoryRelatedMediaWireLimit.PREVIEW_BYTES) {
+                        bytes.fill(0); continue
+                    }
+                    total += bytes.size
+                    val live = state.value.groupedStoryCreation ?: run { bytes.fill(0); return@launch }
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(relatedPreviews = live.relatedPreviews + (candidate.asset.id to bytes)))
+                }
+                if (valid()) state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: ApiFailure) {
+                if (valid()) {
+                    if (failure.status in setOf(401, 403)) readFailure(failure, generation, credential) { beginGroupedStoryCreation() }
+                    else state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+                }
+            } catch (_: Exception) {
+                if (valid()) state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+            }
+        }
+    }
+
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
         groupedStoryRequest++; groupedStoryPageRequest++
         current.previews.values.forEach { it.fill(0) }
+        current.relatedPreviews.values.forEach { it.fill(0) }
+        groupedStoryRelatedPreviewRequest++
         mutable.value = state.value.copy(groupedStoryCreation = null)
         return true
     }
@@ -1165,10 +1226,20 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                     null
                 } catch (_: Exception) { null } else null
                 if (!current()) return@launch
-                val selected = conversations?.items?.firstOrNull()
+                val selection = memoryConversationNavigation.choose(
+                    conversationNavigationScope(library, "book", book.id, book.revision,
+                        book.stories.map { it.id to it.revision }), conversations)
+                val selected = conversations?.items?.firstOrNull { it.id == selection.id }
                 val turns = selected?.let { selectedConversation ->
-                    try { repository.turns(selectedConversation.id, replyContext = true) }
+                    try {
+                        if (!current()) return@let null
+                        repository.turns(selectedConversation.id, replyContext = true, currentRequest = ::current)
+                    }
                     catch (e: CancellationException) { throw e }
+                    catch (e: ApiFailure) {
+                        if (e.status in listOf(401, 403)) throw e
+                        null
+                    }
                     catch (_: Exception) { null }
                 }
                 if (!current()) return@launch
@@ -1177,7 +1248,9 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(selectedBook = book,
                     readerBusy = false, readerUnavailable = false, resumePosition = findMemoryBookResume(reading.library, book),
                     companion = if (reading.capabilities?.generationEnabled == true)
-                        MemoryBookChatState(book.id, book.revision, conversations, selected?.id, turns, activeJob) else null))
+                        MemoryBookChatState(book.id, book.revision, conversations, selected?.id, turns, activeJob,
+                            conversationRestored = selection.restored && turns != null) else null))
+                rememberConversationNavigation()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!current()) return@launch
@@ -1733,6 +1806,29 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         memoryBookEditorialCatalog.value = MemoryBookEditorialCatalogState()
     }
 
+    private fun conversationNavigationScope(library: String, type: String, id: String, revision: Long,
+        children: List<Pair<String, Long>> = emptyList()): MemoryConversationNavigationScope? {
+        val session = identity ?: return null
+        val membership = session.memberships.firstOrNull { it.library_id == library && it.available } ?: return null
+        return MemoryConversationNavigationScope(session.account_id, library, membership.revision,
+            type, id, revision, children)
+    }
+
+    private fun rememberConversationNavigation() {
+        state.value.savedMemoryStories?.let { reading ->
+            val detail = reading.detail ?: return@let
+            val chat = reading.community ?: return@let
+            memoryConversationNavigation.remember(conversationNavigationScope(reading.library, "story", detail.id,
+                detail.revision), chat.conversationId, chat.conversations)
+        }
+        state.value.memoryBooks?.let { reading ->
+            val book = reading.selectedBook ?: return@let
+            val chat = reading.companion ?: return@let
+            memoryConversationNavigation.remember(conversationNavigationScope(reading.library, "book", book.id,
+                book.revision, book.stories.map { it.id to it.revision }), chat.conversationId, chat.conversations)
+        }
+    }
+
     private fun editorialKey(accountId: String, library: String, book: MemoryBook): String =
         listOf(accountId, library, book.id, book.revision, book.stories.joinToString("|") { "${it.id}:${it.revision}" }).joinToString("/")
 
@@ -1779,6 +1875,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         before.conversationId, before.draft, live.draft, result.conversationId, mergedDraft, result.conversations),
                     dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation)
                 mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(companion = merged.copy(busy = false, failure = null)))
+                rememberConversationNavigation()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (valid()) {
@@ -1809,7 +1906,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             val draft = if (chat.conversationId == null) chat.draft else ""
             mutable.value = state.value.copy(memoryBooks = reading.copy(companion = chat.copy(
                 pendingConversation = request, threadDrafts = drafts, draft = draft,
-                editorialContext = MemoryBookChatEditorialContext.BASIC)))
+                conversationRestored = false, editorialContext = MemoryBookChatEditorialContext.BASIC)))
         }
         retryStartMemoryBookConversation()
     }
@@ -1821,7 +1918,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!valid()) return@launchBookChat before
         val conversations = repository.conversations("book", before.bookId, withPreview = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
-        val turns = repository.turns(conversation.id, 1, replyContext = true)
+        val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
         val job = recoverPendingChatJob(repository, turns, before.bookRevision, valid)
         val drafts = before.threadDrafts
@@ -1829,18 +1926,18 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
         before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
             threadDrafts = boundedDrafts, draft = newDraft,
-            pendingConversation = null, pendingTurn = null, pendingTurnConversationId = null)
+            pendingConversation = null, pendingTurn = null, pendingTurnConversationId = null, conversationRestored = false)
     }
 
     fun selectMemoryBookConversation(id: String) = launchBookChat { repository, before, valid ->
         if (!canChangeMemoryBookThread(before)) return@launchBookChat before
         if (before.conversations?.items?.none { it.id == id } != false) return@launchBookChat before
-        val turns = repository.turns(id, 1, replyContext = true)
+        val turns = repository.turns(id, 1, replyContext = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
         val job = recoverPendingChatJob(repository, turns, before.bookRevision, valid)
         val drafts = rememberThreadDraft(before.threadDrafts, before.conversationId, before.draft, before.conversations)
         before.copy(conversationId = id, turns = turns, job = job, threadDrafts = drafts,
-            draft = drafts[id].orEmpty(), pendingTurn = null, pendingTurnConversationId = null,
+            draft = drafts[id].orEmpty(), pendingTurn = null, pendingTurnConversationId = null, conversationRestored = false,
             editorialContext = if (id == before.conversationId) before.editorialContext else MemoryBookChatEditorialContext.BASIC)
     }
 
@@ -1848,7 +1945,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (page !in 1..8) return@launchBookChat before
         val id = before.conversationId ?: return@launchBookChat before
         if (!valid()) return@launchBookChat before
-        val turns = repository.turns(id, page, replyContext = true)
+        val turns = repository.turns(id, page, replyContext = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
         before.copy(turns = turns)
     }
@@ -2005,14 +2102,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val request = before.pendingTurn ?: return@launchBookChat before
         val job = repository.sendTurn(id, request)
         if (!valid()) return@launchBookChat before
-        val turns = repository.turns(id, 1, replyContext = true)
+        val turns = repository.turns(id, 1, replyContext = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
         before.copy(job = job, pendingTurn = null, pendingTurnConversationId = null, turns = turns)
     }
 
     fun refreshMemoryBookChat() = launchBookChat { repository, before, valid ->
         val id = before.conversationId ?: return@launchBookChat before
-        val turns = repository.turns(id, before.turns?.page ?: 1, replyContext = true)
+        val turns = repository.turns(id, before.turns?.page ?: 1, replyContext = true, currentRequest = valid)
         if (!valid()) return@launchBookChat before
         val pendingRows = turns.items.filter { it.state in setOf("queued", "running") && it.jobId != null }
         val pendingJob = recoverPendingChatJob(repository, turns, before.bookRevision, valid)
@@ -2312,6 +2409,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation,
                     )
                     mutable.value = state.value.copy(savedMemoryStories = currentReading.copy(community = merged.copy(busy = false, failure = null)))
+                    rememberConversationNavigation()
                 } else result.audio?.close()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -2348,17 +2446,28 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 "story", storyId, withPreview = true, currentRequest = current,
             ) else null
             if (!current()) return@launchMemoryCommunity initial
-            val selected = conversations?.items?.firstOrNull()
+            val detail = state.value.savedMemoryStories?.detail ?: return@launchMemoryCommunity initial
+            val selection = memoryConversationNavigation.choose(
+                conversationNavigationScope(reading.library, "story", storyId, detail.revision), conversations)
+            val selected = conversations?.items?.firstOrNull { it.id == selection.id }
             val turns = selected?.let {
-                try { repository.turns(it.id, replyContext = true) }
+                try {
+                    if (!current()) return@let null
+                    repository.turns(it.id, replyContext = true, currentRequest = current)
+                }
                 catch (e: CancellationException) { throw e }
+                catch (e: ApiFailure) {
+                    if (e.status in listOf(401, 403)) throw e
+                    null
+                }
                 catch (_: Exception) { null }
             }
             if (!current()) return@launchMemoryCommunity initial
             val revision = state.value.savedMemoryStories?.detail?.revision ?: return@launchMemoryCommunity initial
             val job = turns?.let { recoverPendingChatJob(repository, it, revision, current) }
             initial.copy(capabilities = caps, contributions = contributions, conversations = conversations,
-                conversationId = selected?.id, turns = turns, job = job)
+                conversationId = selected?.id, turns = turns, job = job,
+                conversationRestored = selection.restored && turns != null)
         }
     }
 
@@ -2581,7 +2690,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 ?: current.threadDrafts
             val draft = if (current.conversationId == null) current.chatDraft else ""
             mutable.value = state.value.copy(savedMemoryStories = state.value.savedMemoryStories?.copy(
-                community = current.copy(pendingConversation = request, threadDrafts = drafts, chatDraft = draft)))
+                community = current.copy(pendingConversation = request, threadDrafts = drafts, chatDraft = draft,
+                    conversationRestored = false)))
         }
         retryStartMemoryConversation()
     }
@@ -2592,7 +2702,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
             val conversation = repository.startConversation(request)
             if (!valid()) return@launchMemoryCommunity before
-            val turns = repository.turns(conversation.id, 1, replyContext = true)
+            val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
             val conversations = repository.conversations("story", current.storyId, withPreview = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
@@ -2602,7 +2712,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             val newDraft = if (before.conversationId == null) before.chatDraft else drafts[conversation.id].orEmpty()
             val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
             before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
-                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null)
+                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null, conversationRestored = false)
         }
     }
 
@@ -2611,14 +2721,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!canChangeMemoryStoryThread(current)) return
         if (current.conversations?.items?.any { it.id == conversationId } != true) return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
-            val turns = repository.turns(conversationId, 1, replyContext = true)
+            val turns = repository.turns(conversationId, 1, replyContext = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
             val revision = state.value.savedMemoryStories?.detail?.revision ?: return@launchMemoryCommunity before
             val job = recoverPendingChatJob(repository, turns, revision, valid)
             if (!valid()) return@launchMemoryCommunity before
             val drafts = rememberThreadDraft(before.threadDrafts, before.conversationId, before.chatDraft, before.conversations)
             before.copy(conversationId = conversationId, turns = turns, job = job, pendingTurn = null,
-                threadDrafts = drafts, chatDraft = drafts[conversationId].orEmpty())
+                threadDrafts = drafts, chatDraft = drafts[conversationId].orEmpty(), conversationRestored = false)
         }
     }
 
@@ -2627,7 +2737,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val current = state.value.savedMemoryStories?.community ?: return
         val conversationId = current.conversationId ?: return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
-            val turns = repository.turns(conversationId, pageNumber, replyContext = true)
+            val turns = repository.turns(conversationId, pageNumber, replyContext = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
             before.copy(turns = turns)
         }
@@ -2699,7 +2809,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
             val job = repository.sendTurn(conversation, request)
             if (!valid()) return@launchMemoryCommunity before
-            val turns = repository.turns(conversation, 1, replyContext = true)
+            val turns = repository.turns(conversation, 1, replyContext = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
             before.copy(job = job, pendingTurn = null, turns = turns)
         }
@@ -2709,7 +2819,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val current = state.value.savedMemoryStories?.community ?: return
         val conversation = current.conversationId ?: return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
-            val turns = repository.turns(conversation, before.turns?.page ?: 1, replyContext = true)
+            val turns = repository.turns(conversation, before.turns?.page ?: 1, replyContext = true, currentRequest = valid)
             if (!valid()) return@launchMemoryCommunity before
             val revision = state.value.savedMemoryStories?.detail?.revision ?: return@launchMemoryCommunity before
             val pendingRows = turns.items.filter { it.state in setOf("queued", "running") && it.jobId != null }
@@ -3063,16 +3173,19 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         mutable.value = state.value.copy(upload = null)
     }
     fun libraries() { if (usable()) { playbackProgress.clear(); invalidate(keepIdentity = true); mutable.value = state.value.copy(assistant = null) } }
-    fun selectLibrary(library: String, afterLoaded: (() -> Unit)? = null) {
+    fun selectLibrary(library: String, afterLoaded: (() -> Unit)? = null) =
+        selectLibraryInternal(library, afterLoaded, preserveConversationNavigation = false)
+
+    private fun selectLibraryInternal(library: String, afterLoaded: (() -> Unit)?, preserveConversationNavigation: Boolean) {
         val previousLibrary = state.value.library
         if (previousLibrary != null && previousLibrary != library) playbackProgress.clear()
         if (!usable() || coolingDown()) return
-        invalidate(keepIdentity = true)
+        invalidate(keepIdentity = true, preserveConversationNavigation = preserveConversationNavigation)
         if (identity?.memberships?.none { it.library_id == library && it.available } != false) {
             mutable.value = state.value.copy(assistant = null, problem = LiveProblem(Message.ACCESS_DENIED)); return
         }
         mutable.value = state.value.copy(library = library, assistant = if (previousLibrary == library) state.value.assistant else null)
-        loadPage(1, GalleryMedia.ALL, afterLoaded)
+        loadPage(1, GalleryMedia.ALL, afterLoaded, preserveConversationNavigation = preserveConversationNavigation)
     }
     fun selectMedia(media: GalleryMedia) {
         if (!mediaFilterEnabled || media == GalleryMedia.PREPARED_VIDEOS && !preparedBrowseEnabled) return
@@ -3211,7 +3324,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 val result = api.assistantTranscribe(credential, library, wav, requestId)
                 if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantTranscriptRequest) return@launch
                 val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result, lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = result.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId, failure = null))
+                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result, lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = null, failure = null))
                 result.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.let { reportAssistantOutcome(library, generation, credential, requestId, "displayed") }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -3220,6 +3333,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
             }
         }
+    }
+    /** Explicitly accept the exact current transcript into the caller's editable draft. */
+    fun takeAssistantTranscriptForDraft(expected: AssistantTranscript): String? {
+        val current = state.value.assistant ?: return null
+        if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
+            current.transcript !== expected || current.busy || current.transcribing || current.pendingTurn != null || !allowed()) return null
+        val confirmedRequestId = expected.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId
+        mutable.value = state.value.copy(assistant = current.copy(transcript = null, confirmedTranscriptRequestId = confirmedRequestId))
+        return expected.text
     }
     fun sendAssistantText(text: String): Boolean {
         val current = state.value.assistant ?: return false
@@ -3349,12 +3471,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val current = state.value.familyTags ?: return
         if (current.selectedTag != null) openFamilyTags(current.query, current.page)
     }
-    fun loadPage(page: Int = 1, media: GalleryMedia = state.value.media, afterLoaded: (() -> Unit)? = null) {
+    fun loadPage(page: Int = 1, media: GalleryMedia = state.value.media, afterLoaded: (() -> Unit)? = null,
+        preserveConversationNavigation: Boolean = true) {
         if (!allowed() || coolingDown()) return
         require(page in 1..100000 && (media == GalleryMedia.ALL || mediaFilterEnabled))
         require(media != GalleryMedia.PREPARED_VIDEOS || preparedBrowseEnabled)
         val library = state.value.library!!; val credential = token!!
-        invalidate(keepIdentity = true)
+        invalidate(keepIdentity = true, preserveConversationNavigation = preserveConversationNavigation)
         mutable.value = state.value.copy(library = library, busy = true, media = media)
         launch { generation ->
             try {
@@ -3763,6 +3886,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!active(generation)) return
         if (error is ApiFailure && error.status in listOf(401, 403)) {
             playbackProgress.clear()
+            memoryConversationNavigation.clear()
             closeGroupedStoryCreation(discard = true)
         }
         // A protected photo transition is a read-only operation. Give a single
@@ -3826,7 +3950,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun background() {
         // Retain only an internal selection hint; clear all private UI state.
         if (!state.value.covered) resumeLibrary = state.value.library
-        batchQueue?.pause(); invalidate(keepIdentity = true, cover = true)
+        batchQueue?.pause(); invalidate(keepIdentity = true, cover = true, preserveConversationNavigation = true)
     }
     fun foreground() {
         if (!state.value.covered || state.value.busy || coolingDown()) return
@@ -3834,7 +3958,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val previousLibrary = resumeLibrary
         if (credential == null) { invalidate(keepIdentity = false); return }
         if (now() >= deadline) { expire(); return }
-        invalidate(keepIdentity = true, cover = true)
+        invalidate(keepIdentity = true, cover = true, preserveConversationNavigation = true)
         mutable.value = state.value.copy(busy = true)
         launch { generation ->
             try {
@@ -3845,7 +3969,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 batchQueue?.attach(session.account_id)
                 mutable.value = state.value.copy(session = session, covered = false, busy = false)
                 resumeLibrary = null
-                openPreferredLibrary(session, previousLibrary)
+                openPreferredLibrary(session, previousLibrary, preserveConversationNavigation = true)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(generation)) return@launch
@@ -3909,10 +4033,11 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             ?: available.firstOrNull { it.library_id == "family" }?.library_id
             ?: available.firstOrNull()?.library_id
     }
-    private fun openPreferredLibrary(session: Session, current: String? = state.value.library) {
+    private fun openPreferredLibrary(session: Session, current: String? = state.value.library,
+        preserveConversationNavigation: Boolean = false) {
         val library = preferredLibrary(session, current) ?: return
         val storageWarning = state.value.problem?.takeIf { it.message == Message.SESSION_STORAGE_UNAVAILABLE }
-        selectLibrary(library)
+        selectLibraryInternal(library, null, preserveConversationNavigation && library == current)
         if (storageWarning != null) mutable.value = state.value.copy(problem = storageWarning)
     }
     private fun validResponse(condition: Boolean) { if (!condition) throw ApiFailure(FailureKind.INVALID_RESPONSE) }

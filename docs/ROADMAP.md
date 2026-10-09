@@ -9,7 +9,7 @@ feature-specific configuration/worker arguments. The offline
 [private deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md) now validates declared
 bindings, artifact/runtime identities, resource budgets and distinct rollback
 targets. Its report omits private values. An explicit typed bridge now maps
-assistant ASR/TTS and memory contribution/narrative selections into private
+assistant ASR/TTS, memory contribution/narrative and independent story-title selections into private
 configuration copies, preserving feature opt-ins and existing request/item/run
 limits. It refuses conflicting legacy settings and never launches a service.
 An [offline qualification record checker](MODEL_QUALIFICATION.md) now binds
@@ -52,24 +52,57 @@ Embedding/face bindings and independent runtime catalog packaging remain future
 integration work. Metadata validation does not establish installed models or
 allow automatic activation.
 
+The [activity grouping design](ACTIVITY_GROUPING_DESIGN.md) now has a pure,
+synthetic photo-vector ranker. It checks a preauthorized bounded cohort, exact
+vector identity and component checksums before cosine ranking. This is a
+foundation only: no lookup route, real embedding coverage or model integration
+exists yet. The next visual slice must preserve checkpoint/preprocessing identity
+and qualify library-filtered loading before any ranking; the global index must
+not be searched first and post-filtered. Similarity will remain a reviewed
+candidate, never proof of an activity or a reason to copy prose automatically.
+
 The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
 Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery
 gate. The legacy application repositories remain retained references; runtime,
 provider quality, supported release paths and physical-device acceptance keep
 their own gates. Historical pending-CI statements below refer to older snapshots.
 
-The Web grouped-story editor now has an explicit, reviewable
+The Web and phone grouped-story editors now have an explicit, reviewable
 [same-day moments picker](../server/docs/security/STORY_RELATED_MEDIA_V1.md).
 It suggests photos/videos from recorded capture dates within the current library;
 the user decides which belong in the story. A common day does not prove a common
-activity. The next client slice is phone candidate selection, followed by
-provider-qualified title suggestions and reviewed activity grouping. This source
+activity. Phone candidate lookup and inclusion preserve ordered selection, keep
+pages and preview bytes bounded, and reject stale scope/selection responses.
+See the [phone source evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md).
+Title runtime/staging wiring and the dedicated `story-titles` projection are now
+implemented, default off and bounded to 30 seconds. The next storytelling slice
+is provider-qualified title suggestions and reviewed activity grouping. The title
+role now has three independent synthetic review cases and bounded opt-in capture;
+empty-source abstention makes no provider request. Current/rollback bindings and
+human title judgments remain required. Continuous conversation recovery remains
+a parallel priority. This source
 change does not update a live server, publish an APK or enable generation.
 
 Source implementations and accepted installed behavior are different milestones.
 Use [the feature matrix](FEATURES.md) and [development evidence](DEVELOPMENT.md)
 for the implemented baseline. Each slice below should finish as a complete user
 journey with generated tests and rendered UI before its installation gate.
+
+The remaining legacy D1 family-note erasure source is now preserved in this
+monorepo, including immutable identity, historical library authorization,
+dependent prose cleanup and offline journal upgrade/replay. It defaults off and
+does not backfill old notes. Native paired-backup/migration/journal checks and
+owner acceptance precede activation; source preservation is not a live erasure
+operation. See the [contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
+
+The immediate maintenance slice is exact worker startup diagnosis and recovery.
+[Sanitized terminal reports](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md)
+are implemented in source; installing them, capturing a bounded native run and
+restoring future approved-media processing retain their separate gates. Matched
+story-picker release qualification includes a real a0 migration fixture with
+generation/editorial/edition features off. This supports a release without a
+migration for the picker itself; exact installed configuration, native package
+checks, API switch and a phone update remain to be delivered.
 
 | Priority | User journey | Completion evidence |
 |---|---|---|
@@ -109,15 +142,22 @@ candidate. The Web journey has 17 generated browser checkpoints, including
 Chinese/English 390 px layouts at 150% text, and the four-suite optional Web
 profile passed after its test waited for the disclosure rule to load. See the
 [phone preview evidence](../clients/android/docs/ANDROID_CONVERSATION_PREVIEWS_2026-10-05.md).
-The next conversational work is understandable follow-up context and
-clarification, with explicit recording and submission controls.
+Current story/memoir clarification replies now explain how to continue in Web
+and phone. The cue keeps recording, draft insertion and sending explicit, and
+requires valid current reply metadata. Suggested questions cannot replace an
+existing draft. See [clarification behavior](CONVERSATION_CLARIFICATION.md).
+The next conversational work is delivery and family evaluation of these controls,
+with provider-qualified follow-up quality.
 
-The legacy Android process-memory selected-conversation restoration is a
-specific migration gap: this public baseline still chooses the first listed
-thread when reopening. Import the bounded navigation helper and dependent
-store/UI/test changes with current account/library/membership/target/revision
-checks before retiring that legacy feature. This does not preserve unsent text
-or bypass fresh authorization.
+Web and Android now implement bounded process-memory selected-conversation
+restoration for saved stories and memoirs. They choose only from a fresh
+authorized directory, load current messages before showing the notice, and open
+an empty composer. Account, library, membership and target revision bindings,
+plus ordered memoir children, prevent stale selection reuse. See
+[conversation navigation](CONVERSATION_NAVIGATION.md) and the revision-specific
+[development evidence](DEVELOPMENT.md). Served Web files, signed phone delivery
+and family acceptance remain separate; navigation does not qualify a provider
+or preserve unsent text.
 
 The public source candidate now includes memoir source inspection and explicit
 chapter/reply narration in Web and Android. Its four-suite Web profile passed;

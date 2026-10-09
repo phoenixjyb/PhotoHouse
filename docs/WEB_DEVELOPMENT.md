@@ -4,11 +4,14 @@ The optional `web` profile runs the generated-data CommonJS browser suites
 listed in `tools/check.py`. It includes:
 
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
+- `server/tests/security/test_assistant_turn_trail_browser.cjs`
+- `server/tests/security/test_assistant_transcript_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_reader_browser.cjs`
 - `server/tests/security/test_memory_book_edition_browser.cjs`
 - `server/tests/security/test_memory_book_edition_shelf_browser.cjs`
 - `server/tests/security/test_memory_community_browser.cjs`
+- `server/tests/security/test_memory_conversation_navigation_browser.cjs`
 - `server/tests/security/test_memory_book_edition_sources_browser.cjs`
 - `server/tests/security/test_story_titles_browser.cjs`
 - `server/tests/security/test_story_related_media_browser.cjs`
@@ -19,12 +22,30 @@ invalidation, reader-only access, localized speech controls and stopping
 speech when the shelf refreshes. It does not activate C2 or contact a household
 service.
 
+The assistant trail journey checks eight bounded in-page turns, safe text,
+current structured context, no replay of uncertain replies, scope changes and
+reload clearing. Its scroll region is keyboard accessible and reveals the
+latest successful reply without moving focus or scrolling the page. This
+temporary client list is distinct from server troubleshooting retention; see
+[the trail contract](ASSISTANT_TURN_TRAIL.md).
+
+The [transcript review journey](ASSISTANT_TRANSCRIPT_REVIEW.md) uses synthetic
+capture and ASR responses. It checks valid WAV submission, editable transcript
+review, preservation of typed text, explicit insertion and receipt linking,
+the UTF-8 byte limit, discard, and overlapping account changes. It uses no
+microphone, household recording or inference provider.
+
 The conversation suite covers first-user-message previews, unchanged legacy
 list responses, one-request fallback for an older server, stale-scope rejection,
 draft recovery, and Chinese/English layout at 390 px and 150% text. It renders
 preview text as native option text and uses generated records only.
 The [conversation-preview contract](../server/docs/security/MEMORY_CONVERSATION_PREVIEWS_V1.md)
 documents the opt-in wire field and compatibility behavior.
+
+The separate [navigation journey](CONVERSATION_NAVIGATION.md) checks restoration
+from fresh listed IDs and history, empty composition, changed membership/targets,
+memoir child revisions and order, missing threads and failed or delayed reads.
+It uses a fake request adapter and keeps navigation hints out of browser storage.
 
 On October 5, 2026, its focused run passed 17 checkpoints and its bilingual
 screenshots were reviewed. The first combined run stopped at an earlier native
@@ -63,9 +84,12 @@ python tools/check.py web
 `PH_BROWSER_EXECUTABLE` may be omitted when the selected existing Playwright
 installation already knows its browser executable. The suites also support
 `PLAYWRIGHT_MODULE_PATH`; when both module variables are set, they must agree.
-The wrapper passes `PH_BROWSER_EXECUTABLE` and `PH_BROWSER_ARTIFACTS` through
-unchanged and uses the current Python `sys.executable` for the ASGI bridge
-unless `PH_BROWSER_PYTHON` is supplied.
+The wrapper passes `PH_BROWSER_EXECUTABLE` through unchanged and uses the current
+Python `sys.executable` for the ASGI bridge unless `PH_BROWSER_PYTHON` is supplied.
+When `PH_BROWSER_ARTIFACTS` is supplied, each suite writes to a child directory
+named after its test file. This keeps common result filenames from overwriting
+another suite's evidence. Without that setting, suites choose their own temporary
+artifact directories.
 
 Record the Node, Python, Playwright module, and Chromium versions alongside
 local results when reproducing a failure. The profile honors existing module

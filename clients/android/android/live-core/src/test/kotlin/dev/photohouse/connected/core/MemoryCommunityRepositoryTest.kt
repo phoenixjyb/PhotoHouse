@@ -1,6 +1,7 @@
 package dev.photohouse.connected.core
 
 import dev.photohouse.protocol.SessionToken
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
@@ -116,6 +117,50 @@ class MemoryCommunityRepositoryTest {
             fail("expected denial")
         } catch (e: ApiFailure) { assertEquals(403, e.status) }
         assertEquals(1, denied)
+    }
+
+    @Test fun turnDenialCallbackIsFencedByTheOriginatingReaderRequest() = runBlocking {
+        val id = "44444444-4444-4444-4444-444444444444"
+        val binding = MemoryCommunityBinding(token(), "family-a", 8)
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var denied = 0
+        val api = object : FakeApi() {
+            override suspend fun conversationTurnsWithReplyContext(
+                token: Bearer, library: String, conversationId: String, page: Int,
+            ): ByteArray {
+                started.complete(Unit)
+                release.await()
+                throw ApiFailure(FailureKind.HTTP, 403)
+            }
+        }
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+        store.loadCapabilities()
+        var requestCurrent = true
+        val oldRequest = launch {
+            try {
+                store.turns(id, replyContext = true, currentRequest = { requestCurrent })
+                fail("expected stale request cancellation")
+            } catch (_: CancellationException) { }
+        }
+        started.await()
+        requestCurrent = false
+        release.complete(Unit)
+        oldRequest.join()
+        assertEquals("stale reader denial must not invalidate its replacement", 0, denied)
+
+        val currentApi = object : FakeApi() {
+            override suspend fun conversationTurnsWithReplyContext(
+                token: Bearer, library: String, conversationId: String, page: Int,
+            ): ByteArray = throw ApiFailure(FailureKind.HTTP, 401)
+        }
+        val currentStore = MemoryCommunityRepository(currentApi, { binding }, { denied++ })
+        currentStore.loadCapabilities()
+        try {
+            currentStore.turns(id, replyContext = true, currentRequest = { true })
+            fail("expected current reader denial")
+        } catch (e: ApiFailure) { assertEquals(401, e.status) }
+        assertEquals("current reader owns auth denial handling", 0, denied)
     }
 
     @Test fun preview400FallsBackOnceToLegacyOnlyWhileReaderAndBindingRemainCurrent() = runBlocking {

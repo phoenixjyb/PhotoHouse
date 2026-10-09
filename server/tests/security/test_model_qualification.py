@@ -41,6 +41,15 @@ def synthetic_fixture(directory):
                contract='assistant-reply-wav-v1', endpoint='http://127.0.0.1:19005/speech')
     manifest['providers'].append(tts)
     manifest['bindings'].append({'role': 'assistant_tts', 'provider': tts['id'], 'enabled': False})
+    title_binding = next(binding for binding in manifest['bindings']
+                         if binding['role'] == 'title_suggestions')
+    title_binding['enabled'] = True
+    title_previous = copy.deepcopy(next(provider for provider in manifest['providers']
+                                        if provider['id'] == title_binding['provider']))
+    title_previous.update(id='synthetic-title-previous', endpoint='http://127.0.0.1:19006/api/generate')
+    manifest['providers'].append(title_previous)
+    manifest['rollback_bindings'].append({'role': 'title_suggestions',
+                                          'provider': title_previous['id'], 'enabled': True})
     validated = deployment.validate_deployment(manifest, catalog)
     suites = qualification.validate_case_plan(plan)
     plan_digest = hashlib.sha256(qualification._canonical(plan)).hexdigest()
@@ -149,7 +158,12 @@ class ModelQualificationTests(unittest.TestCase):
         previous = copy.deepcopy(self.manifest['providers'][0])
         previous.update(id='previous-asr', endpoint='http://127.0.0.1:19007/transcribe')
         self.manifest['providers'].append(previous)
-        self.manifest['rollback_bindings'] = [{'role': 'assistant_asr', 'provider': previous['id'], 'enabled': True}]
+        title_rollback = next(binding for binding in self.manifest['rollback_bindings']
+                              if binding['role'] == 'title_suggestions')
+        self.manifest['rollback_bindings'] = [
+            {'role': 'assistant_asr', 'provider': previous['id'], 'enabled': True},
+            title_rollback,
+        ]
         self.deployment = deployment.validate_deployment(self.manifest, self.catalog)
         record = next(r for r in self.doc['records'] if r['role'] == 'assistant_asr')
         self.doc.update(selection='rollback', selection_sha256=self.deployment.selection_sha256,
@@ -280,9 +294,31 @@ class ModelQualificationTests(unittest.TestCase):
         import importlib.util
         spec=importlib.util.spec_from_file_location('synthetic_memoir_plan',ROOT/'server/scripts/plan_memoir_quality_cases.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-        hashes={c['case_id']:c['bundle_sha256'] for c in module.build_plan()['cases']}
+        hashes={c['case_id']:c['bundle_sha256'] for c in module.build_plan()['cases']
+                if c['task'] != 'suggest'}
         suite=qualification.validate_case_plan(self.plan)['narrative']
         self.assertEqual(hashes,{key:case['input_sha256'] for key,case in suite.items()})
+
+    def test_title_inputs_match_generated_bundles_and_remain_role_scoped(self):
+        import importlib.util
+        path = ROOT / 'server/scripts/plan_memoir_quality_cases.py'
+        spec = importlib.util.spec_from_file_location('title_quality_planner', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        hashes = {case['case_id']: case['bundle_sha256'] for case in module.build_plan()['cases']
+                  if case['task'] == 'suggest'}
+        suites = qualification.validate_case_plan(self.plan)
+        self.assertEqual({'synthetic-title-family', 'synthetic-title-uncertainty',
+                          'synthetic-title-abstention'}, set(suites['title_suggestions']))
+        self.assertEqual(hashes, {key: case['input_sha256']
+                                  for key, case in suites['title_suggestions'].items()})
+        self.assertTrue(self.deployment.resolve('title_suggestions')['binding']['enabled'])
+        self.assertIsNotNone(self.deployment.resolve('title_suggestions', rollback=True))
+        self.assertTrue(all(key.startswith('title_') or key == 'exact_title_citations'
+                            for case in suites['title_suggestions'].values()
+                            for key in case['criteria']))
+        self.assertNotEqual(suites['title_suggestions']['synthetic-title-family']['criteria'],
+                            suites['narrative']['synthetic-coherence']['criteria'])
 
 
 if __name__=='__main__':
