@@ -48,6 +48,12 @@ The synthetic test files are not playable speech or model checkpoints, and the
 recorded test verdicts are fixtures. No provider, GPU or semantic quality is
 qualified by this source cohort.
 
+The schema-2 WSL placement slice adds eight backend tests with ten subtests,
+plus two CLI checks for Windows host projection and Linux evidence execution.
+They cover strict placement, mixed native/WSL settings, rollback host refusal,
+environment/distro identities, split qualification and private-instance redaction.
+These tests use synthetic metadata and do not run a distro, model or service.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package

@@ -1,0 +1,240 @@
+{
+  "schema": 2,
+  "kind": "photohouse-model-deployment",
+  "id": "synthetic-wsl-disabled-example",
+  "runtimes": [
+    {
+      "id": "asr-service",
+      "execution_mode": "loopback_http",
+      "platform": "linux",
+      "environment_id": "asr-service-env",
+      "runtime_version": "synthetic-1",
+      "dependency_lock_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "implementation": {
+        "repository": "https://example.invalid/synthetic-runtime",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "device": {
+        "kind": "cpu",
+        "index": null,
+        "hardware_id": null
+      },
+      "resources": {
+        "max_concurrency": 1,
+        "ram_limit_mib": 2048,
+        "minimum_free_ram_mib": 8192,
+        "vram_floor_mib": 0,
+        "timeout_seconds": 45
+      },
+      "placement": {
+        "kind": "wsl2",
+        "host_platform": "windows",
+        "instance": "Synthetic-Ubuntu"
+      }
+    },
+    {
+      "id": "language-service",
+      "execution_mode": "loopback_http",
+      "platform": "windows",
+      "environment_id": "language-service-env",
+      "runtime_version": "synthetic-1",
+      "dependency_lock_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "implementation": {
+        "repository": "https://example.invalid/synthetic-runtime",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "device": {
+        "kind": "cpu",
+        "index": null,
+        "hardware_id": null
+      },
+      "resources": {
+        "max_concurrency": 1,
+        "ram_limit_mib": 2048,
+        "minimum_free_ram_mib": 8192,
+        "vram_floor_mib": 0,
+        "timeout_seconds": 30
+      },
+      "placement": {
+        "kind": "native",
+        "host_platform": "windows",
+        "instance": null
+      }
+    },
+    {
+      "id": "clip-child",
+      "execution_mode": "bounded_child",
+      "platform": "windows",
+      "environment_id": "clip-child-env",
+      "runtime_version": "synthetic-1",
+      "dependency_lock_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "implementation": {
+        "repository": "https://example.invalid/synthetic-runtime",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "device": {
+        "kind": "cpu",
+        "index": null,
+        "hardware_id": null
+      },
+      "resources": {
+        "max_concurrency": 1,
+        "ram_limit_mib": 2048,
+        "minimum_free_ram_mib": 8192,
+        "vram_floor_mib": 0,
+        "timeout_seconds": 600
+      },
+      "placement": {
+        "kind": "native",
+        "host_platform": "windows",
+        "instance": null
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "asr-checkpoint",
+      "kind": "checkpoint",
+      "model_name": "synthetic-asr",
+      "model_version": "synthetic-v1",
+      "identity_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "license_source": "https://example.invalid/synthetic-license",
+      "preprocessing_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "vector_space": null
+    },
+    {
+      "id": "language-model",
+      "kind": "checkpoint",
+      "model_name": "synthetic-language",
+      "model_version": "synthetic-v1",
+      "identity_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "license_source": "https://example.invalid/synthetic-license",
+      "preprocessing_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "vector_space": null
+    },
+    {
+      "id": "clip-checkpoint",
+      "kind": "checkpoint",
+      "model_name": "clip-synthetic",
+      "model_version": "synthetic-v1",
+      "identity_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "license_source": "https://example.invalid/synthetic-license",
+      "preprocessing_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "vector_space": {
+        "id": "synthetic-clip-space-v1",
+        "dimension": 512,
+        "normalization": "unit_l2"
+      }
+    }
+  ],
+  "providers": [
+    {
+      "id": "assistant-asr-candidate",
+      "role": "assistant_asr",
+      "adapter": "LocalAssistantAsr",
+      "contract": "assistant-wav-transcript-v1",
+      "runtime": "asr-service",
+      "artifact": "asr-checkpoint",
+      "endpoint": "http://127.0.0.1:19001/transcribe",
+      "credential_env": null
+    },
+    {
+      "id": "memory-asr-candidate",
+      "role": "memory_asr",
+      "adapter": "LocalAnnotationModels",
+      "contract": "memory-multipart-transcript-v1",
+      "runtime": "asr-service",
+      "artifact": "asr-checkpoint",
+      "endpoint": "http://127.0.0.1:19001/transcribe-memory",
+      "credential_env": null
+    },
+    {
+      "id": "annotation-polish-candidate",
+      "role": "annotation_polish",
+      "adapter": "LocalAnnotationModels",
+      "contract": "annotation-polish-tags-v1",
+      "runtime": "language-service",
+      "artifact": "language-model",
+      "endpoint": "http://127.0.0.1:19002/api/generate",
+      "credential_env": null
+    },
+    {
+      "id": "narrative-candidate",
+      "role": "narrative",
+      "adapter": "LocalMemoryNarrator",
+      "contract": "memory-narrative-companion-v1",
+      "runtime": "language-service",
+      "artifact": "language-model",
+      "endpoint": "http://127.0.0.1:19002/api/generate",
+      "credential_env": null
+    },
+    {
+      "id": "title-suggestions-candidate",
+      "role": "title_suggestions",
+      "adapter": "LocalStoryTitleSuggester",
+      "contract": "story-title-suggestions-v1",
+      "runtime": "language-service",
+      "artifact": "language-model",
+      "endpoint": "http://127.0.0.1:19002/api/generate",
+      "credential_env": null
+    },
+    {
+      "id": "image-embedding-candidate",
+      "role": "image_embedding",
+      "adapter": "EmbeddingService",
+      "contract": "image-vector-artifact-v1",
+      "runtime": "clip-child",
+      "artifact": "clip-checkpoint",
+      "endpoint": null,
+      "credential_env": null
+    },
+    {
+      "id": "video-embedding-candidate",
+      "role": "video_embedding",
+      "adapter": "_run_inference",
+      "contract": "video-vector-artifact-v1",
+      "runtime": "clip-child",
+      "artifact": "clip-checkpoint",
+      "endpoint": null,
+      "credential_env": null
+    }
+  ],
+  "bindings": [
+    {
+      "role": "assistant_asr",
+      "provider": "assistant-asr-candidate",
+      "enabled": false
+    },
+    {
+      "role": "memory_asr",
+      "provider": "memory-asr-candidate",
+      "enabled": false
+    },
+    {
+      "role": "annotation_polish",
+      "provider": "annotation-polish-candidate",
+      "enabled": false
+    },
+    {
+      "role": "narrative",
+      "provider": "narrative-candidate",
+      "enabled": false
+    },
+    {
+      "role": "title_suggestions",
+      "provider": "title-suggestions-candidate",
+      "enabled": false
+    },
+    {
+      "role": "image_embedding",
+      "provider": "image-embedding-candidate",
+      "enabled": false
+    },
+    {
+      "role": "video_embedding",
+      "provider": "video-embedding-candidate",
+      "enabled": false
+    }
+  ],
+  "rollback_bindings": []
+}

@@ -80,6 +80,16 @@ canonical SHA-256 of the private audio inventory, or `null` when no ASR role is
 in scope. Timestamps use UTC `YYYY-MM-DDTHH:MM:SSZ`. The measured window must be
 no longer than six hours; evidence older than 30 days is reported stale.
 
+`platform` identifies the execution OS for the evidence scope. Every role in one
+record must execute on that OS. For deployment-manifest schema 2, each role's
+`observed_identity` must also include the exact declared `placement` object;
+schema-1 runtimes remain native and do not add that field. The safe report
+identifies the execution platform and a role-to-host-platform map, without
+including placement instance names. A WSL2 ASR runtime therefore uses Linux
+evidence and reports Windows as its application host. If another selected role,
+such as native Windows TTS, executes on Windows, qualify it in a separate scope
+and evidence record. Do not combine Linux ASR and Windows TTS in one scope.
+
 Each role record contains `role`, `selection_identity_sha256`,
 `observed_identity`, `runtime_capture_sha256`, `files`, `resources`, and
 `quality`. This abbreviated example uses invented values and one TTS role; the
@@ -162,6 +172,10 @@ bounded synthetic checks, not family acceptance or memoir-wide quality claims.
 
 `observed_identity` is a recorded assertion compared with the corresponding
 manifest declaration. It is not independently observed by the checker.
+For a schema-2 runtime, include `placement` in `observed_identity`, exactly
+matching the manifest's `kind`, `host_platform`, and `instance`; an incorrect
+placement is reported as an identity mismatch. The instance is private metadata
+and is omitted from the safe report.
 `runtime_capture_sha256` and resource capture hashes identify private evidence
 files but do not prove how those captures were produced. Resource observations
 are compared with the declared RAM, free-memory, VRAM, concurrency, and request
@@ -204,8 +218,10 @@ Hashing is limited to 28 explicitly named regular files,
 64 GiB per file and 128 GiB total. Its soft deadline defaults to 120 seconds
 and can be set up to 600 seconds with `--hash-timeout-seconds`; a host-level
 process deadline is still needed for a blocked filesystem read. File verification
-is available only when the evidence platform matches the host OS. It hashes the
-literal artifact, dependency-lock, preprocessing, and in-scope audio files named
+is available only when the evidence platform matches the host OS. For schema-2
+WSL2 evidence, run it on the execution OS (Linux), with named files accessible
+there; verify native Windows-role evidence on Windows. It hashes the literal
+artifact, dependency-lock, preprocessing, and in-scope audio files named
 in the private records. It performs no path search, model load, transitive blob
 verification, service probe, or provider check. A successful literal-file hash
 does not prove that a running process used that file.

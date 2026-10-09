@@ -111,6 +111,29 @@ class DeploymentDoctorTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertEqual(json.loads(output)['reason'], reason)
 
+    def test_wsl_projection_uses_windows_host_and_redacts_instance(self):
+        self.doc = json.loads((ROOT / 'models/deployment.wsl.synthetic.json').read_text())
+        provider = self.doc['providers'][0]
+        previous = copy.deepcopy(provider)
+        previous['id'] += '-previous'
+        previous['endpoint'] = previous['endpoint'].replace(':19001', ':19003')
+        self.doc['providers'].append(previous)
+        self.doc['bindings'][0]['enabled'] = True
+        self.doc['rollback_bindings'].append({'role': 'assistant_asr', 'provider': previous['id'], 'enabled': True})
+        self.write()
+        args = ['--manifest', str(self.path), '--project', 'assistant', '--feature-enabled', '--json']
+        code, output = self.call([*args, '--platform', 'windows'])
+        self.assertEqual(code, 0)
+        report = json.loads(output)
+        self.assertEqual(report['host_platform'], 'windows')
+        self.assertEqual(report['execution_platforms'], {'assistant_asr': 'linux'})
+        self.assertEqual(report['placement_kinds'], {'assistant_asr': 'wsl2'})
+        self.assertNotIn('Synthetic-Ubuntu', output)
+        self.assertFalse(report['runtime_probed'])
+        code, output = self.call([*args, '--platform', 'linux'])
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(output)['reason'], 'runtime_platform_mismatch')
+
     def test_active_projection_checks_opt_in_without_reading_credential_values(self):
         provider = self.doc['providers'][0]
         previous = copy.deepcopy(provider)
