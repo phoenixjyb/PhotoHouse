@@ -6,8 +6,10 @@ from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from types import ModuleType
 import unittest
 import uuid
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -16,13 +18,34 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 
 import approved_face_queue
 import run_approved_cpu_worker as cpu_worker
-import run_approved_face_worker as face_worker
 import run_approved_image_embed_worker as image_worker
 import run_approved_video_embed_worker as video_embed_worker
 import run_approved_video_worker as video_worker_module
 import test_memory_book_edition_migration as edition_migration
 
 D1 = 'd1f6a8c3e920'
+
+
+class _OptionalNumpyUnavailable(ModuleType):
+    """Fail if this schema-only test enters NumPy-backed inference code."""
+
+    def __getattr__(self, name):
+        raise AssertionError(f'NumPy-backed face inference was reached: {name}')
+
+
+def _face_worker_without_numpy():
+    """Load the real worker while making its optional inference package absent."""
+    import importlib.util
+
+    module_name = '_photohouse_d1_face_worker_without_numpy'
+    worker_path = ROOT / 'scripts' / 'run_approved_face_worker.py'
+    spec = importlib.util.spec_from_file_location(module_name, worker_path)
+    if spec is None or spec.loader is None:
+        raise AssertionError('face worker module could not be loaded')
+    worker = importlib.util.module_from_spec(spec)
+    with patch.dict(sys.modules, {'numpy': _OptionalNumpyUnavailable('numpy')}):
+        spec.loader.exec_module(worker)
+    return worker
 
 
 class ApprovedWorkersD1CompatibilityTests(unittest.TestCase):
@@ -148,9 +171,16 @@ class ApprovedWorkersD1CompatibilityTests(unittest.TestCase):
             candidates, _skipped = video_embed_worker.matching_candidates(db, self.derived)
             self.assertEqual([item['asset_id'] for item in candidates], [102])
 
+        face_worker = _face_worker_without_numpy()
         with closing(face_worker.connect(self.database, readonly=True)) as db:
             self.assertEqual(face_worker.schema(db), D1)
             self.assertEqual(face_worker.eligible(db)[1], 'face')
+
+        preflight = face_worker.preflight(
+            self.database, self.originals, self.derived, self.stop)
+        self.assertEqual(preflight['schema_revision'], D1)
+        self.assertEqual(preflight['preflight'], 'pass')
+        self.assertFalse(preflight['activated'])
 
         with closing(sqlite3.connect(self.database)) as db:
             db.execute('PRAGMA query_only=ON')

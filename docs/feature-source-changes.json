@@ -7577,6 +7577,25 @@
       "live_schema_changed": false,
       "runtime_revisions_widened": false,
       "api_deployed": false
+    },
+    {
+      "feature": "cpu-only-d1-worker-schema-and-current-extracted-package-smoke",
+      "base_commit": "efac9cbdc0b0b16dbdf6328174343e0e624a480a",
+      "files": [
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "c5f1c76173b9558326f5ac682756516953641c6a2cd13aaab42f122226f550e6",
+          "sha256": "d9b1ed4cca8c0cfb60c923b2b0aa44db8857c9cf256ffa50e634b5b6b39f5e3e"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_d1_compatibility.py",
+          "before_sha256": "f4c06d6c15a850dd9430f480006f35b4636b65027219032de0d5afa42aba18af",
+          "sha256": "5fe0ba8b51528689915ade13faf3600eabbc633e28f9c3dda0c6db99dba18b9f"
+        }
+      ],
+      "optional_inference_enabled": false,
+      "schema_changed": false,
+      "api_deployed": false
     }
   ]
 }
