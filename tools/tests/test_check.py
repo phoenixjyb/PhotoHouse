@@ -134,6 +134,9 @@ class WebProfileTests(unittest.TestCase):
         shelf = "server/tests/security/test_memory_book_edition_shelf_browser.cjs"
         self.assertIn(shelf, check.WEB_TESTS)
         self.assertIn("server/tests/security/test_assistant_turn_trail_browser.cjs", check.WEB_TESTS)
+        self.assertIn("server/tests/security/test_annotation_web_wav.cjs", check.WEB_TESTS)
+        self.assertIn("server/tests/security/test_upload_history_browser.cjs", check.WEB_TESTS)
+        self.assertIn("server/tests/security/test_story_workspace_browser.cjs", check.WEB_TESTS)
         with mock.patch.object(check, "ROOT", self.root), \
                 mock.patch.object(check.shutil, "which", return_value="/existing/node"), \
                 mock.patch.object(check, "run") as run, \

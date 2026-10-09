@@ -68,6 +68,7 @@ ANDROID_TASKS = (
     ":connected:lintDebug", ":tv:lintDebug", ":connected:assembleDebug", ":tv:assembleDebug",
 )
 WEB_TESTS = (
+    "server/tests/security/test_annotation_web_wav.cjs",
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
     "server/tests/security/test_assistant_turn_trail_browser.cjs",
     "server/tests/security/test_assistant_transcript_browser.cjs",
@@ -82,6 +83,8 @@ WEB_TESTS = (
     "server/tests/security/test_story_titles_browser.cjs",
     "server/tests/security/test_story_related_media_browser.cjs",
     "server/tests/security/test_story_reader_frames_browser.cjs",
+    "server/tests/security/test_upload_history_browser.cjs",
+    "server/tests/security/test_story_workspace_browser.cjs",
 )
 
 

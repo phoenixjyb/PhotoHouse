@@ -3,6 +3,7 @@
 The optional `web` profile runs the generated-data CommonJS browser suites
 listed in `tools/check.py`. It includes:
 
+- `server/tests/security/test_annotation_web_wav.cjs` (encoder contract, without a browser)
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
 - `server/tests/security/test_assistant_turn_trail_browser.cjs`
 - `server/tests/security/test_assistant_transcript_browser.cjs`
@@ -17,6 +18,8 @@ listed in `tools/check.py`. It includes:
 - `server/tests/security/test_story_titles_browser.cjs`
 - `server/tests/security/test_story_related_media_browser.cjs`
 - `server/tests/security/test_story_reader_frames_browser.cjs`
+- `server/tests/security/test_upload_history_browser.cjs`
+- `server/tests/security/test_story_workspace_browser.cjs`
 
 The saved-edition editor and reader suites use generated records. The separate
 shelf journey checks fresh detail reads, current chapter scope, source
@@ -129,6 +132,10 @@ Python 3.12 and Playwright Core 1.55.0. Its private
 dependency version and registry integrity. CI runs `npm ci --ignore-scripts`
 and provisions the matching Chromium headless shell and Linux dependencies
 only on the ephemeral hosted runner. The local wrapper still installs nothing.
+The seventeen-suite profile includes the existing upload/note-save and full
+story-workspace regressions, plus the WAV encoder contract. Earlier fourteen-
+suite local passes and these separate focused results remain separate evidence;
+the expanded hosted profile needs its own complete passing run.
 
 The job has a 15-minute limit. Browser binaries and separate generated suite
 captures remain under the runner's temporary directory; no artifact-upload
