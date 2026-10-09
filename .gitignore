@@ -1,0 +1,23 @@
+# Local configuration and private runtime state
+.env
+.env.*
+!.env.example
+local.properties
+*.keystore
+*.jks
+*.apk
+*.aab
+*.sqlite
+*.sqlite-*
+*.db
+*.onnx
+*.pt
+*.pth
+*.safetensors
+.venv/
+__pycache__/
+.pytest_cache/
+.gradle/
+**/build/
+.runtime/
+private/

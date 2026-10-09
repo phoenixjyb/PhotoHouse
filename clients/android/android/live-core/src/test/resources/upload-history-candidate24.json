@@ -1,0 +1,217 @@
+{
+  "backend_source_commit": "a33eb936a87660271cc4fe2663ffa1f9a36bfa31",
+  "contract_version": "2.0.0-candidate.24",
+  "manifest_sha256": "c06e54b772450099ee86e78e83128cf587ee70d2a0e8003ba17cfadf82a312f0",
+  "cases": [
+    {
+      "id": "upload_history_requires_opt_in",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "detail": "Access unavailable"
+        }
+      }
+    },
+    {
+      "id": "upload_history_pending",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "page": 1,
+          "page_size": 10,
+          "total": 1,
+          "items": [
+            {
+              "asset_id": "1000",
+              "created_at": 2000000000,
+              "bytes": 632,
+              "kind": "image",
+              "state": "awaiting_review",
+              "library_id": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "upload_history_other_account_empty",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "page": 1,
+          "page_size": 10,
+          "total": 0,
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "upload_history_unknown_query",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?account_id=other",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "detail": "Invalid request"
+        }
+      }
+    },
+    {
+      "id": "upload_history_duplicate_page",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1&page=2",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "detail": "Invalid request"
+        }
+      }
+    },
+    {
+      "id": "upload_history_anonymous",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "none",
+        "headers": {}
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "detail": "Access denied"
+        }
+      }
+    },
+    {
+      "id": "upload_history_available",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "page": 1,
+          "page_size": 10,
+          "total": 1,
+          "items": [
+            {
+              "asset_id": "1000",
+              "created_at": 2000000000,
+              "bytes": 632,
+              "kind": "image",
+              "state": "available",
+              "library_id": "family-a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "upload_history_unavailable",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "page": 1,
+          "page_size": 10,
+          "total": 1,
+          "items": [
+            {
+              "asset_id": "1000",
+              "created_at": 2000000000,
+              "bytes": 632,
+              "kind": "image",
+              "state": "unavailable",
+              "library_id": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "upload_history_revoked",
+      "request": {
+        "method": "GET",
+        "path": "/uploads?page=1",
+        "credential": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "headers": {}
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        },
+        "body": {
+          "detail": "Access denied"
+        }
+      }
+    }
+  ]
+}

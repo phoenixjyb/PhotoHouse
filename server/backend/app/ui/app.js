@@ -1,0 +1,4482 @@
+const state = {
+  activeTab: "home",
+  uiMode: "family",
+  gridItems: new Map(),
+  viewer: { items: [], index: 0, timer: null, request: 0, returnFocus: null, origin: "home", image: null },
+  home: {
+    recent: [],
+    people: [],
+    stories: [],
+  },
+  selectedAsset: null,
+  inspectorRequest: 0,
+  persons: [],
+  namedPersons: [],
+  showUnnamedPeople: false,
+  geoMap: null,
+  geoLayer: null,
+  mapLoaded: false,
+  libraryViewItems: [],
+  assetMap: new Map(),
+  inspectorOriginTab: "library",
+  lang: "en",
+  libraryPager: {
+    kind: "latest",
+    mode: "path",
+    q: "",
+    media: "all",
+    tags: [],
+    page: 1,
+    pageSize: 120,
+    total: 0,
+    shown: 0,
+  },
+  personAssetsPager: {
+    personId: null,
+    page: 1,
+    pageSize: 120,
+    total: 0,
+    shown: 0,
+  },
+  unassignedFacesPager: {
+    page: 1,
+    pageSize: 120,
+    total: 0,
+    shown: 0,
+  },
+  tagsPager: {
+    q: "",
+    source: "all",
+    page: 1,
+    pageSize: 200,
+    total: 0,
+    shown: 0,
+  },
+  tagsAssetsPager: {
+    tagId: null,
+    tagName: "",
+    page: 1,
+    pageSize: 120,
+    total: 0,
+    shown: 0,
+    media: "all",
+    source: "all",
+  },
+  stories: {
+    storyType: "all",
+    media: "all",
+    minAssets: 3,
+    maxStoriesPerType: 6,
+    storyAssetLimit: 24,
+    stories: [],
+    selectedStoryId: "",
+    total: 0,
+  },
+  albumDrafts: {
+    albums: [],
+    selectedAlbumId: null,
+    editorMode: "story",
+  },
+  similarity: {
+    minGroupSize: 2,
+    maxDistance: 5,
+    sampleLimit: 1000,
+    clusterLimit: 60,
+    groups: [],
+    selectedGroupId: "",
+    summary: null,
+  },
+  voiceBusy: false,
+  voiceConversationId: "",
+  voicePendingConfirmationToken: "",
+  voiceClientId: "",
+  voiceHistory: [],
+};
+
+const qs = (id) => document.getElementById(id);
+const ADVANCED_TABS = new Set(["similarity", "tasks", "admin"]);
+const ALL_TABS = ["home", "library", "people", "tags", "stories", "similarity", "map", "tasks", "admin"];
+
+const I18N = {
+  en: {
+    app_title: "PhotoHouse",
+    subtitle: "Your family's story, all together.",
+    quick_search: "Find a memory",
+    skip_content: "Skip to memories",
+    keepsake_note: "The little things. The big feelings.",
+    family_footer: "A little closer, every time you look back.",
+    watch_memories: "Watch memories",
+    play_slideshow: "Play slideshow",
+    pause_slideshow: "Pause slideshow",
+    photo_details: "Photo details",
+    previous_photo: "Previous photo",
+    next_photo: "Next photo",
+    viewer_position: "{current} of {total}",
+    memory_undated: "A moment to keep",
+    memory_video: "Video",
+    loading_memories: "Gathering your memories…",
+    retry_loading: "Try again",
+    partial_home: "Some memories couldn't load. Your photos are still safe.",
+    viewer_no_caption: "A moment that speaks for itself.",
+    viewer_caption_error: "The description couldn't load. Reopen this photo to try again.",
+    viewer_photo_error: "This photo couldn't load. Use the arrows to keep browsing.",
+    voice_chat: "Voice Chat",
+    voice_chat_reset: "Delete Chat",
+    voice_command: "Voice Command",
+    voice_chat_recording: "Listening for chat...",
+    voice_chat_processing: "Talking to assistant...",
+    voice_chat_failed: "Voice chat failed: {error}",
+    voice_chat_no_reply: "Voice chat returned no reply",
+    voice_chat_reply_audio: "Assistant replied with audio",
+    voice_chat_reply_text: "Assistant: {text}",
+    voice_chat_session_reset: "Voice chat context reset",
+    confirm_delete_voice_chat: "Delete current voice conversation and history?",
+    voice_chat_deleted: "Voice conversation deleted",
+    voice_chat_deleted_local_only: "Local chat context deleted; remote delete failed: {error}",
+    confirm_delete_voice_history: "Delete all voice history entries?",
+    voice_history_deleted: "Voice history deleted",
+    voice_history: "Voice History",
+    voice_history_clear: "Clear History",
+    voice_history_empty: "No voice interactions yet.",
+    voice_history_you: "You",
+    voice_history_assistant: "Assistant",
+    voice_history_system: "System",
+    voice_recording: "Listening...",
+    voice_processing: "Processing...",
+    voice_not_supported: "Voice capture is not supported in this browser",
+    voice_denied: "Microphone permission denied",
+    voice_transcribe_failed: "Voice transcription failed: {error}",
+    voice_command_failed: "Voice command failed: {error}",
+    voice_no_transcript: "Could not hear speech clearly",
+    voice_heard: "Heard: {text}",
+    voice_person_opened: "Opened {name} photos ({total})",
+    voice_person_not_found: "No person matched {name}",
+    refresh: "Refresh",
+    api_docs: "API Docs",
+    advanced_mode: "Advanced",
+    family_mode: "Family View",
+    assets: "Assets",
+    captions: "Captions",
+    faces: "Faces",
+    people: "People",
+    tags_total: "Tag Links",
+    tagged_assets: "Tagged Assets",
+    tasks_pending: "Tasks Pending",
+    health: "Health",
+    tab_home: "Home",
+    tab_library: "All photos",
+    tab_people: "People",
+    tab_tags: "Tags",
+    tab_stories: "Albums",
+    tab_similarity: "Similarity",
+    tab_map: "Map",
+    tab_tasks: "Tasks",
+    tab_admin: "Admin",
+    home_eyebrow: "WELCOME TO YOUR FAMILY ALBUM",
+    home_title: "Ordinary days. Extraordinary memories.",
+    home_intro: "The places you've been. The people you love. A lifetime of little moments, waiting to be found again.",
+    family_search: "Family search",
+    home_search_ph: "Try ‘birthday’, ‘by the sea’, or a name…",
+    find_memories: "Find Memories",
+    home_suggestion_play: "Playing outside",
+    home_suggestion_birthday: "Birthday moments",
+    home_suggestion_trip: "Family trips",
+    home_recent_eyebrow: "LATEST ADDITIONS",
+    home_recent_title: "Recent moments",
+    home_people_eyebrow: "FAMILY",
+    home_people_title: "Your favourite people",
+    home_albums_eyebrow: "READY TO EXPLORE",
+    home_albums_title: "Stories worth revisiting",
+    home_person_photos: "{count} photos",
+    home_story_assets: "{count} memories",
+    home_empty_recent: "No recent photos are available yet.",
+    home_empty_people: "Name a few people to see family shortcuts here.",
+    home_empty_stories: "Suggested albums will appear as captions and tags become available.",
+    home_load_failed: "Home could not be refreshed: {error}",
+    home_search_required: "Describe the memory you want to find.",
+    search_filter_query: "Memory",
+    search_filter_mode: "Search",
+    search_filter_media: "Media",
+    search_mode_family: "Smart family search",
+    view_all: "View all",
+    search: "Search",
+    mode: "Mode",
+    mode_path: "Path",
+    mode_caption: "Caption",
+    mode_smart: "Smart",
+    mode_person: "Person Name",
+    query: "Query",
+    query_ph: "Type query text...",
+    tags_for_smart: "Tags (for smart mode)",
+    tags_for_smart_ph: "family, beach, sunset",
+    media: "Media",
+    media_all: "All",
+    media_image: "Image",
+    media_video: "Video",
+    run_search: "Run Search",
+    browse_latest: "Browse Latest",
+    results: "Results",
+    inspector: "Inspector",
+    asset_empty: "Select any result card to inspect captions, tags, and faces.",
+    regenerate: "Regenerate",
+    tags: "Tags",
+    tags_input_ph: "comma separated tags",
+    add_tags: "Add Tags",
+    person_assets: "Person Assets",
+    person_assets_meta_default: "Select a person to view related assets.",
+    unassigned_faces: "Unassigned Faces",
+    show_unnamed_clusters: "Show unnamed clusters",
+    geo_map: "Geo Map",
+    points: "Points",
+    refresh_map: "Refresh Map",
+    map_loading: "Loading map data...",
+    task_queue: "Task Queue",
+    id: "ID",
+    type: "Type",
+    state: "State",
+    progress: "Progress",
+    retry: "Retry",
+    error: "Error",
+    action: "Action",
+    metrics: "Metrics",
+    actions: "Actions",
+    rebuild_vector_index: "Rebuild Vector Index",
+    trigger_reclustering: "Trigger Reclustering",
+    ingest_root_ph: "Choose a local originals directory",
+    ingest_scan: "Ingest Scan",
+    admin_maintenance_hint: "Use this for controlled maintenance operations from browser.",
+    caption_lvface: "Caption/LVFace",
+    back_to_results: "Back",
+    fullscreen: "Full Screen",
+    close_preview: "Close",
+    viewer_fit: "Fit",
+    viewer_actual: "Actual size",
+    viewer_fullscreen: "Full screen",
+    viewer_exit_fullscreen: "Exit full screen",
+    viewer_fullscreen_unavailable: "Full screen is unavailable in this browser.",
+    viewer_zoom_in: "Zoom in",
+    viewer_zoom_out: "Zoom out",
+    viewer_zoom_level: "Zoom level",
+    viewer_region: "Photo viewer",
+    viewer_image_hint: "Scroll to zoom · Drag to pan · Double-click to fit / actual size",
+    viewer_original_loading: "Loading original…",
+    viewer_original_failed: "Original unavailable in this browser. Showing preview; actual size is unavailable.",
+    viewer_preview_hint: "Preview · Zoom or choose Actual size to load the original",
+    status_ok: "OK",
+    status_degraded: "DEGRADED",
+    no_thumbnail: "No thumbnail",
+    dashboard_refresh_failed: "Dashboard refresh failed: {error}",
+    latest_assets_meta: "Latest assets: {shown} shown of {total}",
+    library_load_failed: "Library load failed: {error}",
+    caption_mode_needs_text: "Caption mode needs text",
+    person_mode_needs_name: "Person mode needs a name",
+    search_results_meta: "Mode: {mode} | Results: {count}",
+    search_results_meta_paged: "Mode: {mode} | Results: {shown}/{total}",
+    search_failed: "Search failed: {error}",
+    asset_not_found: "Asset #{id} not found",
+    asset_prefix: "Asset #{id}",
+    unknown_path: "(unknown path)",
+    inspector_load_failed: "Inspector load failed: {error}",
+    map_lib_failed: "Map library failed to load.",
+    map_showing_meta: "Showing {shown} of {total} geo-tagged assets ({media}).",
+    map_no_points: "No GPS points found for this filter.",
+    map_load_failed: "Map load failed: {error}",
+    popup_open_asset: "Open Asset",
+    popup_image: "image",
+    popup_video: "video",
+    no_captions: "No captions yet.",
+    caption_unknown_model: "unknown",
+    edited_flag: "edited={value}",
+    caption_save: "Save",
+    caption_delete: "Delete",
+    no_tags: "No tags.",
+    new_person_name_ph: "New person name",
+    create_person: "Create Person",
+    create_and_assign: "Create + Assign",
+    assign_to_person: "Assign to person...",
+    face_people_loading: "Loading saved people…",
+    face_people_failed: "Saved people could not be loaded. Retry before assigning or creating a person.",
+    current_person: "Current: Person {id}",
+    person_fallback: "Person {id}",
+    new_person: "+ New Person",
+    not_face_delete: "Not Face (Delete detection)",
+    no_face_detections: "No face detections for this asset.",
+    label_none: "label=(none)",
+    label_line: "label={source}{score}",
+    label_score: " score={score}",
+    assign: "Assign",
+    mark_stranger: "Stranger",
+    not_face: "Not Face",
+    face_prefix: "Face #{id}",
+    face_asset_prefix: "Face #{face}, asset #{asset}",
+    person_stats: "id={id} | faces={count}",
+    no_persons: "No persons yet.",
+    people_hint_all: "Showing named people and unnamed clusters.",
+    people_hint_named: "Showing named people only. Enable \"Show unnamed clusters\" if needed.",
+    display_name_ph: "Display name",
+    save_name: "Save Name",
+    view_assets: "View Assets",
+    person_assets_meta: "Person {id}: {count} assets",
+    person_assets_meta_paged: "Person {id}: showing {shown}/{total}",
+    no_unassigned_faces: "No unassigned faces.",
+    people_load_failed: "People load failed: {error}",
+    person_assets_load_failed: "Person assets load failed: {error}",
+    unassigned_faces_load_failed: "Unassigned faces load failed: {error}",
+    task_meta: "Total={total} | pending={pending} | running={running} | failed={failed} | dead={dead}",
+    task_meta_with_page:
+      "Total={total} | pending={pending} | running={running} | failed={failed} | dead={dead} | showing={shown}",
+    usage_cpu: "CPU",
+    usage_memory: "Memory",
+    usage_gpu: "GPU {index}",
+    usage_no_gpu: "No GPU metrics",
+    usage_unavailable: "Unavailable",
+    usage_util_mem: "util {util}% | mem {used}/{total} GiB",
+    usage_temp: "temp {temp} C",
+    cancel: "Cancel",
+    task_load_failed: "Task load failed: {error}",
+    admin_refresh_failed: "Admin refresh failed: {error}",
+    caption_saved: "Caption {id} saved",
+    caption_deleted: "Caption {id} deleted",
+    caption_action_failed: "Caption action failed: {error}",
+    person_name_required: "Please enter a person name",
+    person_created: "Person {name} is ready",
+    person_exists_reused: "Using existing person {name}",
+    select_target_first: "Select a target person first",
+    invalid_person_selection: "Invalid person selection",
+    confirm_delete_face: "Delete face #{id} as non-face detection?",
+    refreshed: "Refreshed",
+    caption_regen_enqueued: "Caption regeneration task enqueued",
+    regenerate_failed: "Regenerate failed: {error}",
+    no_tag_entered: "No tag entered",
+    tags_updated: "Tags updated",
+    tag_catalog: "Tag Catalog",
+    tag_filter_name_ph: "Filter tags...",
+    tag_source: "Source",
+    tag_source_all: "All",
+    tag_source_cap: "Caption",
+    tag_source_img: "Image",
+    tag_source_capimg: "Caption+Image",
+    tag_source_manual: "Manual",
+    tag_source_rule: "Rule",
+    tag_source_null: "Unknown",
+    tag_assets: "Assets",
+    tag_links: "Links",
+    tag_sources: "Sources",
+    tag_assets_panel: "Tag Assets",
+    tag_assets_meta_default: "Select a tag to view related assets.",
+    tag_assets_meta: "Tag {name}: {count} assets",
+    tag_assets_meta_paged: "Tag {name}: showing {shown}/{total}",
+    tag_assets_load_failed: "Tag assets load failed: {error}",
+    tag_open_search: "Open in Search",
+    tags_meta: "Tags: {shown} shown of {total}",
+    tags_meta_paged: "Tags: {shown}/{total}",
+    tag_catalog_load_failed: "Tag catalog load failed: {error}",
+    story_albums: "Story Albums",
+    story_type: "Type",
+    story_type_all: "All",
+    story_type_person: "Person",
+    story_type_tag: "Tag",
+    story_type_location: "Location",
+    story_type_caption: "Caption",
+    story_min_assets: "Min assets",
+    story_meta: "Stories: {shown} shown of {total}",
+    story_assets_panel: "Story Assets",
+    story_assets_meta_default: "Select a story to view related assets.",
+    story_assets_meta: "{title}: showing {shown}/{total}",
+    story_load_failed: "Story albums load failed: {error}",
+    story_view_assets: "View Assets",
+    story_open_context: "Open Context",
+    story_context_opened: "Opened story context",
+    story_context_unavailable: "Story context is unavailable",
+    album_drafts_eyebrow: "YOUR COLLECTIONS",
+    album_drafts_title: "Saved album drafts",
+    album_drafts_empty: "No album drafts yet. Start from a suggested story.",
+    album_composer_eyebrow: "ALBUM COMPOSER",
+    album_composer_title: "Create a keepsake",
+    album_use_story: "Use selected story",
+    album_title_en: "English title",
+    album_title_en_ph: "Our summer together",
+    album_title_zh: "Chinese title",
+    album_title_zh_ph: "一起过夏天",
+    album_theme: "Theme",
+    album_theme_custom: "Custom",
+    album_theme_birthday: "Birthday",
+    album_theme_trip: "Trip",
+    album_theme_growing_up: "Growing up",
+    album_theme_grandparents: "Grandparents",
+    album_theme_year_in_review: "Year in review",
+    album_theme_seasonal: "Seasonal",
+    album_sort: "Photo order",
+    album_sort_chronological: "Oldest to newest",
+    album_sort_newest: "Newest first",
+    album_sort_story: "Story order",
+    album_cover: "Cover photo",
+    album_save_draft: "Save album draft",
+    album_update_draft: "Update album draft",
+    album_composer_hint: "Choose a suggested story to start.",
+    album_composer_ready: "{count} photos ready for this draft.",
+    album_draft_assets: "{count} photos",
+    album_title_required: "Enter an English album title.",
+    album_story_required: "Choose a story with photos first.",
+    album_saved: "Album draft saved",
+    album_updated: "Album draft updated",
+    album_save_failed: "Album could not be saved: {error}",
+    album_load_failed: "Album drafts could not be loaded: {error}",
+    similarity_title: "Similarity Reduction",
+    similarity_min_group_size: "Min group",
+    similarity_max_distance: "Max distance",
+    similarity_sample_limit: "Sample",
+    similarity_cluster_limit: "Clusters",
+    similarity_preview: "Preview",
+    similarity_apply: "Hide Similar",
+    similarity_restore_all: "Restore Hidden",
+    similarity_meta:
+      "Groups={groups} | keep={keep} | hide={hide} | unique hide={unique_hide}",
+    similarity_kind: "Kind",
+    similarity_kind_sha: "Exact",
+    similarity_kind_near: "Near",
+    similarity_keep: "Keep",
+    similarity_hide_count: "Hide",
+    similarity_view_group: "View Group",
+    similarity_group_assets_panel: "Group Assets",
+    similarity_group_assets_meta_default: "Select a group to inspect candidates.",
+    similarity_group_assets_meta: "{kind} group: keep #{keep}, hide {hide}",
+    similarity_load_failed: "Similarity preview failed: {error}",
+    similarity_apply_done: "Hidden similar assets: {count}",
+    similarity_restore_done: "Restored hidden assets: {count}",
+    similarity_action_failed: "Similarity action failed: {error}",
+    remove_tag: "Remove tag",
+    tag_removed: "Tag removed",
+    tag_update_failed: "Tag update failed: {error}",
+    face_updated: "Face {id} updated",
+    face_assignment_failed: "Face assignment failed: {error}",
+    person_renamed: "Person {id} renamed",
+    person_action_failed: "Person action failed: {error}",
+    unassigned_face_action_failed: "Unassigned face action failed: {error}",
+    task_cancel_requested: "Task {id} cancel requested",
+    cancel_failed: "Cancel failed: {error}",
+    vector_rebuild_triggered: "Vector index rebuild triggered",
+    rebuild_failed: "Rebuild failed: {error}",
+    recluster_queued: "Recluster task queued",
+    recluster_failed: "Recluster failed: {error}",
+    provide_ingest_root: "Provide ingest root path",
+    ingest_started: "Ingest scan started for {root}",
+    ingest_failed: "Ingest failed: {error}",
+    no_asset_selected: "Select an asset first",
+    delete_photo: "Delete Photo",
+    delete_asset: "Delete Asset",
+    confirm_delete_photo: "Delete photo #{id} from the library record? Local files will be kept.",
+    confirm_delete_asset: "Delete asset #{id} and remove local files? This cannot be undone.",
+    photo_deleted: "Photo #{id} deleted (files kept)",
+    asset_deleted: "Asset #{id} deleted (files removed)",
+    asset_delete_failed: "Delete failed: {error}",
+    prev_page: "Prev",
+    next_page: "Next",
+    jump_page: "Go",
+    page_input_ph: "Page",
+    pager_status: "Page {page}/{pages} | showing {shown}/{total}",
+  },
+  zh: {
+    app_title: "照片屋",
+    subtitle: "把一家人的故事，好好珍藏。",
+    quick_search: "寻找回忆",
+    skip_content: "跳至回忆",
+    keepsake_note: "小小的日常，满满的爱。",
+    family_footer: "每一次回望，都让我们更亲近。",
+    watch_memories: "播放回忆",
+    play_slideshow: "自动播放",
+    pause_slideshow: "暂停播放",
+    photo_details: "照片详情",
+    previous_photo: "上一张照片",
+    next_photo: "下一张照片",
+    viewer_position: "第 {current} 张，共 {total} 张",
+    memory_undated: "值得珍藏的一刻",
+    memory_video: "视频",
+    loading_memories: "正在整理你的回忆…",
+    retry_loading: "重试",
+    partial_home: "部分内容暂时未能加载，照片仍然安全保存。",
+    viewer_no_caption: "有些美好，无需言语。",
+    viewer_caption_error: "暂时无法加载描述，请重新打开这张照片再试。",
+    viewer_photo_error: "这张照片暂时无法加载，可用箭头继续浏览。",
+    voice_chat: "语音对话",
+    voice_chat_reset: "删除对话",
+    voice_command: "语音命令",
+    voice_chat_recording: "正在聆听（对话）...",
+    voice_chat_processing: "正在对话处理中...",
+    voice_chat_failed: "语音对话失败: {error}",
+    voice_chat_no_reply: "语音对话未返回有效回复",
+    voice_chat_reply_audio: "助手已语音回复",
+    voice_chat_reply_text: "助手：{text}",
+    voice_chat_session_reset: "语音对话上下文已重置",
+    confirm_delete_voice_chat: "删除当前语音对话和历史记录？",
+    voice_chat_deleted: "语音对话已删除",
+    voice_chat_deleted_local_only: "本地对话已删除；远端删除失败：{error}",
+    confirm_delete_voice_history: "删除全部语音历史记录？",
+    voice_history_deleted: "语音历史已删除",
+    voice_history: "语音记录",
+    voice_history_clear: "清空记录",
+    voice_history_empty: "暂无语音交互记录。",
+    voice_history_you: "你",
+    voice_history_assistant: "助手",
+    voice_history_system: "系统",
+    voice_recording: "正在聆听...",
+    voice_processing: "处理中...",
+    voice_not_supported: "当前浏览器不支持语音采集",
+    voice_denied: "麦克风权限被拒绝",
+    voice_transcribe_failed: "语音转写失败: {error}",
+    voice_command_failed: "语音命令失败: {error}",
+    voice_no_transcript: "未清晰识别到语音",
+    voice_heard: "识别到: {text}",
+    voice_person_opened: "已打开 {name} 的照片（{total}）",
+    voice_person_not_found: "未找到人物 {name}",
+    refresh: "刷新",
+    api_docs: "API 文档",
+    advanced_mode: "高级模式",
+    family_mode: "家庭模式",
+    assets: "资源",
+    captions: "描述",
+    faces: "人脸",
+    people: "人物",
+    tags_total: "标签关联",
+    tagged_assets: "已标注资源",
+    tasks_pending: "待处理任务",
+    health: "健康状态",
+    tab_home: "首页",
+    tab_library: "所有照片",
+    tab_people: "人物",
+    tab_tags: "标签",
+    tab_stories: "相册",
+    tab_similarity: "相似图",
+    tab_map: "地图",
+    tab_tasks: "任务",
+    tab_admin: "管理",
+    home_eyebrow: "欢迎回到我们的家庭相册",
+    home_title: "平凡的日子，珍贵的回忆。",
+    home_intro: "走过的地方，深爱的人。把生活里点滴的美好，重新捧在手心。",
+    family_search: "家庭搜索",
+    home_search_ph: "试试「生日」「海边」或家人的名字…",
+    find_memories: "寻找回忆",
+    home_suggestion_play: "户外玩耍",
+    home_suggestion_birthday: "生日时刻",
+    home_suggestion_trip: "家庭旅行",
+    home_recent_eyebrow: "最近加入",
+    home_recent_title: "最近时刻",
+    home_people_eyebrow: "家人",
+    home_people_title: "最亲爱的人",
+    home_albums_eyebrow: "值得探索",
+    home_albums_title: "值得重温的故事",
+    home_person_photos: "{count} 张照片",
+    home_story_assets: "{count} 个回忆",
+    home_empty_recent: "暂时没有可显示的最近照片。",
+    home_empty_people: "为几个人命名后，这里会出现家人快捷入口。",
+    home_empty_stories: "随着描述和标签增加，这里会出现推荐相册。",
+    home_load_failed: "首页刷新失败：{error}",
+    home_search_required: "请描述你想寻找的回忆。",
+    search_filter_query: "回忆",
+    search_filter_mode: "搜索",
+    search_filter_media: "媒体",
+    search_mode_family: "家庭智能搜索",
+    view_all: "查看全部",
+    search: "搜索",
+    mode: "模式",
+    mode_path: "路径",
+    mode_caption: "描述",
+    mode_smart: "智能",
+    mode_person: "人物名",
+    query: "查询",
+    query_ph: "输入查询文本...",
+    tags_for_smart: "标签（智能模式）",
+    tags_for_smart_ph: "family, beach, sunset",
+    media: "媒体",
+    media_all: "全部",
+    media_image: "图片",
+    media_video: "视频",
+    run_search: "执行搜索",
+    browse_latest: "浏览最新",
+    results: "结果",
+    inspector: "详情",
+    asset_empty: "选择任意结果卡片以查看描述、标签和人脸。",
+    regenerate: "重新生成",
+    tags: "标签",
+    tags_input_ph: "逗号分隔标签",
+    add_tags: "添加标签",
+    person_assets: "人物资源",
+    person_assets_meta_default: "选择一个人物查看相关资源。",
+    unassigned_faces: "未分配人脸",
+    show_unnamed_clusters: "显示未命名聚类",
+    geo_map: "地理地图",
+    points: "点位",
+    refresh_map: "刷新地图",
+    map_loading: "正在加载地图数据...",
+    task_queue: "任务队列",
+    id: "编号",
+    type: "类型",
+    state: "状态",
+    progress: "进度",
+    retry: "重试",
+    error: "错误",
+    action: "操作",
+    metrics: "指标",
+    actions: "操作",
+    rebuild_vector_index: "重建向量索引",
+    trigger_reclustering: "触发重聚类",
+    ingest_root_ph: "选择本地原始照片目录",
+    ingest_scan: "扫描导入",
+    admin_maintenance_hint: "在浏览器中执行受控维护操作。",
+    caption_lvface: "描述/LVFace",
+    back_to_results: "返回",
+    fullscreen: "全屏预览",
+    close_preview: "关闭",
+    viewer_fit: "适应窗口",
+    viewer_actual: "实际大小",
+    viewer_fullscreen: "全屏",
+    viewer_exit_fullscreen: "退出全屏",
+    viewer_fullscreen_unavailable: "此浏览器暂不支持全屏。",
+    viewer_zoom_in: "放大",
+    viewer_zoom_out: "缩小",
+    viewer_zoom_level: "缩放比例",
+    viewer_region: "照片查看器",
+    viewer_image_hint: "滚轮缩放 · 拖动平移 · 双击切换适应窗口 / 实际大小",
+    viewer_original_loading: "正在加载原图…",
+    viewer_original_failed: "此浏览器无法显示原图，已保留预览图，实际大小不可用。",
+    viewer_preview_hint: "预览图 · 缩放或选择实际大小以加载原图",
+    status_ok: "正常",
+    status_degraded: "降级",
+    no_thumbnail: "无缩略图",
+    dashboard_refresh_failed: "看板刷新失败: {error}",
+    latest_assets_meta: "最新资源: 显示 {shown} / {total}",
+    library_load_failed: "资源库加载失败: {error}",
+    caption_mode_needs_text: "描述模式需要输入文本",
+    person_mode_needs_name: "人物模式需要人物名",
+    search_results_meta: "模式: {mode} | 结果: {count}",
+    search_results_meta_paged: "模式: {mode} | 结果: {shown}/{total}",
+    search_failed: "搜索失败: {error}",
+    asset_not_found: "资源 #{id} 未找到",
+    asset_prefix: "资源 #{id}",
+    unknown_path: "(未知路径)",
+    inspector_load_failed: "详情加载失败: {error}",
+    map_lib_failed: "地图库加载失败。",
+    map_showing_meta: "显示 {shown} / {total} 个地理标记资源（{media}）。",
+    map_no_points: "该筛选条件下没有 GPS 点。",
+    map_load_failed: "地图加载失败: {error}",
+    popup_open_asset: "打开资源",
+    popup_image: "图片",
+    popup_video: "视频",
+    no_captions: "暂无描述。",
+    caption_unknown_model: "未知",
+    edited_flag: "已编辑={value}",
+    caption_save: "保存",
+    caption_delete: "删除",
+    no_tags: "暂无标签。",
+    new_person_name_ph: "新人物姓名",
+    create_person: "新建人物",
+    create_and_assign: "新建并分配",
+    assign_to_person: "分配到人物...",
+    face_people_loading: "正在加载已保存的人物…",
+    face_people_failed: "无法加载已保存的人物，请重试后再分配或新建人物。",
+    current_person: "当前: 人物 {id}",
+    person_fallback: "人物 {id}",
+    new_person: "+ 新建人物",
+    not_face_delete: "非人脸（删除检测）",
+    no_face_detections: "该资源暂无人脸检测结果。",
+    label_none: "标签=(无)",
+    label_line: "标签={source}{score}",
+    label_score: " 分数={score}",
+    assign: "分配",
+    mark_stranger: "陌生人",
+    not_face: "非人脸",
+    face_prefix: "人脸 #{id}",
+    face_asset_prefix: "人脸 #{face}, 资源 #{asset}",
+    person_stats: "编号={id} | 人脸={count}",
+    no_persons: "暂无人物。",
+    people_hint_all: "显示已命名人物和未命名聚类。",
+    people_hint_named: "仅显示已命名人物。需要时可开启“显示未命名聚类”。",
+    display_name_ph: "显示名称",
+    save_name: "保存名称",
+    view_assets: "查看资源",
+    person_assets_meta: "人物 {id}: {count} 个资源",
+    person_assets_meta_paged: "人物 {id}: 当前显示 {shown}/{total}",
+    no_unassigned_faces: "没有未分配人脸。",
+    people_load_failed: "人物加载失败: {error}",
+    person_assets_load_failed: "人物资源加载失败: {error}",
+    unassigned_faces_load_failed: "未分配人脸加载失败: {error}",
+    task_meta: "总计={total} | 待处理={pending} | 运行中={running} | 失败={failed} | 失效={dead}",
+    task_meta_with_page:
+      "总计={total} | 待处理={pending} | 运行中={running} | 失败={failed} | 失效={dead} | 当前显示={shown}",
+    usage_cpu: "CPU",
+    usage_memory: "内存",
+    usage_gpu: "GPU {index}",
+    usage_no_gpu: "无 GPU 指标",
+    usage_unavailable: "不可用",
+    usage_util_mem: "利用率 {util}% | 显存 {used}/{total} GiB",
+    usage_temp: "温度 {temp} C",
+    cancel: "取消",
+    task_load_failed: "任务加载失败: {error}",
+    admin_refresh_failed: "管理面板刷新失败: {error}",
+    caption_saved: "描述 {id} 已保存",
+    caption_deleted: "描述 {id} 已删除",
+    caption_action_failed: "描述操作失败: {error}",
+    person_name_required: "请输入人物姓名",
+    person_created: "人物 {name} 已可用",
+    person_exists_reused: "已使用现有人物 {name}",
+    select_target_first: "请先选择目标人物",
+    invalid_person_selection: "人物选择无效",
+    confirm_delete_face: "将人脸 #{id} 标记为非人脸并删除检测？",
+    refreshed: "已刷新",
+    caption_regen_enqueued: "已加入描述重生成任务",
+    regenerate_failed: "重生成失败: {error}",
+    no_tag_entered: "未输入标签",
+    tags_updated: "标签已更新",
+    tag_catalog: "标签总览",
+    tag_filter_name_ph: "筛选标签...",
+    tag_source: "来源",
+    tag_source_all: "全部",
+    tag_source_cap: "描述",
+    tag_source_img: "图像",
+    tag_source_capimg: "描述+图像",
+    tag_source_manual: "手动",
+    tag_source_rule: "规则",
+    tag_source_null: "未知",
+    tag_assets: "资源数",
+    tag_links: "关联数",
+    tag_sources: "来源明细",
+    tag_assets_panel: "标签资源",
+    tag_assets_meta_default: "选择一个标签查看相关资源。",
+    tag_assets_meta: "标签 {name}: {count} 个资源",
+    tag_assets_meta_paged: "标签 {name}: 当前显示 {shown}/{total}",
+    tag_assets_load_failed: "标签资源加载失败: {error}",
+    tag_open_search: "在搜索中打开",
+    tags_meta: "标签: 显示 {shown} / {total}",
+    tags_meta_paged: "标签: {shown}/{total}",
+    tag_catalog_load_failed: "标签总览加载失败: {error}",
+    story_albums: "故事相册",
+    story_type: "类型",
+    story_type_all: "全部",
+    story_type_person: "人物",
+    story_type_tag: "标签",
+    story_type_location: "位置",
+    story_type_caption: "描述",
+    story_min_assets: "最少资源数",
+    story_meta: "故事: 显示 {shown} / {total}",
+    story_assets_panel: "故事资源",
+    story_assets_meta_default: "选择一个故事查看相关资源。",
+    story_assets_meta: "{title}: 当前显示 {shown}/{total}",
+    story_load_failed: "故事相册加载失败: {error}",
+    story_view_assets: "查看资源",
+    story_open_context: "打开上下文",
+    story_context_opened: "已打开故事上下文",
+    story_context_unavailable: "故事上下文不可用",
+    album_drafts_eyebrow: "我的收藏",
+    album_drafts_title: "已保存的相册草稿",
+    album_drafts_empty: "还没有相册草稿，可从推荐故事开始创建。",
+    album_composer_eyebrow: "相册编辑器",
+    album_composer_title: "制作一份家庭纪念",
+    album_use_story: "使用当前故事",
+    album_title_en: "英文标题",
+    album_title_en_ph: "Our summer together",
+    album_title_zh: "中文标题",
+    album_title_zh_ph: "一起过夏天",
+    album_theme: "主题",
+    album_theme_custom: "自定义",
+    album_theme_birthday: "生日",
+    album_theme_trip: "旅行",
+    album_theme_growing_up: "成长",
+    album_theme_grandparents: "祖孙时光",
+    album_theme_year_in_review: "年度回顾",
+    album_theme_seasonal: "四季回忆",
+    album_sort: "照片顺序",
+    album_sort_chronological: "从早到晚",
+    album_sort_newest: "最新优先",
+    album_sort_story: "故事顺序",
+    album_cover: "封面照片",
+    album_save_draft: "保存相册草稿",
+    album_update_draft: "更新相册草稿",
+    album_composer_hint: "请先选择一个推荐故事。",
+    album_composer_ready: "已有 {count} 张照片可加入草稿。",
+    album_draft_assets: "{count} 张照片",
+    album_title_required: "请输入英文相册标题。",
+    album_story_required: "请先选择一个包含照片的故事。",
+    album_saved: "相册草稿已保存",
+    album_updated: "相册草稿已更新",
+    album_save_failed: "相册保存失败：{error}",
+    album_load_failed: "相册草稿加载失败：{error}",
+    similarity_title: "相似图收敛",
+    similarity_min_group_size: "最小组大小",
+    similarity_max_distance: "最大距离",
+    similarity_sample_limit: "采样",
+    similarity_cluster_limit: "聚类上限",
+    similarity_preview: "预览",
+    similarity_apply: "隐藏相似项",
+    similarity_restore_all: "恢复隐藏项",
+    similarity_meta: "分组={groups} | 保留={keep} | 隐藏={hide} | 唯一隐藏={unique_hide}",
+    similarity_kind: "类型",
+    similarity_kind_sha: "完全重复",
+    similarity_kind_near: "近重复",
+    similarity_keep: "保留",
+    similarity_hide_count: "隐藏数",
+    similarity_view_group: "查看分组",
+    similarity_group_assets_panel: "分组资源",
+    similarity_group_assets_meta_default: "选择一个分组查看候选。",
+    similarity_group_assets_meta: "{kind} 分组: 保留 #{keep}, 隐藏 {hide}",
+    similarity_load_failed: "相似图预览失败: {error}",
+    similarity_apply_done: "已隐藏相似资源: {count}",
+    similarity_restore_done: "已恢复隐藏资源: {count}",
+    similarity_action_failed: "相似图操作失败: {error}",
+    remove_tag: "移除标签",
+    tag_removed: "标签已移除",
+    tag_update_failed: "标签更新失败: {error}",
+    face_updated: "人脸 {id} 已更新",
+    face_assignment_failed: "人脸分配失败: {error}",
+    person_renamed: "人物 {id} 已重命名",
+    person_action_failed: "人物操作失败: {error}",
+    unassigned_face_action_failed: "未分配人脸操作失败: {error}",
+    task_cancel_requested: "任务 {id} 已请求取消",
+    cancel_failed: "取消失败: {error}",
+    vector_rebuild_triggered: "已触发向量索引重建",
+    rebuild_failed: "重建失败: {error}",
+    recluster_queued: "已加入重聚类任务",
+    recluster_failed: "重聚类失败: {error}",
+    provide_ingest_root: "请提供导入根路径",
+    ingest_started: "已开始导入扫描: {root}",
+    ingest_failed: "导入失败: {error}",
+    no_asset_selected: "请先选择一个资源",
+    delete_photo: "删除照片",
+    delete_asset: "删除资源",
+    confirm_delete_photo: "删除照片 #{id} 的资源库记录？将保留本地文件。",
+    confirm_delete_asset: "删除资源 #{id} 并移除本地文件？此操作不可撤销。",
+    photo_deleted: "照片 #{id} 已删除（保留文件）",
+    asset_deleted: "资源 #{id} 已删除（已移除文件）",
+    asset_delete_failed: "删除失败: {error}",
+    prev_page: "上一页",
+    next_page: "下一页",
+    jump_page: "跳转",
+    page_input_ph: "页码",
+    pager_status: "第 {page}/{pages} 页 | 当前显示 {shown}/{total}",
+  },
+};
+
+function t(key, vars = {}) {
+  const dict = I18N[state.lang] || I18N.en;
+  let s = dict[key] || I18N.en[key] || key;
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.replaceAll(`{${k}}`, String(v));
+  }
+  return s;
+}
+
+function mediaLabel(value) {
+  if (value === "image") return t("media_image");
+  if (value === "video") return t("media_video");
+  return t("media_all");
+}
+
+function modeLabel(value) {
+  if (value === "path") return t("mode_path");
+  if (value === "caption") return t("mode_caption");
+  if (value === "smart") return t("mode_smart");
+  if (value === "person") return t("mode_person");
+  return value;
+}
+
+function storyTypeLabel(value) {
+  if (value === "person") return t("story_type_person");
+  if (value === "tag") return t("story_type_tag");
+  if (value === "location") return t("story_type_location");
+  if (value === "caption") return t("story_type_caption");
+  return t("story_type_all");
+}
+
+function albumThemeLabel(value) {
+  const key = `album_theme_${String(value || "custom")}`;
+  return t(key);
+}
+
+function albumDisplayTitle(album) {
+  if (state.lang === "zh" && String(album?.title_zh || "").trim()) {
+    return String(album.title_zh).trim();
+  }
+  return String(album?.title || "").trim();
+}
+
+function similarityKindLabel(value) {
+  if (value === "sha256") return t("similarity_kind_sha");
+  if (value === "near") return t("similarity_kind_near");
+  return value || "-";
+}
+
+function tagSourceLabel(value) {
+  if (value === "cap") return t("tag_source_cap");
+  if (value === "img") return t("tag_source_img");
+  if (value === "cap+img") return t("tag_source_capimg");
+  if (value === "manual") return t("tag_source_manual");
+  if (value === "rule") return t("tag_source_rule");
+  if (value === "(null)") return t("tag_source_null");
+  return value || t("tag_source_null");
+}
+
+function pageCount(total, pageSize) {
+  const totalNum = Number(total) || 0;
+  const sizeNum = Math.max(1, Number(pageSize) || 1);
+  return Math.max(1, Math.ceil(totalNum / sizeNum));
+}
+
+function isLibraryPaged() {
+  return ["latest", "path", "person"].includes(String(state.libraryPager.kind || ""));
+}
+
+function parsePageInputValue(rawValue, pages) {
+  const n = Number(rawValue);
+  if (!Number.isFinite(n)) return null;
+  const p = Math.floor(n);
+  if (p < 1) return 1;
+  if (p > pages) return pages;
+  return p;
+}
+
+function updateLibraryPagerUi() {
+  const prev = qs("btn-library-prev");
+  const next = qs("btn-library-next");
+  const jumpBtn = qs("btn-library-jump");
+  const jumpInput = qs("library-page-input");
+  const meta = qs("library-page-meta");
+  if (!prev || !next || !meta || !jumpBtn || !jumpInput) return;
+
+  const pager = state.libraryPager || {};
+  const page = Math.max(1, Number(pager.page) || 1);
+  const pages = pageCount(pager.total, pager.pageSize);
+  const shown = Number(pager.shown) || 0;
+  const total = Number(pager.total);
+  const displayTotal = Number.isFinite(total) && total >= 0 ? total : shown;
+
+  if (!isLibraryPaged()) {
+    prev.disabled = true;
+    next.disabled = true;
+    jumpBtn.disabled = true;
+    jumpInput.disabled = true;
+  } else {
+    prev.disabled = page <= 1;
+    next.disabled = page >= pages || shown <= 0;
+    jumpBtn.disabled = shown <= 0 || pages <= 1;
+    jumpInput.disabled = shown <= 0 || pages <= 1;
+  }
+  jumpInput.min = "1";
+  jumpInput.max = String(pages);
+  jumpInput.value = String(page);
+  meta.textContent = t("pager_status", {
+    page,
+    pages,
+    shown,
+    total: displayTotal,
+  });
+}
+
+function updatePersonAssetsPagerUi() {
+  const prev = qs("btn-person-assets-prev");
+  const next = qs("btn-person-assets-next");
+  const jumpBtn = qs("btn-person-assets-jump");
+  const jumpInput = qs("person-assets-page-input");
+  const meta = qs("person-assets-page-meta");
+  if (!prev || !next || !meta || !jumpBtn || !jumpInput) return;
+
+  const pager = state.personAssetsPager || {};
+  const page = Math.max(1, Number(pager.page) || 1);
+  const pages = pageCount(pager.total, pager.pageSize);
+  const shown = Number(pager.shown) || 0;
+  const total = Number(pager.total) || 0;
+  const active = Boolean(pager.personId);
+
+  prev.disabled = page <= 1 || !active;
+  next.disabled = page >= pages || shown <= 0 || !active;
+  jumpBtn.disabled = !active || shown <= 0 || pages <= 1;
+  jumpInput.disabled = !active || shown <= 0 || pages <= 1;
+  jumpInput.min = "1";
+  jumpInput.max = String(pages);
+  jumpInput.value = String(page);
+  meta.textContent = t("pager_status", { page, pages, shown, total });
+}
+
+function updateUnassignedFacesPagerUi() {
+  const prev = qs("btn-unassigned-prev");
+  const next = qs("btn-unassigned-next");
+  const jumpBtn = qs("btn-unassigned-jump");
+  const jumpInput = qs("unassigned-page-input");
+  const meta = qs("unassigned-page-meta");
+  if (!prev || !next || !meta || !jumpBtn || !jumpInput) return;
+
+  const pager = state.unassignedFacesPager || {};
+  const page = Math.max(1, Number(pager.page) || 1);
+  const pages = pageCount(pager.total, pager.pageSize);
+  const shown = Number(pager.shown) || 0;
+  const total = Number(pager.total) || 0;
+
+  prev.disabled = page <= 1;
+  next.disabled = page >= pages || shown <= 0;
+  jumpBtn.disabled = shown <= 0 || pages <= 1;
+  jumpInput.disabled = shown <= 0 || pages <= 1;
+  jumpInput.min = "1";
+  jumpInput.max = String(pages);
+  jumpInput.value = String(page);
+  meta.textContent = t("pager_status", { page, pages, shown, total });
+}
+
+function updateTagsPagerUi() {
+  const prev = qs("btn-tags-prev");
+  const next = qs("btn-tags-next");
+  const jumpBtn = qs("btn-tags-jump");
+  const jumpInput = qs("tags-page-input");
+  const meta = qs("tags-page-meta");
+  if (!prev || !next || !meta || !jumpBtn || !jumpInput) return;
+
+  const pager = state.tagsPager || {};
+  const page = Math.max(1, Number(pager.page) || 1);
+  const pages = pageCount(pager.total, pager.pageSize);
+  const shown = Number(pager.shown) || 0;
+  const total = Number(pager.total) || 0;
+
+  prev.disabled = page <= 1;
+  next.disabled = page >= pages || shown <= 0;
+  jumpBtn.disabled = shown <= 0 || pages <= 1;
+  jumpInput.disabled = shown <= 0 || pages <= 1;
+  jumpInput.min = "1";
+  jumpInput.max = String(pages);
+  jumpInput.value = String(page);
+  meta.textContent = t("pager_status", { page, pages, shown, total });
+}
+
+function updateTagAssetsPagerUi() {
+  const prev = qs("btn-tag-assets-prev");
+  const next = qs("btn-tag-assets-next");
+  const jumpBtn = qs("btn-tag-assets-jump");
+  const jumpInput = qs("tag-assets-page-input");
+  const meta = qs("tag-assets-page-meta");
+  if (!prev || !next || !meta || !jumpBtn || !jumpInput) return;
+
+  const pager = state.tagsAssetsPager || {};
+  const page = Math.max(1, Number(pager.page) || 1);
+  const pages = pageCount(pager.total, pager.pageSize);
+  const shown = Number(pager.shown) || 0;
+  const total = Number(pager.total) || 0;
+  const active = Boolean(pager.tagId);
+
+  prev.disabled = page <= 1 || !active;
+  next.disabled = page >= pages || shown <= 0 || !active;
+  jumpBtn.disabled = !active || shown <= 0 || pages <= 1;
+  jumpInput.disabled = !active || shown <= 0 || pages <= 1;
+  jumpInput.min = "1";
+  jumpInput.max = String(pages);
+  jumpInput.value = String(page);
+  meta.textContent = t("pager_status", { page, pages, shown, total });
+}
+
+function mbToGiB(mb) {
+  const n = Number(mb);
+  if (!Number.isFinite(n)) return "-";
+  return (n / 1024).toFixed(1);
+}
+
+function bytesToGiB(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return "-";
+  return (n / (1024 ** 3)).toFixed(1);
+}
+
+function renderSystemUsage(usage) {
+  const root = qs("task-system-usage");
+  if (!root) return;
+  if (!usage) {
+    root.innerHTML = "";
+    return;
+  }
+
+  const cpuText = Number.isFinite(Number(usage.cpu_percent))
+    ? `${Number(usage.cpu_percent).toFixed(1)}%`
+    : t("usage_unavailable");
+
+  let memValue = t("usage_unavailable");
+  let memSub = "";
+  if (usage.memory) {
+    const total = bytesToGiB(usage.memory.total);
+    const used = bytesToGiB(usage.memory.used);
+    const pct = Number.isFinite(Number(usage.memory.percent)) ? Number(usage.memory.percent).toFixed(1) : "-";
+    memValue = `${pct}%`;
+    memSub = `${used}/${total} GiB`;
+  }
+
+  const cards = [
+    `<article class="usage-card"><p class="usage-title">${esc(t("usage_cpu"))}</p><p class="usage-value">${esc(cpuText)}</p></article>`,
+    `<article class="usage-card"><p class="usage-title">${esc(t("usage_memory"))}</p><p class="usage-value">${esc(memValue)}</p><p class="usage-sub">${esc(memSub)}</p></article>`,
+  ];
+
+  const gpus = Array.isArray(usage.gpus) ? usage.gpus : [];
+  if (!gpus.length) {
+    cards.push(
+      `<article class="usage-card"><p class="usage-title">GPU</p><p class="usage-value">${esc(
+        t("usage_no_gpu")
+      )}</p></article>`
+    );
+  } else {
+    for (const g of gpus) {
+      const util = Number.isFinite(Number(g.utilization_gpu_percent))
+        ? Number(g.utilization_gpu_percent).toFixed(0)
+        : "-";
+      const used = mbToGiB(g.memory_used_mb);
+      const total = mbToGiB(g.memory_total_mb);
+      const temp = Number.isFinite(Number(g.temperature_c)) ? Number(g.temperature_c).toFixed(0) : "-";
+      cards.push(`
+        <article class="usage-card">
+          <p class="usage-title">${esc(t("usage_gpu", { index: g.index }))}</p>
+          <p class="usage-value">${esc(g.name || "NVIDIA GPU")}</p>
+          <p class="usage-sub">${esc(t("usage_util_mem", { util, used, total }))}</p>
+          <p class="usage-sub">${esc(t("usage_temp", { temp }))}</p>
+        </article>
+      `);
+    }
+  }
+
+  root.innerHTML = cards.join("");
+}
+
+function applyI18n() {
+  document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
+  document.title = t("app_title");
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n;
+    if (key) el.textContent = t(key);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.dataset.i18nPlaceholder;
+    if (key) el.setAttribute("placeholder", t(key));
+  });
+  document.querySelectorAll(".lang-btn").forEach((el) => {
+    el.classList.toggle("active", el.dataset.lang === state.lang);
+  });
+  updateUiModeControls();
+  updateViewerImageControls();
+}
+
+function updateUiModeControls() {
+  const button = qs("btn-ui-mode");
+  if (!button) return;
+  const advanced = state.uiMode === "advanced";
+  button.textContent = t(advanced ? "family_mode" : "advanced_mode");
+  button.setAttribute("aria-pressed", String(advanced));
+}
+
+function isTabAllowed(tab) {
+  return ALL_TABS.includes(tab) && (state.uiMode === "advanced" || !ADVANCED_TABS.has(tab));
+}
+
+function setUiMode(mode, persist = true) {
+  state.uiMode = mode === "advanced" ? "advanced" : "family";
+  document.body.dataset.uiMode = state.uiMode;
+  if (persist) {
+    window.localStorage.setItem("vlm_ui_mode", state.uiMode);
+  }
+  if (!isTabAllowed(state.activeTab)) {
+    setActiveTab("home");
+  }
+  updateUiModeControls();
+}
+
+function setLanguage(lang, persist = true) {
+  const next = lang === "zh" ? "zh" : "en";
+  state.lang = next;
+  if (persist) {
+    window.localStorage.setItem("vlm_ui_lang", next);
+  }
+  applyI18n();
+  renderCurrentViewText();
+}
+
+function renderCurrentViewText() {
+  if (state.activeTab === "home") {
+    renderHome();
+  }
+  if (state.libraryViewItems.length) {
+    renderAssetGrid(state.libraryViewItems, "library-grid");
+  }
+  updateLibraryPagerUi();
+  updatePersonAssetsPagerUi();
+  updateUnassignedFacesPagerUi();
+  if (state.selectedAsset) {
+    qs("asset-id").textContent = t("asset_prefix", { id: state.selectedAsset.id });
+    if (!qs("asset-path").textContent.trim()) {
+      qs("asset-path").textContent = t("unknown_path");
+    }
+  }
+  if (state.activeTab === "people") {
+    renderPeopleList();
+    loadUnassignedFaces(state.unassignedFacesPager.page || 1);
+  }
+  if (state.activeTab === "tags") {
+    loadTagsCatalog(state.tagsPager.page || 1);
+    if (state.tagsAssetsPager.tagId) {
+      loadTagAssets(state.tagsAssetsPager.tagId, state.tagsAssetsPager.page || 1);
+    } else {
+      updateTagAssetsPagerUi();
+    }
+  }
+  if (state.activeTab === "stories") {
+    loadStoryAlbums();
+  }
+  if (state.activeTab === "similarity") {
+    loadSimilarityPreview();
+  }
+  if (state.activeTab === "tasks") {
+    loadTasks();
+  }
+  if (state.activeTab === "map") {
+    loadGeoMap();
+  }
+  renderVoiceHistory();
+}
+
+function esc(s) {
+  return String(s || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function basename(path) {
+  const raw = String(path || "");
+  const p = raw.replaceAll("\\", "/");
+  return p.split("/").pop() || raw;
+}
+
+function isVideoAsset(asset) {
+  const mime = String(asset?.mime || "").toLowerCase();
+  if (mime.startsWith("video/")) {
+    return true;
+  }
+  const p = String(asset?.path || "").toLowerCase();
+  return [".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"].some((ext) => p.endsWith(ext));
+}
+
+function showToast(message) {
+  const toast = qs("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  window.clearTimeout(showToast._timer);
+  showToast._timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function tabToUrl(tab) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", tab);
+  window.history.replaceState(null, "", url.toString());
+}
+
+async function api(url, opts = {}) {
+  const options = { ...opts };
+  options.headers = options.headers || {};
+  if (options.body && !(options.body instanceof FormData)) {
+    options.headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(url, options);
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const detail = data?.detail || data?.error?.message || data || `HTTP ${res.status}`;
+    throw new Error(String(detail));
+  }
+  return data;
+}
+
+function setVoiceStatus(message = "") {
+  const el = qs("voice-status");
+  if (el) el.textContent = message;
+}
+
+function voiceRoleLabel(role) {
+  if (role === "you") return t("voice_history_you");
+  if (role === "assistant") return t("voice_history_assistant");
+  return t("voice_history_system");
+}
+
+function renderVoiceHistory() {
+  const list = qs("voice-history-list");
+  if (!list) return;
+  const rows = Array.isArray(state.voiceHistory) ? state.voiceHistory : [];
+  if (!rows.length) {
+    list.innerHTML = `<div class="voice-history-empty">${esc(t("voice_history_empty"))}</div>`;
+    return;
+  }
+  list.innerHTML = rows
+    .map((row) => {
+      const role = String(row?.role || "system");
+      const text = String(row?.text || "");
+      const ts = Number(row?.ts || 0);
+      const stamp = ts > 0 ? new Date(ts).toLocaleTimeString() : "";
+      return `<div class="voice-history-entry ${esc(role)}"><div class="voice-history-entry-head"><span class="voice-history-role">${esc(
+        voiceRoleLabel(role)
+      )}</span><span class="voice-history-time">${esc(stamp)}</span></div><div class="voice-history-text">${esc(text)}</div></div>`;
+    })
+    .join("");
+}
+
+function addVoiceHistory(role, text) {
+  const msg = String(text || "").trim();
+  if (!msg) return;
+  const next = Array.isArray(state.voiceHistory) ? state.voiceHistory.slice(-11) : [];
+  next.push({ role: String(role || "system"), text: msg, ts: Date.now() });
+  state.voiceHistory = next;
+  renderVoiceHistory();
+}
+
+function clearVoiceHistory() {
+  state.voiceHistory = [];
+  renderVoiceHistory();
+}
+
+function requestClearVoiceHistory() {
+  if (!window.confirm(t("confirm_delete_voice_history"))) return;
+  clearVoiceHistory();
+  showToast(t("voice_history_deleted"));
+}
+
+function getOrCreateVoiceClientId() {
+  const key = "vlm_voice_client_id";
+  const existing = String(window.localStorage.getItem(key) || "").trim();
+  if (existing) return existing;
+  const next =
+    (window.crypto && typeof window.crypto.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : `voice-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`) || `voice-${Date.now()}`;
+  window.localStorage.setItem(key, next);
+  return next;
+}
+
+function normalizeVoiceControlText(textRaw) {
+  return String(textRaw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[,.!?;:，。！？；：]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function isVoiceConfirmText(textRaw) {
+  const n = normalizeVoiceControlText(textRaw);
+  return ["yes", "confirm", "go ahead", "do it", "ok", "okay", "sure", "确定", "确认", "执行", "是"].includes(n);
+}
+
+function isVoiceCancelText(textRaw) {
+  const n = normalizeVoiceControlText(textRaw);
+  return ["cancel", "no", "stop", "never mind", "取消", "不要", "算了"].includes(n);
+}
+
+function extractVoicePersonAssetsQuery(textRaw) {
+  const normalized = String(textRaw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[,.!?;:，。！？；：]/g, " ")
+    .replace(/\s+/g, " ");
+  if (!normalized) return "";
+  const patterns = [
+    /^(?:please\s+)?(?:show me|show|find|open)\s+(?:(?:the|a|an|some)\s+)?(?:photos|photo|pictures|picture|images|image)\s+(?:of\s+)?(.+)$/,
+    /^(?:photos|photo|pictures|picture|images|image)\s+(?:of\s+)?(.+)$/,
+    /^(?:show me|show)\s+(.+?)\s+(?:photos|photo|pictures|picture|images|image)$/,
+    /^(?:show me|show)\s+(.+?)'s\s+(?:photos|photo|pictures|picture|images|image)$/,
+    /^(?:请)?(?:给我看|给我看看|帮我找|找找|找一下|显示|打开|看看)\s*(?:一下)?\s*(.+?)\s*(?:的)?\s*(?:照片|图片|相片|影像|相册)$/,
+    /^(?:请)?(?:帮我)?(?:找|找下|找一下)\s*(.+?)\s*(?:的)?\s*(?:照片|图片|相片|影像|相册)$/,
+  ];
+  for (const p of patterns) {
+    const m = normalized.match(p);
+    if (!m || !m[1]) continue;
+    const q = String(m[1]).trim().replace(/^[\s'"`.,!?;:。！？；：]+|[\s'"`.,!?;:。！？；：]+$/g, "");
+    const q2 = q.replace(/^(?:the|a|an)\s+/i, "").trim();
+    if (q2) return q2;
+    if (q) return q;
+  }
+  return "";
+}
+
+function normalizeVoicePersonName(raw) {
+  let q = String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[,.!?;:，。！？；：]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  q = q.replace(/^(?:the|a|an)\s+/i, "").trim();
+  q = q.replace(/\s+[a-z]$/i, "").trim(); // trims noisy suffix like "jane r"
+  return q;
+}
+
+async function lookupPersonByNameQuery(rawQuery) {
+  const base = normalizeVoicePersonName(rawQuery);
+  if (!base) return null;
+  const candidates = [];
+  const push = (v) => {
+    const n = normalizeVoicePersonName(v);
+    if (n && !candidates.includes(n)) candidates.push(n);
+  };
+  push(base);
+  const tokens = base.split(" ").filter((x) => x);
+  if (tokens.length > 1) {
+    push(tokens[0]);
+    push(tokens[tokens.length - 1]);
+  }
+  for (const q of candidates) {
+    let data;
+    try {
+      data = await api(
+        `/persons?page=1&page_size=120&include_faces=false&named_only=true&sort_by=face_count&order=desc&name_query=${encodeURIComponent(q)}`
+      );
+    } catch (_) {
+      continue;
+    }
+    const persons = Array.isArray(data?.persons) ? data.persons : [];
+    if (!persons.length) continue;
+    const qLower = String(q).toLowerCase();
+    let person = persons.find((p) => String(p?.display_name || "").trim().toLowerCase() === qLower);
+    if (!person) {
+      person = persons.find((p) => String(p?.display_name || "").trim().toLowerCase().startsWith(qLower));
+    }
+    if (!person) person = persons[0];
+    const personId = Number(person?.id || 0);
+    if (personId <= 0) continue;
+    let total = 0;
+    try {
+      const assets = await api(`/search/person/${personId}?page=1&page_size=1`);
+      total = Number(assets?.total || 0);
+    } catch (_) {
+      total = 0;
+    }
+    return {
+      personId,
+      personName: String(person?.display_name || q),
+      total,
+      query: q,
+    };
+  }
+  return { personId: 0, personName: "", total: 0, query: base };
+}
+
+async function openPersonAssetsFromLookup(lookup) {
+  const personId = Number(lookup?.personId || 0);
+  if (!personId) return false;
+  const personName = String(lookup?.personName || `#${personId}`);
+  const total = Number(lookup?.total || 0);
+  setActiveTab("people");
+  await loadPeople();
+  await loadPersonAssets(personId, 1);
+  const msg = t("voice_person_opened", { name: personName, total });
+  addVoiceHistory("assistant", msg);
+  showToast(msg);
+  return true;
+}
+
+async function openPersonSearchByName(rawQuery) {
+  const q = normalizeVoicePersonName(rawQuery);
+  if (!q) return false;
+  let total = 0;
+  try {
+    const probe = await api(`/search/person/name/${encodeURIComponent(q)}?page=1&page_size=1`);
+    total = Number(probe?.total || 0);
+  } catch (_) {
+    total = 0;
+  }
+  if (total <= 0) return false;
+  setActiveTab("library");
+  qs("search-mode").value = "person";
+  qs("search-query").value = q;
+  qs("search-media").value = "all";
+  await runSearch(1, false);
+  const msg = t("voice_person_opened", { name: q, total });
+  addVoiceHistory("assistant", msg);
+  showToast(msg);
+  return true;
+}
+
+async function tryClientPersonAssetsFallback(text) {
+  const q = extractVoicePersonAssetsQuery(text);
+  if (!q) return false;
+  const lookup = await lookupPersonByNameQuery(q);
+  if (await openPersonAssetsFromLookup(lookup)) return true;
+  if (await openPersonSearchByName(lookup?.query || q)) return true;
+  const msg = t("voice_person_not_found", { name: String(lookup?.query || q || "?") });
+  addVoiceHistory("assistant", msg);
+  showToast(msg);
+  return true;
+}
+
+async function executeVoiceCommand(text) {
+  const wantsConfirm = isVoiceConfirmText(text);
+  const wantsCancel = isVoiceCancelText(text);
+  const requestBody = {
+    text,
+    language: state.lang,
+    limit: 20,
+    client_id: state.voiceClientId || "default",
+  };
+  if (wantsConfirm && state.voicePendingConfirmationToken) {
+    requestBody.confirm = true;
+    requestBody.confirmation_token = state.voicePendingConfirmationToken;
+  }
+  if (wantsCancel && state.voicePendingConfirmationToken) {
+    requestBody.cancel = true;
+    requestBody.confirmation_token = state.voicePendingConfirmationToken;
+  }
+  const payload = await api("/voice/command", {
+    method: "POST",
+    body: JSON.stringify(requestBody),
+  });
+  const reason = String(payload?.data?.reason || "");
+  const pendingToken = String(payload?.data?.confirmation_token || "").trim();
+  if (reason === "confirmation_required" && pendingToken) {
+    state.voicePendingConfirmationToken = pendingToken;
+  } else if (reason === "confirmed_and_executed" || reason === "cancelled" || reason === "no_pending_confirmation") {
+    state.voicePendingConfirmationToken = "";
+  }
+  const action = String(payload?.contract?.action || "");
+  if (action === "search.person.assets") {
+    const personId = Number(payload?.data?.person_id || 0);
+    const personName = String(payload?.data?.person_name || "").trim() || `#${personId}`;
+    const total = Number(payload?.data?.total || 0);
+    if (personId > 0) {
+      setActiveTab("people");
+      await loadPeople();
+      await loadPersonAssets(personId, 1);
+      const msg = t("voice_person_opened", { name: personName, total });
+      addVoiceHistory("assistant", msg);
+      showToast(msg);
+      return;
+    }
+    const q = String(payload?.data?.query || "").trim() || extractVoicePersonAssetsQuery(text) || text;
+    const lookup = await lookupPersonByNameQuery(q);
+    if (await openPersonAssetsFromLookup(lookup)) return;
+    if (await openPersonSearchByName(lookup?.query || q)) return;
+    const msg = t("voice_person_not_found", { name: String(lookup?.query || q || "?") });
+    addVoiceHistory("assistant", msg);
+    showToast(msg);
+    return;
+  }
+  if (action === "help") {
+    const handled = await tryClientPersonAssetsFallback(text);
+    if (handled) return;
+  }
+  const summary = String(payload?.summary_text || "").trim();
+  if (summary) {
+    addVoiceHistory("assistant", summary);
+    showToast(summary);
+  }
+}
+
+async function runVoiceCommandCapture() {
+  if (state.voiceBusy) return;
+  const voiceBtn = qs("btn-voice-command");
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    showToast(t("voice_not_supported"));
+    return;
+  }
+  state.voiceBusy = true;
+  if (voiceBtn) voiceBtn.disabled = true;
+  let stream = null;
+  try {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+    } catch (_) {
+      showToast(t("voice_denied"));
+      return;
+    }
+    setVoiceStatus(t("voice_recording"));
+    const chunks = [];
+    const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    const chosenMime = mimeCandidates.find(
+      (m) => typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported(m)
+    );
+    const recorder = chosenMime ? new MediaRecorder(stream, { mimeType: chosenMime }) : new MediaRecorder(stream);
+    const stopped = new Promise((resolve, reject) => {
+      recorder.addEventListener("stop", resolve, { once: true });
+      recorder.addEventListener("error", (ev) => reject(ev?.error || new Error("recording error")), { once: true });
+    });
+    recorder.addEventListener("dataavailable", (ev) => {
+      if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+    });
+    recorder.start();
+    await new Promise((r) => window.setTimeout(r, 5000));
+    recorder.stop();
+    await stopped;
+
+    const blob = new Blob(chunks, { type: chunks[0]?.type || chosenMime || "audio/webm" });
+    if (!blob.size) {
+      showToast(t("voice_no_transcript"));
+      return;
+    }
+    setVoiceStatus(t("voice_processing"));
+    const form = new FormData();
+    form.append("file", blob, "voice.webm");
+    form.append("language", state.lang === "zh" ? "zh" : "en");
+    const asr = await api("/voice/transcribe", { method: "POST", body: form });
+    const transcript = String(asr?.text || asr?.transcript || asr?.result || "").trim();
+    if (!transcript) {
+      const err = String(asr?.error || "");
+      showToast(err ? t("voice_transcribe_failed", { error: err }) : t("voice_no_transcript"));
+      return;
+    }
+    addVoiceHistory("you", transcript);
+    showToast(t("voice_heard", { text: transcript }));
+    await executeVoiceCommand(transcript);
+  } catch (e) {
+    addVoiceHistory("system", t("voice_command_failed", { error: e.message }));
+    showToast(t("voice_command_failed", { error: e.message }));
+  } finally {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    state.voiceBusy = false;
+    if (voiceBtn) voiceBtn.disabled = false;
+    setVoiceStatus("");
+  }
+}
+
+async function resetVoiceConversationContext() {
+  if (!window.confirm(t("confirm_delete_voice_chat"))) return;
+  const conversationId = String(state.voiceConversationId || "").trim();
+  let remoteDeleteError = "";
+  if (conversationId) {
+    try {
+      const dropped = await api("/voice/chat/delete", {
+        method: "POST",
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+      if (!dropped?.success) {
+        remoteDeleteError = String(dropped?.error || "provider rejected delete");
+      }
+    } catch (e) {
+      remoteDeleteError = String(e?.message || e || "delete request failed");
+    }
+  }
+  state.voiceConversationId = "";
+  state.voicePendingConfirmationToken = "";
+  clearVoiceHistory();
+  const msg = conversationId
+    ? remoteDeleteError
+      ? t("voice_chat_deleted_local_only", { error: remoteDeleteError })
+      : t("voice_chat_deleted")
+    : t("voice_chat_session_reset");
+  addVoiceHistory("system", msg);
+  showToast(msg);
+}
+
+async function runVoiceConversationCapture() {
+  if (state.voiceBusy) return;
+  const voiceChatBtn = qs("btn-voice-chat");
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    showToast(t("voice_not_supported"));
+    return;
+  }
+  state.voiceBusy = true;
+  if (voiceChatBtn) voiceChatBtn.disabled = true;
+  let stream = null;
+  try {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+    } catch (_) {
+      showToast(t("voice_denied"));
+      return;
+    }
+    setVoiceStatus(t("voice_chat_recording"));
+    const chunks = [];
+    const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    const chosenMime = mimeCandidates.find(
+      (m) => typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported(m)
+    );
+    const recorder = chosenMime ? new MediaRecorder(stream, { mimeType: chosenMime }) : new MediaRecorder(stream);
+    const stopped = new Promise((resolve, reject) => {
+      recorder.addEventListener("stop", resolve, { once: true });
+      recorder.addEventListener("error", (ev) => reject(ev?.error || new Error("recording error")), { once: true });
+    });
+    recorder.addEventListener("dataavailable", (ev) => {
+      if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+    });
+    recorder.start();
+    await new Promise((r) => window.setTimeout(r, 6000));
+    recorder.stop();
+    await stopped;
+
+    const blob = new Blob(chunks, { type: chunks[0]?.type || chosenMime || "audio/webm" });
+    if (!blob.size) {
+      showToast(t("voice_no_transcript"));
+      return;
+    }
+
+    setVoiceStatus(t("voice_chat_processing"));
+    const asrForm = new FormData();
+    asrForm.append("file", blob, "voice-chat.webm");
+    asrForm.append("language", state.lang === "zh" ? "zh" : "en");
+    const asr = await api("/voice/transcribe", { method: "POST", body: asrForm });
+    const transcript = String(asr?.text || asr?.transcript || asr?.result || "").trim();
+    if (!transcript) {
+      const err = String(asr?.error || "");
+      showToast(err ? t("voice_transcribe_failed", { error: err }) : t("voice_no_transcript"));
+      return;
+    }
+    addVoiceHistory("you", transcript);
+    showToast(t("voice_heard", { text: transcript }));
+
+    const chat = await api("/voice/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        text: transcript,
+        conversation_id: state.voiceConversationId || null,
+        language: state.lang,
+        model: "gemma3:latest",
+      }),
+    });
+    const textReply = String(chat?.text_response || chat?.text || "").trim();
+    const nextConversationId = String(chat?.conversation_id || "").trim();
+    if (nextConversationId) {
+      state.voiceConversationId = nextConversationId;
+    }
+    if (!textReply) {
+      const err = String(chat?.error || "");
+      if (err) {
+        addVoiceHistory("system", t("voice_chat_failed", { error: err }));
+        showToast(t("voice_chat_failed", { error: err }));
+        return;
+      }
+      addVoiceHistory("system", t("voice_chat_no_reply"));
+      showToast(t("voice_chat_no_reply"));
+      return;
+    }
+
+    const brief = textReply.length > 80 ? `${textReply.slice(0, 80)}...` : textReply;
+    addVoiceHistory("assistant", textReply);
+    showToast(t("voice_chat_reply_text", { text: brief }));
+
+    const ttsRes = await fetch("/voice/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: textReply,
+        language: state.lang === "zh" ? "zh" : "en",
+        voice: "default",
+        speed: 1.0,
+        format: "audio/wav",
+      }),
+    });
+    if (ttsRes.ok) {
+      const ct = ttsRes.headers.get("content-type") || "";
+      if (ct.startsWith("audio/")) {
+        const outBlob = await ttsRes.blob();
+        const url = URL.createObjectURL(outBlob);
+        let el = qs("voice-chat-audio");
+        if (!el) {
+          el = document.createElement("audio");
+          el.id = "voice-chat-audio";
+          el.style.display = "none";
+          document.body.appendChild(el);
+        }
+        el.src = url;
+        try {
+          await el.play();
+          showToast(t("voice_chat_reply_audio"));
+          return;
+        } catch (_) {}
+      }
+    }
+
+    if ("speechSynthesis" in window) {
+      const u = new SpeechSynthesisUtterance(textReply);
+      u.lang = state.lang === "zh" ? "zh-CN" : "en-US";
+      window.speechSynthesis.speak(u);
+    }
+  } catch (e) {
+    addVoiceHistory("system", t("voice_chat_failed", { error: e.message }));
+    showToast(t("voice_chat_failed", { error: e.message }));
+  } finally {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    state.voiceBusy = false;
+    if (voiceChatBtn) voiceChatBtn.disabled = false;
+    setVoiceStatus("");
+  }
+}
+
+function setActiveTab(tab) {
+  if (!isTabAllowed(tab)) tab = "home";
+  state.activeTab = tab;
+  document.body.dataset.activeTab = tab;
+  document.querySelectorAll(".tab").forEach((el) => {
+    const active = el.dataset.tab === tab;
+    el.classList.toggle("active", active);
+    el.setAttribute("aria-selected", String(active));
+    el.tabIndex = active ? 0 : -1;
+  });
+  document.querySelectorAll(".tab-panel").forEach((el) => {
+    const active = el.id === `tab-${tab}`;
+    el.classList.toggle("active", active);
+    el.setAttribute("aria-hidden", String(!active));
+  });
+  tabToUrl(tab);
+}
+
+async function loadTab(tab) {
+  if (tab === "home") return loadHome();
+  if (tab === "library") {
+    if (!state.libraryViewItems.length) return refreshLibraryCurrentView();
+    return;
+  }
+  if (tab === "people") return loadPeople();
+  if (tab === "tags") {
+    await loadTagsCatalog(state.tagsPager.page || 1);
+    if (state.tagsAssetsPager.tagId) {
+      await loadTagAssets(state.tagsAssetsPager.tagId, state.tagsAssetsPager.page || 1);
+    } else {
+      updateTagAssetsPagerUi();
+    }
+    return;
+  }
+  if (tab === "stories") return loadStoryAlbums();
+  if (tab === "similarity") return loadSimilarityPreview();
+  if (tab === "map") return loadGeoMap();
+  if (tab === "tasks") return loadTasks();
+  if (tab === "admin") return refreshAdminPanels();
+}
+
+function renderAssetGrid(items, containerId) {
+  const root = qs(containerId);
+  state.gridItems.set(containerId, items);
+  if (containerId === "library-grid") {
+    state.libraryViewItems = Array.isArray(items) ? items : [];
+  }
+  items.forEach((asset) => state.assetMap.set(Number(asset.id), asset));
+  root.innerHTML = items
+    .map((asset) => {
+      const id = Number(asset.id);
+      const selected = state.selectedAsset && Number(state.selectedAsset.id) === id ? "selected" : "";
+      return `
+        <article class="asset-card ${selected}" data-asset-id="${id}" role="button" tabindex="0" aria-label="${esc(basename(asset.path))}">
+          <div class="thumb">
+            <img loading="lazy" src="/assets/${id}/thumbnail?size=256"
+                 alt="${esc(basename(asset.path))}"
+                 onerror="this.parentElement.querySelector('.fallback').style.display='grid'; this.remove();" />
+            <span class="fallback" style="display:none;">${esc(t("no_thumbnail"))}</span>
+            ${isVideoAsset(asset) ? `<span class="media-badge">▷ ${esc(t("memory_video"))}</span>` : ""}
+          </div>
+          <div class="asset-meta">
+            <p class="memory-date">${esc(memoryDate(asset))}</p>
+            <p class="id">#${id}</p>
+            <p class="name" title="${esc(asset.path)}">${esc(basename(asset.path))}</p>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function memoryDate(asset) {
+  if (!asset?.taken_at) return t("memory_undated");
+  const date = new Date(asset.taken_at);
+  if (Number.isNaN(date.getTime())) return t("memory_undated");
+  return new Intl.DateTimeFormat(state.lang === "zh" ? "zh-CN" : "en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  }).format(date);
+}
+
+function renderFeaturedPhotos() {
+  const photos = state.home.recent.filter((asset) => !isVideoAsset(asset)).slice(0, 2);
+  qs("home-featured-photos").innerHTML = photos.length ? photos.map((asset) => `
+    <button class="keepsake-photo" type="button" data-featured-id="${Number(asset.id)}" aria-label="${esc(memoryDate(asset))}">
+      <img src="/assets/${Number(asset.id)}/thumbnail?size=256" alt="${esc(basename(asset.path))}" onerror="this.style.display='none';this.nextElementSibling.hidden=false;" />
+      <span class="home-cover-placeholder" aria-hidden="true" hidden>♡</span>
+      <span class="keepsake-date">${esc(memoryDate(asset))}</span>
+    </button>`).join("") : `<div class="empty-keepsake">${esc(t("keepsake_note"))}</div>`;
+  qs("btn-home-slideshow").disabled = state.home.recent.length === 0;
+}
+
+function renderHomePeople() {
+  const root = qs("home-people-list");
+  if (!root) return;
+  const people = Array.isArray(state.home.people) ? state.home.people : [];
+  if (!people.length) {
+    root.innerHTML = `<p class="muted">${esc(t("home_empty_people"))}</p>`;
+    return;
+  }
+  root.innerHTML = people
+    .map((person) => {
+      const faceId = Number((person.sample_faces || [])[0] || 0);
+      const image = faceId
+        ? `<img loading="lazy" src="/faces/${faceId}/crop?size=256" alt="" />`
+        : `<span class="home-person-placeholder" aria-hidden="true">${esc(String(person.display_name || "?").slice(0, 1))}</span>`;
+      return `
+        <button class="home-person-row" type="button" data-action="home-open-person" data-person-id="${Number(person.id) || 0}">
+          ${image}
+          <span class="home-row-copy">
+            <p><strong>${esc(person.display_name || t("person_fallback", { id: person.id }))}</strong></p>
+            <p class="small muted">${esc(t("home_person_photos", { count: Number(person.face_count) || 0 }))}</p>
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderHomeStories() {
+  const root = qs("home-story-list");
+  if (!root) return;
+  const stories = Array.isArray(state.home.stories) ? state.home.stories : [];
+  if (!stories.length) {
+    root.innerHTML = `<p class="muted">${esc(t("home_empty_stories"))}</p>`;
+    return;
+  }
+  // Keep the welcome page short, with one doorway into each kind of album.
+  const seenTypes = new Set();
+  const featured = stories.filter((story) => {
+    if (seenTypes.has(story.type)) return false;
+    seenTypes.add(story.type);
+    return true;
+  }).slice(0, 4);
+  root.innerHTML = featured
+    .map((story) => {
+      const firstAsset = (story.items || [])[0] || null;
+      const image = firstAsset?.id
+        ? `<img loading="lazy" src="/assets/${Number(firstAsset.id)}/thumbnail?size=256" alt="" onerror="this.style.display='none';this.nextElementSibling.hidden=false;" /><span class="home-cover-placeholder" aria-hidden="true" hidden>♡</span>`
+        : '<span class="home-cover-placeholder" aria-hidden="true">♡</span>';
+      return `
+        <button class="home-story-row" type="button" data-action="home-open-story" data-story-id="${esc(story.id || "")}">
+          ${image}
+          <span class="home-row-copy">
+            <p><strong>${esc(story.title || story.id || "")}</strong></p>
+            <p class="small muted">${esc(storyTypeLabel(story.type))} · ${esc(
+              t("home_story_assets", { count: Number(story.count) || 0 })
+            )}</p>
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderHome() {
+  const recent = Array.isArray(state.home.recent) ? state.home.recent : [];
+  const recentRoot = qs("home-recent-grid");
+  if (recentRoot) {
+    if (recent.length) {
+      renderAssetGrid(recent, "home-recent-grid");
+    } else {
+      recentRoot.innerHTML = `<p class="muted">${esc(t("home_empty_recent"))}</p>`;
+    }
+  }
+  renderHomePeople();
+  renderHomeStories();
+  renderFeaturedPhotos();
+}
+
+async function loadHome() {
+  if (loadHome.pending) return loadHome.pending;
+  const status = qs("home-load-status");
+  status.textContent = t("loading_memories");
+  status.classList.remove("hidden");
+  qs("tab-home").setAttribute("aria-busy", "true");
+  loadHome.pending = (async () => {
+    const sections = [
+      ["recent", "assets", api("/assets?page=1&page_size=8")],
+      ["people", "persons", api("/persons?page=1&page_size=6&include_faces=true&named_only=true&sort_by=face_count&order=desc")],
+      ["stories", "stories", api("/albums/stories?media=all&story_type=all&min_assets=3&max_stories_per_type=2&story_asset_limit=4&caption_scan_limit=400")],
+    ];
+    const results = await Promise.allSettled(sections.map(async ([key, field, request]) => {
+      const result = await request;
+      state.home[key] = Array.isArray(result?.[field]) ? result[field] : [];
+      // A slower album query must not hold back ready-to-view photos.
+      if (key === "recent") {
+        if (state.home.recent.length) renderAssetGrid(state.home.recent, "home-recent-grid");
+        else qs("home-recent-grid").innerHTML = `<p class="muted">${esc(t("home_empty_recent"))}</p>`;
+        renderFeaturedPhotos();
+      }
+      if (key === "people") renderHomePeople();
+      if (key === "stories") renderHomeStories();
+    }));
+    const failed = results.some((result) => result.status === "rejected");
+    status.classList.toggle("hidden", !failed);
+    if (failed) {
+      status.innerHTML = `<span>${esc(t("partial_home"))}</span><button class="btn ghost" type="button" id="btn-home-retry">${esc(t("retry_loading"))}</button>`;
+      qs("btn-home-retry").addEventListener("click", loadHome);
+    }
+  })().finally(() => {
+    qs("tab-home").setAttribute("aria-busy", "false");
+    loadHome.pending = null;
+  });
+  return loadHome.pending;
+}
+
+function inferFamilySearchMedia(query) {
+  const value = String(query || "").toLowerCase();
+  if (/\b(video|videos|movie|movies)\b|视频|录像|影片/.test(value)) return "video";
+  if (/\b(photo|photos|picture|pictures|image|images)\b|照片|图片|相片/.test(value)) return "image";
+  return "all";
+}
+
+function renderFamilySearchInterpretation(query, mode, media) {
+  const chips = [
+    `<span class="home-filter-chip"><strong>${esc(t("search_filter_query"))}</strong>${esc(query)}</span>`,
+    `<span class="home-filter-chip"><strong>${esc(t("search_filter_mode"))}</strong>${esc(
+      mode === "person" ? modeLabel("person") : t("search_mode_family")
+    )}</span>`,
+    `<span class="home-filter-chip"><strong>${esc(t("search_filter_media"))}</strong>${esc(mediaLabel(media))}</span>`,
+  ].join("");
+  for (const id of ["home-search-interpretation", "search-interpretation"]) {
+    const root = qs(id);
+    if (!root) continue;
+    root.innerHTML = chips;
+    root.classList.remove("hidden");
+  }
+}
+
+function clearFamilySearchInterpretation() {
+  for (const id of ["home-search-interpretation", "search-interpretation"]) {
+    const root = qs(id);
+    if (!root) continue;
+    root.innerHTML = "";
+    root.classList.add("hidden");
+  }
+}
+
+async function runHomeSearch(value = null) {
+  const input = qs("home-search-query");
+  const query = String(value ?? input?.value ?? "").trim();
+  if (!query) {
+    showToast(t("home_search_required"));
+    return;
+  }
+  if (input) input.value = query;
+  const queryKey = query.toLocaleLowerCase();
+  const exactPerson = (state.namedPersons || []).find(
+    (person) => String(person.display_name || "").trim().toLocaleLowerCase() === queryKey
+  );
+  const mode = exactPerson ? "person" : "smart";
+  const media = inferFamilySearchMedia(query);
+  qs("search-mode").value = mode;
+  qs("search-query").value = exactPerson ? String(exactPerson.display_name || query) : query;
+  qs("search-tags").value = "";
+  qs("search-media").value = media;
+  renderFamilySearchInterpretation(query, mode, media);
+  setActiveTab("library");
+  await runSearch(1, false, true);
+}
+
+async function refreshDashboard() {
+  try {
+    const [health, metrics] = await Promise.all([api("/health"), api("/metrics")]);
+    const setStat = (id, value) => {
+      const el = qs(id);
+      if (el) el.textContent = value ?? "-";
+    };
+    setStat("stat-assets", metrics.assets?.total);
+    setStat("stat-captions", metrics.captions);
+    setStat("stat-faces", metrics.faces);
+    setStat("stat-persons", metrics.persons);
+    setStat("stat-tags", metrics.tags?.total_links);
+    setStat("stat-tag-assets", metrics.tags?.assets_with_tags);
+    setStat("stat-pending", health.pending_tasks);
+    const healthEl = qs("stat-health");
+    if (healthEl) {
+      healthEl.textContent = health.ok ? t("status_ok") : t("status_degraded");
+      healthEl.style.color = health.ok ? "#0f8a66" : "#b73a3a";
+    }
+  } catch (e) {
+    showToast(t("dashboard_refresh_failed", { error: e.message }));
+  }
+}
+
+async function loadLibraryLatest(page = 1) {
+  try {
+    clearFamilySearchInterpretation();
+    const pageNum = Math.max(1, Number(page) || 1);
+    const pageSize = state.libraryPager.pageSize || 120;
+    const data = await api(`/assets?page=${pageNum}&page_size=${pageSize}`);
+    const assets = data.assets || [];
+    const total = Number(data.total) || assets.length;
+    state.libraryPager = {
+      ...state.libraryPager,
+      kind: "latest",
+      mode: "path",
+      q: "",
+      media: qs("search-media")?.value || "all",
+      tags: [],
+      page: pageNum,
+      pageSize,
+      total,
+      shown: assets.length,
+    };
+    qs("library-result-meta").textContent = t("latest_assets_meta", {
+      shown: assets.length,
+      total,
+    });
+    renderAssetGrid(assets, "library-grid");
+    updateLibraryPagerUi();
+  } catch (e) {
+    showToast(t("library_load_failed", { error: e.message }));
+  }
+}
+
+function parseTagsInput() {
+  return String(qs("search-tags").value || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
+function normalizeSearch(mode, data) {
+  if (mode === "path") {
+    return (data.items || []).map((v) => ({ id: v.id, path: v.path }));
+  }
+  if (mode === "caption") {
+    return (data.results || []).map((v) => ({ id: v.asset_id, path: v.path, mime: v.mime }));
+  }
+  if (mode === "smart") {
+    return (data.results || []).map((v) => ({
+      id: v.asset_id,
+      path: v.path,
+      score: v.score,
+      mime: v.mime,
+    }));
+  }
+  if (mode === "person") {
+    return (data.items || []).map((v) => ({ id: v.id, path: v.path }));
+  }
+  return [];
+}
+
+async function runSearch(page = 1, fromPager = false, preserveInterpretation = false) {
+  if (!fromPager && !preserveInterpretation) clearFamilySearchInterpretation();
+  const pageNum = Math.max(1, Number(page) || 1);
+  const pageSize = state.libraryPager.pageSize || 120;
+
+  const mode = fromPager ? state.libraryPager.mode : qs("search-mode").value;
+  const q = fromPager ? String(state.libraryPager.q || "") : String(qs("search-query").value || "").trim();
+  const media = fromPager ? (state.libraryPager.media || "all") : qs("search-media").value;
+  const tags = fromPager ? (Array.isArray(state.libraryPager.tags) ? state.libraryPager.tags : []) : parseTagsInput();
+
+  try {
+    let payload = null;
+    let kind = mode;
+    let total = 0;
+    let paged = false;
+
+    if (mode === "path") {
+      if (!q) {
+        await loadLibraryLatest(pageNum);
+        return;
+      }
+      paged = true;
+      kind = "path";
+      payload = await api(`/search?q=${encodeURIComponent(q)}&page=${pageNum}&page_size=${pageSize}`);
+      total = Number(payload?.total) || 0;
+    } else if (mode === "caption") {
+      if (!q) {
+        showToast(t("caption_mode_needs_text"));
+        return;
+      }
+      payload = await api("/search/captions", {
+        method: "POST",
+        body: JSON.stringify({ text: q, k: pageSize, media }),
+      });
+    } else if (mode === "smart") {
+      payload = await api("/search/smart", {
+        method: "POST",
+        body: JSON.stringify({
+          text: q || null,
+          tags: tags.length ? tags : null,
+          media,
+          k: pageSize,
+        }),
+      });
+    } else if (mode === "person") {
+      if (!q) {
+        showToast(t("person_mode_needs_name"));
+        return;
+      }
+      paged = true;
+      kind = "person";
+      payload = await api(`/search/person/name/${encodeURIComponent(q)}?page=${pageNum}&page_size=${pageSize}`);
+      total = Number(payload?.total) || 0;
+    }
+
+    const items = normalizeSearch(mode, payload || {});
+    if (!paged) {
+      total = items.length;
+    }
+    state.libraryPager = {
+      ...state.libraryPager,
+      kind,
+      mode,
+      q,
+      media,
+      tags,
+      page: pageNum,
+      pageSize,
+      total,
+      shown: items.length,
+    };
+    qs("library-result-meta").textContent = paged
+      ? t("search_results_meta_paged", {
+          mode: modeLabel(mode),
+          shown: items.length,
+          total,
+        })
+      : t("search_results_meta", {
+          mode: modeLabel(mode),
+          count: items.length,
+        });
+    renderAssetGrid(items, "library-grid");
+    updateLibraryPagerUi();
+  } catch (e) {
+    showToast(t("search_failed", { error: e.message }));
+  }
+}
+
+async function runLibraryPage(delta) {
+  const current = Math.max(1, Number(state.libraryPager.page) || 1);
+  const target = Math.max(1, current + Number(delta || 0));
+  if (target === current) return;
+
+  const kind = String(state.libraryPager.kind || "latest");
+  if (kind === "latest") {
+    await loadLibraryLatest(target);
+    return;
+  }
+  await runSearch(target, true);
+}
+
+async function runLibraryJump() {
+  if (!isLibraryPaged()) return;
+  const pages = pageCount(state.libraryPager.total, state.libraryPager.pageSize);
+  const input = qs("library-page-input");
+  const target = parsePageInputValue(input?.value, pages);
+  if (!target) return;
+
+  const current = Math.max(1, Number(state.libraryPager.page) || 1);
+  if (target === current) return;
+
+  const kind = String(state.libraryPager.kind || "latest");
+  if (kind === "latest") {
+    await loadLibraryLatest(target);
+    return;
+  }
+  await runSearch(target, true);
+}
+
+async function loadTagsCatalog(page = 1) {
+  try {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const pageSize = state.tagsPager.pageSize || 200;
+    const qInput = qs("tags-filter-query");
+    const sourceInput = qs("tags-filter-source");
+    const q = String((qInput ? qInput.value : state.tagsPager.q) || "").trim();
+    const source = String((sourceInput ? sourceInput.value : state.tagsPager.source) || "all");
+    const params = new URLSearchParams();
+    params.set("q", q);
+    params.set("source", source);
+    params.set("page", String(pageNum));
+    params.set("page_size", String(pageSize));
+    const data = await api(`/tags?${params.toString()}`);
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    const total = Number(data?.total) || 0;
+
+    state.tagsPager = {
+      ...state.tagsPager,
+      q,
+      source,
+      page: pageNum,
+      pageSize,
+      total,
+      shown: rows.length,
+    };
+    if (qInput) qInput.value = q;
+    if (sourceInput) sourceInput.value = source;
+
+    qs("tags-meta").textContent = t("tags_meta_paged", { shown: rows.length, total });
+    qs("tags-rows").innerHTML = rows
+      .map((row) => {
+        const src = row?.sources && typeof row.sources === "object" ? row.sources : {};
+        const sourceText = ["cap", "img", "cap+img", "manual", "rule", "(null)"]
+          .filter((k) => Number(src[k]) > 0)
+          .map((k) => `${tagSourceLabel(k)}:${Number(src[k])}`)
+          .join(" | ");
+        const active = Number(state.tagsAssetsPager.tagId) === Number(row.id) ? "tags-row-active" : "";
+        return `
+          <tr class="${active}">
+            <td>${esc(row.name)}</td>
+            <td>${esc(row.type || "-")}</td>
+            <td>${Number(row.assets) || 0}</td>
+            <td>${Number(row.links) || 0}</td>
+            <td class="small muted">${esc(sourceText || "-")}</td>
+            <td>
+              <button class="btn ghost" data-action="tags-view-assets" data-tag-id="${Number(row.id)}" data-tag-name="${esc(row.name)}">${esc(t("view_assets"))}</button>
+              <button class="btn ghost" data-action="tags-open-search" data-tag-name="${esc(row.name)}">${esc(t("tag_open_search"))}</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+    updateTagsPagerUi();
+  } catch (e) {
+    showToast(t("tag_catalog_load_failed", { error: e.message }));
+  }
+}
+
+async function runTagsPage(delta) {
+  const current = Math.max(1, Number(state.tagsPager.page) || 1);
+  const target = Math.max(1, current + Number(delta || 0));
+  if (target === current) return;
+  await loadTagsCatalog(target);
+}
+
+async function runTagsJump() {
+  const pages = pageCount(state.tagsPager.total, state.tagsPager.pageSize);
+  const input = qs("tags-page-input");
+  const target = parsePageInputValue(input?.value, pages);
+  if (!target) return;
+  const current = Math.max(1, Number(state.tagsPager.page) || 1);
+  if (target === current) return;
+  await loadTagsCatalog(target);
+}
+
+async function loadTagAssets(tagId, page = 1) {
+  const id = Number(tagId || 0);
+  if (!id) {
+    state.tagsAssetsPager = {
+      ...state.tagsAssetsPager,
+      tagId: null,
+      tagName: "",
+      page: 1,
+      total: 0,
+      shown: 0,
+    };
+    qs("tag-assets-meta").textContent = t("tag_assets_meta_default");
+    renderAssetGrid([], "tag-assets-grid");
+    updateTagAssetsPagerUi();
+    return;
+  }
+  try {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const pageSize = state.tagsAssetsPager.pageSize || 120;
+    const mediaInput = qs("tag-assets-media");
+    const sourceInput = qs("tag-assets-source");
+    const media = String((mediaInput ? mediaInput.value : state.tagsAssetsPager.media) || "all");
+    const source = String((sourceInput ? sourceInput.value : state.tagsAssetsPager.source) || "all");
+    const params = new URLSearchParams();
+    params.set("media", media);
+    params.set("source", source);
+    params.set("page", String(pageNum));
+    params.set("page_size", String(pageSize));
+    const data = await api(`/tags/${id}/assets?${params.toString()}`);
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const total = Number(data?.total) || 0;
+    const tagName = String(data?.tag?.name || state.tagsAssetsPager.tagName || id);
+
+    state.tagsAssetsPager = {
+      ...state.tagsAssetsPager,
+      tagId: id,
+      tagName,
+      page: pageNum,
+      pageSize,
+      total,
+      shown: items.length,
+      media,
+      source,
+    };
+    if (mediaInput) mediaInput.value = media;
+    if (sourceInput) sourceInput.value = source;
+
+    qs("tag-assets-meta").textContent = t("tag_assets_meta_paged", {
+      name: tagName,
+      shown: items.length,
+      total,
+    });
+    renderAssetGrid(items, "tag-assets-grid");
+    updateTagAssetsPagerUi();
+  } catch (e) {
+    showToast(t("tag_assets_load_failed", { error: e.message }));
+  }
+}
+
+async function runTagAssetsPage(delta) {
+  const pager = state.tagsAssetsPager || {};
+  if (!pager.tagId) return;
+  const current = Math.max(1, Number(pager.page) || 1);
+  const target = Math.max(1, current + Number(delta || 0));
+  if (target === current) return;
+  await loadTagAssets(pager.tagId, target);
+}
+
+async function runTagAssetsJump() {
+  const pager = state.tagsAssetsPager || {};
+  if (!pager.tagId) return;
+  const pages = pageCount(pager.total, pager.pageSize);
+  const input = qs("tag-assets-page-input");
+  const target = parsePageInputValue(input?.value, pages);
+  if (!target) return;
+  const current = Math.max(1, Number(pager.page) || 1);
+  if (target === current) return;
+  await loadTagAssets(pager.tagId, target);
+}
+
+function getStoryById(storyId) {
+  const stories = Array.isArray(state.stories?.stories) ? state.stories.stories : [];
+  return stories.find((row) => String(row?.id || "") === String(storyId || "")) || null;
+}
+
+function getAlbumDraftById(albumId) {
+  const albums = Array.isArray(state.albumDrafts?.albums) ? state.albumDrafts.albums : [];
+  return albums.find((row) => Number(row?.id || 0) === Number(albumId || 0)) || null;
+}
+
+function setAlbumCoverOptions(items, selectedAssetId = null) {
+  const select = qs("album-cover-asset");
+  if (!select) return;
+  const rows = Array.isArray(items) ? items : [];
+  select.innerHTML = rows
+    .map((item) => `<option value="${Number(item.id) || 0}">#${Number(item.id) || 0} · ${esc(basename(item.path || ""))}</option>`)
+    .join("");
+  const preferred = Number(selectedAssetId || rows[0]?.id || 0);
+  if (preferred) select.value = String(preferred);
+  select.disabled = rows.length === 0;
+}
+
+function configureAlbumComposerFromStory(story) {
+  state.albumDrafts = { ...state.albumDrafts, selectedAlbumId: null, editorMode: "story" };
+  const items = Array.isArray(story?.items) ? story.items : [];
+  qs("album-title").value = String(story?.title || "").trim();
+  qs("album-title-zh").value = "";
+  qs("album-theme").value = "custom";
+  qs("album-sort-mode").value = "chronological";
+  qs("album-sort-mode").disabled = false;
+  qs("btn-save-album-draft").textContent = t("album_save_draft");
+  qs("album-composer-meta").textContent = items.length
+    ? t("album_composer_ready", { count: items.length })
+    : t("album_composer_hint");
+  setAlbumCoverOptions(items, items[0]?.id);
+  renderAlbumDrafts();
+}
+
+function openAlbumDraft(album) {
+  if (!album) return;
+  const items = Array.isArray(album.items) ? album.items : [];
+  state.albumDrafts = { ...state.albumDrafts, selectedAlbumId: Number(album.id), editorMode: "album" };
+  qs("album-title").value = String(album.title || "");
+  qs("album-title-zh").value = String(album.title_zh || "");
+  qs("album-theme").value = String(album.theme || "custom");
+  qs("album-sort-mode").value = "as_provided";
+  qs("album-sort-mode").disabled = true;
+  qs("btn-save-album-draft").textContent = t("album_update_draft");
+  qs("album-composer-meta").textContent = t("album_composer_ready", { count: items.length });
+  setAlbumCoverOptions(items, album.cover_asset_id);
+  qs("story-assets-meta").textContent = t("story_assets_meta", {
+    title: albumDisplayTitle(album),
+    shown: items.length,
+    total: Number(album.asset_count) || items.length,
+  });
+  renderAssetGrid(items, "story-assets-grid");
+  renderAlbumDrafts();
+}
+
+function renderAlbumDrafts() {
+  const root = qs("album-draft-list");
+  if (!root) return;
+  const albums = Array.isArray(state.albumDrafts?.albums) ? state.albumDrafts.albums : [];
+  if (!albums.length) {
+    root.innerHTML = `<p class="muted small">${esc(t("album_drafts_empty"))}</p>`;
+    return;
+  }
+  root.innerHTML = albums
+    .map((album) => {
+      const albumId = Number(album.id) || 0;
+      const coverId = Number(album.cover_asset_id) || 0;
+      const active = albumId === Number(state.albumDrafts.selectedAlbumId || 0) ? "active" : "";
+      const cover = coverId
+        ? `<img class="album-draft-cover" loading="lazy" src="/assets/${coverId}/thumbnail?size=256" alt="" />`
+        : `<span class="album-draft-cover-placeholder" aria-hidden="true">${esc(albumDisplayTitle(album).slice(0, 1) || "A")}</span>`;
+      return `
+        <button class="album-draft-row ${active}" type="button" data-action="album-open-draft" data-album-id="${albumId}">
+          ${cover}
+          <span class="album-draft-copy">
+            <p><strong>${esc(albumDisplayTitle(album))}</strong></p>
+            <p class="small muted">${esc(albumThemeLabel(album.theme))}</p>
+          </span>
+          <span class="album-draft-count">${esc(t("album_draft_assets", { count: Number(album.asset_count) || 0 }))}</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+async function loadAlbumDrafts() {
+  try {
+    const data = await api("/albums/drafts?page=1&page_size=50");
+    state.albumDrafts = {
+      ...state.albumDrafts,
+      albums: Array.isArray(data?.albums) ? data.albums : [],
+    };
+    renderAlbumDrafts();
+  } catch (e) {
+    showToast(t("album_load_failed", { error: e.message }));
+  }
+}
+
+async function saveAlbumDraft() {
+  const title = String(qs("album-title")?.value || "").trim();
+  if (!title) {
+    showToast(t("album_title_required"));
+    return;
+  }
+  const editingAlbum = getAlbumDraftById(state.albumDrafts.selectedAlbumId);
+  const story = getStoryById(state.stories.selectedStoryId);
+  const items = Array.isArray(editingAlbum?.items)
+    ? editingAlbum.items
+    : (Array.isArray(story?.items) ? story.items : []);
+  const assetIds = items.map((item) => Number(item.id)).filter(Boolean);
+  if (!assetIds.length) {
+    showToast(t("album_story_required"));
+    return;
+  }
+  const payload = {
+    title,
+    title_zh: String(qs("album-title-zh")?.value || "").trim() || null,
+    theme: String(qs("album-theme")?.value || "custom"),
+    asset_ids: assetIds,
+    cover_asset_id: Number(qs("album-cover-asset")?.value || assetIds[0]),
+  };
+  let saved;
+  try {
+    if (editingAlbum) {
+      saved = await api(`/albums/drafts/${Number(editingAlbum.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    } else {
+      saved = await api("/albums/drafts", {
+        method: "POST",
+        body: JSON.stringify({
+          ...payload,
+          sort_mode: String(qs("album-sort-mode")?.value || "chronological"),
+          source_kind: "story",
+          source_ref: String(story?.id || ""),
+        }),
+      });
+    }
+    await loadAlbumDrafts();
+    const album = getAlbumDraftById(saved?.album?.id) || saved?.album;
+    if (album) openAlbumDraft(album);
+    showToast(t(editingAlbum ? "album_updated" : "album_saved"));
+  } catch (e) {
+    showToast(t("album_save_failed", { error: e.message }));
+  }
+}
+
+function renderStoryAssets(story) {
+  if (!story) {
+    state.stories = { ...state.stories, selectedStoryId: "" };
+    qs("story-assets-meta").textContent = t("story_assets_meta_default");
+    renderAssetGrid([], "story-assets-grid");
+    configureAlbumComposerFromStory(null);
+    return;
+  }
+  const items = Array.isArray(story.items) ? story.items : [];
+  state.stories = { ...state.stories, selectedStoryId: String(story.id || "") };
+  qs("story-assets-meta").textContent = t("story_assets_meta", {
+    title: story.title || story.id || "",
+    shown: items.length,
+    total: Number(story.count) || items.length,
+  });
+  renderAssetGrid(items, "story-assets-grid");
+  configureAlbumComposerFromStory(story);
+}
+
+async function openStoryContext(story) {
+  const open = story?.open && typeof story.open === "object" ? story.open : {};
+  if (open.mode === "person" && Number(open.person_id)) {
+    setActiveTab("people");
+    await loadPeople();
+    await loadPersonAssets(Number(open.person_id), 1);
+    showToast(t("story_context_opened"));
+    return;
+  }
+  if (open.mode === "tag" && Number(open.tag_id)) {
+    setActiveTab("tags");
+    await loadTagsCatalog(state.tagsPager.page || 1);
+    await loadTagAssets(Number(open.tag_id), 1);
+    showToast(t("story_context_opened"));
+    return;
+  }
+  if (open.mode === "caption" && String(open.query || "").trim()) {
+    setActiveTab("library");
+    qs("search-mode").value = "caption";
+    qs("search-query").value = String(open.query || "").trim();
+    qs("search-tags").value = "";
+    qs("search-media").value = state.stories.media || "all";
+    await runSearch(1, false);
+    showToast(t("story_context_opened"));
+    return;
+  }
+  if (open.mode === "location") {
+    setActiveTab("map");
+    await loadGeoMap();
+    showToast(t("story_context_opened"));
+    return;
+  }
+  showToast(t("story_context_unavailable"));
+}
+
+async function loadStoryAlbums() {
+  try {
+    const typeInput = qs("stories-filter-type");
+    const mediaInput = qs("stories-filter-media");
+    const minAssetsInput = qs("stories-min-assets");
+    const storyType = String((typeInput ? typeInput.value : state.stories.storyType) || "all").trim().toLowerCase();
+    const media = String((mediaInput ? mediaInput.value : state.stories.media) || "all").trim().toLowerCase();
+    const minAssets = Math.max(2, Number((minAssetsInput ? minAssetsInput.value : state.stories.minAssets) || 3) || 3);
+    const maxStoriesPerType = Math.max(1, Number(state.stories.maxStoriesPerType || 6) || 6);
+    const storyAssetLimit = Math.max(1, Number(state.stories.storyAssetLimit || 24) || 24);
+
+    const params = new URLSearchParams();
+    params.set("story_type", storyType);
+    params.set("media", media);
+    params.set("min_assets", String(minAssets));
+    params.set("max_stories_per_type", String(maxStoriesPerType));
+    params.set("story_asset_limit", String(storyAssetLimit));
+    const data = await api(`/albums/stories?${params.toString()}`);
+    const stories = Array.isArray(data?.stories) ? data.stories : [];
+    const total = Number(data?.total) || stories.length;
+
+    state.stories = {
+      ...state.stories,
+      storyType,
+      media,
+      minAssets,
+      stories,
+      total,
+    };
+    if (typeInput) typeInput.value = storyType;
+    if (mediaInput) mediaInput.value = media;
+    if (minAssetsInput) minAssetsInput.value = String(minAssets);
+
+    qs("stories-meta").textContent = t("story_meta", { shown: stories.length, total });
+    qs("stories-rows").innerHTML = stories
+      .map((story) => {
+        const sid = String(story?.id || "");
+        const active = sid === String(state.stories.selectedStoryId || "") ? "tags-row-active" : "";
+        return `
+          <tr class="${active}">
+            <td>${esc(storyTypeLabel(story?.type || "all"))}</td>
+            <td>
+              <div><strong>${esc(story?.title || sid)}</strong></div>
+              <div class="small muted">${esc(story?.subtitle || "-")}</div>
+            </td>
+            <td>${Number(story?.count) || 0}</td>
+            <td>
+              <button class="btn ghost" data-action="stories-view-assets" data-story-id="${esc(sid)}">${esc(t("story_view_assets"))}</button>
+              <button class="btn ghost" data-action="stories-open-context" data-story-id="${esc(sid)}">${esc(t("story_open_context"))}</button>
+              <button class="btn ghost" data-action="stories-compose-album" data-story-id="${esc(sid)}">${esc(t("album_composer_title"))}</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const activeStory = getStoryById(state.stories.selectedStoryId) || stories[0] || null;
+    renderStoryAssets(activeStory);
+    await loadAlbumDrafts();
+  } catch (e) {
+    showToast(t("story_load_failed", { error: e.message }));
+  }
+}
+
+function similarityOptionsFromUi() {
+  const minGroupSize = Math.max(2, Number(qs("sim-min-group-size")?.value || state.similarity.minGroupSize || 2) || 2);
+  const maxDistance = Math.max(1, Math.min(32, Number(qs("sim-max-distance")?.value || state.similarity.maxDistance || 5) || 5));
+  const sampleLimit = Math.max(100, Math.min(5000, Number(qs("sim-sample-limit")?.value || state.similarity.sampleLimit || 1000) || 1000));
+  const clusterLimit = Math.max(1, Math.min(200, Number(qs("sim-cluster-limit")?.value || state.similarity.clusterLimit || 60) || 60));
+  return { minGroupSize, maxDistance, sampleLimit, clusterLimit };
+}
+
+function getSimilarityGroupById(groupId) {
+  const groups = Array.isArray(state.similarity?.groups) ? state.similarity.groups : [];
+  return groups.find((g) => String(g?.group_id || "") === String(groupId || "")) || null;
+}
+
+function renderSimilarityGroupAssets(group) {
+  if (!group) {
+    state.similarity = { ...state.similarity, selectedGroupId: "" };
+    qs("sim-assets-meta").textContent = t("similarity_group_assets_meta_default");
+    renderAssetGrid([], "sim-assets-grid");
+    return;
+  }
+  const members = Array.isArray(group.members) ? group.members : [];
+  const items = members.map((m) => ({ id: m.id, path: m.path, mime: m.mime }));
+  state.similarity = { ...state.similarity, selectedGroupId: String(group.group_id || "") };
+  qs("sim-assets-meta").textContent = t("similarity_group_assets_meta", {
+    kind: similarityKindLabel(group.kind),
+    keep: Number(group.keep_asset_id) || 0,
+    hide: Array.isArray(group.hide_asset_ids) ? group.hide_asset_ids.length : 0,
+  });
+  renderAssetGrid(items, "sim-assets-grid");
+}
+
+async function loadSimilarityPreview() {
+  try {
+    const opts = similarityOptionsFromUi();
+    const params = new URLSearchParams();
+    params.set("min_group_size", String(opts.minGroupSize));
+    params.set("max_distance", String(opts.maxDistance));
+    params.set("sample_limit", String(opts.sampleLimit));
+    params.set("cluster_limit", String(opts.clusterLimit));
+    const data = await api(`/duplicates/reduction/preview?${params.toString()}`);
+    const groups = Array.isArray(data?.groups) ? data.groups : [];
+    const summary = data?.summary && typeof data.summary === "object" ? data.summary : {};
+
+    state.similarity = {
+      ...state.similarity,
+      ...opts,
+      groups,
+      summary,
+    };
+    qs("sim-min-group-size").value = String(opts.minGroupSize);
+    qs("sim-max-distance").value = String(opts.maxDistance);
+    qs("sim-sample-limit").value = String(opts.sampleLimit);
+    qs("sim-cluster-limit").value = String(opts.clusterLimit);
+
+    qs("sim-meta").textContent = t("similarity_meta", {
+      groups: Number(summary.groups) || groups.length,
+      keep: Number(summary.keep_candidates) || 0,
+      hide: Number(summary.hide_candidates) || 0,
+      unique_hide: Number(summary.unique_hide_candidates) || 0,
+    });
+    qs("sim-rows").innerHTML = groups
+      .map((group) => {
+        const gid = String(group?.group_id || "");
+        const active = gid === String(state.similarity.selectedGroupId || "") ? "tags-row-active" : "";
+        const hideCount = Array.isArray(group?.hide_asset_ids) ? group.hide_asset_ids.length : 0;
+        const keyText = String(group?.key || "").slice(0, 24);
+        return `
+          <tr class="${active}">
+            <td>${esc(similarityKindLabel(group?.kind || ""))}</td>
+            <td class="mono small">${esc(keyText || gid)}</td>
+            <td>#${Number(group?.keep_asset_id) || 0}</td>
+            <td>${hideCount}</td>
+            <td>
+              <button class="btn ghost" data-action="sim-view-group" data-group-id="${esc(gid)}">${esc(t("similarity_view_group"))}</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const activeGroup = getSimilarityGroupById(state.similarity.selectedGroupId) || groups[0] || null;
+    renderSimilarityGroupAssets(activeGroup);
+  } catch (e) {
+    showToast(t("similarity_load_failed", { error: e.message }));
+  }
+}
+
+async function applySimilarityReduction() {
+  const opts = similarityOptionsFromUi();
+  try {
+    const data = await api("/duplicates/reduction/apply", {
+      method: "POST",
+      body: JSON.stringify({
+        min_group_size: opts.minGroupSize,
+        max_distance: opts.maxDistance,
+        sample_limit: opts.sampleLimit,
+        cluster_limit: opts.clusterLimit,
+      }),
+    });
+    showToast(t("similarity_apply_done", { count: Number(data?.suppressed) || 0 }));
+    await Promise.all([loadSimilarityPreview(), refreshDashboard()]);
+  } catch (e) {
+    showToast(t("similarity_action_failed", { error: e.message }));
+  }
+}
+
+async function restoreSimilarityReduction() {
+  try {
+    const data = await api("/duplicates/reduction/restore", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    showToast(t("similarity_restore_done", { count: Number(data?.restored) || 0 }));
+    await Promise.all([loadSimilarityPreview(), refreshDashboard()]);
+  } catch (e) {
+    showToast(t("similarity_action_failed", { error: e.message }));
+  }
+}
+
+function closeAssetInspector() {
+  state.inspectorRequest++;
+  document.body.dataset.inspecting = "false";
+  state.selectedAsset = null;
+  qs("asset-inspector").classList.add("hidden");
+  qs("asset-empty").classList.remove("hidden");
+  qs("asset-preview").innerHTML = "";
+  closePreviewModal();
+  if (state.libraryViewItems.length) {
+    renderAssetGrid(state.libraryViewItems, "library-grid");
+  }
+}
+
+function openPreviewModal() {
+  if (!state.selectedAsset) {
+    showToast(t("no_asset_selected"));
+    return;
+  }
+  const items = state.libraryViewItems.some((asset) => Number(asset.id) === Number(state.selectedAsset.id))
+    ? state.libraryViewItems : [state.selectedAsset];
+  openMemoryViewer(state.selectedAsset.id, items);
+}
+
+function openMemoryViewer(assetId, items) {
+  const index = items.findIndex((asset) => Number(asset.id) === Number(assetId));
+  if (index < 0) return;
+  stopSlideshow();
+  Object.assign(state.viewer, { items, index, returnFocus: document.activeElement, origin: state.activeTab });
+  qs("preview-modal").classList.remove("hidden");
+  document.body.classList.add("viewer-open");
+  document.querySelector(".app-shell").inert = true;
+  renderMemoryViewer();
+  qs("btn-preview-close").focus();
+}
+
+function stopSlideshow() {
+  window.clearInterval(state.viewer.timer);
+  state.viewer.timer = null;
+  qs("btn-preview-play").textContent = t("play_slideshow");
+  qs("btn-preview-play").setAttribute("aria-pressed", "false");
+}
+
+function toggleSlideshow() {
+  if (state.viewer.timer) { stopSlideshow(); return; }
+  if (state.viewer.items.length < 2) return;
+  if (state.viewer.index === state.viewer.items.length - 1) state.viewer.index = 0;
+  renderMemoryViewer();
+  qs("btn-preview-play").textContent = t("pause_slideshow");
+  qs("btn-preview-play").setAttribute("aria-pressed", "true");
+  state.viewer.timer = window.setInterval(() => {
+    if (document.hidden || state.viewer.index >= state.viewer.items.length - 1) {
+      stopSlideshow(); return;
+    }
+    // Let a video play under the viewer's controls before advancing.
+    const video = qs("preview-modal-body").querySelector("video");
+    if (video && !video.paused && !video.ended) return;
+    moveMemoryViewer(1, false);
+  }, 6000);
+}
+
+function moveMemoryViewer(direction, manual = true) {
+  if (manual) stopSlideshow();
+  const next = state.viewer.index + direction;
+  if (next < 0 || next >= state.viewer.items.length) return;
+  state.viewer.index = next;
+  renderMemoryViewer();
+}
+
+async function renderMemoryViewer() {
+  const viewer = state.viewer;
+  const asset = viewer.items[viewer.index];
+  if (!asset) return;
+  const request = ++viewer.request;
+  qs("preview-title").textContent = memoryDate(asset);
+  qs("preview-position").textContent = t("viewer_position", { current: viewer.index + 1, total: viewer.items.length });
+  qs("btn-preview-prev").disabled = viewer.index === 0;
+  qs("btn-preview-next").disabled = viewer.index === viewer.items.length - 1;
+  qs("btn-preview-play").disabled = viewer.items.length < 2;
+  qs("btn-preview-prev").setAttribute("aria-label", t("previous_photo"));
+  qs("btn-preview-next").setAttribute("aria-label", t("next_photo"));
+  qs("preview-caption").setAttribute("aria-label", state.lang === "zh" ? "照片描述" : "Photo description");
+  qs("preview-filmstrip").setAttribute("aria-label", state.lang === "zh" ? "当前视图中的照片" : "Photos in this view");
+  const body = qs("preview-modal-body");
+  resetViewerImage();
+  body.innerHTML = isVideoAsset(asset)
+    ? `<video controls playsinline preload="metadata" src="/assets/${Number(asset.id)}/media"></video>`
+    : `<div class="viewer-canvas"><img draggable="false" src="/assets/${Number(asset.id)}/thumbnail?size=1024" alt="${esc(basename(asset.path))}" /></div>`;
+  const media = body.querySelector("img, video");
+  if (!isVideoAsset(asset)) {
+    const image = { el: media, assetId: Number(asset.id), mode: "fit", scale: 1, original: "preview", width: 0, height: 0 };
+    viewer.image = image;
+    const loaded = () => {
+      if (viewer.image !== image) return;
+      image.width = media.naturalWidth;
+      image.height = media.naturalHeight;
+      layoutViewerImage();
+    };
+    media.addEventListener("load", loaded, { once: true });
+    if (media.complete && media.naturalWidth) loaded();
+  }
+  updateViewerImageControls();
+  media.addEventListener("error", () => {
+    if (viewer.request !== request) return;
+    resetViewerImage();
+    body.innerHTML = `<p class="viewer-photo-error">${esc(t("viewer_photo_error"))}</p>`;
+    updateViewerImageControls();
+  });
+  // Window the strip so opening a 120-photo search doesn't fetch 120 thumbnails.
+  const start = Math.max(0, viewer.index - 5);
+  const end = Math.min(viewer.items.length, start + 11);
+  qs("preview-filmstrip").innerHTML = viewer.items.slice(start, end).map((item, offset) => `
+    <button type="button" data-viewer-index="${start + offset}" aria-label="${esc(t("viewer_position", { current: start + offset + 1, total: viewer.items.length }))}" aria-current="${start + offset === viewer.index}">
+      <img loading="lazy" src="/assets/${Number(item.id)}/thumbnail?size=256" alt="" />
+    </button>`).join("");
+  qs("preview-filmstrip").querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  qs("preview-caption").textContent = "";
+  try {
+    const result = await api(`/assets/${Number(asset.id)}/captions`);
+    if (request !== viewer.request) return;
+    const captions = result.captions || [];
+    const caption = captions.filter((item) => item.user_edited).at(-1) || captions.at(-1);
+    qs("preview-caption").textContent = caption?.text || t("viewer_no_caption");
+  } catch (_) {
+    if (request === viewer.request) qs("preview-caption").textContent = t("viewer_caption_error");
+  }
+}
+
+// Explicit pixel dimensions avoid percentage-sized images growing the grid's
+// implicit row beyond the visible stage. The canvas supplies real scroll bounds.
+function layoutViewerImage(anchor = null) {
+  const image = state.viewer.image, body = qs("preview-modal-body");
+  if (!image?.width || !body.clientWidth || !body.clientHeight) return;
+  const fit = Math.min(1, body.clientWidth / image.width, body.clientHeight / image.height);
+  if (image.mode === "fit") image.scale = fit;
+  else if (image.mode === "actual") image.scale = 1;
+  const width = image.width * image.scale, height = image.height * image.scale;
+  const canvasWidth = Math.max(body.clientWidth, width), canvasHeight = Math.max(body.clientHeight, height);
+  const left = (canvasWidth - width) / 2, top = (canvasHeight - height) / 2;
+  Object.assign(image.el.parentElement.style, { width: `${canvasWidth}px`, height: `${canvasHeight}px` });
+  Object.assign(image.el.style, { width: `${width}px`, height: `${height}px`, left: `${left}px`, top: `${top}px` });
+  body.classList.toggle("is-pannable", width > body.clientWidth + 1 || height > body.clientHeight + 1);
+  if (anchor) {
+    body.scrollLeft = left + anchor.u * width - anchor.x;
+    body.scrollTop = top + anchor.v * height - anchor.y;
+  } else if (image.mode === "fit") {
+    body.scrollLeft = body.scrollTop = 0;
+  }
+  updateViewerImageControls();
+}
+
+function viewerImageAnchor(x, y) {
+  const body = qs("preview-modal-body"), image = state.viewer.image;
+  const rect = image.el.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+  x ??= body.clientWidth / 2;
+  y ??= body.clientHeight / 2;
+  return { x, y, u: (viewport.left + x - rect.left) / rect.width, v: (viewport.top + y - rect.top) / rect.height };
+}
+
+function updateViewerImageControls() {
+  const image = state.viewer.image, ready = Boolean(image?.width);
+  for (const name of ["fit", "actual", "zoom-in", "zoom-out"]) {
+    qs(`btn-viewer-${name}`).disabled = !ready || (name === "actual" && image.original === "failed");
+  }
+  qs("btn-viewer-fit").setAttribute("aria-pressed", String(image?.mode === "fit"));
+  qs("btn-viewer-actual").setAttribute("aria-pressed", String(image?.mode === "actual" && image.original === "ready"));
+  qs("viewer-zoom").textContent = ready ? `${Math.round(image.scale * 100)}%` : "—";
+  qs("viewer-zoom").setAttribute("aria-label", t("viewer_zoom_level"));
+  qs("btn-viewer-zoom-in").setAttribute("aria-label", t("viewer_zoom_in"));
+  qs("btn-viewer-zoom-out").setAttribute("aria-label", t("viewer_zoom_out"));
+  qs("preview-modal-body").setAttribute("aria-label", t("viewer_region"));
+  const hint = !ready ? "" : t(image.original === "loading" ? "viewer_original_loading"
+    : image.original === "failed" ? "viewer_original_failed"
+      : image.original === "preview" ? "viewer_preview_hint" : "viewer_image_hint");
+  qs("viewer-image-status").textContent = hint;
+  const fullscreen = document.fullscreenElement === qs("preview-modal");
+  qs("btn-viewer-fullscreen").textContent = t(fullscreen ? "viewer_exit_fullscreen" : "viewer_fullscreen");
+  qs("btn-viewer-fullscreen").setAttribute("aria-pressed", String(fullscreen));
+  qs("btn-viewer-fullscreen").disabled = !document.fullscreenEnabled;
+}
+
+function loadViewerOriginal() {
+  const image = state.viewer.image;
+  if (!image || image.original !== "preview") return;
+  image.original = "loading";
+  const original = new Image();
+  image.loader = original;
+  original.onload = () => {
+    if (state.viewer.image !== image) return;
+    const anchor = viewerImageAnchor();
+    // Keep the visible magnification when the sharper source replaces preview.
+    if (image.mode === "zoom") image.scale *= image.width / original.naturalWidth;
+    image.width = original.naturalWidth;
+    image.height = original.naturalHeight;
+    image.original = "ready";
+    original.alt = image.el.alt;
+    original.draggable = false;
+    image.el.replaceWith(original);
+    image.el = original;
+    layoutViewerImage(anchor);
+  };
+  original.onerror = () => {
+    if (state.viewer.image !== image) return;
+    image.original = "failed";
+    if (image.mode === "actual") image.mode = "fit";
+    layoutViewerImage();
+  };
+  original.src = `/assets/${image.assetId}/media`;
+  updateViewerImageControls();
+}
+
+function setViewerImageMode(mode) {
+  const image = state.viewer.image;
+  if (!image?.width || (mode === "actual" && image.original === "failed")) return;
+  stopSlideshow();
+  const anchor = viewerImageAnchor();
+  image.mode = mode;
+  if (mode === "actual") loadViewerOriginal();
+  layoutViewerImage(mode === "fit" ? null : anchor);
+}
+
+function zoomViewerImage(factor, x, y) {
+  const image = state.viewer.image, body = qs("preview-modal-body");
+  if (!image?.width) return;
+  stopSlideshow();
+  const anchor = viewerImageAnchor(x, y);
+  const minimum = Math.min(.1, body.clientWidth / image.width, body.clientHeight / image.height);
+  image.mode = "zoom";
+  image.scale = Math.max(minimum, Math.min(4, image.scale * factor));
+  layoutViewerImage(anchor);
+  loadViewerOriginal();
+}
+
+function resetViewerImage() {
+  const image = state.viewer.image, body = qs("preview-modal-body");
+  if (image?.loader) {
+    image.loader.onload = image.loader.onerror = null;
+    if (image.original === "loading") image.loader.src = "";
+  }
+  if (image?.drag && body.hasPointerCapture(image.drag.id)) body.releasePointerCapture(image.drag.id);
+  state.viewer.image = null;
+  body.classList.remove("is-pannable", "is-dragging");
+  body.scrollLeft = body.scrollTop = 0;
+}
+
+async function toggleViewerFullscreen() {
+  try {
+    if (document.fullscreenElement === qs("preview-modal")) await document.exitFullscreen();
+    else await qs("preview-modal").requestFullscreen();
+  } catch (_) { showToast(t("viewer_fullscreen_unavailable")); }
+}
+
+function bindViewerImageControls() {
+  qs("btn-viewer-fit").addEventListener("click", () => setViewerImageMode("fit"));
+  qs("btn-viewer-actual").addEventListener("click", () => setViewerImageMode("actual"));
+  qs("btn-viewer-zoom-in").addEventListener("click", () => zoomViewerImage(1.25));
+  qs("btn-viewer-zoom-out").addEventListener("click", () => zoomViewerImage(1 / 1.25));
+  qs("btn-viewer-fullscreen").addEventListener("click", toggleViewerFullscreen);
+  const body = qs("preview-modal-body");
+  new ResizeObserver(() => layoutViewerImage()).observe(body);
+  document.addEventListener("fullscreenchange", () => { layoutViewerImage(); updateViewerImageControls(); });
+  body.addEventListener("wheel", (event) => {
+    if (!state.viewer.image?.width) return;
+    event.preventDefault();
+    const rect = body.getBoundingClientRect();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? body.clientHeight : 1);
+    zoomViewerImage(Math.exp(-Math.max(-100, Math.min(100, delta)) * .002), event.clientX - rect.left, event.clientY - rect.top);
+  }, { passive: false });
+  body.addEventListener("dblclick", () => {
+    if (state.viewer.image) setViewerImageMode(state.viewer.image.mode === "fit" ? "actual" : "fit");
+  });
+  body.addEventListener("pointerdown", (event) => {
+    const image = state.viewer.image;
+    if (!image || !event.isPrimary || event.button !== 0 || !body.classList.contains("is-pannable")) return;
+    stopSlideshow();
+    image.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: body.scrollLeft, top: body.scrollTop };
+    body.setPointerCapture(event.pointerId);
+    body.classList.add("is-dragging");
+    body.focus({ preventScroll: true });
+    event.preventDefault();
+  });
+  body.addEventListener("pointermove", (event) => {
+    const drag = state.viewer.image?.drag;
+    if (!drag || drag.id !== event.pointerId) return;
+    body.scrollLeft = drag.left - event.clientX + drag.x;
+    body.scrollTop = drag.top - event.clientY + drag.y;
+  });
+  for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) body.addEventListener(name, (event) => {
+    const image = state.viewer.image;
+    if (image?.drag?.id !== event.pointerId) return;
+    image.drag = null;
+    body.classList.remove("is-dragging");
+    if (body.hasPointerCapture(event.pointerId)) body.releasePointerCapture(event.pointerId);
+  });
+}
+
+function closePreviewModal() {
+  const modal = qs("preview-modal");
+  if (!modal || modal.classList.contains("hidden")) return;
+  stopSlideshow();
+  state.viewer.request++;
+  resetViewerImage();
+  if (document.fullscreenElement === modal) document.exitFullscreen().catch(() => {});
+  document.querySelector(".app-shell").inert = false;
+  document.body.classList.remove("viewer-open");
+  modal.classList.add("hidden");
+  const body = qs("preview-modal-body");
+  if (body) {
+    body.innerHTML = "";
+  }
+  if (state.viewer.returnFocus?.isConnected) state.viewer.returnFocus.focus();
+}
+
+async function loadAssetInspector(assetId) {
+  const request = ++state.inspectorRequest;
+  const id = Number(assetId);
+  let asset = state.assetMap.get(id);
+  if (!asset) {
+    try {
+      const detail = await api(`/assets/detail/${id}`);
+      asset = detail.asset || null;
+      if (asset) {
+        state.assetMap.set(id, asset);
+      }
+    } catch (e) {
+      showToast(t("asset_not_found", { id }));
+      return;
+    }
+  }
+  if (!asset || request !== state.inspectorRequest) return;
+  document.body.dataset.inspecting = "true";
+  state.selectedAsset = asset;
+  if (state.libraryViewItems.length) {
+    renderAssetGrid(state.libraryViewItems, "library-grid");
+  }
+
+  qs("asset-empty").classList.add("hidden");
+  qs("asset-inspector").classList.remove("hidden");
+  qs("asset-id").textContent = t("asset_prefix", { id: asset.id });
+  qs("asset-path").textContent = asset.path || t("unknown_path");
+  qs("face-list").innerHTML = `<p role="status" class="muted">${esc(t("face_people_loading"))}</p>`;
+
+  const preview = qs("asset-preview");
+  if (isVideoAsset(asset)) {
+    preview.innerHTML = `<video controls preload="metadata" src="/assets/${asset.id}/media"></video>`;
+  } else {
+    preview.innerHTML = `<img src="/assets/${asset.id}/media" alt="${esc(basename(asset.path))}" />`;
+  }
+
+  try {
+    const [captions, tags, faces, namedPeople] = await Promise.all([
+      api(`/assets/${asset.id}/captions`),
+      api(`/assets/${asset.id}/tags`),
+      api(`/faces?asset_id=${asset.id}&page=1&page_size=200`),
+      loadNamedPeople().catch(() => null),
+    ]);
+    if (request !== state.inspectorRequest) return;
+    if (namedPeople !== null) state.namedPersons = namedPeople;
+    renderCaptions(captions.captions || []);
+    renderTags(tags.tags || []);
+    renderFaces(faces.faces || [], namedPeople !== null);
+  } catch (e) {
+    if (request !== state.inspectorRequest) return;
+    qs("face-list").textContent = t("inspector_load_failed", { error: e.message });
+    showToast(t("inspector_load_failed", { error: e.message }));
+  }
+}
+
+function ensureGeoMap() {
+  if (state.geoMap) {
+    return true;
+  }
+  if (!window.L) {
+    qs("map-meta").textContent = t("map_lib_failed");
+    return false;
+  }
+  const mapRoot = qs("geo-map");
+  if (!mapRoot) {
+    return false;
+  }
+  state.geoMap = window.L.map(mapRoot, {
+    zoomControl: true,
+    preferCanvas: true,
+  }).setView([39.9042, 116.4074], 4);
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(state.geoMap);
+  state.geoLayer = window.L.layerGroup().addTo(state.geoMap);
+  return true;
+}
+
+function mapPopupHtml(point) {
+  const when = point.taken_at ? `<p class="small muted">${esc(point.taken_at)}</p>` : "";
+  const type = isVideoAsset(point) ? t("popup_video") : t("popup_image");
+  return `
+    <div>
+      <p><strong>#${point.id}</strong> <span class="small muted">(${type})</span></p>
+      ${when}
+      <p class="small muted" title="${esc(point.path)}">${esc(basename(point.path))}</p>
+      <button class="btn ghost" data-action="map-open-asset" data-asset-id="${point.id}">${esc(t("popup_open_asset"))}</button>
+    </div>
+  `;
+}
+
+async function loadGeoMap() {
+  try {
+    if (!ensureGeoMap()) return;
+    const media = qs("map-media-filter").value || "all";
+    const limitVal = Number(qs("map-limit").value || "3000");
+    const limit = Number.isFinite(limitVal) ? Math.max(100, Math.min(20000, limitVal)) : 3000;
+    const data = await api(`/assets/geo?media=${encodeURIComponent(media)}&limit=${limit}`);
+    const points = data.points || [];
+    points.forEach((p) => state.assetMap.set(Number(p.id), p));
+
+    state.geoLayer.clearLayers();
+    const bounds = [];
+    for (const p of points) {
+      const lat = Number(p.gps_lat);
+      const lon = Number(p.gps_lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const marker = window.L.circleMarker([lat, lon], {
+        radius: 5,
+        weight: 1,
+        color: "#0f8a66",
+        fillColor: "#18a878",
+        fillOpacity: 0.65,
+      });
+      marker.bindPopup(mapPopupHtml(p), { maxWidth: 280 });
+      marker.addTo(state.geoLayer);
+      bounds.push([lat, lon]);
+    }
+
+    const total = Number(data.total || points.length);
+    qs("map-meta").textContent = t("map_showing_meta", {
+      shown: points.length,
+      total,
+      media: mediaLabel(media),
+    });
+
+    if (bounds.length > 0) {
+      const leafletBounds = window.L.latLngBounds(bounds);
+      if (!state.mapLoaded) {
+        state.geoMap.fitBounds(leafletBounds.pad(0.1));
+      }
+      state.mapLoaded = true;
+    } else {
+      qs("map-meta").textContent = t("map_no_points");
+      state.geoMap.setView([39.9042, 116.4074], 3);
+    }
+
+    window.setTimeout(() => {
+      if (state.geoMap) state.geoMap.invalidateSize();
+    }, 50);
+  } catch (e) {
+    showToast(t("map_load_failed", { error: e.message }));
+  }
+}
+
+function renderCaptions(captions) {
+  const root = qs("caption-list");
+  if (!captions.length) {
+    root.innerHTML = `<p class="muted">${esc(t("no_captions"))}</p>`;
+    return;
+  }
+  root.innerHTML = captions
+    .map(
+      (c) => `
+        <article class="caption-item" data-caption-id="${c.id}">
+          <p class="small muted">#${c.id} | ${esc(c.model || t("caption_unknown_model"))} | ${esc(
+            t("edited_flag", { value: Boolean(c.user_edited) })
+          )}</p>
+          <textarea id="caption-text-${c.id}">${esc(c.text || "")}</textarea>
+          <div class="controls">
+            <button class="btn" data-action="save-caption" data-caption-id="${c.id}">${esc(t("caption_save"))}</button>
+            <button class="btn danger" data-action="delete-caption" data-caption-id="${c.id}">${esc(t("caption_delete"))}</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderTags(tags) {
+  const root = qs("tag-list");
+  if (!tags.length) {
+    root.innerHTML = `<span class="muted">${esc(t("no_tags"))}</span>`;
+    return;
+  }
+  root.innerHTML = tags
+    .map((tag) => {
+      const meta = [tag.source, tag.model, typeof tag.score === "number" ? `score=${Number(tag.score).toFixed(3)}` : ""]
+        .filter((v) => String(v || "").trim())
+        .join(" | ");
+      return `
+        <span class="tag-chip">
+          <span title="${esc(meta)}">${esc(tag.name)}${tag.source ? `<span class="tag-chip-meta">${esc(tag.source)}</span>` : ""}</span>
+          <button class="tag-chip-remove" type="button" data-action="remove-tag" data-tag-id="${Number(tag.id) || 0}" title="${esc(
+            t("remove_tag")
+          )}" aria-label="${esc(t("remove_tag"))}">&times;</button>
+        </span>
+      `
+    })
+    .join("");
+}
+
+function personOptions(currentId) {
+  const base = [`<option value="">${esc(t("assign_to_person"))}</option>`];
+  const namedIds = new Set((state.namedPersons || []).map((p) => Number(p.id)));
+  const current = Number(currentId || 0);
+
+  // Keep visibility when a face is already attached to an unnamed cluster.
+  if (current > 0 && !namedIds.has(current)) {
+    base.push(`<option value="${current}" selected>${esc(t("current_person", { id: current }))}</option>`);
+  }
+
+  for (const p of state.namedPersons || []) {
+    const name = p.display_name || t("person_fallback", { id: p.id });
+    const selected = current > 0 && current === Number(p.id) ? "selected" : "";
+    base.push(`<option value="${p.id}" ${selected}>${esc(name)}</option>`);
+  }
+
+  base.push(`<option value="__NEW__">${esc(t("new_person"))}</option>`);
+  base.push(`<option value="__DELETE__">${esc(t("not_face_delete"))}</option>`);
+  return base.join("");
+}
+
+function renderFaces(faces, namesReady = true) {
+  const root = qs("face-list");
+  if (!faces.length) {
+    root.innerHTML = `<p class="muted">${esc(t("no_face_detections"))}</p>`;
+    return;
+  }
+  const warning = namesReady ? "" : `<div role="alert"><p>${esc(t("face_people_failed"))}</p><button type="button" class="btn ghost" data-action="retry-face-people">${esc(t("retry"))}</button></div>`;
+  root.innerHTML = warning + faces
+    .map(
+      (f) => {
+        const source = String(f.label_source || "").trim();
+        const score = typeof f.label_score === "number" ? f.label_score.toFixed(3) : "";
+        const sourceLine = source
+          ? `<p class="small muted">${esc(
+              t("label_line", {
+                source,
+                score: score ? t("label_score", { score }) : "",
+              })
+            )}</p>`
+          : `<p class="small muted">${esc(t("label_none"))}</p>`;
+        return `
+        <article class="face-card">
+          <img src="/faces/${f.id}/crop?size=256" alt="face ${f.id}" data-action="open-face-asset" data-face-id="${f.id}" data-asset-id="${f.asset_id}" />
+          <div class="face-body">
+            <p class="small muted">${esc(t("face_prefix", { id: f.id }))}</p>
+            ${sourceLine}
+            <select id="face-person-${f.id}" ${namesReady ? "" : "disabled"}>${namesReady ? personOptions(f.person_id) : `<option value="">${esc(t("assign_to_person"))}</option>`}</select>
+            <input id="face-new-name-${f.id}" type="text" ${namesReady ? "" : "disabled"} placeholder="${esc(t("new_person_name_ph"))}" />
+            <div class="controls">
+              <button class="btn ghost" data-action="open-face-asset" data-face-id="${f.id}" data-asset-id="${f.asset_id}">${esc(t("popup_open_asset"))}</button>
+              <button class="btn ghost" data-action="assign-face" data-face-id="${f.id}" ${namesReady ? "" : "disabled"}>${esc(t("assign"))}</button>
+              <button class="btn ghost" data-action="create-assign-face" data-face-id="${f.id}" ${namesReady ? "" : "disabled"}>${esc(t("create_and_assign"))}</button>
+              <button class="btn ghost" data-action="assign-face-stranger" data-face-id="${f.id}">${esc(t("mark_stranger"))}</button>
+              <button class="btn danger" data-action="delete-face" data-face-id="${f.id}">${esc(t("not_face"))}</button>
+            </div>
+          </div>
+        </article>
+      `;
+      }
+    )
+    .join("");
+}
+
+// Fetch fresh names for each assignment surface, independently of the People tab.
+// Stable ID ordering avoids page drift when face counts change during loading.
+async function loadNamedPeople() {
+  const people = new Map();
+  for (let page = 1; ; page++) {
+    const data = await api(`/persons?page=${page}&page_size=500&include_faces=false&named_only=true&sort_by=id&order=asc`);
+    if (!Array.isArray(data.persons)) throw new Error("Invalid people response");
+    const total = Number(data.total ?? data.persons.length);
+    if (!Number.isFinite(total) || total < 0) throw new Error("Invalid people total");
+    const previous = people.size;
+    for (const person of data.persons) people.set(Number(person.id), person);
+    if (people.size >= total) return [...people.values()];
+    if (people.size === previous) throw new Error("Incomplete people response");
+  }
+}
+
+async function loadPeople() {
+  try {
+    state.showUnnamedPeople = Boolean(qs("people-show-unnamed")?.checked);
+    const personsUrl = state.showUnnamedPeople
+      ? "/persons?page=1&page_size=240&include_faces=true&sort_by=face_count&order=desc"
+      : "/persons?page=1&page_size=240&include_faces=true&named_only=true&sort_by=face_count&order=desc";
+    const [data, named] = await Promise.all([
+      api(personsUrl),
+      loadNamedPeople(),
+    ]);
+    state.persons = data.persons || [];
+    state.namedPersons = named;
+    renderPeopleList();
+    await loadUnassignedFaces(state.unassignedFacesPager.page || 1);
+  } catch (e) {
+    showToast(t("people_load_failed", { error: e.message }));
+  }
+}
+
+function renderPeopleList() {
+  const root = qs("people-list");
+  if (!state.persons.length) {
+    root.innerHTML = `<p class="muted">${esc(t("no_persons"))}</p>`;
+    return;
+  }
+  const hint = state.showUnnamedPeople
+    ? `<p class="small muted">${esc(t("people_hint_all"))}</p>`
+    : `<p class="small muted">${esc(t("people_hint_named"))}</p>`;
+  root.innerHTML =
+    hint +
+    state.persons
+    .map((p) => {
+      const display = p.display_name || t("person_fallback", { id: p.id });
+      const samples = (p.sample_faces || [])
+        .map((fid) => `<img src="/faces/${fid}/crop?size=256" alt="face ${fid}" />`)
+        .join("");
+      return `
+        <article class="person-card">
+          <p><strong>${esc(display)}</strong></p>
+          <p class="small muted">${esc(t("person_stats", { id: p.id, count: p.face_count }))}</p>
+          <input id="person-name-${p.id}" type="text" value="${esc(p.display_name || "")}" placeholder="${esc(t("display_name_ph"))}" />
+          <div class="controls">
+            <button class="btn ghost" data-action="rename-person" data-person-id="${p.id}">${esc(t("save_name"))}</button>
+            <button class="btn ghost" data-action="view-person-assets" data-person-id="${p.id}">${esc(t("view_assets"))}</button>
+          </div>
+          <div class="person-samples">${samples}</div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function loadPersonAssets(personId, page = 1) {
+  try {
+    const targetPersonId = Number(personId) || null;
+    if (!targetPersonId) return;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const pageSize = state.personAssetsPager.pageSize || 120;
+    const data = await api(`/search/person/${targetPersonId}?page=${pageNum}&page_size=${pageSize}`);
+    const items = data.items || [];
+    const total = Number(data.total) || items.length;
+    state.personAssetsPager = {
+      ...state.personAssetsPager,
+      personId: targetPersonId,
+      page: pageNum,
+      pageSize,
+      total,
+      shown: items.length,
+    };
+    qs("person-assets-meta").textContent = t("person_assets_meta_paged", {
+      id: targetPersonId,
+      shown: items.length,
+      total,
+    });
+    const normalized = items.map((x) => ({ id: x.id, path: x.path }));
+    renderAssetGrid(normalized, "person-assets-grid");
+    updatePersonAssetsPagerUi();
+  } catch (e) {
+    showToast(t("person_assets_load_failed", { error: e.message }));
+  }
+}
+
+async function runPersonAssetsPage(delta) {
+  const personId = Number(state.personAssetsPager.personId) || 0;
+  if (!personId) return;
+  const current = Math.max(1, Number(state.personAssetsPager.page) || 1);
+  const target = Math.max(1, current + Number(delta || 0));
+  if (target === current) return;
+  await loadPersonAssets(personId, target);
+}
+
+async function runPersonAssetsJump() {
+  const personId = Number(state.personAssetsPager.personId) || 0;
+  if (!personId) return;
+  const pages = pageCount(state.personAssetsPager.total, state.personAssetsPager.pageSize);
+  const input = qs("person-assets-page-input");
+  const target = parsePageInputValue(input?.value, pages);
+  if (!target) return;
+
+  const current = Math.max(1, Number(state.personAssetsPager.page) || 1);
+  if (target === current) return;
+  await loadPersonAssets(personId, target);
+}
+
+async function runUnassignedFacesPage(delta) {
+  const current = Math.max(1, Number(state.unassignedFacesPager.page) || 1);
+  const target = Math.max(1, current + Number(delta || 0));
+  if (target === current) return;
+  await loadUnassignedFaces(target);
+}
+
+async function runUnassignedFacesJump() {
+  const pages = pageCount(state.unassignedFacesPager.total, state.unassignedFacesPager.pageSize);
+  const input = qs("unassigned-page-input");
+  const target = parsePageInputValue(input?.value, pages);
+  if (!target) return;
+
+  const current = Math.max(1, Number(state.unassignedFacesPager.page) || 1);
+  if (target === current) return;
+  await loadUnassignedFaces(target);
+}
+
+async function loadUnassignedFaces(page = 1) {
+  try {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const pageSize = state.unassignedFacesPager.pageSize || 120;
+    const data = await api(`/faces?unassigned=true&page=${pageNum}&page_size=${pageSize}`);
+    const faces = data.faces || [];
+    const total = Number(data.total) || 0;
+    const pages = pageCount(total, pageSize);
+    if (pageNum > pages && total > 0) {
+      await loadUnassignedFaces(pages);
+      return;
+    }
+    state.unassignedFacesPager = {
+      ...state.unassignedFacesPager,
+      page: pageNum,
+      pageSize,
+      total,
+      shown: faces.length,
+    };
+    const root = qs("unassigned-faces");
+    if (!faces.length) {
+      root.innerHTML = `<p class="muted">${esc(t("no_unassigned_faces"))}</p>`;
+      updateUnassignedFacesPagerUi();
+      return;
+    }
+    root.innerHTML = faces
+      .map(
+        (f) => `
+          <article class="face-card">
+            <img src="/faces/${f.id}/crop?size=256" alt="face ${f.id}" data-action="open-face-asset" data-face-id="${f.id}" data-asset-id="${f.asset_id}" />
+            <div class="face-body">
+              <p class="small muted">${esc(t("face_asset_prefix", { face: f.id, asset: f.asset_id }))}</p>
+              <select id="face-person-unassigned-${f.id}">${personOptions(null)}</select>
+              <input id="face-new-name-unassigned-${f.id}" type="text" placeholder="${esc(t("new_person_name_ph"))}" />
+              <div class="controls">
+                <button class="btn ghost" data-action="open-face-asset" data-face-id="${f.id}" data-asset-id="${f.asset_id}">${esc(t("popup_open_asset"))}</button>
+                <button class="btn ghost" data-action="assign-face-unassigned" data-face-id="${f.id}">${esc(t("assign"))}</button>
+                <button class="btn ghost" data-action="create-assign-face-unassigned" data-face-id="${f.id}">${esc(t("create_and_assign"))}</button>
+                <button class="btn ghost" data-action="assign-face-stranger-unassigned" data-face-id="${f.id}">${esc(t("mark_stranger"))}</button>
+                <button class="btn danger" data-action="delete-face-unassigned" data-face-id="${f.id}">${esc(t("not_face"))}</button>
+              </div>
+            </div>
+          </article>
+        `
+      )
+      .join("");
+    updateUnassignedFacesPagerUi();
+  } catch (e) {
+    showToast(t("unassigned_faces_load_failed", { error: e.message }));
+  }
+}
+
+async function loadTasks() {
+  try {
+    const [data, metrics, usage] = await Promise.all([
+      api("/tasks?page=1&page_size=180"),
+      api("/metrics"),
+      api("/system/usage").catch(() => null),
+    ]);
+    const tasks = data.tasks || [];
+    const byStateGlobal = metrics?.tasks?.by_state || {};
+    const totalGlobal = metrics?.tasks?.total ?? data.total ?? tasks.length;
+    const pendingGlobal = byStateGlobal.pending || 0;
+    const runningGlobal = byStateGlobal.running || 0;
+    const failedGlobal = byStateGlobal.failed || 0;
+    const deadGlobal = byStateGlobal.dead || 0;
+    qs("task-meta").textContent = t("task_meta_with_page", {
+      total: totalGlobal,
+      pending: pendingGlobal,
+      running: runningGlobal,
+      failed: failedGlobal,
+      dead: deadGlobal,
+      shown: tasks.length,
+    });
+    renderSystemUsage(usage);
+    qs("task-rows").innerHTML = tasks
+      .map((task) => {
+        const progress = task.progress_total ? `${task.progress_current || 0}/${task.progress_total}` : "-";
+        const canCancel = task.state === "pending" || task.state === "running";
+        return `
+          <tr>
+            <td>${task.id}</td>
+            <td>${esc(task.type)}</td>
+            <td>${esc(task.state)}</td>
+            <td>${esc(progress)}</td>
+            <td>${task.retry_count || 0}</td>
+            <td class="small muted">${esc((task.last_error || "").slice(0, 120))}</td>
+            <td>${canCancel ? `<button class="btn danger" data-action="cancel-task" data-task-id="${task.id}">${esc(t("cancel"))}</button>` : ""}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (e) {
+    showToast(t("task_load_failed", { error: e.message }));
+  }
+}
+
+async function refreshAdminPanels() {
+  try {
+    const [health, metrics, lvface, caption] = await Promise.all([
+      api("/health"),
+      api("/metrics"),
+      api("/health/lvface"),
+      api("/health/caption"),
+    ]);
+    qs("admin-health").textContent = JSON.stringify(health, null, 2);
+    qs("admin-metrics").textContent = JSON.stringify(metrics, null, 2);
+    qs("admin-services").textContent = JSON.stringify({ lvface, caption }, null, 2);
+  } catch (e) {
+    showToast(t("admin_refresh_failed", { error: e.message }));
+  }
+}
+
+async function handleCaptionActions(event) {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const captionId = Number(btn.dataset.captionId);
+  if (!captionId) return;
+  try {
+    if (action === "save-caption") {
+      const text = qs(`caption-text-${captionId}`).value;
+      await api(`/captions/${captionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ text, user_edited: true }),
+      });
+      showToast(t("caption_saved", { id: captionId }));
+    } else if (action === "delete-caption") {
+      await api(`/captions/${captionId}`, { method: "DELETE" });
+      showToast(t("caption_deleted", { id: captionId }));
+    }
+    if (state.selectedAsset) {
+      await loadAssetInspector(state.selectedAsset.id);
+    }
+  } catch (e) {
+    showToast(t("caption_action_failed", { error: e.message }));
+  }
+}
+
+async function ensureNamedPerson(nameRaw) {
+  const name = String(nameRaw || "").trim();
+  if (!name) {
+    showToast(t("person_name_required"));
+    return null;
+  }
+  const data = await api("/persons", {
+    method: "POST",
+    body: JSON.stringify({ display_name: name }),
+  });
+  const personId = Number(data?.person_id || 0);
+  if (!personId) {
+    throw new Error(t("invalid_person_selection"));
+  }
+  const displayName = String(data?.display_name || name);
+  if (data?.created) {
+    showToast(t("person_created", { name: displayName }));
+  } else {
+    showToast(t("person_exists_reused", { name: displayName }));
+  }
+  return { personId, displayName };
+}
+
+async function assignFace(faceId, selectorId, newNameInputId = null) {
+  const select = qs(selectorId);
+  const selected = String(select?.value || "");
+  if (!selected) {
+    showToast(t("select_target_first"));
+    return;
+  }
+
+  if (selected === "__NEW__") {
+    const nameRaw = newNameInputId ? qs(newNameInputId)?.value : "";
+    const person = await ensureNamedPerson(nameRaw);
+    if (!person) return;
+    await api(`/faces/${faceId}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ person_id: person.personId }),
+    });
+    return;
+  }
+
+  if (selected === "__DELETE__") {
+    if (!window.confirm(t("confirm_delete_face", { id: faceId }))) return;
+    await deleteFace(faceId);
+    return;
+  }
+
+  const personId = Number(selected);
+  if (!personId) {
+    showToast(t("invalid_person_selection"));
+    return;
+  }
+  await api(`/faces/${faceId}/assign`, {
+    method: "POST",
+    body: JSON.stringify({ person_id: personId }),
+  });
+}
+
+async function createAndAssignFaceByName(faceId, inputId) {
+  const person = await ensureNamedPerson(qs(inputId)?.value || "");
+  if (!person) return;
+  await api(`/faces/${faceId}/assign`, {
+    method: "POST",
+    body: JSON.stringify({ person_id: person.personId }),
+  });
+}
+
+async function createPersonFromFace(faceId) {
+  await api(`/faces/${faceId}/assign`, {
+    method: "POST",
+    body: JSON.stringify({ create_new: true }),
+  });
+}
+
+async function deleteFace(faceId) {
+  await api(`/faces/${faceId}?prune_empty_person=true`, {
+    method: "DELETE",
+  });
+}
+
+async function refreshLibraryCurrentView() {
+  const kind = String(state.libraryPager.kind || "latest");
+  const page = Math.max(1, Number(state.libraryPager.page) || 1);
+  if (kind === "latest") {
+    await loadLibraryLatest(page);
+    return;
+  }
+  await runSearch(page, true);
+}
+
+async function deleteSelectedAsset(removeFiles = false) {
+  if (!state.selectedAsset) {
+    showToast(t("no_asset_selected"));
+    return;
+  }
+  const assetId = Number(state.selectedAsset.id || 0);
+  if (!assetId) {
+    showToast(t("no_asset_selected"));
+    return;
+  }
+  const confirmKey = removeFiles ? "confirm_delete_asset" : "confirm_delete_photo";
+  if (!window.confirm(t(confirmKey, { id: assetId }))) return;
+  try {
+    await api(`/assets/${assetId}/delete`, {
+      method: "POST",
+      body: JSON.stringify(!!removeFiles),
+    });
+    state.assetMap.delete(assetId);
+    closeAssetInspector();
+    await Promise.all([refreshLibraryCurrentView(), refreshDashboard()]);
+    showToast(t(removeFiles ? "asset_deleted" : "photo_deleted", { id: assetId }));
+  } catch (e) {
+    showToast(t("asset_delete_failed", { error: e.message }));
+  }
+}
+
+async function markFaceStranger(faceId) {
+  await api(`/faces/${faceId}/assign-stranger`, {
+    method: "POST",
+  });
+}
+
+async function openAssetFromFaceAssetId(assetId) {
+  const id = Number(assetId || 0);
+  if (!id) return;
+  const originTab = state.activeTab;
+  setActiveTab("library");
+  state.inspectorOriginTab = originTab;
+  await loadAssetInspector(id);
+}
+
+function initEvents() {
+  function focusMemorySearch() {
+    setActiveTab("home");
+    loadHome();
+    qs("home-search-query").focus();
+    qs("home-search-query").scrollIntoView({ block: "center", behavior: "auto" });
+  }
+  qs("btn-quick-search").addEventListener("click", focusMemorySearch);
+  qs("home-featured-photos").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-featured-id]");
+    if (button) openMemoryViewer(button.dataset.featuredId, state.home.recent);
+  });
+  qs("btn-home-slideshow").addEventListener("click", () => {
+    if (!state.home.recent.length) return;
+    openMemoryViewer(state.home.recent[0].id, state.home.recent);
+    toggleSlideshow();
+  });
+  document.addEventListener("click", (event) => {
+    const card = event.target.closest(".asset-card");
+    if (!card || state.uiMode !== "family") return;
+    const grid = card.closest(".asset-grid");
+    const items = state.gridItems.get(grid?.id);
+    if (!items?.length) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    card.focus();
+    openMemoryViewer(card.dataset.assetId, items);
+  }, true);
+  qs("btn-preview-prev").addEventListener("click", () => moveMemoryViewer(-1));
+  qs("btn-preview-next").addEventListener("click", () => moveMemoryViewer(1));
+  qs("btn-preview-play").addEventListener("click", toggleSlideshow);
+  bindViewerImageControls();
+  qs("preview-filmstrip").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-viewer-index]");
+    if (!button) return;
+    stopSlideshow();
+    state.viewer.index = Number(button.dataset.viewerIndex);
+    renderMemoryViewer();
+    qs("btn-preview-close").focus();
+  });
+  qs("btn-preview-details").addEventListener("click", async () => {
+    const asset = state.viewer.items[state.viewer.index];
+    const origin = state.viewer.origin;
+    closePreviewModal();
+    setActiveTab("library");
+    state.inspectorOriginTab = origin;
+    state.assetMap.set(Number(asset.id), asset);
+    await loadAssetInspector(asset.id);
+    qs("btn-asset-back").focus();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopSlideshow();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!qs("preview-modal").classList.contains("hidden")) {
+      if (event.target.closest("video, #preview-caption") && event.key !== "Tab") return;
+      if (["+", "=", "-", "0", "1"].includes(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        if (event.key === "0") setViewerImageMode("fit");
+        else if (event.key === "1") setViewerImageMode("actual");
+        else zoomViewerImage(event.key === "-" ? 1 / 1.25 : 1.25);
+        return;
+      }
+      if (event.target.closest("#preview-modal-body.is-pannable") && event.key.startsWith("Arrow")) return;
+      if (event.key === "ArrowLeft") { event.preventDefault(); moveMemoryViewer(-1); }
+      if (event.key === "ArrowRight") { event.preventDefault(); moveMemoryViewer(1); }
+      if (event.key === "Tab") {
+        const controls = Array.from(qs("preview-modal").querySelectorAll('button:not(:disabled), video[controls], [tabindex="0"]'))
+          .filter((element) => element.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !event.target.closest('input, textarea, select, [contenteditable="true"]')) {
+      event.preventDefault(); focusMemorySearch();
+    }
+  });
+  document.querySelectorAll(".lang-btn").forEach((el) => {
+    el.addEventListener("click", () => {
+      const lang = el.dataset.lang === "zh" ? "zh" : "en";
+      setLanguage(lang, true);
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", lang);
+      window.history.replaceState(null, "", url.toString());
+    });
+  });
+
+  document.querySelectorAll(".tab").forEach((el) => {
+    el.addEventListener("click", async () => {
+      if (el.dataset.tab === "library" && document.body.dataset.inspecting === "true") closeAssetInspector();
+      setActiveTab(el.dataset.tab);
+      await loadTab(state.activeTab);
+    });
+    el.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const tabs = Array.from(document.querySelectorAll(".tab")).filter((tab) => isTabAllowed(tab.dataset.tab));
+      const current = tabs.indexOf(el);
+      if (current < 0 || !tabs.length) return;
+      event.preventDefault();
+      let next = current;
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = tabs.length - 1;
+      if (event.key === "ArrowLeft") next = (current - 1 + tabs.length) % tabs.length;
+      if (event.key === "ArrowRight") next = (current + 1) % tabs.length;
+      tabs[next].focus();
+      tabs[next].click();
+    });
+  });
+
+  qs("btn-ui-mode").addEventListener("click", async () => {
+    const nextMode = state.uiMode === "advanced" ? "family" : "advanced";
+    setUiMode(nextMode, true);
+    if (state.uiMode === "advanced") await refreshDashboard();
+    await loadTab(state.activeTab);
+  });
+
+  qs("btn-refresh-all").addEventListener("click", async () => {
+    await Promise.all([refreshDashboard(), state.activeTab === "library" ? refreshLibraryCurrentView() : loadTab(state.activeTab)]);
+    showToast(t("refreshed"));
+  });
+  const voiceBtn = qs("btn-voice-command");
+  if (voiceBtn) {
+    voiceBtn.addEventListener("click", runVoiceCommandCapture);
+  }
+  const voiceChatBtn = qs("btn-voice-chat");
+  if (voiceChatBtn) {
+    voiceChatBtn.addEventListener("click", runVoiceConversationCapture);
+  }
+  const voiceChatResetBtn = qs("btn-voice-chat-reset");
+  if (voiceChatResetBtn) {
+    voiceChatResetBtn.addEventListener("click", resetVoiceConversationContext);
+  }
+  const voiceHistoryClearBtn = qs("btn-voice-history-clear");
+  if (voiceHistoryClearBtn) {
+    voiceHistoryClearBtn.addEventListener("click", requestClearVoiceHistory);
+  }
+
+  qs("btn-search").addEventListener("click", () => runSearch(1, false));
+  qs("btn-library-load").addEventListener("click", () => loadLibraryLatest(1));
+  qs("btn-library-prev").addEventListener("click", () => runLibraryPage(-1));
+  qs("btn-library-next").addEventListener("click", () => runLibraryPage(1));
+  qs("btn-library-jump").addEventListener("click", runLibraryJump);
+  qs("library-page-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runLibraryJump();
+  });
+  qs("search-query").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runSearch(1, false);
+  });
+
+  qs("btn-home-search").addEventListener("click", () => runHomeSearch());
+  qs("home-search-query").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runHomeSearch();
+  });
+  qs("home-search-suggestions").addEventListener("click", (e) => {
+    const button = e.target.closest("button[data-home-query]");
+    if (!button) return;
+    runHomeSearch((state.lang === "zh" ? button.dataset.homeQueryZh : button.dataset.homeQuery) || button.dataset.homeQuery || "");
+  });
+  qs("btn-home-view-library").addEventListener("click", async () => {
+    setActiveTab("library");
+    await loadLibraryLatest(1);
+  });
+  qs("btn-home-view-people").addEventListener("click", async () => {
+    setActiveTab("people");
+    await loadPeople();
+  });
+  qs("btn-home-view-stories").addEventListener("click", async () => {
+    setActiveTab("stories");
+    await loadStoryAlbums();
+  });
+  qs("home-recent-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    state.inspectorOriginTab = "home";
+    setActiveTab("library");
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+  document.querySelectorAll(".asset-grid").forEach((grid) => {
+    grid.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      const card = event.target.closest(".asset-card");
+      if (!card) return;
+      event.preventDefault();
+      card.click();
+    });
+  });
+  qs("home-people-list").addEventListener("click", async (e) => {
+    const button = e.target.closest("button[data-action='home-open-person']");
+    const personId = Number(button?.dataset.personId || 0);
+    if (!personId) return;
+    setActiveTab("people");
+    await loadPeople();
+    await loadPersonAssets(personId, 1);
+  });
+  qs("home-story-list").addEventListener("click", async (e) => {
+    const button = e.target.closest("button[data-action='home-open-story']");
+    if (!button) return;
+    const story = (state.home.stories || []).find((row) => String(row.id || "") === String(button.dataset.storyId || ""));
+    if (story) await openStoryContext(story);
+  });
+
+  qs("library-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    state.inspectorOriginTab = "library";
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+
+  qs("person-assets-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    const originTab = state.activeTab;
+    setActiveTab("library");
+    state.inspectorOriginTab = originTab;
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+
+  qs("tag-assets-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    const originTab = state.activeTab;
+    setActiveTab("library");
+    state.inspectorOriginTab = originTab;
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+
+  qs("story-assets-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    const originTab = state.activeTab;
+    setActiveTab("library");
+    state.inspectorOriginTab = originTab;
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+
+  qs("sim-assets-grid").addEventListener("click", async (e) => {
+    const card = e.target.closest(".asset-card");
+    if (!card) return;
+    const originTab = state.activeTab;
+    setActiveTab("library");
+    state.inspectorOriginTab = originTab;
+    await loadAssetInspector(Number(card.dataset.assetId));
+  });
+
+  qs("btn-asset-back").addEventListener("click", async () => {
+    const returnTab = state.inspectorOriginTab || "library";
+    closeAssetInspector();
+    if (returnTab !== "library") {
+      setActiveTab(returnTab);
+      if (returnTab === "home") await loadHome();
+      if (returnTab === "people") await loadPeople();
+      if (returnTab === "tags") {
+        await loadTagsCatalog(state.tagsPager.page || 1);
+        if (state.tagsAssetsPager.tagId) {
+          await loadTagAssets(state.tagsAssetsPager.tagId, state.tagsAssetsPager.page || 1);
+        }
+      }
+      if (returnTab === "stories") await loadStoryAlbums();
+      if (returnTab === "similarity") await loadSimilarityPreview();
+      if (returnTab === "map") await loadGeoMap();
+      if (returnTab === "tasks") await loadTasks();
+      if (returnTab === "admin") await refreshAdminPanels();
+    }
+  });
+
+  qs("btn-preview-fullscreen").addEventListener("click", openPreviewModal);
+  qs("btn-preview-close").addEventListener("click", closePreviewModal);
+  qs("preview-modal").addEventListener("click", (e) => {
+    if (e.target.id === "preview-modal") {
+      closePreviewModal();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (document.fullscreenElement === qs("preview-modal")) document.exitFullscreen().catch(() => {});
+      else closePreviewModal();
+    }
+  });
+
+  qs("caption-list").addEventListener("click", handleCaptionActions);
+
+  qs("btn-caption-regenerate").addEventListener("click", async () => {
+    if (!state.selectedAsset) return;
+    try {
+      await api(`/assets/${state.selectedAsset.id}/captions/regenerate`, {
+        method: "POST",
+        body: JSON.stringify({ force: false }),
+      });
+      showToast(t("caption_regen_enqueued"));
+      await loadTasks();
+    } catch (e) {
+      showToast(t("regenerate_failed", { error: e.message }));
+    }
+  });
+
+  qs("btn-add-tags").addEventListener("click", async () => {
+    if (!state.selectedAsset) return;
+    const names = String(qs("tag-input").value || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter((v) => v);
+    if (!names.length) {
+      showToast(t("no_tag_entered"));
+      return;
+    }
+    try {
+      await api(`/assets/${state.selectedAsset.id}/tags`, {
+        method: "POST",
+        body: JSON.stringify({ names }),
+      });
+      qs("tag-input").value = "";
+      await loadAssetInspector(state.selectedAsset.id);
+      showToast(t("tags_updated"));
+    } catch (e) {
+      showToast(t("tag_update_failed", { error: e.message }));
+    }
+  });
+
+  const deletePhotoBtn = qs("btn-delete-photo");
+  if (deletePhotoBtn) {
+    deletePhotoBtn.addEventListener("click", async () => {
+      await deleteSelectedAsset(false);
+    });
+  }
+  const deleteAssetBtn = qs("btn-delete-asset");
+  if (deleteAssetBtn) {
+    deleteAssetBtn.addEventListener("click", async () => {
+      await deleteSelectedAsset(true);
+    });
+  }
+
+  qs("tag-list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action='remove-tag']");
+    if (!btn || !state.selectedAsset) return;
+    const tagId = Number(btn.dataset.tagId);
+    if (!tagId) return;
+    try {
+      await api(`/assets/${state.selectedAsset.id}/tags`, {
+        method: "DELETE",
+        body: JSON.stringify({ tag_ids: [tagId], block_auto: true }),
+      });
+      await loadAssetInspector(state.selectedAsset.id);
+      showToast(t("tag_removed"));
+    } catch (err) {
+      showToast(t("tag_update_failed", { error: err.message }));
+    }
+  });
+
+  qs("face-list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "retry-face-people") {
+      if (state.selectedAsset) await loadAssetInspector(state.selectedAsset.id);
+      return;
+    }
+    if (btn.dataset.action === "open-face-asset") {
+      await openAssetFromFaceAssetId(btn.dataset.assetId);
+      return;
+    }
+    const faceId = Number(btn.dataset.faceId);
+    if (!faceId) return;
+    try {
+      if (btn.dataset.action === "assign-face") {
+        await assignFace(faceId, `face-person-${faceId}`, `face-new-name-${faceId}`);
+      } else if (btn.dataset.action === "create-assign-face") {
+        await createAndAssignFaceByName(faceId, `face-new-name-${faceId}`);
+      } else if (btn.dataset.action === "assign-face-stranger") {
+        await markFaceStranger(faceId);
+      } else if (btn.dataset.action === "create-person-face") {
+        await createPersonFromFace(faceId);
+      } else if (btn.dataset.action === "delete-face") {
+        if (!window.confirm(t("confirm_delete_face", { id: faceId }))) return;
+        await deleteFace(faceId);
+      }
+      await loadPeople();
+      if (state.selectedAsset) {
+        await loadAssetInspector(state.selectedAsset.id);
+      }
+      showToast(t("face_updated", { id: faceId }));
+    } catch (err) {
+      showToast(t("face_assignment_failed", { error: err.message }));
+    }
+  });
+
+  qs("people-list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const personId = Number(btn.dataset.personId);
+    if (!personId) return;
+    try {
+      if (btn.dataset.action === "rename-person") {
+        const name = qs(`person-name-${personId}`).value.trim();
+        await api(`/persons/${personId}/name`, {
+          method: "POST",
+          body: JSON.stringify({ display_name: name }),
+        });
+        await loadPeople();
+        showToast(t("person_renamed", { id: personId }));
+      } else if (btn.dataset.action === "view-person-assets") {
+        await loadPersonAssets(personId, 1);
+      }
+    } catch (err) {
+      showToast(t("person_action_failed", { error: err.message }));
+    }
+  });
+
+  qs("unassigned-faces").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "open-face-asset") {
+      await openAssetFromFaceAssetId(btn.dataset.assetId);
+      return;
+    }
+    const faceId = Number(btn.dataset.faceId);
+    if (!faceId) return;
+    try {
+      if (btn.dataset.action === "assign-face-unassigned") {
+        await assignFace(faceId, `face-person-unassigned-${faceId}`, `face-new-name-unassigned-${faceId}`);
+      } else if (btn.dataset.action === "create-assign-face-unassigned") {
+        await createAndAssignFaceByName(faceId, `face-new-name-unassigned-${faceId}`);
+      } else if (btn.dataset.action === "assign-face-stranger-unassigned") {
+        await markFaceStranger(faceId);
+      } else if (btn.dataset.action === "create-person-face") {
+        await createPersonFromFace(faceId);
+      } else if (btn.dataset.action === "delete-face-unassigned") {
+        if (!window.confirm(t("confirm_delete_face", { id: faceId }))) return;
+        await deleteFace(faceId);
+      }
+      await loadPeople();
+      showToast(t("face_updated", { id: faceId }));
+    } catch (err) {
+      showToast(t("unassigned_face_action_failed", { error: err.message }));
+    }
+  });
+
+  qs("btn-refresh-people").addEventListener("click", loadPeople);
+  qs("btn-person-assets-prev").addEventListener("click", () => runPersonAssetsPage(-1));
+  qs("btn-person-assets-next").addEventListener("click", () => runPersonAssetsPage(1));
+  qs("btn-person-assets-jump").addEventListener("click", runPersonAssetsJump);
+  qs("person-assets-page-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runPersonAssetsJump();
+  });
+  qs("btn-unassigned-prev").addEventListener("click", () => runUnassignedFacesPage(-1));
+  qs("btn-unassigned-next").addEventListener("click", () => runUnassignedFacesPage(1));
+  qs("btn-unassigned-jump").addEventListener("click", runUnassignedFacesJump);
+  qs("unassigned-page-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runUnassignedFacesJump();
+  });
+  qs("people-show-unnamed").addEventListener("change", loadPeople);
+  const createPersonBtn = qs("btn-create-person");
+  if (createPersonBtn) {
+    createPersonBtn.addEventListener("click", async () => {
+      try {
+        const person = await ensureNamedPerson(qs("people-new-person-name")?.value || "");
+        if (!person) return;
+        qs("people-new-person-name").value = "";
+        await loadPeople();
+      } catch (err) {
+        showToast(t("person_action_failed", { error: err.message }));
+      }
+    });
+  }
+  qs("btn-refresh-map").addEventListener("click", loadGeoMap);
+  qs("map-media-filter").addEventListener("change", loadGeoMap);
+  qs("btn-refresh-tags").addEventListener("click", () => loadTagsCatalog(1));
+  qs("btn-tags-prev").addEventListener("click", () => runTagsPage(-1));
+  qs("btn-tags-next").addEventListener("click", () => runTagsPage(1));
+  qs("btn-tags-jump").addEventListener("click", runTagsJump);
+  qs("tags-page-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runTagsJump();
+  });
+  qs("tags-filter-query").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loadTagsCatalog(1);
+  });
+  qs("tags-filter-source").addEventListener("change", () => loadTagsCatalog(1));
+  qs("btn-refresh-tag-assets").addEventListener("click", () => {
+    if (!state.tagsAssetsPager.tagId) return;
+    loadTagAssets(state.tagsAssetsPager.tagId, 1);
+  });
+  qs("tag-assets-media").addEventListener("change", () => {
+    if (!state.tagsAssetsPager.tagId) return;
+    loadTagAssets(state.tagsAssetsPager.tagId, 1);
+  });
+  qs("tag-assets-source").addEventListener("change", () => {
+    if (!state.tagsAssetsPager.tagId) return;
+    loadTagAssets(state.tagsAssetsPager.tagId, 1);
+  });
+  qs("btn-tag-assets-prev").addEventListener("click", () => runTagAssetsPage(-1));
+  qs("btn-tag-assets-next").addEventListener("click", () => runTagAssetsPage(1));
+  qs("btn-tag-assets-jump").addEventListener("click", runTagAssetsJump);
+  qs("tag-assets-page-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runTagAssetsJump();
+  });
+  qs("btn-refresh-stories").addEventListener("click", loadStoryAlbums);
+  qs("btn-refresh-album-drafts").addEventListener("click", loadAlbumDrafts);
+  qs("btn-save-album-draft").addEventListener("click", saveAlbumDraft);
+  qs("btn-album-use-story").addEventListener("click", () => {
+    const story = getStoryById(state.stories.selectedStoryId);
+    if (!story) {
+      showToast(t("album_story_required"));
+      return;
+    }
+    renderStoryAssets(story);
+  });
+  qs("album-draft-list").addEventListener("click", (e) => {
+    const button = e.target.closest("button[data-action='album-open-draft']");
+    if (!button) return;
+    openAlbumDraft(getAlbumDraftById(Number(button.dataset.albumId || 0)));
+  });
+  qs("stories-filter-type").addEventListener("change", loadStoryAlbums);
+  qs("stories-filter-media").addEventListener("change", loadStoryAlbums);
+  qs("stories-min-assets").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loadStoryAlbums();
+  });
+  qs("btn-sim-preview").addEventListener("click", loadSimilarityPreview);
+  qs("btn-sim-apply").addEventListener("click", applySimilarityReduction);
+  qs("btn-sim-restore").addEventListener("click", restoreSimilarityReduction);
+  ["sim-min-group-size", "sim-max-distance", "sim-sample-limit", "sim-cluster-limit"].forEach((id) => {
+    qs(id).addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadSimilarityPreview();
+    });
+  });
+  qs("btn-refresh-tasks").addEventListener("click", loadTasks);
+
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action='map-open-asset']");
+    if (!btn) return;
+    const assetId = Number(btn.dataset.assetId);
+    if (!assetId) return;
+    const originTab = state.activeTab;
+    setActiveTab("library");
+    state.inspectorOriginTab = originTab;
+    await loadAssetInspector(assetId);
+  });
+
+  qs("task-rows").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action='cancel-task']");
+    if (!btn) return;
+    const taskId = Number(btn.dataset.taskId);
+    if (!taskId) return;
+    try {
+      await api(`/tasks/${taskId}/cancel`, { method: "POST" });
+      await loadTasks();
+      showToast(t("task_cancel_requested", { id: taskId }));
+    } catch (err) {
+      showToast(t("cancel_failed", { error: err.message }));
+    }
+  });
+
+  qs("tags-rows").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "tags-view-assets") {
+      const tagId = Number(btn.dataset.tagId || 0);
+      if (!tagId) return;
+      await loadTagAssets(tagId, 1);
+      await loadTagsCatalog(state.tagsPager.page || 1);
+      return;
+    }
+    if (btn.dataset.action === "tags-open-search") {
+      const tagName = String(btn.dataset.tagName || "").trim();
+      if (!tagName) return;
+      setActiveTab("library");
+      qs("search-mode").value = "smart";
+      qs("search-query").value = "";
+      qs("search-tags").value = tagName;
+      qs("search-media").value = "all";
+      await runSearch(1, false);
+    }
+  });
+
+  qs("stories-rows").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const storyId = String(btn.dataset.storyId || "");
+    const story = getStoryById(storyId);
+    if (!story) return;
+    if (btn.dataset.action === "stories-view-assets") {
+      renderStoryAssets(story);
+      qs("stories-rows")
+        .querySelectorAll("tr")
+        .forEach((row) => row.classList.toggle("tags-row-active", String(row.querySelector("button[data-story-id]")?.dataset.storyId || "") === storyId));
+      return;
+    }
+    if (btn.dataset.action === "stories-open-context") {
+      await openStoryContext(story);
+      return;
+    }
+    if (btn.dataset.action === "stories-compose-album") {
+      renderStoryAssets(story);
+      qs("album-title")?.focus();
+    }
+  });
+
+  qs("sim-rows").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action='sim-view-group']");
+    if (!btn) return;
+    const groupId = String(btn.dataset.groupId || "");
+    const group = getSimilarityGroupById(groupId);
+    if (!group) return;
+    renderSimilarityGroupAssets(group);
+    qs("sim-rows")
+      .querySelectorAll("tr")
+      .forEach((row) => row.classList.toggle("tags-row-active", String(row.querySelector("button[data-group-id]")?.dataset.groupId || "") === groupId));
+  });
+
+  qs("btn-rebuild-index").addEventListener("click", async () => {
+    try {
+      await api("/vector-index/rebuild", { method: "POST" });
+      showToast(t("vector_rebuild_triggered"));
+      await refreshAdminPanels();
+    } catch (e) {
+      showToast(t("rebuild_failed", { error: e.message }));
+    }
+  });
+
+  qs("btn-recluster").addEventListener("click", async () => {
+    try {
+      await api("/persons/recluster", { method: "POST" });
+      showToast(t("recluster_queued"));
+      await loadTasks();
+    } catch (e) {
+      showToast(t("recluster_failed", { error: e.message }));
+    }
+  });
+
+  qs("btn-ingest").addEventListener("click", async () => {
+    const root = String(qs("ingest-root").value || "").trim();
+    if (!root) {
+      showToast(t("provide_ingest_root"));
+      return;
+    }
+    try {
+      await api("/ingest/scan", {
+        method: "POST",
+        body: JSON.stringify({ roots: [root] }),
+      });
+      showToast(t("ingest_started", { root }));
+      await loadTasks();
+    } catch (e) {
+      showToast(t("ingest_failed", { error: e.message }));
+    }
+  });
+}
+
+async function bootstrap() {
+  state.voiceClientId = getOrCreateVoiceClientId();
+  const params = new URLSearchParams(window.location.search);
+  const langParam = params.get("lang");
+  const storedLang = window.localStorage.getItem("vlm_ui_lang");
+  setLanguage(langParam || storedLang || "en", false);
+  const requestedMode = params.get("mode") || window.localStorage.getItem("vlm_ui_mode") || "family";
+  setUiMode(requestedMode, false);
+  initEvents();
+  const tab = params.get("tab");
+  if (tab && isTabAllowed(tab)) {
+    setActiveTab(tab);
+  } else {
+    setActiveTab("home");
+  }
+  const q = params.get("q");
+  if (q) {
+    qs("search-query").value = q;
+    qs("home-search-query").value = q;
+  }
+  const initialLoads = [loadTab(state.activeTab)];
+  if (state.uiMode === "advanced") initialLoads.push(refreshDashboard());
+  await Promise.all(initialLoads);
+  if (q) {
+    await runHomeSearch(q);
+  }
+
+  window.setInterval(async () => {
+    if (state.uiMode === "advanced") await refreshDashboard();
+    if (state.activeTab === "tasks") await loadTasks();
+  }, 10000);
+}
+
+window.addEventListener("DOMContentLoaded", bootstrap);

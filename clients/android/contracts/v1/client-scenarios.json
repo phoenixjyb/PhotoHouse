@@ -1,0 +1,21 @@
+{
+  "contract_version": "1.0.0-fixture.1",
+  "evidence_kind": "client-only scenario requirements; not server responses",
+  "network_enabled": false,
+  "thumbnail_resources": {
+    "/assets/101/thumbnail?library=family-a": "media/amber.png",
+    "/assets/102/thumbnail?library=family-a": "media/blue.png"
+  },
+  "scenarios": [
+    {"id":"APP-01","action":"Valid demo invitation registration","responses":["invited-registration","invited-viewer"],"expected":"Show authorized invited library; no extra approval step"},
+    {"id":"APP-02","action":"Invalid invitation","responses":["invalid-invitation"],"expected":"Remain signed out; no gallery/media request"},
+    {"id":"APP-03","action":"Unavailable membership","responses":["requested","rejected","revoked","membership-expired","no-memberships"],"expected":"Show status without requesting gallery/media"},
+    {"id":"APP-04","action":"Browse approved library","responses":["approved","gallery","detail","captions-bilingual"],"expected":"Render synthetic images and literal captions"},
+    {"id":"APP-05","action":"Open missing preview or video without original permission","responses":["missing-thumbnail","video-metadata-only","missing-original-permission"],"expected":"Placeholder/unavailable state; no original fallback"},
+    {"id":"APP-06","action":"Change library while old gallery is delayed","responses":["two-libraries","gallery"],"expected":"Old generation cannot populate newly selected library"},
+    {"id":"APP-07","action":"Logout during delayed response or server failure","responses":["logout","unavailable"],"expected":"Immediately clear private UI/token/cache and stay locked; never claim unacknowledged server revocation"},
+    {"id":"APP-08","action":"Object denial then session refresh","responses":["foreign-asset","approved","expired"],"expected":"Hide denied content; one session check; sign out only if session invalid; no legacy retry"},
+    {"id":"APP-09","action":"Background then foreground or restore process state","responses":["approved","expired"],"expected":"Cover private previews; revalidate foreground; cold start signed out with memory-only credentials"},
+    {"id":"APP-10","action":"Language and accessibility","responses":["captions-bilingual","captions-untrusted-text","captions-missing","empty-page","rate-limited","unavailable"],"expected":"EN/ZH UI, large text, screen-reader labels, literal caption text and separate empty/error states"}
+  ]
+}

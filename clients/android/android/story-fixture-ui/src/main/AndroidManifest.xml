@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Isolated synthetic lab, never a launcher or production navigation destination. -->
+        <activity android:name="dev.photohouse.stories.fixture.StoryFixtureActivity" android:exported="false" />
+    </application>
+</manifest>

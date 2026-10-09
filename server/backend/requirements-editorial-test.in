@@ -1,0 +1,7 @@
+# Synthetic editorial/security test tooling only; serving dependencies unchanged.
+-r requirements-home-preparation.lock
+pytest==9.0.3
+numpy==2.2.6
+# CPU worker phash fixture path uses ImageHash; it is test-only.
+ImageHash==4.3.2
+PyWavelets==1.9.0

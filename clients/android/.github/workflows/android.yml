@@ -1,0 +1,40 @@
+name: Android phone and TV verification
+on:
+  pull_request:
+    paths: ['android/**', 'contracts/**', 'scripts/verify-android.sh', 'scripts/verify-contracts.py', '.github/workflows/android.yml']
+  push:
+    branches-ignore: ['master', 'main']
+    paths: ['android/**', 'contracts/**', 'scripts/verify-android.sh', 'scripts/verify-contracts.py', '.github/workflows/android.yml']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify phone/TV contracts, synthetic JVM and local TLS scenarios, lint and debug APKs
+        run: scripts/verify-android.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: android-unconfigured-debug
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/reports/lint-results-debug.*
+            android/core/build/test-results/test/*.xml
+            android/live-core/build/test-results/test/*.xml
+            android/connected/build/outputs/apk/debug/*.apk
+            android/connected/build/reports/lint-results-debug.*
+            android/home-core/build/test-results/test/*.xml
+            android/tv/build/test-results/testDebugUnitTest/*.xml
+            android/tv/build/outputs/apk/debug/*.apk
+            android/tv/build/reports/lint-results-debug.*

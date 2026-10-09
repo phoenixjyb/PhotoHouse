@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "applied_locally_links_verified",
+  "transformations": [
+    {
+      "path": "server/docs/contracts/protected-native-v2/CONTRACT.md",
+      "operation": "replace",
+      "before_sha256": "ef8a985dc83409cb5a48b9c9b20738085b9b48d57ff0db7e907331e78b006f95",
+      "after_sha256": "7b31723b96acc3647c8702387d9bd0eeed9e14504fe4a820b0bbadff2767a1de",
+      "purpose": "Remove broken links to excluded historical private operations evidence",
+      "excluded_links": [
+        "../../security/LIBRARY_ORGANIZATION_V27.md",
+        "../../security/PLACE_NAME_SEARCH_V26.md",
+        "../../security/PLACE_REFRESH_V25.md",
+        "../../security/PLACE_BROWSING_V24.md",
+        "../../security/ADMIN_UPLOAD_REVIEW.md",
+        "../../security/PROTECTED_PREPARED_MEDIA.md",
+        "../../security/READINESS_DEPLOYMENT_20260919.md"
+      ]
+    },
+    {
+      "path": "server/docs/contracts/protected-native-v2/VALIDATION.md",
+      "operation": "replace",
+      "before_sha256": "3c8201a881e6577675868bb3e4f0aa0abb6c372d2f72265e8e8c17e081471b4f",
+      "after_sha256": "6d72490065470e4cbd6c6d28e9f9aef13554cf002e28f962cc91ecfd3aa7d995",
+      "purpose": "Remove broken links to excluded historical private operations evidence",
+      "excluded_links": [
+        "../../security/READINESS_DEPLOYMENT_20260919.md",
+        "../../security/WINDOWS_READINESS_ROLLOUT_20260919.md"
+      ]
+    },
+    {
+      "path": "clients/android/contracts/README.md",
+      "operation": "replace",
+      "before_sha256": "2500eee8bba4d2cb84040c42ec83a5cc1a7664011367aacd0ab38e33b74e2a55",
+      "after_sha256": "4eb2e80239c6472d2b3aa8e86210556e0dea45fb3ef487901004a174a43299e8",
+      "purpose": "Remove broken links to excluded historical private operations evidence",
+      "excluded_links": [
+        "../docs/evidence/android/repin/RETURN.md"
+      ]
+    }
+  ]
+}

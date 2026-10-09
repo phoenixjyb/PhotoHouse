@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "revision": 7,
+  "catalog_revision": 1,
+  "library": {
+    "id": "synthetic-library",
+    "title": "Synthetic / 合成"
+  },
+  "filter_fingerprint": "bcbcf0c4bd0bf64fb8a79edce8d5a02b1d1ad22d7888ba5e27a73756025ce31c",
+  "page": 1,
+  "page_size": 50,
+  "total": 1,
+  "has_more": false,
+  "items": [
+    {
+      "id": 103,
+      "kind": "photo",
+      "label": "Synthetic photo",
+      "width": null,
+      "height": null,
+      "previews": {
+        "grid": {
+          "state": "unavailable",
+          "reason": "not_prepared"
+        },
+        "display": {
+          "state": "unavailable",
+          "reason": "not_prepared"
+        }
+      },
+      "video": null,
+      "originals_allowed": false
+    }
+  ]
+}

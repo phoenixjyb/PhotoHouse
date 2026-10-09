@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>PhotoHouse · 家庭相册</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+  <script src="/ui/memory-community.js" defer></script>
+  <script src="/ui/story-workspace.js" defer></script>
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead"><a class="brand" href="/ui"><span class="brand-mark" aria-hidden="true">PH</span><span>PhotoHouse<small data-i18n="tagline">珍藏一家人的时光</small></span></a>
+    <button id="language" class="quiet" type="button">English</button></header>
+  <main>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <section id="auth" class="welcome" hidden>
+      <div class="welcome-copy"><p class="eyebrow" data-i18n="eyebrow">属于我们一家人的回忆</p><h1 data-i18n="welcome">把美好时光，留在身边。</h1><p data-i18n="intro">一个私密的家庭相册。登录，或使用相册主人发给你的邀请码加入。</p><div class="paper-stack" aria-hidden="true"><div><span data-i18n="paperEveryday">我们的日常</span><br><strong data-i18n="paperMemories">回忆</strong></div></div></div>
+      <div class="auth-card"><div class="tabs"><button id="login-tab" type="button" aria-pressed="true" data-i18n="signIn">Sign in</button><button id="register-tab" type="button" aria-pressed="false" data-i18n="join">Join with an invitation</button></div>
+        <form id="auth-form">
+          <label for="phone" data-i18n="phone">Phone number</label><input id="phone" type="tel" inputmode="tel" autocomplete="username" maxlength="40" aria-describedby="phone-help" required><small id="phone-help" data-i18n="phoneHelp">China (+86) is the default. For another country, enter + and its country code.</small>
+          <label for="password" data-i18n="password">Password</label><input id="password" type="password" autocomplete="current-password" maxlength="128" required>
+          <div id="registration-fields" hidden><label for="name" data-i18n="displayName">Your name</label><input id="name" type="text" autocomplete="name" maxlength="64" required><small data-i18n="displayNameHelp">How your family will see you, up to 64 characters.</small><small data-i18n="passwordHelp">Choose a passphrase of 8–128 characters.</small><label for="code" data-i18n="invitation">Invitation code</label><input id="code" type="text" autocomplete="off" maxlength="80" spellcheck="false"><small data-i18n="inviteHelp">Use the code sent for this phone number. An accepted invitation opens that library.</small></div>
+          <button id="auth-submit" class="primary" type="submit" data-i18n="signIn">Sign in</button>
+          <p id="auth-feedback" class="status auth-feedback" role="status" aria-live="polite"></p>
+        </form>
+        <p class="fine" data-i18n="help">Need an invitation or help signing in? Contact your library owner.</p>
+      </div>
+    </section>
+    <section id="library" class="library-shell" hidden>
+      <div class="library-heading"><div><p class="eyebrow" data-i18n="yourLibrary">YOUR FAMILY LIBRARY</p><h1 data-i18n="gallery">Little moments. Lasting memories.</h1></div><button id="logout" class="quiet" type="button" data-i18n="signOut">Sign out</button></div>
+      <div class="toolbar"><label for="library-select" data-i18n="libraryLabel">Library</label><select id="library-select"></select><button id="refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button><button id="my-uploads-open" class="quiet" type="button" hidden data-i18n="myUploads">My uploads</button><button id="uploads-open" class="quiet" type="button" hidden data-i18n="uploadReview">Upload review</button><a href="#library-tools" class="quiet" data-i18n="libraryTools">Explore this library</a><span id="account-label" class="muted"></span></div>
+      <nav id="memory-navigation" class="memory-navigation" aria-label="回忆导航">
+        <a href="#saved-memory-panel" data-i18n="memoryNavStories">故事</a><a href="#memory-books" id="memory-books-link" data-i18n="memoryNavMemoirs" hidden>回忆集</a><a href="#grid" data-story-word="navMedia">照片与视频</a><a href="#albums-panel" id="memory-albums-link" data-story-word="navAlbums">相册</a><a href="#assistant-panel" id="memory-assistant-link" data-story-word="navAssistant">助手</a>
+      </nav>
+      <section id="memory-home" class="memory-home" hidden>
+        <div class="memory-home-copy"><p class="eyebrow" data-story-word="eyebrow">把片段，连成回忆</p><h2 data-story-word="homeTitle">值得慢慢看的时光</h2><p data-story-word="homeText"></p><div class="memory-home-actions"><button id="memory-create" class="primary" type="button" data-story-word="create">编排一个故事</button><button id="memory-assistant" class="quiet" type="button" data-story-word="assistant">和助手聊聊</button></div></div>
+        <div class="memory-home-art"><img id="memory-home-image" alt=""><span class="memory-home-stamp">PhotoHouse · Memories</span></div>
+      </section>
+      <section id="saved-memory-panel" class="saved-memory-panel" aria-labelledby="saved-memory-heading">
+        <div class="saved-memory-heading"><div><p class="eyebrow" data-story-word="savedEyebrow">家人共同留下的时光</p><h3 id="saved-memory-heading" data-story-word="savedHeading">我们的故事</h3></div><button id="saved-memory-refresh" type="button" class="quiet" data-story-word="refresh">刷新</button></div>
+        <nav id="saved-memory-filters" class="saved-memory-filters" aria-label="按主题浏览已保存故事"></nav>
+        <p id="saved-memory-status" role="status" aria-live="polite"></p><div id="saved-memory-list" class="saved-memory-list"></div><button id="saved-memory-more" type="button" class="quiet" hidden data-story-word="moreStories">更多故事</button>
+      </section>
+      <section id="memory-books" class="memory-books" hidden></section>
+      <section class="memory-themes-section"><h3 data-story-word="chooseTheme">从一个主题开始</h3><div id="memory-themes" class="memory-themes"></div></section>
+      <form id="story-search" class="story-search"><label for="search-text" data-i18n="searchMemories">Find a memory</label><input id="search-text" type="search" maxlength="160"><label for="search-source" data-i18n="searchIn">Search in</label><select id="search-source"><option value="all" data-i18n="allDescriptions">Stories and AI descriptions</option><option value="family" data-i18n="familySearchSources">Family entries</option><option value="ai" data-i18n="aiDescriptions">AI descriptions</option></select><button class="primary" type="submit" data-i18n="search">Search</button><button id="clear-search" class="quiet" type="button" data-i18n="clearSearch">Show all</button></form>
+      <details id="assistant-panel" class="access-panel assistant-panel">
+        <summary data-i18n="assistantTitle">用一句话找回忆</summary>
+        <p class="fine" data-i18n="assistantHelp">仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。</p>
+        <div id="assistant-prompts" class="assistant-prompts"><button class="quiet" type="button" data-assistant-prompt="photos" data-i18n="assistantFindPhotos">找照片</button><button class="quiet" type="button" data-assistant-prompt="videos" data-i18n="assistantFindVideos">找视频</button><button class="quiet" type="button" data-assistant-prompt="open" data-i18n="assistantOpenFirst">打开第一个</button></div>
+        <form id="assistant-form" class="assistant-form">
+          <div id="assistant-voice" class="assistant-voice" hidden>
+            <button id="assistant-mic" class="quiet" type="button" aria-pressed="false" data-i18n="assistantMic">按住说话</button>
+            <button id="assistant-stop" class="quiet" type="button" hidden data-i18n="assistantStop">结束录音</button>
+            <button id="assistant-recording-cancel" class="quiet" type="button" hidden data-i18n="assistantRecordingCancel">取消录音</button>
+          </div>
+          <section id="assistant-transcript-review" class="assistant-transcript-review" hidden aria-labelledby="assistant-transcript-title">
+            <label id="assistant-transcript-title" for="assistant-transcript" data-i18n="assistantTranscriptTitle">识别文本，请检查后再使用</label>
+            <textarea id="assistant-transcript" maxlength="1024" rows="3"></textarea>
+            <p id="assistant-transcript-language" class="fine"></p>
+            <div class="assistant-actions"><button id="assistant-use-transcript" class="quiet" type="button" data-i18n="assistantUseTranscript">放入搜索框</button><button id="assistant-discard-transcript" class="quiet" type="button" data-i18n="assistantDiscardTranscript">丢弃</button></div>
+          </section>
+          <label for="assistant-text" data-i18n="assistantPrompt">你想找什么？</label>
+          <textarea id="assistant-text" maxlength="500" rows="2" autocomplete="off"></textarea>
+          <div class="assistant-actions"><button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button><button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button><button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button></div>
+        </form>
+        <p id="assistant-status" role="status" aria-live="polite"></p>
+        <section id="assistant-receipt" class="assistant-receipt" hidden aria-live="polite">
+          <section id="assistant-pending-turn" class="assistant-pending-turn" hidden aria-labelledby="assistant-pending-title" aria-live="polite">
+            <h3 id="assistant-pending-title" data-i18n="assistantPendingTitle">待确认的请求</h3>
+            <p id="assistant-pending-status" class="assistant-pending-status" role="status"></p>
+            <p class="assistant-pending-question-label" data-i18n="assistantPendingQuestion">已提交的问题</p>
+            <p id="assistant-pending-question" class="assistant-pending-question"></p>
+            <p id="assistant-pending-help" class="assistant-pending-help"></p>
+            <div class="assistant-actions">
+              <button id="assistant-pending-check" class="quiet" type="button" data-i18n="assistantReceiptCheck">查询服务器回执</button>
+              <button id="assistant-pending-restore" class="quiet" type="button" hidden data-i18n="assistantPendingRestore">关闭并恢复问题</button>
+              <button id="assistant-pending-ack" class="quiet" type="button" data-i18n="assistantPendingAcknowledge">确认并重新开始</button>
+            </div>
+          </section>
+          <div id="assistant-generic-receipt">
+            <p id="assistant-receipt-status" role="status"></p>
+            <details id="assistant-receipt-details">
+              <summary data-i18n="assistantReceiptDetails">请求跟踪详情</summary>
+              <label class="assistant-receipt-id-label" for="assistant-receipt-id" data-i18n="assistantRequestIdLabel">请求编号</label>
+              <input id="assistant-receipt-id" class="assistant-receipt-id" type="text" readonly aria-label="请求编号">
+            </details>
+            <button id="assistant-receipt-check" class="quiet" type="button" data-i18n="assistantReceiptCheck">查询服务器回执</button>
+          </div>
+        </section>
+        <p id="assistant-reply" class="assistant-reply" aria-live="polite"></p>
+        <div id="assistant-speech" class="assistant-actions assistant-speech" hidden><button id="assistant-play" class="quiet" type="button" data-i18n="assistantPlay">播放结果</button><button id="assistant-speech-stop" class="quiet" type="button" hidden data-i18n="assistantSpeechStop">停止播放</button></div>
+        <audio id="assistant-speech-audio" preload="none" hidden></audio>
+        <div id="assistant-results" class="assistant-results"></div>
+      </details>
+      <section id="library-transfer" class="access-panel library-transfer" hidden aria-labelledby="library-transfer-title"><div class="transfer-heading"><div><h2 id="library-transfer-title" data-i18n="moveMemories">Move memories</h2><p class="fine" data-i18n="moveMemoriesHelp">Move up to 50 photos or videos to another family library. Stories move with them.</p></div><span id="transfer-count" class="panel-count"></span></div><p id="transfer-status" role="status" aria-live="polite"></p><div class="transfer-actions"><button id="transfer-move" class="primary" type="button" disabled data-i18n="moveSelected">Move selected</button><button id="transfer-clear" class="quiet" type="button" data-i18n="clearSelection">Clear selection</button></div></section>
+      <details id="discovery-panel" class="access-panel discovery-controls" hidden>
+        <summary data-i18n="filterByDate">Filter by date, places and media</summary>
+        <p class="fine" data-i18n="discoveryHelp">Narrow this library by when a photo was taken, a reviewed place, and whether it is a photo or a video. Read-only: nothing here changes or hides a photo.</p>
+        <section id="discovery-places" class="discovery-places" hidden aria-labelledby="discovery-places-heading">
+          <h3 id="discovery-places-heading" data-i18n="places">Places</h3>
+          <p class="fine" data-i18n="placesHelp">Choose a named place from reviewed library metadata. Places are shown only when this library has them.</p>
+          <p id="discovery-places-status" class="fine" role="status" aria-live="polite"></p>
+          <form id="discovery-place-search" class="people-search">
+            <label for="discovery-place-query" data-i18n="placeSearchLabel">Search places</label>
+            <input id="discovery-place-query" type="search" maxlength="128" autocomplete="off" placeholder="北京 / Beijing">
+            <button class="quiet" type="submit" data-i18n="placeSearch">Search</button>
+          </form>
+          <p class="fine" data-i18n="placeSearchHelp">Search the local place catalogue in Chinese or English. Choose a result, then apply your filters.</p>
+          <div id="discovery-place-selected" class="place-list" aria-live="polite"></div>
+          <div id="discovery-place-list" class="place-list"></div>
+          <nav id="discovery-place-pages" class="pagination" hidden aria-label="Place pages">
+            <button id="discovery-place-previous" class="quiet" type="button" data-i18n="previous">Previous</button>
+            <span id="discovery-place-page-label"></span>
+            <button id="discovery-place-next" class="quiet" type="button" data-i18n="next">Next</button>
+          </nav>
+        </section>
+        <form id="discovery-form" class="people-search">
+          <span class="people-filter"><label for="discovery-media" data-i18n="mediaKind">Media</label>
+            <select id="discovery-media"><option value="all" data-i18n="mediaAll">Photos and videos</option><option value="image" data-i18n="mediaImage">Photos only</option><option value="video" data-i18n="mediaVideo">Videos only</option></select>
+          </span>
+          <label for="discovery-from" data-i18n="dateFrom">From</label><input id="discovery-from" type="date">
+          <label for="discovery-to" data-i18n="dateTo">To</label><input id="discovery-to" type="date">
+          <button class="quiet" type="submit" data-i18n="applyFilter">Apply</button>
+          <button id="discovery-clear" class="quiet" type="button" data-i18n="clearFilter">Clear</button>
+        </form>
+        <p id="discovery-status" role="status" aria-live="polite"></p>
+        <button id="discovery-facets-retry" class="quiet" type="button" data-i18n="discoveryRetry" hidden>Retry filters</button>
+      </details>
+      <div id="gallery-filter-summary" class="gallery-filter-summary" hidden>
+        <div id="gallery-filter-chips" class="gallery-filter-chips" role="group" aria-label="Active filters"></div>
+        <span id="gallery-filter-count" class="gallery-filter-count"></span>
+        <p id="gallery-filter-status" role="status" aria-live="polite"></p>
+        <div id="gallery-filter-actions" class="gallery-filter-actions"></div>
+      </div>
+      <p id="empty" class="empty" hidden></p><div id="grid" class="grid" role="region" aria-label="照片与视频"></div>
+      <nav id="pagination" class="pagination" aria-label="Gallery pages" hidden><button id="previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="page-label"></span><button id="next" class="quiet" type="button" data-i18n="next">Next</button><form id="page-jump" class="page-jump"><label for="page-input" class="fine" data-i18n="goToPage">Go to page</label><input id="page-input" type="number" min="1" step="1" inputmode="numeric" autocomplete="off"><button class="quiet" type="submit" data-i18n="go">Go</button></form></nav>
+      <h2 id="library-tools" class="library-tools-heading" data-i18n="libraryTools">Explore this library</h2>
+      <details id="albums-panel" class="access-panel"><summary data-i18n="albums">Family albums</summary><p class="fine" data-i18n="albumPrivacy">Saved in this library, not automatically published to TV.</p><button id="album-create" class="primary" type="button" hidden data-i18n="newAlbum">Create album</button><p id="album-status" role="status"></p><div id="album-list"></div><nav id="album-pages" class="pagination" hidden><button id="album-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="album-page-label"></span><button id="album-next" class="quiet" type="button" data-i18n="next">Next</button></nav><details id="album-archived-panel" hidden><summary data-i18n="archivedAlbums">Albums put away</summary><p class="fine" data-i18n="archivedHelp">Albums this library has put away. Nothing was deleted, so any of them can be brought back.</p><p id="album-archived-status" role="status" aria-live="polite"></p><div id="album-archived-list"></div></details></details>
+      <details id="my-uploads-panel" class="access-panel account-uploads-panel" hidden>
+        <summary data-i18n="myUploads">My uploads</summary>
+        <p class="fine" data-i18n="myUploadsHelp">Photos you sent from your phone. Only you can see this history. Refresh to check for an update.</p>
+        <p id="my-uploads-status" role="status" aria-live="polite"></p>
+        <div id="my-uploads-list" class="receipt-list"></div>
+        <nav id="my-uploads-pages" class="pagination" hidden><button id="my-uploads-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="my-uploads-page-label"></span><button id="my-uploads-next" class="quiet" type="button" data-i18n="next">Next</button></nav>
+        <button id="my-uploads-refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button>
+      </details>
+      <details id="directory-panel" class="access-panel"><summary data-i18n="peopleInLibrary">People in this library</summary><p class="fine" data-i18n="peopleDirectoryHelp">Names saved in this library, with one face photo each. Only the owner can change a name.</p><form id="directory-search" class="people-search"><label for="directory-query" data-i18n="findPersonInLibrary">Find a person</label><input id="directory-query" type="search" maxlength="128" autocomplete="off"><button class="quiet" type="submit" data-i18n="search">Search</button></form><p id="directory-status" role="status" aria-live="polite"></p><div id="directory-list"></div><nav id="directory-pages" class="pagination" hidden><button id="directory-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="directory-page-label"></span><button id="directory-next" class="quiet" type="button" data-i18n="next">Next</button></nav><div id="person-assets"></div><nav id="person-pages" class="pagination" hidden><button id="person-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="person-page-label"></span><button id="person-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details>
+      <details id="tags-panel" class="access-panel"><summary data-i18n="tagsInLibrary">Tags in this library</summary><p class="fine" data-i18n="tagsHelp">Tags already attached to photos in this library. Read-only: no tag can be added or removed here.</p><form id="tag-search" class="people-search"><label for="tag-query" data-i18n="findTag">Find a tag</label><input id="tag-query" type="search" maxlength="128" autocomplete="off"><button class="quiet" type="submit" data-i18n="search">Search</button></form><p id="tag-status" role="status" aria-live="polite"></p><div id="tag-list"></div><nav id="tag-pages" class="pagination" hidden><button id="tag-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="tag-page-label"></span><button id="tag-next" class="quiet" type="button" data-i18n="next">Next</button></nav><div id="tag-assets"></div></details><details id="family-tags-panel" class="access-panel"><summary data-i18n="familyTagsTitle">Family note tags</summary><p class="fine" data-i18n="familyTagsHelp">Labels suggested from family notes and accepted by the library owner. Only photos in this library appear here.</p><form id="family-tag-search" class="people-search"><label for="family-tag-query" data-i18n="findFamilyTag">Find a family tag</label><input id="family-tag-query" type="search" maxlength="128" autocomplete="off"><button class="quiet" type="submit" data-i18n="search">Search</button></form><p id="family-tag-status" role="status" aria-live="polite"></p><div id="family-tag-list"></div><nav id="family-tag-pages" class="pagination" hidden><button id="family-tag-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="family-tag-page-label"></span><button id="family-tag-next" class="quiet" type="button" data-i18n="next">Next</button></nav><div id="family-tag-assets"></div><nav id="family-tag-asset-pages" class="pagination" hidden><button id="family-tag-asset-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="family-tag-asset-page-label"></span><button id="family-tag-asset-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details><details id="duplicates-panel" class="access-panel"><summary data-i18n="duplicatesInLibrary">Photos saved twice</summary><p class="fine" data-i18n="duplicatesHelp">Photos this library holds more than once, because the same picture was imported twice. Read-only: nothing here deletes, hides or merges a copy.</p><p id="duplicate-status" role="status" aria-live="polite"></p><div id="duplicate-list"></div><nav id="duplicate-pages" class="pagination" hidden><button id="duplicate-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="duplicate-page-label"></span><button id="duplicate-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details>
+
+      <details id="people-panel" class="access-panel" hidden><summary data-i18n="managePeople">Manage people · Owner</summary><p class="fine" data-i18n="peopleHelp">Review saved names and faces in this library. Renaming does not merge people or change face assignments.</p><form id="people-search" class="people-search"><label for="people-query" data-i18n="findPerson">Find a saved name</label><input id="people-query" type="search" maxlength="128" autocomplete="off"><button class="quiet" type="submit" data-i18n="search">Search</button><span class="people-filter"><label for="people-named" data-i18n="peopleFilter">Show</label><select id="people-named"><option value="all" data-i18n="peopleAll">Named and unnamed</option><option value="named" data-i18n="peopleNamed">Named only</option><option value="unnamed" data-i18n="peopleUnnamed">Unnamed only</option></select></span></form><p id="people-status" role="status" aria-live="polite"></p><div id="people-list"></div><nav id="people-pages" class="pagination" hidden><button id="people-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="people-page-label"></span><button id="people-next" class="quiet" type="button" data-i18n="next">Next</button></nav><details id="unassigned-section" class="people-section"><summary data-i18n="unassignedFaces">Unassigned faces · Owner worklist</summary><p class="fine" data-i18n="unassignedHelp">Faces that no saved person claims yet, across this library. Assigning one keeps the rest of the list.</p><p id="unassigned-status" role="status" aria-live="polite"></p><div id="unassigned-list"></div><nav id="unassigned-pages" class="pagination" hidden><button id="unassigned-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="unassigned-page-label"></span><button id="unassigned-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details></details>
+      <details id="accept-panel" class="access-panel"><summary data-i18n="anotherInvite">Have an invitation to another library?</summary><form id="accept-form"><label for="accept-code" data-i18n="invitation">Invitation code</label><input id="accept-code" maxlength="80" autocomplete="off" spellcheck="false" required><button class="primary" type="submit" data-i18n="accept">Accept invitation</button></form></details>
+      <details id="owner-panel" class="access-panel" hidden><summary data-i18n="inviteSomeone">Invite someone to this library</summary><p data-i18n="ownerHelp">Create a code for their phone number, then send it privately. They join as a viewer. Original downloads are not included.</p><form id="invite-form"><label for="invite-phone" data-i18n="phone">Phone number</label><input id="invite-phone" type="tel" maxlength="40" aria-describedby="invite-phone-help" autocomplete="off" required><small id="invite-phone-help" data-i18n="phoneHelp">China (+86) is the default. For another country, enter + and its country code.</small><button class="primary" type="submit" data-i18n="createInvite">Create invitation</button></form><div id="invitation-result" hidden><label for="created-code" data-i18n="sendCode">Send this code privately. It expires in 24 hours.</label><input id="created-code" readonly autocomplete="off"><button id="cancel-invite" class="quiet" type="button" data-i18n="cancelInvite">Cancel this invitation</button></div></details>
+      <details id="members-panel" class="access-panel" hidden><summary data-i18n="manageMembers">Review library members</summary><p data-i18n="revokeHelp">Revoking access stops future requests to this library. Files already downloaded cannot be recalled.</p><p class="fine" data-i18n="autoApprovalHelp">Automatic approval applies only to future uploads from a member you select here, and only when their phone sends the upload to this library. Existing uploads still need review.</p><p id="member-policy-status" role="status" aria-live="polite"></p><div id="member-list"></div><nav id="member-pages" class="pagination" hidden><button id="member-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="member-page-label"></span><button id="member-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details>
+      <details id="uploads-panel" class="access-panel owner-upload-review-panel" hidden><summary><span data-i18n="uploadReview">Upload review</span> <span id="uploads-count" class="panel-count" aria-label=""></span></summary><p class="fine" data-i18n="uploadReviewHelp">Review private uploads before assigning them to this library. Only the library owner with admin authorization can approve an upload.</p><p id="uploads-status" role="status" aria-live="polite"></p><div id="uploads-list" class="upload-list"></div><nav id="uploads-pages" class="pagination" hidden><button id="uploads-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="uploads-page-label"></span><button id="uploads-next" class="quiet" type="button" data-i18n="next">Next</button></nav><button id="uploads-refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button></details>
+      <details id="tag-review-panel" class="access-panel owner-upload-review-panel" hidden><summary data-i18n="tagReviewTitle">Review suggested tags</summary><p class="fine" data-i18n="tagReviewHelp">Review suggestions for uploads already added to this library. The original and polished words stay visible; accepted tags can be found in memory search.</p><p id="tag-review-status" role="status" aria-live="polite"></p><div id="tag-review-list" class="tag-review-list"></div><nav id="tag-review-pages" class="pagination" hidden><button id="tag-review-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="tag-review-page-label"></span><button id="tag-review-next" class="quiet" type="button" data-i18n="next">Next</button></nav><button id="tag-review-refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button></details>
+    </section>
+  </main>
+  <dialog id="story-workspace" class="story-workspace" aria-labelledby="story-workspace-heading">
+    <header class="story-workspace-heading"><div><p class="eyebrow" data-story-word="eyebrow"></p><h2 id="story-workspace-heading" data-story-word="draft">故事草稿</h2></div><button id="story-workspace-close" class="quiet" type="button" data-story-word="close">返回</button></header>
+    <p class="story-workspace-help" data-story-word="draftHelp"></p>
+    <form id="story-workspace-form"><div class="story-workspace-layout"><aside class="story-selection-panel"><h3 data-story-word="select">选择画面</h3><p class="fine" data-story-word="selectionHelp"></p><span id="story-selection-count" class="fine"></span><div class="story-selection-actions"><button id="story-selection-clear" class="quiet" type="button" data-story-word="clearFrames">清空选择</button><button id="story-selection-first" class="quiet" type="button" data-story-word="selectFirst" hidden>选择前 24 个画面</button></div><div id="story-selection" class="story-selection"></div><nav id="story-selection-pages" class="story-selection-pages" hidden><button id="story-selection-previous" class="quiet" type="button" data-story-word="framesPrevious">上一组画面</button><span id="story-selection-page" class="fine" role="status" aria-live="polite"></span><button id="story-selection-next" class="quiet" type="button" data-story-word="framesNext">下一组画面</button></nav></aside><section class="story-writing-panel"><div class="story-workspace-fields"><label><span data-story-word="title">故事标题</span><input id="story-workspace-title" maxlength="160"></label><label><span data-story-word="theme">故事主题</span><select id="story-workspace-theme"></select></label></div><button id="story-build" class="primary" type="submit" data-story-word="outline">整理章节</button><p id="story-workspace-status" role="status" aria-live="polite"></p><div id="story-chapter-editor"></div></section></div></form>
+    <div id="story-draft-actions" class="story-draft-actions" hidden><button id="story-preview" class="primary" type="button" data-story-word="read">沉浸预览</button><button id="story-save-memory" class="primary" type="button" data-story-word="saveMemory">保存到相册库</button><button id="story-reload-memory" class="quiet" type="button" hidden data-story-word="reloadMemory">重新打开已保存版本</button><button id="story-export" class="quiet" type="button" data-story-word="export">下载故事草稿</button></div>
+  </dialog>
+  <dialog id="story-reader" class="story-reader" aria-labelledby="story-reader-title">
+    <header><span class="story-reader-brand">PhotoHouse · Stories</span><span id="story-reader-memory-title"></span><button id="story-reader-edit" class="quiet" type="button" data-story-word="editStory" hidden>编辑故事</button><button id="story-reader-close" class="quiet" type="button" data-story-word="close">返回</button></header>
+    <div class="story-reader-layout"><div class="story-reader-visual"><div id="story-reader-stage" class="story-reader-stage"></div><div id="story-reader-frames" class="story-reader-frames" role="group" aria-label="本章画面"></div></div><article class="story-reader-prose"><p id="story-reader-eyebrow" class="eyebrow"></p><h2 id="story-reader-title"></h2><p id="story-reader-text"></p><p id="story-reader-date" class="fine"></p></article></div>
+    <nav id="story-reader-chapters" class="story-reader-chapters" aria-label="故事章节"></nav>
+    <section id="story-reader-community" class="story-reader-community" hidden></section>
+    <nav class="story-reader-controls"><button id="story-reader-play" class="quiet" type="button" data-story-word="playStory">慢慢播放</button><button id="story-reader-contribute" class="quiet" type="button" data-story-word="contribute">补充这张照片的回忆</button><button id="story-reader-related" class="quiet" type="button" data-story-word="related">和助手找更多片段</button><button id="story-reader-previous" class="quiet" type="button" data-story-word="previous">上一章</button><button id="story-reader-next" class="quiet" type="button" data-story-word="next">下一章</button></nav>
+  </dialog>
+  <dialog id="viewer"><button id="close-viewer" class="quiet close" type="button" data-i18n="close">Close</button>
+    <section id="photo-viewer" hidden>
+      <div id="viewer-sequence" class="viewer-controls" hidden>
+        <button id="view-previous" class="quiet" type="button" data-i18n="viewPrevious">Previous photo</button>
+        <span id="view-position" class="fine" aria-live="polite"></span>
+        <button id="view-next" class="quiet" type="button" data-i18n="viewNext">Next photo</button>
+        <button id="view-play" class="quiet" type="button" data-i18n="viewPlay" aria-pressed="false">Play slideshow</button>
+        <label for="view-interval" class="fine" data-i18n="viewInterval">Each preview</label>
+        <select id="view-interval"><option value="5000">5 s</option><option value="10000">10 s</option><option value="15000">15 s</option></select>
+        <div id="viewer-filmstrip" class="viewer-filmstrip" role="group" aria-label="Photos in this view"></div>
+      </div>
+      <div id="viewer-controls" class="viewer-controls" role="group" aria-label="Photo view">
+        <button id="view-fit" class="quiet" type="button" data-i18n="viewFit" aria-pressed="true">Fit</button>
+        <button id="view-width" class="quiet" type="button" data-i18n="viewWidth" aria-pressed="false">Fit width</button>
+        <button id="view-height" class="quiet" type="button" data-i18n="viewHeight" aria-pressed="false">Fit height</button>
+        <button id="view-actual" class="quiet" type="button" data-i18n="viewActual" aria-pressed="false">Actual size</button>
+        <button id="view-out" class="quiet" type="button" data-i18n="viewOut">Zoom out</button>
+        <output id="view-scale" aria-live="polite"></output>
+        <button id="view-in" class="quiet" type="button" data-i18n="viewIn">Zoom in</button>
+        <button id="view-fullscreen" class="quiet" type="button" data-i18n="viewFullscreen">Fullscreen</button>
+      </div>
+      <div id="viewer-media" tabindex="0" role="region" aria-label="Photo preview" aria-describedby="view-help view-quality"></div>
+      <p id="view-quality" class="fine" role="status"></p><p id="view-help" class="fine" data-i18n="viewHelp">Scroll to zoom; drag to pan. Keyboard: + / − zoom, arrows pan, 0 fits.</p>
+    </section><h2 id="viewer-title"></h2><button id="viewer-move" class="primary" type="button" hidden data-i18n="moveThisMemory">Move this memory</button>
+    <details id="face-panel" class="access-panel" hidden><summary data-i18n="assignFaces">Review face assignments · Owner</summary><p class="fine" data-i18n="assignHelp">Choose an existing person for one face. No automatic propagation or new person is created.</p><button id="face-refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button><p id="face-status" role="status" aria-live="polite"></p><div id="face-list"></div><nav id="face-pages" class="pagination" hidden><button id="face-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="face-page-label"></span><button id="face-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details>
+    <section id="viewer-annotations" class="annotation-list" aria-labelledby="viewer-annotations-heading" hidden><h3 id="viewer-annotations-heading" data-i18n="annotationTitle">Family notes</h3><p id="viewer-annotations-status" role="status" aria-live="polite"></p><div id="viewer-annotations-list" class="annotation-notes"></div><button id="viewer-annotations-more" class="quiet" type="button" hidden data-i18n="annotationMore">More notes</button></section>
+    <section class="family-stories" aria-labelledby="stories-heading"><p class="eyebrow" data-i18n="storyEyebrow">THE STORY BEHIND THE MOMENT</p><h3 id="stories-heading" data-i18n="familyStories">Family stories</h3><p class="fine" data-i18n="storyPrivacy">Shared with this library, not automatically published to TV.</p><p id="story-status" role="status" aria-live="polite"></p><div id="story-list"></div><button id="story-more" class="quiet" type="button" hidden data-i18n="moreStories">More stories</button><button id="story-add" class="primary" type="button" hidden data-i18n="addStory">Add your memory</button>
+      <form id="story-form" hidden><label for="story-title" data-i18n="storyTitle">Title (optional)</label><input id="story-title"><label for="story-byline" data-i18n="storyByline">Written by (display name)</label><input id="story-byline" autocomplete="off"><label for="story-language" data-i18n="storyLanguage">Language of your story</label><select id="story-language"><option value="en">English</option><option value="zh">中文</option><option value="mixed">English + 中文</option><option value="und" data-i18n="otherLanguage">Other / unspecified</option></select><label for="story-text" data-i18n="storyText">What would you like to remember?</label><textarea id="story-text" rows="8" required></textarea><p class="fine" data-i18n="storyLimit">No word-count limit. Up to 64 KiB of text; longer entries are rejected, never shortened.</p><div class="story-actions"><button id="story-save" class="primary" type="submit" data-i18n="saveStory">Save story</button><button id="story-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button><button id="story-compare" class="quiet" type="button" hidden data-i18n="compareLatest">Compare latest version</button></div><div id="story-conflict"></div></form>
+      <section id="story-history" hidden aria-label="Story history"></section>
+    </section>
+    <details class="ai-descriptions"><summary data-i18n="aiAndLegacy">AI descriptions and earlier caption edits</summary><div id="captions"></div><p class="fine" data-i18n="captionNote">Generated descriptions may be inaccurate. Original downloads require separate permission.</p></details><a id="original" class="quiet" hidden data-i18n="download">Download original</a></dialog>
+  <dialog id="album-editor" aria-label="Album editor"></dialog>
+  <dialog id="transfer-review" aria-labelledby="transfer-review-title"><button id="transfer-review-close" class="quiet close" type="button" data-i18n="cancel">Cancel</button><h2 id="transfer-review-title" data-i18n="reviewMove">Review move</h2><p id="transfer-review-copy" class="fine"></p><div id="transfer-review-summary" class="transfer-summary"></div><p id="transfer-review-status" role="status" aria-live="assertive"></p><div class="transfer-review-actions"><button id="transfer-review-confirm" class="primary" type="button" data-i18n="confirmMove">Confirm move</button><button id="transfer-review-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button></div></dialog>
+  <dialog id="upload-review-dialog" aria-labelledby="upload-review-title" aria-describedby="upload-review-copy upload-review-status"><button id="upload-review-close" class="quiet close" type="button" data-i18n="cancel">Cancel</button><h2 id="upload-review-title" data-i18n="approveUpload">Approve this upload?</h2><p id="upload-review-copy" class="fine"></p><p id="upload-review-status" class="upload-dialog-status" role="status" aria-live="assertive"></p><div id="upload-review-preview" class="upload-review-preview"></div><div class="upload-review-actions"><button id="upload-review-approve" class="primary" type="button" data-i18n="approveUpload">Approve upload</button><button id="upload-review-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button></div></dialog>
+  <footer data-i18n="footer">PhotoHouse · Shared by invitation</footer>
+</body>
+</html>

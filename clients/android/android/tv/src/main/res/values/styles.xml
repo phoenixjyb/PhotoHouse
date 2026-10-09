@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">PhotoHouse TV</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#10231F</item>
+        <item name="android:navigationBarColor">#10231F</item>
+        <item name="android:windowBackground">#10231F</item>
+    </style>
+</resources>

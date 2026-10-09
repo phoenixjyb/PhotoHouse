@@ -1,0 +1,2 @@
+-r requirements-access.in
+# httpx is also required by the serving annotation adapter; tests use its ASGI client.

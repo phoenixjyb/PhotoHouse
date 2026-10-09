@@ -1,0 +1,487 @@
+{
+  "contract_version": "1.0.0-fixture.1",
+  "synthetic_only": true,
+  "normalization": "Tokens replaced by inert F characters; UUIDs mapped to fixed synthetic IDs; no reusable credentials retained.",
+  "cases": [
+    {
+      "id": "login",
+      "operation_id": "login",
+      "status": 200,
+      "body": {
+        "expires_in": 86400,
+        "access_token": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "token_type": "Bearer"
+      }
+    },
+    {
+      "id": "approved",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "approved",
+            "role": "viewer",
+            "revision": 1,
+            "expires_at": null,
+            "originals": 0,
+            "available": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "gallery",
+      "operation_id": "gallery",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "page": 1,
+        "page_size": 50,
+        "total": 2,
+        "originals_allowed": false,
+        "items": [
+          {
+            "id": "102",
+            "kind": "image",
+            "width": 640,
+            "height": 480,
+            "duration_sec": null,
+            "taken_at": "2026-01-02",
+            "thumbnail_url": "/assets/102/thumbnail?library=family-a"
+          },
+          {
+            "id": "101",
+            "kind": "image",
+            "width": 640,
+            "height": 480,
+            "duration_sec": null,
+            "taken_at": "2026-01-01",
+            "thumbnail_url": "/assets/101/thumbnail?library=family-a"
+          }
+        ]
+      }
+    },
+    {
+      "id": "detail",
+      "operation_id": "detail",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "originals_allowed": false,
+        "asset": {
+          "id": "101",
+          "kind": "image",
+          "width": 640,
+          "height": 480,
+          "duration_sec": null,
+          "taken_at": "2026-01-01",
+          "thumbnail_url": "/assets/101/thumbnail?library=family-a"
+        }
+      }
+    },
+    {
+      "id": "captions-bilingual",
+      "operation_id": "captions",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "asset_id": "101",
+        "has_more": false,
+        "items": [
+          {
+            "id": "101",
+            "text": "Synthetic hillside. 合成山景。",
+            "truncated": false,
+            "user_edited": false,
+            "created_at": "2026-01-01 00:00:00",
+            "updated_at": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "captions-untrusted-text",
+      "operation_id": "captions",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "asset_id": "102",
+        "has_more": false,
+        "items": [
+          {
+            "id": "102",
+            "text": "<script>synthetic text only</script>",
+            "truncated": false,
+            "user_edited": false,
+            "created_at": "2026-01-01 00:00:00",
+            "updated_at": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "video-metadata-only",
+      "operation_id": "detail",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "originals_allowed": false,
+        "asset": {
+          "id": "102",
+          "kind": "video",
+          "width": 640,
+          "height": 480,
+          "duration_sec": 2.0,
+          "taken_at": "2026-01-02",
+          "thumbnail_url": "/assets/102/thumbnail?library=family-a"
+        }
+      }
+    },
+    {
+      "id": "empty-page",
+      "operation_id": "gallery",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "page": 2,
+        "page_size": 50,
+        "total": 2,
+        "originals_allowed": false,
+        "items": []
+      }
+    },
+    {
+      "id": "foreign-asset",
+      "operation_id": "detail",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "missing-original-permission",
+      "operation_id": "originalGet",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "thumbnail",
+      "operation_id": "thumbnailGet",
+      "status": 200,
+      "body_kind": "binary",
+      "content_type": "image/jpeg",
+      "byte_length": 632
+    },
+    {
+      "id": "thumbnail-head",
+      "operation_id": "thumbnailHead",
+      "status": 200,
+      "body_kind": "empty",
+      "content_type": "image/jpeg",
+      "byte_length": 0
+    },
+    {
+      "id": "missing-thumbnail",
+      "operation_id": "thumbnailGet",
+      "status": 404,
+      "body": {
+        "detail": "Media unavailable"
+      }
+    },
+    {
+      "id": "malformed-query",
+      "operation_id": "gallery",
+      "status": 400,
+      "body": {
+        "detail": "Invalid request"
+      }
+    },
+    {
+      "id": "anonymous",
+      "operation_id": "session",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "invalid-invitation",
+      "operation_id": "registerInvited",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "invited-registration",
+      "operation_id": "registerInvited",
+      "status": 201,
+      "body": {
+        "expires_in": 86400,
+        "access_token": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "token_type": "Bearer"
+      }
+    },
+    {
+      "id": "invited-viewer",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000002",
+        "phone_login": "+12025550103",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "approved",
+            "role": "viewer",
+            "revision": 1,
+            "expires_at": null,
+            "originals": 0,
+            "available": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "accept-second-library",
+      "operation_id": "acceptInvitation",
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "id": "two-libraries",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "approved",
+            "role": "viewer",
+            "revision": 1,
+            "expires_at": null,
+            "originals": 0,
+            "available": true
+          },
+          {
+            "library_id": "family-b",
+            "status": "approved",
+            "role": "viewer",
+            "revision": 1,
+            "expires_at": null,
+            "originals": 0,
+            "available": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "requested",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "requested",
+            "role": "viewer",
+            "revision": 2,
+            "expires_at": null,
+            "originals": 0,
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "requested-read-denied",
+      "operation_id": "gallery",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "rejected",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "rejected",
+            "role": "viewer",
+            "revision": 2,
+            "expires_at": null,
+            "originals": 0,
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "rejected-read-denied",
+      "operation_id": "gallery",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "revoked",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "revoked",
+            "role": "viewer",
+            "revision": 2,
+            "expires_at": null,
+            "originals": 0,
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "revoked-read-denied",
+      "operation_id": "gallery",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "original-authorized",
+      "operation_id": "originalGet",
+      "status": 200,
+      "body_kind": "binary",
+      "content_type": "image/jpeg",
+      "byte_length": 632
+    },
+    {
+      "id": "original-range",
+      "operation_id": "originalGet",
+      "status": 206,
+      "body_kind": "binary",
+      "content_type": "image/jpeg",
+      "content_range": "bytes 0-5/632",
+      "byte_length": 6
+    },
+    {
+      "id": "original-head",
+      "operation_id": "originalHead",
+      "status": 200,
+      "body_kind": "empty",
+      "content_type": "image/jpeg",
+      "byte_length": 0
+    },
+    {
+      "id": "captions-missing",
+      "operation_id": "captions",
+      "status": 200,
+      "body": {
+        "library_id": "family-a",
+        "asset_id": "102",
+        "has_more": false,
+        "items": []
+      }
+    },
+    {
+      "id": "membership-expired",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": [
+          {
+            "library_id": "family-a",
+            "status": "approved",
+            "role": "viewer",
+            "revision": 3,
+            "expires_at": 2000000001,
+            "originals": 1,
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "membership-expired-read-denied",
+      "operation_id": "gallery",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "no-memberships",
+      "operation_id": "session",
+      "status": 200,
+      "body": {
+        "account_id": "00000000-0000-4000-8000-000000000001",
+        "phone_login": "+12025550102",
+        "memberships": []
+      }
+    },
+    {
+      "id": "expired",
+      "operation_id": "session",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "logout",
+      "operation_id": "logout",
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "id": "logged-out",
+      "operation_id": "session",
+      "status": 401,
+      "body": {
+        "detail": "Access denied"
+      }
+    },
+    {
+      "id": "rate-limited",
+      "operation_id": "login",
+      "status": 429,
+      "body": {
+        "detail": "Try again later"
+      }
+    },
+    {
+      "id": "unavailable",
+      "operation_id": "session",
+      "status": 503,
+      "body": {
+        "detail": "Access unavailable"
+      }
+    }
+  ]
+}

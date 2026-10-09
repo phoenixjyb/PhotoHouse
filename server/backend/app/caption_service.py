@@ -1,0 +1,553 @@
+"""Vision-Language Models for Image Captioning."""
+import os
+import time
+import logging
+import re
+from functools import lru_cache
+from typing import Protocol, Optional
+from PIL import Image
+import json
+import httpx
+import tempfile
+
+from .runtime_paths import temporary_path
+
+logger = logging.getLogger(__name__)
+
+
+def _caption_tmp_dir() -> str:
+    """Create the configured runtime temp directory or use system temp."""
+    tmp_dir = temporary_path()
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return tempfile.gettempdir()
+    return str(tmp_dir)
+
+class CaptionProvider(Protocol):
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str: ...
+    def get_model_name(self) -> str: ...
+
+
+class CaptionServiceTransientError(ConnectionError):
+    """A retryable caption-service transport or server failure."""
+
+
+class CaptionInputError(ValueError):
+    """An invalid caption input that cannot be fixed by retrying the same bytes."""
+
+
+def _is_pixel_limit_rejection(response: httpx.Response) -> bool:
+    """Recognize the legacy server's deterministic Pillow error, not generic 500s."""
+    try:
+        detail = response.json().get('detail')
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return isinstance(detail, str) and re.fullmatch(
+        r'Image size \(\d+ pixels\) exceeds limit of \d+ pixels, '
+        r'could be decompression bomb DOS attack\.?', detail,
+    ) is not None
+
+
+class HTTPCaptionProvider:
+    """HTTP-based caption provider that calls remote caption service."""
+
+    supports_text_translation = True
+    supports_image_preparation = True
+    
+    def __init__(self, service_url: str = "http://127.0.0.1:8102"):
+        self.service_url = service_url.rstrip('/')
+        self.model_name = "http-caption-service"
+        
+        # Verify service is available
+        try:
+            # Bypass environment proxy settings for localhost caption service.
+            with httpx.Client(timeout=5.0, trust_env=False) as client:
+                response = client.get(f"{self.service_url}/health")
+                if response.status_code == 200:
+                    health_data = response.json()
+                    logger.info(f"Connected to caption service: {health_data.get('status', 'unknown')}")
+                    active_provider = str(health_data.get('active_provider') or '').strip()
+                    if health_data.get('model_cache_ready') and active_provider:
+                        self.model_name = f"{active_provider}-http"
+                else:
+                    logger.warning(f"Caption service health check failed: {response.status_code}")
+        except httpx.RequestError as e:
+            logger.warning(f"Caption service not immediately available: {e}")
+
+    def prepare_image(self, image: Image.Image) -> Image.Image:
+        """Resize an oriented caption copy; never mutate or cache the caller's image.
+
+        Match the Qwen server's LANCZOS/rounding algorithm before PNG encoding.
+        Other/unknown providers retain their existing input behavior. The task
+        prepares once, then reuses this image for all visual corrections.
+        """
+        if self.model_name != 'qwen3-vl-http':
+            return image
+        try:
+            edge = int(os.getenv('CAPTION_HTTP_MAX_IMAGE_EDGE', '1536'))
+        except ValueError as exc:
+            raise CaptionInputError('CAPTION_HTTP_MAX_IMAGE_EDGE must be an integer') from exc
+        if not 64 <= edge <= 8192:
+            raise CaptionInputError('CAPTION_HTTP_MAX_IMAGE_EDGE must be between 64 and 8192')
+        width, height = image.size
+        if width <= 0 or height <= 0:
+            raise CaptionInputError('Caption image dimensions must be positive')
+        longest = max(width, height)
+        if longest <= edge:
+            return image
+        scale = float(edge) / float(longest)
+        size = (max(1, int(round(width * scale))), max(1, int(round(height * scale))))
+        started = time.perf_counter()
+        resized = image.resize(size, Image.Resampling.LANCZOS)
+        logger.info('Caption input resized %sx%s -> %sx%s in %.3fs',
+                    width, height, *size, time.perf_counter() - started)
+        return resized
+    
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str:
+        """Generate caption using remote HTTP service."""
+        tmp_path = None
+        prepared = image
+        try:
+            # Also protect direct callers that do not go through TaskExecutor.
+            prepared = self.prepare_image(image)
+            # Windows keeps NamedTemporaryFile handle open in-context; create a path then close it first.
+            fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=_caption_tmp_dir())
+            os.close(fd)
+            prepared.save(tmp_path, format='PNG')
+            max_retries = max(1, int(os.getenv("CAPTION_HTTP_RETRIES", "2") or "2"))
+            retry_delay = float(os.getenv("CAPTION_HTTP_RETRY_DELAY_SEC", "1.0") or "1.0")
+            request_timeout = max(5.0, float(os.getenv("CAPTION_HTTP_TIMEOUT_SEC", "180") or "180"))
+            last_err: Exception | None = None
+
+            for attempt in range(1, max_retries + 1):
+                # Send to caption service with proxy bypass
+                with httpx.Client(timeout=request_timeout, trust_env=False) as client:
+                    with open(tmp_path, 'rb') as f:
+                        files = {'file': ('image.png', f, 'image/png')}
+                        data = {'prompt': prompt} if prompt else None
+                        response = client.post(f"{self.service_url}/caption", files=files, data=data)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    caption = result.get('caption', '').strip()
+                    if caption:
+                        logger.debug(f"Generated caption: {caption[:100]}...")
+                        return caption
+                    raise RuntimeError("Caption service returned empty caption")
+
+                detail = response.text
+                if _is_pixel_limit_rejection(response):
+                    raise CaptionInputError('Caption input exceeds the server pixel safety limit')
+                is_server_error = response.status_code >= 500
+                is_oom = ("out of memory" in detail.lower()) or ("cuda out of memory" in detail.lower())
+                error_type = CaptionServiceTransientError if is_server_error else RuntimeError
+                err = error_type(f"Caption service error: {response.status_code} - {detail}")
+                last_err = err
+
+                if is_server_error and attempt < max_retries:
+                    logger.warning(
+                        "Caption service transient error on attempt %s/%s (oom=%s), retrying in %.1fs",
+                        attempt, max_retries, is_oom, retry_delay
+                    )
+                    time.sleep(retry_delay)
+                    continue
+
+                raise err
+
+            if last_err:
+                raise last_err
+            raise RuntimeError("Caption service failed without explicit error")
+                
+        except httpx.RequestError as e:
+            logger.error(f"Failed to connect to caption service: {e}")
+            raise CaptionServiceTransientError(f"Caption service connection failed: {e}") from e
+        except Exception as e:
+            logger.error(f"Caption generation error: {e}")
+            raise
+        finally:
+            if prepared is not image:
+                prepared.close()
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+    
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    def translate_caption(self, english: str, avoid_terms: list[str] | None = None) -> str:
+        """Translate an accepted English caption without rerunning visual inference."""
+        request_timeout = max(5.0, float(os.getenv("CAPTION_HTTP_TIMEOUT_SEC", "180") or "180"))
+        payload = {
+            'text': str(english or '').strip(),
+            'source_lang': 'en',
+            'target_lang': 'zh-CN',
+            'style': 'photo caption',
+            'avoid_terms': list(avoid_terms or []),
+        }
+        if not payload['text']:
+            raise ValueError('English caption is required for translation')
+
+        try:
+            with httpx.Client(timeout=request_timeout, trust_env=False) as client:
+                response = client.post(f"{self.service_url}/translate", json=payload)
+            if response.status_code != 200:
+                error_type = CaptionServiceTransientError if response.status_code >= 500 else RuntimeError
+                raise error_type(f"Caption translation error: {response.status_code} - {response.text}")
+            translated = str(response.json().get('translation') or '').strip().strip('"').strip()
+            if translated.upper().startswith('ZH-CN:'):
+                translated = translated[6:].strip()
+            if not translated:
+                raise RuntimeError('Caption service returned empty translation')
+            return translated
+        except httpx.RequestError as exc:
+            raise CaptionServiceTransientError(f"Caption translation connection failed: {exc}") from exc
+
+class StubCaptionProvider:
+    """Stub caption provider that generates heuristic captions."""
+    
+    def __init__(self):
+        self.model_name = "stub-heuristic"
+    
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str:
+        # Simple heuristic based on image properties
+        width, height = image.size
+        mode = image.mode
+        
+        if width > height * 1.5:
+            orientation = "landscape"
+        elif height > width * 1.5:
+            orientation = "portrait"
+        else:
+            orientation = "square"
+        
+        if width * height < 500 * 500:
+            size = "small"
+        elif width * height > 2000 * 2000:
+            size = "large"
+        else:
+            size = "medium"
+        
+        return f"A {size} {orientation} photo"
+    
+    def get_model_name(self) -> str:
+        return self.model_name
+
+class LlavaNextCaptionProvider:
+    """LLaVA-NeXT (LLaVA-1.6) caption provider."""
+    
+    def __init__(self, model_name: str = "llava-hf/llava-v1.6-mistral-7b-hf", device: str = "cpu"):
+        # Lightweight init in tests
+        try:
+            from .config import get_settings
+            if getattr(get_settings(), 'run_mode', '') == 'tests':
+                self.device = device
+                self.model_name = model_name
+                self.processor = None
+                self.model = None
+                return
+        except Exception:
+            pass
+        try:
+            from transformers import AutoProcessor, LlavaNextForConditionalGeneration
+            import torch
+        except ImportError as e:
+            raise RuntimeError("LLaVA dependencies not available. Install with 'pip install transformers torch pillow'") from e
+        self.device = device
+        self.model_name = model_name
+        logger.info(f"Loading LLaVA-NeXT model: {model_name}")
+        t0 = time.time()
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        self.model = LlavaNextForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            low_cpu_mem_usage=True
+        ).to(device)
+        load_time = time.time() - t0
+        logger.info(f"LLaVA-NeXT model loaded in {load_time:.1f}s")
+        try:
+            import app.metrics as m
+            m.face_embedding_model_load_seconds.labels('llava').observe(load_time)
+        except Exception:
+            pass
+    
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str:
+        """Generate caption for image using LLaVA-NeXT."""
+        import torch
+        
+        # Default prompt for captioning
+        if prompt is None:
+            prompt = "USER: <image>\\nDescribe this image in detail. ASSISTANT:"
+        
+        # Prepare inputs
+        inputs = self.processor(prompt, image, return_tensors="pt").to(self.device)
+        
+        # Generate caption
+        with torch.no_grad():
+            output = self.model.generate(
+                **inputs,
+                max_new_tokens=200,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=self.processor.tokenizer.eos_token_id
+            )
+        
+        # Decode response
+        response = self.processor.decode(output[0], skip_special_tokens=True)
+        
+        # Extract just the assistant's response
+        if "ASSISTANT:" in response:
+            caption = response.split("ASSISTANT:")[-1].strip()
+        else:
+            caption = response.strip()
+        
+        return caption
+    
+    def get_model_name(self) -> str:
+        return self.model_name
+
+class Qwen2VLCaptionProvider:
+    """Qwen2-VL caption provider - state-of-the-art as of Aug 2024."""
+    
+    def __init__(self, model_name: str = "Qwen/Qwen2-VL-7B-Instruct", device: str = "cpu"):
+        try:
+            from .config import get_settings
+            if getattr(get_settings(), 'run_mode', '') == 'tests':
+                self.device = device
+                self.model_name = model_name
+                self.model = None
+                self.processor = None
+                return
+        except Exception:
+            pass
+        try:
+            from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+            import torch
+        except ImportError as e:
+            raise RuntimeError("Qwen2-VL dependencies not available. Install with 'pip install transformers torch pillow qwen-vl-utils'") from e
+        self.device = device
+        self.model_name = model_name
+        logger.info(f"Loading Qwen2-VL model: {model_name}")
+        t0 = time.time()
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype="auto" if device == "cuda" else torch.float32,
+            device_map="auto" if device == "cuda" else None
+        )
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        load_time = time.time() - t0
+        logger.info(f"Qwen2-VL model loaded in {load_time:.1f}s")
+    
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str:
+        """Generate caption using Qwen2-VL."""
+        import torch
+        
+        # Prepare conversation format
+        if prompt is None:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": image},
+                        {"type": "text", "text": "Describe this image in detail."}
+                    ]
+                }
+            ]
+        else:
+            messages = [
+                {
+                    "role": "user", 
+                    "content": [
+                        {"type": "image", "image": image},
+                        {"type": "text", "text": prompt}
+                    ]
+                }
+            ]
+        
+        # Prepare inputs
+        text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        image_inputs, video_inputs = process_vision_info(messages)
+        inputs = self.processor(
+            text=[text],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt"
+        )
+        inputs = inputs.to(self.device)
+        
+        # Generate
+        with torch.no_grad():
+            generated_ids = self.model.generate(**inputs, max_new_tokens=200)
+        
+        # Trim input tokens and decode
+        generated_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        
+        output_text = self.processor.batch_decode(
+            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        
+        return output_text[0].strip()
+    
+    def get_model_name(self) -> str:
+        return self.model_name
+
+class BLIP2CaptionProvider:
+    """BLIP2 caption provider - good baseline option."""
+    
+    def __init__(self, model_name: str = "Salesforce/blip2-opt-2.7b", device: str = "cpu"):
+        try:
+            from .config import get_settings
+            if getattr(get_settings(), 'run_mode', '') == 'tests':
+                self.device = device
+                self.model_name = model_name
+                self.processor = None
+                self.model = None
+                return
+        except Exception:
+            pass
+        try:
+            from transformers import AutoProcessor, Blip2ForConditionalGeneration
+            import torch
+        except ImportError as e:
+            raise RuntimeError("BLIP2 dependencies not available. Install with 'pip install transformers torch pillow'") from e
+        self.device = device
+        self.model_name = model_name
+        logger.info(f"Loading BLIP2 model: {model_name}")
+        t0 = time.time()
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        self.model = Blip2ForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32
+        ).to(device)
+        load_time = time.time() - t0
+        logger.info(f"BLIP2 model loaded in {load_time:.1f}s")
+    
+    def generate_caption(self, image: Image.Image, prompt: Optional[str] = None) -> str:
+        """Generate caption using BLIP2."""
+        import torch
+        
+        # BLIP2 uses different prompt format
+        if prompt is None:
+            # Unconditional captioning
+            inputs = self.processor(image, return_tensors="pt").to(self.device)
+        else:
+            # Conditional captioning with text prompt
+            inputs = self.processor(image, text=prompt, return_tensors="pt").to(self.device)
+        
+        with torch.no_grad():
+            generated_ids = self.model.generate(**inputs, max_new_tokens=100)
+        
+        caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+        return caption
+    
+    def get_model_name(self) -> str:
+        return self.model_name
+
+@lru_cache()
+def get_caption_provider() -> CaptionProvider:
+    """Get the configured caption provider."""
+    from .config import get_settings, settings as settings_obj
+    
+    # Prefer module-level settings object for tests that patch app.config.settings
+    settings = settings_obj or get_settings()
+    provider_name = getattr(settings, 'caption_provider', 'stub').lower()
+    device = getattr(settings, 'caption_device', 'cpu').lower()
+    
+    # In test mode, always use stub to avoid heavy model loading
+    if getattr(settings, 'run_mode', '') == 'tests':
+        return StubCaptionProvider()
+    
+    # Auto provider selection
+    if provider_name in ('auto', 'best'):
+        for candidate in ('qwen2.5-vl', 'llava', 'blip2', 'stub'):
+            try:
+                return _build_caption_provider(candidate, device)
+            except Exception as e:
+                logger.warning(f"Caption provider {candidate} unavailable: {e}")
+                continue
+        return StubCaptionProvider()
+    
+    try:
+        # In tests, restrict to stub only
+        if getattr(settings, 'run_mode', '') == 'tests' and provider_name != 'stub':
+            return StubCaptionProvider()
+        return _build_caption_provider(provider_name, device)
+    except Exception as e:
+        logger.warning(f"Caption provider {provider_name} failed, falling back to stub: {e}")
+        return StubCaptionProvider()
+
+def _build_caption_provider(provider: str, device: str) -> CaptionProvider:
+    """Build a specific caption provider."""
+    provider = provider.lower()
+    qwen_aliases = ('qwen2vl', 'qwen', 'qwen2-vl', 'qwen2.5-vl', 'qwen3-vl', 'qwen3')
+    from .config import get_settings
+    settings = get_settings()
+    caption_external_dir = getattr(settings, 'caption_external_dir', '') or os.getenv('CAPTION_EXTERNAL_DIR', '')
+    
+    # HTTP caption service provider
+    if provider == 'http':
+        service_url = getattr(settings, 'caption_service_url', None) or os.getenv('CAPTION_SERVICE_URL', 'http://127.0.0.1:8102')
+        return HTTPCaptionProvider(service_url)
+    
+    # Prefer the external caption repo when configured. This keeps CLI/API behavior
+    # aligned with the multi-repo local stack without requiring the HTTP caption service.
+    if caption_external_dir and provider != 'stub':
+        from .caption_subprocess import (
+            Qwen2VLSubprocessProvider, 
+            LlavaNextSubprocessProvider, 
+            BLIP2SubprocessProvider,
+            CaptionSubprocessProvider
+        )
+        model_name = getattr(settings, 'caption_model', 'auto')
+        if provider in qwen_aliases:
+            return Qwen2VLSubprocessProvider(caption_external_dir, model_name, device)
+        elif provider in ('llava', 'llava_next', 'llava-next'):
+            return LlavaNextSubprocessProvider(caption_external_dir, model_name, device)
+        elif provider == 'blip2':
+            return BLIP2SubprocessProvider(caption_external_dir, model_name, device)
+        else:
+            # Generic subprocess provider for any other provider
+            return CaptionSubprocessProvider(caption_external_dir, provider, model_name, device)
+
+    # Route Qwen providers through the local caption HTTP service when configured.
+    # This keeps model execution in caption_server.py when no external repo is wired.
+    if provider in qwen_aliases:
+        service_url = getattr(settings, 'caption_service_url', None) or os.getenv('CAPTION_SERVICE_URL', 'http://127.0.0.1:8102')
+        if service_url:
+            return HTTPCaptionProvider(service_url)
+    
+    # Fallback to built-in providers
+    if provider == 'stub':
+        return StubCaptionProvider()
+    elif provider in ('llava', 'llava_next', 'llava-next'):
+        model_name = os.getenv('LLAVA_MODEL_NAME', 'llava-hf/llava-v1.6-mistral-7b-hf')
+        return LlavaNextCaptionProvider(model_name, device)
+    elif provider in qwen_aliases:
+        model_name = os.getenv('QWEN2VL_MODEL_NAME', 'Qwen/Qwen3-VL-8B-Instruct')
+        return Qwen2VLCaptionProvider(model_name, device)
+    elif provider == 'blip2':
+        model_name = os.getenv('BLIP2_MODEL_NAME', 'Salesforce/blip2-opt-2.7b')
+        return BLIP2CaptionProvider(model_name, device)
+    else:
+        raise ValueError(f"Unknown caption provider: {provider}")
+
+# Helper function for Qwen2VL (will be imported from qwen_vl_utils if available)
+def process_vision_info(messages):
+    """Process vision info for Qwen2VL - simplified version."""
+    image_inputs = []
+    video_inputs = []
+    
+    for message in messages:
+        if isinstance(message.get("content"), list):
+            for content in message["content"]:
+                if content.get("type") == "image":
+                    image_inputs.append(content["image"])
+                elif content.get("type") == "video":
+                    video_inputs.append(content["video"])
+    
+    return image_inputs, video_inputs

@@ -1,0 +1,398 @@
+{
+  "asset_ids": [
+    "102",
+    "101"
+  ],
+  "backend_source": "f282472a29d291a8b7ffae1cf6c6ccddd07dc15a",
+  "contract": "1-preview-title-create",
+  "create_request": {
+    "asset_ids": "102,101",
+    "chapters": "[{\"id\":\"chapter-1\",\"title\":\"旅途主题 · 回看开始\",\"narration\":\"我们一起种花，这是家人留下的回忆。\",\"asset_ids\":[\"102\",\"101\"],\"evidence_ids\":[\"caption-102\",\"family-11111111-1111-4111-8111-111111111111\",\"caption-101\"]}]",
+    "language": "zh",
+    "mutation_id": "22222222-2222-4222-8222-222222222222",
+    "revision": "0",
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "theme": "trip",
+    "title": "一起种花的回忆"
+  },
+  "create_retry": {
+    "can_edit": true,
+    "chapters": [
+      {
+        "asset_ids": [
+          "102",
+          "101"
+        ],
+        "evidence_ids": [
+          "caption-102",
+          "family-11111111-1111-4111-8111-111111111111",
+          "caption-101"
+        ],
+        "id": "chapter-1",
+        "narration": "我们一起种花，这是家人留下的回忆。",
+        "title": "旅途主题 · 回看开始"
+      }
+    ],
+    "created_at": 2000000000,
+    "generator": "family_edited_outline",
+    "id": "33333333-3333-4333-8333-333333333333",
+    "items": [
+      {
+        "date_hint": {
+          "source": "filename",
+          "value": "2025-09-23T00:00:00Z"
+        },
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "caption-102",
+            "source": "ai",
+            "text": "caption-102",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "102",
+        "kind": "video",
+        "taken_at": null,
+        "thumbnail_url": "/assets/102/thumbnail?library=family-a",
+        "width": 640
+      },
+      {
+        "date_hint": null,
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "family-11111111-1111-4111-8111-111111111111",
+            "revision": 1,
+            "source": "family",
+            "text": "我们一起种花。\r\n这是合成资料。",
+            "title": "家人的回忆"
+          },
+          {
+            "id": "caption-101",
+            "source": "ai",
+            "text": "caption-101",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "101",
+        "kind": "image",
+        "taken_at": "2026-01-01",
+        "thumbnail_url": "/assets/101/thumbnail?library=family-a",
+        "width": 640
+      }
+    ],
+    "language": "zh",
+    "library_id": "family-a",
+    "needs_review": true,
+    "questions": [
+      "你想用什么事件或主题来理解这些片段？",
+      "这些片段与什么地点、日期或时间范围有关？不确定的部分可以留空。",
+      "家人希望记住哪些意义、感受或细节？"
+    ],
+    "revision": "1",
+    "saved": true,
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "state": "draft",
+    "theme": "trip",
+    "title": "一起种花的回忆",
+    "updated_at": 2000000000,
+    "version": 1
+  },
+  "create_retry_after_edit": {
+    "can_edit": true,
+    "chapters": [
+      {
+        "asset_ids": [
+          "102",
+          "101"
+        ],
+        "evidence_ids": [
+          "caption-102",
+          "family-11111111-1111-4111-8111-111111111111",
+          "caption-101"
+        ],
+        "id": "chapter-1",
+        "narration": "我们一起种花，这是家人留下的回忆。",
+        "title": "旅途主题 · 回看开始"
+      }
+    ],
+    "created_at": 2000000000,
+    "generator": "family_edited_outline",
+    "id": "33333333-3333-4333-8333-333333333333",
+    "items": [
+      {
+        "date_hint": {
+          "source": "filename",
+          "value": "2025-09-23T00:00:00Z"
+        },
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "caption-102",
+            "source": "ai",
+            "text": "caption-102",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "102",
+        "kind": "video",
+        "taken_at": null,
+        "thumbnail_url": "/assets/102/thumbnail?library=family-a",
+        "width": 640
+      },
+      {
+        "date_hint": null,
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "family-11111111-1111-4111-8111-111111111111",
+            "revision": 1,
+            "source": "family",
+            "text": "我们一起种花。\r\n这是合成资料。",
+            "title": "家人的回忆"
+          },
+          {
+            "id": "caption-101",
+            "source": "ai",
+            "text": "caption-101",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "101",
+        "kind": "image",
+        "taken_at": "2026-01-01",
+        "thumbnail_url": "/assets/101/thumbnail?library=family-a",
+        "width": 640
+      }
+    ],
+    "language": "zh",
+    "library_id": "family-a",
+    "needs_review": true,
+    "questions": [
+      "你想用什么事件或主题来理解这些片段？",
+      "这些片段与什么地点、日期或时间范围有关？不确定的部分可以留空。",
+      "家人希望记住哪些意义、感受或细节？"
+    ],
+    "revision": "2",
+    "saved": true,
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "state": "draft",
+    "theme": "trip",
+    "title": "家人修改后的标题",
+    "updated_at": 2000000000,
+    "version": 1
+  },
+  "created": {
+    "can_edit": true,
+    "chapters": [
+      {
+        "asset_ids": [
+          "102",
+          "101"
+        ],
+        "evidence_ids": [
+          "caption-102",
+          "family-11111111-1111-4111-8111-111111111111",
+          "caption-101"
+        ],
+        "id": "chapter-1",
+        "narration": "我们一起种花，这是家人留下的回忆。",
+        "title": "旅途主题 · 回看开始"
+      }
+    ],
+    "created_at": 2000000000,
+    "generator": "family_edited_outline",
+    "id": "33333333-3333-4333-8333-333333333333",
+    "items": [
+      {
+        "date_hint": {
+          "source": "filename",
+          "value": "2025-09-23T00:00:00Z"
+        },
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "caption-102",
+            "source": "ai",
+            "text": "caption-102",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "102",
+        "kind": "video",
+        "taken_at": null,
+        "thumbnail_url": "/assets/102/thumbnail?library=family-a",
+        "width": 640
+      },
+      {
+        "date_hint": null,
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "family-11111111-1111-4111-8111-111111111111",
+            "revision": 1,
+            "source": "family",
+            "text": "我们一起种花。\r\n这是合成资料。",
+            "title": "家人的回忆"
+          },
+          {
+            "id": "caption-101",
+            "source": "ai",
+            "text": "caption-101",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "101",
+        "kind": "image",
+        "taken_at": "2026-01-01",
+        "thumbnail_url": "/assets/101/thumbnail?library=family-a",
+        "width": 640
+      }
+    ],
+    "language": "zh",
+    "library_id": "family-a",
+    "needs_review": true,
+    "questions": [
+      "你想用什么事件或主题来理解这些片段？",
+      "这些片段与什么地点、日期或时间范围有关？不确定的部分可以留空。",
+      "家人希望记住哪些意义、感受或细节？"
+    ],
+    "revision": "1",
+    "saved": true,
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "state": "draft",
+    "theme": "trip",
+    "title": "一起种花的回忆",
+    "updated_at": 2000000000,
+    "version": 1
+  },
+  "library": "family-a",
+  "preview": {
+    "chapters": [
+      {
+        "asset_ids": [
+          "102",
+          "101"
+        ],
+        "evidence_ids": [
+          "caption-102",
+          "family-11111111-1111-4111-8111-111111111111",
+          "caption-101"
+        ],
+        "id": "chapter-1",
+        "narration": "从这里开始，回看选中的这些片段。",
+        "title": "旅途主题 · 回看开始"
+      }
+    ],
+    "generator": "evidence_outline",
+    "items": [
+      {
+        "date_hint": {
+          "source": "filename",
+          "value": "2025-09-23T00:00:00Z"
+        },
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "caption-102",
+            "source": "ai",
+            "text": "caption-102",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "102",
+        "kind": "video",
+        "taken_at": null,
+        "thumbnail_url": "/assets/102/thumbnail?library=family-a",
+        "width": 640
+      },
+      {
+        "date_hint": null,
+        "duration_sec": null,
+        "evidence": [
+          {
+            "id": "family-11111111-1111-4111-8111-111111111111",
+            "revision": 1,
+            "source": "family",
+            "text": "我们一起种花。\r\n这是合成资料。",
+            "title": "家人的回忆"
+          },
+          {
+            "id": "caption-101",
+            "source": "ai",
+            "text": "caption-101",
+            "title": ""
+          }
+        ],
+        "height": 480,
+        "id": "101",
+        "kind": "image",
+        "taken_at": "2026-01-01",
+        "thumbnail_url": "/assets/101/thumbnail?library=family-a",
+        "width": 640
+      }
+    ],
+    "language": "zh",
+    "library_id": "family-a",
+    "needs_review": true,
+    "questions": [
+      "你想用什么事件或主题来理解这些片段？",
+      "这些片段与什么地点、日期或时间范围有关？不确定的部分可以留空。",
+      "家人希望记住哪些意义、感受或细节？"
+    ],
+    "saved": false,
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "state": "draft",
+    "theme": "trip",
+    "title": "家庭故事草稿",
+    "version": 1
+  },
+  "preview_request": {
+    "asset_ids": "102,101",
+    "language": "zh",
+    "theme": "trip",
+    "title": ""
+  },
+  "title_capabilities_off": {
+    "enabled": false,
+    "max_suggestions": 3,
+    "needs_review": true,
+    "version": 1
+  },
+  "title_capabilities_on": {
+    "enabled": true,
+    "max_suggestions": 3,
+    "needs_review": true,
+    "version": 1
+  },
+  "title_request": {
+    "asset_ids": "102,101",
+    "chapters": "[{\"id\":\"chapter-1\",\"narration\":\"我们一起种花，这是家人留下的回忆。\"}]",
+    "language": "zh",
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "theme": "trip"
+  },
+  "titles": {
+    "needs_review": true,
+    "selection_revision": "235d364eac5f6a15be9de0f0f0ae0337122c45f0a70c3718f560cf140886966f",
+    "titles": [
+      {
+        "source_ids": [
+          "family-11111111-1111-4111-8111-111111111111",
+          "draft-chapter-1"
+        ],
+        "text": "一起种花的回忆"
+      }
+    ],
+    "version": 1
+  },
+  "viewer_create_status": 401
+}

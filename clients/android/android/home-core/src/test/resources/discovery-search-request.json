@@ -1,0 +1,32 @@
+{
+  "revision": 7,
+  "page": 1,
+  "page_size": 50,
+  "filters": {
+    "people": {
+      "ids": [
+        201,
+        202
+      ],
+      "match": "all"
+    },
+    "tags": {
+      "ids": [
+        301,
+        302
+      ],
+      "match": "all"
+    },
+    "locations": [
+      401
+    ],
+    "date": {
+      "from": "2025-01-01",
+      "to": "2026-12-31"
+    },
+    "media": [
+      "photo"
+    ],
+    "caption": "family"
+  }
+}

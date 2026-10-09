@@ -1,0 +1,26 @@
+{
+  "contract": "photohouse-on-demand-1",
+  "backend_commit": "a72aa320801787cd066c6e04c33764e9271c9ab5",
+  "backend_sources": {
+    "backend/app/home_originals.py": "01bac6f9c7d02c40cb41ce555566a3edeea3526e0d3ef51715de5ee4ff409d7a",
+    "backend/app/photo_delivery.py": "cbfd1841a6edd9259e28ff6a549eb6f465a6d319176e2faf56d7799956208803",
+    "backend/app/home_catalog.py": "467b7fc9bcd04e07ff0578a4f4fe80a453d949fc850372986444c36c0592ab40",
+    "backend/app/home_feed.py": "c7f22deab8cd58a7bc6060ce6427086568a30073c13917727da30be9865cf37c",
+    "backend/app/access/media.py": "254f94bb800048dff77dad46eb41eea0105689baa13811acd7ecf1cbe7554245",
+    "backend/app/access/boundary.py": "d6a03a6e21ce5384907b254d5086068880bfe5a67ed733e194a703b4410d1e04",
+    "backend/app/access/runtime.py": "a3a5d616a9d6f4f421d0cd4ab80cb14b175d93db1e0102da8eb890f2973bee3e",
+    "scripts/build_home_source_index.py": "44d529ea558028b69d2796bc0599fe2628c9b50005e8d103b893c7fbd9dae766",
+    "scripts/home_originals_app.py": "e3b3a15a7cb84680ca1c1103c1b65d6e2f75ce83a931efe9aa1a5ff6446060fd",
+    "scripts/staging_app.py": "cac81bcc430d8c930d8c9949f843bba42c41b5ae4f22ef54e25c0842edc93223",
+    "scripts/home_media_worker.py": "767fc8d3550ec8049aebb84ddeb4d40d8e46ff0903661d6ed1ad8355ec8c335d",
+    "scripts/home_preparation_resources.py": "dbc3cbc9a9609a2ad314385f123b0b0d87c8a9513d8680eebe2c9076239b50a8",
+    "tests/security/test_on_demand_delivery.py": "6b1f664c34163da674638088d35cb78a28e5457b21df2353b49b1fd8ed462126",
+    "tests/security/test_protected_photo_delivery.py": "b981b9f3ff0d35116d8e6f6a070500b6f5a41711b97ea892254e10e26f10292e",
+    "tests/security/fixtures/catalog-v3.json": "caaa1b8103e805a44d0ba5c27c16d155fd2116ec19c92edb74508d532e592807",
+    "docs/security/ON_DEMAND_MEDIA.md": "bd5ea1102c9da57fabc847ca53cb324a10e63ad15d1e257396058f5bfa6d118f"
+  },
+  "files": {
+    "CONTRACT.md": "bd5ea1102c9da57fabc847ca53cb324a10e63ad15d1e257396058f5bfa6d118f",
+    "catalog-v3.json": "caaa1b8103e805a44d0ba5c27c16d155fd2116ec19c92edb74508d532e592807"
+  }
+}

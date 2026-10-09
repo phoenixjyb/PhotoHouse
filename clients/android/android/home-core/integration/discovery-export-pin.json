@@ -1,0 +1,16 @@
+{
+  "exporter_commit": "d8f20a073e42f93ad2b046c4ae01d0ccd68a05bf",
+  "serving_commit": "54f68427058c45f6bcc5a863cc6d708f5b325e45",
+  "files": [
+    {
+      "path": "scripts/export_home_discovery.py",
+      "sha256": "9ff6c1de8264ac1f8fc9b3067fe4620488c8df2535a1ed4586b70528e8842324",
+      "bytes": 21073
+    },
+    {
+      "path": "scripts/build_home_discovery_export_fixture.py",
+      "sha256": "90c3b26a626935c4dcf8be904fad8daab1058171a01987300b6e2f3bf0d76eac",
+      "bytes": 3738
+    }
+  ]
+}
