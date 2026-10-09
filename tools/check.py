@@ -155,7 +155,14 @@ def web():
     if not node:
         raise SystemExit("Web profile requires an existing Node.js executable; no install attempted")
 
-    env = os.environ.copy()
+    # Browser bridges use the same generated CPU boundary. Preserve only the
+    # caller's explicit existing toolchain and artifact locations, not provider,
+    # database, Python plugin or Node preload settings from an operator shell.
+    env = cpu_environment()
+    for key in ("PLAYWRIGHT_MODULE", "PLAYWRIGHT_MODULE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
+                "PH_BROWSER_PYTHON", "PH_BROWSER_EXECUTABLE", "PH_BROWSER_ARTIFACTS", "NODE_PATH"):
+        if key in os.environ:
+            env[key] = os.environ[key]
     module = env.get("PLAYWRIGHT_MODULE")
     module_path = env.get("PLAYWRIGHT_MODULE_PATH")
     if module and module_path and module != module_path:

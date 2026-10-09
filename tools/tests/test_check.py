@@ -106,6 +106,30 @@ class WebProfileTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
+    def test_web_bridges_keep_toolchain_paths_without_live_or_preload_settings(self):
+        tools = {"PLAYWRIGHT_MODULE_PATH": "/existing/playwright", "PLAYWRIGHT_BROWSERS_PATH": "/existing/browser",
+                 "PH_BROWSER_PYTHON": "/existing/python", "PH_BROWSER_EXECUTABLE": "/existing/chromium",
+                 "PH_BROWSER_ARTIFACTS": str(self.root / "captures"), "NODE_PATH": "/existing/node-modules"}
+        inherited = {**tools, "PATH": "synthetic-path", "DATABASE_URL": "synthetic-live-db",
+                     "PHOTOHOUSE_MEMORY_GENERATION_ENABLED": "true", "ASR_URL": "synthetic-provider",
+                     "PHOTOHOUSE_LIVE_TOKEN": "synthetic-token", "PYTHONPATH": "synthetic-live-code",
+                     "PYTEST_PLUGINS": "synthetic-plugin", "NODE_OPTIONS": "--require synthetic-preload",
+                     "LD_PRELOAD": "synthetic-loader"}
+        with mock.patch.object(check, "ROOT", self.root), \
+                mock.patch.object(check.shutil, "which", return_value="/existing/node"), \
+                mock.patch.object(check, "run") as run, \
+                mock.patch.dict(check.os.environ, inherited, clear=True):
+            check.web()
+            self.assertEqual(dict(check.os.environ), inherited)
+        for call in run.call_args_list:
+            env = call.kwargs["env"]
+            for key, value in tools.items():
+                if key != "PH_BROWSER_ARTIFACTS": self.assertEqual(env[key], value)
+            self.assertEqual(env["PLAYWRIGHT_MODULE"], tools["PLAYWRIGHT_MODULE_PATH"])
+            self.assertEqual(env["PHOTOHOUSE_NO_DOTENV"], "1")
+            for key in inherited.keys() - tools.keys() - {"PATH"}:
+                self.assertNotIn(key, env)
+
     def test_web_dispatch_includes_saved_edition_shelf_suite(self):
         shelf = "server/tests/security/test_memory_book_edition_shelf_browser.cjs"
         self.assertIn(shelf, check.WEB_TESTS)

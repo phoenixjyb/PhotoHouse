@@ -119,3 +119,25 @@ acceptance.
 For source-only deployment preparation, see [static UI overlays](WEB_DELIVERY.md).
 
 The recorded local result and toolchain are in [Web acceptance](local-web-acceptance.json).
+
+## Hosted generated checks
+
+The separate `web-browser` source job uses Ubuntu 24.04, Node 22.17.0,
+Python 3.12 and Playwright Core 1.55.0. Its private
+[tooling manifest](../server/tests/security/browser-tooling/package.json) and
+[npm lock](../server/tests/security/browser-tooling/package-lock.json) fix the
+dependency version and registry integrity. CI runs `npm ci --ignore-scripts`
+and provisions the matching Chromium headless shell and Linux dependencies
+only on the ephemeral hosted runner. The local wrapper still installs nothing.
+
+The job has a 15-minute limit. Browser binaries and separate generated suite
+captures remain under the runner's temporary directory; no artifact-upload
+step publishes them. The ordinary API, Android and `all` profiles keep their
+existing tool requirements. A hosted browser pass is generated UI evidence,
+not a check of a deployed household site or an installed client.
+
+The wrapper now uses the generated CPU environment for Node and its Python
+bridges. It preserves explicit Playwright module/browser paths, existing Python
+and Chromium selections, artifact locations and `NODE_PATH`. It excludes live
+provider/database settings and Python/Node preload variables. This does not
+alter the caller's shell environment.

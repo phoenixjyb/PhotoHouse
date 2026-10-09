@@ -61,6 +61,17 @@ exact notice and complete license are retained in `third_party/licenses/android/
 Applicable binary distributions must retain those notices. Release variants,
 packaged APK notices and dependency verification remain separate checks.
 
+## Optional Web browser test tools
+
+The isolated generated-browser profile pins Playwright Core 1.55.0
+(Apache-2.0) in its [tooling lock](server/tests/security/browser-tooling/package-lock.json).
+It uses Node 22.17.0 and the matching Chromium headless shell as external CI
+tools. These packages, runtimes and browser binaries are not vendored or
+redistributed in PhotoHouse source archives. Their upstream notices remain
+with the installed tools; PhotoHouse's first-party license does not replace
+them. See [Web development](docs/WEB_DEVELOPMENT.md) for the isolated hosted
+installation and generated-only check boundary.
+
 ## Optional models and runtime tools
 
 Model weights, external inference repositories, FFmpeg executables and Android
