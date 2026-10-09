@@ -6738,6 +6738,16 @@
           "before_sha256": "0bfb53b928029f386fe2f11d6a3f7817b1495766d7b847a31736da617daecbb5"
         }
       ]
+    },
+    {
+      "feature": "windows-private-reader-hosted-evidence-v1",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "a14ee596aba1921c0f889de223e9eea9bc50d5efe35e8c49e7563c47222bd686",
+          "before_sha256": "cf936380556aa4e14a8577d066274c2d3ea0c589e69d560024fd7fe760839a0a"
+        }
+      ]
     }
   ]
 }
