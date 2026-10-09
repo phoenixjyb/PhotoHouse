@@ -6233,6 +6233,66 @@
           "before_sha256": null
         }
       ]
+    },
+    {
+      "feature": "private-model-deployment-manifest-v1",
+      "files": [
+        {
+          "path": "server/backend/app/access/model_deployment.py",
+          "sha256": "6e25fe4cc30f83aad1a7dd98321224a4bef99419aec27fd7727e05f2f24de346",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_model_deployment.py",
+          "sha256": "cf8376809f5f6307aaecc316609164448cb6b374f5d2d850a5efcec813395c98",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/check_model_deployment.py",
+          "sha256": "36fc9bddcc822a027d911315c4b3ecc42653c8167441b3d94dcacf92d865daa5",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/tests/test_check_model_deployment.py",
+          "sha256": "cb30deb8267278783eafd0603aef62a69111017412c2f8286f3569b0b695d1fa",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "0c5dc3fee9da14ba94d3c303a82950b1113cb3f2a345a7c24b68f826988e34e6",
+          "before_sha256": "9efcf4724b8685c71537cc4bf12be6f609bc559df03c5da57e4c799c1a2a1f43"
+        },
+        {
+          "path": "models/deployment.synthetic.json",
+          "sha256": "e9af31e11f65cd108330193ebab45ebbebf4db6654923eace6068fd16b0d8120",
+          "before_sha256": null
+        },
+        {
+          "path": "models/README.md",
+          "sha256": "552362f4639459848ca1267f559fc3e3a9f4ccd014d25431fb49ce4c2a19a3a3",
+          "before_sha256": "0cf244c9d5b5647e8ebc378afc71c4dcd4c199fc938e1b78b03fbed6af0a6124"
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "sha256": "5f377a6bbb9242abb909993c32235d8a251085888404dac62092d863f06205b8",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "5e57db620c8e15e308ad1e6b67453625b49b8acf87800968623f1d7763b73a55",
+          "before_sha256": "c5b9bf38484fe7700c91b1ef766d3c702af3ef79cf9a7a7f4419dc7663cdd6ce"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "36a76fd19adc2231243627ed81469fbe2167038315e9a1031402ab3e90220b72",
+          "before_sha256": "110d24f929d20e1f528c951dd74abe4a2b59fd6b08f0f7274e82aeece1175708"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "b3036cc6a725a6410f8a9f2c594f38982a9938eb5acd5e3a92e6cb0ce331b904",
+          "before_sha256": "a1a4e27105be9a226f5597bc8c9ef84fd401c4f5c7d95dfb8ac6a699f944c4b6"
+        }
+      ]
     }
   ]
 }

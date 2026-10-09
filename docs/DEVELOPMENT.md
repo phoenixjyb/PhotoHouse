@@ -24,6 +24,14 @@ inspect private installation profiles or contact providers. The
 [provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) explains separate runtime,
 resource, quality and model-replacement gates.
 
+For a private deployment graph outside this checkout, use
+`python3 tools/check_model_deployment.py --manifest /absolute/private/path --json`.
+The [manifest guide](MODEL_DEPLOYMENT_MANIFEST.md) explains owner-private storage,
+declared identities, distinct rollback selections and the redacted report. This
+command checks configuration only; it does not read credentials, verify installed
+weights, probe a runtime or apply selections. The public synthetic example has
+all bindings disabled and invented artifact identities.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package
@@ -42,10 +50,15 @@ python3.12 -m venv .venv
 .venv/bin/python tools/check.py api
 ```
 
-The latest supported CPU run passed **680 tests and 361 independently reported subtests**
+The latest supported CPU run passed **699 tests and 400 independently reported subtests**
 on October 9, 2026, plus the generated-data demo. It used the existing macOS
 arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
-fresh dependency installation. The earlier 523/215 profile used a fresh
+fresh dependency installation. The private model manifest contributes 19 tests
+and 39 subtests for declared identities, contracts, rollback and private-file
+handling. The 67 standalone tooling tests include four deployment doctor checks;
+these counts are separate from the API profile. No model runtime or quality is
+qualified by these checks. The earlier 680/361 profile predates the manifest.
+The earlier 523/215 profile used a fresh
 hash-locked environment with 27 applicable CPU packages and remains historical
 evidence, along with the pytest 8.4.1 run and the 522/211, 498/197, 445-test
 profiles. The current profile adds the story-workspace API contracts and covers

@@ -14,8 +14,9 @@ against source symbols; it does not import the application, inspect a machine,
 contact an endpoint, install dependencies, download weights, or prove runtime
 availability. [`models/providers.example.json`](../models/providers.example.json)
 is a disabled configuration example. Neither file selects or deploys a provider.
-Provider selection remains with the explicitly configured application runtime and
-the existing per-feature settings.
+The separate private deployment manifest records declared runtime/artifact/provider
+choices and role bindings; see the [manifest guide](MODEL_DEPLOYMENT_MANIFEST.md).
+It is not yet projected into application runtime settings or worker arguments.
 
 Run `python3 tools/model_catalog.py --json` for the offline inventory check.
 It verifies source-defined adapter symbols, the complete role inventory and
@@ -23,11 +24,11 @@ disabled placeholders; it rejects model-weight files in the source models direct
 It neither validates a private installation profile nor changes runtime selection.
 
 The development [`tools/doctor.py`](../tools/doctor.py) checks the pinned local
-development toolchain. It is not a model, GPU, checkpoint, or endpoint doctor. A
-provider-specific doctor should remain an offline configuration check: validate
-the declared role, adapter, runtime and artifact metadata, enabled state, and
-resource budget without making model calls. Runtime health and quality qualification
-are separate evidence.
+development toolchain. It is not a model, GPU, checkpoint, or endpoint doctor.
+Run `python3 tools/check_model_deployment.py --manifest /absolute/private/path --json`
+for the private metadata graph check. Its redacted `configuration_valid` report
+does not probe runtimes, verify artifacts, evaluate quality, or activate bindings.
+Runtime health and quality qualification are separate evidence.
 
 ## Current source map
 
@@ -41,7 +42,7 @@ are separate evidence.
 | `title_suggestions` | Story title suggestions through [`story_titles.py`](../server/backend/app/access/story_titles.py) (`LocalStoryTitleSuggester`), also using a local text-generation endpoint. | Preserve the title schema, source citations, limits, and review requirement. This is a distinct task contract even when it uses the same model service as narrative generation. Factory injection exists; staging/provider wiring and live qualification remain pending. |
 | `assistant_tts` | Server-side reply audio through [`assistant_speech.py`](../server/backend/app/access/assistant_speech.py) (`LocalAssistantTts`) and [`windows_tts.py`](../server/backend/app/access/windows_tts.py) (`WindowsSystemSpeech`). The bridge is started by [`serve_windows_tts.py`](../server/scripts/serve_windows_tts.py). | Preserve explicit assistant opt-in, bounded output, cancellation/yield behavior, and no automatic playback. This is separate from native Android/browser read-aloud. Windows system speech is an OS speech engine, not a checked-in model. |
 | `face_detection` | Face boxes and landmarks through [`face_detection_service.py`](../server/backend/app/face_detection_service.py): stub, MTCNN, or InsightFace/SCRFD implementations. | Record detector package/model-pack identity and effective device. Strict mode must continue refusing an unsuitable provider; a stub or fallback is not equivalent detection evidence. |
-| `face_embedding` | Face recognition vectors through [`face_embedding_service.py`](../server/backend/app/face_embedding_service.py): FaceNet, InsightFace, LVFace direct/HTTP/subprocess, and stub implementations. The approved worker records versioned artifacts in [`run_approved_face_worker.py`](../server/scripts/run_approved_face_worker.py). | Treat detector/alignment, checkpoint, normalization, dimension, and model version as one artifact identity. Existing face vectors cannot be mixed with a replacement merely because dimensions match; shadow and compare a new version before any explicit migration. |
+| `face_embedding` | Face recognition vectors through [`face_embedding_service.py`](../server/backend/app/face_embedding_service.py): FaceNet, InsightFace, LVFace direct/HTTP/subprocess, and stub implementations. The bounded approved path is [`run_approved_face_pipeline.py`](../server/scripts/run_approved_face_pipeline.py), which verifies its selected detector/embedder hashes and records shadow artifacts. | Treat detector/alignment, checkpoint, normalization, dimension, and model version as one artifact identity. Existing face vectors cannot be mixed with a replacement merely because dimensions match; shadow and compare a new version before any explicit migration. |
 | `image_embedding` | Image vectors through [`vector_index.py`](../server/backend/app/vector_index.py) and the approved versioned image worker [`run_approved_image_embed_worker.py`](../server/scripts/run_approved_image_embed_worker.py). Strict inference requires an explicitly existing local checkpoint. | Preserve preprocessing, normalization, model/checkpoint identity, dimension, and index version. A replacement needs a separately versioned vector set and compatibility evaluation. |
 | `video_embedding` | Video-derived vectors through [`run_approved_video_embed_worker.py`](../server/scripts/run_approved_video_embed_worker.py), which uses the selected image embedding implementation over sampled frames and records its model version. | Preserve frame sampling and image-model identity as well as vector metadata. Video vectors are not interchangeable with vectors from a different model or sampling contract. |
 | `image_tags` | Optional HTTP image-tag suggestions through [`image_tag_service.py`](../server/backend/app/image_tag_service.py) (`HTTPImageTagProvider`), with a legacy stub fallback. | Preserve bounded response and proposal labeling; an available endpoint or stub does not establish approved tag processing. |
@@ -72,13 +73,12 @@ broaden that boundary to cloud URLs or add silent cloud fallback. A stub fallbac
 may be useful in tests or an explicitly selected development mode, but it is not
 successful model inference and must not be reported as such.
 
-For every deployable provider, its private deployment record should link to the
-adapter and external implementation, source revision, model card/license and
-permitted use, immutable checkpoint digest, runtime/dependency versions,
-preprocessing and response contract, data handling policy, device/resource limits,
-and rollback target. Keep weights, family media, embeddings, endpoint values, and
-tokens out of this repository. Code licensing does not establish model or data
-licensing rights.
+The private deployment manifest records the provider graph, dependency lock and
+artifact identities, device/resource budgets, vector-space identity, role bindings,
+and rollback bindings. Its report deliberately omits endpoint, model, path, and
+credential-reference values. Keep weights, family media, embeddings, endpoint
+values, manifests, and tokens out of this repository. Code licensing does not
+establish model or data licensing rights.
 
 ## Qualification and migration gates
 
@@ -94,11 +94,11 @@ reindex/re-embedding comparison. Preserve the old version for rollback until the
 new one passes the relevant retrieval, recognition, and resource checks. Do not
 blend vector spaces based on dimension alone.
 
-Provider selection is not yet unified behind the catalog: application adapters
-still use explicit runtime construction and feature-specific settings, while
-approved workers receive their model and version through their own arguments and
-receipts. The catalog remains descriptive until a separately reviewed manifest
-connects those choices with strict validation and rollback semantics. Any such
-integration must preserve current explicit opt-ins, local endpoint restrictions,
-and per-feature contracts; it must not imply that inventory metadata proves a
-model is installed or qualified.
+The private manifest now validates declared selections and rollback metadata, but
+provider selection is not yet applied to runtime configuration: application
+adapters still use explicit runtime construction and feature-specific settings,
+while approved workers receive model identity through their own arguments and
+receipts. The next gate is a reviewed typed bridge from validated bindings to
+those interfaces, followed by measured provider qualification and explicit
+activation. Preserve current opt-ins, loopback restrictions, and per-feature
+contracts; metadata validation does not prove a model is installed or qualified.
