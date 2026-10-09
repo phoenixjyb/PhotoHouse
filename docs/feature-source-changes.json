@@ -6573,6 +6573,16 @@
           "before_sha256": null
         }
       ]
+    },
+    {
+      "feature": "synthetic-memoir-canary-cpu-evidence",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "f8288cd344c7044a9c00e803f7e4c754536a321c574ef03f8aa526306860eae4",
+          "before_sha256": "419363e1f092e2dc80b28f73ddb3d5373f48a483756ccab450be8b827c14016b"
+        }
+      ]
     }
   ]
 }
