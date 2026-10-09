@@ -24,6 +24,14 @@ inspect private installation profiles or contact providers. The
 [provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) explains separate runtime,
 resource, quality and model-replacement gates.
 
+For a private deployment graph outside this checkout, use
+`python3 tools/check_model_deployment.py --manifest /absolute/private/path --json`.
+The [manifest guide](MODEL_DEPLOYMENT_MANIFEST.md) explains owner-private storage,
+declared identities, distinct rollback selections and the redacted report. This
+command checks configuration only; it does not read credentials, verify installed
+weights, probe a runtime or apply selections. The public synthetic example has
+all bindings disabled and invented artifact identities.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package

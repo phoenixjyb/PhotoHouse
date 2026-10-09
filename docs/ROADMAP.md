@@ -5,10 +5,13 @@
 The [provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and offline model
 catalog now identify thirteen source capabilities with isolated runtime and
 versioned-output replacement rules. Actual selection still uses the existing
-feature-specific configuration/worker arguments. The next model-infra slice is
-a reviewed private deployment manifest that validates those bindings, exact
-artifact/runtime identities, resource budgets and rollback targets. Inventory
-validation does not establish installed models or allow automatic activation.
+feature-specific configuration/worker arguments. The offline
+[private deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md) now validates declared
+bindings, artifact/runtime identities, resource budgets and distinct rollback
+targets. Its report omits private values. The next model-infra slice is a typed
+bridge to those existing runtime inputs, followed by measured artifact, device,
+resource and quality qualification. Metadata validation does not establish
+installed models or allow automatic activation.
 
 The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
 Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery

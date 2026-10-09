@@ -7,7 +7,9 @@ weights. This directory contains a registry template, not a model installer.
 source adapters, configuration owners, execution modes and replacement boundaries.
 [`providers.example.json`](providers.example.json) contains corresponding disabled
 selection placeholders. Neither file is loaded by the application as runtime
-configuration. Private deployment records and weights belong on the runtime host.
+configuration. The private selection format and its validation boundaries are
+described in [the deployment manifest guide](../docs/MODEL_DEPLOYMENT_MANIFEST.md).
+Private deployment records and weights belong outside the source checkout.
 
 From the repository root, run the offline check:
 
@@ -21,12 +23,30 @@ selections or known weight files in this directory. It makes no network calls,
 installs nothing and checks no live provider. The ASR paths have distinct raw-WAV
 and multipart contracts; face and image vectors have different model identities.
 See [the provider architecture](../docs/MODEL_PROVIDER_ARCHITECTURE.md) for the
-infra layout, migration rules and remaining runtime-selection integration gate.
+infra layout, migration rules and runtime-selection integration gate.
+
+The deployment checker is separate from the catalog checker. Run it with an
+explicitly selected absolute manifest path outside the checkout:
+
+```sh
+python3 tools/check_model_deployment.py --manifest /absolute/private/path --json
+```
+
+Its `configuration_valid` result means the selected metadata graph passes offline
+schema and source-catalog checks. It does not probe endpoints, inspect installed
+files, load provider packages, verify weights, check a GPU, evaluate quality, or
+activate any binding. [`deployment.synthetic.json`](deployment.synthetic.json)
+is fake schema-validation data with all bindings disabled; use it only as a
+starting template for a separate private file, never as a runtime profile.
 
 For each selected provider record its exact adapter, endpoint, runtime version,
-checkpoint digest, license source, permitted use and resource budget outside
-source control. An application code license does not establish a model license.
-The example registry deliberately leaves endpoints and model identities unset.
+dependency lock identity, checkpoint or service identity, license source,
+permitted use, preprocessing/vector identity and resource budget outside source
+control. The private manifest stores credential environment-variable names only;
+the referenced values stay in the operator environment and are never included in
+the validation report. An application code license does not establish a model
+license. The public example registry deliberately leaves endpoints and model
+identities unset.
 
 ## Qualification
 
@@ -38,4 +58,6 @@ The example registry deliberately leaves endpoints and model identities unset.
 
 A model availability check is separate from quality acceptance. Processing
 failures retain an honest state; source memories and failed proposals are not
-replaced. No model weights, household endpoints or provider tokens belong here.
+replaced. Runtime-selection projection and provider qualification remain separate
+gates after offline manifest validation. No model weights, household endpoints,
+private deployment manifests or provider tokens belong in this checkout.
