@@ -31,7 +31,10 @@ class UpgradeOriginalDeletionJournalTests(unittest.TestCase):
         self.fixture = family_fixture.FamilyNoteDeletionTests()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
-        self.temp = tempfile.TemporaryDirectory(prefix='upgrade-original-journal-', dir='/private/tmp')
+        # Canonicalize the platform temp root so the private-path guard still
+        # rejects symlinked inputs without assuming a macOS directory exists.
+        self.temp = tempfile.TemporaryDirectory(
+            prefix='upgrade-original-journal-', dir=Path(tempfile.gettempdir()).resolve())
         self.addCleanup(self.temp.cleanup)
         os.chmod(self.temp.name, 0o700)
         self.root = Path(self.temp.name)

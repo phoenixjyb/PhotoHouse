@@ -7682,6 +7682,20 @@
       "schema_changed": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "portable-private-journal-upgrade-fixture",
+      "source_commit": "77a3e11fffcf7e96938a398b239875695e5c72b9",
+      "files": [
+        {
+          "path": "server/tests/security/test_upgrade_original_deletion_journal.py",
+          "before_sha256": "b637cdbe9b07935c58026c5dbccfcd4664cdad07ed5ad0e05665abaea641e7b1",
+          "sha256": "fe3832c5dcea920dbfeab3ddb85bffd91187c521e1b174e20c057cbd7d38e913"
+        }
+      ],
+      "production_changed": false,
+      "schema_changed": false,
+      "api_deployed": false
     }
   ]
 }
