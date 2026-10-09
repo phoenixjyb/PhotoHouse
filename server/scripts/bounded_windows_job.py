@@ -9,6 +9,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import hashlib
+import math
 import subprocess
 import sys
 import time
@@ -56,12 +57,18 @@ def environment_block(environment: dict[str, str]) -> str:
 def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: dict[str, str], cwd: str,
                 *, timeout_seconds: float, memory_limit: int = 2 * 1024**3,
                 process_limit: int = 16, minimum_free_ram: int = 8 * 1024**3,
+                descendant_grace_seconds: float = 5,
                 monotonic=time.monotonic, sleep=time.sleep) -> int:
     """Start suspended, assign before resume, retain the Job until descendants drain."""
     if not executable or not cwd or not argv or argv[0] != executable or not 0 < timeout_seconds <= 900:
         raise CheckRefused('invalid_launch')
     if memory_limit <= 0 or process_limit <= 0 or minimum_free_ram < 0:
         raise CheckRefused('invalid_limits')
+    if (isinstance(descendant_grace_seconds, bool)
+            or not isinstance(descendant_grace_seconds, (int, float))
+            or not 0 < descendant_grace_seconds <= 60
+            or not math.isfinite(descendant_grace_seconds)):
+        raise CheckRefused('invalid_descendant_grace')
     environment_block(environment)
     if api.free_ram() < minimum_free_ram:
         raise CheckRefused('free_ram_below_minimum')
@@ -98,7 +105,7 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
         if outcome != 'exited':
             raise CheckRefused('process_timeout' if outcome == 'timeout' else 'process_wait_failed')
         code = api.exit_code(process)
-        drain(min(deadline, monotonic() + 5))
+        drain(min(deadline, monotonic() + descendant_grace_seconds))
         completed = True
         return code
     finally:

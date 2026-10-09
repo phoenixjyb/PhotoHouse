@@ -165,6 +165,7 @@ class LocalMemoryNarratorTests(unittest.TestCase):
             body = json.loads(request.content)
             self.assertEqual('qwen-local', body['model'])
             self.assertIs(body['stream'], False)
+            self.assertIs(body['think'], False)
             self.assertIs(body['truncate'], False)
             self.assertEqual('json', body['format'])
             self.assertEqual({'temperature': 0.2, 'num_predict': 2048}, body['options'])

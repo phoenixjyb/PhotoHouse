@@ -31,6 +31,7 @@ class LocalAnnotationModelsTest(unittest.TestCase):
             self.assertEqual('local-memory', body['model'])
             self.assertEqual('json', body['format'])
             self.assertFalse(body['stream'])
+            self.assertIs(body['think'], False)
             self.assertIn('Grandma sang.', body['prompt'])
             return httpx.Response(200, json={'response': json.dumps({
                 'text': 'Grandma sang at dinner.', 'tags': ['grandma', 'dinner']})})

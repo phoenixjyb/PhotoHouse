@@ -452,6 +452,7 @@ class LocalMemoryNarrator:
                     'model': self.model,
                     'prompt': prompt,
                     'stream': False,
+                    'think': False,
                     'truncate': False,
                     'format': 'json',
                     'options': {'temperature': 0.2, 'num_predict': 2048},

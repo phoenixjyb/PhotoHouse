@@ -151,6 +151,7 @@ class LocalAnnotationModels:
                 raw, check_deadline = self._read_response(client, 'POST', self.ollama_url,
                     error_message='Local wording model unavailable', json={'model': self.ollama_model,
                     'prompt': prompt, 'format': 'json', 'stream': False,
+                    'think': False,
                     'options': {'temperature': 0}})
             check_deadline()
             envelope = _strict_json(raw)
