@@ -6167,6 +6167,72 @@
           "before_sha256": "51d186ef98d668207db87e7d6ab4f2a5954946ab020f530900a5a898aa23858c"
         }
       ]
+    },
+    {
+      "feature": "model-capability-inventory-isolation-and-replacement-contracts",
+      "source_kind": "monorepo-authored-model-maintenance-tooling-and-documentation",
+      "source_base_commit": "cd2d44d0b0ea791b23f726eea2fdf7c38c8df400",
+      "scope_note": "Map thirteen existing model-backed source capabilities to adapter symbols, existing configuration owners, execution isolation and replacement boundaries. Correct the outdated narrative adapter reference in disabled examples. Add an offline AST inventory checker and meaningful missing-symbol/contract/template/path/weights regressions. No runtime loader, application provider setting, worker binding or model call is changed.",
+      "provider_calls": false,
+      "production_connections": false,
+      "weights_imported": false,
+      "schema_changed": false,
+      "runtime_controller": false,
+      "model_quality_evaluated": false,
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "4390cda9dae1395a21f54f52768c5c01ee32b75283980b841fd7cf8ef161168a",
+          "before_sha256": "95159979c4ce11c1bf05853c62e73a95aa6359892233d852b447c1be778db0a5"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "4fe5ce7c81e51792c5a414d862e23dc1640c114f504059047350ba726f633ca9",
+          "before_sha256": "faa4c15b734a9436cd84bb2d261f2b08369e6934f6f49de3aad8e8d869994388"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "a1a4e27105be9a226f5597bc8c9ef84fd401c4f5c7d95dfb8ac6a699f944c4b6",
+          "before_sha256": "879519cb92b9f96d8ba8f64ffb98d401b353ba591d4e681b9c10ef1580ba779a"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "c5b9bf38484fe7700c91b1ef766d3c702af3ef79cf9a7a7f4419dc7663cdd6ce",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "110d24f929d20e1f528c951dd74abe4a2b59fd6b08f0f7274e82aeece1175708",
+          "before_sha256": "b3d3f63d97e85b1f1e2eece005c5b91bd3ef198c06709813136d65edd3292009"
+        },
+        {
+          "path": "models/README.md",
+          "sha256": "0cf244c9d5b5647e8ebc378afc71c4dcd4c199fc938e1b78b03fbed6af0a6124",
+          "before_sha256": null,
+          "git_before_sha256": "28b5856df09c4518e52b77a911c42c3f9bbdf9d58010d7b7ce7cad3e0684a6f6"
+        },
+        {
+          "path": "models/catalog.json",
+          "sha256": "40e883c3af461961a05ee90d9dd64c38ba53a43124d6baabd84a8f19e296c227",
+          "before_sha256": null
+        },
+        {
+          "path": "models/providers.example.json",
+          "sha256": "cdb145c86435e351797a856bbdd468c43664cbe81c33973cc1adbfd857de6ef2",
+          "before_sha256": null,
+          "git_before_sha256": "4c12a21862c9582799838e3920a20490f68d4838a486ca45f954897861dd0554"
+        },
+        {
+          "path": "tools/model_catalog.py",
+          "sha256": "c7fac24834aa19ef83e8c2c60f5b2413389387a3700efb01627d73c394087394",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/tests/test_model_catalog.py",
+          "sha256": "485ceb905510565160fc4195d04ce674ec33dbddf474f7ddf43779b0b9949fc2",
+          "before_sha256": null
+        }
+      ]
     }
   ]
 }

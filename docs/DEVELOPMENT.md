@@ -17,6 +17,13 @@ schema, enable a model, or integrate a native phone picker.
 
 ## Inspect the local environment
 
+For the model source inventory, run `python3 tools/model_catalog.py --json`.
+This standard-library check parses thirteen capability references and disabled
+selection placeholders. It does not import ML dependencies, read model weights,
+inspect private installation profiles or contact providers. The
+[provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) explains separate runtime,
+resource, quality and model-replacement gates.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package

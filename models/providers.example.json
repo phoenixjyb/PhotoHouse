@@ -1,37 +1,254 @@
 {
   "schema": 1,
+  "kind": "disabled-private-selection-template",
+  "loaded_by_runtime": false,
   "providers": [
     {
-      "id": "local-asr",
-      "purpose": "transcription",
+      "id": "vlm_caption",
+      "contract": "caption-text-v1",
+      "enabled": false,
+      "adapter": "HTTPCaptionProvider",
+      "execution_mode": "http_service",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "assistant_asr",
+      "contract": "assistant-wav-transcript-v1",
       "enabled": false,
       "adapter": "LocalAssistantAsr",
+      "execution_mode": "loopback_http",
       "endpoint": null,
       "model": null,
+      "model_version": null,
+      "runtime_version": null,
       "checkpoint_sha256": null,
       "license_source": null,
-      "data_policy": "transient assistant audio; explicit family-memory retention is separate"
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
     },
     {
-      "id": "local-narrative",
-      "purpose": "reviewable story proposals and grounded conversation",
+      "id": "memory_asr",
+      "contract": "memory-multipart-transcript-v1",
       "enabled": false,
-      "adapter": "LocalMemoryNarrativeProvider",
+      "adapter": "LocalAnnotationModels",
+      "execution_mode": "loopback_http",
       "endpoint": null,
       "model": null,
+      "model_version": null,
+      "runtime_version": null,
       "checkpoint_sha256": null,
       "license_source": null,
-      "qualification": "bounded synthetic canary and human quality review required"
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
     },
     {
-      "id": "local-tts",
-      "purpose": "explicit reply narration",
+      "id": "annotation_polish",
+      "contract": "annotation-polish-tags-v1",
+      "enabled": false,
+      "adapter": "LocalAnnotationModels",
+      "execution_mode": "loopback_http",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "narrative",
+      "contract": "memory-narrative-companion-v1",
+      "enabled": false,
+      "adapter": "LocalMemoryNarrator",
+      "execution_mode": "loopback_http",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "title_suggestions",
+      "contract": "story-title-suggestions-v1",
+      "enabled": false,
+      "adapter": "LocalStoryTitleSuggester",
+      "execution_mode": "loopback_http",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "assistant_tts",
+      "contract": "assistant-reply-wav-v1",
       "enabled": false,
       "adapter": "LocalAssistantTts",
+      "execution_mode": "loopback_http",
       "endpoint": null,
       "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
       "license_source": null,
-      "data_policy": "no automatic playback; yield to recording"
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "face_detection",
+      "contract": "face-box-landmarks-v1",
+      "enabled": false,
+      "adapter": "InsightFaceDetectionProvider",
+      "execution_mode": "bounded_child",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "face_embedding",
+      "contract": "face-vector-artifact-v1",
+      "enabled": false,
+      "adapter": "LVFaceEmbeddingProvider",
+      "execution_mode": "bounded_child",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "image_embedding",
+      "contract": "image-vector-artifact-v1",
+      "enabled": false,
+      "adapter": "EmbeddingService",
+      "execution_mode": "bounded_child",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "video_embedding",
+      "contract": "video-vector-artifact-v1",
+      "enabled": false,
+      "adapter": "_run_inference",
+      "execution_mode": "bounded_child",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "text_embedding",
+      "contract": "text-vector-legacy-v1",
+      "enabled": false,
+      "adapter": "EmbeddingService",
+      "execution_mode": "in_process",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
+    },
+    {
+      "id": "image_tags",
+      "contract": "image-tags-legacy-v1",
+      "enabled": false,
+      "adapter": "HTTPImageTagProvider",
+      "execution_mode": "http_service",
+      "endpoint": null,
+      "model": null,
+      "model_version": null,
+      "runtime_version": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "resource_budget": {
+        "max_concurrent_requests": null,
+        "ram_limit_mib": null,
+        "vram_floor_mib": null,
+        "deadline_seconds": null
+      }
     }
   ]
 }

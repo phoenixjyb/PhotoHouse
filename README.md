@@ -44,6 +44,11 @@ python3.12 -m venv .venv
 不需要 GPU、模型权重或家庭服务器。Windows 请使用 `.venv\Scripts\python.exe`。
 Windows PowerShell 的完整 CPU setup、demo 与当前源码校验命令见[开发指南](docs/DEVELOPMENT.md)。
 
+模型代码与权重分开管理：[模型与服务架构](docs/MODEL_PROVIDER_ARCHITECTURE.md)列出 VLM、
+ASR、TTS、人脸与影像向量等适配器及更换规则。`models/catalog.json` 是源码清单，
+不启动模型，也不自动选择运行配置。可用 `python3 tools/model_catalog.py --json` 离线核对；
+权重、私有端点和凭据保留在运行主机，模型自己的许可证需分别确认。
+
 Android 需要 JDK 17 和 Android SDK 34：
 
 ```sh
