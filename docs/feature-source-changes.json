@@ -8227,8 +8227,9 @@
         },
         {
           "path": ".gitignore",
-          "before_sha256": "fc4c53c8ed12d14a988dd1855fb17df6332dd98e48c4948d9e2c1b51c32dffa1",
-          "sha256": "316c64060297324c932215b640bc0cdad1ee4ffd9dddd425bd3ef52b4538c984"
+          "before_sha256": null,
+          "sha256": "316c64060297324c932215b640bc0cdad1ee4ffd9dddd425bd3ef52b4538c984",
+          "git_before_sha256": "fc4c53c8ed12d14a988dd1855fb17df6332dd98e48c4948d9e2c1b51c32dffa1"
         },
         {
           "path": "THIRD_PARTY_NOTICES.md",
