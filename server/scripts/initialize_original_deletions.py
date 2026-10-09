@@ -28,8 +28,9 @@ from app.access.memory_book_edition_schema import (  # noqa: E402
     SOURCES_TABLE,
 )
 
-from app.access.runtime import (REQUIRED_REVISION, COLLABORATION_REVISIONS,
+from app.access.runtime import (REQUIRED_REVISION, COLLABORATION_REVISIONS, EDITION_REVISIONS,
                                 SOURCE_REFERENCE_REVISIONS)
+from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
 
 REVISION = REQUIRED_REVISION
 
@@ -83,12 +84,24 @@ def _database_state(db, budget):
     if revision in SOURCE_REFERENCE_REVISIONS:
         expected_tables.update(_citation_schema())
     edition_tables = {}
-    if revision == EDITION_REVISION:
+    if revision in EDITION_REVISIONS:
         edition_tables = _edition_schema()
         expected_tables.update(edition_tables)
     if not set(expected_tables) <= set(tables):
         raise full.small.Refused('Complete collaboration schema required')
-    if revision == EDITION_REVISION:
+    if revision == IDENTITY_REVISION:
+        from app.access.family_note_identity import verify_family_note_identity_schema
+        from app.access.family_note_identity_schema import add_family_note_identity_tables
+        from app.access.transport import TransportError
+        from app.access.metadata import migration_metadata
+        from app.db import Base
+        try:
+            verify_family_note_identity_schema(db)
+        except (TransportError, sqlite3.Error, ValueError):
+            raise full.small.Refused('Unexpected family note identity schema') from None
+        identity_tables = add_family_note_identity_tables(migration_metadata(Base.metadata))
+        expected_tables.update({table.name: table for table in identity_tables})
+    if revision in EDITION_REVISIONS:
         from app.access.memory_book_edition_deletions import (
             EditionDeletionError, verify_edition_schema,
         )
@@ -130,7 +143,7 @@ def _database_state(db, budget):
         if actual != wanted:
             raise full.small.Refused('Unexpected collaboration index metadata')
     tables_without_edition = tuple(name for name in expected_tables
-                                   if name not in {EDITION_TABLE, SOURCES_TABLE})
+                                   if name not in {EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES})
     if tables_without_edition and db.execute("SELECT 1 FROM sqlite_master WHERE type='trigger' "
                    "AND tbl_name IN (" + ','.join('?' for _ in tables_without_edition) + ") LIMIT 1",
                    tables_without_edition).fetchone():
@@ -140,13 +153,15 @@ def _database_state(db, budget):
         originals[table] = db.execute('SELECT count(*) FROM ' + full.quoted(table)).fetchone()[0]
     marker_rows = db.execute('SELECT count(*) FROM access_original_deletion_state').fetchone()[0]
     edition_rows = 0
-    if revision == EDITION_REVISION:
+    if revision in EDITION_REVISIONS:
         edition_rows = sum(db.execute('SELECT count(*) FROM ' + full.quoted(table)).fetchone()[0]
                            for table in (EDITION_TABLE, SOURCES_TABLE))
     fingerprint, counts = full.fingerprint(db, tables, budget)
     return {'revision': revision, 'tables': tables, 'fingerprint': fingerprint, 'counts': counts,
             'originals': originals, 'marker_rows': marker_rows,
-            'edition_rows': edition_rows}
+            'edition_rows': edition_rows,
+            'identity_rows': sum(db.execute('SELECT count(*) FROM ' + full.quoted(table)).fetchone()[0]
+                for table in IDENTITY_TABLES) if revision == IDENTITY_REVISION else 0}
 
 
 def _read_state(path, budget):
@@ -174,6 +189,8 @@ def _review(database, backup, journal_path, namespace, budget):
         raise full.small.Refused('Original tables must be empty before binding')
     if primary['edition_rows']:
         raise full.small.Refused('Reviewed memoir editions must be empty before binding')
+    if primary['identity_rows']:
+        raise full.small.Refused('Family note lineage must be empty before binding')
     if primary['marker_rows']:
         raise full.small.Refused('Primary deletion marker must be empty')
     return {'database': database, 'backup': backup, 'journal': journal_path,
@@ -186,6 +203,7 @@ def _review(database, backup, journal_path, namespace, budget):
 def _public_plan(reviewed, *, status, journal_sequence=None, journal_digest=None,
                  marker_rows=None):
     return {'status': status, 'schema_revision': reviewed['revision'],
+            'journal_format_version': reviewed['journal_format_version'],
             'table_count': len(reviewed['tables']),
             'primary_rows': sum(reviewed['counts'].values()),
             'original_rows': sum(reviewed['originals'].values()),
@@ -196,17 +214,22 @@ def _public_plan(reviewed, *, status, journal_sequence=None, journal_digest=None
 
 
 def initialize(database, backup, journal_path, namespace, budget, *,
-               execute=False, all_writers_stopped=False, state=None):
+               execute=False, all_writers_stopped=False, state=None, format_version=1):
+    if type(format_version) is not int or format_version not in {1, 2}:
+        raise full.small.Refused('Explicit journal format required')
     if execute and not all_writers_stopped:
         raise full.small.Refused('Execution requires --all-writers-stopped')
     if not execute and all_writers_stopped:
         raise full.small.Refused('--all-writers-stopped requires --execute')
     reviewed = _review(database, backup, journal_path, namespace, budget)
+    if format_version == 2 and reviewed['revision'] != IDENTITY_REVISION:
+        raise full.small.Refused('Family note identity schema required for journal version 2')
+    reviewed['journal_format_version'] = format_version
     if not execute:
         return _public_plan(reviewed, status='reviewed')
 
     state = state if state is not None else {}
-    journal = OriginalDeletionJournal.initialize(reviewed['journal'], reviewed['namespace'])
+    journal = OriginalDeletionJournal.initialize(reviewed['journal'], reviewed['namespace'], format_version=format_version)
     state['journal'] = journal
     state['reviewed'] = reviewed
     journal_identity = full.small.identity(reviewed['journal'])
@@ -285,6 +308,8 @@ def _parser():
                         help='operator-reviewed canonical dataset UUID')
     parser.add_argument('--max-bytes', type=int, default=1024 * 1024 * 1024)
     parser.add_argument('--timeout-seconds', type=int, default=300)
+    parser.add_argument('--format-version', type=int, choices=(1, 2), default=1,
+                        help='explicit journal capability; 2 requires D1 identity schema')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--all-writers-stopped', action='store_true')
     return parser
@@ -297,7 +322,7 @@ def main(argv=None):
         args = parser.parse_args(argv)
         result = initialize(args.database, args.backup, args.journal, args.namespace,
             full.Budget(args.max_bytes, args.timeout_seconds), execute=args.execute,
-            all_writers_stopped=args.all_writers_stopped, state=state)
+            all_writers_stopped=args.all_writers_stopped, state=state, format_version=args.format_version)
         print(json.dumps(result, sort_keys=True))
         return 0
     except KeyboardInterrupt:

@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-REVISIONS = {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490"}
+REVISIONS = {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920"}
 TASK_TYPES = ("face", "face_embed")
 MAX_INPUT = 256 * 1024**2
 MAX_PIXELS = 64_000_000

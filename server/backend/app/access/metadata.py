@@ -105,4 +105,6 @@ def migration_metadata(legacy_metadata):
     add_book_editorial_tables(metadata)
     from .memory_book_edition_schema import add_book_edition_tables
     add_book_edition_tables(metadata)
+    from .family_note_identity_schema import add_family_note_identity_tables
+    add_family_note_identity_tables(metadata)
     return metadata

@@ -74,6 +74,13 @@ Use [the feature matrix](FEATURES.md) and [development evidence](DEVELOPMENT.md)
 for the implemented baseline. Each slice below should finish as a complete user
 journey with generated tests and rendered UI before its installation gate.
 
+The remaining legacy D1 family-note erasure source is now preserved in this
+monorepo, including immutable identity, historical library authorization,
+dependent prose cleanup and offline journal upgrade/replay. It defaults off and
+does not backfill old notes. Native paired-backup/migration/journal checks and
+owner acceptance precede activation; source preservation is not a live erasure
+operation. See the [contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
+
 The immediate maintenance slice is exact worker startup diagnosis and recovery.
 [Sanitized terminal reports](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md)
 are implemented in source; installing them, capturing a bounded native run and

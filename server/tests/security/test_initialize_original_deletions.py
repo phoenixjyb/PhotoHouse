@@ -14,6 +14,7 @@ from unittest.mock import patch
 import test_library_reads as fixture
 from app.access.original_deletions import OriginalDeletionJournal
 from app.access.memory_book_edition_schema import EDITION_TABLE, SOURCES_TABLE
+from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITIES, SCOPES
 from scripts import initialize_original_deletions as bootstrap
 
 
@@ -94,6 +95,27 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         snapshot(self.primary, self.backup)
         return book_id
 
+    def test_explicit_v2_initializer_requires_d1_and_reports_capability(self):
+        code, report, _ = self.cli('--format-version', '2')
+        self.assertEqual(code, 0)
+        self.assertEqual(report['journal_format_version'], 2)
+        self.assertFalse(self.journal.exists())
+        code, report, _ = self.cli('--format-version', '2', '--execute', '--all-writers-stopped')
+        self.assertEqual(code, 0)
+        self.assertEqual(report['journal_format_version'], 2)
+        ledger = OriginalDeletionJournal(self.journal, self.namespace)
+        ledger.require_family_format()
+
+    def test_v2_initializer_refuses_legacy_revision_without_creating_journal(self):
+        with closing(sqlite3.connect(self.primary)) as db:
+            db.execute("UPDATE alembic_version SET version_num='c2e6b8a1d490'")
+            db.commit()
+        snapshot(self.primary, self.backup)
+        code, report, _ = self.cli('--format-version', '2')
+        self.assertEqual(code, 2)
+        self.assertEqual(report['status'], 'refused')
+        self.assertFalse(self.journal.exists())
+
     def test_default_review_is_readonly_and_emits_only_counts_and_fingerprint(self):
         primary_before = self.snapshot_bytes(self.primary)
         backup_before = self.snapshot_bytes(self.backup)
@@ -131,6 +153,37 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         self.assertEqual(report['schema_revision'],'f7c3a9d2e614')
         self.assertEqual(report['status'],'bound')
         self.assertEqual(report['marker_rows'],1)
+
+    def test_identity_schema_drift_refuses_before_creating_a_journal(self):
+        with closing(sqlite3.connect(self.primary)) as db:
+            db.execute('DROP TRIGGER trg_family_note_no_reuse')
+            db.commit()
+        snapshot(self.primary, self.backup)
+        code, report, _ = self.cli('--execute', '--all-writers-stopped')
+        self.assertEqual(code, 2)
+        self.assertEqual(report['status'], 'refused')
+        self.assertFalse(self.journal.exists())
+
+    def test_retained_family_identity_blocks_fresh_journal_binding_even_after_parent_removal(self):
+        from app.access.stories import Stories
+        from app.access.service import AccessService
+        with closing(sqlite3.connect(self.primary)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            note = Stories(AccessService(db, clock=lambda: self.f.now)).save(
+                self.f.owner_token, 'family-a', {'title': '', 'text': 'Synthetic family note',
+                 'language': 'en', 'byline': '', 'mutation_id': str(uuid.uuid4())}, asset_id=101)
+            db.execute('DELETE FROM access_story_revisions WHERE story_id=?', (note['id'],))
+            db.execute('DELETE FROM access_stories WHERE id=?', (note['id'],))
+            db.commit()
+            before = db.execute(f'SELECT * FROM {IDENTITIES}').fetchall()
+        snapshot(self.primary, self.backup)
+        code, report, _ = self.cli('--execute', '--all-writers-stopped')
+        self.assertEqual(code, 2)
+        self.assertEqual(report['status'], 'refused')
+        self.assertFalse(self.journal.exists())
+        with closing(sqlite3.connect(self.primary)) as db:
+            self.assertEqual(db.execute(f'SELECT * FROM {IDENTITIES}').fetchall(), before)
+            self.assertEqual(db.execute(f'SELECT count(*) FROM {SCOPES}').fetchone(), (1,))
 
     def test_new_reference_schema_constraints_are_checked_before_binding(self):
         for path in (self.primary,self.backup):
@@ -285,7 +338,7 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         code, report, _ = self.cli('--execute', '--all-writers-stopped')
         self.assertEqual(code, 0)
         self.assertEqual(report['status'], 'bound')
-        self.assertEqual(report['schema_revision'], 'c2e6b8a1d490')
+        self.assertEqual(report['schema_revision'], IDENTITY_REVISION)
         self.assertGreater(report['primary_rows'], report['original_rows'])
         with closing(sqlite3.connect(self.primary)) as db:
             self.assertEqual(db.execute(
@@ -295,8 +348,8 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
     def test_locked_backup_change_preserves_new_empty_unbound_journal(self):
         original_initialize = OriginalDeletionJournal.initialize
 
-        def initialize_then_change_backup(path, namespace):
-            journal = original_initialize(path, namespace)
+        def initialize_then_change_backup(path, namespace, **options):
+            journal = original_initialize(path, namespace, **options)
             with closing(sqlite3.connect(self.backup)) as db:
                 db.execute("UPDATE captions SET text='changed after plan' WHERE id=101")
                 db.commit()
@@ -318,8 +371,8 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
     def test_locked_primary_data_change_preserves_new_empty_unbound_journal(self):
         original_initialize = OriginalDeletionJournal.initialize
 
-        def initialize_then_change_primary(path, namespace):
-            journal = original_initialize(path, namespace)
+        def initialize_then_change_primary(path, namespace, **options):
+            journal = original_initialize(path, namespace, **options)
             with closing(sqlite3.connect(self.primary)) as db:
                 db.execute("UPDATE captions SET text='changed after plan' WHERE id=101")
                 db.commit()
@@ -338,8 +391,8 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
     def test_primary_file_replacement_after_review_is_refused(self):
         original_initialize = OriginalDeletionJournal.initialize
 
-        def initialize_then_replace_primary(path, namespace):
-            journal = original_initialize(path, namespace)
+        def initialize_then_replace_primary(path, namespace, **options):
+            journal = original_initialize(path, namespace, **options)
             replacement = self.root / 'replacement.sqlite'
             snapshot(self.primary, replacement)
             os.replace(replacement, self.primary)

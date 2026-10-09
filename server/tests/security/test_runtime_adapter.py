@@ -5,10 +5,12 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+import uuid
 from unittest.mock import patch
 
 import test_library_reads as library_fixture
 from app.access.runtime import EDITORIAL_REVISION, EDITION_REVISION, ExistingDatabase, RuntimeConfiguration, RuntimeUnavailable, REQUIRED_REVISION
+from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES, sqlite_family_note_identity_contract
 from app.main import create_app
 from fastapi.testclient import TestClient
 from alembic import command
@@ -190,11 +192,42 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.get('/assets?library=family-a',headers=self.headers()).status_code,200)
 
     def test_adapter_revision_pin_matches_actual_migration_head(self):
-        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[EDITION_REVISION])
+        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[IDENTITY_REVISION])
         for invalid in (Path('relative.sqlite'),':memory:'):
             with self.assertRaises(ValueError):ExistingDatabase(invalid)
         for timeout in (0,-1,11,float('nan'),True):
             with self.assertRaises(ValueError):ExistingDatabase(self.path,timeout=timeout)
+
+    def test_c2_database_without_identity_schema_remains_compatible_without_repair(self):
+        for kind, name, _ddl in sqlite_family_note_identity_contract():
+            if kind == 'trigger':
+                self.mutate('DROP TRIGGER ' + name)
+        for table in ('access_memory_book_edition_family_notes', 'access_family_note_scopes',
+                      'access_family_note_identities'):
+            self.mutate('DROP TABLE ' + table)
+        self.mutate('UPDATE alembic_version SET version_num=?', (EDITION_REVISION,))
+        self.assertEqual(self.client.get('/auth/session', headers=self.headers()).status_code, 200)
+        with ExistingDatabase(self.path)() as db:
+            from app.access.stories import Stories
+            note = Stories(AccessService(db, clock=lambda: NOW)).save(
+                library_fixture.LibraryReadTests.owner_token, 'family-a',
+                {'title': 'Legacy-compatible note', 'text': 'Synthetic source', 'language': 'en',
+                 'byline': '', 'mutation_id': str(uuid.uuid4())}, asset_id=101)
+            self.assertEqual(note['revision'], 1)
+            tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            self.assertFalse(IDENTITY_TABLES & tables)
+
+    def test_identity_revision_requires_complete_schema_without_repair(self):
+        self.mutate('DROP TABLE access_memory_book_edition_family_notes')
+        response = self.client.get('/auth/session', headers=self.headers())
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn('family_note', response.text)
+        with closing(sqlite3.connect(self.path)) as db:
+            self.assertFalse(db.execute("SELECT 1 FROM sqlite_master WHERE name='access_memory_book_edition_family_notes'").fetchall())
+
+    def test_identity_revision_refuses_missing_immutability_trigger(self):
+        self.mutate('DROP TRIGGER trg_family_note_no_reuse')
+        self.assertEqual(self.client.get('/auth/session', headers=self.headers()).status_code, 503)
 
     def test_f7_adapter_remains_compatible_without_the_new_reference_table(self):
         self.mutate('DROP TABLE access_memory_contribution_refs')

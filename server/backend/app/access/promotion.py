@@ -128,6 +128,9 @@ class _PromotionState(_PlanState):
             mac.update(encoded)
 
         db = self.access.db
+        from .family_note_identity import identity_enabled
+        from .family_note_identity_schema import IDENTITIES, SCOPES
+        lineage_enabled = identity_enabled(db)
         for asset_id, source in sorted(source_by_asset.items()):
             cursor = db.execute('''SELECT id,asset_id,library_id,author_id,revision,title,text,
                     language,byline,created_at,updated_at,deleted
@@ -141,6 +144,13 @@ class _PromotionState(_PlanState):
                     add(['story', asset_id, source], row)
                     story_ids.append(row[0])
         for story_id in story_ids:
+            if lineage_enabled:
+                identity = db.execute(f'SELECT * FROM {IDENTITIES} WHERE note_id=?', (story_id,)).fetchone()
+                add(['identity', story_id], identity or ())
+                if identity:
+                    for scope in db.execute(f'SELECT * FROM {SCOPES} WHERE identity_id=? ORDER BY ordinal',
+                                            (identity[0],)):
+                        add(['scope', story_id], scope)
             cursor = db.execute('''SELECT story_id,revision,editor_id,mutation_id,request_digest,
                     title,text,language,byline,occurred_at,deleted
                 FROM access_story_revisions WHERE story_id=? ORDER BY revision''', (story_id,))
@@ -704,6 +714,9 @@ def reassign_assets(envelope, *, review, clock=time.time, authorize=None, allow_
                            (library, int(value)))
             story_count = 0
             for asset_id, source in source_by_asset.items():
+                from .family_note_identity import append_note_scope_moves
+                append_note_scope_moves(db, asset_id, source, library, plan['plan_id'],
+                                       review.plan_digest, state.access._now())
                 cursor = db.execute('''UPDATE access_stories SET library_id=?
                     WHERE asset_id=? AND library_id=?''', (library, asset_id, source))
                 story_count += cursor.rowcount

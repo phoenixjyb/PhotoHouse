@@ -700,6 +700,20 @@
   {
    "source": "backend/app/access/stories.py",
    "owner": "router",
+   "method": "DELETE",
+   "path": "/stories/{story_id}/original",
+   "handler": "erase_story_original",
+   "surface": "photohouse",
+   "scope": "Selected family note, active parent asset and every historical library scope",
+   "capabilities": [
+    "library.members.manage"
+   ],
+   "current_control": "Default-off family_note_erasure_enabled; current owner in every recorded scope; exact immutable D1 identity and revision; version 2 journal append before secure purge; cookie CSRF; no anonymous TV access",
+   "gap": "Source and synthetic qualification only; live D1 migration, journal upgrade and separately authorized activation remain pending"
+  },
+  {
+   "source": "backend/app/access/stories.py",
+   "owner": "router",
    "method": "GET",
    "path": "/stories/{story_id}/history",
    "handler": "story_history",

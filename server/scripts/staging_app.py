@@ -24,7 +24,7 @@ FIELDS = {'format_version', 'database', 'web_origin', 'original_roots', 'derived
 OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled',
                    'annotation_intake_enabled', 'assistant_enabled', 'memory_collaboration_enabled',
                    'memory_originals_enabled', 'memory_generation_enabled', 'memory_editorial_enabled',
-                   'memory_editions_enabled', 'assistant_asr_url',
+                   'memory_editions_enabled', 'family_note_erasure_enabled', 'assistant_asr_url',
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
@@ -70,6 +70,7 @@ class StagingConfiguration:
     memory_generation_enabled: bool = False
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
+    family_note_erasure_enabled: bool = False
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
@@ -145,7 +146,7 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if any(type(flag) is not bool for flag in (self.memory_collaboration_enabled,
                     self.memory_originals_enabled, self.memory_generation_enabled, self.memory_editorial_enabled,
-                    self.memory_editions_enabled)):
+                    self.memory_editions_enabled, self.family_note_erasure_enabled)):
                 raise InvalidConfiguration()
             if (self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and not self.memory_collaboration_enabled:
                 raise InvalidConfiguration()
@@ -153,7 +154,7 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
                 raise InvalidConfiguration()
-            if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and self.original_deletion_journal_path is None:
+            if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
                 raise InvalidConfiguration()
             if self.original_deletion_journal_path is not None:
                 import uuid
@@ -239,6 +240,7 @@ class StagingConfiguration:
             memory_generation_enabled=self.memory_generation_enabled,
             memory_editorial_enabled=self.memory_editorial_enabled,
             memory_editions_enabled=self.memory_editions_enabled,
+            family_note_erasure_enabled=self.family_note_erasure_enabled,
             original_deletion_journal_path=self.original_deletion_journal_path,
             original_deletion_namespace=self.original_deletion_namespace,
             assistant_journal_path=self.assistant_journal_path,
@@ -285,6 +287,7 @@ def parse_configuration(value):
             memory_generation_enabled=value.get('memory_generation_enabled', False),
             memory_editorial_enabled=value.get('memory_editorial_enabled', False),
             memory_editions_enabled=value.get('memory_editions_enabled', False),
+            family_note_erasure_enabled=value.get('family_note_erasure_enabled', False),
             original_deletion_journal_path=_path(value['original_deletion_journal_path']) if value.get('original_deletion_journal_path') is not None else None,
             original_deletion_namespace=value.get('original_deletion_namespace'),
             assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,

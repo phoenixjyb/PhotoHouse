@@ -147,7 +147,7 @@ class ApprovedCpuWorkerTests(unittest.TestCase):
         self.assertIsNone(worker.claim_one(self.dbpath))
 
     def test_current_live_schema_revision_is_required(self):
-        self.assertEqual(worker.REVISIONS, {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'})
+        self.assertEqual(worker.REVISIONS, {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'})
         result = worker.preflight(self.dbpath, self.originals, self.derived, self.stop)
         self.assertEqual((result['preflight'], result['schema_revision']), ('pass', 'c3f7a91d5e20'))
         self.db.execute("UPDATE alembic_version SET version_num='e6b2f8a1c903'"); self.db.commit()
@@ -165,6 +165,9 @@ class ApprovedCpuWorkerTests(unittest.TestCase):
         self.db.execute("UPDATE alembic_version SET version_num='c2e6b8a1d490'"); self.db.commit()
         result = worker.preflight(self.dbpath, self.originals, self.derived, self.stop)
         self.assertEqual((result['preflight'], result['schema_revision']), ('pass', 'c2e6b8a1d490'))
+        self.db.execute("UPDATE alembic_version SET version_num='d1f6a8c3e920'"); self.db.commit()
+        result = worker.preflight(self.dbpath, self.originals, self.derived, self.stop)
+        self.assertEqual((result['preflight'], result['schema_revision']), ('pass', 'd1f6a8c3e920'))
         self.db.execute("UPDATE alembic_version SET version_num='a8d4c2e6f901'"); self.db.commit()
         result = worker.preflight(self.dbpath, self.originals, self.derived, self.stop)
         self.assertEqual(result['schema_revision'], 'a8d4c2e6f901')

@@ -51,7 +51,7 @@ def available(db):
         versions = db.execute('SELECT version_num FROM alembic_version').fetchall()
     except sqlite3.Error:
         return False
-    return (len(versions) == 1 and versions[0][0] in {'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'}
+    return (len(versions) == 1 and versions[0][0] in {'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'}
             and table_exists(db))
 
 

@@ -37,7 +37,7 @@ MAX_FRAME_BYTES = 128 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024
 MAX_SOURCE_BYTES = 16 * 1024**3
 MAX_RETRIES = 3
-SCHEMA_REVISIONS = {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490"}
+SCHEMA_REVISIONS = {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920"}
 MAX_PAYLOAD_BYTES = 2048
 ERROR_CODES = frozenset({
     "source_outside_media_roots", "source_not_regular", "source_size_changed",

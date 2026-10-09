@@ -52,6 +52,25 @@ class StagingConfigurationTests(unittest.TestCase):
         self.assertTrue(runtime.call_args.kwargs['memory_editions_enabled'])
         self.assertFalse(runtime.call_args.kwargs['memory_generation_enabled'])
 
+    def test_family_note_erasure_false_key_remains_compatible_and_true_is_default_off(self):
+        self.assertFalse(s.parse_configuration(base()).family_note_erasure_enabled)
+        disabled = s.parse_configuration(dict(base(), family_note_erasure_enabled=False))
+        self.assertFalse(disabled.family_note_erasure_enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            disabled.build_app()
+        self.assertIs(runtime.call_args.kwargs['family_note_erasure_enabled'], False)
+        for invalid in ('false', 0, None):
+            with self.subTest(value=invalid), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), family_note_erasure_enabled=invalid))
+        with self.assertRaises(s.InvalidConfiguration):
+            s.parse_configuration(dict(base(), family_note_erasure_enabled=True))
+        enabled = s.parse_configuration(dict(base(), family_note_erasure_enabled=True,
+            original_deletion_journal_path='/synthetic/private/deletions.sqlite',
+            original_deletion_namespace='00000000-0000-4000-8000-000000000001'))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            enabled.build_app()
+        self.assertIs(runtime.call_args.kwargs['family_note_erasure_enabled'], True)
+
     def test_assistant_journal_is_explicit_separate_and_passed_to_runtime(self):
         self.assertIsNone(s.parse_configuration(base()).assistant_journal_path)
         for path in ('relative.sqlite','/synthetic/01_INCOMING/log.sqlite',

@@ -15,6 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from .library import LibraryRoute, SOURCE, _asset, _integer, _query
 from .service import AccessDenied, AccessService
 from .transport import TransportError, _body, _runtime, credentials_from_request
+from .family_note_identity import create_note_identity
 
 router = APIRouter(route_class=LibraryRoute)
 CONTENT = {'title', 'text', 'language', 'byline'}
@@ -54,7 +55,10 @@ def _content(body):
 
 
 class Stories:
-    def __init__(self, access):
+    def __init__(self, access, *, erasure_enabled=False):
+        if type(erasure_enabled) is not bool:
+            raise ValueError('Explicit family note erasure opt-in required')
+        self.erasure_enabled = erasure_enabled
         self.access = access
         self.db = access.db
 
@@ -82,6 +86,61 @@ class Stories:
                                      'revision', 'created_at', 'updated_at')},
                 'asset_id': str(row['asset_id']), 'deleted': bool(row['deleted']),
                 'can_edit': can_edit, 'can_view_history': can_edit, 'source': 'family'}
+
+    def erase_original(self, token, library, story_id, revision):
+        """Owner-only permanent erasure, distinct from ordinary soft removal."""
+        from .family_note_deletions import (prepare_family_tombstone,
+            verify_family_record, erase_family_note_original, parse_family_binding)
+        from .original_deletions import OriginalDeletionError
+        story_id = _uuid(story_id)
+        expected = _integer(revision, 2**63-1)
+        if str(expected) != revision:
+            raise TransportError(400, 'Invalid revision')
+        if not self.erasure_enabled or self.access.original_deletions is None:
+            raise TransportError(503, 'Family note erasure unavailable')
+        journal = self.access.original_deletions
+        if self.db.execute('PRAGMA secure_delete=ON').fetchone()[0] != 1:
+            raise TransportError(503, 'Family note erasure unavailable')
+        with self.access._transaction(write=True):
+            member = self.access._require(token, library, 'library.members.manage')
+            row = self.access._one('SELECT * FROM access_stories WHERE id=? AND library_id=?',
+                                   (story_id, library))
+            now = self.access._now()
+            try:
+                if self.db.execute('PRAGMA foreign_key_check').fetchone() is not None:
+                    raise OriginalDeletionError('Family note erasure unavailable')
+                journal.require_family_format()
+                if row is None:
+                    record = journal.family_record(self.db, story_id)
+                    if record is None or record['library_id'] != library:
+                        raise AccessDenied('Access denied')
+                    binding = parse_family_binding(record['family_binding_json'])
+                    if binding['expected_revision'] != expected:
+                        raise TransportError(409, 'Family note changed; refresh before erasing')
+                    identity, scopes, _ = verify_family_record(self.db, record)
+                    asset_id = identity[2]
+                else:
+                    self._parent(token, library, row['asset_id'], write=True)
+                    if row['revision'] != expected:
+                        raise TransportError(409, 'Family note changed; refresh before erasing')
+                    record = prepare_family_tombstone(self.db, story_id, expected, now)
+                    identity, scopes, _ = verify_family_record(self.db, record)
+                    asset_id = row['asset_id']
+                self._parent(token, library, asset_id, write=True)
+                # Purging all historical editions crosses recorded scopes. Require
+                # current owner authority in every one; an asset move is no grant.
+                for scope_library in {scope[3] for scope in scopes}:
+                    self.access._require(token, scope_library, 'library.members.manage')
+                if row is None:
+                    return {'deleted': True, 'id': story_id}
+                journal.append(self.db, 'family_note', row, now)
+                erase_family_note_original(self.db, record)
+                if self.db.execute('PRAGMA foreign_key_check').fetchone() is not None:
+                    raise OriginalDeletionError('Family note erasure unavailable')
+                self.access._audit(member['account_id'], 'story.original_erase', library)
+                return {'deleted': True, 'id': story_id}
+            except OriginalDeletionError:
+                raise TransportError(503, 'Family note erasure unavailable') from None
 
     def list(self, token, library, asset_id, page):
         with self.access._transaction():
@@ -136,6 +195,7 @@ class Stories:
                     VALUES (?,?,?,?,1,?,?,?,?,?,?,0)''',
                     (story_id, asset_id, library, actor, content['title'], content['text'],
                      content['language'], content['byline'], now, now))
+                create_note_identity(self.db, story_id)
             else:
                 if delete:
                     content = {key: row[key] for key in CONTENT}
@@ -234,7 +294,8 @@ class Stories:
 
 def _call(runtime, action, *args, **kwargs):
     with runtime.connection_factory() as db:
-        return getattr(Stories(AccessService(db, clock=runtime.clock)), action)(*args, **kwargs)
+        enabled = kwargs.pop('_erasure_enabled', False)
+        return getattr(Stories(AccessService(db, clock=runtime.clock), erasure_enabled=enabled), action)(*args, **kwargs)
 
 
 @router.get('/assets/{asset_id}/stories')
@@ -270,6 +331,16 @@ async def delete_story(story_id: str, request: Request):
     body = await _body(request, {'mutation_id', 'revision'})
     return _response(await run_in_threadpool(_call, _runtime(request, allow_query=True), 'save', token,
         query['library'], body, story_id=_uuid(story_id), delete=True))
+
+
+@router.delete('/stories/{story_id}/original')
+async def erase_story_original(story_id: str, request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library'})
+    body = await _body(request, {'revision'})
+    return _response(await run_in_threadpool(_call, _runtime(request, allow_query=True),
+        'erase_original', token, query['library'], _uuid(story_id), body['revision'],
+        _erasure_enabled=getattr(request.app.state, 'family_note_erasure_enabled', False)))
 
 
 @router.get('/stories/{story_id}/history')

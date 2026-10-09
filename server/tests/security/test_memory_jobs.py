@@ -1,5 +1,6 @@
 """Private memory conversation and proposal lifecycle against synthetic data."""
 import json
+import sqlite3
 import unittest
 import uuid
 from unittest.mock import patch
@@ -412,13 +413,21 @@ class MemoryJobTests(unittest.TestCase):
                 blank, _, _ = context(access, 'family-a', member, 'story', self.story_id)
         self.assertIsNone(next(item for item in blank['sources'] if item['id']==source_id)['author'])
         # Another library's note on the same asset cannot supply family words or a label.
-        self.library.mutate('UPDATE access_stories SET library_id=? WHERE id=?', ('family-b', note['id']))
+        # Bound notes cannot be moved without their approved scope ledger. A
+        # legacy unbound foreign note still exercises the original read fence.
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.library.mutate('UPDATE access_stories SET library_id=? WHERE id=?', ('family-b', note['id']))
+        foreign_note = str(uuid.uuid4())
+        self.library.mutate('''INSERT INTO access_stories
+            (id,asset_id,library_id,author_id,revision,title,text,language,byline,created_at,updated_at,deleted)
+            SELECT ?,asset_id,'family-b',author_id,revision,title,text,language,byline,created_at,updated_at,deleted
+            FROM access_stories WHERE id=?''', (foreign_note, note['id']))
         with self.library.connection() as db:
             access = AccessService(db, clock=lambda: self.library.now)
             with access._transaction():
                 member = access._require(self.member, 'family-a', 'library.read')
                 scoped, _, _ = context(access, 'family-a', member, 'story', self.story_id)
-        self.assertNotIn(source_id, {item['id'] for item in scoped['sources']})
+        self.assertNotIn('family-' + foreign_note, {item['id'] for item in scoped['sources']})
 
     def test_memoir_context_keeps_opening_note_and_child_titles_with_editorial_provenance(self):
         second = self.f.story('Another perspective', assets='102')

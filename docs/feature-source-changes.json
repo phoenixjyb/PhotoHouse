@@ -7134,6 +7134,322 @@
       "model_activation": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "family-note-identity-erasure-and-offline-journal-upgrade-d1",
+      "base_commit": "0c67bba64e30b179a384921f8a26f9f6e3cfbcb8",
+      "legacy_source_commit": "f282472a29d291a8b7ffae1cf6c6ccddd07dc15a",
+      "legacy_feature_commits": [
+        "a59fac08b69a5dea0b7734ab493d0b3dc0131b83",
+        "e1d941dbf6f164bc1817c22d30edfe85273fc292",
+        "7c05ec3e0124f89a45fd9f9dc556710be4b29805"
+      ],
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "e31546161a2c4c70955bf8943e62b3a19f301725918f1c54aecdfd7f266e918c",
+          "sha256": "2177dc6db5ffe76ab6c3eb1313c31a346b17b4d634c77ac501adad72eee69302"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "d649784ef7b7bc8eddd7facad35eb27065a62ba06d77dfa64743daa01609cc5c",
+          "sha256": "7feb0ad145214f9dc9e3eda1747bc6e3ca0945b229f37b12ca49a985937cf00e"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "before_sha256": "7dc5ea9e21b3acca38d34e22fd42c59ee6da677a1368fee72a670cc919222f03",
+          "sha256": "469bbf46f0b9c1bdaf79a608afaef8d82017bd02ac0d10935824f162782f1cf8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "f5ca827e4bf947bb09405189762b491917e4ac1095e97922a2736294a7ff5cd9",
+          "sha256": "9730aa36c5c960dd27eb2be949df8e0a279c6b61c8b80f914c1d309e848c5791"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "5d6ae7291c14870da8a1d030a95033ad3b043237fa75430b9526d6cc0bbb1e74",
+          "sha256": "d7a6359c73f469d308375c4c7faa248ac943053421e002b4a47334f2a6e8c81c"
+        },
+        {
+          "path": "server/backend/app/access/family_note_deletions.py",
+          "before_sha256": null,
+          "sha256": "3019ba360e6656871575486cd3bdd5011169dfe6d5c6b11e062bb5026176d87a"
+        },
+        {
+          "path": "server/backend/app/access/family_note_identity.py",
+          "before_sha256": null,
+          "sha256": "50b36e632cab9ab3386a2910d2e8f25d21e631d81e8582613b366c0411eabde1"
+        },
+        {
+          "path": "server/backend/app/access/family_note_identity_schema.py",
+          "before_sha256": null,
+          "sha256": "678e8b474c62cb8f0277fd2fdf2026d8af87767b383a769c00dc6d366d232c5d"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_edition_provenance.py",
+          "before_sha256": "0aa1f5e827d4a0b51ecd836cc1d56e2fb4632eb5a9601a4ea00c80e3b0a812fd",
+          "sha256": "9c82e8761f187cf1898c00385ca05eac3d5f11f70de34e2e6fbd5e52893cfa61"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editions.py",
+          "before_sha256": "a77b387dac455ce67b2fc2d318d89b0177791bff114bb81d2665036dc9bf099e",
+          "sha256": "12ceef85f52ccd993b22ac84f0bd7ebcd5c5a400647bb2a3a79b84899a42ca20"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editorial_schema.py",
+          "before_sha256": "3bedfafe69719db75b3c31fa9d99941723ca8e5b7c92127f638055eca3e7e977",
+          "sha256": "8224bdd70f0a5ecc18516b3a20da6dd4581e912a35b937cad6fde87eea8e14d2"
+        },
+        {
+          "path": "server/backend/app/access/memory_source_refs.py",
+          "before_sha256": "7d339452dcad08886839a827282c55ab86d7464296810e979d60981b6cd134d5",
+          "sha256": "49144c668fd0ef45a08700c799718ce65106f04df05201eb541d152f7e778b42"
+        },
+        {
+          "path": "server/backend/app/access/metadata.py",
+          "before_sha256": "673d166a1dc23e01df7b0887887e5e6810c397c92adfd21586e2144e57ab9e41",
+          "sha256": "fb2f5ac1cd5d31f7d18c4af3ac1603cdc0e207d26b4ab53f495300b39462f38d"
+        },
+        {
+          "path": "server/backend/app/access/original_deletions.py",
+          "before_sha256": "a3a484542e415f6d558a6b8b54010b79aac3f9d8bda798907229c0d5dbb011ed",
+          "sha256": "2e883e4978eaf723dcd97d2debfebf4498da19565aa3cb008b334962520714a7"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "before_sha256": "a2ccf2778536bf0cb15b63be275de8252895c4c3ca66a33e5f61f3437bd162d6",
+          "sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "57d6f16f7d8a9cbc2eae2bafd975a0beb36695534433dde9f35bc74225d006bb",
+          "sha256": "24355d3572adc70ae93222f0e04e8e5754fed1222f5997f8133293aca3347c4c"
+        },
+        {
+          "path": "server/backend/app/access/stories.py",
+          "before_sha256": "cc9cd8adda72683fcd51bc7578695c8ab32324580d47e5821456fac2fad1cc0c",
+          "sha256": "5b4950565e86f413ae7585203f5b9ca1c57ff76d879f79139671a00b832221c0"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "e85ed9793fee6ca3edb0a3529c1dd08080c3766bc34ce42673f48eb4332915b7",
+          "sha256": "100b81726c676387a81dc20a222fe37fd7b4592ea5ed090da1d4058b06e8c355"
+        },
+        {
+          "path": "server/backend/migrations/versions/d1f6a8c3e920_family_note_identities.py",
+          "before_sha256": null,
+          "sha256": "0e31347884ed8ff4fb5de444f8ea167907e4b73fdec6495b4e0fb5afab681642"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_ERASURE_V2.md",
+          "before_sha256": null,
+          "sha256": "c549f59152cf77e9103c21c836e285b672cf657cc72df94df17a5ef2c6858b52"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_IDENTITIES_V1.md",
+          "before_sha256": null,
+          "sha256": "ebbca1cbeceb4d03a171ccd0905aace4b058fb39814f0dc61c4b22bb38125b06"
+        },
+        {
+          "path": "server/docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md",
+          "before_sha256": null,
+          "sha256": "4a58c58580d3930dd38d7bc84241e79ccba82b98f123c750682ff668404eda13"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "b8348e2f7ec6bf02964117fcfac4c0560e08563cc1acea658617c907ed32c2d5",
+          "sha256": "e62c8505af1f42d9b9313b66422f0e80bde26345259db8e40f707c4940b19db2"
+        },
+        {
+          "path": "server/scripts/approved_face_queue.py",
+          "before_sha256": "97f2a414714c0ff3b208a2d226f4f81a0231f55e59b1cd948f49a3de9acd099b",
+          "sha256": "b1eee0c3f8638dad3279762fadc711f03cb593ea32d9a3d17035da56209bc65a"
+        },
+        {
+          "path": "server/scripts/build_approved_worker_package.py",
+          "before_sha256": "4684702dcea524ec6c0c9f816c05348efe822c5adb495ca99e3944e82d050606",
+          "sha256": "1c908d801a10797a701f71447bd13e2da948d9104dc8bd3aac3a2e6229432ec4"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8aacb773379d0fb668ec6feab91d75479dea4a5b8d41a8112e256f19d70f0afc",
+          "sha256": "2de752815610d4aca86c80255878e2f4a005e161832787f8a4f0b370a0b07f70"
+        },
+        {
+          "path": "server/scripts/initialize_original_deletions.py",
+          "before_sha256": "fd973efcf6bce790577a5eb91535f13c213dbd0836bc7f45ec03216b49fbde83",
+          "sha256": "e437ac43feeea4b37896d5c2c1c5e9ea88492480b2951cfd6977451e7db91b11"
+        },
+        {
+          "path": "server/scripts/qualify_approved_workers_windows.py",
+          "before_sha256": "895be85fb93458850ee2978afd544a9882155c8c1809892721738c71a4e45ef6",
+          "sha256": "031eee8111bfa60cf626fe0e46281dc86356cc52e8c8296e6e04094a87c5b88f"
+        },
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "before_sha256": "888bf774421694f10aed3893f835c2adc35a3e518960b9e78f7231c16abc9d66",
+          "sha256": "ad91a0b8e1c8467e3e24be6d4f2011d41fc21ad028b1fc7a6cdf343f204a3df0"
+        },
+        {
+          "path": "server/scripts/run_approved_face_worker.py",
+          "before_sha256": "4bdb2b2ae6e8ce1948b59b14de556675ed70f417e48b047debc065ab8e98a73b",
+          "sha256": "74044b4508936a55224daaeadd766b03aeefb6b36d43425ede122bd3d627a01e"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "before_sha256": "8c428c2588f9585c2a7b05840dc4dc59db66f3dc9b7e8dd3f7ab6c958c373a16",
+          "sha256": "738bddf534cc2719cecf9768b5ae1810cdcce73e0a5dcc3eb61b2d73ba3ac580"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "before_sha256": "a5e3a1c38275b28671b516e40282678b295524399e0373f8a53b25dea177b71c",
+          "sha256": "9004114e70d4b6b4b65cfc66c0c10d4d92d72f4a4af2f29be6cf86f04fb1d618"
+        },
+        {
+          "path": "server/scripts/run_approved_video_worker.py",
+          "before_sha256": "c19add245da563c93c0bdf84e240ff9194e5f92a111478b05124e9452375e9f8",
+          "sha256": "99490e6b1c48c2af5a78ae1d71f931448abae5700ac79ca9a3bbe99f6aa53c2e"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "before_sha256": "b0e6fed1f85fc3860ac3894b65b7aaf80f90b38ed2da04600406f475b66f61fa",
+          "sha256": "721e14b88f9428e96fbce2db95e7a6c8e0579c903ed165cd5e293c5e357b8299"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "8d87db6145d4b9a1c30dfe6ec636192c9b4ba6eedebbf28ddf47a1bc747570aa",
+          "sha256": "2e101309d7b4bcc5768c010ec8751bfd35b803260ac9f29ac35e74a8f531ac2d"
+        },
+        {
+          "path": "server/scripts/upgrade_original_deletion_journal.py",
+          "before_sha256": null,
+          "sha256": "ffb70a0b52c2d0f651c259b83be29800bdf62113ddab31759ed68e8d1407f25a"
+        },
+        {
+          "path": "server/tests/security/test_approved_cpu_worker.py",
+          "before_sha256": "d8797e2dcc136761f1b9224cae82594fa5b5b8c21e9aac904ab7b0d6df7fad86",
+          "sha256": "2df964ae6222e31fa2e3e27ec560ea1e191064bbccc430afb7886fad7ae0d5b5"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_queue.py",
+          "before_sha256": "91534c089d099f0f8cf675d0975a8392322898da0e7211f58315b7e6c4600056",
+          "sha256": "59d84b26ad52d8be3bed1bd2e76c0fd9176feeb05d0baa69f7006e2548650102"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_worker.py",
+          "before_sha256": "60a71223ea8851ddbcf3467387ad61e380506b8647136ee072f74a5dccc4bc3f",
+          "sha256": "a0af2c0d33f4d6b22739c1e9c703e45e42eff6ffe53985d01ebbec0f5281dc80"
+        },
+        {
+          "path": "server/tests/security/test_approved_image_embed_worker.py",
+          "before_sha256": "6513cfba196e3db77aed2232d3a9097faecfd0c4ef9591ba24f9582478224dab",
+          "sha256": "09b5ba79984ad07d125c9b47b9efadf6ec90e30547c61b15522d04d5f5d1679e"
+        },
+        {
+          "path": "server/tests/security/test_approved_native_canary_schema.py",
+          "before_sha256": "3dea37ac5e7a4d7e572f32e555f33d5f1030b0bd5e580b92a6e5f7e0aa32b7ae",
+          "sha256": "dbd8f209c7c11511301e4aca33bf0548641fe651871d76451b15356427831640"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_embed_worker.py",
+          "before_sha256": "38e020a08f3819c60be2cb1f367ba678c9336af2b16b7447022bcea9c6a38ea0",
+          "sha256": "2a1a4b7bd16b4ab4ec65eccb2ac4db861855f10fde86a431a79027318b43f4b8"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_worker.py",
+          "before_sha256": "857c9eee957cf7eabca6d591faa468b109fbf06d25fc0479edba1e2394d0ff10",
+          "sha256": "28e874ea96d7fc77b19cbb0a2262a5d32d45207cbdcc802f27b1162212060c8f"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_package.py",
+          "before_sha256": "c3a9f4715081152b67f86d09e4cd3c6cc38a774bb1acd123b502b094027c7f6b",
+          "sha256": "1f0790f9e40c4285401db7a8b73ef5ada8d5c1d45585b09f590b34e9ebe8d5ce"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_d1_compatibility.py",
+          "before_sha256": null,
+          "sha256": "f4c06d6c15a850dd9430f480006f35b4636b65027219032de0d5afa42aba18af"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "aedc6aad3e0c0e4503237037dd30ead00fa19b0d7b5198a174aa7e9a13610502",
+          "sha256": "ae67ee6fc8396b9137041bc64d79af157c1d4af82056b2baa301e1a02cac56da"
+        },
+        {
+          "path": "server/tests/security/test_family_note_deletion_boundaries.py",
+          "before_sha256": null,
+          "sha256": "c0de7d7de4fded6a1443fd42562d57c447ea7cba9fb13172b9562ca9ae2ecc61"
+        },
+        {
+          "path": "server/tests/security/test_family_note_deletions.py",
+          "before_sha256": null,
+          "sha256": "8e2ffcca78fd14594bb04e0096b71dbf8a96a5c46a08bc42240fd9ab404dd82e"
+        },
+        {
+          "path": "server/tests/security/test_family_note_erasure_api.py",
+          "before_sha256": null,
+          "sha256": "2842bacaca4331bbb33483c627feb5ab3979b41478aa623b7ab3c309f5ca312a"
+        },
+        {
+          "path": "server/tests/security/test_family_note_identity.py",
+          "before_sha256": null,
+          "sha256": "d7f49329911c86b16e1cf5bfc463695050a4992c015b2c823b388d0e36a5eb28"
+        },
+        {
+          "path": "server/tests/security/test_family_note_identity_migration.py",
+          "before_sha256": null,
+          "sha256": "086c62a2554d71bc8126f296305392cbe8cd406843f4d097d1c3106315ba657e"
+        },
+        {
+          "path": "server/tests/security/test_initialize_original_deletions.py",
+          "before_sha256": "f2a15aa28ac73764886c9dc4e4c3e7e4639065b72f7cc1d115f605a61e785eff",
+          "sha256": "54ba12a294cba417d7b408754ec391e89771d4f16e24cf39682242857d7a0ab6"
+        },
+        {
+          "path": "server/tests/security/test_memory_jobs.py",
+          "before_sha256": "ddcced801c5f736381b2752384829cb2efcf0601a082c631aec78864c9f42a3e",
+          "sha256": "329630801ae77870398492d9a3b2b500927f65ae590902b5522f85bf7da83109"
+        },
+        {
+          "path": "server/tests/security/test_orm_migrations.py",
+          "before_sha256": "2665b55ae907bf6b6e87b549a972060678337f41c09df08bc9de885b5d724fe1",
+          "sha256": "4e0d7215af17c04dcbe16021ee111d6ad932d2ab33d7a5b7c79a6374f93c6c70"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "b5eff2d33d12554ace8632dcb45c37b97e0ad40c6e93d68287b91f1716d8ca68",
+          "sha256": "a65c3394f7317b06be41efe56641b87051ba972b771c426c51444ff7063132eb"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "b99bd23b2b9680c4aeadc1705ed745d3ac6b357fb05f3d122ad63e7e4211b266",
+          "sha256": "4489c1630ef4822b9880447ea0f9c7cce6a5ea97aed5da9b0ce8bdf9af7db3a0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "366607b62ff1bd2e02efa63fa6b8aaeba0bbc6d65ce0fc8e434d4899658fb084",
+          "sha256": "f0a564486fbd4216c4f0709f1295f3032c2f152f4e866dc8935a9cb86c6672a6"
+        },
+        {
+          "path": "server/tests/security/test_upgrade_original_deletion_journal.py",
+          "before_sha256": null,
+          "sha256": "b637cdbe9b07935c58026c5dbccfcd4664cdad07ed5ad0e05665abaea641e7b1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "aa6d1af44664017164093c144433c4d94f577c6fb93eae08da5409317cabdf18",
+          "sha256": "f5d2ce7148ba4245173bd6139d0a88e5b492981d8bc3ccbf4929cf98f62b04c7"
+        }
+      ],
+      "server_routes_changed": true,
+      "migration_source_added": "d1f6a8c3e920",
+      "live_schema_changed": false,
+      "journal_upgraded": false,
+      "historical_notes_backfilled": false,
+      "erasure_enabled": false,
+      "api_deployed": false,
+      "workers_started": false,
+      "apk_published": false
     }
   ]
 }

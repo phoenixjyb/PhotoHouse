@@ -61,6 +61,14 @@ processing status for thirty days; they do not retain assistant recordings.
 Original deletion uses an external journal and verified recovery procedure.
 Operators must preserve that journal when restoring or changing a deployment.
 
+The default-off [D1 family-note erasure contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md)
+uses immutable note identity and recorded library lineage. Permanent erasure
+requires current owner rights in every historical scope and a version 2 journal
+append before secure primary deletion. It removes dependent generated editions
+and AI payloads while preserving independent original memories and manually
+saved story text. Ordinary story soft removal still retains history. The additive
+migration does not adopt old unbound notes, and startup never upgrades a journal.
+
 TV library publication is a separate contract. Private stories and recordings
 are not automatically added to an anonymous LAN catalog.
 

@@ -44,7 +44,7 @@ class ApprovedWorkerPackageTests(unittest.TestCase):
     def test_explicit_additive_targets_change_only_manifest_metadata(self):
         files = {name: ('synthetic ' + name).encode() for name in package.FILES}
         legacy = package.package_bytes('a' * 40, files)
-        for revision in ('b1d7e4a9c230', 'c2e6b8a1d490'):
+        for revision in ('b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'):
             current = package.package_bytes('a' * 40, files, schema_revision=revision)
             self.assertNotEqual(legacy, current)
             with self.subTest(revision=revision), \
@@ -74,7 +74,8 @@ class ApprovedWorkerPackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             for option, expected in (([], 'a0c9d2e4f817'),
                                      (['--schema-revision', 'b1d7e4a9c230'], 'b1d7e4a9c230'),
-                                     (['--schema-revision', 'c2e6b8a1d490'], 'c2e6b8a1d490')):
+                                     (['--schema-revision', 'c2e6b8a1d490'], 'c2e6b8a1d490'),
+                                     (['--schema-revision', 'd1f6a8c3e920'], 'd1f6a8c3e920')):
                 with self.subTest(expected=expected):
                     target = Path(temporary).resolve() / (expected + '.zip')
                     stdout = io.StringIO()

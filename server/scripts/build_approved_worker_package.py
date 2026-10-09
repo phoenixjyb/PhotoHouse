@@ -19,7 +19,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCHEMA_REVISION = 'a0c9d2e4f817'
-TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490')
+TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920')
 FILES = tuple(sorted([
     *('backend/app/' + name + '.py' for name in (
         '__init__', 'config', 'image_utils', 'vector_index',

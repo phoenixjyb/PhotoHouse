@@ -40,6 +40,9 @@ FILES = (
     'backend/app/access/discovery_transport.py',
     'backend/app/access/duplicates.py',
     'backend/app/access/face_jobs.py',
+    'backend/app/access/family_note_deletions.py',
+    'backend/app/access/family_note_identity.py',
+    'backend/app/access/family_note_identity_schema.py',
     'backend/app/access/library.py',
     'backend/app/access/library_organization.py',
     'backend/app/access/management_import.py',
@@ -136,6 +139,7 @@ FILES = (
     'backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
     'backend/migrations/versions/c4e7a2d9f1b3_versioned_face_embeddings.py',
     'backend/migrations/versions/c7f4a9e2b610_family_stories.py',
+    'backend/migrations/versions/d1f6a8c3e920_family_note_identities.py',
     'backend/migrations/versions/d2b7e4f6a901_album_drafts.py',
     'backend/migrations/versions/d4a7e3c9b821_family_annotations.py',
     'backend/migrations/versions/d8e5b2f7a904_library_management.py',
@@ -152,6 +156,9 @@ FILES = (
     'docs/security/MEMOIR_EDITORIAL_SCHEMA_APPLICATION.md',
     'docs/security/MEMORY_COMMUNITY_V1.md',
     'docs/security/REVIEWED_MEMOIR_EDITIONS_V1.md',
+    'docs/security/FAMILY_NOTE_IDENTITIES_V1.md',
+    'docs/security/FAMILY_NOTE_ERASURE_V2.md',
+    'docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md',
     'scripts/apply_access_schema.py',
     'scripts/apply_memory_collaboration_schema.py',
     'scripts/apply_memory_editorial_schema.py',
@@ -166,6 +173,7 @@ FILES = (
     'scripts/publish_android_update.py',
     'scripts/rehearse_fullsize_database.py',
     'scripts/replay_original_deletions.py',
+    'scripts/upgrade_original_deletion_journal.py',
     'scripts/run_memory_worker.py',
     'scripts/serve_windows_tts.py',
     'scripts/staging_app.py',
@@ -202,7 +210,7 @@ def package_bytes(commit, files):
     if set(files) != set(FILES):
         raise ValueError('Exact source allowlist required')
     manifest = {'format_version':1,'source_commit':commit,'artifact_kind':'source_only_not_deployed',
-        'migration_revision':'c2e6b8a1d490','dependencies_included':False,'private_configuration_included':False,
+        'migration_revision':'d1f6a8c3e920','dependencies_included':False,'private_configuration_included':False,
         'files':{name:hashlib.sha256(files[name]).hexdigest() for name in FILES}}
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_STORED) as archive:

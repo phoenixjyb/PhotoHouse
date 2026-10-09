@@ -20,6 +20,9 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/assistant_journal.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
+            'backend/app/access/family_note_deletions.py',
+            'backend/app/access/family_note_identity.py',
+            'backend/app/access/family_note_identity_schema.py',
             'backend/app/access/library_organization.py',
             'backend/app/access/memory_book_edition_contract.py',
             'backend/app/access/memory_book_edition_deletions.py',
@@ -60,6 +63,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/migrations/versions/a0c9d2e4f817_saved_story_contribution_refs.py',
             'backend/migrations/versions/b1d7e4a9c230_memory_book_editorial.py',
             'backend/migrations/versions/c2e6b8a1d490_reviewed_memoir_editions.py',
+            'backend/migrations/versions/d1f6a8c3e920_family_note_identities.py',
             'backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
             'backend/migrations/versions/d4a7e3c9b821_family_annotations.py',
             'backend/migrations/versions/e6b2f8a1c903_memory_stories.py',
@@ -67,6 +71,9 @@ class StagingPackageTests(unittest.TestCase):
             'backend/migrations/versions/f7c3a9d2e614_memory_collaboration.py',
             'docs/security/MEMOIR_EDITORIAL_SCHEMA_APPLICATION.md',
             'docs/security/REVIEWED_MEMOIR_EDITIONS_V1.md',
+            'docs/security/FAMILY_NOTE_IDENTITIES_V1.md',
+            'docs/security/FAMILY_NOTE_ERASURE_V2.md',
+            'docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md',
             'scripts/apply_memory_collaboration_schema.py',
             'scripts/apply_memory_editorial_schema.py',
             'scripts/apply_memory_sources_schema.py',
@@ -74,6 +81,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/initialize_original_deletions.py',
             'scripts/prepare_access_discovery_index.py',
             'scripts/replay_original_deletions.py',
+            'scripts/upgrade_original_deletion_journal.py',
             'scripts/run_memory_worker.py',
             'scripts/serve_windows_tts.py',
             'backend/app/main.py',
@@ -133,7 +141,7 @@ class StagingPackageTests(unittest.TestCase):
             for name in package.FILES:
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),manifest['files'][name])
             self.assertIn('backend/app/ui/photohouse-icon.svg',archive.namelist())
-            self.assertEqual(manifest['migration_revision'], 'c2e6b8a1d490')
+            self.assertEqual(manifest['migration_revision'], 'd1f6a8c3e920')
             self.assertIn('backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
                           archive.namelist())
             for name in ('backend/app/tasks.py', 'backend/app/gps_utils.py',

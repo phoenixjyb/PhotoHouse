@@ -14,10 +14,12 @@ import time
 from .media import MediaRuntime
 from .transport import AccessRuntime
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
+from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
-EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, EDITION_REVISION})
+EDITION_REVISIONS = frozenset({EDITION_REVISION, IDENTITY_REVISION})
+EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, *EDITION_REVISIONS})
 SOURCE_REFERENCE_REVISIONS = frozenset({REQUIRED_REVISION, *EDITORIAL_REVISIONS})
 COLLABORATION_REVISIONS = frozenset({'f7c3a9d2e614', *SOURCE_REFERENCE_REVISIONS})
 COMPATIBLE_REVISIONS = {'d4a7e3c9b821', 'e6b2f8a1c903', *COLLABORATION_REVISIONS}
@@ -36,7 +38,7 @@ REQUIRED_TABLES = frozenset({
     'access_original_deletion_state',
     'access_memory_contribution_refs',
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
-    EDITION_TABLE, SOURCES_TABLE,
+    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES,
 })
 
 
@@ -89,7 +91,9 @@ class ExistingDatabase:
                 raise RuntimeUnavailable('Access unavailable')
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required_tables = REQUIRED_TABLES
-            if versions[0][0] != EDITION_REVISION:
+            if versions[0][0] != IDENTITY_REVISION:
+                required_tables = required_tables - IDENTITY_TABLES
+            if versions[0][0] not in EDITION_REVISIONS:
                 required_tables = required_tables - {EDITION_TABLE, SOURCES_TABLE}
             if versions[0][0] not in EDITORIAL_REVISIONS:
                 required_tables = required_tables - {'access_memory_book_editorial', 'access_memory_book_editorial_refs'}
@@ -104,6 +108,13 @@ class ExistingDatabase:
                 required_tables = required_tables - {'access_memory_stories', 'access_memory_revisions'}
             if not required_tables <= tables:
                 raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] == IDENTITY_REVISION:
+                from .family_note_identity import verify_family_note_identity_schema
+                from .transport import TransportError
+                try:
+                    verify_family_note_identity_schema(connection)
+                except TransportError:
+                    raise RuntimeUnavailable('Access unavailable') from None
             key = connection.execute('SELECT typeof(secret),length(secret) FROM access_admission_key WHERE id=1').fetchone()
             if key != ('blob', 32):
                 raise RuntimeUnavailable('Access unavailable')
@@ -149,6 +160,7 @@ class RuntimeConfiguration:
     memory_generation_enabled: bool = False
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
+    family_note_erasure_enabled: bool = False
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
@@ -189,9 +201,11 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        if type(self.family_note_erasure_enabled) is not bool:
+            raise ValueError('Explicit family note erasure opt-in required')
         if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
             raise ValueError('Deletion journal and namespace must be selected together')
-        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and self.original_deletion_journal_path is None:
+        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
             raise ValueError('Original intake and generation require a deletion journal')
         original_deletions = None
         if self.original_deletion_journal_path is not None:
@@ -205,6 +219,8 @@ class RuntimeConfiguration:
                 raise ValueError('Deletion journal must be separate from runtime data')
             from .original_deletions import OriginalDeletionJournal
             original_deletions = OriginalDeletionJournal(selected, self.original_deletion_namespace)
+        if self.family_note_erasure_enabled:
+            original_deletions.require_family_format()
         database = ExistingDatabase(self.database, original_deletions=original_deletions)
         access = AccessRuntime(database, self.web_origin, clock=clock)
         media = MediaRuntime(self.original_roots, self.derived_root, self.photo_cache)
@@ -270,6 +286,7 @@ class RuntimeConfiguration:
                           memory_generation_enabled=self.memory_generation_enabled,
                           memory_editorial_enabled=self.memory_editorial_enabled,
                           memory_editions_enabled=self.memory_editions_enabled,
+                          family_note_erasure_enabled=self.family_note_erasure_enabled,
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
                           update_root=self.update_root)

@@ -58,8 +58,8 @@ def test_schema_and_eligibility_only_supported_upload_faces(tmp_path):
 def test_schema_gate_keeps_pre_policy_revision_supported(tmp_path):
     path = db_fixture(tmp_path)
     db = worker.connect(path, readonly=False)
-    assert worker.REVISIONS == {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490"}
-    for revision in ('a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'):
+    assert worker.REVISIONS == {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920"}
+    for revision in ('a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'):
         db.execute('UPDATE alembic_version SET version_num=?', (revision,))
         assert worker.schema(db) == revision
     db.execute("UPDATE alembic_version SET version_num='unknown'")

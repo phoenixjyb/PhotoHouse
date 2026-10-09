@@ -134,6 +134,8 @@ class ClosedBoundary:
             return True
         if method in {'PUT', 'DELETE'} and re.fullmatch(r'/stories/[0-9a-f-]{36}', path):
             return True
+        if method == 'DELETE' and re.fullmatch(r'/stories/[0-9a-f-]{36}/original', path):
+            return True
         if method == 'GET' and re.fullmatch(r'/stories/[0-9a-f-]{36}/history', path):
             return True
         if method == 'POST' and path == '/story-workspace/preview': return True
