@@ -33,6 +33,24 @@ started by this repair. The unchanged API route suite was not rerun locally
 because the current system Python lacks Alembic; its earlier profile result
 above remains bound to that source snapshot.
 
+## Hosted source delivery (October 10)
+
+PR #13 merged after the exact `2f17ed9` source passed all three hosted jobs:
+936 API tests with 558 separately reported subtests, the generated demo,
+92 standard-library tool tests, 812 Android JVM tests with lint and both
+unconfigured debug builds, and the Windows private-reader cohort. These are
+source checks; they do not update the installed API, sign a phone release,
+publish OTA or establish family/device acceptance.
+
+## Generated Windows CPU profile
+
+The optional [Windows CPU profile](WINDOWS_CPU_CHECKS.md) passed 65 tests and
+25 subtests locally on macOS. Its new hosted Windows job is a separate gate and
+does not replace qualification of the private installed runtime.
+The first hosted run exposed Windows event-loop setup and POSIX mode-bit
+assumptions in test fixtures; the [profile notes](WINDOWS_CPU_CHECKS.md) explain
+the repair and the separate installed-directory ACL gate.
+
 ## Web assistant transcript acceptance (October 10)
 
 The focused generated-browser journey passed six scenario groups covering
@@ -49,6 +67,52 @@ The complete twelve-suite Web profile also passed. Its transcript suite preceded
 the final detected-language label correction; the corrected fixture then passed
 separately with six scenario groups and fresh inspected bilingual captures.
 These overlapping checks are not combined into an additional total.
+
+## Reader filmstrip and microphone startup checks
+
+The final expanded Web profile passed all fourteen suites against unchanged
+hashes of its five UI assets. The existing story-workspace journey also passed.
+An earlier reader check exposed fixture timing around a lazy editor thumbnail;
+it now waits for observable completion before snapshotting requests. A later
+synthetic check reproduced an actual stale-preview error that added an
+unavailable message to another story. Current image and video callbacks now
+check reader ownership and attachment, and the final profile includes that
+regression. Failed earlier logs remain separate from the final passing run.
+
+The final focused capture fixture passed seven scenario groups, including stale
+permission results, real pointer hold/release, immediate cancellation of held
+startup, active capture cancellation and backgrounding while resume is held.
+The note fixture also passed held text/audio saves, exact-draft clearing,
+same-mutation retries, detached-dialog rejection, invalid-duration refusal and
+maximum-duration completion during startup, plus its twelve existing history
+and note scenarios. The memory-community UI contract passed eight groups. These
+overlap the broader browser profile and are not added together as a test total.
+The reader
+fixture covers 24 frames in six chapters, explicit navigation, failed previews,
+detached controls and logout. Original-resolution Chinese and English renders
+were inspected at a 390 px physical viewport with 150% effective browser zoom
+(260 CSS px at 1.5 device scale). These use generated media and audio APIs;
+physical microphone, served UI and family acceptance remain separate.
+
+The phone `SavedMemoryReaderNavigationUiTest` passed four generated API 36
+journeys together with `lintDebug`: Chinese/English 150% text, frame/chapter
+navigation, revision/order/library/account reset and removal of an eligible
+item without a revision change. Both chapter buttons had equal full/visible
+48 dp heights; both localized labels remained within the dialog window. An
+earlier Compose-surface screenshot cropped the bottom of the Chinese capture;
+the fixture now captures the full display and checks unclipped versus visible
+bounds. The final bilingual full-display renders were inspected. Its preview
+adapter returns no family images, and this is not signed-release or physical
+phone acceptance.
+
+The TV library-recovery journey passed with `lintDebug` on the generated
+landscape emulator. Chinese/English 150% text renders were inspected: the
+recovery message, Retry button, library controls and photo card remain visible.
+The fixture checks full display bounds, a grid viewport of at least 120 dp,
+preserved filters after two failures, and remote navigation from the recovered
+selected library to a photo and its viewer. In compact landscape with enlarged
+text, the decorative featured image yields space to browsing. This qualifies
+TV v30 source; signing, OTA and the physical projector remain separate gates.
 
 ## D1 family-note lifecycle qualification
 

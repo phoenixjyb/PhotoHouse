@@ -227,7 +227,8 @@ class DatabasePreparationTests(unittest.TestCase):
         with patch.object(cli, 'copy_database', side_effect=fail_output):
             self.assertEqual(self.backup()[0], 2)
         self.assertTrue(self.output.exists())
-        self.assertEqual(self.output.stat().st_mode & 0o777, 0o600)
+        if os.name != 'nt':
+            self.assertEqual(self.output.stat().st_mode & 0o777, 0o600)
         self.output = self.root / 'another.sqlite'
         with patch('sys.stdout.write', side_effect=BrokenPipeError), redirect_stderr(io.StringIO()):
             code = cli.main(['backup', '--database', str(self.source), '--out', str(self.output)])

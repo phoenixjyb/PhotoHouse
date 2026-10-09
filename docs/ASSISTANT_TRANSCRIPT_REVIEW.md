@@ -32,6 +32,16 @@ transcription is pending. Failed, malformed or tracking-disabled responses
 cannot provide a tracked command parent. Changing UI language during active work
 relabels the temporary conversation trail without moving focus or its scroll.
 
+Recording startup also has its own current-attempt token. Permission wait is
+labelled as opening the microphone; the recording label appears only after
+setup. A stale permission result stops its tracks before creating an audio
+context. Cancellation releases the current resources while context startup is
+still unresolved. Stale completion cannot alter a newer attempt or submit audio.
+Releasing a hold before recording starts discards the attempt and asks the user
+to hold again. The generated capture fixture exercises an actual browser mouse
+hold and release as well as explicit cancellation; see the
+[recording lifecycle](WEB_RECORDING_LIFECYCLE.md).
+
 The client validates the generated mono 16 kHz PCM WAV header before sending.
 The header label check uses numeric byte offsets; a previous indexing error
 rejected valid generated recordings. Browser fixtures use generated silence and

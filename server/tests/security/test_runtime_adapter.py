@@ -3,6 +3,7 @@ from contextlib import closing
 import importlib
 from pathlib import Path
 import sqlite3
+import socket
 import tempfile
 import unittest
 import uuid
@@ -13,6 +14,7 @@ from app.access.runtime import EDITORIAL_REVISION, EDITION_REVISION, ExistingDat
 from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES, sqlite_family_note_identity_contract
 from app.main import create_app
 from fastapi.testclient import TestClient
+from anyio.from_thread import start_blocking_portal
 from alembic import command
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
@@ -42,12 +44,28 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.originals.mkdir();self.derived.mkdir()
         self.settings=RuntimeConfiguration(self.path,'https://photohouse.test',(self.originals,),self.derived)
         self.app=self.settings.build_app(clock=lambda:NOW)
-        self.client=TestClient(self.app,base_url='https://photohouse.test',client=('192.0.2.40',23456))
+        # Windows constructs an internal socket pair when its event loop starts.
+        # Initialize only that test transport before denying all application I/O;
+        # every client below reuses the portal while the guards remain active.
+        self.portal=self.enterContext(start_blocking_portal())
+        self.client=self.new_client(self.app,base_url='https://photohouse.test',client=('192.0.2.40',23456))
         self.client.headers['Sec-Fetch-Site'] = 'same-origin'
         self.addCleanup(self.client.close)
         for target in ('socket.socket.connect','socket.socket.bind','subprocess.Popen','os.system'):
             guard=patch(target,side_effect=AssertionError('External I/O forbidden'))
             guard.start();self.addCleanup(guard.stop)
+
+    def new_client(self, app, **kwargs):
+        client=TestClient(app, **kwargs)
+        client.portal=self.portal
+        return client
+
+    def test_application_socket_operations_remain_forbidden(self):
+        with socket.socket() as connection:
+            for operation in (connection.bind, connection.connect):
+                with self.assertRaisesRegex(AssertionError, 'External I/O forbidden'):
+                    operation(('127.0.0.1', 0))
+        self.assertEqual(self.client.get('/auth/session',headers=self.headers()).status_code,200)
 
     def headers(self):
         return {'Authorization':'Bearer '+library_fixture.LibraryReadTests.member_token}
@@ -120,8 +138,8 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertFalse(settings.memory_generation_enabled)
         self.assertFalse(settings.memory_editorial_enabled)
         self.assertFalse(settings.memory_editions_enabled)
-        with TestClient(settings.build_app(clock=lambda: NOW), base_url='https://photohouse.test',
-                        client=('192.0.2.40', 23456)) as client:
+        with closing(self.new_client(settings.build_app(clock=lambda: NOW), base_url='https://photohouse.test',
+                        client=('192.0.2.40', 23456))) as client:
             response = client.post('/story-workspace/related-media?library=family-a',
                                    json={'asset_ids': '101', 'before_id': ''},
                                    headers={'Authorization': 'Bearer ' + token, 'Sec-Fetch-Site': 'same-origin'})
@@ -280,7 +298,7 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.get('/auth/session',headers=self.headers()).status_code,503)
 
     def test_http_and_host_headers_cannot_supply_configuration_or_proxy_trust(self):
-        with TestClient(self.app,base_url='http://photohouse.test') as client:
+        with closing(self.new_client(self.app,base_url='http://photohouse.test')) as client:
             response=client.get('/assets?library=family-a',headers={**self.headers(),'X-Forwarded-Proto':'https'})
             self.assertEqual(response.status_code,400)
         self.assertEqual(self.client.get('/assets?library=family-a',headers={**self.headers(),'Host':'evil.test'}).status_code,400)

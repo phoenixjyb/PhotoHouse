@@ -60,8 +60,15 @@ internal fun SavedMemoryStoriesDialog(
     val readerAudio = remember(liveState.session?.account_id, reading.library, story?.id) { ReaderAudioCoordinator() }
     val themeScrollState = key(reading.library) { rememberScrollState() }
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
-    var selectedFrame by remember(story?.id, reading.selectedChapter) {
-        mutableStateOf(chapter?.assetIds?.firstOrNull())
+    val chapterFrameItems = remember(story?.id, story?.revision, chapter?.id, chapter?.assetIds, story?.items) {
+        val availableIds = story?.items?.mapTo(hashSetOf()) { it.asset.id }.orEmpty()
+        chapter?.assetIds.orEmpty().distinct().filter(availableIds::contains)
+    }
+    var selectedFrame by remember(
+        liveState.generation, liveState.session?.account_id, reading.library, story?.id, story?.revision,
+        reading.selectedChapter, chapter?.id, chapter?.assetIds, chapterFrameItems,
+    ) {
+        mutableStateOf(chapterFrameItems.firstOrNull())
     }
     var sourcesExpanded by remember(liveState.session?.account_id, reading.library, story?.id, story?.revision, chapter?.id) { mutableStateOf(false) }
     var chaptersExpanded by remember(liveState.session?.account_id, reading.library, story?.id, story?.revision) { mutableStateOf(false) }
@@ -104,6 +111,25 @@ internal fun SavedMemoryStoriesDialog(
         if (!matchesReader(current)) return null
         return current
     }
+    fun isCurrentChapter(current: SavedMemoryStoriesReading): Boolean {
+        val compositionStory = story ?: return false
+        val compositionChapter = chapter ?: return false
+        val currentStory = current.detail ?: return false
+        val currentChapter = currentStory.chapters.getOrNull(current.selectedChapter) ?: return false
+        val availableIds = currentStory.items.mapTo(hashSetOf()) { it.asset.id }
+        val currentFrameItems = currentChapter.assetIds.distinct().filter(availableIds::contains)
+        return current.library == reading.library && currentStory.id == compositionStory.id &&
+            currentStory.revision == compositionStory.revision && current.selectedChapter == reading.selectedChapter &&
+            currentChapter.id == compositionChapter.id && currentChapter.assetIds == compositionChapter.assetIds &&
+            currentFrameItems == chapterFrameItems
+    }
+    fun selectChapter(index: Int) {
+        val current = currentReading() ?: return
+        val currentStory = current.detail ?: return
+        if (!isCurrentChapter(current) || current.framesBusy || index !in currentStory.chapters.indices ||
+            index == current.selectedChapter) return
+        onChapter(index)
+    }
     fun hasUnfinishedPrivateWork(current: SavedMemoryStoriesReading): Boolean {
         val community = current.community ?: return false
         val dictation = community.dictation?.state?.value
@@ -126,8 +152,8 @@ internal fun SavedMemoryStoriesDialog(
             SavedMemoryExitDestination.OPEN_VIDEO,
             SavedMemoryExitDestination.OPEN_MOMENT -> {
                 val target = mediaId ?: return
-                if (selectedFrame != target || current.detail?.items?.any { it.asset.id == target } != true ||
-                    current.detail?.chapters?.getOrNull(current.selectedChapter)?.assetIds?.contains(target) != true) return
+                if (!isCurrentChapter(current) || selectedFrame != target || target !in chapterFrameItems ||
+                    current.detail?.items?.any { it.asset.id == target } != true) return
                 onOpenAsset(target)
             }
         }
@@ -137,8 +163,8 @@ internal fun SavedMemoryStoriesDialog(
         if (destination in setOf(SavedMemoryExitDestination.OPEN_PHOTO, SavedMemoryExitDestination.OPEN_VIDEO,
                 SavedMemoryExitDestination.OPEN_MOMENT)) {
             val target = mediaId ?: return
-            if (current.detail?.items?.any { it.asset.id == target } != true ||
-                current.detail?.chapters?.getOrNull(current.selectedChapter)?.assetIds?.contains(target) != true) return
+            if (!isCurrentChapter(current) || target !in chapterFrameItems ||
+                current.detail?.items?.any { it.asset.id == target } != true) return
         }
         val action = { completeExit(destination, mediaId) }
         if (hasUnfinishedPrivateWork(current)) {
@@ -147,9 +173,10 @@ internal fun SavedMemoryStoriesDialog(
             confirmDiscard = true
         } else action()
     }
-    val selectedMedia = story?.items?.firstOrNull { it.asset.id == selectedFrame }
-    val heroBytes = reading.hero.takeIf { reading.heroAssetId == selectedFrame }
-        ?: selectedFrame?.let(reading.frames::get)
+    val selectedMedia = story?.items?.firstOrNull { it.asset.id == selectedFrame && it.asset.id in chapterFrameItems }
+    val heroBytes = selectedMedia?.let {
+        reading.hero.takeIf { reading.heroAssetId == selectedFrame } ?: selectedFrame?.let(reading.frames::get)
+    }
     val heroBitmap = remember(heroBytes) { heroBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
 
     Dialog(onDismissRequest = { requestExit(SavedMemoryExitDestination.CLOSE) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -214,8 +241,7 @@ internal fun SavedMemoryStoriesDialog(
                                         Column(Modifier.fillMaxWidth().testTag("saved-memory-chapter-directory"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             story.chapters.forEachIndexed { index, item ->
                                                 TextButton(onClick = {
-                                                    if (currentReading() == null) return@TextButton
-                                                    onChapter(index)
+                                                    selectChapter(index)
                                                     chaptersExpanded = false
                                                 }, enabled = !reading.framesBusy,
                                                     colors = ButtonDefaults.textButtonColors(
@@ -267,17 +293,35 @@ internal fun SavedMemoryStoriesDialog(
                                         }
                                         if (editorExpanded) SavedMemoryChapterContributionLinkEditor(store, reading, chapter, zh)
                                     }
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(t("Moments", "故事片段"), style = MaterialTheme.typography.labelLarge)
-                                        if (reading.framesBusy) LinearProgressIndicator(Modifier.width(72.dp))
+                                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(t("Moments", "故事片段"), style = MaterialTheme.typography.labelLarge)
+                                            if (reading.framesBusy) LinearProgressIndicator(Modifier.width(72.dp))
+                                        }
+                                        val selectedPosition = chapterFrameItems.indexOf(selectedFrame).takeIf { it >= 0 }
+                                        Text(
+                                            selectedPosition?.let { t("Moment ${it + 1} of ${chapterFrameItems.size}", "片段 ${it + 1}/${chapterFrameItems.size}") }
+                                                ?: t("No moments in this chapter", "本章暂无片段"),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.testTag("saved-memory-frame-position"),
+                                        )
                                     }
                                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.testTag("saved-memory-frames")) {
-                                        items(chapter.assetIds, key = { it }) { assetId ->
+                                        items(chapterFrameItems, key = { it }) { assetId ->
                                             val media = story.items.firstOrNull { it.asset.id == assetId }
                                             val bytes = reading.frames[assetId]
                                             val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
-                                            Card(Modifier.width(112.dp).clickable { selectedFrame = assetId; onSelectFrame(assetId) }
-                                                .testTag("saved-memory-frame-$assetId"), colors = CardDefaults.cardColors(
+                                            Card(Modifier.width(112.dp).heightIn(min = 44.dp).selectable(
+                                                selected = selectedFrame == assetId,
+                                                role = Role.RadioButton,
+                                                onClick = {
+                                                    val current = currentReading() ?: return@selectable
+                                                    if (!isCurrentChapter(current) || assetId !in chapterFrameItems ||
+                                                        current.detail?.items?.any { it.asset.id == assetId } != true) return@selectable
+                                                    selectedFrame = assetId
+                                                    onSelectFrame(assetId)
+                                                },
+                                            ).testTag("saved-memory-frame-$assetId"), colors = CardDefaults.cardColors(
                                                     containerColor = if (selectedFrame == assetId) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
                                                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                                     if (bitmap != null) Image(bitmap, null, Modifier.fillMaxWidth().height(68.dp), contentScale = ContentScale.Crop)
@@ -320,12 +364,25 @@ internal fun SavedMemoryStoriesDialog(
                                     if (store?.memoryCommunityAvailable == true) MemoryCommunityPanel(store, reading, zh)
                                 }
                             }
-                            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedButton(onClick = { onChapter(reading.selectedChapter - 1) }, enabled = reading.selectedChapter > 0,
-                                    modifier = Modifier.testTag("saved-memory-previous")) { Text(t("Previous", "上一章")) }
-                                Text(t("Chapter ${reading.selectedChapter + 1} of ${story.chapters.size}", "第 ${reading.selectedChapter + 1}/${story.chapters.size} 章"))
-                                Button(onClick = { onChapter(reading.selectedChapter + 1) }, enabled = reading.selectedChapter < story.chapters.lastIndex,
-                                    modifier = Modifier.testTag("saved-memory-next")) { Text(t("Next", "下一章")) }
+                            Column(Modifier.fillMaxWidth().padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    t("Chapter ${reading.selectedChapter + 1} of ${story.chapters.size}", "第 ${reading.selectedChapter + 1}/${story.chapters.size} 章"),
+                                    modifier = Modifier.fillMaxWidth().testTag("saved-memory-chapter-position"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    OutlinedButton(onClick = { selectChapter(reading.selectedChapter - 1) },
+                                        enabled = reading.selectedChapter > 0 && !reading.framesBusy,
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("saved-memory-previous")) {
+                                        Text(t("Previous", "上一章"), modifier = Modifier.testTag("saved-memory-previous-label"))
+                                    }
+                                    Button(onClick = { selectChapter(reading.selectedChapter + 1) },
+                                        enabled = reading.selectedChapter < story.chapters.lastIndex && !reading.framesBusy,
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("saved-memory-next")) {
+                                        Text(t("Next", "下一章"), modifier = Modifier.testTag("saved-memory-next-label"))
+                                    }
+                                }
                             }
                         }
                         else -> {

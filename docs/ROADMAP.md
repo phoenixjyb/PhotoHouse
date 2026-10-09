@@ -1,5 +1,25 @@
 # Product roadmap
 
+## October 10 source delivery and reader refinement
+
+PR #13 is merged after its pinned API, Android and Windows private-reader jobs
+passed. Its conversation recovery, explicit transcript review, same-day story
+picker and lifecycle fixes are reviewed source. Delivery of those exact changes
+to the household API and signed phone remains a separate operation.
+
+The next reader slice adds a protected Web filmstrip and scope-bound phone frame
+selection, with localized position labels, enlarged-text chapter controls and
+explicit navigation. See [reader behavior](STORY_READER_NAVIGATION.md). Browser
+microphone startup also rejects stale permission/context completions before
+showing a recording or submitting audio. A new generated Windows CPU CI profile
+checks database and source-package portability without private runtime data.
+
+Current priorities remain: deliver the qualified source; restore installed
+media processing and Home TV with exact operation checks; evaluate real family
+voice turns; then qualify provider-backed title/story quality and persisted
+visual identity before enabling similarity lookup. More source tests do not
+close those installed-service or human-quality gates.
+
 ## October 9 development home and next slice
 
 The [provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and offline model

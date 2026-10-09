@@ -41,10 +41,18 @@ A local ASR/model adapter is configurable. Recognition is not a submitted comman
 
 The [Web assistant](ASSISTANT_TRANSCRIPT_REVIEW.md) and
 [phone assistant's transcript review](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
-preserves typed text while ASR completes. Only explicit Add accepts the exact
+preserve typed text while ASR completes. Only explicit Add accepts the exact
 current reviewed transcript and its successful receipt into the editable command draft.
 Discard clears that link. Recording, recognition and review block Send until
 the user resolves the pending input; overflow preserves both texts.
+
+Web recording startup is bound to the current account/library and view attempt.
+A delayed microphone permission result stops its tracks before creating an
+audio context when that scope has changed. Context startup and completion
+also recheck ownership before exposing a recording or submitting audio. An
+abort signal releases capture resources while startup is still unresolved;
+late completion cannot restart capture. Permission wait and active recording
+have distinct visible states. See the [recording lifecycle](WEB_RECORDING_LIFECYCLE.md).
 
 The Web [recent-turn list](ASSISTANT_TURN_TRAIL.md) keeps eight successful
 exchanges in page memory. It supplies no hidden chat history to the model;

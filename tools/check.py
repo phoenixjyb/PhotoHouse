@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run explicit API, memoir, optional Web browser, or Android development checks."""
+"""Run explicit API, memoir, Windows CPU, optional Web or Android checks."""
 import argparse
 import os
 from pathlib import Path
@@ -56,6 +56,11 @@ MEMORY_TESTS = (
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_memory_jobs.py", "test_memory_narrative.py", "test_memory_processing.py", "test_memory_transport.py",
 )
+WINDOWS_CPU_TESTS = (
+    "test_database_preparation.py", "test_fullsize_preparation.py",
+    "test_runtime_adapter.py", "test_staging_package.py",
+    "test_approved_worker_package.py",
+)
 ANDROID_TASKS = (
     ":core:test", ":protocol:test", ":live-core:test", ":home-core:test",
     ":playback-core:test", ":story-fixture-core:test",
@@ -66,6 +71,7 @@ WEB_TESTS = (
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
     "server/tests/security/test_assistant_turn_trail_browser.cjs",
     "server/tests/security/test_assistant_transcript_browser.cjs",
+    "server/tests/security/test_assistant_capture_scope_browser.cjs",
     "server/tests/security/test_memory_book_editorial_browser.cjs",
     "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
     "server/tests/security/test_memory_book_edition_browser.cjs",
@@ -75,6 +81,7 @@ WEB_TESTS = (
     "server/tests/security/test_memory_conversation_navigation_browser.cjs",
     "server/tests/security/test_story_titles_browser.cjs",
     "server/tests/security/test_story_related_media_browser.cjs",
+    "server/tests/security/test_story_reader_frames_browser.cjs",
 )
 
 
@@ -108,6 +115,11 @@ def api_tests(names, include_runtime_paths=False):
 def api():
     api_tests(API_TESTS, include_runtime_paths=True)
     run([sys.executable, "examples/generated-demo/check_demo.py"], env=cpu_environment())
+
+
+def windows_cpu():
+    """Generated database/runtime/package contracts, without installed services."""
+    api_tests(WINDOWS_CPU_TESTS)
 
 
 def memory():
@@ -169,7 +181,7 @@ def web():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("profile", choices=("api", "memory", "android", "web", "all"))
+    parser.add_argument("profile", choices=("api", "memory", "windows-cpu", "android", "web", "all"))
     choice = parser.parse_args().profile
     if choice in ("api", "all"):
         api()
@@ -179,3 +191,5 @@ if __name__ == "__main__":
         android()
     if choice == "web":
         web()
+    if choice == "windows-cpu":
+        windows_cpu()
