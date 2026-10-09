@@ -57,14 +57,17 @@ python3.12 -m venv .venv
 .venv/bin/python tools/check.py api
 ```
 
-The latest supported CPU run passed **699 tests and 400 independently reported subtests**
+The latest supported CPU run passed **714 tests and 419 independently reported subtests**
 on October 9, 2026, plus the generated-data demo. It used the existing macOS
 arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
 fresh dependency installation. The private model manifest contributes 19 tests
 and 39 subtests for declared identities, contracts, rollback and private-file
-handling. The 67 standalone tooling tests include four deployment doctor checks;
+handling; the explicit assistant/memory bridge adds 15 tests and 19 subtests.
+The 70 standalone tooling tests include seven deployment doctor checks;
 these counts are separate from the API profile. No model runtime or quality is
-qualified by these checks. The earlier 680/361 profile predates the manifest.
+qualified by these checks. The isolated extracted API package imports both the
+manifest and bridge modules without a checkout fallback. The earlier 699/400
+profile predates the bridge, and the 680/361 profile predates the manifest.
 The earlier 523/215 profile used a fresh
 hash-locked environment with 27 applicable CPU packages and remains historical
 evidence, along with the pytest 8.4.1 run and the 522/211, 498/197, 445-test
