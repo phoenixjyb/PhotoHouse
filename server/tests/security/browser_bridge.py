@@ -292,6 +292,10 @@ try:
                     db.execute('UPDATE access_memory_stories SET content=?,revision=revision+1 WHERE id=?',
                                (json.dumps(content),ident))
                     db.commit()
+            elif scenario=='related-day-seed':
+                fixture.mutate("UPDATE assets SET taken_at='2025-06-01T23:30:00+08:00' WHERE id=101")
+                fixture.mutate("UPDATE assets SET taken_at=NULL,path='private-synthetic/微信图片_20250601.jpg' WHERE id=102")
+                fixture.mutate("UPDATE assets SET mime='video/mp4',duration_sec=12 WHERE id=1129")
             elif scenario=='many-assets':
                 # Grows family-a past one gallery page at page_size 24. taken_at keeps
                 # 102/101 ahead of the new rows, so page 1 order is unchanged.

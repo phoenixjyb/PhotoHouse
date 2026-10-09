@@ -1,6 +1,6 @@
 'use strict';
 /* Library-private editorial workspace; saved drafts use protected APIs only. */
-window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, savedRequest, community, titleRequest}) => {
+window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, savedRequest, community, titleRequest, relatedRequest}) => {
   const $ = id => document.getElementById(id);
   const themes = ['everyday','trip','growing_up','birthday','grandparents','year_in_review'];
   const labels = {
@@ -184,6 +184,75 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const message = key => {$('story-workspace-status').textContent=key?text(key):'';};
   const idOK = id => typeof id==='string' && /^[1-9][0-9]{0,18}$/.test(id);
   const validText = (s,max) => typeof s==='string' && Array.from(s).length<=max && !/[\u0000\uD800-\uDFFF]/u.test(s);
+  Object.assign(labels.zh,{relatedDayHeading:'同一天的更多瞬间',relatedDayHelp:'按记录的拍摄日期查找，不代表属于同一个活动。由你选择要加入的画面。',relatedDayFind:'查找同一天的画面',relatedDayMore:'继续查找',relatedDayWorking:'正在查找同一天的画面…',relatedDayEmpty:'没有找到其他画面。没有拍摄日期时，不会使用文件名或上传日期推测。',relatedDayFailed:'暂时无法查找，现有选择和草稿仍保留。',relatedDayAdd:'加入故事',relatedDayAdded:'已加入',relatedDayMatch:'同一记录拍摄日 · 请核对'});
+  Object.assign(labels.en,{relatedDayHeading:'More moments from the same day',relatedDayHelp:'Find by recorded capture date. Sharing a day does not establish a shared activity; choose which moments belong.',relatedDayFind:'Find moments from these days',relatedDayMore:'Keep looking',relatedDayWorking:'Finding moments from the same recorded days…',relatedDayEmpty:'No other moments found. Missing capture dates are never inferred from filenames or upload dates.',relatedDayFailed:'Could not find moments. Your selection and draft are kept.',relatedDayAdd:'Add to story',relatedDayAdded:'Added',relatedDayMatch:'Same recorded capture day · review'});
+  let relatedEpoch=0,relatedView=null;
+  function clearRelated(){relatedEpoch++;relatedView=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
+  function relatedCurrent(view){return relatedView===view&&current(view.ticket,view.owner)&&$('story-workspace').open;}
+  function relatedRecordedDay(value){
+    if(typeof value!=='string'||value.length>128)return null;
+    const parts=/^([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[T ]([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.[0-9]{1,6})?)?(?:Z|[+-]([0-9]{2}):?([0-9]{2}))?)?$/.exec(value);
+    if(!parts)return null;
+    const day=parts[1];
+    if(day.startsWith('0000')||!Number.isFinite(Date.parse(day+'T00:00:00Z'))||new Date(day+'T00:00:00Z').toISOString().slice(0,10)!==day)return null;
+    if(parts[2]!==undefined&&(Number(parts[2])>23||Number(parts[3])>59||Number(parts[4]||0)>59||Number(parts[5]||0)>23||Number(parts[6]||0)>59))return null;
+    return day;
+  }
+  function validRelated(value,seeds,owner,before){
+    if(!value||Object.keys(value).sort().join(',')!=='has_more,items,library_id,needs_review,next_before_id,recorded_days,seed_asset_ids,version'||value.version!==1||value.library_id!==owner.library||value.needs_review!==true||typeof value.has_more!=='boolean'||
+      JSON.stringify(value.seed_asset_ids)!==JSON.stringify(seeds)||!Array.isArray(value.recorded_days)||value.recorded_days.length>24||
+      !value.recorded_days.every(day=>typeof day==='string'&&day.length===10&&relatedRecordedDay(day)===day)||
+      JSON.stringify(value.recorded_days)!==JSON.stringify([...new Set(value.recorded_days)].sort())||
+      !Array.isArray(value.items)||value.items.length>20||new Set(value.items.map(item=>item?.id)).size!==value.items.length||
+      !(value.has_more?idOK(value.next_before_id)&&BigInt(value.next_before_id)<2n**63n:value.next_before_id===null))return false;
+    let prior=before?BigInt(before):2n**63n;
+    for(const item of value.items){
+      if(!item||!idOK(item.id)||seeds.includes(item.id)||BigInt(item.id)>=prior||!['image','video'].includes(item.kind)||
+        item.match_reason!=='same_recorded_capture_day'||!relatedRecordedDay(item.taken_at)||
+        !value.recorded_days.includes(relatedRecordedDay(item.taken_at))||item.thumbnail_url!==`/assets/${item.id}/thumbnail?library=${encodeURIComponent(owner.library)}`)return false;
+      prior=BigInt(item.id);
+    }
+    return !value.has_more||(!before||BigInt(value.next_before_id)<BigInt(before))&&(!value.items.length||BigInt(value.next_before_id)<=prior);
+  }
+  function renderRelated(){
+    const view=relatedView,root=$('story-related-items');root.replaceChildren();
+    $('story-related-find').disabled=frozen()||!selected.size||Boolean(view?.busy);
+    $('story-related-more').hidden=!view?.result?.has_more;
+    $('story-related-more').disabled=frozen()||Boolean(view?.busy)||!view?.seeds.every(id=>selected.has(id));
+    if(!view)return;
+    $('story-related-status').textContent=text(view.busy?'relatedDayWorking':view.error?'relatedDayFailed':view.result?.items.length?'relatedDayMatch':'relatedDayEmpty');
+    for(const item of view.result?.items||[]){
+      const card=node('article',undefined,'story-related-card'),img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
+      const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`),add=button(text(selected.has(item.id)?'relatedDayAdded':'relatedDayAdd'),()=>{
+        if(!relatedCurrent(view)||view.busy||frozen()||selected.has(item.id))return;
+        if(selected.size>=24){message('selectionLimit');return;}
+        if(!canDiscard())return;
+        // Explicit inclusion changes only this volatile selection. The normal
+        // preview will reload all current family/AI evidence before saving.
+        items=items.filter(existing=>existing.id!==item.id);items.push(item);selected.add(item.id);selectionPage=Math.floor((items.length-1)/8);
+        invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
+        $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');renderSelection();
+      });add.dataset.relatedId=item.id;add.disabled=frozen()||view.busy||selected.has(item.id)||selected.size>=24;
+      card.append(img,label,add);root.append(card);
+    }
+  }
+  async function findRelated(more=false){
+    if(!relatedRequest||frozen()||scope().locked||!selected.size||relatedView?.busy)return;
+    const owner={...scope()},ticket=generation,seeds=more?relatedView?.seeds:items.filter(item=>selected.has(item.id)).map(item=>item.id),before=more?relatedView?.result?.next_before_id:'';
+    if(!seeds||more&&(!relatedView?.result?.has_more||!seeds.every(id=>selected.has(id))))return;
+    const selection=JSON.stringify(items.filter(item=>selected.has(item.id)).map(item=>item.id)),epoch=++relatedEpoch;
+    const view={owner,ticket,seeds,busy:true,result:more?relatedView.result:null,error:false};relatedView=view;renderRelated();
+    try{
+      const result=await relatedRequest({asset_ids:seeds.join(','),before_id:before});
+      if(!relatedCurrent(view)||relatedEpoch!==epoch)return;
+      if(selection!==JSON.stringify(items.filter(item=>selected.has(item.id)).map(item=>item.id))){clearRelated();renderRelated();return;}
+      if(!validRelated(result,seeds,owner,before))throw new Error('Invalid related moment response');
+      view.result=result;view.error=false;
+    }catch(error){
+      if(!relatedCurrent(view)||relatedEpoch!==epoch)return;
+      view.error=true;if([401,403].includes(error?.status))onError(error);
+    }finally{if(relatedCurrent(view)&&relatedEpoch===epoch){view.busy=false;renderRelated();}}
+  }
   function dateLabel(item) {
     if(item.taken_at)return `${text('capture')} · ${String(item.taken_at).slice(0,10)}`;
     if(item.date_hint)return `${text(item.date_hint.source==='received'?'received':'filename')} · ${item.date_hint.value.slice(0,10)}`;
@@ -208,10 +277,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-selection-previous').disabled=frozen()||selectionPage===0;
     $('story-selection-next').disabled=frozen()||(selectionPage+1)*8>=items.length;
     $('story-selection-page').textContent=items.length?text('framesPage')(selectionPage*8+1,Math.min((selectionPage+1)*8,items.length),items.length):'';
+    renderRelated();
   }
   function replaceSelection(next) {
     if(frozen()||!canDiscard())return;
-    selectionPage=0;selected=new Set(next);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
+    clearRelated();selectionPage=0;selected=new Set(next);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
     $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');renderSelection();
   }
   function renderSelection() {
@@ -225,7 +295,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const check=node('input');check.type='checkbox';check.value=item.id;check.checked=selected.has(item.id);
       check.setAttribute('aria-label',`${text(item.kindKnown===false?'choiceFrame':item.kind==='video'?'choiceVideo':'photo')} ${item.id}`);
       const img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
-      check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=24){check.checked=false;message('selectionLimit');setSelectionCount();return;}if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
+      check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=24){check.checked=false;message('selectionLimit');setSelectionCount();return;}clearRelated();if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
       label.append(check,img,node('span',`${item.kind==='video'?'▶ ':''}${item.id}`));
       const order=node('div',undefined,'story-frame-order');
       for(const [direction,word,symbol] of [[-1,'moveEarlier','←'],[1,'moveLater','→']]){const b=button(symbol,()=>{if(!choiceCurrent()||frozen()||position+direction<0||position+direction>=items.length)return;if(dirty&&!downloaded&&!window.confirm(text('leave')))return;[items[position],items[position+direction]]=[items[position+direction],items[position]];invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;renderSelection();});b.setAttribute('aria-label',text(word)+' '+item.id);b.dataset.edge=String(position+direction<0||position+direction>=items.length);b.disabled=frozen()||b.dataset.edge==='true';order.append(b);}
@@ -301,7 +371,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function build() {
     if(frozen() || !selected.size || selected.size>24 || scope().locked || !canDiscard())return;
-    const owner={...scope()},ticket=++generation,expected=items.filter(i=>selected.has(i.id)).map(i=>i.id);
+    clearRelated();const owner={...scope()},ticket=++generation,expected=items.filter(i=>selected.has(i.id)).map(i=>i.id);
     busy=true;setSelectionCount();message('working');
     try {
       const result=await request({asset_ids:expected.join(','),theme:$('story-workspace-theme').value,
@@ -480,7 +550,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(bookReader?.open&&!confirmReaderLeave(bookReader.querySelector('.memory-book-companion'),bookReader.__photoHouseBookTarget))return;
     if($('story-reader').open){stopNarration();$('story-reader').close();}
     if(bookReader?.open){stopNarration();bookReader.close();}
-    generation++;busy=false;pendingSave=null;stopPlaying();
+    clearRelated();generation++;busy=false;pendingSave=null;stopPlaying();
     invalidateTitles();titleView=null;titleComposing=false;
     items=nextItems||galleryItems.slice();
     selectionPage=0;
@@ -504,6 +574,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     setSelectionCount();
   }
   function clear({cancelCommunityJobs=true}={}) {
+    clearRelated();
     invalidateTitles();titleView=null;titleComposing=false;
     stopNarration();
     bookPositions.clear();savedStoryPositions.clear();
@@ -551,7 +622,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const storyReaderWasOpen=$('story-reader').open,priorBookReader=bookReader?.open?bookReader:null;
     if(storyReaderWasOpen){stopNarration();$('story-reader').close();}
     if(priorBookReader){stopNarration();priorBookReader.close();}
-    const priorRefs=contributionRefs?.storyId===id?contributionRefs:null;refsLoadEpoch++;stopNarration();const owner={...scope()},ticket=++generation,expectedReaderEpoch=readerMountEpoch;busy=true;setSelectionCount();$('saved-memory-status').textContent=text('savedLoading');
+    clearRelated();const priorRefs=contributionRefs?.storyId===id?contributionRefs:null;refsLoadEpoch++;stopNarration();const owner={...scope()},ticket=++generation,expectedReaderEpoch=readerMountEpoch;busy=true;setSelectionCount();$('saved-memory-status').textContent=text('savedLoading');
     try{const result=await savedRequest('/memory-stories/'+id);if(!current(ticket,owner))return;
       const expected=result.items?.map(i=>i.id);if(!Array.isArray(expected)||!validDraft(result,expected,owner)||result.saved!==true)throw new Error('Invalid saved story');
       if(readerMountEpoch!==expectedReaderEpoch||$('story-reader').open||bookReader?.open)return;
@@ -817,6 +888,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPlaying();stopNarration();}});window.addEventListener('pagehide',stopNarration);window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
   $('story-reader-contribute').addEventListener('click',()=>{if(!draft||scope().locked||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;const item=draft.items.find(i=>i.id===draft.chapters[chapter].asset_ids[frame]);stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAsset(item);});
   $('story-reader-related').addEventListener('click',()=>{if(!draft||scope().locked||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAssistant(draft.title);});
+  $('story-workspace').addEventListener('close',clearRelated);
+  $('story-related').hidden=!relatedRequest;
+  $('story-related-find').addEventListener('click',()=>{void findRelated();});
+  $('story-related-more').addEventListener('click',()=>{void findRelated(true);});
   $('story-selection-previous').addEventListener('click',()=>{if(!frozen()&&selectionPage>0){selectionPage--;renderSelection();}});
   $('story-selection-next').addEventListener('click',()=>{if(!frozen()&&(selectionPage+1)*8<items.length){selectionPage++;renderSelection();}});
   $('story-selection-clear').addEventListener('click',()=>replaceSelection([]));

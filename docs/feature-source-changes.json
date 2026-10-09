@@ -6038,6 +6038,135 @@
           "sha256": "f2a15aa28ac73764886c9dc4e4c3e7e4639065b72f7cc1d115f605a61e785eff"
         }
       ]
+    },
+    {
+      "feature": "same-day-story-moments-and-monorepo-development-home",
+      "source_kind": "reviewed-legacy-feature-port-and-authored-maintenance-guidance",
+      "source_base_commit": "3140f1729872f689a276dcf8ecbfc0b9777c456f",
+      "legacy_feature_commits": [
+        "29068af",
+        "d5e7c55"
+      ],
+      "scope_note": "Port only recorded-capture-day lookup, explicit Web picker and generated tests. Retain public branding and existing route set; add one route to 132. Adopt the public monorepo for development and document unmatched legacy erasure/navigation/operator preservation gates. Private Git history and household operations remain excluded.",
+      "routes_added": true,
+      "schema_changed": false,
+      "provider_calls": false,
+      "production_connections": false,
+      "generation_enabled": false,
+      "native_phone_picker": false,
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "sha256": "13cb12ca7bbaa998d751ab3bcdd05089dfbbf73f031e8620300f883e04f179de",
+          "before_sha256": null,
+          "git_before_sha256": "de671c7d87c7e61816a40654fc4bde0615b9dba048075fa4580543671dc3fe68"
+        },
+        {
+          "path": "README.md",
+          "sha256": "95159979c4ce11c1bf05853c62e73a95aa6359892233d852b447c1be778db0a5",
+          "before_sha256": "79368069eb8840b4fa9c7656e80a704cdb03a82363d706103a66ce029262b855"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "faa4c15b734a9436cd84bb2d261f2b08369e6934f6f49de3aad8e8d869994388",
+          "before_sha256": "b2c2a46831a02cdd9934987e86d5e141ee2c55bdc62dc69ded8d688c9ebf47e3"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "879519cb92b9f96d8ba8f64ffb98d401b353ba591d4e681b9c10ef1580ba779a",
+          "before_sha256": "0c18ac4044a379705d4ec1a8b6e64452a781faf7992f9a9b3113cc8d47e8bf78"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "sha256": "ee3c274b7a303b4273e5841fa0fe46581e16202ffb91691cc7fa842c0ec8f9a9",
+          "before_sha256": "c92a5d3c332010790f9e3a5757f816f93ed3d45714c59358df954ded78a03a7a"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "sha256": "11dc503f8672aad3f98bf9ea5c8258046b1ac04659a5e600b2ea569205cfa6b0",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "b3d3f63d97e85b1f1e2eece005c5b91bd3ef198c06709813136d65edd3292009",
+          "before_sha256": "6b97325851f0f67687481131602249bed8b421ee7094702172b263ea81a4ac4f"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "sha256": "e5759dea369403270d063451eb12b0b49891a9e5cbd9a37991d1cf5054f21632",
+          "before_sha256": "af67bbece1dc32c77ec915467da1adfc980acf1f2468ee59c285f324cdbf492c"
+        },
+        {
+          "path": "docs/local-api-acceptance.json",
+          "sha256": "acc7b65287a1dbf39d680a1887e9ce08dbf10b46735e89ee311219033d14ee88",
+          "before_sha256": "97030b65d52054e51c8f05eba72d9f6504b29f1158cbc63a1e5c178f52008aec"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "5d6ae7291c14870da8a1d030a95033ad3b043237fa75430b9526d6cc0bbb1e74",
+          "before_sha256": "bc4536ad88daaa4011e1a22d61a145fd7a9cd7dbee91ac957c13cad17196ee3d"
+        },
+        {
+          "path": "server/backend/app/access/story_workspace.py",
+          "sha256": "d989451453bc8969f0ec7855ed3565b21f5addd0e9e811975df5adb96b5b858d",
+          "before_sha256": "74a7b1cc038e482c9140b65cdc1eff9ecffcc512fc27f4ceea368ab69dc313e9"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "9832e2771852b68f0fb47149735eb3e7db82638ee8aad7a1c63528532de1fee8",
+          "before_sha256": "8b239bdee5f98c79e5eb21033cc77607c7ed44d4f1d3c076cccdb139ca674fb6"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "acd9b0578ef1af18e1d04349d268a11df492c242a27ef05227f102acb5a1f3eb",
+          "before_sha256": "02d903e9f9baaf582684dcfb051803865e5f6ff01708418b7c221dfdb84c1dcd"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "sha256": "e4255bc5d96f2b216bf2e0ea1a96632d70568f830761b506e76665ccff764318",
+          "before_sha256": "447baa802f640c0b01232328576f690e745f5fcca0a51e06fcbed3dc048fdb59"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "sha256": "fd599fd0ac2b9ce323d00defb5925f1755e26d1a2549db99eb31fa2bbbb17836",
+          "before_sha256": "0e6e31a37b089645fa74efe03732123ec3154c014d3d2715f8a490c8f14fa9ba"
+        },
+        {
+          "path": "server/docs/security/STORY_RELATED_MEDIA_V1.md",
+          "sha256": "6a1f42132941865c1c9c8920edb484849501a4a8d3128bb15313f258a4495bad",
+          "before_sha256": null
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "b8348e2f7ec6bf02964117fcfac4c0560e08563cc1acea658617c907ed32c2d5",
+          "before_sha256": "78f471c45af71d4104591ab7b3e07674500adc3c91089ec491ae39a90170ebba"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "sha256": "cf7a26abeee540fd8d13c0ee66d15ff0ea71e8727a9e0148b2e7f10024c3a5ce",
+          "before_sha256": "e1bf965a6b2b04ce146060e078514d571d83c9b053225f099c7472f8e0433d52"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "aedc6aad3e0c0e4503237037dd30ead00fa19b0d7b5198a174aa7e9a13610502",
+          "before_sha256": "b2aba1034e867a842cafe308c75360446e908f99fee5acfe149f94e91901d624"
+        },
+        {
+          "path": "server/tests/security/test_story_related_media.py",
+          "sha256": "db561cde5718f7300b57351dcd795d873e58d5ab2398e8243b6119860621a48f",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_story_related_media_browser.cjs",
+          "sha256": "4db124aac4e0d7b7e1bded5e986c043771e450a74497e0cb4c94db9f1963a6e3",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "9efcf4724b8685c71537cc4bf12be6f609bc559df03c5da57e4c799c1a2a1f43",
+          "before_sha256": "51d186ef98d668207db87e7d6ab4f2a5954946ab020f530900a5a898aa23858c"
+        }
+      ]
     }
   ]
 }

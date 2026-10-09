@@ -1,9 +1,19 @@
 # Development and public release qualification
 
-The curated source export is a local preparation candidate. The latest recorded
-CPU profile passed from this monorepo layout; its result is kept separate from
-the earlier fresh-environment run. Android and hosted CI acceptance are recorded
-separately.
+This public monorepo is PhotoHouse's development home. The reviewed initial
+import at `3140f1729872f689a276dcf8ecbfc0b9777c456f` passed hosted API and
+Android CI through PR #1: 674 API tests with 352 subtests, 54 tooling tests,
+the generated demo, and 773 Android JVM tests with lint and unconfigured
+phone/TV debug builds. Later checks below remain bound to their stated revisions.
+See [repository transition and legacy preservation](REPOSITORY_TRANSITION.md).
+
+The subsequent same-day moments slice passed the complete API profile locally:
+680 tests and 361 subtests, followed by the generated-data demo. Its focused
+route/workspace/closed-boundary cohort passed 38 tests and 27 subtests; seven
+actual-ASGI picker browser checks and ten existing workspace regression checks
+passed with inspected desktop and bilingual 390px/150% renders. These cohorts
+overlap and are not added together. It does not deploy the picker, change a
+schema, enable a model, or integrate a native phone picker.
 
 ## Inspect the local environment
 
@@ -25,7 +35,7 @@ python3.12 -m venv .venv
 .venv/bin/python tools/check.py api
 ```
 
-The latest supported CPU run passed **674 tests and 352 independently reported subtests**
+The latest supported CPU run passed **680 tests and 361 independently reported subtests**
 on October 9, 2026, plus the generated-data demo. It used the existing macOS
 arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
 fresh dependency installation. The earlier 523/215 profile used a fresh

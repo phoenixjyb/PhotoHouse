@@ -1,5 +1,21 @@
 # Product roadmap
 
+## October 9 development home and next slice
+
+The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
+Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery
+gate. The legacy application repositories remain retained references; runtime,
+provider quality, supported release paths and physical-device acceptance keep
+their own gates. Historical pending-CI statements below refer to older snapshots.
+
+The Web grouped-story editor now has an explicit, reviewable
+[same-day moments picker](../server/docs/security/STORY_RELATED_MEDIA_V1.md).
+It suggests photos/videos from recorded capture dates within the current library;
+the user decides which belong in the story. A common day does not prove a common
+activity. The next client slice is phone candidate selection, followed by
+provider-qualified title suggestions and reviewed activity grouping. This source
+change does not update a live server, publish an APK or enable generation.
+
 Source implementations and accepted installed behavior are different milestones.
 Use [the feature matrix](FEATURES.md) and [development evidence](DEVELOPMENT.md)
 for the implemented baseline. Each slice below should finish as a complete user
@@ -44,6 +60,13 @@ profile passed after its test waited for the disclosure rule to load. See the
 [phone preview evidence](../clients/android/docs/ANDROID_CONVERSATION_PREVIEWS_2026-10-05.md).
 The next conversational work is understandable follow-up context and
 clarification, with explicit recording and submission controls.
+
+The legacy Android process-memory selected-conversation restoration is a
+specific migration gap: this public baseline still chooses the first listed
+thread when reopening. Import the bounded navigation helper and dependent
+store/UI/test changes with current account/library/membership/target/revision
+checks before retiring that legacy feature. This does not preserve unsent text
+or bypass fresh authorization.
 
 The public source candidate now includes memoir source inspection and explicit
 chapter/reply narration in Web and Android. Its four-suite Web profile passed;

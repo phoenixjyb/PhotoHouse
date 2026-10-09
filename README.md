@@ -3,7 +3,9 @@
 让家人的照片、视频和背后的回忆，成为可以一起讲述、阅读和聆听的故事。
 后端、Web、Android 手机与 Android TV 在同一个主仓库维护。
 
-**当前公开源码候选维护于 [phoenixjyb/PhotoHouse](https://github.com/phoenixjyb/PhotoHouse)。**
+**后续开发统一在 [phoenixjyb/PhotoHouse](https://github.com/phoenixjyb/PhotoHouse) 进行。**
+已审阅的初始导入通过 API／Android CI 并合入主分支；旧应用仓库保留为历史与私有运行资料参考，
+迁移和退役规则见[仓库整合说明](docs/REPOSITORY_TRANSITION.md)。
 私密漏洞报告已通过[GitHub Security Advisories](https://github.com/phoenixjyb/PhotoHouse/security/advisories/new)
 启用。这个仓库发布源码，不会自动替换现有安装。
 
@@ -38,7 +40,7 @@ python3.12 -m venv .venv
 如需只运行回忆录相关的 CPU 服务与契约检查，可运行 `.venv/bin/python tools/check.py memory`；
 该聚焦 profile 通过 127 项测试和 76 个子测试。完整 API profile 也包含这些检查。
 
-最新支持 CPU profile 于 10 月 9 日通过 **674 项测试和 352 个子测试**，并运行无监听端口的合成数据演示。该次使用现有 Python 3.12.12 / pytest 9.0.3 CPU 环境；27 个适用包的新鲜哈希安装记录（523/215）和更早的 498/197、445 项测试均保留为历史 profile。详情见[API 验收数据](docs/local-api-acceptance.json)和[开发指南](docs/DEVELOPMENT.md)。
+最新支持 CPU profile 于 10 月 9 日通过 **680 项测试和 361 个子测试**，并运行无监听端口的合成数据演示。该次使用现有 Python 3.12.12 / pytest 9.0.3 CPU 环境；27 个适用包的新鲜哈希安装记录（523/215）和更早的 498/197、445 项测试均保留为历史 profile。详情见[API 验收数据](docs/local-api-acceptance.json)和[开发指南](docs/DEVELOPMENT.md)。
 不需要 GPU、模型权重或家庭服务器。Windows 请使用 `.venv\Scripts\python.exe`。
 Windows PowerShell 的完整 CPU setup、demo 与当前源码校验命令见[开发指南](docs/DEVELOPMENT.md)。
 
@@ -49,7 +51,7 @@ Android 需要 JDK 17 和 Android SDK 34：
 ```
 
 该命令执行共享模块测试、手机/TV 单元测试、lint 和未配置服务器的 debug 构建。
-最新完整 profile 通过 684 项 JVM 测试和手机／TV 的 lint、debug 构建；592 项与各定向检查保留为历史记录。
+初始公开导入的托管 CI 通过 773 项 JVM 测试和手机／TV 的 lint、debug 构建；684、592 项与各定向检查保留为历史记录。
 构建后可运行 `.venv/bin/python tools/android_test_report.py` 只读汇总已有结果；它不重新执行测试。
 具体环境、证据范围及限制见
 [开发指南](docs/DEVELOPMENT.md)和[Android 验收记录](docs/local-android-acceptance.json)。

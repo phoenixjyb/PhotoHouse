@@ -1,16 +1,15 @@
 {
   "profile": "qualified-api-security-and-runtime-defaults",
-  "tests": 674,
-  "subtests": 352,
+  "tests": 680,
+  "subtests": 361,
   "failures": 0,
   "latest_profile": {
     "profile": "qualified-api-security-and-runtime-defaults",
-    "tests": 674,
-    "subtests": 352,
+    "tests": 680,
+    "subtests": 361,
     "subtest_count_note": "Independently reported by the executed pytest 9.0.3 run.",
     "failures": 0,
     "profile_date": "2026-10-09",
-    "public_candidate_profile_commit": "6be1c557ad49ab832e93039f01077b3d001e0b98",
     "environment": "reused macOS arm64 Python 3.12.12 CPU test environment; pytest 9.0.3",
     "fresh_dependency_install": false,
     "exact_lock_environment": false,
@@ -38,7 +37,17 @@
     "native_windows_qualified": false,
     "includes_story_workspace_contracts": true,
     "cpu_child_configuration_isolation": true,
-    "one_warning": "Starlette TestClient httpx deprecation; dependency lock unchanged"
+    "one_warning": "Starlette TestClient httpx deprecation; dependency lock unchanged",
+    "source_base_commit": "3140f1729872f689a276dcf8ecbfc0b9777c456f",
+    "source_change": "same-day-story-moments-and-monorepo-transition",
+    "includes_related_media_contracts": true,
+    "tested_feature_sources": {
+      "server/backend/app/access/story_workspace.py": "d989451453bc8969f0ec7855ed3565b21f5addd0e9e811975df5adb96b5b858d",
+      "server/backend/app/access/boundary.py": "5d6ae7291c14870da8a1d030a95033ad3b043237fa75430b9526d6cc0bbb1e74",
+      "server/backend/app/ui/access/story-workspace.js": "e4255bc5d96f2b216bf2e0ea1a96632d70568f830761b506e76665ccff764318",
+      "server/tests/security/test_story_related_media.py": "db561cde5718f7300b57351dcd795d873e58d5ab2398e8243b6119860621a48f",
+      "tools/check.py": "9efcf4724b8685c71537cc4bf12be6f609bc559df03c5da57e4c799c1a2a1f43"
+    }
   },
   "previous_fresh_environment_profile": {
     "profile": "qualified-api-security-and-runtime-defaults",
@@ -258,5 +267,42 @@
     },
     "one_warning": "Starlette TestClient httpx deprecation; dependency lock unchanged",
     "status": "historical-earlier-source-revision"
+  },
+  "previous_recorded_profile_674": {
+    "profile": "qualified-api-security-and-runtime-defaults",
+    "tests": 674,
+    "subtests": 352,
+    "subtest_count_note": "Independently reported by the executed pytest 9.0.3 run.",
+    "failures": 0,
+    "profile_date": "2026-10-09",
+    "public_candidate_profile_commit": "6be1c557ad49ab832e93039f01077b3d001e0b98",
+    "environment": "reused macOS arm64 Python 3.12.12 CPU test environment; pytest 9.0.3",
+    "fresh_dependency_install": false,
+    "exact_lock_environment": false,
+    "generated_demo": {
+      "anonymous_reads_denied": true,
+      "changed_child_revision_withheld_old_prose": true,
+      "child_processes": false,
+      "editorial_saved_and_reopened": true,
+      "generation_enabled": false,
+      "listening_socket": false,
+      "models_loaded": false,
+      "ordered_memoir_created": true,
+      "photos": 2,
+      "production_connections": false,
+      "profile": "generated-no-listener",
+      "removed_reference_withheld_stale_editorial": true,
+      "reviewed_contributions": 2,
+      "stories": 2,
+      "story_reference_removal_preserved_original": true
+    },
+    "hosted_ci_run": false,
+    "live_runtime_qualified": false,
+    "production_connections": false,
+    "provider_calls": false,
+    "native_windows_qualified": false,
+    "includes_story_workspace_contracts": true,
+    "cpu_child_configuration_isolation": true,
+    "one_warning": "Starlette TestClient httpx deprecation; dependency lock unchanged"
   }
 }

@@ -1,6 +1,7 @@
 # Optional synthetic Web browser checks
 
-The optional `web` profile runs six generated-data CommonJS browser suites:
+The optional `web` profile runs the generated-data CommonJS browser suites
+listed in `tools/check.py`. It includes:
 
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_browser.cjs`
@@ -8,6 +9,9 @@ The optional `web` profile runs six generated-data CommonJS browser suites:
 - `server/tests/security/test_memory_book_edition_browser.cjs`
 - `server/tests/security/test_memory_book_edition_shelf_browser.cjs`
 - `server/tests/security/test_memory_community_browser.cjs`
+- `server/tests/security/test_memory_book_edition_sources_browser.cjs`
+- `server/tests/security/test_story_titles_browser.cjs`
+- `server/tests/security/test_story_related_media_browser.cjs`
 
 The saved-edition editor and reader suites use generated records. The separate
 shelf journey checks fresh detail reads, current chapter scope, source
@@ -30,7 +34,7 @@ same-origin stylesheet rule and still requires `display: list-item`. The focused
 journey and the combined four-suite profile passed after this test-only fix.
 See [local Web acceptance](local-web-acceptance.json).
 
-The current profile requires all six files. If an imported source snapshot does not
+The current profile requires every listed file. If an imported source snapshot does not
 contain them, it refuses with the missing suite names before starting Node.
 This profile is separate from `api`, `android`, and `all`; `all` continues to
 run only API and Android checks, so ordinary development does not require

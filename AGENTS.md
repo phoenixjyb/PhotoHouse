@@ -1,5 +1,10 @@
 # PhotoHouse contributor guide
 
+This monorepo is the development home for API/Web and Android phone/TV work.
+Use [the repository transition](docs/REPOSITORY_TRANSITION.md) when importing
+remaining legacy source; keep previous application repositories as references
+until their preservation and release-path gates are complete.
+
 ## Ownership and layout
 
 - `server/` owns the API, Web UI, database migrations and worker contracts.

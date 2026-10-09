@@ -2416,6 +2416,7 @@
   storyWorkspace=window.PhotoHouseStoryWorkspace({scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,locked:state.locked}),
     community:memoryCommunity,
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
+    relatedRequest:body=>request(libraryPath('/story-workspace/related-media'),{method:'POST',body,epoch:state.generation}),
     titleRequest:(path,options={})=>{
       if(!['/story-workspace/title-capabilities','/story-workspace/title-suggestions'].includes(path))throw new Error('Invalid title route');
       return request(libraryPath(path),{...options,epoch:state.generation});},
