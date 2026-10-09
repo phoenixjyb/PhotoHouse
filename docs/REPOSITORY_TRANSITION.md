@@ -63,6 +63,11 @@ The October 9 source comparison identified these concrete preservation items:
 - Windows launchers, supervisors, worker packages and data-dependent repair
   utilities need individual disposition and an operator owner. Preserve the
   private originals while reviewing portable replacements.
+- The bounded offline [video source recovery planner](VIDEO_SOURCE_RECOVERY.md)
+  is now imported with its previously retained tests and included in the CPU
+  API profile. It accepts sanitized metadata only and performs no repair or
+  runtime operation. Windows conversion, audit and publication controllers
+  still require individual disposition.
 - Neither application baseline contains tracked Swift/Xcode/iOS source. Any
   future iOS development needs an identified source owner and separate import
   decision; the Android import does not establish iOS coverage.

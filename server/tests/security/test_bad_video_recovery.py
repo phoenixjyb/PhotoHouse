@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
@@ -78,6 +79,102 @@ class BadVideoRecoveryPlanTests(unittest.TestCase):
         plan = json.loads(result.stdout)
         self.assertEqual(plan["mode"], "read_only_recovery_plan")
         self.assertNotIn("path", plan["rows"][0])
+
+    def test_numeric_and_row_limits(self):
+        maximum = planner.MAX_SQLITE_INTEGER
+        result = planner.build_plan({"rows": [
+            {"id": maximum, "reason": "preparation_failed", "source_size": maximum}
+        ]})
+        self.assertEqual(result["rows"][0]["id"], maximum)
+
+        for row in (
+            {"id": maximum + 1, "reason": "preparation_failed", "source_size": 8192},
+            {"id": 11, "reason": "preparation_failed", "source_size": maximum + 1},
+        ):
+            with self.subTest(row="numeric-overflow"), self.assertRaisesRegex(ValueError, "invalid_row"):
+                planner.build_plan({"rows": [row]})
+
+        rows = [
+            {"id": index + 1, "reason": "preparation_failed", "source_size": 8192}
+            for index in range(planner.MAX_ROWS + 1)
+        ]
+        with self.assertRaisesRegex(ValueError, "too_many_rows"):
+            planner.build_plan({"rows": rows})
+
+    def test_cli_missing_file_error_does_not_echo_private_path(self):
+        script = Path(planner.__file__)
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "PRIVATE_PATH_CANARY_missing_snapshot.json"
+            result = subprocess.run(
+                [sys.executable, str(script), str(missing)],
+                capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, "refused: unable to read snapshot\n")
+        self.assertNotIn("PRIVATE_PATH_CANARY", result.stderr + result.stdout)
+
+    def test_cli_malformed_json_error_does_not_echo_snapshot_content(self):
+        script = Path(planner.__file__)
+        content = b'{"rows":[{"path":"PRIVATE_CONTENT_CANARY",'
+        result = subprocess.run(
+            [sys.executable, str(script)], input=content,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, b"refused: malformed JSON snapshot\n")
+        self.assertNotIn(b"PRIVATE_CONTENT_CANARY", result.stderr + result.stdout)
+
+    def test_cli_rejects_duplicate_json_keys(self):
+        script = Path(planner.__file__)
+        cases = (
+            b'{"rows":[],"rows":[]}',
+            b'{"rows":[{"id":1,"reason":"preparation_failed","source_size":8192,"extra":{"x":1,"x":2}}]}',
+        )
+        for content in cases:
+            with self.subTest(nesting="top-level" if b'"rows":[],"rows"' in content else "nested"):
+                result = subprocess.run(
+                    [sys.executable, str(script)], input=content, capture_output=True,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stderr, b"refused: malformed JSON snapshot\n")
+
+    def test_cli_malformed_encoding_constant_and_deep_json_use_fixed_error(self):
+        script = Path(planner.__file__)
+        deep_depth = 10_000
+        deep = b'{"rows":' + (b"[" * deep_depth) + (b"]" * deep_depth) + b"}"
+        for label, content in (
+            ("invalid-utf8", b'{"rows":[]}' + b"\xff"),
+            ("nonstandard-nan", b'{"rows":[{"id":1,"reason":"preparation_failed","source_size":NaN}]}'),
+            ("deep-json", deep),
+        ):
+            with self.subTest(case=label):
+                result = subprocess.run(
+                    [sys.executable, str(script)], input=content, capture_output=True,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stderr, b"refused: malformed JSON snapshot\n")
+                self.assertNotIn(b"Traceback", result.stderr + result.stdout)
+
+    def test_cli_rejects_oversized_snapshot_without_echoing_content(self):
+        script = Path(planner.__file__)
+        content = b"X" * (planner.MAX_SNAPSHOT_BYTES + 1) + b"PRIVATE_CONTENT_CANARY"
+        result = subprocess.run(
+            [sys.executable, str(script)], input=content,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, b"refused: snapshot exceeds the input limit\n")
+        self.assertNotIn(b"PRIVATE_CONTENT_CANARY", result.stderr + result.stdout)
+
+    def test_cli_rejects_unknown_argument_without_echoing_it(self):
+        script = Path(planner.__file__)
+        result = subprocess.run(
+            [sys.executable, str(script), "--private-path-canary"],
+            input=b'{"rows":[]}', capture_output=True,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, b"refused: expected at most one snapshot path\n")
+        self.assertNotIn(b"private-path-canary", result.stderr + result.stdout)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,10 @@
 # Feature and acceptance matrix
 
+As of October 10, PRs #13–#15 are merged. The latest hosted source run passed
+API, Android, Windows private-reader, Windows CPU and seventeen generated Web
+suites. Historical counts below retain their revision-specific meaning;
+household deployment and family acceptance remain separate gates.
+
 This matrix records the source migration baseline. Live installations and physical devices have their own acceptance records.
 
 | Area | Implemented baseline | Remaining gate or next improvement |
@@ -9,18 +14,20 @@ This matrix records the source migration baseline. Live installations and physic
 | Original memories | Text/audio contributions, consent, original playback; separate default-off D1 identity-bound family-note erasure and offline journal upgrade | Exact D1 migration/version 2 journal and native recovery qualification; multi-member family acceptance and retention/deletion walkthrough |
 | Stories | Revisioned chapters, original-memory links, source inspection; manual memoir editing and reading in Web source; protected selected-media grouped creation with reviewed title suggestions; offline synthetic memoir/title quality cases and independent title-role capture | Human review and separate local-model quality qualification remain open; title provider stays disabled by default; plan-only fixtures are not model results; Web memoir flag and live migration remain off/unqualified |
 | Phone | Reviewed voice memory, chapter source linking, family-memory home card, draft guards, v40 assistant recovery, OTA client, manual memoir arrangement, first-message previews, scoped conversation restoration, original-source inspection, explicit chapter/reply narration pause-resume, grouped-story creation, profile-derived optional bylines and explicit same-day media candidates | [Candidate picker evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md) records local checks separately from release package, live service and family acceptance; server/client delivery and enabled b1 service remain separate gates |
-| Web | Chinese default, session recovery, story workspace, pending assistant recovery, explicit transcript review, bounded current-page assistant turn trail, manual memoir editor/reader, opt-in first-message previews, scoped conversation restoration, explicit narration controls and original/derived source inspection; the fourteen-suite generated-data Web profile passes locally | Conversation navigation has 23 checkpoint groups; the full community journey has its own result. Earlier 16/17/20/22 counts remain historical. These and the source-inspection/narration journeys are synthetic browser evidence; b1 service defaults off, with no household migration or live owner/member acceptance |
+| Web | Chinese default, session recovery, story workspace, pending assistant recovery, explicit transcript review, bounded current-page assistant turn trail, manual memoir editor/reader, opt-in first-message previews, scoped conversation restoration, explicit narration controls and original/derived source inspection; the current seventeen-suite generated-data Web profile passes locally | Conversation navigation has 23 checkpoint groups; the full community journey has its own result. Earlier 16/17/20/22 counts remain historical. These and the source-inspection/narration journeys are synthetic browser evidence; b1 service defaults off, with no household migration or live owner/member acceptance |
 | TV | Named libraries, OTA, paced viewing | Latest installed projector navigation and playback |
 | Voice assistant | ASR input, explicit submission, receipts/context, pending-turn recovery, optional TTS, scoped story/memoir conversation navigation and current-reply clarification cues in Web and phone | Served Web and signed phone delivery; provider and family conversation quality qualification |
+| Conversation reading | Bounded Web and phone exchange lists preserve older reading positions and offer a localized jump to the latest activity | [Trail contract](ASSISTANT_TURN_TRAIL.md); generated phone scroll/keyboard journeys pass; exact installed delivery remains separate |
+| Memoir editing | Citation choices refresh independently of the title, opening note and story-order form; stale revisions and detached editors reject delayed results | Generated browser focus/composition checks; served UI and family editing acceptance remain separate |
 | Approved face queue | Stdlib SQLite approval and claim helper; bounded detection and shadow-embedding pipeline source; portable Windows Job Object helper is included | Eight additional fake-child pipeline checks use generated data; native Windows Job Object, CUDA/model/device and live-service qualification remain separate gates |
-| Video preparation | Checkpointed conversion, bounded resources, source-error methods | Native closure and playback publication on the household server have separate receipts; device playback still needs acceptance |
+| Video preparation | Checkpointed conversion, bounded resources and a supported path-free [source recovery planner](VIDEO_SOURCE_RECOVERY.md) | Native closure and playback publication on the household server have separate receipts; device playback still needs acceptance |
 | Approved worker package | Fixed 21-file source-only package, immutable monorepo/standalone Git lookup and a synthetic canary selector that defaults to a0 and permits explicit b1 testing | Eight current packager tests cover both actual Git layouts and preservation; earlier package/schema cohorts have their own source snapshots; Windows-native execution, GPU/provider readiness and family processing remain separate gates |
 | Worker terminal diagnostics | CPU, image/video embedding and face pipeline emit fixed failure identifiers while preserving terminal exit codes and approval/processing rules | 38 generated CPU-profile cases cover CLI reports, private-text refusal, SQLite/resource failures and child routing; installed failures and service recovery still need native operation evidence |
 | Visual grouping foundation | Pure image-vector ranker for an already-authorized bounded cohort, exact identity/checksum and deterministic cosine order | No route, file loading, database or model integration; persisted preprocessing/checkpoint identity and current library-filtered loading remain required |
 | Story reader navigation | Protected Web thumbnail filmstrip and current-frame labels; phone selection bound to current scope, chapter revision and eligible media; explicit chapter/media actions | [Reader contract](STORY_READER_NAVIGATION.md); generated browser/emulator checks remain separate from served Web files, signing, OTA and family acceptance |
 | TV library recovery | Disabled stale library choices, explicit localized retry preserving page/filters, and remote focus restoration | [Recovery contract](TV_LIBRARY_RECOVERY.md); the generated large-text remote journey passes; TV v30 signing/publication and physical TV acceptance remain separate gates |
 | Windows CPU portability | Explicit generated database/runtime/source-package profile and a separate hosted Windows job | Repaired cohort passes 65 tests and 25 subtests on macOS and hosted Windows at `12c10e9`; the installed household runtime retains its own gate |
-| Maintainability | Unified curated source, portable API/Android checks, synthetic demo, dependency/asset inventory, default-read-only b1 application tool and CI template | Complete archive review and hosted CI |
+| Maintainability | Unified curated source, portable API/Android checks, synthetic demo, dependency/asset inventory, default-read-only b1 application tool and five hosted source jobs | Exact release archive review; installed-runtime and device evidence remain separate |
 
 ## Next product slices
 
@@ -36,7 +43,7 @@ signed delivery and a live voice turn remain separate gates.
 4. Add an album-level outline with ordered media and owner review before any prose work.
 5. Improve long memoir playback, chapter navigation and source citation review.
 6. Qualify local narrative processing with synthetic multi-chapter cases before enabling it for family material.
-7. Publish the qualified source candidate through reviewed changes to the selected repository; run hosted CI.
+7. Keep reviewed source delivery and hosted checks current as the monorepo evolves; preserve exact release profiles and operation receipts.
 
 ## Longer memoirs: manual editorial source
 

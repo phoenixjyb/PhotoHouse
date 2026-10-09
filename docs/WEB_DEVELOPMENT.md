@@ -134,8 +134,17 @@ and provisions the matching Chromium headless shell and Linux dependencies
 only on the ephemeral hosted runner. The local wrapper still installs nothing.
 The seventeen-suite profile includes the existing upload/note-save and full
 story-workspace regressions, plus the WAV encoder contract. Earlier fourteen-
-suite local passes and these separate focused results remain separate evidence;
-the expanded hosted profile needs its own complete passing run.
+suite local passes and these separate focused results remain separate evidence.
+The first complete seventeen-suite hosted run passed at PR #15 head `cd982a9`
+on October 10, alongside all four existing source jobs. Its generated captures
+were not uploaded; local visual inspections retain their own artifact pins.
+
+The subsequent assistant reading-position and memoir editor slice also passed
+the complete seventeen-suite local profile with Node 22.17, Playwright Core
+1.55 and cached headless shell 1187. Its retry and locale-refresh fixtures wait
+for the replacement authorized DOM before editing; they no longer accept old
+text or old receipt counts as completion. Earlier failed runs remain separate.
+Served household files and real microphone/provider checks are still distinct.
 
 The job has a 15-minute limit. Browser binaries and separate generated suite
 captures remain under the runner's temporary directory; no artifact-upload

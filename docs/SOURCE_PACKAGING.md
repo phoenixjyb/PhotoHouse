@@ -6,6 +6,10 @@ directory that does not exist and is outside the repository. The tool does not
 use the network, package Git history, sign or publish files, or perform a
 privacy/legal review.
 
+Phone and TV artifacts have separate
+[release preparation requirements](ANDROID_RELEASE_PREPARATION.md); a verified
+source archive does not carry private Android build profiles or signing keys.
+
 ```sh
 python tools/package_source.py /absolute/path/to/new-output-directory
 ```

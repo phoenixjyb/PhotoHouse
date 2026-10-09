@@ -9,8 +9,10 @@ to the household API and signed phone remains a separate operation.
 
 PR #14 is also merged after four hosted jobs, including the new native Windows
 CPU cohort. Its recording lifecycle, story readers and TV recovery are reviewed
-source. A separate hosted Web browser job is the next maintenance slice; its
-first run must qualify the locked Ubuntu browser toolchain.
+source. PR #15 is merged at head `cd982a9` after all five hosted jobs passed,
+including seventeen generated Web suites on the locked Ubuntu browser toolchain.
+The Web job covers note-save, microphone startup, readers and story workspaces
+without household credentials or media.
 
 The reviewed reader slice adds a protected Web filmstrip and scope-bound phone frame
 selection, with localized position labels, enlarged-text chapter controls and
@@ -24,6 +26,14 @@ media processing and Home TV with exact operation checks; evaluate real family
 voice turns; then qualify provider-backed title/story quality and persisted
 visual identity before enabling similarity lookup. More source tests do not
 close those installed-service or human-quality gates.
+
+The next delivery candidate preserves older assistant reading positions and
+provides explicit localized latest-reply navigation. Memoir citation loading now
+updates only its panel, preserving the focused title/intro form and composition;
+revision and scope checks still fence delayed results. The portable
+[video source recovery planner](VIDEO_SOURCE_RECOVERY.md) is included in ordinary
+CPU checks. These changes do not start conversion, change originals, or replace
+the installed-service and signed-release gates.
 
 ## October 9 development home and next slice
 

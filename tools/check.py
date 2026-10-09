@@ -39,6 +39,7 @@ API_TESTS = (
     "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
+    "test_bad_video_recovery.py",
     "test_editorial_rehearsal_database_guard.py",
 )
 MEMORY_TESTS = (
