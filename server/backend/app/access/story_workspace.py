@@ -6,6 +6,7 @@ Family words and machine observations remain separate from the editable outline.
 import hashlib
 import json
 import re
+from datetime import date, datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -20,6 +21,13 @@ router = APIRouter(route_class=LibraryRoute)
 FIELDS = {'asset_ids', 'theme', 'language', 'title'}
 MAX_ITEMS = 24
 MAX_RESPONSE = 256 * 1024
+RELATED_PAGE_SIZE = 20
+RELATED_SCAN_SIZE = 80
+_CAPTURE_DATE = re.compile(r'\A[0-9]{4}-[0-9]{2}-[0-9]{2}\Z', re.ASCII)
+_CAPTURE_DATETIME = re.compile(
+    r'\A[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}'
+    r'(?::[0-9]{2}(?:\.[0-9]{1,6})?)?'
+    r'(?:Z|[+-][0-9]{2}:?[0-9]{2})?\Z', re.ASCII)
 
 
 def _text(value, limit=1800):
@@ -40,6 +48,121 @@ def _selection(body):
     if len(body['title']) > 160 or any(ord(c) < 32 for c in body['title']):
         raise TransportError(400, 'Invalid title')
     return ids
+
+
+def _recorded_capture_day(value):
+    """Validate recorded capture metadata and preserve its written calendar day.
+
+    Date hints are intentionally not inputs here. Offset timestamps are not
+    converted to UTC: this feature groups by the day PhotoHouse recorded.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        if _CAPTURE_DATE.fullmatch(value):
+            return date.fromisoformat(value).isoformat()
+        if _CAPTURE_DATETIME.fullmatch(value):
+            parsed = datetime.fromisoformat(value[:-1] + '+00:00' if value.endswith('Z') else value)
+            return parsed.date().isoformat()
+    except (ValueError, OverflowError):
+        return None
+    return None
+
+
+def _related_selection(body):
+    raw = body['asset_ids'].split(',')
+    if not 1 <= len(raw) <= MAX_ITEMS or len(set(raw)) != len(raw):
+        raise TransportError(400, 'Select between one and 24 distinct items')
+    ids = [_integer(value, 2**63 - 1) for value in raw]
+    if any(str(ident) != value for ident, value in zip(ids, raw)):
+        raise TransportError(400, 'Invalid selection')
+    before = body['before_id']
+    if before:
+        ident = _integer(before, 2**63 - 1)
+        if str(ident) != before:
+            raise TransportError(400, 'Invalid cursor')
+        before_id = ident
+    else:
+        before_id = None
+    return ids, before_id
+
+
+def related_media(runtime, token, library, body):
+    """Suggest a bounded page sharing a selected asset's recorded capture day."""
+    seed_ids, before_id = _related_selection(body)
+    with runtime.connection_factory() as db:
+        access = AccessService(db, clock=runtime.clock)
+        with access._transaction():
+            access._require(token, library, 'library.read')
+
+            # Resolve the complete seed set before deriving or returning any
+            # candidate metadata. A missing, inactive, foreign, or unmapped
+            # seed denies the whole request.
+            seed_rows = []
+            for ident in seed_ids:
+                row = db.execute('''SELECT a.id,a.mime,a.taken_at FROM assets a
+                    JOIN access_asset_libraries scope ON scope.asset_id=a.id
+                    WHERE scope.library_id=? AND a.id=?
+                      AND (a.status IS NULL OR a.status='active')''',
+                    (library, ident)).fetchone()
+                if row is None:
+                    raise AccessDenied('Access denied')
+                seed_rows.append(row)
+
+            seeds = []
+            for row in seed_rows:
+                kind = 'video' if (row[1] or '').startswith('video/') else \
+                    'image' if (row[1] or '').startswith('image/') else 'other'
+                if kind not in {'image', 'video'}:
+                    raise TransportError(400, 'Select photos or videos')
+                seeds.append((int(row[0]), _recorded_capture_day(row[2])))
+
+            days = sorted({day for _, day in seeds if day is not None})
+            result = {'version': 1, 'library_id': library,
+                      'seed_asset_ids': [str(ident) for ident in seed_ids],
+                      'recorded_days': days, 'needs_review': True,
+                      'has_more': False, 'next_before_id': None, 'items': []}
+            if not days:
+                return result
+
+            excluded = ','.join('?' for _ in seed_ids)
+            day_predicate = ' OR '.join('a.taken_at LIKE ?' for _ in days)
+            sql = '''SELECT a.id,a.mime,a.width,a.height,a.duration_sec,a.taken_at''' + SOURCE + '''
+                AND (a.mime GLOB 'image/*' OR a.mime GLOB 'video/*')
+                AND a.id NOT IN (''' + excluded + ''')
+                AND (''' + day_predicate + ''')'''
+            args = [library, *seed_ids, *(day + '%' for day in days)]
+            if before_id is not None:
+                sql += ' AND a.id<?'
+                args.append(before_id)
+            sql += ' ORDER BY a.id DESC LIMIT ?'
+            args.append(RELATED_SCAN_SIZE + 1)
+            rows = db.execute(sql, tuple(args)).fetchall()
+
+            last_inspected = None
+            inspected = 0
+            for row in rows[:RELATED_SCAN_SIZE]:
+                inspected += 1
+                last_inspected = int(row[0])
+                candidate_day = _recorded_capture_day(row[5])
+                if candidate_day not in days:
+                    continue
+                item = _asset(row, library)
+                item['match_reason'] = 'same_recorded_capture_day'
+                result['items'].append(item)
+                if len(result['items']) == RELATED_PAGE_SIZE:
+                    break
+
+            # The scan cursor advances over invalid timestamps too. One
+            # uninspected row proves that another bounded request can continue.
+            result['has_more'] = inspected < len(rows)
+            if result['has_more'] and last_inspected is not None:
+                result['next_before_id'] = str(last_inspected)
+
+            response = JSONResponse(result)
+            if len(response.body) > MAX_RESPONSE:
+                raise TransportError(503, 'Related media unavailable')
+            return result
 
 
 def collect_items(db, library, ids):
@@ -100,6 +223,16 @@ async def story_preview(request: Request):
     query = _query(request, {'library'})
     body = await _body(request, FIELDS, max_body=4096)
     result = await run_in_threadpool(preview, _runtime(request, allow_query=True),
+                                     token, query['library'], body)
+    return JSONResponse(result)
+
+
+@router.post('/story-workspace/related-media')
+async def story_related_media(request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library'})
+    body = await _body(request, {'asset_ids', 'before_id'}, max_body=4096)
+    result = await run_in_threadpool(related_media, _runtime(request, allow_query=True),
                                      token, query['library'], body)
     return JSONResponse(result)
 

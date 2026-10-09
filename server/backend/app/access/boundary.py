@@ -137,6 +137,7 @@ class ClosedBoundary:
         if method == 'GET' and re.fullmatch(r'/stories/[0-9a-f-]{36}/history', path):
             return True
         if method == 'POST' and path == '/story-workspace/preview': return True
+        if method == 'POST' and path == '/story-workspace/related-media': return True
         if method == 'GET' and path == '/story-workspace/title-capabilities': return True
         if method == 'POST' and path == '/story-workspace/title-suggestions': return True
         if method in {'GET', 'POST'} and path == '/memory-stories': return True

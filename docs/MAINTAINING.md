@@ -60,7 +60,11 @@ Assistant input records follow their retention policy; assistant recordings
 remain transient. Story contributions preserve their originals until authorized
 deletion. A source citation is a relationship, not ownership transfer.
 
-## Maintain the public-source candidate
+## Maintain public source
+
+New product changes belong in this monorepo. Follow the
+[repository transition](REPOSITORY_TRANSITION.md) for remaining legacy imports
+and preservation gates; do not develop duplicate features in both repositories.
 
 This curated monorepo records source imports and deliberate transformations.
 When importing an accepted portable change, append its exact provenance and
