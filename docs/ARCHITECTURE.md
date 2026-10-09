@@ -114,3 +114,9 @@ target revision bindings. Memoirs also bind ordered child story revisions.
 Reopening reads the authorized directory and current messages before reporting
 restoration. It clears composition and cannot replay a mutation. The hint does
 not survive a client restart or grant access to an omitted conversation.
+
+The [clarification cue](CONVERSATION_CLARIFICATION.md) is a passive presentation
+of a ready, current story or memoir reply. Both clients require valid bounded
+reply metadata before presenting the cue. A suggested follow-up prepares an
+editable draft only when existing draft, dictation and pending-send guards allow
+it. No cue starts recording, submits a message or applies a proposal.

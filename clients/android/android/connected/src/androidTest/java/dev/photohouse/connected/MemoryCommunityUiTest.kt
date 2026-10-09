@@ -212,6 +212,158 @@ class MemoryCommunityUiTest {
             .config[SemanticsProperties.EditableText].text)
     }
 
+    @Test fun storyClarificationZh150() = clarificationJourney("zh", false)
+    @Test fun storyClarificationEn150() = clarificationJourney("en", false)
+    @Test fun memoirClarificationZh150() = clarificationJourney("zh", true)
+    @Test fun memoirClarificationEn150() = clarificationJourney("en", true)
+
+    private fun clarificationJourney(language: String, memoir: Boolean) {
+        val community = CommunityApi().apply { chatReplyKind = "clarification" }
+        val storyApi = StoryApi()
+        val store = ConnectedStore(storyApi, scope, memoryCommunityApi = community, memoryCommunityEnabled = true)
+        rule.setContent {
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(base.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = language)
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { store.state.value.library == "family" }
+        val prefix = if (memoir) "memory-book-chat" else "memory-chat"
+        val cue = "$prefix-followup-1-clarification"
+        rule.onNodeWithTag(if (memoir) "open-memory-books" else "open-saved-memory-stories")
+            .performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.result != null
+            else store.state.value.savedMemoryStories?.result != null
+        }
+        if (memoir) {
+            rule.onNodeWithTag("memory-book-$bookId").performScrollTo().performClick()
+            rule.waitUntil(5000) { store.state.value.memoryBooks?.selectedBook != null }
+            rule.onNodeWithTag("memory-book-entry-0").performScrollTo().performClick()
+            rule.waitUntil(5000) { store.state.value.memoryBooks?.companion != null }
+            rule.onNodeWithTag("memory-book-chat-disclosure").performScrollTo().performClick()
+        } else {
+            rule.onNodeWithTag("saved-memory-story-$id").performScrollTo().performClick()
+            rule.waitUntil(5000) { store.state.value.savedMemoryStories?.community?.capabilities != null }
+            rule.onNodeWithTag("memory-community-tab-1").performScrollTo().performClick()
+        }
+        rule.onNodeWithTag("$prefix-start").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.companion?.conversationId != null
+            else store.state.value.savedMemoryStories?.community?.conversationId != null
+        }
+        rule.onNodeWithTag(cue).assertDoesNotExist()
+        rule.runOnIdle {
+            if (memoir) { store.updateMemoryBookChatDraft("What happened that day?"); store.sendMemoryBookChat() }
+            else { store.updateMemoryChatDraft("What happened that day?"); store.sendMemoryChat() }
+        }
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.companion?.turns?.items?.isNotEmpty() == true
+            else store.state.value.savedMemoryStories?.community?.turns?.items?.isNotEmpty() == true
+        }
+        rule.onNodeWithTag(cue).performScrollTo().assertIsDisplayed()
+            .assertTextEquals(if (language == "zh") "AI 想再了解一点" else "AI would like to know more")
+        val firstQuestion = rule.onNodeWithTag("$prefix-followup-1-question-0")
+        firstQuestion.performScrollTo().assertIsDisplayed()
+        val readerViewport = rule.onNodeWithTag(if (memoir) "memory-book-reader-scroll" else "saved-memory-reader-scroll")
+        val cueHelpAndQuestion = listOf(cue, "$cue-help", "$prefix-followup-1-question-0")
+            .map { tag -> rule.onNodeWithTag(tag) }
+        // Check before stabilization; changing accessibility flags during capture
+        // can refresh the semantics snapshot after the geometry gate.
+        assertNoSystemErrorOverlay()
+        var lastTargetBounds: List<androidx.compose.ui.unit.DpRect>? = null
+        var lastViewportBounds: androidx.compose.ui.unit.DpRect? = null
+        var geometryStableSince = android.os.SystemClock.uptimeMillis()
+        var fullyInsideViewport = false
+        try {
+            rule.waitUntil(5000) {
+                val viewport = readerViewport.getUnclippedBoundsInRoot()
+                val targets = cueHelpAndQuestion.map { it.getUnclippedBoundsInRoot() }
+                if (targets != lastTargetBounds || viewport != lastViewportBounds) {
+                    lastTargetBounds = targets
+                    lastViewportBounds = viewport
+                    geometryStableSince = android.os.SystemClock.uptimeMillis()
+                }
+                fullyInsideViewport = targets.all { bounds ->
+                    bounds.left >= viewport.left && bounds.top >= viewport.top &&
+                        bounds.right <= viewport.right && bounds.bottom <= viewport.bottom
+                }
+                fullyInsideViewport && android.os.SystemClock.uptimeMillis() - geometryStableSince >= 250
+            }
+        } catch (failure: Throwable) {
+            val diagnostic = "clarification-bounds-failed-$language-150"
+            if (memoir) captureBooks(diagnostic) else capture(diagnostic)
+            throw AssertionError(
+                "Clarification cue/help/question must fit fully in reader viewport at 150%: " +
+                    "viewport=$lastViewportBounds targets=$lastTargetBounds fullyInside=$fullyInsideViewport " +
+                    "diagnostic=$diagnostic",
+                failure,
+            )
+        }
+        rule.onNodeWithTag(cue).assertIsDisplayed()
+        rule.onNodeWithTag("$cue-help").assertIsDisplayed()
+        val captureName = "clarification-${if (memoir) "memoir" else "story"}-$language-150"
+        val captureTag = if (memoir) "memory-books" else "saved-memory-stories"
+        val bitmap = rule.onNodeWithTag(captureTag).captureToImage().asAndroidBitmap()
+        saveScreenshot(bitmap, captureName)
+        rule.runOnIdle { assertEquals(1, community.chatSent); assertEquals(0, storyApi.assistantTranscriptions) }
+        rule.onNodeWithTag("$prefix-input").performScrollTo()
+        assertEquals("", rule.onNodeWithTag("$prefix-input").fetchSemanticsNode()
+            .config[SemanticsProperties.EditableText].text)
+        rule.runOnIdle {
+            if (memoir) store.updateMemoryBookChatDraft("My own detail") else store.updateMemoryChatDraft("My own detail")
+        }
+        rule.onNodeWithTag("$prefix-followup-1-question-0").performScrollTo().assertIsNotEnabled()
+        rule.runOnIdle {
+            assertEquals("My own detail", if (memoir) store.state.value.memoryBooks?.companion?.draft
+                else store.state.value.savedMemoryStories?.community?.chatDraft)
+            if (memoir) store.updateMemoryBookChatDraft("") else store.updateMemoryChatDraft("")
+        }
+        rule.onNodeWithTag("$prefix-followup-1-question-0").performScrollTo().performClick()
+        rule.onNodeWithTag("$prefix-input").performScrollTo().assertTextContains("那天后来发生了什么？")
+        rule.runOnIdle { assertEquals(1, community.chatSent) }
+        val send = rule.onNodeWithTag("$prefix-send")
+        send.performScrollTo().assertIsDisplayed().assertIsEnabled()
+        // Question insertion reveals the IME and scrolls controls. Wait for
+        // actual Send geometry to settle before the explicit test tap.
+        var lastSendBounds: androidx.compose.ui.geometry.Rect? = null
+        var stableSince = android.os.SystemClock.uptimeMillis()
+        rule.waitUntil(5000) {
+            val bounds = send.fetchSemanticsNode().boundsInRoot
+            if (bounds != lastSendBounds) {
+                lastSendBounds = bounds
+                stableSince = android.os.SystemClock.uptimeMillis()
+            }
+            val draft = if (memoir) store.state.value.memoryBooks?.companion?.draft
+                else store.state.value.savedMemoryStories?.community?.chatDraft
+            draft == "那天后来发生了什么？" && android.os.SystemClock.uptimeMillis() - stableSince >= 250
+        }
+        send.assertIsDisplayed().assertIsEnabled().performClick()
+        try {
+            rule.waitUntil(5000) { community.chatSent == 2 }
+        } catch (failure: Throwable) {
+            if (memoir) captureBooks("clarification-send-failed-$language")
+            else capture("clarification-send-failed-$language")
+            val chat = store.state.value.memoryBooks?.companion
+            val story = store.state.value.savedMemoryStories?.community
+            throw AssertionError("Explicit send did not reach fixture: memoir=$memoir draft=${if (memoir) chat?.draft else story?.chatDraft} " +
+                "busy=${if (memoir) chat?.busy else story?.busy} pending=${if (memoir) chat?.pendingTurn != null else story?.pendingTurn != null} " +
+                "state=${if (memoir) chat?.job?.state else story?.job?.state} count=${community.chatSent}", failure)
+        }
+        rule.runOnIdle {
+            assertEquals("那天后来发生了什么？", community.sentChatText)
+            assertEquals(0, storyApi.assistantTranscriptions)
+            community.chatReplyState = "stale"
+            if (memoir) store.loadMemoryBookTurnsPage(1) else store.loadMemoryTurnsPage(1)
+        }
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.companion?.turns?.items?.firstOrNull()?.state == "stale"
+            else store.state.value.savedMemoryStories?.community?.turns?.items?.firstOrNull()?.state == "stale"
+        }
+        rule.onNodeWithTag(cue).assertDoesNotExist()
+    }
+
     private fun syntheticGardenPng(title: String, background: Int): ByteArray {
         val bitmap = Bitmap.createBitmap(480, 320, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -319,6 +471,8 @@ class MemoryCommunityUiTest {
         var contributionText = "奶奶和我们一起种花。"
         var contributionState = "pending"
         var chatSent = 0
+        var chatReplyKind = "answer"
+        var chatReplyState = "ready"
         var planReads = 0
         var planFailure: ApiFailure? = null
         val sentEditorialChoices = mutableListOf<Boolean>()
@@ -558,7 +712,7 @@ class MemoryCommunityUiTest {
                 val refs = if (lastConversationTargetType == "book") listOf(
                     "family-11111111-1111-1111-1111-111111111111", "caption-1", "editorial-$id-chapter-1", "editorial-book-$bookId", "contribution-$contributionId", "unloaded-material")
                 else listOf("family-11111111-1111-1111-1111-111111111111", "caption-1", "editorial-$id-chapter-1", "contribution-$contributionId", "unloaded-material")
-                """{"id":"77777777-7777-7777-7777-777777777777","sequence":1,"input_text":${JsonPrimitive(text)},"reply_text":"第一行\n第二行","reply_kind":"answer","job_id":"$jobId","state":"ready","reply_source_ids":${JsonArray(refs.map(::JsonPrimitive))},"reply_questions":["那天后来发生了什么？","花园里还种过什么？"]}"""
+                """{"id":"77777777-7777-7777-7777-777777777777","sequence":1,"input_text":${JsonPrimitive(text)},"reply_text":"第一行\n第二行","reply_kind":"$chatReplyKind","job_id":"$jobId","state":"$chatReplyState","reply_source_ids":${JsonArray(refs.map(::JsonPrimitive))},"reply_questions":["那天后来发生了什么？","花园里还种过什么？"]}"""
             }
             return """{"version":1,"id":"$conversationId","expires_at":999,"page":$page,"has_more":${page == 1},"items":[${turn ?: ""}]}""".toByteArray()
         }
@@ -570,7 +724,7 @@ class MemoryCommunityUiTest {
             firstTurnTexts.putIfAbsent(conversationId, sentChatText.orEmpty())
             conversationTurnTexts[conversationId] = sentChatText.orEmpty()
             val proposal = if (sentChatText == "请给出分段建议") proposalJson() else "null"
-            val kind = if (proposal == "null") "answer" else "proposal"
+            val kind = if (proposal == "null") chatReplyKind else "proposal"
             val result = """{"version":1,"kind":"$kind","reply":"第一行\n第二行","source_ids":[],"questions":[],"proposal":$proposal}"""
             return """{"version":1,"id":"$jobId","kind":"chat","state":"ready","created_at":10,"updated_at":10,"expires_at":999,"error_code":null,"result":$result,"needs_review":true,"base_revision":"$revision"}""".toByteArray()
         }

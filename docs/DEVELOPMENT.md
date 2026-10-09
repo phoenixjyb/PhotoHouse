@@ -102,6 +102,23 @@ The check dispatcher has twelve passing tests. When a Web artifact directory is
 selected, each suite now receives its own child directory so common result
 filenames cannot replace another journey's evidence.
 
+## Clarification presentation qualification
+
+The subsequent Web/phone clarification slice passed the Web community contract
+harness and **24 generated browser checkpoint groups**, with no page errors or
+external-origin requests. Chinese and English captures use an actual 390 px
+viewport and 150% text; the cue, help and suggested question remain visible
+without horizontal overflow. Four focused API 36 phone journeys passed for
+story and memoir readers in both languages at 150% text. Original-resolution
+captures were inspected, with unclipped bounds checked inside the reader.
+
+The journeys cover a passive ready-reply cue, preserving an existing draft,
+explicit question insertion and Send, and hiding stale or invalid reply context.
+Earlier fixture timing, Android system-overlay and capture-measurement failures
+are retained separately from the passing journeys. These are generated browser
+and unconfigured emulator results, not served Web files, a signed APK or family
+acceptance. See [the presentation contract](CONVERSATION_CLARIFICATION.md).
+
 ## Inspect the local environment
 
 ## Worker diagnostics and matched picker qualification

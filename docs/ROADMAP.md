@@ -133,8 +133,12 @@ candidate. The Web journey has 17 generated browser checkpoints, including
 Chinese/English 390 px layouts at 150% text, and the four-suite optional Web
 profile passed after its test waited for the disclosure rule to load. See the
 [phone preview evidence](../clients/android/docs/ANDROID_CONVERSATION_PREVIEWS_2026-10-05.md).
-The next conversational work is understandable follow-up context and
-clarification, with explicit recording and submission controls.
+Current story/memoir clarification replies now explain how to continue in Web
+and phone. The cue keeps recording, draft insertion and sending explicit, and
+requires valid current reply metadata. Suggested questions cannot replace an
+existing draft. See [clarification behavior](CONVERSATION_CLARIFICATION.md).
+The next conversational work is delivery and family evaluation of these controls,
+with provider-qualified follow-up quality.
 
 Web and Android now implement bounded process-memory selected-conversation
 restoration for saved stories and memoirs. They choose only from a fresh

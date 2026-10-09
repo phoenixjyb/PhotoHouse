@@ -7696,6 +7696,66 @@
       "production_changed": false,
       "schema_changed": false,
       "api_deployed": false
+    },
+    {
+      "feature": "web-phone-current-reply-clarification-cue",
+      "source_commit": "eaf42357c8b6f9b34cdf0b32cf570ecd3e13b87e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "566824282f1976327cbbb9ea6ec66e8fbd0b1fca2f6b98a9422f7e9bc179cacd",
+          "sha256": "6793f6f265eb7bc769cc735c16f2f62d65cfb07ba6ad39c71dda6a789e88e558"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryCommunityUiTest.kt",
+          "before_sha256": "db0b8c073736f100ba2e63f47b68ac260614ec4f2db8dc026d343613c7abf92c",
+          "sha256": "9aabf21641880582c2fa22affc7162f1b30d6d97a33ea84d6e49f8bac31a7220"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "f92cbd21aafd78cab27b58471df0168c919eb8b146d63b2f82119a8f1301523a",
+          "sha256": "d30572cc0914d0f5050bd0701801093eaa348e08fe9efe9357a84ca7ba557685"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "e6813b5eae499935b02fd5bde4f5650e3ae77107e9c27adc10f617211a6ab04d",
+          "sha256": "125db35c5d41cbce52c18ff805f97fa8cfbaa57189a8103610f08ef0e735f575"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "ea09e10338c05527256aa5040ba37739222fcbec14d5a84c98420871ce0742f2",
+          "sha256": "2db7a4dec4246a49a285007e6f6a0d6c40c8caf26fcad3c7c4a79272c33f67ab"
+        },
+        {
+          "path": "docs/CONVERSATION_CLARIFICATION.md",
+          "before_sha256": null,
+          "sha256": "4fcecc70f8821b28c9005c902bc900b3fe6ee75caa23b439b200cda0f45392c2"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7fe4416ac6b82a4646da8d1d185047bebb48726351864709ec3391de942dd7f2",
+          "sha256": "dd9d9add776f55ad5b0088aad4a4eeb35a91e2dc7fb453e1e40e1b459e13c2fe"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9ee3c1e3b8d609e5966bc2dcc7d9b21286b5b0d93ed42eca4a4d2b2ec760f176",
+          "sha256": "bb5f99886afd36efa054e499c3fbea2243d65b3c6209fee3e393e3d8da666788"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "2177dc6db5ffe76ab6c3eb1313c31a346b17b4d634c77ac501adad72eee69302",
+          "sha256": "787637939b9d54dea9f58fd9da88b5037855e6686e09c36fcb25abf054d80025"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "e26ac1d250fb60d358dff6c93b02640c104b75ebae9f2e7b26aeb4476be6c0cc",
+          "sha256": "ce5582baa9adea10047eba9ae0c0a230e8cfe860d7978a452d73bd69d322c6c4"
+        }
+      ],
+      "schema_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }
