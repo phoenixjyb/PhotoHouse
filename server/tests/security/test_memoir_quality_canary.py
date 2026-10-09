@@ -300,7 +300,11 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         self.assertNotIn("A synthetic proposal is ready for review.", report_text)
         private_output = json.loads((output_path / "output.json").read_text(encoding="utf-8"))
         self.assertEqual("proposal", private_output["kind"])
-        if os.name != "nt":
+        if os.name == "nt":
+            private_storage.require_private_directory(output_path)
+            for name in ("input-bundle.json", "output.json", "record.json"):
+                private_storage.require_private_file(output_path / name)
+        else:
             self.assertEqual(0o700, output_path.stat().st_mode & 0o777)
             for name in ("input-bundle.json", "output.json", "record.json"):
                 self.assertEqual(0o600, (output_path / name).stat().st_mode & 0o777)
@@ -381,12 +385,16 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         self.assertEqual("captured_for_human_review", report["status"])
         self.assertEqual(["input-bundle.json", "output.json", "record.json"], checked)
 
-    @unittest.skipIf(os.name == "nt", "POSIX permission checks are covered by the shared private reader")
     def test_configuration_requires_owner_private_file_outside_checkout(self):
         path = self.configuration()
-        path.chmod(0o644)
-        with self.assertRaises(canary.CanaryError) as caught:
-            canary._load_configuration(path)
+        if os.name == "nt":
+            with patch.object(private_storage, "_windows_acl", side_effect=ValueError("synthetic DACL refusal")):
+                with self.assertRaises(canary.CanaryError) as caught:
+                    canary._load_configuration(path)
+        else:
+            path.chmod(0o644)
+            with self.assertRaises(canary.CanaryError) as caught:
+                canary._load_configuration(path)
         self.assertEqual("configuration_unavailable", caught.exception.code)
         with self.assertRaises(canary.CanaryError) as caught:
             canary._load_configuration(ROOT / "models" / "quality-cases.json")

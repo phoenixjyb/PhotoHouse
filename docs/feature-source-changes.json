@@ -6678,6 +6678,26 @@
           "before_sha256": "dadddfca26f20e812a368f1514c4836c35578e48c10c0aeb840a7e8e48db396d"
         }
       ]
+    },
+    {
+      "feature": "windows-private-reader-native-fixtures-v1",
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "sha256": "bdc47a07445040f3deb855e552be9ebb63e21cbe6a43f905b9f20e215730c76a",
+          "before_sha256": "c953408ff177427363760cfe0fa5cfce6fcd24b9f6876dc676ebe8b5fb2e1bac"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "sha256": "0bfb53b928029f386fe2f11d6a3f7817b1495766d7b847a31736da617daecbb5",
+          "before_sha256": "65817424b7a0e2ae13e137708972f18fc6c9dbeabb561109e8b6143be1a13c2d"
+        },
+        {
+          "path": "server/tests/security/test_model_qualification.py",
+          "sha256": "a9ad34853ab429fd48b60ae2dd0c8c923c47041d1bca51647d5a47846e3bbd6e",
+          "before_sha256": "b9a852f3fc725348390d1563a7971d756ba915c54ada5232b741e843c4ead736"
+        }
+      ]
     }
   ]
 }

@@ -19,9 +19,9 @@ NOW = datetime(2026, 10, 9, 1, 3, tzinfo=timezone.utc)
 
 def synthetic_fixture(directory):
     directory = Path(directory).resolve()
-    catalog = json.loads((ROOT / 'models/catalog.json').read_text())
-    manifest = json.loads((ROOT / 'models/deployment.synthetic.json').read_text())
-    plan = json.loads((ROOT / 'models/quality-cases.json').read_text())
+    catalog = json.loads((ROOT / 'models/catalog.json').read_text(encoding='utf-8'))
+    manifest = json.loads((ROOT / 'models/deployment.synthetic.json').read_text(encoding='utf-8'))
+    plan = json.loads((ROOT / 'models/quality-cases.json').read_text(encoding='utf-8'))
     data = {'artifact': b'synthetic checkpoint, not a model', 'dependency_lock': b'synthetic exact lock',
             'preprocessing': b'synthetic preprocessing'}
     files = {}
@@ -270,10 +270,10 @@ class ModelQualificationTests(unittest.TestCase):
     def test_private_evidence_and_audio_plan_readers_keep_strict_metadata_boundary(self):
         path=self.private/'evidence.json';inputs=self.private/'inputs.json'
         for target,value in [(path,self.doc),(inputs,self.inputs)]:
-            target.write_text(json.dumps(value));target.chmod(0o600)
+            target.write_text(json.dumps(value), encoding='utf-8');target.chmod(0o600)
         report=qualification.load_private_qualification(path,self.deployment,self.plan,source_root=ROOT,now=NOW,audio_plan_path=inputs).report()
         self.assertEqual(report['status'],'scoped_evidence_consistent')
-        path.write_text('{"schema":1,"schema":1}')
+        path.write_text('{"schema":1,"schema":1}', encoding='utf-8')
         self.refused('private_evidence_unavailable',lambda:qualification.load_private_qualification(path,self.deployment,self.plan,source_root=ROOT,now=NOW))
 
     def test_narrative_inputs_match_existing_generated_bundle_hashes(self):
