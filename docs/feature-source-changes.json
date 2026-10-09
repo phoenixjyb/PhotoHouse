@@ -6538,6 +6538,51 @@
           "before_sha256": "052efffb236ac87f62fb7fe4ca594a00789989a4c11e9bf326da1192c69ea5e8"
         }
       ]
+    },
+    {
+      "feature": "standalone-synthetic-memoir-canary-v1",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "419363e1f092e2dc80b28f73ddb3d5373f48a483756ccab450be8b827c14016b",
+          "before_sha256": "1fa02b3e088d270d6f5d5ff4685db64e4403dd88f26654bd07811a9d0efb8640"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "1dd8f8b40f18c13b7ff6e2c23ca4fa2085e920081b28ec8b90f15a34390879c8",
+          "before_sha256": "4f80bb6217ad6b508ee613a7aaf5d2d7f5c18caaa24bec2435f4a3ecc8978823"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "4a158c387d669e600b2dd4e3d3ca53c887efdb014bbbea708243d9d2843612e0",
+          "before_sha256": "398cd5665c73845a0a90d1f626bd91959a4628c50668c17828e9f72ed8dacbae"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "9adaf36a6861df2e0a1e95965d4f53672c15d5804d542e60d4fd84e8e37e96ce",
+          "before_sha256": "bde0456b42557542ed16c7da2910c52bfde40a0d358ff2c935a25a7989b3f988"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "sha256": "c2a4d44c326745bc0c96cfab1f11b7f81bc6af4f12283de5e62f2566cd0e78ee",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "sha256": "65817424b7a0e2ae13e137708972f18fc6c9dbeabb561109e8b6143be1a13c2d",
+          "before_sha256": null
+        }
+      ]
+    },
+    {
+      "feature": "synthetic-memoir-canary-cpu-evidence",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "f8288cd344c7044a9c00e803f7e4c754536a321c574ef03f8aa526306860eae4",
+          "before_sha256": "419363e1f092e2dc80b28f73ddb3d5373f48a483756ccab450be8b827c14016b"
+        }
+      ]
     }
   ]
 }

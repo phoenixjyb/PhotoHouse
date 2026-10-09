@@ -25,6 +25,11 @@ and Windows TTS in separate scopes. This describes topology only; loopback
 forwarding, installed identities and voice quality still require native checks.
 The next model-infra slice is native installed-provider/device verification and
 bounded Chinese voice/story evaluation, then separately approved activation.
+The standalone [story canary](MODEL_QUALIFICATION.md#capture-one-synthetic-story-output)
+now captures one pinned synthetic narrative or companion response without the
+database-backed worker. It preserves private inputs, outputs and provider
+configuration identity while leaving the quality rubric unreviewed. Native
+model availability, resource supervision and human assessment remain separate.
 Embedding/face bindings and independent runtime catalog packaging remain future
 integration work. Metadata validation does not establish installed models or
 allow automatic activation.
@@ -60,8 +65,9 @@ journey with generated tests and rendered UI before its installation gate.
 
 The offline [memoir quality case plan](../server/docs/security/MEMOIR_QUALITY_CASES_V1.md)
 provides three bounded synthetic book fixtures for later human review. It
-prepares a qualification plan only; no model is run and no prose-quality result
-is claimed. Local-model evaluation and explicit owner review remain future
+prepares a qualification plan only. Its separate opt-in canary can capture an
+output for review; source tests use fake adapters and establish no prose-quality
+result. Local-model evaluation and explicit owner review remain future
 gates for assisted storytelling.
 
 AI captions are evidence about individual assets. They do not by themselves
