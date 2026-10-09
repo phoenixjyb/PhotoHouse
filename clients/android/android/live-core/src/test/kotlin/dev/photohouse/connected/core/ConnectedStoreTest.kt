@@ -51,6 +51,25 @@ class ConnectedStoreTest {
         assertTrue(store.state.value.assistant!!.receiptCheckFailed)
         assertFalse(store.state.value.assistant!!.receiptChecking)
     }
+    @Test fun assistantExchangeKeysTrackRequestsWithoutReceiptAndRemainUniqueAtFortyTurnCap() = runTest {
+        val api = FakeApi().apply { assistantEnabled = true; assistantTurnUntracked = true }
+        val store = ConnectedStore(api, backgroundScope, now = { 0L })
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        store.selectLibrary("family"); runCurrent(); store.loadAssistantCapabilities(); runCurrent()
+
+        repeat(41) { index ->
+            assertTrue(store.sendAssistantText("question ${index + 1}"))
+            runCurrent()
+        }
+
+        val exchanges = store.state.value.assistant!!.turns
+        assertEquals(41, api.assistantTurnCalls)
+        assertEquals(40, exchanges.size)
+        assertEquals((2..41).map { "question $it" }, exchanges.map { it.text })
+        assertTrue(exchanges.all { it.turn.reply == "ok" && it.turn.receipt == null })
+        assertEquals(40, exchanges.map { it.localRequestId }.distinct().size)
+        assertTrue(exchanges.all { AssistantWire.validRequestId(it.localRequestId) })
+    }
     @Test fun failedAssistantTransportKeepsSyntheticRequestIdAndLibrarySwitchDropsIt() = runTest {
         val api = FakeApi().apply { assistantEnabled = true; assistantFailure = ApiFailure(FailureKind.OFFLINE) }
         val store = ConnectedStore(api, backgroundScope, now = { 0L })
@@ -164,6 +183,7 @@ class ConnectedStoreTest {
         store.transcribeAssistant(wav); runCurrent()
         val transcript = store.state.value.assistant!!.transcript!!
         val receipt = transcript.receipt!!
+        assertEquals(receipt.requestId, transcript.localRequestId)
         assertNull(store.state.value.assistant?.confirmedTranscriptRequestId)
         assertEquals(1, api.assistantTranscribeCalls); assertEquals(0, api.assistantTurnCalls)
         val beforeForeignTake = store.state.value.assistant
@@ -183,6 +203,43 @@ class ConnectedStoreTest {
         assertEquals(listOf(transcriptId), api.assistantParentIds)
         store.sendAssistantText("refine by year"); runCurrent()
         assertEquals(listOf(transcriptId, null), api.assistantParentIds)
+    }
+    @Test fun repeatedIdenticalUntrackedTranscriptsHaveDistinctLocalIdsAndRejectStaleTake() = runTest {
+        val api = FakeApi().apply {
+            assistantEnabled = true
+            assistantTranscribeEnabled = true
+            assistantTranscriptReceiptStatus = null
+        }
+        val store = ConnectedStore(api, backgroundScope, now = { 0L })
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        store.selectLibrary("family"); runCurrent(); store.loadAssistantCapabilities(); runCurrent()
+        val wav = ByteArray(16046).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
+
+        store.transcribeAssistant(wav); runCurrent()
+        val first = store.state.value.assistant!!.transcript!!
+        assertNull(first.receipt)
+        assertTrue(AssistantWire.validRequestId(first.localRequestId))
+        store.clearAssistantTranscript()
+        assertNull(store.takeAssistantTranscriptForDraft(first))
+        assertNull(store.state.value.assistant!!.transcript)
+
+        store.transcribeAssistant(wav); runCurrent()
+        val second = store.state.value.assistant!!.transcript!!
+        assertEquals(first.text, second.text)
+        assertNull(second.receipt)
+        assertTrue(AssistantWire.validRequestId(second.localRequestId))
+        assertNotEquals(first.localRequestId, second.localRequestId)
+        assertNull(store.state.value.assistant!!.confirmedTranscriptRequestId)
+        assertNull(store.takeAssistantTranscriptForDraft(first))
+        assertSame(second, store.state.value.assistant!!.transcript)
+        assertEquals("beach", store.takeAssistantTranscriptForDraft(second))
+
+        val accepted = store.state.value.assistant!!
+        assertNull(accepted.transcript)
+        assertNull(accepted.confirmedTranscriptRequestId)
+        assertEquals(2, api.assistantTranscribeCalls)
+        assertEquals(0, api.assistantTurnCalls)
+        assertTrue(api.assistantParentIds.isEmpty())
     }
     @Test fun manualAssistantSendDoesNotLinkUnacceptedTranscript() = runTest {
         val api = FakeApi().apply { assistantEnabled = true; assistantTranscribeEnabled = true }
@@ -505,6 +562,7 @@ class ConnectedStoreTest {
         var assistantTranscribeEnabled = false
         var assistantFailure: ApiFailure? = null
         var assistantTurnCalls = 0
+        var assistantTurnUntracked = false
         var assistantTranscribeCalls = 0
         var assistantTranscriptReceiptStatus: String? = "succeeded"
         var assistantResponseContext: kotlinx.serialization.json.JsonObject? = null
@@ -529,7 +587,7 @@ class ConnectedStoreTest {
             assistantParentIds += parentRequestId
             assistantFailure?.let { throw it }
             return AssistantTurn("results", "ok", assistantResponseContext, null, emptyList(), 0, false, null,
-                AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+                if (assistantTurnUntracked) null else AssistantRequestReceipt(requestId, "enabled", "succeeded"))
         }
         override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
             assistantTranscribeCalls++

@@ -18,7 +18,11 @@ data class AssistantTurn(
     val hasMore: Boolean,
     val effect: AssistantEffect?, val receipt: AssistantRequestReceipt? = null,
 )
-data class AssistantTranscript(val text: String, val language: String, val receipt: AssistantRequestReceipt? = null)
+data class AssistantTranscript(
+    val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,
+    /** Client-local UI identity; never serialized or accepted as server correlation. */
+    val localRequestId: String = "",
+)
 data class AssistantRequestReceipt(val requestId: String, val tracking: String, val status: String?)
 data class AssistantSpeechResult(val bytes: ByteArray, val receipt: AssistantRequestReceipt)
 data class AssistantReceipt(

@@ -59,11 +59,49 @@ The first hosted run exposed Windows event-loop setup and POSIX mode-bit
 assumptions in test fixtures; the [profile notes](WINDOWS_CPU_CHECKS.md) explain
 the repair and the separate installed-directory ACL gate.
 
-The next source maintenance slice adds a separate hosted generated Web job
-using locked Playwright tools. Its first native browser run remains a gate;
-the local fourteen-suite result below belongs to the previously checked Mac
-toolchain. The wrapper's inherited-environment refusal and explicit tool-path
-preservation passed thirteen scoped tooling checks.
+PR #15 merged at head `cd982a9` after all five hosted jobs passed. Its new
+Ubuntu Web job completed seventeen generated suites using locked Playwright
+Core and the matching headless Chromium shell. The same run passed 937 API
+tests with 558 subtests, 93 source-tool tests, 812 Android JVM tests with lint and both
+unconfigured debug builds, and both Windows cohorts. The local fourteen-suite
+result below remains bound to its earlier Mac toolchain. The wrapper's
+inherited-environment refusal and explicit tool-path preservation passed
+thirteen scoped tooling checks. Hosted browser success does not establish
+served household bytes or a signed-in device journey.
+
+## Conversation reading and memoir edit checks (October 10)
+
+The later conversation-reading and memoir-editor candidate passed all seventeen
+generated Web suites locally with Node 22.17, Playwright Core 1.55 and cached
+headless Chromium 1187. Focused checks preserve older reading anchors and verify
+that delayed citation choices keep the title/intro form, cursor and composition
+intact. Earlier failures are retained: the fixtures now wait for replacement
+editors after retry and for authorized receipt refresh after a language change,
+rather than matching text or cards from the preceding view. Final Chinese and
+English 390 px/150% layouts were inspected; those renders use generated content.
+
+The same candidate's declared API cohort passed 952 tests and 574 subtests,
+including fifteen portable bad-video planner tests with sixteen subtests. The
+generated no-listener demo passed separately, as did 93 standard-library tooling
+tests. These overlapping checks are not added together. Exact source-ledger,
+hosted CI, signed Android and household-service gates retain their own results.
+See [Android release preparation](ANDROID_RELEASE_PREPARATION.md) for private
+input profiles and artifact acceptance.
+
+The final phone simulator cohort passed six journeys: five generated navigation
+fixtures and the existing MainActivity uncertain-receipt flow. It checks older
+reading preservation, actual tail geometry, the forty-turn cap, a real swipe
+during observed jump-animation movement, and composer/recovery controls with
+the keyboard open at 150% text. MainActivity now requests window resizing for
+the keyboard instead of allowing its header to pan offscreen. Earlier failed
+attempts are retained; the interrupted full-module run is not an aggregate
+instrumentation pass. These generated checks do not establish a Samsung or TV
+installation, microphone/provider quality, or household acceptance.
+The source-bound live-core results contain 617 passing tests; the final task
+was up to date because the UUID/cap changes had already been executed. Connected
+debug lint passed. Two of the same navigation fixtures were rerun successfully
+after correcting their screenshot sink; those results are not extra journeys.
+The parent inspected the original final Chinese and English enlarged renders.
 
 ## Web assistant transcript acceptance (October 10)
 

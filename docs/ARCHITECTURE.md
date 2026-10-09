@@ -120,6 +120,21 @@ Conversion readiness, copied files and published playback are separate states. R
 
 ## Reading context and conversation
 
+The search assistant's temporary exchange list retains eight successful Web
+turns and forty phone turns. These are client process state, separate from
+persisted story/memoir threads and thirty-day server troubleshooting records.
+Client-local row/request identities are presentation keys; they are not trusted
+server correlation or extra model history. New content follows the end only
+when the user is already reading there; older reading positions and explicit
+jump controls are described in [the Web trail contract](ASSISTANT_TURN_TRAIL.md).
+Phone recognition keeps explicit transcript review before insertion or send.
+
+The memoir editor treats the title, opening note and ordered-story form as a
+stable draft surface. Asynchronous citation loading replaces only the citation
+panel, so it does not replace focused inputs or interrupt composition. A result
+must still match the current library, memoir revision, ordered children and
+attached editor. Original-source inspection and playback remain explicit actions.
+
 The Web memoir reader can prepare a question about its currently loaded chapter.
 It supplies only matching book/story revisions, chapter identity and bounded
 titles. It adds no narration or original contribution to that preparation and

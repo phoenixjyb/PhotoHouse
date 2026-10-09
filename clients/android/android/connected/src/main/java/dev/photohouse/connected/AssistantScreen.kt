@@ -1,18 +1,30 @@
 package dev.photohouse.connected
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalFocusManager
@@ -71,20 +83,26 @@ internal fun AssistantScreen(
     val pending = state?.pendingTurn
     val pendingReceiptStatus = state?.receiptDetail?.status ?: state?.lastRequestReceipt?.status
     val pendingFailed = pendingReceiptStatus in setOf("failed", "interrupted")
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
+        val compactIntro = maxHeight < 600.dp
+        Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("assistant-back")) { Text(t("Back to album", "返回相册")) }
             if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(t("Clear", "清空对话")) }
         }
-        Text(t("PhotoHouse assistant", "拾光相册助手"), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif)
-        Text(t("A calm way to find a moment in this library.", "陪你在这座资料库里，慢慢找回一个瞬间。"),
-            style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(t("Ask about photos and videos, then open a result to view it.", "可以询问照片和视频，再打开结果查看。"),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp))
+        Text(t("PhotoHouse assistant", "拾光相册助手"), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif,
+            modifier = Modifier.testTag("assistant-intro-title"))
+        if (!compactIntro) {
+            Text(t("A calm way to find a moment in this library.", "陪你在这座资料库里，慢慢找回一个瞬间。"),
+                style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("assistant-intro-description"))
+            Text(t("Ask about photos and videos, then open a result to view it.", "可以询问照片和视频，再打开结果查看。"),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp).testTag("assistant-usage-description"))
+        }
         Text(t("Recognized text, requests and status are kept for 30 days. Recordings are transient.", "识别文本、提交的指令和处理状态保留 30 天；录音仅临时处理。"),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp))
+            modifier = Modifier.padding(top = 2.dp).testTag("assistant-retention-notice"))
         val assistant = state
         assistant?.takeIf { it.pendingTurn == null }?.lastRequestReceipt?.let { receipt ->
             val receiptStatus = assistant.receiptDetail?.status ?: receipt.status ?: receipt.tracking
@@ -118,51 +136,149 @@ internal fun AssistantScreen(
             assistant.capabilities?.let { !it.enabled || !it.text } == true ->
                 Text(t("The assistant is not enabled for this library.", "此资料库尚未启用助手。"), Modifier.padding(top = 12.dp).testTag("assistant-disabled"))
             else -> {
-                LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp).testTag("assistant-turns"), verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 12.dp)) {
-                    pending?.let { pendingTurn -> item(key = "assistant-pending") {
-                        val statusLabel = when {
-                            assistant.busy -> t("Sending this request…", "正在提交这条请求…")
-                            pendingReceiptStatus == "received" -> t("The server received this request and may still be processing it.", "服务器已收到请求，可能仍在处理中。")
-                            pendingReceiptStatus == "succeeded" -> t("The server completed this request, but its reply and updated context were not recovered.", "服务器已完成请求，但回复和更新后的上下文没有取回。")
-                            pendingReceiptStatus == "failed" -> t("The server recorded a failed request; its reply is unavailable.", "服务器记录这条请求失败，回复不可用。")
-                            pendingReceiptStatus == "interrupted" -> t("Server processing was interrupted; its reply is unavailable.", "服务器处理中断，回复不可用。")
-                            else -> t("The outcome is unknown. The server may already have processed this request.", "结果尚不确定；服务器可能已经处理了这条请求。")
-                        }
-                        val recoveryActionText = if (pendingFailed)
-                            t("Close this conversation to edit the original question, or keep your newer draft. Review it and press Ask to send.",
-                                "关闭后可编辑原问题；若已输入新问题，则保留新草稿。检查后点击发送才会提交。")
-                        else
-                            t("Checking the receipt never resends the request. Starting fresh clears this conversation and keeps a newer unsent draft; the original server request may still finish.",
-                                "查询回执不会重新发送请求。重新开始会清除当前对话，保留你新写的草稿；服务器仍可能完成原请求。")
-                        Card(Modifier.fillMaxWidth().testTag("assistant-pending-turn")) {
-                            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(t("Pending request", "待确认请求"), style = MaterialTheme.typography.labelLarge)
-                                Text(statusLabel, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-pending-status"))
-                                TextButton(onClick = onCheckReceipt, enabled = !assistant.receiptChecking && assistant.lastRequestReceipt?.tracking != "disabled",
-                                    modifier = Modifier.testTag("assistant-check-receipt")) {
-                                    Text(if (assistant.receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
+                key(assistant.generation, assistant.library) {
+                    val listState = rememberLazyListState()
+                    val scrollScope = rememberCoroutineScope()
+                    var positioningJob by remember { mutableStateOf<Job?>(null) }
+                    var followLatest by remember { mutableStateOf(true) }
+                    var showJumpToLatest by remember { mutableStateOf(false) }
+                    var initialPositionHandled by remember { mutableStateOf(false) }
+                    val autoScrolling = remember { mutableStateOf(false) }
+                    val handledReplyIds = remember { exchanges.mapTo(linkedSetOf()) { it.localRequestId } }
+                    var handledPendingId by remember { mutableStateOf(pending?.requestId) }
+                    val latestTranscript = assistant.transcript?.takeIf { assistant.pendingTurn == null }
+                    var handledTranscriptId by remember {
+                        mutableStateOf(latestTranscript?.let { it.localRequestId.ifBlank { it.receipt?.requestId ?: it.hashCode().toString() } })
+                    }
+                    val activityKey = pending?.let { "pending:${it.requestId}" }
+                        ?: latestTranscript?.let { "transcript:${it.localRequestId.ifBlank { it.receipt?.requestId ?: it.hashCode().toString() }}" }
+                        ?: exchanges.lastOrNull()?.let { "reply:${it.localRequestId}" }
+                    val latestActivityKey = rememberUpdatedState(activityKey)
+                    val expectedItemCount = (if (exchanges.isEmpty() && pending == null) 1 else 0) + exchanges.size +
+                        (if (pending != null) 1 else 0) + (if (latestTranscript != null) 1 else 0) +
+                        (if (assistant.failure != null) 1 else 0)
+                    val latestPending = rememberUpdatedState(pending != null)
+                    val latestExpectedItemCount = rememberUpdatedState(expectedItemCount)
+                    val revealLatestItemEnd = rememberUpdatedState(pending == null && (exchanges.isNotEmpty() || latestTranscript != null))
+                    val userScrollGuard = remember(listState) {
+                        object : NestedScrollConnection {
+                            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                if (source == NestedScrollSource.Drag && available.y != 0f) {
+                                    followLatest = false
+                                    if (latestActivityKey.value != null) showJumpToLatest = true
+                                    positioningJob?.cancel()
                                 }
-                                TextButton(onClick = {
-                                    if (pendingFailed && draft.isBlank()) draft = pendingTurn.text
-                                    onClear()
-                                }, modifier = Modifier.testTag("assistant-close-pending")) {
-                                    Text(if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
-                                }
-                                if (assistant.receiptCheckFailed) Text(t("Receipt check unavailable. The previous status is unchanged.", "暂时无法查询回执，上次确认的状态未改变。"),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.testTag("assistant-receipt-check-failed"))
-                                Text(t("Submitted question", "已提交的问题"), style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(pendingTurn.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("assistant-pending-text"))
-                                Text(recoveryActionText,
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.testTag("assistant-pending-explanation"))
+                                return Offset.Zero
                             }
                         }
-                    } }
-                    if (exchanges.isEmpty()) item {
-                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    }
+
+                    suspend fun positionAtLatest(animated: Boolean) {
+                        positioningJob?.cancelAndJoin()
+                        val callingContext = currentCoroutineContext()
+                        val requestedActivity = latestActivityKey.value
+                        val job = scrollScope.launch {
+                            autoScrolling.value = true
+                            try {
+                                // Count and target are observed together so an obsolete 41-item wait cannot outlive a 40-item replacement.
+                                withFrameNanos { }
+                                val currentCount = snapshotFlow {
+                                    listState.layoutInfo.totalItemsCount to latestExpectedItemCount.value
+                                }.first { (layoutCount, expectedCount) -> layoutCount == expectedCount }.first
+                                if (requestedActivity != latestActivityKey.value || !followLatest || currentCount <= 0) return@launch
+                                val pendingAtTail = latestPending.value
+                                val revealEnd = revealLatestItemEnd.value
+                                if (animated) listState.animateScrollToItem(currentCount - 1)
+                                else listState.scrollToItem(currentCount - 1)
+                                withFrameNanos { }
+                                if (requestedActivity != latestActivityKey.value || !followLatest ||
+                                    latestExpectedItemCount.value != currentCount) return@launch
+                                if (!pendingAtTail && revealEnd) {
+                                    val layout = listState.layoutInfo
+                                    val tail = layout.visibleItemsInfo.firstOrNull { it.index == currentCount - 1 } ?: return@launch
+                                    val overflow = (tail.offset + tail.size - layout.viewportEndOffset).coerceAtLeast(0)
+                                    if (overflow > 0) listState.scrollBy(overflow.toFloat())
+                                }
+                            } finally { autoScrolling.value = false }
+                        }
+                        positioningJob = job
+                        try { job.join() } finally {
+                            if (!callingContext.isActive) job.cancel()
+                            if (positioningJob === job) positioningJob = null
+                        }
+                    }
+
+                    LaunchedEffect(listState) {
+                        snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
+                            if (scrolling && !autoScrolling.value) followLatest = false
+                            if (!scrolling && !autoScrolling.value) {
+                                val layout = listState.layoutInfo
+                                val last = layout.visibleItemsInfo.lastOrNull()
+                                val atTail = last != null && last.index == layout.totalItemsCount - 1 &&
+                                    last.offset + last.size <= layout.viewportEndOffset
+                                if (atTail) {
+                                    followLatest = true
+                                    showJumpToLatest = false
+                                }
+                            }
+                        }
+                    }
+                    LaunchedEffect(listState) {
+                        snapshotFlow { listState.layoutInfo.viewportEndOffset }.collect {
+                            if (initialPositionHandled && followLatest) {
+                                positionAtLatest(animated = false)
+                            }
+                        }
+                    }
+                    LaunchedEffect(activityKey) {
+                        val currentActivity = activityKey ?: return@LaunchedEffect
+                        val separator = currentActivity.indexOf(':')
+                        val stage = currentActivity.substring(0, separator)
+                        val id = currentActivity.substring(separator + 1)
+                        val newActivity = when (stage) {
+                            "pending" -> {
+                                val isNew = id != handledPendingId && id !in handledReplyIds
+                                handledPendingId = id
+                                isNew
+                            }
+                            "transcript" -> {
+                                val isNew = id != handledTranscriptId
+                                handledTranscriptId = id
+                                isNew
+                            }
+                            else -> if (handledReplyIds.add(id)) {
+                                while (handledReplyIds.size > 40) handledReplyIds.remove(handledReplyIds.first())
+                                true
+                            } else false
+                        }
+                        if (!newActivity && initialPositionHandled) return@LaunchedEffect
+                        if (!initialPositionHandled) {
+                            positionAtLatest(animated = false)
+                            initialPositionHandled = true
+                        } else if (newActivity && followLatest) {
+                            positionAtLatest(animated = true)
+                        } else if (newActivity) {
+                            showJumpToLatest = true
+                        }
+                    }
+                    Column(Modifier.weight(1f).fillMaxWidth()) {
+                        if (showJumpToLatest) {
+                            Button(onClick = {
+                                followLatest = true
+                                showJumpToLatest = false
+                                scrollScope.launch {
+                                    positionAtLatest(animated = true)
+                                }
+                            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("assistant-jump-to-latest")) {
+                                Text(t("Jump to latest", "跳到最新"), Modifier.testTag("assistant-jump-to-latest-label"))
+                            }
+                        }
+                    LazyColumn(state = listState,
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp)
+                            .nestedScroll(userScrollGuard).testTag("assistant-turns"),
+                        verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    if (exchanges.isEmpty() && pending == null) item(key = "assistant-intro") {
+                        Card(Modifier.fillMaxWidth().testTag("assistant-intro"), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(t("Start with a simple request", "从一句简单的话开始"), style = MaterialTheme.typography.titleMedium,
                                     fontFamily = FontFamily.Serif, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -180,8 +296,8 @@ internal fun AssistantScreen(
                             }
                         }
                     }
-                    items(exchanges) { exchange ->
-                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(exchanges, key = { "assistant-turn-${it.localRequestId}" }) { exchange ->
+                        Card(Modifier.fillMaxWidth().testTag("assistant-exchange-${exchange.localRequestId}"), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(t("YOU ASKED", "你的问题"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(exchange.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("assistant-user-turn"))
                             HorizontalDivider()
@@ -213,15 +329,53 @@ internal fun AssistantScreen(
                             }
                         } }
                     }
-                    if (assistant.busy) item {
-                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth().testTag("assistant-sending"))
-                            Text(t("Looking through this library…", "正在资料库中查找…"), style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    assistant.failure?.let { _ -> item(key = "assistant-turn-error") {
+                        Text(t("This request could not be completed. Try again when the service is available.", "暂时无法完成这次请求，服务恢复后可以重试。"),
+                            color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-turn-error"))
+                    } }
+                    pending?.let { pendingTurn -> item(key = "assistant-turn-${pendingTurn.requestId}") {
+                        val statusLabel = when {
+                            assistant.busy -> t("Sending this request…", "正在提交这条请求…")
+                            pendingReceiptStatus == "received" -> t("The server received this request and may still be processing it.", "服务器已收到请求，可能仍在处理中。")
+                            pendingReceiptStatus == "succeeded" -> t("The server completed this request, but its reply and updated context were not recovered.", "服务器已完成请求，但回复和更新后的上下文没有取回。")
+                            pendingReceiptStatus == "failed" -> t("The server recorded a failed request; its reply is unavailable.", "服务器记录这条请求失败，回复不可用。")
+                            pendingReceiptStatus == "interrupted" -> t("Server processing was interrupted; its reply is unavailable.", "服务器处理中断，回复不可用。")
+                            else -> t("The outcome is unknown. The server may already have processed this request.", "结果尚不确定；服务器可能已经处理了这条请求。")
                         }
-                    }
+                        val recoveryActionText = if (pendingFailed)
+                            t("Close this conversation to edit the original question, or keep your newer draft. Review it and press Ask to send.",
+                                "关闭后可编辑原问题；若已输入新问题，则保留新草稿。检查后点击发送才会提交。")
+                        else
+                            t("Checking the receipt never resends the request. Starting fresh clears this conversation and keeps a newer unsent draft; the original server request may still finish.",
+                                "查询回执不会重新发送请求。重新开始会清除当前对话，保留你新写的草稿；服务器仍可能完成原请求。")
+                        Card(Modifier.fillMaxWidth().testTag("assistant-pending-turn")) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(t("Pending request", "待确认请求"), style = MaterialTheme.typography.labelLarge)
+                                Text(statusLabel, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-pending-status"))
+                                TextButton(onClick = onCheckReceipt, enabled = !assistant.receiptChecking && assistant.lastRequestReceipt?.tracking != "disabled",
+                                    modifier = Modifier.testTag("assistant-check-receipt")) {
+                                    Text(if (assistant.receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
+                                }
+                                TextButton(onClick = {
+                                    if (pendingFailed && draft.isBlank()) draft = pendingTurn.text
+                                    onClear()
+                                }, modifier = Modifier.testTag("assistant-close-pending")) {
+                                    Text(if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
+                                }
+                                if (assistant.receiptCheckFailed) Text(t("Receipt check unavailable. The previous status is unchanged.", "暂时无法查询回执，上次确认的状态未改变。"),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.testTag("assistant-receipt-check-failed"))
+                                Text(recoveryActionText,
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.testTag("assistant-pending-explanation"))
+                                Text(t("Submitted question", "已提交的问题"), style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(pendingTurn.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("assistant-pending-text"))
+                            }
+                        }
+                    } }
                     assistant.transcript?.takeIf { assistant.pendingTurn == null }?.let { transcript ->
-                        item(key = "assistant-transcript-review") {
+                        item(key = "assistant-transcript-review-${transcript.localRequestId.ifBlank { transcript.receipt?.requestId ?: transcript.hashCode().toString() }}") {
                             Card(Modifier.fillMaxWidth().testTag("assistant-transcript-review"),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -253,11 +407,10 @@ internal fun AssistantScreen(
                             }
                         }
                     }
-                    assistant.failure?.let { _ -> item {
-                        Text(t("This request could not be completed. Try again when the service is available.", "暂时无法完成这次请求，服务恢复后可以重试。"),
-                            color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-turn-error"))
-                    } }
+                    }
                 }
+
+                    }
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val latest = exchanges.lastOrNull()?.turn
                     if (assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty()) {
@@ -305,6 +458,7 @@ internal fun AssistantScreen(
                     if (recordError) Text(t("Microphone recording could not start.", "无法开始录音。"), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-record-error"))
                 }
             }
+        }
         }
     }
 }

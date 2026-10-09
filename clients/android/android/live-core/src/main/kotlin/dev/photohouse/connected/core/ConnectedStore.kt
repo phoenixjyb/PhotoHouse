@@ -190,7 +190,12 @@ data class UploadAnnotationAudioState(
     val library: String, val annotationId: String, val assetId: String, val busy: Boolean = false,
     val audio: ProtectedAnnotationAudio? = null, val failure: ApiFailure? = null,
 )
-data class AssistantExchange(val text: String, val turn: AssistantTurn)
+data class AssistantExchange(
+    val text: String,
+    val turn: AssistantTurn,
+    /** Client-local row identity; independent of server receipt tracking and reply text. */
+    val localRequestId: String = java.util.UUID.randomUUID().toString(),
+)
 /** Immutable request details retained only in the active assistant scope if the POST outcome is uncertain. */
 data class AssistantPendingTurn(
     val accountId: String, val library: String, val generation: Long,
@@ -3324,7 +3329,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 val result = api.assistantTranscribe(credential, library, wav, requestId)
                 if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantTranscriptRequest) return@launch
                 val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result, lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = null, failure = null))
+                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result.copy(localRequestId = requestId), lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = null, failure = null))
                 result.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.let { reportAssistantOutcome(library, generation, credential, requestId, "displayed") }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -3366,7 +3371,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 val result = api.assistantTurn(credential, library, text, context, requestId, parentId)
                 if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantTurnRequest) return@launch
                 val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                val updated = latest.copy(turns = (latest.turns + AssistantExchange(text, result)).takeLast(40),
+                val updated = latest.copy(turns = (latest.turns + AssistantExchange(text, result, pending.requestId)).takeLast(40),
                     context = result.context, busy = false, failure = null, pendingTurn = null,
                     transcript = null,
                     lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null))
