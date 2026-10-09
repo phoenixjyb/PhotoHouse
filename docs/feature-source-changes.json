@@ -7886,6 +7886,20 @@
       "hidden_history_sent": false,
       "provider_called": false,
       "api_deployed": false
+    },
+    {
+      "feature": "chinese-product-story-experience-current-source-boundaries",
+      "source_commit": "554c11c128f4c18b63a7e0a8587ebc693d2defff",
+      "files": [
+        {
+          "path": "docs/STORY_EXPERIENCE.md",
+          "before_sha256": "6ca5f14ead7d62c150c1fd504de9cfebdd2c9f02ee5fb8cf5aac13685fe99bf8",
+          "sha256": "f89793fb15fe9bbfe499c8c81786743c10e35823059b1513a0c6870b7d4712b9"
+        }
+      ],
+      "documentation_only": true,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }
