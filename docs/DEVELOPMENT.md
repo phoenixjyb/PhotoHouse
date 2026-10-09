@@ -70,6 +70,15 @@ fake adapters and block HTTP client construction. The command defaults to a
 plan and has an explicit execution mode for one synthetic case. No model quality
 or native runtime is qualified by these tests.
 
+## Native Windows private-reader checks
+
+The `windows-private-readers` CI job uses Python 3.12 and the existing locked API
+dependencies. It runs the private-storage, deployment, qualification, TTS adapter
+and standalone memoir-canary suites on generated fixtures. These checks exercise
+native file metadata and DACL handling; provider calls remain faked, and no model,
+GPU, speech playback or production activation is required. Linux API and Android
+checks retain their separate acceptance scope.
+
 ## CPU quick start
 
 The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)

@@ -22,6 +22,16 @@ requires an absolute path outside the checkout and owner-private storage. Do
 not put model weights, household material, credentials, local endpoints, or
 private machine details in the repository or a public report.
 
+Stable reads compare the file identifier, device, size and modification time
+before, during and after opening. On Windows Python 3.12+, they compare
+`st_birthtime_ns` for the creation timestamp; on POSIX they retain `st_ctime_ns`
+for metadata changes. Windows path and handle queries can disagree on the
+meaning of `st_ctime_ns`, so that deprecated field must not falsely classify an
+unchanged private file as replaced. Missing Windows creation metadata is refused.
+Permissions, hard links, reparse points and actual file replacement remain checked.
+See the [Python timestamp documentation](https://docs.python.org/3.12/library/os.html#os.stat_result)
+and [CPython issue 157671](https://github.com/python/cpython/issues/157671).
+
 From the repository root, print the safe role/case plan for a selected branch:
 
 ```sh

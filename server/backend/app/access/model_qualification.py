@@ -20,6 +20,7 @@ from .model_deployment import (DIGEST, ID, DeploymentError, _integer as _deploym
                                _match as _deployment_match, _object as _deployment_object,
                                _text as _deployment_text, _validated_snapshot, _load_private_document,
                                runtime_host_platform)
+from .private_storage import stable_stat_identity
 
 ROLES = {'assistant_asr', 'memory_asr', 'assistant_tts', 'narrative'}
 FILE_KINDS = {'artifact', 'dependency_lock', 'preprocessing'}
@@ -442,7 +443,9 @@ def _hash_file(path, *, source_root, deadline):
             digest.update(chunk)
         after = os.fstat(stream.fileno())
     final = _regular_path(path, source_root)
-    if count != before.st_size or _stat_identity(before) != _stat_identity(after) or _stat_identity(before) != _stat_identity(final):
+    if (count != before.st_size or _stat_identity(before) != _stat_identity(after) or
+            _stat_identity(before) != _stat_identity(final) or
+            opened.st_ctime_ns != after.st_ctime_ns):
         _fail('identity_file_changed')
     if time.monotonic() >= deadline:
         _fail('identity_hash_deadline')
@@ -450,7 +453,7 @@ def _hash_file(path, *, source_root, deadline):
 
 
 def _stat_identity(info):
-    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+    return stable_stat_identity(info)
 
 
 def _verify_identity_files(evidence, deployment, *, source_root, timeout_seconds=120):
@@ -516,4 +519,8 @@ def verify_identity_files(evidence, deployment, *, source_root, timeout_seconds=
         return _verify_identity_files(evidence, deployment, source_root=source_root,
                                       timeout_seconds=timeout_seconds)
     except OSError:
+        _fail('identity_file_unavailable')
+    except ValueError as error:
+        if isinstance(error, QualificationError):
+            raise
         _fail('identity_file_unavailable')

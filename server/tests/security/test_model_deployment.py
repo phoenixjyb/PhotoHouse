@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -315,6 +316,54 @@ class ModelDeploymentTests(unittest.TestCase):
             with patch.object(deployment, 'require_private_file', side_effect=replace_after_read):
                 with self.assertRaisesRegex(deployment.DeploymentError, 'manifest_changed'):
                     deployment.load_private_deployment(path, self.catalog, source_root=ROOT)
+
+    def test_windows_creation_identity_allows_path_handle_ctime_difference_but_checks_handle_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve(); root.chmod(0o700)
+            path = root / 'selection.json'
+            path.write_text(json.dumps({'synthetic': True})); path.chmod(0o600)
+            real_fstat = os.fstat
+
+            class FakeStream:
+                def __init__(self, fd):
+                    self.fd = fd
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    os.close(self.fd)
+
+                def fileno(self):
+                    return self.fd
+
+                def read(self, _limit):
+                    return json.dumps({'synthetic': True}).encode()
+
+            def identity(info):
+                # Windows stable identity is dev/inode/size/mtime/birthtime;
+                # raw ctime remains separately comparable between fstat calls.
+                return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, 123)
+
+            for ctimes, expected_error in (((111, 111), None), ((111, 222), 'manifest_changed')):
+                with self.subTest(ctimes=ctimes):
+                    samples = iter(ctimes)
+
+                    def fake_fstat(fd):
+                        value = real_fstat(fd)
+                        return SimpleNamespace(st_dev=value.st_dev, st_ino=value.st_ino,
+                            st_size=value.st_size, st_mtime_ns=value.st_mtime_ns,
+                            st_mode=value.st_mode, st_ctime_ns=next(samples))
+
+                    with patch.object(deployment, 'stable_stat_identity', side_effect=identity), \
+                            patch.object(deployment.os, 'fstat', side_effect=fake_fstat), \
+                            patch.object(deployment.os, 'fdopen', side_effect=lambda fd, _mode: FakeStream(fd)):
+                        if expected_error:
+                            with self.assertRaisesRegex(deployment.DeploymentError, expected_error):
+                                deployment._load_private_document(path, source_root=ROOT)
+                        else:
+                            self.assertEqual(deployment._load_private_document(path, source_root=ROOT),
+                                             {'synthetic': True})
 
 
 if __name__ == '__main__':

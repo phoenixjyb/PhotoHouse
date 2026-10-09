@@ -11,12 +11,13 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import threading
 import time
 
 from .assistant_speech import MAX_WAV_BYTES, valid_reply_wav
-from .private_storage import require_private_file
+from .private_storage import require_private_file, stable_stat_identity
 
 MAX_TEXT_BYTES = 600
 MAX_FORM_BYTES = 2048
@@ -129,7 +130,7 @@ def read_private_token(path: Path) -> str:
                 if parent == Path(parent.anchor):
                     continue
                 info = parent.lstat()
-                if (not info.is_dir() or info.st_file_attributes & 0x400):
+                if not _safe_windows_directory(info):
                     raise ValueError('Private token file required')
         require_private_file(path)
         before = _identity(path.lstat())
@@ -141,11 +142,14 @@ def read_private_token(path: Path) -> str:
         fd = os.open(path, flags)
         try:
             require_private_file(path)
-            if _identity(os.fstat(fd)) != before:
+            opened = os.fstat(fd)
+            if _identity(opened) != before:
                 raise ValueError('Private token file required')
             raw = os.read(fd, MAX_TOKEN_BYTES + 1)
             require_private_file(path)
-            if _identity(os.fstat(fd)) != before or _identity(path.lstat()) != before:
+            after = os.fstat(fd)
+            if (_identity(after) != before or _identity(path.lstat()) != before or
+                    opened.st_ctime_ns != after.st_ctime_ns):
                 raise ValueError('Private token file required')
         finally:
             os.close(fd)
@@ -161,8 +165,12 @@ def read_private_token(path: Path) -> str:
 
 
 def _identity(info):
-    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
-            info.st_ctime_ns, info.st_nlink)
+    return stable_stat_identity(info) + (info.st_nlink,)
+
+
+def _safe_windows_directory(info):
+    """Check an lstat result without assuming it is a Path object."""
+    return stat.S_ISDIR(info.st_mode) and not getattr(info, 'st_file_attributes', 0) & 0x400
 
 
 def valid_token(token):

@@ -3,13 +3,36 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend'))
-from app.access.private_storage import _acl_is_private, require_private_directory, require_private_file
+from app.access.private_storage import (_acl_is_private, require_private_directory,
+                                       require_private_file, stable_stat_identity)
 
 
 class PrivateStorageTests(unittest.TestCase):
+    def test_stable_identity_uses_windows_birthtime_and_rejects_any_identity_change(self):
+        common = dict(st_dev=1, st_ino=2, st_size=3, st_mtime_ns=4, st_birthtime_ns=5)
+        path_stat = SimpleNamespace(**common, st_ctime_ns=100)
+        handle_stat = SimpleNamespace(**common, st_ctime_ns=200)
+        self.assertEqual(stable_stat_identity(path_stat, windows=True),
+                         stable_stat_identity(handle_stat, windows=True))
+        for field, changed in (('st_dev', 10), ('st_ino', 10), ('st_size', 10),
+                               ('st_mtime_ns', 10), ('st_birthtime_ns', 10)):
+            altered = dict(common, **{field: changed})
+            with self.subTest(field=field):
+                self.assertNotEqual(stable_stat_identity(path_stat, windows=True),
+                                    stable_stat_identity(SimpleNamespace(**altered, st_ctime_ns=100), windows=True))
+
+    def test_stable_identity_keeps_posix_ctime_and_requires_windows_birthtime(self):
+        base = dict(st_dev=1, st_ino=2, st_size=3, st_mtime_ns=4, st_ctime_ns=5)
+        self.assertEqual(stable_stat_identity(SimpleNamespace(**base), windows=False), (1, 2, 3, 4, 5))
+        self.assertNotEqual(stable_stat_identity(SimpleNamespace(**base), windows=False),
+                            stable_stat_identity(SimpleNamespace(**dict(base, st_ctime_ns=6)), windows=False))
+        with self.assertRaises(ValueError):
+            stable_stat_identity(SimpleNamespace(**base), windows=True)
+
     def test_windows_policy_rejects_other_users_null_owner_and_unknown_aces(self):
         user = 'S-1-5-21-111-222-333-1001'
         private = [(0,0,user),(0,0,'S-1-5-18'),(0,0,'S-1-5-32-544')]
