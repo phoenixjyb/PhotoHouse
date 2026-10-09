@@ -6919,6 +6919,83 @@
       "model_activation": false,
       "workers_activated": false,
       "apk_published": false
+    },
+    {
+      "feature": "approved-worker-terminal-diagnostics-and-a0-picker-qualification-v1",
+      "base_commit": "7069166f9e9a8c176946532b9a6e8ea4d4dd68f6",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5b957e752e5559e858a152751339d0fe97bb87a51d8d534ba30dea4fd51023d8",
+          "sha256": "9924b82bfbfa8c565e4c12b791a4847e52f114f2f42c3c129f978b45980d9f44"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8fc21f07d026ace994ad1f4a1cafa71f8369aaf556b0547aba291dabd8b967bd",
+          "sha256": "48519c1a432d45344459bcc00276929f0645f211dc660eb540ad46ac46a0967f"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "fea4c4eb64986f023a748bfd18b38ecd2f64da1ea1e052e04c5da09c82ac672a",
+          "sha256": "d8eadfbad2f688f71b315379ef066ecd88d973077dd009dec39a5f37e6d1795a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "d3c1854cfd1fd0cc5eee798e5d05991b719872e3d7132dcf05bfffbfbbc76cd7",
+          "sha256": "862b743d44a58a0a9fdb6879b2db5d440ec4377164f21153782085ac8182cf9f"
+        },
+        {
+          "path": "server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md",
+          "before_sha256": null,
+          "sha256": "c4facd870cf532140c785120fa4007456321982a421643d01b8bc93aa1c17451"
+        },
+        {
+          "path": "server/scripts/home_preparation_resources.py",
+          "before_sha256": "dbc3cbc9a9609a2ad314385f123b0b0d87c8a9513d8680eebe2c9076239b50a8",
+          "sha256": "9b2061fab9af17aaa4280c47c50c9a305d9cc00ffd577476b15532707a182512"
+        },
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "before_sha256": "e2439f25dcbd0c21ebad777252037d9f05bd0adab6d4899ab3a41cf40170f3c5",
+          "sha256": "888bf774421694f10aed3893f835c2adc35a3e518960b9e78f7231c16abc9d66"
+        },
+        {
+          "path": "server/scripts/run_approved_face_pipeline.py",
+          "before_sha256": "c6fa4e43b6b5746bcee267f9e98cad7925cad064ed6731c013cb91c1203a49c0",
+          "sha256": "98581b70e93e617cb7387d30c97290aaf2b4dd5c044d7a0a25e1cff66e1b640b"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "before_sha256": "71eeb23e02bd3c9bd084607aa4db2019be36e24972164d01316d8ebe4aae05bb",
+          "sha256": "8c428c2588f9585c2a7b05840dc4dc59db66f3dc9b7e8dd3f7ab6c958c373a16"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "before_sha256": "9f86218e5a3193bf1adcf78b3de0fac9a02e2d4ac87276b86b8a5ca92d8f4518",
+          "sha256": "a5e3a1c38275b28671b516e40282678b295524399e0373f8a53b25dea177b71c"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_failure_reports.py",
+          "before_sha256": null,
+          "sha256": "ed0cf7370c4347d3595bfe7ab1ad3ae12f786ab8a0f131d25cd1866b3dd2b234"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "fcf49e482613490dee35402d095aaa662ebcbc4a949aaebc0bb691113512479a",
+          "sha256": "b5eff2d33d12554ace8632dcb45c37b97e0ad40c6e93d68287b91f1716d8ca68"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9adaf36a6861df2e0a1e95965d4f53672c15d5804d542e60d4fd84e8e37e96ce",
+          "sha256": "d01716579bbecdc617b3a8e8f50a004a1d7e35ea7a31c3a8cededdfa86997a7f"
+        }
+      ],
+      "worker_processing_changed": false,
+      "schema_changed": false,
+      "workers_activated": false,
+      "model_activation": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }

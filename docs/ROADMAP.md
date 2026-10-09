@@ -74,6 +74,15 @@ Use [the feature matrix](FEATURES.md) and [development evidence](DEVELOPMENT.md)
 for the implemented baseline. Each slice below should finish as a complete user
 journey with generated tests and rendered UI before its installation gate.
 
+The immediate maintenance slice is exact worker startup diagnosis and recovery.
+[Sanitized terminal reports](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md)
+are implemented in source; installing them, capturing a bounded native run and
+restoring future approved-media processing retain their separate gates. Matched
+story-picker release qualification includes a real a0 migration fixture with
+generation/editorial/edition features off. This supports a release without a
+migration for the picker itself; exact installed configuration, native package
+checks, API switch and a phone update remain to be delivered.
+
 | Priority | User journey | Completion evidence |
 |---|---|---|
 | 1 — Deliver existing work | Owner arranges a memoir, saves citations and transitions, then reopens it on Web and phone | Additive b1 migration and paired deletion recovery qualification; compatible workers; exact service/source; signed phone update; owner/member and revoked-access checks |

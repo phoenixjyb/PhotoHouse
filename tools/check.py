@@ -31,6 +31,7 @@ API_TESTS = (
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_assistant_http.py", "test_assistant_journal.py", "test_memory_transport.py",
     "test_approved_face_queue.py", "test_approved_worker_package.py",
+    "test_approved_worker_failure_reports.py",
     "test_approved_workers_c2_compatibility.py", "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",
     "test_editorial_rehearsal_database_guard.py",

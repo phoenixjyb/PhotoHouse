@@ -81,6 +81,21 @@ provider; a successful OTA manifest read is publication evidence, not proof
 that a device installed that APK. An audit does not authorize restarts,
 scheduled-task changes, publication or model inference.
 
+For idle or failed media workers, follow the
+[terminal diagnostics contract](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md).
+Keep scheduler exit codes separate from current preflight results. Inspect the
+installed default mode before running it: embedding preflight can execute a
+model child. Capture schema metadata using the selected existing file and a
+proper SQLite read-only URI; do not create a database to diagnose one.
+
+The API staging package's `migration_revision` records its included migration
+head. Runtime admission uses the selected database's actual revision and
+revision-specific table guards; it does not apply migrations. A metadata-only
+story picker can run at a supported older schema with generation, editorial and
+edition features off. Qualify that exact source/database combination before a
+switch; do not migrate only to match a package label. A phone OTA also requires
+a version code above the currently published code and the established signer.
+
 ## Maintain public source
 
 New product changes belong in this monorepo. Follow the

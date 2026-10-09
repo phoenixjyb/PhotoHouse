@@ -29,6 +29,8 @@ if str(SCRIPTS) not in sys.path:
 from approved_face_queue import (QueueRefused, claim, record_failure,
                                  recover_owned, select_candidate, validate_schema,
                                  verify_claim)
+from home_preparation_resources import emit_worker_failure
+import run_approved_image_embed_worker as image_worker
 from run_approved_image_embed_worker import (direct_path, gpu_free_memory, identity,
                                              kernel_lock, run_supervised, sha256_file,
                                              _safe_output_dir, _sqlite)
@@ -49,6 +51,11 @@ POLL_SECONDS = 2
 
 class Refused(ValueError):
     pass
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Refused('Invalid worker arguments')
 
 
 def _model(path, expected, maximum):
@@ -426,19 +433,19 @@ def run(args):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = Parser(description=__doc__)
     for name in ('database','originals','derived','stop-file','insightface-root','model-path','gpu-uuid'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--once', action='store_true')
-    args = parser.parse_args(argv)
     try:
+        args = parser.parse_args(argv)
         print(json.dumps(run(args), sort_keys=True))
         return 0
-    except Exception as error:
-        code = str(error) if isinstance(error, (Refused, QueueRefused)) else 'worker_failure'
-        print(json.dumps({'face_pipeline': 'refused', 'reason': code[:64]}), file=sys.stderr)
-        return 2
+    except (Exception, KeyboardInterrupt) as error:
+        return emit_worker_failure(
+            error, refused_types=(Refused, QueueRefused, image_worker.Refused),
+            face_pipeline=True)
 
 
 if __name__ == '__main__':

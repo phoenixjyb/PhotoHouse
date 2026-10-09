@@ -11,9 +11,13 @@ import test_library_reads as library_fixture
 from app.access.runtime import EDITORIAL_REVISION, EDITION_REVISION, ExistingDatabase, RuntimeConfiguration, RuntimeUnavailable, REQUIRED_REVISION
 from app.main import create_app
 from fastapi.testclient import TestClient
+from alembic import command
 from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine
+from app.access.bootstrap import bootstrap_owner
+from app.access.service import AccessService
 from test_orm_migrations import config
-from test_access_foundation import MEMBER, PASSWORD, NOW
+from test_access_foundation import OWNER, MEMBER, PASSWORD, NOW
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -59,6 +63,46 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(response.json()['total'],2)
         self.assertEqual(response.headers['cache-control'],'no-store')
         self.assertNotIn(str(self.path),response.text)
+
+    def test_related_media_reads_actual_a0_without_generation_or_schema_changes(self):
+        # Build the actual older schema, rather than relabelling a head database.
+        path = self.root / 'a0-related.sqlite'
+        engine = create_engine('sqlite:///' + str(path))
+        try:
+            with engine.begin() as connection:
+                cfg = config(); cfg.attributes['connection'] = connection
+                command.upgrade(cfg, REQUIRED_REVISION)
+        finally:
+            engine.dispose()
+        with closing(sqlite3.connect(path)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            bootstrap_owner(db, phone=OWNER, password=PASSWORD, library_id='family-a')
+            token = AccessService(db, clock=lambda: NOW).login(OWNER, PASSWORD)
+            for asset_id, mime in ((101, 'image/jpeg'), (102, 'video/mp4')):
+                db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,taken_at)
+                    VALUES (?,?,?,'active',?,'2026-01-01')''',
+                    (asset_id, f'private-synthetic/{asset_id}', f'private-hash-{asset_id}', mime))
+                db.execute('INSERT INTO access_asset_libraries VALUES (?,?)', (asset_id, 'family-a'))
+            db.commit()
+            before = list(db.iterdump())
+        settings = RuntimeConfiguration(path, 'https://photohouse.test', (self.originals,), self.derived)
+        self.assertFalse(settings.memory_generation_enabled)
+        self.assertFalse(settings.memory_editorial_enabled)
+        self.assertFalse(settings.memory_editions_enabled)
+        with TestClient(settings.build_app(clock=lambda: NOW), base_url='https://photohouse.test',
+                        client=('192.0.2.40', 23456)) as client:
+            response = client.post('/story-workspace/related-media?library=family-a',
+                                   json={'asset_ids': '101', 'before_id': ''},
+                                   headers={'Authorization': 'Bearer ' + token, 'Sec-Fetch-Site': 'same-origin'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertEqual([item['id'] for item in response.json()['items']], ['102'])
+        self.assertEqual(response.json()['items'][0]['kind'], 'video')
+        self.assertTrue(response.json()['needs_review'])
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchall(),
+                             [(REQUIRED_REVISION,)])
+            self.assertEqual(list(db.iterdump()), before)
 
     def test_import_and_construction_open_no_storage_or_runtime_configuration(self):
         with patch('sqlite3.connect',side_effect=AssertionError('Connection during build')), \

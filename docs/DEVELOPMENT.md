@@ -35,6 +35,36 @@ above remains bound to that source snapshot.
 
 ## Inspect the local environment
 
+## Worker diagnostics and matched picker qualification
+
+The October 9 terminal-diagnostics slice passed the complete hash-locked Python
+3.12 API profile: **802 tests and 473 independently reported subtests**, followed
+by the generated no-listener demo. It includes 38 generated worker-report cases
+and a new actual-migration a0 fixture that exercises the related-media route
+through the existing-database adapter with generation/editorial/edition features
+off. The fixture confirms its complete database dump is unchanged by lookup.
+Focused cohorts overlap this profile and are not added to its count.
+
+The separate seven-suite preparation cohort passed **102 tests and 37 subtests**,
+including generated thumbnail/hash processing and fake embedding/face providers.
+It used the same Python 3.12 environment with four additional hash-checked test
+dependencies from the existing editorial lock: ImageHash, NumPy, PyWavelets and
+SciPy. This is not GPU inference or a new serving environment. The eleven
+standalone check-dispatch tests also passed.
+
+Worker reports distinguish fixed refusal, SQLite, permission, I/O, interruption
+and resource identifiers without copying private exception details. Child-mode
+routing and terminal exit codes retain their existing behavior. See the
+[report contract](../server/docs/security/APPROVED_WORKER_DIAGNOSTICS_V1.md).
+These source checks do not explain an old installed scheduler failure or restart
+a worker. Native package qualification, release parity review, service control,
+phone signing/publication and household acceptance remain separate gates.
+
+The earlier missing-Alembic collection limitation was resolved by restoring the
+existing development lock into the monorepo's ignored environment with the
+installed Python 3.12 interpreter. No model or GPU dependency is needed by the
+ordinary API profile.
+
 For the model source inventory, run `python3 tools/model_catalog.py --json`.
 This standard-library check parses thirteen capability references and disabled
 selection placeholders. It does not import ML dependencies, read model weights,

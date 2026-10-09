@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MEDIA_CHILD = ROOT / 'scripts' / 'home_media_worker.py'
 RESOURCE_HELPER = ROOT / 'scripts' / 'home_preparation_resources.py'
 sys.path.insert(0, str(ROOT / 'scripts'))
-from home_preparation_resources import memory as observe_memory
+from home_preparation_resources import emit_worker_failure, memory as observe_memory
 REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490'}
 KINDS = {'thumb', 'phash'}
 MAX_INPUT = 256 * 1024**2
@@ -463,8 +463,8 @@ def main(argv=None):
     parser.add_argument('--execute', action='store_true'); parser.add_argument('--once', action='store_true')
     try:
         print(json.dumps(run(parser.parse_args(argv)), sort_keys=True)); return 0
-    except (Exception, KeyboardInterrupt):
-        print(json.dumps({'worker': 'refused-or-interrupted', 'inspect_task_state': True}), file=sys.stderr); return 2
+    except (Exception, KeyboardInterrupt) as error:
+        return emit_worker_failure(error, refused_types=(Refused,))
 
 
 if __name__ == '__main__':

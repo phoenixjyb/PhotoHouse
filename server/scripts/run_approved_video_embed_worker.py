@@ -39,6 +39,11 @@ class Refused(ValueError):
     pass
 
 
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Refused('Invalid worker arguments')
+
+
 def _connect(database, *, writable=False):
     return image_worker._sqlite(database, writable=writable)
 
@@ -455,7 +460,7 @@ def main(argv=None):
     if argv and argv[0] == '_video_embed':
         try: return _child(argv[1:])
         except Exception: return 2
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = Parser(description=__doc__)
     for name in ('database','originals-root','derived-root','checkpoint','checkpoint-sha256',
                  'image-model','model-version','device','stop-file'):
         parser.add_argument('--'+name, required=True, choices=('cpu','cuda:0','cuda:1') if name=='device' else None)
@@ -463,9 +468,9 @@ def main(argv=None):
     parser.add_argument('--once',action='store_true')
     try:
         print(json.dumps(run(parser.parse_args(argv)), sort_keys=True)); return 0
-    except Exception:
-        print(json.dumps({'worker':'refused-or-interrupted','inspect_task_state':True}), file=sys.stderr)
-        return 2
+    except (Exception, KeyboardInterrupt) as error:
+        return image_worker.emit_worker_failure(
+            error, refused_types=(Refused, image_worker.Refused))
 
 
 if __name__ == '__main__':
