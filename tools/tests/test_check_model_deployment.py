@@ -90,6 +90,51 @@ class DeploymentDoctorTests(unittest.TestCase):
             with redirect_stdout(output):
                 self.assertEqual(module.main(['--manifest', str(self.path), '--json']), 0)
 
+    def test_disabled_assistant_projection_is_redacted_and_does_not_enable_a_feature(self):
+        code, output = self.call(['--manifest', str(self.path), '--project', 'assistant',
+                                  '--platform', 'windows', '--json'])
+        report = json.loads(output)
+        self.assertEqual(code, 0)
+        self.assertEqual(report['status'], 'projection_valid')
+        self.assertEqual(report['projected_roles'], [])
+        self.assertEqual(report['disabled_roles'], ['assistant_asr'])
+        self.assertFalse(report['feature_flags_changed'])
+        self.assertFalse(report['activation_performed'])
+
+    def test_projection_flags_required_role_and_platform_are_explicit(self):
+        for arguments, reason in ((['--platform', 'windows'], 'projection_target_required'),
+                                   (['--feature-enabled'], 'projection_target_required'),
+                                   (['--project', 'assistant'], 'target_platform_required'),
+                                   (['--project', 'memory-contributions', '--platform', 'windows',
+                                     '--feature-enabled'], 'required_binding_not_enabled')):
+            code, output = self.call(['--manifest', str(self.path), '--json', *arguments])
+            self.assertEqual(code, 1)
+            self.assertEqual(json.loads(output)['reason'], reason)
+
+    def test_active_projection_checks_opt_in_without_reading_credential_values(self):
+        provider = self.doc['providers'][0]
+        previous = copy.deepcopy(provider)
+        previous['id'] += '-previous'
+        previous['endpoint'] = previous['endpoint'].replace(':19001', ':19003')
+        self.doc['providers'].append(previous)
+        self.doc['bindings'][0]['enabled'] = True
+        self.doc['rollback_bindings'].append({'role': 'assistant_asr', 'provider': previous['id'], 'enabled': True})
+        self.write()
+        args = ['--manifest', str(self.path), '--project', 'assistant', '--platform', 'windows', '--json']
+        code, output = self.call(args)
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(output)['reason'], 'feature_opt_in_required')
+        with patch.dict(os.environ, {'PRIVATE_ASR_CREDENTIAL': 'ambient-private-secret'}):
+            with patch.object(self.doctor, 'load_private_deployment', wraps=self.doctor.load_private_deployment):
+                code, output = self.call([*args, '--feature-enabled'])
+        self.assertEqual(code, 0)
+        report = json.loads(output)
+        self.assertEqual(report['projected_roles'], ['assistant_asr'])
+        self.assertEqual(report['request_timeouts_seconds'], {'assistant_asr': 45})
+        self.assertFalse(report['credential_values_included'])
+        for value in ('ambient-private-secret', 'PRIVATE_ASR_CREDENTIAL', 'private-asr-name', '19001'):
+            self.assertNotIn(value, output)
+
 
 if __name__ == '__main__':
     unittest.main()

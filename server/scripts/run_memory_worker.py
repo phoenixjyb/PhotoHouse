@@ -83,9 +83,19 @@ def read_config(path: Path) -> dict:
         raise
     except (OSError, UnicodeError, ValueError, TypeError, RecursionError):
         raise WorkerConfigurationError('Invalid worker configuration') from None
+    return validate_config(config)
+
+
+def validate_config(config):
+    """Validate the closed configuration shape in memory, without storage/provider I/O."""
     if (type(config) is not dict or not CONFIG_FIELDS <= set(config)
-            or set(config) - CONFIG_FIELDS - {'memory_editorial_enabled'}):
+            or set(config) - CONFIG_FIELDS - {'memory_editorial_enabled',
+                                            'asr_timeout_seconds', 'ollama_timeout_seconds'}):
         raise WorkerConfigurationError('Invalid worker configuration')
+    for key in ('asr_timeout_seconds', 'ollama_timeout_seconds'):
+        timeout = config.get(key, PROVIDER_TIMEOUT)
+        if type(timeout) not in (int, float) or not 0 < timeout <= PROVIDER_TIMEOUT:
+            raise WorkerConfigurationError('Invalid worker configuration')
     if type(config.get('memory_editorial_enabled', False)) is not bool:
         raise WorkerConfigurationError('Invalid worker configuration')
     if type(config['database']) is not str or not config['database']:
@@ -120,6 +130,18 @@ def read_config(path: Path) -> dict:
                  (type(config['asr_token']) is not str or not config['asr_token']))):
             raise WorkerConfigurationError('Invalid worker configuration')
     return config
+
+
+def with_model_deployment(config, deployment, *, platform, processing_enabled=False,
+                          credential_values=None, rollback=False):
+    """Return a private worker config copy; never execute or open its storage."""
+    from app.access.model_binding import ModelBindingError, project_configuration
+    if type(config) is not dict or config.get('mode') not in ('contributions', 'narrative'):
+        raise ModelBindingError('worker_projection_mode')
+    projection = project_configuration(deployment, target='memory-' + config['mode'],
+        platform=platform, feature_enabled=processing_enabled, rollback=rollback)
+    projected = config | projection.bind_fields(config, credential_values=credential_values)
+    return validate_config(projected)
 
 
 def _check_schema(db, *, editorial_enabled=False):
@@ -180,13 +202,19 @@ def validate_storage(config, *, read_only):
         return False
 
 
-def _adapters(config, *, timeout=PROVIDER_TIMEOUT):
+def _adapters(config, *, timeout=PROVIDER_TIMEOUT, phase=None):
     if config['mode'] == 'narrative':
-        return LocalMemoryNarrator(config['ollama_url'], config['ollama_model'], timeout=timeout)
+        return LocalMemoryNarrator(config['ollama_url'], config['ollama_model'],
+            timeout=min(timeout, config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT), PROVIDER_TIMEOUT))
+    limits = [timeout, PROVIDER_TIMEOUT]
+    if phase != 'polish':
+        limits.append(config.get('asr_timeout_seconds', PROVIDER_TIMEOUT))
+    if phase != 'transcribe':
+        limits.append(config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT))
     return LocalAnnotationModels(
         asr_url=config['asr_url'], ollama_url=config['ollama_url'],
         ollama_model=config['ollama_model'], asr_model=config['asr_model'],
-        asr_token=config['asr_token'], timeout=timeout)
+        asr_token=config['asr_token'], timeout=min(limits))
 
 
 def _run(config, *, maximum_items, maximum_seconds, once, clock=time.monotonic):
@@ -216,7 +244,7 @@ def _run(config, *, maximum_items, maximum_seconds, once, clock=time.monotonic):
                     remaining = min(PROVIDER_TIMEOUT, item_deadline - clock())
                     if remaining <= 0:
                         raise RuntimeError('Provider time budget exhausted')
-                    return getattr(_adapters(config, timeout=remaining), method)(*args)
+                    return getattr(_adapters(config, timeout=remaining, phase=method), method)(*args)
 
                 outcome = process_contribution(
                     db, transcribe=lambda audio, language: call_model('transcribe', audio, language),

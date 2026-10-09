@@ -8,10 +8,15 @@ versioned-output replacement rules. Actual selection still uses the existing
 feature-specific configuration/worker arguments. The offline
 [private deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md) now validates declared
 bindings, artifact/runtime identities, resource budgets and distinct rollback
-targets. Its report omits private values. The next model-infra slice is a typed
-bridge to those existing runtime inputs, followed by measured artifact, device,
-resource and quality qualification. Metadata validation does not establish
-installed models or allow automatic activation.
+targets. Its report omits private values. An explicit typed bridge now maps
+assistant ASR/TTS and memory contribution/narrative selections into private
+configuration copies, preserving feature opt-ins and existing request/item/run
+limits. It refuses conflicting legacy settings and never launches a service.
+The next model-infra slice is installed artifact/runtime identity and measured
+device/resource/quality qualification, then separately approved activation.
+Embedding/face bindings and independent runtime catalog packaging remain future
+integration work. Metadata validation does not establish installed models or
+allow automatic activation.
 
 The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
 Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery
