@@ -140,7 +140,7 @@ def upgrade_memory(db):
     from alembic import command
     from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool
-    from app.access.runtime import REQUIRED_REVISION, REQUIRED_TABLES
+    from app.access.runtime import REQUIRED_REVISION, required_tables_for_revision
     # SQLAlchemy owns a second in-memory connection, preserving caller ownership.
     engine = create_engine('sqlite://', poolclass=StaticPool)
     try:
@@ -154,7 +154,7 @@ def upgrade_memory(db):
             if validate(driver) != REQUIRED_REVISION:
                 raise Refused('Unexpected migrated revision')
             tables = {row[0] for row in driver.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if not REQUIRED_TABLES <= tables:
+            if not required_tables_for_revision(REQUIRED_REVISION) <= tables:
                 raise Refused('Incomplete migrated schema')
             if driver.execute('SELECT typeof(secret),length(secret) FROM access_admission_key WHERE id=1').fetchone() != ('blob', 32):
                 raise Refused('Invalid admission key')

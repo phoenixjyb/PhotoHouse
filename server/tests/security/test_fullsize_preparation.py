@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import prepare_access_database as small
 import rehearse_fullsize_database as full
+from app.access.runtime import REQUIRED_REVISION
 
 
 class FullsizeTests(unittest.TestCase):
@@ -101,8 +102,19 @@ class FullsizeTests(unittest.TestCase):
             result = full.snapshot(old, self.backup, self.budget())
             proof = full.rehearse(self.backup, self.candidate, self.restored, result['snapshot_digest'], self.budget())
             self.assertEqual(proof['source_revision'], 'd2b7e4f6a901')
-            self.assertEqual(proof['revision'], 'f7c3a9d2e614')
+            self.assertEqual(proof['revision'], REQUIRED_REVISION)
         finally: engine.dispose()
+
+    def test_upgrade_copy_refuses_missing_required_a0_table(self):
+        with closing(sqlite3.connect(self.source)) as db:
+            self.template.backup(db)
+            db.execute('PRAGMA foreign_keys=OFF')
+            db.execute('DROP TABLE access_stories')
+            db.commit()
+        with closing(sqlite3.connect(self.source)) as db:
+            with self.assertRaises(small.Refused):
+                full.upgrade_copy(db, self.budget())
+            self.assertEqual(small.revision(db), REQUIRED_REVISION)
 
     def test_existing_owner_and_library_are_closed_without_changing_original(self):
         from app.access.bootstrap import bootstrap_owner

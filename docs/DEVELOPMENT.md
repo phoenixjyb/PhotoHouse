@@ -46,6 +46,16 @@ synthetic databases; no live schema, journal or household content changed.
 Native migration, paired backup/recovery and explicit live activation remain
 separate delivery gates. See [the lifecycle contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
 
+## Older-schema preparation repair
+
+The revision-aware preparation repair passed **50 tests and 12 subtests** across
+small preparation, full-size preparation and runtime adapter suites. Both paths
+perform actual Alembic migration to a0 on generated databases and refuse a
+missing required a0 table. Later B1/C2/D1 tables are not required at a0; supported
+revisions and exact D1 runtime checks stay unchanged. The supported API profile
+now includes both preparation suites and a fresh-process extracted-package smoke
+journey. Native/live preparation and migration remain separate gates.
+
 ## Independent title-provider wiring
 
 Runtime and staging configurations now accept optional title provider settings

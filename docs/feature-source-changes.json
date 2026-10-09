@@ -7522,6 +7522,61 @@
       "provider_called": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "revision-aware-a0-database-preparation-and-package-qualification",
+      "base_commit": "25aaeb66e242f00263e8d8a841c1c7596e9c96bd",
+      "files": [
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "a91ac4fb2466a8874a37f5619d16cd1ebe7a211575f7c4f0d149b1f093ffdaab",
+          "sha256": "679b43f62f5bcde40108e3ed1201eb3e45b49aa9d4ac5383bb8bc4046f5220aa"
+        },
+        {
+          "path": "server/scripts/prepare_access_database.py",
+          "before_sha256": "f59f818747ecf28b6af8b48e9edf8ac2035d05716e32396a94934489f15a6c79",
+          "sha256": "84146fce0965288dcad19b8031b612437c424e3ee857b27ba2578c2484927d1f"
+        },
+        {
+          "path": "server/scripts/rehearse_fullsize_database.py",
+          "before_sha256": "fd0f9caf1ca1f889ecbb2b8476cbb697ae4290294b57b6f2c2576677c3edf65d",
+          "sha256": "baa4c8c2aed44ea0ccbd91b2045869f779a6544ea5449e54db4f0d7937233c54"
+        },
+        {
+          "path": "server/tests/security/test_database_preparation.py",
+          "before_sha256": "40857af5d9d72e1a0387b0f48d0031297e583979f302b30e9b72ee9811277492",
+          "sha256": "e0f2d54f9afaaa9e7ebaba3baf0ae43b1a1861fa4aae7f0c3b6b9e31a026bb63"
+        },
+        {
+          "path": "server/tests/security/test_fullsize_preparation.py",
+          "before_sha256": "a86ef656bee7be1e79c06d4154a41c71d1015afefaeffdaf236f57198882b2ec",
+          "sha256": "72215171cdaf323f5a0240b323b3486ace2a1fc9da80c5fceb285df4e7d84045"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "f0a564486fbd4216c4f0709f1295f3032c2f152f4e866dc8935a9cb86c6672a6",
+          "sha256": "9c2b5d69aec26f04e17550faefef709e9e1c7c2008864db58d1740bd1974df48"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f5d2ce7148ba4245173bd6139d0a88e5b492981d8bc3ccbf4929cf98f62b04c7",
+          "sha256": "3cd0031a87ce8f57fb8188ee796bbe871944835496481520476f4f0f71ff149e"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "d8eadfbad2f688f71b315379ef066ecd88d973077dd009dec39a5f37e6d1795a",
+          "sha256": "a31c955960b54b28b84fa4866ff5ba3604543392d2d9f8607f8076f1757b0036"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "715a3b34490848b2b4af21755fb934b1d49756f7e00f23cdce139318c2f452c7",
+          "sha256": "09ac6407c4bc7dd38543169a345a5b8066f316566b44bda698a518d00ac868d3"
+        }
+      ],
+      "schema_target_changed": false,
+      "live_schema_changed": false,
+      "runtime_revisions_widened": false,
+      "api_deployed": false
     }
   ]
 }

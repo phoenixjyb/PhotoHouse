@@ -130,6 +130,25 @@ class StagingPackageTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), 'isolated_extracted_api_import_passed')
 
+    def test_extracted_api_prepares_and_serves_synthetic_a0_without_migration_to_package_head(self):
+        commit = package.git('rev-parse', 'HEAD').decode().strip()
+        files = package.source_files(commit)
+        with tempfile.TemporaryDirectory() as selected:
+            root = Path(selected).resolve()
+            with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
+                archive.extractall(root)
+            fixture = Path(__file__).resolve().with_name('package_smoke.py')
+            result = subprocess.run([sys.executable, '-I', '-B', str(fixture), str(root)],
+                                    cwd=root, capture_output=True, text=True, timeout=180)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report['package_smoke'], 'pass')
+            self.assertEqual(report['synthetic_migration_revision'], 'a0c9d2e4f817')
+            self.assertFalse(report['application_listeners_opened'])
+            self.assertFalse(report['live_data_accessed'])
+            self.assertEqual(report['database_preparation_commands'], 9)
+            self.assertEqual(report['saved_story_checks'], 7)
+
     def test_archive_is_deterministic_complete_and_contains_no_private_discovery(self):
         files={name:('synthetic source '+name).encode() for name in package.FILES}
         first=package.package_bytes('a'*40,files)

@@ -13,7 +13,12 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import prepare_access_database as cli
-from app.access.runtime import ExistingDatabase, REQUIRED_REVISION
+from app.access.runtime import (
+    COMPATIBLE_REVISIONS, ExistingDatabase, REQUIRED_REVISION,
+    required_tables_for_revision,
+)
+from app.access.family_note_identity_schema import IDENTITY_TABLES
+from app.access.memory_book_edition_schema import EDITION_TABLE, SOURCES_TABLE
 
 
 class DatabasePreparationTests(unittest.TestCase):
@@ -64,6 +69,29 @@ class DatabasePreparationTests(unittest.TestCase):
                 self.assertEqual(db.execute('SELECT count(*) FROM '+table).fetchone()[0], 0)
         if os.name != 'nt':
             self.assertEqual(self.output.stat().st_mode & 0o777, 0o600)
+
+    def test_a0_upgrade_uses_its_own_table_contract_and_refuses_missing_required_table(self):
+        with closing(sqlite3.connect(':memory:')) as db:
+            cli.configure(db)
+            cli.upgrade_memory(db)
+            self.assertEqual(cli.revision(db), REQUIRED_REVISION)
+            tables = {row[0] for row in db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            required = required_tables_for_revision(REQUIRED_REVISION)
+            self.assertTrue(required <= tables)
+            self.assertFalse(IDENTITY_TABLES & tables)
+            self.assertNotIn(EDITION_TABLE, tables)
+            self.assertNotIn(SOURCES_TABLE, tables)
+            self.assertTrue(IDENTITY_TABLES.isdisjoint(required))
+            db.execute('DROP TABLE access_stories')
+            db.commit()
+            with self.assertRaises(cli.Refused):
+                cli.upgrade_memory(db)
+
+        self.assertEqual(REQUIRED_REVISION, 'a0c9d2e4f817')
+        self.assertIn(REQUIRED_REVISION, COMPATIBLE_REVISIONS)
+        with self.assertRaises(ValueError):
+            required_tables_for_revision('unsupported-synthetic-revision')
 
     def test_backup_preserves_source_bytes_and_logical_content_and_restores_in_memory(self):
         before = self.source.read_bytes()

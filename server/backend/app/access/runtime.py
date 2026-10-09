@@ -42,6 +42,29 @@ REQUIRED_TABLES = frozenset({
 })
 
 
+def required_tables_for_revision(revision):
+    """Return the runtime table contract for one already-supported revision."""
+    if type(revision) is not str or revision not in COMPATIBLE_REVISIONS:
+        raise ValueError('Unsupported schema revision')
+    required_tables = REQUIRED_TABLES
+    if revision != IDENTITY_REVISION:
+        required_tables = required_tables - IDENTITY_TABLES
+    if revision not in EDITION_REVISIONS:
+        required_tables = required_tables - {EDITION_TABLE, SOURCES_TABLE}
+    if revision not in EDITORIAL_REVISIONS:
+        required_tables = required_tables - {'access_memory_book_editorial', 'access_memory_book_editorial_refs'}
+    if revision not in SOURCE_REFERENCE_REVISIONS:
+        required_tables = required_tables - {'access_memory_contribution_refs'}
+    if revision not in COLLABORATION_REVISIONS:
+        required_tables = required_tables - {'access_memory_contributions',
+            'access_memory_contribution_derivations', 'access_memory_books',
+            'access_memory_book_revisions', 'access_memory_conversations',
+            'access_memory_jobs', 'access_memory_turns', 'access_original_deletion_state'}
+    if revision == 'd4a7e3c9b821':
+        required_tables = required_tables - {'access_memory_stories', 'access_memory_revisions'}
+    return required_tables
+
+
 class RuntimeUnavailable(RuntimeError):
     """Generic configuration/storage refusal; never includes a path or SQL value."""
 
@@ -90,22 +113,7 @@ class ExistingDatabase:
             if len(versions) != 1 or versions[0][0] not in COMPATIBLE_REVISIONS:
                 raise RuntimeUnavailable('Access unavailable')
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            required_tables = REQUIRED_TABLES
-            if versions[0][0] != IDENTITY_REVISION:
-                required_tables = required_tables - IDENTITY_TABLES
-            if versions[0][0] not in EDITION_REVISIONS:
-                required_tables = required_tables - {EDITION_TABLE, SOURCES_TABLE}
-            if versions[0][0] not in EDITORIAL_REVISIONS:
-                required_tables = required_tables - {'access_memory_book_editorial', 'access_memory_book_editorial_refs'}
-            if versions[0][0] not in SOURCE_REFERENCE_REVISIONS:
-                required_tables = required_tables - {'access_memory_contribution_refs'}
-            if versions[0][0] not in COLLABORATION_REVISIONS:
-                required_tables = required_tables - {'access_memory_contributions',
-                    'access_memory_contribution_derivations', 'access_memory_books',
-                    'access_memory_book_revisions', 'access_memory_conversations',
-                    'access_memory_jobs', 'access_memory_turns', 'access_original_deletion_state'}
-            if versions[0][0] == 'd4a7e3c9b821':
-                required_tables = required_tables - {'access_memory_stories', 'access_memory_revisions'}
+            required_tables = required_tables_for_revision(versions[0][0])
             if not required_tables <= tables:
                 raise RuntimeUnavailable('Access unavailable')
             if versions[0][0] == IDENTITY_REVISION:

@@ -116,3 +116,15 @@ public publication; review the complete package contents before sharing.
 Existing Gradle reports may come from an earlier or filtered run. The report
 inventory counts files only; keep the executed build command, source pin and
 artifact metadata with any acceptance claim. It never replaces a build result.
+
+## Revision-aware preparation contract
+
+The small in-memory and full-size disk-backed preparation tools retain their
+explicit a0 target. They now share the runtime's required-table set for that
+revision, instead of requiring the union of later editorial, edition and identity
+tables. Unsupported revisions and missing required a0 tables still refuse;
+D1 runtime admission retains its separate exact identity-schema guard. The
+package manifest's included migration head does not select or apply a migration.
+The ordinary API profile includes both generated preparation suites and an
+isolated extracted-package rehearsal. These commands use disposable candidates;
+they do not authorize migration or restore against installed storage.
