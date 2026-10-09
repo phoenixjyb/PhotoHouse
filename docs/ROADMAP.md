@@ -7,7 +7,12 @@ passed. Its conversation recovery, explicit transcript review, same-day story
 picker and lifecycle fixes are reviewed source. Delivery of those exact changes
 to the household API and signed phone remains a separate operation.
 
-The next reader slice adds a protected Web filmstrip and scope-bound phone frame
+PR #14 is also merged after four hosted jobs, including the new native Windows
+CPU cohort. Its recording lifecycle, story readers and TV recovery are reviewed
+source. A separate hosted Web browser job is the next maintenance slice; its
+first run must qualify the locked Ubuntu browser toolchain.
+
+The reviewed reader slice adds a protected Web filmstrip and scope-bound phone frame
 selection, with localized position labels, enlarged-text chapter controls and
 explicit navigation. See [reader behavior](STORY_READER_NAVIGATION.md). Browser
 microphone startup also rejects stale permission/context completions before

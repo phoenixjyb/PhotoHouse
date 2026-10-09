@@ -44,12 +44,26 @@ publish OTA or establish family/device acceptance.
 
 ## Generated Windows CPU profile
 
+PR #14 merged at head `12c10e9` after all four hosted jobs passed: 937 API
+tests with 558 separately reported subtests and the generated demo, 92 source
+tool tests, 812 Android JVM tests with lint/both unconfigured debug builds,
+Windows private readers, and 65 Windows CPU tests with 25 subtests. The reader,
+recording and TV UI source is unchanged from its local `9154e59` acceptance;
+the later commit repairs only fixtures and their documentation. Hosted checks
+do not change the household installation.
+
 The optional [Windows CPU profile](WINDOWS_CPU_CHECKS.md) passed 65 tests and
 25 subtests locally on macOS. Its new hosted Windows job is a separate gate and
 does not replace qualification of the private installed runtime.
 The first hosted run exposed Windows event-loop setup and POSIX mode-bit
 assumptions in test fixtures; the [profile notes](WINDOWS_CPU_CHECKS.md) explain
 the repair and the separate installed-directory ACL gate.
+
+The next source maintenance slice adds a separate hosted generated Web job
+using locked Playwright tools. Its first native browser run remains a gate;
+the local fourteen-suite result below belongs to the previously checked Mac
+toolchain. The wrapper's inherited-environment refusal and explicit tool-path
+preservation passed thirteen scoped tooling checks.
 
 ## Web assistant transcript acceptance (October 10)
 

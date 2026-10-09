@@ -15,6 +15,7 @@ local.properties
 *.pth
 *.safetensors
 .venv/
+server/tests/security/browser-tooling/node_modules/
 __pycache__/
 .pytest_cache/
 .gradle/

@@ -8215,6 +8215,96 @@
       "application_changed": false,
       "api_deployed": false,
       "provider_called": false
+    },
+    {
+      "feature": "locked-hosted-generated-web-checks",
+      "source_commit": "12c10e96798d313c240642103a650d3e961f4683",
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "before_sha256": "99661af7aef08d179f08ce5573d240e15f879bab1398158d3f98717646f61818",
+          "sha256": "2afaff9c30dde6e449666808099f13efb72c5c5fe70a1bddc00b51dadf3e25ea"
+        },
+        {
+          "path": ".gitignore",
+          "before_sha256": null,
+          "sha256": "316c64060297324c932215b640bc0cdad1ee4ffd9dddd425bd3ef52b4538c984",
+          "git_before_sha256": "fc4c53c8ed12d14a988dd1855fb17df6332dd98e48c4948d9e2c1b51c32dffa1"
+        },
+        {
+          "path": "THIRD_PARTY_NOTICES.md",
+          "before_sha256": "f40e046c0af2f15be69d4c37876c0514cfc8ed425fab76ca4439dcce5b54dde7",
+          "sha256": "65ac04c2f1ecdd492cf97efb50084106b08c847e85127f8062eb814231a75a37"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "4b81741ecadcae813c7dd332e41d9a888869c14dee50488c3b90e8488df0700f",
+          "sha256": "225a3c0cc79fad6428f29a8e01f9af61502b5dbdc520197878ddf4d61f5f1be2"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "797c93e975cfa44e90b10352c773ce2d231b1f96b5200b6750bd7e63aa6b964a",
+          "sha256": "8c9d32704d3c2438a9b3ae304e88bc96cbcdfa8e99d033655dc2d94e37b69872"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bc919a37834ec6b1b0e9a1f331c885f970318cd1344657ffea063904d4d98d64",
+          "sha256": "ad680fc6579372accc8dd96ec912f76c98c62c3f9c56863aeff4a7327d5e52fa"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "5b3a295c7bdb5c357a8e3c635c0977eadfc0d798b6bc396393b4f66055fb6b55",
+          "sha256": "1597c9a715aab46f0b50e81c36c2653dc7916f4f0e9c5119d01b5abd7d1cbb51"
+        },
+        {
+          "path": "server/tests/security/browser-tooling/package-lock.json",
+          "before_sha256": null,
+          "sha256": "4be7548997e9c2ab7d56f8ca7b956463d6d7cb1e5c90a02742364d7aed9ebf97"
+        },
+        {
+          "path": "server/tests/security/browser-tooling/package.json",
+          "before_sha256": null,
+          "sha256": "c3a25d380afa4a678888501784376a82a9224d68f9f1e9d6b75a9e691fd8c8c4"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "8829776be8cfd7ecaa13d2a44d3ec6812cf65a72cb5b909ef788e0921c61b643",
+          "sha256": "b58453e5b17dcc44990eb47300b152e0c27bbb045ccc54c466ebf364317bfa94"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "0442b97813bace17e8ff1469200d1fc40ebeca4974f92f09161a23dd2836c019",
+          "sha256": "ae721eb073b7bde2b28b127e9716feef5c85c8efd354d7ef3ea65da538bc9f88"
+        }
+      ],
+      "application_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
+    },
+    {
+      "feature": "hosted-web-note-save-workspace-and-wav-regressions",
+      "source_commit": "8c93932e82cde2a07e9e8c283cf5466cfa44117e",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b58453e5b17dcc44990eb47300b152e0c27bbb045ccc54c466ebf364317bfa94",
+          "sha256": "151a5921098188a0107e75f9b78788d6ba4f9277aeed2d594f40e7201567c9fd"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "ae721eb073b7bde2b28b127e9716feef5c85c8efd354d7ef3ea65da538bc9f88",
+          "sha256": "76a6328a3330be224beb81b65c9cbc423ea96cbc32c8b3301cfc9516b12afb04"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "1597c9a715aab46f0b50e81c36c2653dc7916f4f0e9c5119d01b5abd7d1cbb51",
+          "sha256": "26842279009396d8977807ebee9ee249c3c607594edf7d64fb28936d9b6a8b9b"
+        }
+      ],
+      "application_changed": false,
+      "provider_called": false,
+      "api_deployed": false
     }
   ]
 }
