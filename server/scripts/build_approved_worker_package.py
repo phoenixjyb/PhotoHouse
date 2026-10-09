@@ -12,7 +12,7 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import zipfile
@@ -43,13 +43,25 @@ def git(*args: str) -> bytes:
 def source_files(commit: str) -> dict[str, bytes]:
     if not re.fullmatch(r'[0-9a-f]{40}', commit) or git('cat-file', '-t', commit).strip() != b'commit':
         raise ValueError('Explicit immutable local commit required')
+    # Git's full-tree names include server/ in the monorepo. Keep the archive
+    # layout stable for installed launchers and retain standalone-repo support.
+    prefix = git('rev-parse', '--show-prefix').decode('utf-8').removesuffix('\n').removesuffix('\r')
+    if prefix and (not prefix.endswith('/') or len(prefix) > 1024
+                   or PurePosixPath(prefix).is_absolute()
+                   or any(part in ('', '.', '..') for part in prefix[:-1].split('/'))
+                   or any(c in prefix for c in '\\\r\n\x00')):
+        raise ValueError('Direct repository source prefix required')
+    source_names = {prefix + name: name for name in FILES}
     entries = {}
-    for row in filter(None, git('ls-tree', '-r', '-z', '--full-tree', commit, '--', *FILES).split(b'\0')):
+    for row in filter(None, git('ls-tree', '-r', '-z', '--full-tree', commit, '--', *source_names).split(b'\0')):
         identity, name = row.split(b'\t', 1)
         mode, kind, oid = identity.decode('ascii').split()
         if mode not in ('100644', '100755') or kind != 'blob':
             raise ValueError('Regular source blobs required')
-        entries[name.decode('utf-8')] = oid
+        relative = source_names.get(name.decode('utf-8'))
+        if relative is None or relative in entries:
+            raise ValueError('Exact worker source paths required')
+        entries[relative] = oid
     if set(entries) != set(FILES):
         raise ValueError('Worker source files missing')
     sizes = {name: int(git('cat-file', '-s', oid)) for name, oid in entries.items()}

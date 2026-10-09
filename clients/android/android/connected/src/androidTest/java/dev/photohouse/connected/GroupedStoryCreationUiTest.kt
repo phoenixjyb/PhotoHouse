@@ -61,6 +61,25 @@ class GroupedStoryCreationUiTest {
         rule.waitUntil(5000) {
             store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102", "101")
         }
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(0)
+        rule.onNodeWithTag("grouped-story-related-toggle").performClick()
+        rule.runOnIdle { assertEquals("opening the panel does not fetch", 0, api.relatedLookups) }
+        rule.onNodeWithTag("grouped-story-related-lookup").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.relatedCandidates?.map { it.asset.id } == listOf("103") &&
+                store.state.value.groupedStoryCreation?.relatedPreviews?.containsKey("103") == true
+        }
+        rule.onNodeWithText(if (zh) "这只是日期匹配；文件名日期或上传日期不能证明同一次活动。" else "This is a date match only. Filename or upload date is not proof.")
+            .performScrollTo().assertIsDisplayed()
+        capture("grouped-story-creation", if (zh) "grouped-story-related-zh-150.png" else "grouped-story-related-en-150.png")
+        rule.onNodeWithTag("grouped-story-related-add-103").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102", "101", "103")
+        }
+        rule.runOnIdle {
+            assertTrue("explicit inclusion clears candidate previews", store.state.value.groupedStoryCreation?.relatedPreviews?.isEmpty() == true)
+            assertTrue("cleared preview buffer is zeroed", api.relatedThumbnailBuffer!!.all { it == 0.toByte() })
+        }
         rule.onNodeWithTag("grouped-story-theme-trip").performClick()
         rule.onNodeWithTag(if (zh) "grouped-story-language-zh" else "grouped-story-language-en").performClick()
         rule.onNodeWithTag("grouped-story-select-102").performScrollTo()
@@ -76,7 +95,7 @@ class GroupedStoryCreationUiTest {
         rule.onNodeWithTag("grouped-story-reviewed").performScrollTo().performClick()
         rule.runOnIdle {
             val editor = store.state.value.groupedStoryCreation?.editor?.state?.value
-            assertEquals(listOf("102", "101"), editor?.selectedAssetIds)
+            assertEquals(listOf("102", "101", "103"), editor?.selectedAssetIds)
             assertEquals(title, editor?.title)
             assertTrue(editor?.reviewed == true)
         }
@@ -87,7 +106,7 @@ class GroupedStoryCreationUiTest {
         }
         rule.runOnIdle {
             assertEquals(1, api.saveRequests)
-            assertEquals(listOf("102", "101"), api.savedStory?.items?.map { it.asset.id })
+            assertEquals(listOf("102", "101", "103"), api.savedStory?.items?.map { it.asset.id })
             assertEquals(title, api.savedStory?.title)
         }
         rule.onNodeWithTag("grouped-story-read").performScrollTo().performClick()
@@ -98,7 +117,7 @@ class GroupedStoryCreationUiTest {
         }
         rule.runOnIdle {
             assertEquals("reader asks for a fresh protected story detail", 1, api.freshStoryReads)
-            assertEquals(listOf("102", "101"), store.state.value.savedMemoryStories?.detail?.items?.map { it.asset.id })
+            assertEquals(listOf("102", "101", "103"), store.state.value.savedMemoryStories?.detail?.items?.map { it.asset.id })
             assertEquals(title, store.state.value.savedMemoryStories?.detail?.title)
         }
         rule.onNodeWithTag("saved-memory-title").assertIsDisplayed().assertTextEquals(title)
@@ -134,15 +153,19 @@ class GroupedStoryCreationUiTest {
         override val protectedNativeV2Enabled = true
         var saveRequests = 0
         var freshStoryReads = 0
+        var relatedLookups = 0
+        var relatedThumbnailBuffer: ByteArray? = null
         var savedStory: SavedMemoryStory? = null
         private var preview: JsonObject? = null
         private val assets = linkedMapOf(
             "102" to Asset("102", "video", 640, 360, 3.5, null, "/assets/102/thumbnail?library=$LIBRARY"),
             "101" to Asset("101", "image", 800, 600, null, null, "/assets/101/thumbnail?library=$LIBRARY"),
+            "103" to Asset("103", "video", 640, 360, 2.0, "2026-01-02T23:30:00-05:00", "/assets/103/thumbnail?library=$LIBRARY"),
         )
         private val evidence = mapOf(
             "102" to MemoryStoryEvidence("family-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "family", "Garden video", "We walked through the garden together.", 1),
             "101" to MemoryStoryEvidence("family-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "family", "Garden photo", "Grandma pointed out the flowers.", 1),
+            "103" to MemoryStoryEvidence("family-cccccccc-cccc-4ccc-8ccc-cccccccccccc", "family", "Garden clip", "The family looked at flowers.", 1),
         )
 
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
@@ -166,10 +189,12 @@ class GroupedStoryCreationUiTest {
             paint.color = Color.rgb(62, 111, 94); canvas.drawOval(220f, 255f, 850f, 720f, paint)
             paint.color = Color.rgb(225, 181, 165)
             repeat(6) { canvas.drawCircle(60f + it * 94f, 420f - (it % 2) * 25f, 11f, paint) }
-            return ByteArrayOutputStream().use { output ->
+            val bytes = ByteArrayOutputStream().use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
                 bitmap.recycle(); output.toByteArray()
             }
+            if (asset.id == "103") relatedThumbnailBuffer = bytes
+            return bytes
         }
         override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int) =
             VideoChunk(start, 1, byteArrayOf(0))
@@ -192,7 +217,7 @@ class GroupedStoryCreationUiTest {
             check(library == LIBRARY)
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("asset_ids").jsonPrimitive.content.split(',')
-            check(ids == listOf("102", "101")) { "preview preserves the selected mixed-media order" }
+            check(ids == listOf("102", "101", "103")) { "preview preserves the selected mixed-media order" }
             val items = JsonArray(ids.map { id ->
                 val itemAsset = assets.getValue(id)
                 val itemEvidence = evidence.getValue(id)
@@ -232,12 +257,31 @@ class GroupedStoryCreationUiTest {
             """{"version":1,"enabled":false,"max_suggestions":3,"needs_review":true}""".encodeToByteArray()
         override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray = error("title suggestions are disabled in this fixture")
 
+        override suspend fun relatedStoryMedia(token: Bearer, library: String, json: String): ByteArray {
+            check(library == LIBRARY)
+            relatedLookups++
+            val request = Json.parseToJsonElement(json).jsonObject
+            check(request.getValue("asset_ids").jsonPrimitive.content == "102,101")
+            check(request.getValue("before_id").jsonPrimitive.content.isEmpty())
+            val candidate = assets.getValue("103")
+            return buildJsonObject {
+                put("version", 1); put("library_id", library); put("seed_asset_ids", JsonArray(listOf("102", "101").map(::JsonPrimitive)))
+                put("recorded_days", JsonArray(listOf(JsonPrimitive("2026-01-02"))))
+                put("needs_review", true); put("has_more", false); put("next_before_id", JsonNull)
+                put("items", JsonArray(listOf(buildJsonObject {
+                    put("id", candidate.id); put("kind", candidate.kind); put("width", candidate.width!!); put("height", candidate.height!!)
+                    put("duration_sec", candidate.duration_sec!!); put("taken_at", candidate.taken_at!!); put("thumbnail_url", candidate.thumbnail_url)
+                    put("match_reason", "same_recorded_capture_day")
+                })))
+            }.toString().encodeToByteArray()
+        }
+
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
             check(library == LIBRARY)
             saveRequests++
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("asset_ids").jsonPrimitive.content.split(',')
-            check(ids == listOf("102", "101"))
+            check(ids == listOf("102", "101", "103"))
             val chapters = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content).jsonArray
             val previewValue = checkNotNull(preview)
             val title = request.getValue("title").jsonPrimitive.content

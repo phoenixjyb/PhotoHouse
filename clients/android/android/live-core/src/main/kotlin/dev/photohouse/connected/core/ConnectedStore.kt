@@ -209,6 +209,7 @@ data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
+    val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
     val problem: LiveProblem? = null,
 )
 data class LiveState(
@@ -262,6 +263,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private var uploadAnnotationAudioJob: Job? = null
     private var groupedStoryRequest = 0L
     private var groupedStoryPageRequest = 0L
+    private var groupedStoryRelatedPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
     private var savedMemoryDetailRequest = 0L
     private var savedMemoryReaderEpoch = 0L
@@ -370,6 +372,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         groupedStoryRequest++; groupedStoryPageRequest++
         previous.groupedStoryCreation?.editor?.clear()
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
+        groupedStoryRelatedPreviewRequest++
         previous.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
         previous.savedMemoryStories?.hero?.fill(0)
         previous.savedMemoryStories?.covers?.values?.forEach { it.fill(0) }
@@ -544,7 +548,11 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         retry = { foreground() }
                     }
                 })
-                val editor = StoryWorkspaceStore(repository, scope, binding)
+                val editor = StoryWorkspaceStore(repository, scope, binding).also { created ->
+                    created.observeRelatedCandidates { candidates ->
+                        updateGroupedStoryRelatedPreviews(created, candidates)
+                    }
+                }
                 mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor))
                 loadGroupedStorySelectionPage(1)
             } catch (failure: CancellationException) { throw failure }
@@ -601,11 +609,58 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         return true
     }
 
+    private fun updateGroupedStoryRelatedPreviews(editor: StoryWorkspaceStore, candidates: List<StoryRelatedMediaCandidate>) {
+        val creation = state.value.groupedStoryCreation ?: return
+        if (creation.editor !== editor) return
+        groupedStoryRelatedPreviewRequest++
+        val request = groupedStoryRelatedPreviewRequest
+        creation.relatedPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(relatedPreviews = emptyMap(), relatedPreviewBusy = candidates.isNotEmpty()))
+        if (candidates.isEmpty()) return
+        val credential = token ?: return
+        val library = state.value.library ?: return
+        val generation = state.value.generation
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryRelatedPreviewRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
+                editor.state.value.relatedCandidates.map { it.asset.id } == candidates.map { it.asset.id }
+            var total = 0
+            try {
+                for (candidate in candidates.take(StoryRelatedMediaWireLimit.MAX_PREVIEWS)) {
+                    if (!valid()) return@launch
+                    val bytes = try { api.thumbnail(credential, library, candidate.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || total + bytes.size > StoryRelatedMediaWireLimit.PREVIEW_BYTES) {
+                        bytes.fill(0); continue
+                    }
+                    total += bytes.size
+                    val live = state.value.groupedStoryCreation ?: run { bytes.fill(0); return@launch }
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(relatedPreviews = live.relatedPreviews + (candidate.asset.id to bytes)))
+                }
+                if (valid()) state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: ApiFailure) {
+                if (valid()) {
+                    if (failure.status in setOf(401, 403)) readFailure(failure, generation, credential) { beginGroupedStoryCreation() }
+                    else state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+                }
+            } catch (_: Exception) {
+                if (valid()) state.value.groupedStoryCreation?.let { mutable.value = state.value.copy(groupedStoryCreation = it.copy(relatedPreviewBusy = false)) }
+            }
+        }
+    }
+
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
         groupedStoryRequest++; groupedStoryPageRequest++
         current.previews.values.forEach { it.fill(0) }
+        current.relatedPreviews.values.forEach { it.fill(0) }
+        groupedStoryRelatedPreviewRequest++
         mutable.value = state.value.copy(groupedStoryCreation = null)
         return true
     }

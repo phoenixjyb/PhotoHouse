@@ -58,12 +58,15 @@ gate. The legacy application repositories remain retained references; runtime,
 provider quality, supported release paths and physical-device acceptance keep
 their own gates. Historical pending-CI statements below refer to older snapshots.
 
-The Web grouped-story editor now has an explicit, reviewable
+The Web and phone grouped-story editors now have an explicit, reviewable
 [same-day moments picker](../server/docs/security/STORY_RELATED_MEDIA_V1.md).
 It suggests photos/videos from recorded capture dates within the current library;
 the user decides which belong in the story. A common day does not prove a common
-activity. The next client slice is phone candidate selection, followed by
-provider-qualified title suggestions and reviewed activity grouping. This source
+activity. Phone candidate lookup and inclusion preserve ordered selection, keep
+pages and preview bytes bounded, and reject stale scope/selection responses.
+See the [phone source evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md).
+The next storytelling slice is provider-qualified title suggestions and reviewed
+activity grouping; continuous conversation recovery remains a parallel priority. This source
 change does not update a live server, publish an APK or enable generation.
 
 Source implementations and accepted installed behavior are different milestones.

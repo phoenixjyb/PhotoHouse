@@ -6813,6 +6813,112 @@
           "before_sha256": "bdc47a07445040f3deb855e552be9ebb63e21cbe6a43f905b9f20e215730c76a"
         }
       ]
+    },
+    {
+      "feature": "phone-related-moments-and-worker-package-layout-v1",
+      "base_commit": "aa1084112995cc5efe4f93a0ce3ff405d2e3dad2",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "ef4d5762660d7af62a2ac1c232e1ca2d80bb45c7a559266db3c682d133716d98",
+          "sha256": "45ccf3dea912c6819d8b4eecd46eeb402278f763447d6998e2ba097d9629de77"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "421cba97ecbcc3d8a54e461d331d186343d448ff94c81d12f6f3243f6924e188",
+          "sha256": "2e5e6c96b6b1d3e103829580baa060ec75f75adb954453983c36d91462db5ef4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "eeb899f08c92f0750cd49dc30f17bf3855baa99ec1ecb6bf3736c866edf8556b",
+          "sha256": "b07fb01ba87dee55d48c229280e7f3025217fd4579df21c2e6647344a6d5e7bf"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "908529b9081172a89673314fbbab26d4f3811bea366cb93b33281ee8c9561cc9",
+          "sha256": "e4dd086603a62e6825b8bc2d7e11242c96acab5a4456f21a08d744aa2607bd05"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryRelatedMedia.kt",
+          "before_sha256": null,
+          "sha256": "3e7ef259a83f3358ccb68db8b25534f9f01d44ae6932db5e959cbae18aff3eac"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepository.kt",
+          "before_sha256": "01eb1cafb0862f431f4921c3c0972b803f18e6e90600478236c185b8db13b1cf",
+          "sha256": "77ba76e40c88ae18458635fe5d3e67bb24f14a33be996419cc2b871cee5d1bf3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "f2841c2d01873f40981e33d02bee9414fd53cf7e7c1e1e5faa5e29328eb363ae",
+          "sha256": "2af2a8d52ba7f09b75f5f3e5c6224410a1bea510c54078c8d2f046a0558fc03e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsStoryWorkspaceTest.kt",
+          "before_sha256": "5b4c5e5117938ba9d4f53e09c385f8e6bf4a2d56c3e95a73e5f616b70a11d02b",
+          "sha256": "ef9ac28186d1de3e59cead4d018b6c7666eb007126f534a15eee59b09347f4ba"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryRelatedMediaTest.kt",
+          "before_sha256": null,
+          "sha256": "107cc6c14005daf2af21b0aff26281222b1bde99e23589c8c06436d7d6c0e6ac"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "1aafef8dc36ef8f190dd4f0b402e7fdef8a9bc8d7a426b757fbae3bdd2023308",
+          "sha256": "711c455e32edb75479a88af2f98f5115e1fc6f32ee01210b36c8a23a86d15961"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md",
+          "before_sha256": null,
+          "sha256": "b43bd1bf47286f9cf35d69c7fb7482fd74303a53f50dd2e91df89cbb472781d8"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "4fe5ce7c81e51792c5a414d862e23dc1640c114f504059047350ba726f633ca9",
+          "sha256": "d5dd15b807e65975f946b3b60bc5b06b6a4f1f8ad6809afc94ec852d65deb49b"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "a14ee596aba1921c0f889de223e9eea9bc50d5efe35e8c49e7563c47222bd686",
+          "sha256": "5b957e752e5559e858a152751339d0fe97bb87a51d8d534ba30dea4fd51023d8"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4921579477b5a9d156731371cfbb3658d8bd7cef9ee8f9ec138e66d3e219484d",
+          "sha256": "8fc21f07d026ace994ad1f4a1cafa71f8369aaf556b0547aba291dabd8b967bd"
+        },
+        {
+          "path": "docs/MAINTAINING.md",
+          "before_sha256": "ee3c274b7a303b4273e5841fa0fe46581e16202ffb91691cc7fa842c0ec8f9a9",
+          "sha256": "fea4c4eb64986f023a748bfd18b38ecd2f64da1ea1e052e04c5da09c82ac672a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "83d2ae260e5139956d5cfe8cf20c995c0485db53bd30dd0fb7881a1054da467e",
+          "sha256": "d3c1854cfd1fd0cc5eee798e5d05991b719872e3d7132dcf05bfffbfbbc76cd7"
+        },
+        {
+          "path": "server/docs/security/STORY_RELATED_MEDIA_V1.md",
+          "before_sha256": "6a1f42132941865c1c9c8920edb484849501a4a8d3128bb15313f258a4495bad",
+          "sha256": "4e48a1e7f14f790604557692c2429211f0d84db9015c72235c06887ae56c630b"
+        },
+        {
+          "path": "server/scripts/build_approved_worker_package.py",
+          "before_sha256": "99fab2f4205ab246b4b55fa6fd90f2a9a61caf4ba77a654e46f5f96f004dee61",
+          "sha256": "4684702dcea524ec6c0c9f816c05348efe822c5adb495ca99e3944e82d050606"
+        },
+        {
+          "path": "server/tests/security/test_approved_worker_package.py",
+          "before_sha256": "0ee01d1046a6f58157fe114c564c396de9710575e2cb97c6d341538afa6167d5",
+          "sha256": "c3a9f4715081152b67f86d09e4cd3c6cc38a774bb1acd123b502b094027c7f6b"
+        }
+      ],
+      "server_contract_changed": false,
+      "schema_changed": false,
+      "model_activation": false,
+      "workers_activated": false,
+      "apk_published": false
     }
   ]
 }

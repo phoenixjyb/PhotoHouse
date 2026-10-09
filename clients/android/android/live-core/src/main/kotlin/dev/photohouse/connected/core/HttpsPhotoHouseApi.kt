@@ -774,6 +774,8 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         workspacePacket(token, library, "/story-workspace/title-capabilities")
     override suspend fun storyTitles(token: Bearer, library: String, json: String) =
         workspacePacket(token, library, "/story-workspace/title-suggestions", json, 64 * 1024)
+    override suspend fun relatedStoryMedia(token: Bearer, library: String, json: String) =
+        workspacePacket(token, library, "/story-workspace/related-media", json)
     override suspend fun createGroupedStory(token: Bearer, library: String, json: String) =
         workspacePacket(token, library, "/memory-stories", json, 384 * 1024)
 

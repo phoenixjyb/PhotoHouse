@@ -141,6 +141,7 @@ class StoryWorkspaceStoreTest {
         assertTrue(store.retrySave()); runCurrent()
         assertEquals(2, api.saveBodies.size)
         assertEquals(api.saveBodies[0], api.saveBodies[1])
+        assertTrue(api.saveBodies[0].contains("\"mutation_id\":\"$mutation\""))
         assertTrue(store.state.value.hasPendingSave)
         assertTrue(store.close(discard = true))
         assertEquals(StoryWorkspaceStoreStatus.SELECTION, store.state.value.status)

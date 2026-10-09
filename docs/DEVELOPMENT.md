@@ -15,6 +15,24 @@ passed with inspected desktop and bilingual 390px/150% renders. These cohorts
 overlap and are not added together. It does not deploy the picker, change a
 schema, enable a model, or integrate a native phone picker.
 
+The subsequent phone picker source passed 591 live-core JVM tests, phone debug
+and Android-test Kotlin compilation, and phone lint. Two bilingual generated-data
+journeys passed on an API 36 emulator at 150% text, covering explicit lookup,
+ordered video inclusion, preview clearing, save and fresh reader reopen. See the
+[phone evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md)
+for the exact acceptance boundary. This is an unconfigured QA build, not a new
+signed or published phone release.
+
+The worker packager now reads immutable Git blobs under the monorepo's `server/`
+prefix while retaining the standalone repository and existing archive layout.
+Its eight focused tests cover actual disposable Git repositories in both layouts,
+dirty/untracked preservation, exact source-only contents and refusal cases.
+An actual pinned `aa108411` source lookup now finds all 21 declared files; it
+previously failed with `Worker source files missing`. No Windows worker was
+started by this repair. The unchanged API route suite was not rerun locally
+because the current system Python lacks Alembic; its earlier profile result
+above remains bound to that source snapshot.
+
 ## Inspect the local environment
 
 For the model source inventory, run `python3 tools/model_catalog.py --json`.

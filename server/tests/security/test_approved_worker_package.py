@@ -4,6 +4,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -89,10 +90,54 @@ class ApprovedWorkerPackageTests(unittest.TestCase):
     def test_floating_commit_symlink_and_oversize_refused(self):
         with self.assertRaises(ValueError):
             package.source_files('HEAD')
-        with patch.object(package, 'git', side_effect=[b'commit', b'120000 blob abc\tbackend/app/config.py\0']):
+        with patch.object(package, 'git', side_effect=[b'commit', b'', b'120000 blob abc\tbackend/app/config.py\0']):
             with self.assertRaises(ValueError):
                 package.source_files('a' * 40)
         rows = b'\0'.join(('100644 blob abc\t' + name).encode() for name in package.FILES)
-        with patch.object(package, 'git', side_effect=[b'commit', rows, *([b'999999'] * len(package.FILES))]):
+        with patch.object(package, 'git', side_effect=[b'commit', b'', rows, *([b'999999'] * len(package.FILES))]):
             with self.assertRaises(ValueError):
+                package.source_files('a' * 40)
+
+    def test_git_reads_committed_worker_source_from_both_repository_layouts(self):
+        for prefix in ('', 'server/'):
+            with self.subTest(prefix=prefix), tempfile.TemporaryDirectory() as temporary:
+                repo = Path(temporary).resolve()
+                def git(*args):
+                    return subprocess.check_output(['git', '-c', 'commit.gpgsign=false',
+                        '-c', 'user.name=PhotoHouseFixture', '-c', 'user.email=fixture@example.invalid',
+                        *args], cwd=repo, stderr=subprocess.DEVNULL)
+                git('init', '-q')
+                files = {name: ('committed fixture ' + name).encode() for name in package.FILES}
+                for name, data in files.items():
+                    target = repo / (prefix + name)
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(data)
+                if prefix:
+                    decoy = repo / 'scripts/run_approved_cpu_worker.py'
+                    decoy.parent.mkdir(parents=True)
+                    decoy.write_bytes(b'wrong root-level source')
+                git('add', '.')
+                git('commit', '-qm', 'Synthetic worker source')
+                commit = git('rev-parse', 'HEAD').decode().strip()
+                source_root = repo / prefix
+                dirty = source_root / 'scripts/run_approved_cpu_worker.py'
+                dirty.write_bytes(b'preserve uncommitted work')
+                untracked = source_root / '.env'
+                untracked.write_bytes(b'generated excluded fixture')
+                with patch.object(package, 'ROOT', source_root):
+                    selected = package.source_files(commit)
+                self.assertEqual(selected, files)
+                self.assertEqual(dirty.read_bytes(), b'preserve uncommitted work')
+                self.assertTrue(untracked.exists())
+                with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, selected))) as archive:
+                    self.assertEqual(set(archive.namelist()), set(package.FILES) | {'manifest.json'})
+                    self.assertEqual(archive.read('scripts/run_approved_cpu_worker.py'),
+                                     files['scripts/run_approved_cpu_worker.py'])
+
+    def test_missing_monorepo_source_never_falls_back_to_root_decoy(self):
+        prefix = b'server/'
+        rows = b'\0'.join(('100644 blob abc\tserver/' + name).encode()
+                          for name in package.FILES if name != 'scripts/run_approved_cpu_worker.py')
+        with patch.object(package, 'git', side_effect=[b'commit', prefix, rows]):
+            with self.assertRaisesRegex(ValueError, 'missing'):
                 package.source_files('a' * 40)

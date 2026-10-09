@@ -60,6 +60,27 @@ Assistant input records follow their retention policy; assistant recordings
 remain transient. Story contributions preserve their originals until authorized
 deletion. A source citation is a relationship, not ownership transfer.
 
+## Check a running installation
+
+Keep a dated, private deployment record outside Git. Record the exact source
+manifest and relevant file hashes, task action and process identity, listener,
+enabled feature flags, and published client version/hash. Do not export raw
+arguments, environment values, credentials, database rows or family catalogs
+while collecting an inventory.
+
+Probe the configured user-facing origin with normal certificate validation.
+Match served static-file hashes to the deployed candidate. A separate tunnel
+can target another service; its response does not describe the configured
+WebUI or OTA feed. A task marked running and an HTTP success establish only
+those observations. Authentication, authorized user journeys, provider quality,
+installed client versions and actual device playback need their own checks.
+
+Compare that record with the current source and roadmap before preparing a
+release. Downloaded model weights are an installed artifact, not an enabled
+provider; a successful OTA manifest read is publication evidence, not proof
+that a device installed that APK. An audit does not authorize restarts,
+scheduled-task changes, publication or model inference.
+
 ## Maintain public source
 
 New product changes belong in this monorepo. Follow the

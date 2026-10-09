@@ -64,6 +64,22 @@ Operators must preserve that journal when restoring or changing a deployment.
 TV library publication is a separate contract. Private stories and recordings
 are not automatically added to an anonymous LAN catalog.
 
+## Choosing media for a story
+
+The [related-media contract](../server/docs/security/STORY_RELATED_MEDIA_V1.md)
+supports an explicit, read-only search inside the current library. It suggests
+photos and videos sharing a selected item's recorded capture calendar day.
+It reads catalog metadata after membership checks; it does not load images,
+compare embeddings, run a model or create a story.
+
+Web and phone selections use the same ordered limit of 24 items. Each candidate
+requires the user's choice before the ordinary story preview reloads current
+evidence. The phone keeps candidate pages and preview bytes bounded, and clears
+them when selection or access changes. Filename dates and receipt dates remain
+separate hints and cannot establish that two items depict the same activity.
+Activity grouping and coherent prose generation remain subsequent, separately
+qualified capabilities.
+
 ## Media pipeline
 
 ```text
