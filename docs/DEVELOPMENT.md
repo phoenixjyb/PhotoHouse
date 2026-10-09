@@ -119,6 +119,17 @@ are retained separately from the passing journeys. These are generated browser
 and unconfigured emulator results, not served Web files, a signed APK or family
 acceptance. See [the presentation contract](CONVERSATION_CLARIFICATION.md).
 
+## Phone assistant transcript qualification
+
+The subsequent phone assistant transcript slice passed **102 ConnectedStore JVM
+tests**, three draft helper tests, phone lint and QA debug/test APK assembly.
+**Six focused API 36 UI journeys** passed with fake adapters. Chinese and English
+150% text captures were inspected; an overlapping two-case rerun preserved the
+actual images after the test runner removed app-private files. Explicit Add
+preserves typed words, Discard clears the parent link, overflow keeps both inputs,
+and recording/review cannot submit. See [phone transcript evidence](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
+for the source, emulator and release boundaries.
+
 ## Inspect the local environment
 
 ## Worker diagnostics and matched picker qualification

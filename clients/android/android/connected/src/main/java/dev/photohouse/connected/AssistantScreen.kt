@@ -1,6 +1,8 @@
 package dev.photohouse.connected
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +32,16 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import dev.photohouse.connected.core.*
 
+/** Preserve typed wording; refuse an insertion that would exceed the command limit. */
+internal fun assistantDraftWithTranscript(draft: String, transcript: String): String? {
+    if (transcript.isBlank() || draft.codePointCount(0, draft.length) > 512 ||
+        transcript.codePointCount(0, transcript.length) > 512) return null
+    val combined = if (draft.isBlank()) transcript else "$draft\n$transcript"
+    return combined.takeIf { it.codePointCount(0, it.length) <= 512 }
+}
+
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun AssistantScreen(
     state: AssistantClientState?, zh: Boolean, onBack: () -> Unit,
     previews: Map<String, ByteArray>,
@@ -38,16 +49,17 @@ internal fun AssistantScreen(
     onClear: () -> Unit, onOpen: (String, String?) -> Unit, onCheckReceipt: () -> Unit,
     onRecord: () -> Unit, onStopRecording: () -> Unit, onCancelRecording: () -> Unit,
     recording: Boolean, recordError: Boolean, onClearTranscript: () -> Unit,
+    onUseTranscript: (AssistantTranscript) -> String? = { null },
     onPlaySpeech: () -> Unit, onStopSpeech: () -> Unit,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
-    LaunchedEffect(state?.transcript) { state?.transcript?.let { draft = it.text } }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val submit: () -> Unit = {
         val text = draft.trim()
-        if (text.isNotEmpty() && state?.pendingTurn == null && state?.busy != true) {
+        if (text.isNotEmpty() && state?.pendingTurn == null && state?.busy != true &&
+            state?.transcribing != true && state?.transcript == null && !recording) {
             keyboard?.hide(); focusManager.clearFocus()
             if (onSend(text) && draft.trim() == text) draft = ""
         }
@@ -205,6 +217,39 @@ internal fun AssistantScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                    assistant.transcript?.takeIf { assistant.pendingTurn == null }?.let { transcript ->
+                        item(key = "assistant-transcript-review") {
+                            Card(Modifier.fillMaxWidth().testTag("assistant-transcript-review"),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(t("Transcript ready", "转写已准备好"), style = MaterialTheme.typography.titleSmall)
+                                    Text(t("Review the recognized words, then add them to your message. Existing text will be kept.",
+                                        "检查识别的文字，再加入消息；已有文字会保留。"), style = MaterialTheme.typography.bodySmall)
+                                    SelectionContainer {
+                                        Text(transcript.text, style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp)
+                                                .verticalScroll(rememberScrollState()).testTag("assistant-transcript-original"))
+                                    }
+                                    val canInsert = !assistant.busy && !assistant.transcribing && !recording &&
+                                        assistantDraftWithTranscript(draft, transcript.text) != null
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = {
+                                            val combined = assistantDraftWithTranscript(draft, transcript.text)
+                                            if (combined != null && onUseTranscript(transcript) == transcript.text) draft = combined
+                                        }, enabled = canInsert, modifier = Modifier.testTag("assistant-insert-transcript")) {
+                                            Text(t("Add to message", "加入消息"))
+                                        }
+                                        TextButton(onClick = onClearTranscript, enabled = !assistant.busy && !assistant.transcribing && !recording,
+                                            modifier = Modifier.testTag("assistant-discard-transcript")) { Text(t("Discard", "丢弃")) }
+                                    }
+                                    if (assistantDraftWithTranscript(draft, transcript.text) == null)
+                                        Text(t("This would exceed the message limit. Shorten your message or discard the transcript; nothing has been replaced.",
+                                            "加入后会超过消息长度限制。请缩短消息或丢弃转写；已有文字没有被替换。"),
+                                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-transcript-overflow"))
+                                }
+                            }
+                        }
+                    }
                     assistant.failure?.let { _ -> item {
                         Text(t("This request could not be completed. Try again when the service is available.", "暂时无法完成这次请求，服务恢复后可以重试。"),
                             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-turn-error"))
@@ -235,12 +280,12 @@ internal fun AssistantScreen(
                                 TextButton(onClick = onCancelRecording, modifier = Modifier.testTag("assistant-cancel-recording")) { Text(t("Cancel", "取消")) }
                                 Button(onClick = onStopRecording, modifier = Modifier.testTag("assistant-stop-recording")) { Text(t("Stop and review", "停止并查看转写")) }
                             } else {
-                                OutlinedButton(onClick = onRecord, enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing,
+                                OutlinedButton(onClick = onRecord, enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null,
                                     modifier = Modifier.testTag("assistant-record")) { Text(t("Record speech", "录音转文字")) }
                             }
                         }
                         Button(onClick = submit,
-                            enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && draft.isNotBlank(), modifier = Modifier.testTag("assistant-send")) {
+                            enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null && !recording && draft.isNotBlank(), modifier = Modifier.testTag("assistant-send")) {
                             Text(if (assistant.busy) t("Thinking…", "正在整理…") else t("Ask", "发送"))
                         }
                     }
@@ -250,12 +295,6 @@ internal fun AssistantScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (recordError) Text(t("Microphone recording could not start.", "无法开始录音。"), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-record-error"))
-                    assistant.transcript?.takeIf { assistant.pendingTurn == null }?.let { transcript ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(t("Review the transcript before sending (${transcript.language})${transcript.receipt?.let { " · ${it.requestId}" } ?: ""}.", "发送前请检查转写内容（${transcript.language}）${transcript.receipt?.let { " · ${it.requestId}" } ?: ""}。"), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-                            TextButton(onClick = onClearTranscript, modifier = Modifier.testTag("assistant-discard-transcript")) { Text(t("Discard", "丢弃")) }
-                        }
-                    }
                 }
             }
         }

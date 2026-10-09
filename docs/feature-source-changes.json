@@ -7756,6 +7756,71 @@
       "provider_called": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "phone-explicit-assistant-transcript-acceptance",
+      "source_commit": "919d28a458e4fe4f98e9254b852a7720833ffc39",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "6a27753bbc217d735d016d5e73c5df6b07510f84aed52199a181424c1f2d0878",
+          "sha256": "4a106c27ca4a06ad27ef9a9547d6ecfe1ccdd1f5f087da90782b759d8c5f955c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "21b45e4f6893a399f7f68f5d27d4e7e959f39e9e7dd0ef1d0067cd621bc6c62e",
+          "sha256": "23a51ca54a5937a7486695f2affbf55a2c199c004aeb885435d5d109d3db2e35"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/AssistantDraftTest.kt",
+          "before_sha256": null,
+          "sha256": "7d84d57648296e008f76fe131c44dfe00a1f8dfccce0ea28d2619c1a5b309a07"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "416043d63ee7e5f844abcecd289d0e4354d067e535e48bcad2ca93c312f9c9ba",
+          "sha256": "cbfce3c982424ef7b1c71a52e5d8ac60ca4957f5ed7e37668a93f7f9a3454f90"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "before_sha256": null,
+          "sha256": "5469b98444984101df1aba15ca2ba944622719d9fcf49269b389999e0f74513f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "59fceb879f99397d97b3dba8ddd8017616f799e8c3e0dc6d6a89497101077025",
+          "sha256": "c7e3bc736183478e083e91d53d1b7c1c4cc8f72631cc71ac6b0c37822d56d15a"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "before_sha256": "62887d8bb134f7f0cb974fb484a01d9840e86f0bbb0ccedca1e38361f7262e38",
+          "sha256": "e2ae16002c683a12e13a8eda2eeea4625064ebef2821c2a83d0e13e4f17c5697"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md",
+          "before_sha256": null,
+          "sha256": "ba1c4cfdbb50aea85d4fc854d3e9ee469f9167559894474d813accc8ba24fad5"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "787637939b9d54dea9f58fd9da88b5037855e6686e09c36fcb25abf054d80025",
+          "sha256": "496ec41127c27729266072ce2f010993696c9110da29fe82dcc2e464f829f812"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "dd9d9add776f55ad5b0088aad4a4eeb35a91e2dc7fb453e1e40e1b459e13c2fe",
+          "sha256": "7513a610cfd1cfe1b4bbdafeb36608cf585fa2cd0a3bd31d353f849998449e60"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "ce5582baa9adea10047eba9ae0c0a230e8cfe860d7978a452d73bd69d322c6c4",
+          "sha256": "2e6c2548e196349dba33d275ea422af60272d81479de414208dadafeac0760ec"
+        }
+      ],
+      "server_contract_changed": false,
+      "recording_started": false,
+      "apk_published": false,
+      "api_deployed": false
     }
   ]
 }

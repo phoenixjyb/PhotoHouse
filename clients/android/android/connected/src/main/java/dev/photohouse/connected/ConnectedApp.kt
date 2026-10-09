@@ -562,6 +562,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     onCancelRecording = { assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false },
                     recording = assistantRecording, recordError = assistantRecordError,
                     onClearTranscript = store::clearAssistantTranscript,
+                    onUseTranscript = store::takeAssistantTranscriptForDraft,
                     onPlaySpeech = { store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
                     onStopSpeech = store::clearAssistantSpeech)
                 return@Surface

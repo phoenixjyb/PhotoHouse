@@ -20,6 +20,11 @@ This matrix records the source migration baseline. Live installations and physic
 
 ## Next product slices
 
+The phone search assistant now reviews recognition before explicit insertion,
+preserves typed words and links the ASR receipt only after Add. Unicode overflow
+keeps both inputs available. See [the phone qualification](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md);
+signed delivery and a live voice turn remain separate gates.
+
 1. Close the delivery gates for already implemented features.
 2. Improve a complete voice turn with visible context, natural clarification, and server-supported idempotent recovery that cannot duplicate an action.
 3. Extend memoir access to Android chapter and audio editing, with revision, source-change and offline recovery.

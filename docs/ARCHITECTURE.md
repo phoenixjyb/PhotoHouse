@@ -39,6 +39,12 @@ client: visible response → explicit speech request/playback
 
 A local ASR/model adapter is configurable. Recognition is not a submitted command. Continuous conversation retains explicit turn boundaries; it does not imply continuous microphone capture. Every accepted action must have a receipt and processing state.
 
+The phone assistant's [transcript review](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
+preserves typed text while ASR completes. Only explicit Add accepts the exact
+current transcript and its successful receipt into the editable command draft.
+Discard clears that link. Recording, recognition and review block Send until
+the user resolves the pending input; overflow preserves both texts.
+
 | Step | Where it happens |
 |---|---|
 | Capture and transcript review | Web browser or Android phone; the user starts, stops and reviews. |

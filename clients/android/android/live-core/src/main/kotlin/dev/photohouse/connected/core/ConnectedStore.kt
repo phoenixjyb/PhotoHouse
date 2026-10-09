@@ -3324,7 +3324,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 val result = api.assistantTranscribe(credential, library, wav, requestId)
                 if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantTranscriptRequest) return@launch
                 val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result, lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = result.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId, failure = null))
+                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, transcript = result, lastRequestReceipt = result.receipt ?: AssistantRequestReceipt(requestId, "unknown", null), confirmedTranscriptRequestId = null, failure = null))
                 result.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.let { reportAssistantOutcome(library, generation, credential, requestId, "displayed") }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -3333,6 +3333,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
             }
         }
+    }
+    /** Explicitly accept the exact current transcript into the caller's editable draft. */
+    fun takeAssistantTranscriptForDraft(expected: AssistantTranscript): String? {
+        val current = state.value.assistant ?: return null
+        if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
+            current.transcript !== expected || current.busy || current.transcribing || current.pendingTurn != null || !allowed()) return null
+        val confirmedRequestId = expected.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId
+        mutable.value = state.value.copy(assistant = current.copy(transcript = null, confirmedTranscriptRequestId = confirmedRequestId))
+        return expected.text
     }
     fun sendAssistantText(text: String): Boolean {
         val current = state.value.assistant ?: return false
