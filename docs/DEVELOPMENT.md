@@ -79,6 +79,12 @@ native file metadata and DACL handling; provider calls remain faked, and no mode
 GPU, speech playback or production activation is required. Linux API and Android
 checks retain their separate acceptance scope.
 
+The explicit cold-start canary profile has two additional source tests for
+plan-only refusal and a single fake request receiving and recording a 90-second
+timeout. The existing configuration suite also checks that the default cap stays
+at 30 seconds, that 91 seconds is refused in cold-start mode, and that nonfinite,
+boolean or invalid mode values fail closed. These tests do not contact a model.
+
 ## CPU quick start
 
 The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
@@ -96,12 +102,17 @@ python3.12 -m venv .venv
 .venv/bin/python tools/check.py api
 ```
 
-The latest supported CPU run passed **755 tests and 460 independently reported subtests**
-on October 9, 2026, plus the generated-data demo. It used the existing macOS
-arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
-fresh dependency installation. The private model manifest contributes 19 tests
-and 39 subtests for declared identities, contracts, rollback and private-file
-handling; the explicit assistant/memory bridge adds 15 tests and 19 subtests.
+The Windows-reader baseline at `08e112e6ec2de68727d90b136042a7dcbc639dc3`
+passed **759 API tests and 467 independently reported subtests** through
+[hosted Linux CI in PR #10](https://github.com/phoenixjyb/PhotoHouse/pull/10)
+on October 9, 2026, plus the generated-data demo and isolated package checks.
+Its separate native Windows cohort ran 77 tests with three POSIX-only skips;
+Android retained 773 JVM tests with lint/debug builds. These cohorts overlap and
+are not added together. The earlier 755/460 run used an existing macOS arm64
+Python 3.12.12 / pytest 9.0.3 environment without a fresh dependency install.
+The private manifest cohort now contributes 20 tests and 41 subtests for declared
+identities, contracts, rollback and private-file handling; the explicit
+assistant/memory bridge adds 15 tests and 19 subtests.
 The 89 standalone tooling tests include eight deployment doctor checks, nine qualification checks
 and nine private review-workflow checks;
 these counts are separate from the API profile. No model runtime or quality is

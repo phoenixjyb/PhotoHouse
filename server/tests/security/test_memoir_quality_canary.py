@@ -126,6 +126,10 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         path = self.configuration()
         loaded = canary._load_configuration(path)
         self.assertEqual("synthetic-fixture-model", loaded["ollama_model"])
+        cold_path = self.configuration(timeout_seconds=90)
+        self.assertEqual(90.0, canary._load_configuration(cold_path, cold_start=True)["timeout_seconds"])
+        with self.assertRaises(canary.CanaryError):
+            canary._load_configuration(cold_path)
         for changes in (
             {"extra": "secret-extra"},
             {"format_version": True},
@@ -140,6 +144,16 @@ class MemoirQualityCanaryTests(unittest.TestCase):
                 with self.assertRaises(canary.CanaryError) as caught:
                     canary._load_configuration(path)
                 self.assertIn(caught.exception.code, {"configuration_invalid", "configuration_unavailable"})
+
+        for timeout in (91, float("nan"), float("inf"), True):
+            with self.subTest(cold_start_timeout=timeout):
+                path = self.configuration(timeout_seconds=timeout)
+                with self.assertRaises(canary.CanaryError) as caught:
+                    canary._load_configuration(path, cold_start=True)
+                self.assertIn(caught.exception.code, {"configuration_invalid", "configuration_unavailable"})
+        with self.assertRaises(canary.CanaryError) as caught:
+            canary._load_configuration(cold_path, cold_start=1)
+        self.assertEqual("configuration_invalid", caught.exception.code)
 
         secret = "private-model-marker "
         config_path = self.configuration(ollama_model=secret)
@@ -308,6 +322,40 @@ class MemoirQualityCanaryTests(unittest.TestCase):
             self.assertEqual(0o700, output_path.stat().st_mode & 0o777)
             for name in ("input-bundle.json", "output.json", "record.json"):
                 self.assertEqual(0o600, (output_path / name).stat().st_mode & 0o777)
+
+    def test_cold_start_cli_passes_ninety_seconds_to_exactly_one_request(self):
+        config_path = self.configuration(timeout_seconds=90)
+        output_path = self.root / "cold-start-run"
+        calls = []
+
+        def factory(url, model, *, timeout):
+            return self.FakeNarrator(url, model, timeout=timeout, calls=calls)
+
+        stdout = []
+        with patch.object(memory_narrative, "LocalMemoryNarrator", side_effect=factory):
+            code = canary.main([
+                "--run", "--cold-start", "--case", "synthetic-coherence",
+                "--configuration", str(config_path),
+                "--output-directory", str(output_path),
+            ], stdout=type("Writer", (), {"write": stdout.append})())
+        self.assertEqual(0, code)
+        self.assertEqual(1, len(calls))
+        self.assertEqual(["narrative"], calls[0]["methods"])
+        self.assertEqual(90.0, calls[0]["timeout"])
+        record = json.loads((output_path / "record.json").read_text(encoding="utf-8"))
+        self.assertEqual(90.0, record["timeout_seconds"])
+        for report in (json.loads(stdout[0]), record):
+            self.assertFalse(report["quality_evaluated"])
+            self.assertFalse(report["activation_performed"])
+            self.assertFalse(report["resource_limits_verified"])
+
+    def test_cold_start_flag_is_invalid_in_plan_only_mode(self):
+        output = []
+        code = canary.main(["--cold-start"], stdout=type("Writer", (), {"write": output.append})())
+        self.assertEqual(2, code)
+        report = json.loads(output[0])
+        self.assertEqual("refused", report["status"])
+        self.assertEqual("arguments_invalid", report["error_code"])
 
     def test_cli_argument_errors_are_fixed_and_do_not_echo_values_to_stderr(self):
         import contextlib

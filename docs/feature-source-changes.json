@@ -6708,6 +6708,46 @@
           "before_sha256": "ca1f3be48626672273360207e074bb6b89647ecb76b73b8576d5613c81834254"
         }
       ]
+    },
+    {
+      "feature": "explicit-offline-memoir-cold-start-profile-v1",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "cf936380556aa4e14a8577d066274c2d3ea0c589e69d560024fd7fe760839a0a",
+          "before_sha256": "dc8ef2f7e4540aef9cf143c3f2dc470b8d7b84e535191405ccd3c8637846aeaa"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "14e1a4efe3ae32e4cfaddf9a2b2d223471daa3707468796fa3d6fb60381d85b3",
+          "before_sha256": "793d41b33d4662226c0b6c4ef11bbc8803c76269c151efe3ca2c5dc318cc7248"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "0d7c0e5912781bcc0785e4bc04b8a2e0f3fc40ce5ff68c298218cd1bf58a3272",
+          "before_sha256": "97fde4c74cd3813fce7e8645416e5197a0b02a8046f214924a2c397ebfb8de28"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "sha256": "2935d549d9758a9e8b2e996e91192e0478ffd118251b4a58d82d8aabe8b45daa",
+          "before_sha256": "c2a4d44c326745bc0c96cfab1f11b7f81bc6af4f12283de5e62f2566cd0e78ee"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "sha256": "b265a9feb913316da105e913298ffcbc341718c32c201d2bf93d2eabcc008ed8",
+          "before_sha256": "0bfb53b928029f386fe2f11d6a3f7817b1495766d7b847a31736da617daecbb5"
+        }
+      ]
+    },
+    {
+      "feature": "windows-private-reader-hosted-evidence-v1",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "a14ee596aba1921c0f889de223e9eea9bc50d5efe35e8c49e7563c47222bd686",
+          "before_sha256": "cf936380556aa4e14a8577d066274c2d3ea0c589e69d560024fd7fe760839a0a"
+        }
+      ]
     }
   ]
 }
