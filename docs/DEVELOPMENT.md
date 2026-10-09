@@ -119,6 +119,17 @@ are retained separately from the passing journeys. These are generated browser
 and unconfigured emulator results, not served Web files, a signed APK or family
 acceptance. See [the presentation contract](CONVERSATION_CLARIFICATION.md).
 
+## Visual grouping foundation
+
+The new [visual grouping foundation](ACTIVITY_GROUPING_DESIGN.md) passed **14
+synthetic CPU tests and 11 subtests** through the supported stripped environment.
+They cover exact order, tolerated-norm normalization, ties, identity/checksum
+refusal, foreign IDs before scoring, duplicate representations, nonconsumption
+of lazy authorization inputs and hard cohort/dimension/result bounds. I/O and
+process hooks are refused in the pure-function journey. The helper opens no
+files or database and runs no provider. Its authorization snapshot records a
+caller assertion; only later current-library integration can establish access.
+
 ## Web assistant trail qualification
 
 The subsequent complete **eleven-suite Web profile passed**, including the new

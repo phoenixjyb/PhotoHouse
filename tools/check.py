@@ -30,7 +30,7 @@ API_TESTS = (
     "test_orm_migrations.py", "test_runtime_adapter.py", "test_windows_tts.py",
     "test_memory_worker_launcher.py",
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
-    "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_related_media.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
+    "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_related_media.py", "test_visual_candidates.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_assistant_http.py", "test_assistant_journal.py", "test_memory_transport.py",
     "test_approved_face_queue.py", "test_approved_worker_package.py",

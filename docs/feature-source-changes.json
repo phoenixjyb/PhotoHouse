@@ -7929,6 +7929,52 @@
       "server_contract_changed": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "pure-preauthorized-photo-vector-candidate-foundation",
+      "source_commit": "3a397ae9580980ae4daded122cffafe39b586b88",
+      "files": [
+        {
+          "path": "server/backend/app/access/visual_candidates.py",
+          "before_sha256": null,
+          "sha256": "8e40c95babcfe35c6f611dcc73c127ee264283e4b6541530b26fb18eaaef0d5f"
+        },
+        {
+          "path": "server/tests/security/test_visual_candidates.py",
+          "before_sha256": null,
+          "sha256": "e9c4074f355917d6093e8caef79625433637a6a26cdb5283327b1f8bb473a211"
+        },
+        {
+          "path": "docs/ACTIVITY_GROUPING_DESIGN.md",
+          "before_sha256": null,
+          "sha256": "475607878bfd1fb0e8c8b159d8622e50311b52709edcb93de98e0793e7319678"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a9c20f7bae8aeb7bf5b846b5d7c7bd008fca15ac9c50651766fa6f61e4e84aa0",
+          "sha256": "ce580c903974ddb50aba613e80ab3e9887653404048ed77f344c54f4b8c3ee44"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bb5f99886afd36efa054e499c3fbea2243d65b3c6209fee3e393e3d8da666788",
+          "sha256": "967194b8f6cefab73ded2b13a70a397cd42f3bab4e01ba82a838b249ac354ec4"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b86286e74f9cd451276454eefdfe6c8a2b752f43f7b016c2939cfb11217b2baa",
+          "sha256": "dee6d573f1b9a605db537f0cdfe0dbf35190f5b2fd6450abd293c17360a1d748"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "fdbc7bdf8c700490edebcc7908bc65cae396ddbbfa46dc84fbe8a449c63752f2",
+          "sha256": "20e99e065b6c3901e0874940c4d4deca21130ac2e50675451595683a6085015e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "runtime_integration_added": false
     }
   ]
 }

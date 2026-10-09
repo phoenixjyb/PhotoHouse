@@ -52,6 +52,15 @@ Embedding/face bindings and independent runtime catalog packaging remain future
 integration work. Metadata validation does not establish installed models or
 allow automatic activation.
 
+The [activity grouping design](ACTIVITY_GROUPING_DESIGN.md) now has a pure,
+synthetic photo-vector ranker. It checks a preauthorized bounded cohort, exact
+vector identity and component checksums before cosine ranking. This is a
+foundation only: no lookup route, real embedding coverage or model integration
+exists yet. The next visual slice must preserve checkpoint/preprocessing identity
+and qualify library-filtered loading before any ranking; the global index must
+not be searched first and post-filtered. Similarity will remain a reviewed
+candidate, never proof of an activity or a reason to copy prose automatically.
+
 The [public monorepo](REPOSITORY_TRANSITION.md) is now the development home.
 Reviewed PR #1 and hosted API/Android CI close the initial public-source delivery
 gate. The legacy application repositories remain retained references; runtime,
