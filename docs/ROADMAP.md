@@ -12,8 +12,13 @@ targets. Its report omits private values. An explicit typed bridge now maps
 assistant ASR/TTS and memory contribution/narrative selections into private
 configuration copies, preserving feature opt-ins and existing request/item/run
 limits. It refuses conflicting legacy settings and never launches a service.
-The next model-infra slice is installed artifact/runtime identity and measured
-device/resource/quality qualification, then separately approved activation.
+An [offline qualification record checker](MODEL_QUALIFICATION.md) now binds
+scoped identity observations, resource samples and human voice/story reviews to
+the exact current or rollback selection. ASR uses a separate pinned private audio
+inventory; optional explicit hashing verifies only named files. It does not
+collect observations or establish provider/device/runtime/semantic acceptance.
+The next model-infra slice is native installed-provider/device verification and
+bounded Chinese voice/story evaluation, then separately approved activation.
 Embedding/face bindings and independent runtime catalog packaging remain future
 integration work. Metadata validation does not establish installed models or
 allow automatic activation.

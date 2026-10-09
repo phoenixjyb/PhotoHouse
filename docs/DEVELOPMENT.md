@@ -39,6 +39,15 @@ deadline. Three additional tool tests cover target/platform flags, redacted
 projection and absent ambient credential resolution. These are configuration
 checks; installed artifact/runtime identity and quality remain unverified.
 
+The [qualification record checker](MODEL_QUALIFICATION.md) adds 18 offline
+backend tests and eight standard-library CLI tests. These cover exact branch
+and input-plan identities, explicit scope coverage, recorded resource/review
+failures, stale/missing evidence, private metadata and bounded literal-file
+hashing. Narrative input hashes match the existing generated memoir bundles.
+The synthetic test files are not playable speech or model checkpoints, and the
+recorded test verdicts are fixtures. No provider, GPU or semantic quality is
+qualified by this source cohort.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package

@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "kind": "photohouse-model-quality-cases",
+  "suites": [
+    {
+      "role": "assistant_asr",
+      "cases": [
+        {
+          "id": "mandarin-memory",
+          "input_kind": "wav",
+          "input_text": "那天我们在公园野餐。小雨记得带了蓝色水壶，日期我还不确定。",
+          "input_sha256": null,
+          "criteria": [
+            "synthetic_input_only",
+            "mandarin_fidelity",
+            "names_preserved",
+            "uncertainty_preserved"
+          ]
+        },
+        {
+          "id": "mandarin-correction",
+          "input_kind": "wav",
+          "input_text": "不是九月三日，是九月十三日。请保留这条更正，不要自动发送。",
+          "input_sha256": null,
+          "criteria": [
+            "synthetic_input_only",
+            "mandarin_fidelity",
+            "correction_preserved",
+            "no_invented_words"
+          ]
+        }
+      ]
+    },
+    {
+      "role": "memory_asr",
+      "cases": [
+        {
+          "id": "mandarin-memory",
+          "input_kind": "wav",
+          "input_text": "那天我们在公园野餐。小雨记得带了蓝色水壶，日期我还不确定。",
+          "input_sha256": null,
+          "criteria": [
+            "synthetic_input_only",
+            "mandarin_fidelity",
+            "names_preserved",
+            "uncertainty_preserved"
+          ]
+        },
+        {
+          "id": "mandarin-correction",
+          "input_kind": "wav",
+          "input_text": "不是九月三日，是九月十三日。请保留这条更正，不要自动发送。",
+          "input_sha256": null,
+          "criteria": [
+            "synthetic_input_only",
+            "mandarin_fidelity",
+            "correction_preserved",
+            "no_invented_words"
+          ]
+        }
+      ]
+    },
+    {
+      "role": "assistant_tts",
+      "cases": [
+        {
+          "id": "mandarin-names-dates",
+          "input_kind": "text",
+          "input_text": "小雨记得九月十三日的野餐，阿明还不确定是哪一年。",
+          "criteria": [
+            "mandarin_intelligibility",
+            "names_numbers_pronounced",
+            "uncertainty_preserved",
+            "comfortable_pacing"
+          ],
+          "input_sha256": "e9870cdfa4f31eb81f11fa658c38a98469a0609a15eb6935490aeba18caff16a"
+        },
+        {
+          "id": "mandarin-story-pause",
+          "input_kind": "text",
+          "input_text": "清晨，孩子们给菜畦浇水。几周后，第一批花开了。关于那一天，我们还想听听其他人的回忆。",
+          "criteria": [
+            "mandarin_intelligibility",
+            "sentence_pauses",
+            "comfortable_pacing",
+            "no_extra_speech"
+          ],
+          "input_sha256": "2239d4e42f86dcb92efe5f30566f1dc0b0c4221f5ded1f548fc03ae987819244"
+        }
+      ]
+    },
+    {
+      "role": "narrative",
+      "cases": [
+        {
+          "id": "synthetic-coherence",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "4146b546ba71f011b9062017c5eb57e1addaefa6ed2a08e613df1b926532a5f3",
+          "criteria": [
+            "grounded_facts",
+            "exact_citations",
+            "attribution_uncertainty",
+            "coherent_chapters",
+            "no_withheld_sources"
+          ]
+        },
+        {
+          "id": "synthetic-conflict",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "ca79efa76960d1c7f4cbf1fdf997679032b656da45a266a3ca516b1ae6772767",
+          "criteria": [
+            "grounded_facts",
+            "exact_citations",
+            "attribution_uncertainty",
+            "coherent_chapters",
+            "no_withheld_sources"
+          ]
+        },
+        {
+          "id": "synthetic-provenance",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "733dbf227527f1bac08f89b9a83fa02bd60885fc04f63599e6039ce47603ca88",
+          "criteria": [
+            "grounded_facts",
+            "exact_citations",
+            "attribution_uncertainty",
+            "coherent_chapters",
+            "no_withheld_sources"
+          ]
+        }
+      ]
+    }
+  ],
+  "criteria": {
+    "synthetic_input_only": "Listen to the pinned recording. It contains only the source case phrase, spoken for this synthetic test; no household recording is reused.",
+    "mandarin_fidelity": "Compare recognized Mandarin with the source phrase. Meaning is retained without omitted or substituted clauses; punctuation may vary.",
+    "names_preserved": "Synthetic names remain unchanged; the model does not replace them with guessed identities.",
+    "uncertainty_preserved": "An unresolved date or year remains unresolved in text or speech.",
+    "correction_preserved": "The correction from September 3 to September 13 is preserved, with no command automatically sent.",
+    "no_invented_words": "No additional events, relationships, instructions or words are invented.",
+    "mandarin_intelligibility": "A Mandarin-speaking reviewer understands the complete utterance without relying on displayed text.",
+    "names_numbers_pronounced": "Names and September 13 are spoken intelligibly and preserve the intended text.",
+    "comfortable_pacing": "Speech pace and volume are comfortable throughout; no clipping, gaps or rushed ending.",
+    "sentence_pauses": "Natural pauses separate the three sentences without changing meaning.",
+    "no_extra_speech": "Only the requested text is spoken, without model commentary or extra content.",
+    "grounded_facts": "Compare with the exact pinned memoir bundle and its case-specific expectations; all factual details are supported, including any sensory or emotional details.",
+    "exact_citations": "Every cited source exists in the bundle and supports its attributed claim; opaque citation IDs stay out of literary prose.",
+    "attribution_uncertainty": "Preserve distinct contributors, conflicting recollections and uncertain chronology; file dates or recent chat do not establish event dates.",
+    "coherent_chapters": "Follow the case-specific expectations in server/docs/security/MEMOIR_QUALITY_CASES_V1.md: connected chapters, clear theme and consistent perspective, rather than concatenated captions.",
+    "no_withheld_sources": "No withheld/omitted source, unsupported dialogue, date, relationship or feeling is introduced."
+  }
+}

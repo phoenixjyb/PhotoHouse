@@ -6378,6 +6378,81 @@
           "before_sha256": "b3036cc6a725a6410f8a9f2c594f38982a9938eb5acd5e3a92e6cb0ce331b904"
         }
       ]
+    },
+    {
+      "feature": "scoped-model-qualification-evidence-v1",
+      "files": [
+        {
+          "path": "server/backend/app/access/model_deployment.py",
+          "sha256": "ab37918dc2399aa08bd22a80116fba4d758f59acd974744c8013dbe24cead167",
+          "before_sha256": "14d2cae253f3a2ce8dbbdad73b12276bbf33c57cad3fc2642b4b9f605e7b5a8f"
+        },
+        {
+          "path": "server/backend/app/access/model_qualification.py",
+          "sha256": "23d706258a0e84a75c16140468cee55c1306c5e921df419d0d50d53ea20dae90",
+          "before_sha256": null
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "8aacb773379d0fb668ec6feab91d75479dea4a5b8d41a8112e256f19d70f0afc",
+          "before_sha256": "63f58f84f1d8876cf3df0808d75f64e3a96ddf00dfbc7c871ea8aa3f0c26c219"
+        },
+        {
+          "path": "server/tests/security/test_model_qualification.py",
+          "sha256": "b9a852f3fc725348390d1563a7971d756ba915c54ada5232b741e843c4ead736",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "366607b62ff1bd2e02efa63fa6b8aaeba0bbc6d65ce0fc8e434d4899658fb084",
+          "before_sha256": "a5ecf85e6dac7889c5cdf34f414e3011c35f7ad54fc9eb31ce49750007e3e142"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "593442ce0bd31906f04534e8dadd3db5be35cf2ea005f908942c8f7f714a8a2e",
+          "before_sha256": "726d7a69e1700bcae5f2570ff6778e05cd46092bdc6bd13232582120721d9b9a"
+        },
+        {
+          "path": "tools/check_model_qualification.py",
+          "sha256": "0cc2cd96d8afcf4aa041849ebd00aa362d049a4e4157dd5e920bd16bb5dc0d9f",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/tests/test_check_model_qualification.py",
+          "sha256": "d7d9a1a8293e212ebcb681bef26d1bcbc2c4a9b44a39a863ba0d3356acf05e42",
+          "before_sha256": null
+        },
+        {
+          "path": "models/quality-cases.json",
+          "sha256": "b8215c24da47b0f12be461ab8c3769e74f026d3efafa40116ea3782ad1ca9010",
+          "before_sha256": null
+        },
+        {
+          "path": "models/README.md",
+          "sha256": "bfaa63e943fb66dcc06301efb402d47df65adbb969dc029e7eb81fb48b0c40de",
+          "before_sha256": "4b51efd502ba778eeb67dd0df33b958e4ff32c48e162ac63810efeae33e96600"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "11d178bfbc7131db65d1bb18e36a85548913f07a6ca7ab1a74569821a5b910cd",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "sha256": "3f94784aa590bc3218359f881a570e59135aa459de0f5fe21ccd8375649c1977",
+          "before_sha256": "c68c15fcb8c17cadc3c45532110119f533ebb814a662ccb977b3f8410302c485"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "716d4583d0d2781f269399dc1a50e732ed77dd57e508bb857d15860dc15f11e1",
+          "before_sha256": "dec2d6752f1699a34fba532a6625c286db601081d19fdf2825931a08b27720bd"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "291a44540d255b23d9f03cb7505f9fea14202260238fb45f2cb03a6a79a886d1",
+          "before_sha256": "e5b4cea56e1633333f9e9e97da68d64ec45629f2b2389f98e4846f6f2ce36ca0"
+        }
+      ]
     }
   ]
 }
