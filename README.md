@@ -18,11 +18,12 @@
 手机用于记录和交谈，Web 用于整理与共同编辑，TV 用于家人一起观看。
 AI 写作建议需要经过模型资格验证和用户审阅；自动故事生成仍是交付关卡。
 回忆集手工编辑和助手待确认恢复已有源代码及合成浏览器覆盖；b1 编辑服务默认关闭，
-这些检查不代表运行服务或模型质量验收。Android v45 源码增加受保护的分组故事创建、审阅、
+这些检查不代表运行服务或模型质量验收。手机源码支持受保护的分组故事创建、审阅、
 冲突恢复、整篇或章节贡献，以及可选的个人资料署名。标题建议提供者默认关闭；
 本次源码更新未生成签名 APK，也未启用新的服务功能。
 查看[故事体验说明](docs/STORY_EXPERIENCE.md)、[功能与验收清单](docs/FEATURES.md)、
-[可选 Web 浏览器检查](docs/WEB_DEVELOPMENT.md)及[phone preview 源码证据](clients/android/docs/ANDROID_CONVERSATION_PREVIEWS_2026-10-05.md)。
+[故事阅读导航](docs/STORY_READER_NAVIGATION.md)、[浏览器录音生命周期](docs/WEB_RECORDING_LIFECYCLE.md)、
+[可选 Web 浏览器检查](docs/WEB_DEVELOPMENT.md)及[手机会话预览证据](clients/android/docs/ANDROID_CONVERSATION_PREVIEWS_2026-10-05.md)。
 交付源码时使用[可重复的源码打包工具](docs/SOURCE_PACKAGING.md)。
 
 ## 开始开发
@@ -40,9 +41,11 @@ python3.12 -m venv .venv
 如需只运行回忆录相关的 CPU 服务与契约检查，可运行 `.venv/bin/python tools/check.py memory`；
 该聚焦 profile 通过 127 项测试和 76 个子测试。完整 API profile 也包含这些检查。
 
-最新支持 CPU profile 于 10 月 9 日通过 **680 项测试和 361 个子测试**，并运行无监听端口的合成数据演示。该次使用现有 Python 3.12.12 / pytest 9.0.3 CPU 环境；27 个适用包的新鲜哈希安装记录（523/215）和更早的 498/197、445 项测试均保留为历史 profile。详情见[API 验收数据](docs/local-api-acceptance.json)和[开发指南](docs/DEVELOPMENT.md)。
+已合并的托管源码检查（PR #13，`2f17ed9`）通过 **936 项 API 测试和 558 个子测试**、无监听端口的合成演示及 92 项工具测试，使用新鲜的哈希锁定依赖安装。680/361 和初始导入等较早记录保留为历史结果。详情见[开发指南](docs/DEVELOPMENT.md)。
 不需要 GPU、模型权重或家庭服务器。Windows 请使用 `.venv\Scripts\python.exe`。
 Windows PowerShell 的完整 CPU setup、demo 与当前源码校验命令见[开发指南](docs/DEVELOPMENT.md)。
+另有 `tools/check.py windows-cpu` 聚焦合成数据库、运行配置和源码包检查；
+其独立 Windows CI 与真实家庭服务器验收分开，见[Windows CPU 检查](docs/WINDOWS_CPU_CHECKS.md)。
 
 模型代码与权重分开管理：[模型与服务架构](docs/MODEL_PROVIDER_ARCHITECTURE.md)列出 VLM、
 ASR、TTS、人脸与影像向量等适配器及更换规则。`models/catalog.json` 是源码清单，
@@ -56,7 +59,8 @@ Android 需要 JDK 17 和 Android SDK 34：
 ```
 
 该命令执行共享模块测试、手机/TV 单元测试、lint 和未配置服务器的 debug 构建。
-初始公开导入的托管 CI 通过 773 项 JVM 测试和手机／TV 的 lint、debug 构建；684、592 项与各定向检查保留为历史记录。
+PR #13 的托管 Android CI 通过 812 项 JVM 测试和手机／TV 的 lint、debug 构建；
+初始 773 项及更早的定向检查保留为历史记录。
 构建后可运行 `.venv/bin/python tools/android_test_report.py` 只读汇总已有结果；它不重新执行测试。
 具体环境、证据范围及限制见
 [开发指南](docs/DEVELOPMENT.md)和[Android 验收记录](docs/local-android-acceptance.json)。

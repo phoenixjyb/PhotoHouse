@@ -81,8 +81,10 @@ internal val Edge = Color(0xFF496258)
     var lastAsset by remember(state.feed?.id) { mutableStateOf<Int?>(null) }
     val first = remember { FocusRequester() }
     val selectedLibraryFocus = remember { FocusRequester() }
+    val retryLibrariesFocus = remember { FocusRequester() }
     val galleryToolbarScroll = key(browseStore) { rememberScrollState() }
     var pendingLibraryFocus by remember(browseStore) { mutableStateOf<LibraryFocusIntent?>(null) }
+    var pendingLibraryRetryFocus by remember(browseStore) { mutableStateOf(false) }
     val route = when { state.covered -> "covered"; store == null -> "setup"; exploring -> "explore"; state.feed == null -> "connection"; state.video != null -> "video"; viewer -> "viewer"; else -> "grid" }
     var galleryGridHasFocus by remember(store, store?.selection, route) { mutableStateOf(false) }
     LaunchedEffect(route) {
@@ -101,7 +103,8 @@ internal val Edge = Color(0xFF496258)
         view.keepScreenOn = playing && !state.covered
         onDispose { view.keepScreenOn = false }
     }
-    LaunchedEffect(route, state.feed?.page, store, focusedWindow, restoreExplore) {
+    LaunchedEffect(route, state.feed?.page, state.busy, state.collectionsProblem, state.problem,
+        state.covered, state.disconnected, store, focusedWindow, restoreExplore) {
         if (!focusedWindow) return@LaunchedEffect
         // Re-request after a remote navigation transition, but not on every thumbnail update.
         // An empty gallery has no LazyVerticalGrid layout; scrolling its state would
@@ -111,6 +114,37 @@ internal val Edge = Color(0xFF496258)
             grid.scrollToItem(index.coerceAtLeast(0))
         }
         withFrameNanos { }
+        if (pendingLibraryRetryFocus) {
+            if (route != "grid" || state.busy || state.feed == null) {
+                if (state.problem != null || state.covered || state.disconnected) pendingLibraryRetryFocus = false
+                return@LaunchedEffect
+            }
+            if (store == null || store !== browseStore) {
+                pendingLibraryRetryFocus = false
+                return@LaunchedEffect
+            }
+            val latest = store.state.value
+            val latestFeed = latest.feed
+            val latestCollections = latest.collections
+            if (latest.busy || latestFeed == null || latest.covered || latest.disconnected) return@LaunchedEffect
+            pendingLibraryRetryFocus = false
+            if (latest.collectionsProblem != null) {
+                runCatching { retryLibrariesFocus.requestFocus() }
+            } else if (latestCollections != null && latestCollections.revision == latestFeed.revision) {
+                pendingLibraryFocus = LibraryFocusIntent(store.selection.collectionId)
+                withFrameNanos { }
+                val current = store.state.value
+                val selectedStillValid = store.selection.collectionId?.let { id ->
+                    current.collections?.collections?.any { it.id == id } == true
+                } ?: true
+                if (current.collectionsProblem == null && !current.busy && current.feed?.revision == current.collections?.revision &&
+                    selectedStillValid) {
+                    runCatching { selectedLibraryFocus.requestFocus() }
+                }
+                pendingLibraryFocus = null
+            }
+            return@LaunchedEffect
+        }
         val libraryFocus = pendingLibraryFocus
         if (libraryFocus != null) {
             if (route == "grid" && !state.busy && state.problem == null && !state.covered &&
@@ -451,6 +485,27 @@ internal val Edge = Color(0xFF496258)
                         val galleryFontScale = LocalConfiguration.current.fontScale
                         val featured = gallery?.items?.firstOrNull { it.kind == AssetKind.PHOTO && it.canOpen() }
                             ?: gallery?.items?.firstOrNull { it.canOpen() }
+                        val showFeatured = featured != null && !(compactGallery && galleryFontScale >= 1.5f)
+                        if (store.browseEnabled && state.collectionsProblem != null) {
+                            Surface(Modifier.fillMaxWidth().testTag("collections-recovery"),
+                                color = Moss, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Edge)) {
+                                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(t("Libraries could not be loaded", "无法加载媒体库"), Modifier.weight(1f).testTag("collections-error"),
+                                        color = Cream, maxLines = 2)
+                                    TvButton(t("Retry libraries", "重试媒体库"), Modifier.testTag("retry-libraries")
+                                        .focusRequester(retryLibrariesFocus), !state.busy) {
+                                        val latest = store.state.value
+                                        val latestFeed = latest.feed
+                                        if (store === browseStore && latestFeed != null && !latest.busy &&
+                                            !latest.covered && !latest.disconnected && latest.collectionsProblem != null) {
+                                            pendingLibraryRetryFocus = true
+                                            store.loadPage(latestFeed.page)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (!compactGallery || !galleryGridHasFocus) {
                                 Column(Modifier.testTag("gallery-overview"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -465,7 +520,7 @@ internal val Edge = Color(0xFF496258)
                                             style = if (galleryFontScale >= 1.5f) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium, color = Muted,
                                             modifier = Modifier.testTag("gallery-summary"))
                                     }
-                                    if (featured != null) {
+                                    if (showFeatured && featured != null) {
                                         var featuredFocus by remember(featured.id) { mutableStateOf(false) }
                                         OutlinedButton(
                                             onClick = { lastAsset = featured.id; store.openAsset(featured, openPlayer = featured.kind == AssetKind.VIDEO && featured.video != null) },
@@ -509,22 +564,31 @@ internal val Edge = Color(0xFF496258)
                                 val selectedCollection = selection.collectionId
                                 TvButton((if (selectedCollection == null) "✓ " else "") + t("All libraries", "全部媒体库"),
                                     Modifier.then(if (pendingLibraryFocus?.collectionId == null && pendingLibraryFocus != null) Modifier.focusRequester(selectedLibraryFocus) else Modifier)
-                                        .testTag("collection-all").semantics { selected = selectedCollection == null }, !state.busy) {
-                                    pendingLibraryFocus = if (selectedCollection != null) LibraryFocusIntent(null) else null
-                                    store.selectBrowse(selection.copy(collectionId = null))
+                                        .testTag("collection-all").semantics { selected = selectedCollection == null }, !state.busy && state.collectionsProblem == null) {
+                                    val latest = store.state.value
+                                    if (store === browseStore && !latest.busy && !latest.covered && !latest.disconnected &&
+                                        latest.collectionsProblem == null && latest.collections != null && latest.feed != null) {
+                                        val activeSelection = store.selection
+                                        pendingLibraryFocus = if (activeSelection.collectionId != null) LibraryFocusIntent(null) else null
+                                        store.selectBrowse(activeSelection.copy(collectionId = null))
+                                    }
                                 }
                                 for (collection in collections.collections) {
                                     val label = "${collection.title} · ${collection.mediaCount}"
                                     TvButton((if (selectedCollection == collection.id) "✓ " else "") + label,
                                         Modifier.then(if (pendingLibraryFocus?.collectionId == collection.id) Modifier.focusRequester(selectedLibraryFocus) else Modifier)
-                                            .testTag("collection-${collection.id}").semantics { selected = selectedCollection == collection.id }, !state.busy) {
-                                        pendingLibraryFocus = if (selectedCollection != collection.id) LibraryFocusIntent(collection.id) else null
-                                        store.selectBrowse(selection.copy(collectionId = collection.id))
+                                            .testTag("collection-${collection.id}").semantics { selected = selectedCollection == collection.id }, !state.busy && state.collectionsProblem == null) {
+                                        val latest = store.state.value
+                                        val currentCollections = latest.collections
+                                        if (store === browseStore && !latest.busy && !latest.covered && !latest.disconnected &&
+                                            latest.collectionsProblem == null && currentCollections != null && latest.feed != null &&
+                                            currentCollections.collections.any { it.id == collection.id }) {
+                                            val activeSelection = store.selection
+                                            pendingLibraryFocus = if (activeSelection.collectionId != collection.id) LibraryFocusIntent(collection.id) else null
+                                            store.selectBrowse(activeSelection.copy(collectionId = collection.id))
+                                        }
                                     }
                                 }
-                            }
-                            if (store.browseEnabled && state.collectionsProblem != null) {
-                                Text(t("Libraries could not be loaded", "无法加载媒体库"), Modifier.testTag("collections-error"), color = Cream)
                             }
                             if (store.browseEnabled) {
                                 for (media in BrowseMedia.entries) {

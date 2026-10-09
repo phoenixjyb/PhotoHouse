@@ -341,8 +341,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-book-reading .story-reader-sources{max-width:66ch;border-color:var(--line);color:var(--ink);background:#fffdf9}
 .memory-book-reading .story-reader-sources-note{color:var(--muted)}
 .story-reader .fine{color:#a8b3a8;line-height:1.7}
-.story-reader-frames{display:flex;gap:.5rem;justify-content:center;padding:.8rem}
-.story-reader-frames button{border-radius:50%;width:36px;height:36px;padding:0}
+.story-reader-visual{min-width:0}
+.story-reader-frames{display:flex;gap:.5rem;justify-content:flex-start;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin;padding:.65rem .15rem;min-width:0}
+.story-reader-frame{position:relative;flex:0 0 88px;width:88px;height:64px;min-width:44px;min-height:44px;padding:0;border-radius:10px;overflow:hidden;background:#0e1512;border:2px solid #ffffff35}
+.story-reader-frame img{display:block;width:100%;height:100%;object-fit:cover}
+.story-reader-frame[aria-pressed=true]{border-color:#e2cba7;box-shadow:0 0 0 2px #e2cba755}
+.story-reader-frame-number,.story-reader-frame-video{position:absolute;display:grid;place-items:center;min-width:1.45rem;height:1.45rem;padding:0 .2rem;border-radius:999px;background:#101815df;color:#fff;font-size:.75rem;font-weight:700;line-height:1}
+.story-reader-frame-number{right:.2rem;bottom:.2rem}
+.story-reader-frame-video{left:.2rem;top:.2rem;font-size:.68rem}
+.story-reader-frame-fallback{display:grid;place-items:center;width:100%;height:100%;color:#f3eee4;background:linear-gradient(135deg,#39443e,#18211e);font-weight:700}
+.story-reader-frame-status{min-height:1.4em;margin:.05rem .2rem .4rem;color:#c5c2b8;font-size:.82rem;line-height:1.4}
 .story-reader-frames button[aria-pressed=true],.story-reader-chapters button[aria-current=step]{background:#cbb695;color:#18211e;border-color:#cbb695}
 .story-reader-chapters{display:flex;gap:.75rem;overflow:auto;border-top:1px solid #ffffff20;padding:1.2rem 0 .5rem}
 .story-reader-chapters button{min-width:150px;text-align:left;border-radius:10px;font-size:.8rem}

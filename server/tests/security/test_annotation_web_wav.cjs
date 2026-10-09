@@ -9,7 +9,8 @@ const start = source.indexOf('  function annotationWav(');
 const end = source.indexOf('  async function annotationCapture(', start);
 assert.ok(start > 0 && end > start);
 class RecordedFile {
-  constructor(parts, name, options) { this.bytes = new Uint8Array(parts[0]); this.name = name; this.type = options.type; }
+  // File snapshots its input bytes; the encoder deliberately clears its scratch buffer.
+  constructor(parts, name, options) { this.bytes = new Uint8Array(parts[0]).slice(); this.name = name; this.type = options.type; }
 }
 const encode = vm.runInNewContext(source.slice(start, end) + '\nannotationWav;', { File: RecordedFile });
 const input = new Float32Array(48000);

@@ -6,6 +6,7 @@ listed in `tools/check.py`. It includes:
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
 - `server/tests/security/test_assistant_turn_trail_browser.cjs`
 - `server/tests/security/test_assistant_transcript_browser.cjs`
+- `server/tests/security/test_assistant_capture_scope_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_reader_browser.cjs`
 - `server/tests/security/test_memory_book_edition_browser.cjs`
@@ -15,6 +16,7 @@ listed in `tools/check.py`. It includes:
 - `server/tests/security/test_memory_book_edition_sources_browser.cjs`
 - `server/tests/security/test_story_titles_browser.cjs`
 - `server/tests/security/test_story_related_media_browser.cjs`
+- `server/tests/security/test_story_reader_frames_browser.cjs`
 
 The saved-edition editor and reader suites use generated records. The separate
 shelf journey checks fresh detail reads, current chapter scope, source
@@ -34,6 +36,17 @@ capture and ASR responses. It checks valid WAV submission, editable transcript
 review, preservation of typed text, explicit insertion and receipt linking,
 the UTF-8 byte limit, discard, and overlapping account changes. It uses no
 microphone, household recording or inference provider.
+
+The capture-scope journey delays generated microphone permission and audio
+context startup across account changes. It checks real browser pointer hold and
+release, cancellation before startup settles, active cancellation, background
+cleanup, stopped stale streams and ownership of current controls. The separate
+upload-history fixture checks original text/audio save fencing and retry; its
+generated journal is bound to the temporary intake database. The story-reader
+journey uses 24 generated media items across six
+four-frame chapters, protected thumbnails, keyboard navigation, narrow displays,
+failed previews and detached-control rejection. Neither journey changes a
+chapter limit, saves a story or starts inference.
 
 The conversation suite covers first-user-message previews, unchanged legacy
 list responses, one-request fallback for an older server, stale-scope rejection,

@@ -119,9 +119,9 @@ matches in the whole library. Establish the production scoring budget from
 offline synthetic performance and Windows resource evidence before exposing a
 complete-library result claim.
 
-## Smallest meaningful next implementation
+## Implemented offline foundation
 
-Implement only the pure, offline ranker in
+The pure, offline ranker is implemented in
 [`visual_candidates.py`](../server/backend/app/access/visual_candidates.py)
 and synthetic contract tests. Its immutable input consists of a bounded
 authorization snapshot, explicit seed and candidate IDs, complete seed and
@@ -179,6 +179,54 @@ Suggested focused tests for that source-only slice:
   photo cohort and cannot itself prove the media MIME type;
 - a no-write snapshot around an authorized synthetic database query when route
   integration is later proposed.
+
+## Next integration architecture
+
+Use a new versioned identity table in the primary SQLite database, paired with
+immutable derived vector files. This is a design decision for a later additive
+migration; this document does not create the table or change a worker.
+An external sidecar would need an independent locking, backup and recovery
+protocol, while the worker already commits its task and embedding row in the
+primary database. The current `embeddings` table permits only one representation
+per asset/modality and cannot preserve replacement spaces by itself.
+
+Each new record must bind an asset and its original SHA-256 to an exact model
+name/version, artifact SHA-256, preprocessing SHA-256, vector-space ID,
+dimension and normalization. It also needs a private relative file path, a
+whole `.npy` file checksum, a separate canonical-component checksum, immutable
+record/profile identity and creation time. A registry declaration is insufficient:
+the producing worker must verify and persist the identity it actually used.
+Legacy records with missing provenance remain unavailable for visual lookup;
+never infer preprocessing or artifact identity from a model name/dimension.
+
+Replacement produces a new path and row; it does not overwrite an old vector.
+The approved image worker currently publishes `embeddings/<asset-id>.npy`, then
+inserts its row and completes its task in a transaction. Ordinary failures
+remove the published file, but a hard crash can strand it. The new path therefore
+needs a publication journal and bounded reconciliation before it is exposed.
+Deletion cleanup must enumerate all versioned artifacts rather than only the
+legacy embedding path. Tombstoning and unassignment must exclude media from
+every protected lookup immediately, independently of physical file cleanup.
+
+Implement and qualify in this order:
+
+1. Add the identity table and immutable record contract after the current schema
+   head. Preserve ordinary worker behavior on a0/b1/c2/d1. Visual lookup remains
+   unavailable when the new table or a qualified profile is absent.
+2. Propagate the verified worker profile, publish versioned files/rows, and prove
+   interruption recovery, reindex immutability and deletion enumeration with
+   generated media. Add no legacy identity backfill.
+3. Build the current-library active-photo cohort before opening any vector file.
+   Recheck original hash, record identity and current membership; reject mixed,
+   partial or oversized cohorts. Do not use the global index or an ID-prefix
+   truncation as a nearest-neighbor claim for a large library.
+4. Qualify the loader, no-write route and reviewed picker with synthetic SQLite
+   fixtures, then separately qualify installed Windows artifacts/resources.
+   The user still chooses every candidate and explicitly saves the story.
+
+Until these gates close, the existing same-day picker remains the available
+discovery method and the pure ranker remains offline source only. Video needs
+its own persisted frame-sampling identity before it can join this pathway.
 
 ## Explicitly deferred
 

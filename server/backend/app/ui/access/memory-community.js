@@ -143,10 +143,10 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   const conversationHints=new Map(),conversationHintLimit=16;
   let editorialContextChoice=null,editorialContextPreflight=null,editorialContextGeneration=0,editorialContextNeedsDecisionKey='',editorialContextBasicConfirmedKey='',editorialContextDecisionStatusKey='';
   let chatRecoveryGeneration=0,pendingChatRecovery=null,activeChatJobFence=null,jobVisibilityEpoch=0;
-  let pendingContribution=null, recording=null, captureHandle=null, captureTimer=null,captureStarting=false,captureGeneration=0,captureForm=null;
+  let pendingContribution=null, recording=null, captureHandle=null, captureTimer=null,captureStarting=false,captureGeneration=0,captureForm=null,captureController=null;
   let voiceCapabilitiesOwner='',voiceCapabilitiesValue=null,voiceCapabilitiesPending=null;
-  let chatCaptureHandle=null,chatCaptureTimer=null,chatCaptureReady=null,chatRecordingBusy=false,chatCaptureStarting=false,chatTranscribing=false,chatTranscript='',chatVoiceError='',chatVoiceEpoch=0,chatCaptureVoiceTicket=0;
-  let ideaCaptureHandle=null,ideaCaptureTimer=null,ideaCaptureReady=null,ideaCaptureStarting=false,ideaTranscribing=false,ideaTranscript='',ideaVoiceError='',ideaVoiceEpoch=0,ideaVoiceTicket=0;
+  let chatCaptureHandle=null,chatCaptureTimer=null,chatCaptureReady=null,chatRecordingBusy=false,chatCaptureStarting=false,chatTranscribing=false,chatTranscript='',chatVoiceError='',chatVoiceEpoch=0,chatCaptureVoiceTicket=0,chatCaptureController=null;
+  let ideaCaptureHandle=null,ideaCaptureTimer=null,ideaCaptureReady=null,ideaCaptureStarting=false,ideaTranscribing=false,ideaTranscript='',ideaVoiceError='',ideaVoiceEpoch=0,ideaVoiceTicket=0,ideaCaptureController=null;
   let ideaComposition=null,ideaRenderDeferred=false,ideaRecordButton=null;
   let contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false},ideaDraft='',memoirFormChoice='existing',bookTitleDraft='',bookIntroDraft='',pendingBook=null,bookSubmittingOwner='', selectedBook=null, bookEditorOpen=false, booksList=[], storyOptions=[], storyPage=0, storyOptionsHasMore=false,bookStorySelection=new Set(),bookPage=1;
   let editorialModel=null,editorialPending=null,editorialBusyOwner='',editorialGeneration=0,bookEditSequence=0,editorialInspection=null,editorialInspectionEpoch=0;
@@ -211,9 +211,9 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       activeTab!=='chat'||!current(state.ticket,state.owner)||target!==state.target||targetFingerprint!==state.fingerprint||state.conversation!==conversation||state.selection!==conversationSelectionEpoch||state.root?.parentNode!==panelNode||state.input?.isConnected===false)return;
     assignComposedChatValue(state);clearChatComposition();void renderPanel();
   }
-  const clearCapture=async keep=>{if(!keep){captureGeneration++;captureStarting=false;recording=null;}if(captureTimer)clearTimeout(captureTimer);captureTimer=null;const handle=captureHandle;captureHandle=null;syncContributionCaptureForm();if(handle)await handle.stop(Boolean(keep));syncContributionCaptureForm();};
-  const clearChatCapture=async()=>{chatVoiceEpoch++;chatCaptureVoiceTicket=0;if(chatCaptureTimer)clearTimeout(chatCaptureTimer);chatCaptureTimer=null;const handle=chatCaptureHandle;chatCaptureHandle=null;chatCaptureReady=null;chatRecordingBusy=false;chatCaptureStarting=false;chatTranscribing=false;if(handle)await handle.stop(false);};
-  const clearIdeaVoice=async(clearTranscript=true)=>{ideaVoiceEpoch++;ideaVoiceTicket=0;if(ideaCaptureTimer)clearTimeout(ideaCaptureTimer);ideaCaptureTimer=null;const handle=ideaCaptureHandle;ideaCaptureHandle=null;ideaCaptureReady=null;ideaCaptureStarting=false;ideaTranscribing=false;if(clearTranscript)ideaTranscript='';ideaVoiceError='';if(handle)await handle.stop(false);};
+  const clearCapture=async keep=>{const handle=captureHandle;if(!keep||!handle&&captureStarting){captureGeneration++;captureStarting=false;recording=null;captureController?.abort();}if(captureTimer)clearTimeout(captureTimer);captureTimer=null;captureHandle=null;captureController=null;syncContributionCaptureForm();if(handle)await handle.stop(Boolean(keep));syncContributionCaptureForm();};
+  const clearChatCapture=async()=>{chatVoiceEpoch++;chatCaptureVoiceTicket=0;chatCaptureController?.abort();chatCaptureController=null;if(chatCaptureTimer)clearTimeout(chatCaptureTimer);chatCaptureTimer=null;const handle=chatCaptureHandle;chatCaptureHandle=null;chatCaptureReady=null;chatRecordingBusy=false;chatCaptureStarting=false;chatTranscribing=false;if(handle)await handle.stop(false);};
+  const clearIdeaVoice=async(clearTranscript=true)=>{ideaVoiceEpoch++;ideaVoiceTicket=0;ideaCaptureController?.abort();ideaCaptureController=null;if(ideaCaptureTimer)clearTimeout(ideaCaptureTimer);ideaCaptureTimer=null;const handle=ideaCaptureHandle;ideaCaptureHandle=null;ideaCaptureReady=null;ideaCaptureStarting=false;ideaTranscribing=false;if(clearTranscript)ideaTranscript='';ideaVoiceError='';if(handle)await handle.stop(false);};
   const stopRequests=(includeBooks=false)=>{for(const controller of controllers)controller.abort();controllers.clear();if(includeBooks){for(const controller of bookControllers)controller.abort();bookControllers.clear();}};
   const withLibrary=path=>path;
   async function api(path,options={},bookRequest=false) {
@@ -729,8 +729,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   }
   async function beginCapture(ticket,owner,form){
     if(!capture||captureStarting||captureHandle||pendingContribution||ideaVoicePending()||chatRecordingBusy||!current(ticket,owner)||document.hidden||!form.parentNode)return;
-    stopPlayback();notifyAudioStart();void clearCapture(false);const generation=captureGeneration;captureStarting=true;syncContributionCaptureForm();
-    try{const handle=await capture(file=>{if(generation===captureGeneration&&current(ticket,owner)&&!document.hidden){recording=file;captureHandle=null;captureStarting=false;if(captureTimer)clearTimeout(captureTimer);captureTimer=null;showStatus('');syncContributionCaptureForm();}},30);
+    stopPlayback();notifyAudioStart();void clearCapture(false);const generation=captureGeneration,controller=new AbortController();captureController=controller;captureStarting=true;syncContributionCaptureForm();
+    try{const handle=await capture(file=>{if(generation===captureGeneration&&current(ticket,owner)&&!document.hidden){recording=file;captureHandle=null;captureStarting=false;if(captureTimer)clearTimeout(captureTimer);captureTimer=null;showStatus('');syncContributionCaptureForm();}},30,{isCurrent:()=>generation===captureGeneration&&current(ticket,owner)&&!document.hidden,signal:controller.signal});
       if(generation!==captureGeneration||!current(ticket,owner)||document.hidden){await handle.stop(false);return;}
       captureStarting=false;if(!recording){captureHandle=handle;captureTimer=setTimeout(()=>{void clearCapture(true);},31000);}syncContributionCaptureForm();
     }catch(error){if(generation===captureGeneration){captureStarting=false;syncContributionCaptureForm();report(error,owner,ticket);}}
@@ -958,8 +958,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   function chatCaptureStartBlocked(){return Boolean(editorialContextPreflight||chatRecordingBusy||chatTranscript||ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||assistantInflightToken||activeJob?.id&&['queued','running'].includes(activeJob.state)||conversationLoading||conversationCreating||conversationDeleting);}
   async function beginChatCapture(ticket,owner){
     if(!voiceCapabilitiesValue?.transcribe||!capture||!transcribe||chatCaptureStartBlocked()||!conversation||!current(ticket,owner)||document.hidden)return;
-    stopPlayback();notifyAudioStart();chatVoiceError='';chatRecordingBusy=true;chatCaptureStarting=true;const voiceTicket=++chatVoiceEpoch;chatCaptureVoiceTicket=voiceTicket;await renderPanel();
-    try{if(!current(ticket,owner)||voiceTicket!==chatVoiceEpoch||document.hidden)return;let resolveCaptured;const ready=new Promise(resolve=>{resolveCaptured=resolve;});const handle=await capture(file=>resolveCaptured(file),voiceCapabilitiesValue.max_audio_seconds);
+    stopPlayback();notifyAudioStart();chatVoiceError='';chatRecordingBusy=true;chatCaptureStarting=true;const voiceTicket=++chatVoiceEpoch;chatCaptureVoiceTicket=voiceTicket;const controller=new AbortController();chatCaptureController=controller;await renderPanel();
+    try{if(!current(ticket,owner)||voiceTicket!==chatVoiceEpoch||document.hidden)return;let resolveCaptured;const ready=new Promise(resolve=>{resolveCaptured=resolve;});const handle=await capture(file=>resolveCaptured(file),voiceCapabilitiesValue.max_audio_seconds,{isCurrent:()=>current(ticket,owner)&&voiceTicket===chatVoiceEpoch&&!document.hidden,signal:controller.signal});
       // A delayed permission result owns only its local handle. It must never
       // overwrite or clear a capture that belongs to a newer reader/scope.
       if(!current(ticket,owner)||voiceTicket!==chatVoiceEpoch||document.hidden){await handle.stop(false);return;}
@@ -1362,8 +1362,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   }
   async function beginIdeaCapture(ticket,owner,root){
     if(!capture||!transcribe||!voiceCapabilitiesValue?.transcribe||ideaVoicePending()||editorialContextPreflight||pendingJob||isCapturing()||chatTranscribing||!ideaEditorCurrent(root,ticket,owner,root)||document.hidden)return;
-    stopPlayback();notifyAudioStart();const voiceTicket=++ideaVoiceEpoch;ideaVoiceTicket=voiceTicket;ideaVoiceError='';ideaCaptureStarting=true;
-    try{if(!current(ticket,owner)||voiceTicket!==ideaVoiceEpoch||targetFingerprint!==targetScopeFingerprint(owner,target)||document.hidden)return;let resolveCaptured;const ready=new Promise(resolve=>{resolveCaptured=resolve;});const captureRequest=capture(file=>resolveCaptured(file),voiceCapabilitiesValue.max_audio_seconds);void renderPanel();const handle=await captureRequest;
+    stopPlayback();notifyAudioStart();const voiceTicket=++ideaVoiceEpoch;ideaVoiceTicket=voiceTicket;ideaVoiceError='';ideaCaptureStarting=true;const controller=new AbortController();ideaCaptureController=controller;
+    try{if(!current(ticket,owner)||voiceTicket!==ideaVoiceEpoch||targetFingerprint!==targetScopeFingerprint(owner,target)||document.hidden)return;let resolveCaptured;const ready=new Promise(resolve=>{resolveCaptured=resolve;});const captureRequest=capture(file=>resolveCaptured(file),voiceCapabilitiesValue.max_audio_seconds,{isCurrent:()=>current(ticket,owner)&&voiceTicket===ideaVoiceEpoch&&targetFingerprint===targetScopeFingerprint(owner,target)&&activeTab==='ideas'&&!document.hidden,signal:controller.signal});void renderPanel();const handle=await captureRequest;
       if(!current(ticket,owner)||voiceTicket!==ideaVoiceEpoch||targetFingerprint!==targetScopeFingerprint(owner,target)||document.hidden||activeTab!=='ideas'){await handle.stop(false);return;}
       ideaCaptureHandle=handle;ideaCaptureReady=ready;ideaCaptureStarting=false;ideaCaptureTimer=setTimeout(()=>void finishIdeaCapture(ticket,owner,voiceTicket),31000);await renderPanel();
     }catch(error){if(current(ticket,owner)&&voiceTicket===ideaVoiceEpoch){ideaCaptureStarting=false;ideaVoiceError=error?.name==='NotAllowedError'||error?.name==='SecurityError'?'ideaVoicePermissionFailed':'ideaVoiceCaptureFailed';notifyError(error);await renderPanel();}}

@@ -8030,6 +8030,162 @@
       "api_deployed": false,
       "provider_called": false,
       "apk_published": false
+    },
+    {
+      "feature": "scoped-web-recording-story-reader-and-tv-recovery",
+      "source_commit": "2f17ed9934a07818e902864e3a688a0a29e77fa5",
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "before_sha256": "7cf929959d2bcb13db017189a4fe68a8770374ebd318e8e7bdfac0635962f9a3",
+          "sha256": "99661af7aef08d179f08ce5573d240e15f879bab1398158d3f98717646f61818"
+        },
+        {
+          "path": "README.md",
+          "before_sha256": "4390cda9dae1395a21f54f52768c5c01ee32b75283980b841fd7cf8ef161168a",
+          "sha256": "f2a2f087f681064d0808070a137b9eff121ba8338b6525fc00e8660700b0556f"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedMemoryReaderNavigationUiTest.kt",
+          "before_sha256": null,
+          "sha256": "925a9b471af652c9c135529791a49f1794272444ff38125370d5e82aa7ee9593"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/SavedMemoryStoriesDialog.kt",
+          "before_sha256": "349058fd945cbd02eb334a2ee8c62d986f5a13b4dfe10e4923138ece6dfc3947",
+          "sha256": "8a32a1479141b1c4eb6258d7586f6bf23614fdceb9ce4cdce27b19b5c39018a5"
+        },
+        {
+          "path": "clients/android/android/tv/build.gradle.kts",
+          "before_sha256": "9c9fc37677e3f161ad086e5bc080d31edc7bc6eaa95eecc46b9d4d5e7e7e7703",
+          "sha256": "3327b550a61a0274ef19ec5c8d60ad6dcb85c12a063fe0f5cc910e21786abfca"
+        },
+        {
+          "path": "clients/android/android/tv/src/androidTest/java/dev/photohouse/tv/TvBrowseTest.kt",
+          "before_sha256": "93032d62597f45e6744e6905c3ec6965d3086b77b75c27da66a1540e25e91ee9",
+          "sha256": "3e657ead56a34974acb288bddb6e746e9f2d3f64503fd6ce4bfb667c1c4a80ad"
+        },
+        {
+          "path": "clients/android/android/tv/src/main/java/dev/photohouse/tv/TvApp.kt",
+          "before_sha256": "b2b8ac311737b93b6b88e2b86ed4ff3850ef52a402dc98de44e22b14142f67ce",
+          "sha256": "92739c2d205863415045713012886b625c6d7422766cd07511997149684738e1"
+        },
+        {
+          "path": "docs/ACTIVITY_GROUPING_DESIGN.md",
+          "before_sha256": "475607878bfd1fb0e8c8b159d8622e50311b52709edcb93de98e0793e7319678",
+          "sha256": "f41c47e5b845fc5746a2b48fcd6fc4d264159a2e833f73f0167a8f45fa232e91"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "2c68c77fd09a7a0d88eb4edf73038f1c09c2e6c3d4493c7ede78644978500b54",
+          "sha256": "6b3b91244072f83ae7546322f7484dc81c88d674324f1cfefd302bebdf75f384"
+        },
+        {
+          "path": "docs/ASSISTANT_TRANSCRIPT_REVIEW.md",
+          "before_sha256": "7448151a5963746dc28f14ff888e36aff982615e38a43f6056b74e461d027592",
+          "sha256": "26fcf980285f567bc2885e006c473f13c82a09137644a4f55af1664a85f197db"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "caa6fabd01c998a2891caa2189e2a874f14eb1eb33d263e735fd2f85d78c5373",
+          "sha256": "bfb28f1bdf6419234aa93409fcfd034755546ba12f45d635024f53a454c9f73b"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4b3906e8cefb01ae1e630cce8bb89e9a4747d835234ba1844ba26dda38ad63b3",
+          "sha256": "797c93e975cfa44e90b10352c773ce2d231b1f96b5200b6750bd7e63aa6b964a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "967194b8f6cefab73ded2b13a70a397cd42f3bab4e01ba82a838b249ac354ec4",
+          "sha256": "bc919a37834ec6b1b0e9a1f331c885f970318cd1344657ffea063904d4d98d64"
+        },
+        {
+          "path": "docs/STORY_READER_NAVIGATION.md",
+          "before_sha256": null,
+          "sha256": "39a335445fffb0d606e189a07a670a73c8485ba5b2987be58dc979fafdcfdf5f"
+        },
+        {
+          "path": "docs/TV_LIBRARY_RECOVERY.md",
+          "before_sha256": null,
+          "sha256": "66db1454cab7b5b061e9a51f2b52d5ae95ada84f197773fa120dedbb6cc9be92"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "5208ad1ea24f4c8dd3ee0c1957672032ba0b1291dd00a9401ac5637ac0d29db8",
+          "sha256": "5b3a295c7bdb5c357a8e3c635c0977eadfc0d798b6bc396393b4f66055fb6b55"
+        },
+        {
+          "path": "docs/WEB_RECORDING_LIFECYCLE.md",
+          "before_sha256": null,
+          "sha256": "2d5a535f22eda8f48ce11c63c67c66af9d989160645da67a2179263138c901e4"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": null,
+          "sha256": "100f9cc86eb9532bc587d2e59e323f4cf24b65ebfcbc38b2df5421e7cbc4297e"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "a01f379c3ff302da866cc154b3619b8ffd7f9db925bc00bc5c90f837c5d41d9c",
+          "sha256": "f2ac538a3ed2271fb64c6e60384b8f5b7ae77038deda8a7b0c65de482e9ce030"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "d30572cc0914d0f5050bd0701801093eaa348e08fe9efe9357a84ca7ba557685",
+          "sha256": "811e1c20903d5fc9d818ea9ca149703e88f49e088b2a5d6e8117d3c2cb00f24c"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "e4255bc5d96f2b216bf2e0ea1a96632d70568f830761b506e76665ccff764318",
+          "sha256": "080ef0ceea088d744261beadc0ec0421dfe881a034055fd7af4dfd9bd23d2f9e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "bef9668edde98ab50a84d37dca0ac8e7ee5cff0a944b41360c2a84e50c568df0",
+          "sha256": "3a00dc2ee6e4b63d23c2cbac92be8f3dfa4611a20b61d58d2a54171d6914c152"
+        },
+        {
+          "path": "server/tests/security/test_annotation_web_wav.cjs",
+          "before_sha256": "832e627b6561fe124d0b4addeb8b46ee6b8cb36306b6c7cad1f150a326769b9b",
+          "sha256": "ce2d07c3d7c0d4f79ff67ff53da3c1d9c0ce8584576e536be0eed7bc23e28c8b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capture_scope_browser.cjs",
+          "before_sha256": null,
+          "sha256": "a31c95b6af24b383e367137ae034e75d4686f4ea3a2e5492e9c7ac9590a73989"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "125db35c5d41cbce52c18ff805f97fa8cfbaa57189a8103610f08ef0e735f575",
+          "sha256": "5d890d9ea8105081f7c7acad9c552352f693a6b93b765165e6a83847510a0225"
+        },
+        {
+          "path": "server/tests/security/test_story_reader_frames_browser.cjs",
+          "before_sha256": null,
+          "sha256": "ec8941ada65eff114cbd49f8f85441f109c4bdce5e89c59ef956a75329260ae3"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "f795d3519836c0121ee1202673859e632492142c0662df80bb3a82f721660220",
+          "sha256": "2ee754c11d692d0c5e02b7dec160ed780b4a5e51f36f21ba6100c2d4b9979372"
+        },
+        {
+          "path": "server/tests/security/upload_history_browser_bridge.py",
+          "before_sha256": "2f8c3099ae9135b1ea6f93b82dd527d366fb9c1909b31e92c86327e8e6906c72",
+          "sha256": "2fefa17277492d4de67f305bd226fb118f7d88f36457fcb79c9343977c5364db"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7ca8ac177e7ec992a1d9d978dbd39dfdccd1c6a924ede432abaa8bcb2c9a44b0",
+          "sha256": "8829776be8cfd7ecaa13d2a44d3ec6812cf65a72cb5b909ef788e0921c61b643"
+        }
+      ],
+      "server_contract_changed": false,
+      "schema_changed": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }

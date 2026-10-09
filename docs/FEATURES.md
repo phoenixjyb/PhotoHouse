@@ -17,12 +17,15 @@ This matrix records the source migration baseline. Live installations and physic
 | Approved worker package | Fixed 21-file source-only package, immutable monorepo/standalone Git lookup and a synthetic canary selector that defaults to a0 and permits explicit b1 testing | Eight current packager tests cover both actual Git layouts and preservation; earlier package/schema cohorts have their own source snapshots; Windows-native execution, GPU/provider readiness and family processing remain separate gates |
 | Worker terminal diagnostics | CPU, image/video embedding and face pipeline emit fixed failure identifiers while preserving terminal exit codes and approval/processing rules | 38 generated CPU-profile cases cover CLI reports, private-text refusal, SQLite/resource failures and child routing; installed failures and service recovery still need native operation evidence |
 | Visual grouping foundation | Pure image-vector ranker for an already-authorized bounded cohort, exact identity/checksum and deterministic cosine order | No route, file loading, database or model integration; persisted preprocessing/checkpoint identity and current library-filtered loading remain required |
+| Story reader navigation | Protected Web thumbnail filmstrip and current-frame labels; phone selection bound to current scope, chapter revision and eligible media; explicit chapter/media actions | [Reader contract](STORY_READER_NAVIGATION.md); generated browser/emulator checks remain separate from served Web files, signing, OTA and family acceptance |
+| TV library recovery | Disabled stale library choices, explicit localized retry preserving page/filters, and remote focus restoration | [Recovery contract](TV_LIBRARY_RECOVERY.md); emulator rendering, TV v30 signing/publication and physical TV acceptance have separate gates |
+| Windows CPU portability | Explicit generated database/runtime/source-package profile and a separate hosted Windows job | Local macOS cohort passes 64 tests and 25 subtests; native CI and the installed household runtime have separate gates |
 | Maintainability | Unified curated source, portable API/Android checks, synthetic demo, dependency/asset inventory, default-read-only b1 application tool and CI template | Complete archive review and hosted CI |
 
 ## Next product slices
 
 The Web and phone search assistants now review recognition before explicit insertion,
-preserves typed words and links the ASR receipt only after Add. Unicode overflow
+preserve typed words and link the ASR receipt only after Add. Unicode overflow
 keeps both inputs available. See [Web review](ASSISTANT_TRANSCRIPT_REVIEW.md) and
 [the phone qualification](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md);
 signed delivery and a live voice turn remain separate gates.
