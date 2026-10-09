@@ -6698,6 +6698,16 @@
           "before_sha256": "b9a852f3fc725348390d1563a7971d756ba915c54ada5232b741e843c4ead736"
         }
       ]
+    },
+    {
+      "feature": "windows-private-reader-portable-child-fixture-v1",
+      "files": [
+        {
+          "path": "server/tests/security/test_windows_tts.py",
+          "sha256": "247d5e965b3281c8c83c3831ef2700832f6e13939684ba23f0442c275bbb7ef1",
+          "before_sha256": "ca1f3be48626672273360207e074bb6b89647ecb76b73b8576d5613c81834254"
+        }
+      ]
     }
   ]
 }

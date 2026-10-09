@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 
 
 TOKEN = 'local-synthetic-token-' + 'x' * 32
+SYNTHETIC_POWERSHELL = Path(tempfile.gettempdir()).resolve() / 'photohouse-synthetic-executable' / 'powershell.exe'
 
 
 def wav_bytes(*, rate=16000, channels=1, width=2, seconds=0.1):
@@ -133,11 +134,11 @@ class WindowsSpeechChildTests(unittest.TestCase):
             calls.append((args, kwargs, process))
             return process
 
-        child = tts.WindowsSystemSpeech(executable=Path('/synthetic/powershell.exe'), popen=popen)
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL, popen=popen)
         result = child.synthesize(self.FIELDS)
         self.assertEqual(result, audio)
         args, kwargs, proc = calls[0]
-        self.assertEqual(args[0], '/synthetic/powershell.exe')
+        self.assertEqual(args[0], str(SYNTHETIC_POWERSHELL))
         self.assertNotIn('synthetic phrase', ' '.join(args))
         self.assertNotIn(TOKEN, ' '.join(args))
         self.assertEqual(kwargs['shell'], False)
@@ -150,7 +151,7 @@ class WindowsSpeechChildTests(unittest.TestCase):
                              (child_reply(b'not a wave'), 0),
                              (b'x' * (tts.MAX_CHILD_STDOUT + 2), 0)):
             proc = FakeProcess(output, persistent=len(output) > tts.MAX_CHILD_STDOUT)
-            child = tts.WindowsSystemSpeech(executable=Path('/synthetic/powershell.exe'),
+            child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
                 popen=lambda *_a, _p=proc, **_kw: _p)
             if code:
                 proc.returncode = code
@@ -167,7 +168,7 @@ class WindowsSpeechChildTests(unittest.TestCase):
         def sleep(seconds):
             clock[0] += seconds
 
-        child = tts.WindowsSystemSpeech(executable=Path('/synthetic/powershell.exe'), timeout=.03,
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL, timeout=.03,
             popen=lambda *_a, **_kw: proc, monotonic=lambda: clock[0], sleep=sleep)
         with self.assertRaises(tts.TtsFailure):
             child.synthesize(self.FIELDS)
@@ -186,7 +187,7 @@ class WindowsSpeechChildTests(unittest.TestCase):
             spawned.append(True)
             return proc
 
-        child = tts.WindowsSystemSpeech(executable=Path('/synthetic/powershell.exe'),
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
             timeout=.01, popen=popen, monotonic=lambda: clock[0], sleep=sleep)
         with self.assertRaises(tts.TtsFailure):
             child.synthesize(self.FIELDS)
@@ -210,7 +211,7 @@ class WindowsSpeechChildTests(unittest.TestCase):
             spawned.append(True)
             return proc
 
-        child = tts.WindowsSystemSpeech(executable=Path('/synthetic/powershell.exe'),
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
             timeout=.01, popen=popen, monotonic=lambda: clock[0], sleep=sleep)
         try:
             with self.assertRaises(tts.TtsFailure):
