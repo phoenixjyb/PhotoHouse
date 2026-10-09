@@ -161,6 +161,10 @@ class RuntimeConfiguration:
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
     family_note_erasure_enabled: bool = False
+    story_title_suggestions_enabled: bool = False
+    story_title_url: str | None = None
+    story_title_model: str | None = None
+    story_title_timeout_seconds: float = 30
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
@@ -180,6 +184,14 @@ class RuntimeConfiguration:
         projection = project_configuration(deployment, target='assistant', platform=platform,
             feature_enabled=self.assistant_enabled, rollback=rollback)
         return replace(self, **projection.bind_fields(vars(self), credential_values=credential_values))
+
+    def with_story_title_model_deployment(self, deployment, *, platform, rollback=False):
+        """Select only the explicit title role; never enable it or invoke a model."""
+        from dataclasses import replace
+        from .model_binding import project_configuration
+        projection = project_configuration(deployment, target='story-titles', platform=platform,
+            feature_enabled=self.story_title_suggestions_enabled, rollback=rollback)
+        return replace(self, **projection.bind_fields(vars(self)))
 
     def build_app(self, *, clock=time.time):
         """Build only; catalog storage opens lazily in the request worker.
@@ -201,6 +213,19 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        if type(self.story_title_suggestions_enabled) is not bool:
+            raise ValueError('Explicit title suggestion opt-in required')
+        if type(self.story_title_timeout_seconds) not in (int, float) or not 0 < self.story_title_timeout_seconds <= 30:
+            raise ValueError('Invalid title provider timeout')
+        if (self.story_title_url is None) != (self.story_title_model is None):
+            raise ValueError('Title URL and model must be selected together')
+        if self.story_title_url is not None and not self.story_title_suggestions_enabled:
+            raise ValueError('Title provider requires title suggestion opt-in')
+        title_suggester = None
+        if self.story_title_url is not None:
+            from .story_titles import LocalStoryTitleSuggester
+            title_suggester = LocalStoryTitleSuggester(url=self.story_title_url,
+                model=self.story_title_model, timeout=self.story_title_timeout_seconds)
         if type(self.family_note_erasure_enabled) is not bool:
             raise ValueError('Explicit family note erasure opt-in required')
         if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
@@ -287,6 +312,7 @@ class RuntimeConfiguration:
                           memory_editorial_enabled=self.memory_editorial_enabled,
                           memory_editions_enabled=self.memory_editions_enabled,
                           family_note_erasure_enabled=self.family_note_erasure_enabled,
+                          story_title_suggester=title_suggester,
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
                           update_root=self.update_root)

@@ -56,6 +56,35 @@ class RuntimeAdapterTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as db:
             db.execute(sql,args);db.commit()
 
+    def test_title_provider_build_is_explicit_and_never_runs_inference_at_startup(self):
+        from dataclasses import replace
+        from app.access.story_titles import LocalStoryTitleSuggester
+        with patch('app.access.story_titles.LocalStoryTitleSuggester', wraps=LocalStoryTitleSuggester) as adapter, \
+             patch('httpx.Client', side_effect=AssertionError('provider construction forbidden')):
+            disabled = self.settings.build_app(clock=lambda: NOW)
+            self.assertIsNone(disabled.state.story_title_suggester)
+            adapter.assert_not_called()
+            enabled = replace(self.settings, story_title_suggestions_enabled=True,
+                story_title_url='http://localhost:19002', story_title_model='synthetic-titles',
+                story_title_timeout_seconds=7).build_app(clock=lambda: NOW)
+            adapter.assert_called_once_with(url='http://localhost:19002', model='synthetic-titles', timeout=7)
+        self.assertEqual(enabled.state.story_title_suggester.timeout, 7)
+        self.assertEqual(enabled.state.story_title_suggester.model, 'synthetic-titles')
+        self.assertFalse(enabled.state.assistant_enabled)
+        self.assertFalse(enabled.state.memory_generation_enabled)
+
+    def test_runtime_title_provider_refuses_invalid_opt_in_and_configuration(self):
+        from dataclasses import replace
+        valid = dict(story_title_suggestions_enabled=True, story_title_url='http://localhost:19002',
+                     story_title_model='synthetic')
+        invalid = [dict(story_title_suggestions_enabled=False), dict(story_title_suggestions_enabled=1),
+                   dict(story_title_url=None), dict(story_title_model=None),
+                   dict(story_title_url='http://192.0.2.1:19002'), dict(story_title_model=' ')]
+        invalid += [dict(story_title_timeout_seconds=t) for t in (0, True, 31, float('nan'), float('inf'), '30')]
+        for change in invalid:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                replace(self.settings, **(valid | change)).build_app(clock=lambda: NOW)
+
     def test_real_adapter_login_and_scoped_reads_use_existing_migrated_database(self):
         response=self.client.post('/auth/login',json={'phone':MEMBER,'password':PASSWORD,'transport':'native'})
         self.assertEqual(response.status_code,200)

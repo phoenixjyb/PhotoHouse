@@ -9,7 +9,7 @@ feature-specific configuration/worker arguments. The offline
 [private deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md) now validates declared
 bindings, artifact/runtime identities, resource budgets and distinct rollback
 targets. Its report omits private values. An explicit typed bridge now maps
-assistant ASR/TTS and memory contribution/narrative selections into private
+assistant ASR/TTS, memory contribution/narrative and independent story-title selections into private
 configuration copies, preserving feature opt-ins and existing request/item/run
 limits. It refuses conflicting legacy settings and never launches a service.
 An [offline qualification record checker](MODEL_QUALIFICATION.md) now binds
@@ -65,8 +65,9 @@ the user decides which belong in the story. A common day does not prove a common
 activity. Phone candidate lookup and inclusion preserve ordered selection, keep
 pages and preview bytes bounded, and reject stale scope/selection responses.
 See the [phone source evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md).
-The next storytelling slice is provider-qualified title suggestions and reviewed
-activity grouping; continuous conversation recovery remains a parallel priority. This source
+Title runtime/staging wiring and the dedicated `story-titles` projection are now
+implemented, default off and bounded to 30 seconds. The next storytelling slice
+is provider-qualified title suggestions and reviewed activity grouping; continuous conversation recovery remains a parallel priority. This source
 change does not update a live server, publish an APK or enable generation.
 
 Source implementations and accepted installed behavior are different milestones.

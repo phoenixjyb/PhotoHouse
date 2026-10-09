@@ -133,12 +133,15 @@
         }
       ],
       "configuration_sources": [
-        "server/backend/app/main.py"
+        "server/backend/app/main.py",
+        "server/backend/app/access/runtime.py",
+        "server/backend/app/access/model_binding.py",
+        "server/scripts/staging_app.py"
       ],
       "runtime_requirements": [
         "Separate Ollama-compatible service/runtime"
       ],
-      "replacement_note": "Capability-controlled, cited proposals; explicitly adopted by the user. Adapter injection exists at create_app; staging/provider wiring is not implemented by this inventory."
+      "replacement_note": "Independent default-off story-titles projection and explicit loopback provider settings; cited proposals require user adoption. Native runtime, resource and title quality qualification remain separate."
     },
     {
       "id": "assistant_tts",

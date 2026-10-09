@@ -7450,6 +7450,78 @@
       "api_deployed": false,
       "workers_started": false,
       "apk_published": false
+    },
+    {
+      "feature": "independent-default-off-story-title-provider-wiring-v1",
+      "base_commit": "28f543c989230c8148c0af9c1300322aa8d604e5",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "de18489ec923865d1608df1d8ee178213201b39aa8d6e0a27950538ade16906a",
+          "sha256": "715a3b34490848b2b4af21755fb934b1d49756f7e00f23cdce139318c2f452c7"
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "before_sha256": "0fc1e8afe42295872d5dd6a0cd6deec7b0e5ad426fdcb6d0b1b6056b9a12f28b",
+          "sha256": "fc4e14520fcdc6c16e23128c5592dfb6209fa8340412614a2d3a63fd30c56b36"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "8c99c8388bf24181addbad8ab26b88122ba6b1011a5b3edf7d0b7ddfc7f41e2b",
+          "sha256": "f8c26cc9a8abc0beb6a552a21b41bb59ab21f3754dabd25da4a60074d1e60b84"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9730aa36c5c960dd27eb2be949df8e0a279c6b61c8b80f914c1d309e848c5791",
+          "sha256": "262146f98483ba52983743de9efe231ebea5f07c99bbaf09169c5bb93feb283e"
+        },
+        {
+          "path": "models/catalog.json",
+          "before_sha256": "40e883c3af461961a05ee90d9dd64c38ba53a43124d6baabd84a8f19e296c227",
+          "sha256": "39da234a1c2cdbf2cfbf6209311b8ef1fe46b05c3dcae31a0089e4dfae90f767"
+        },
+        {
+          "path": "server/backend/app/access/model_binding.py",
+          "before_sha256": "8a13aac6bdd15be5b4e94e46c5bf120061773ddd745e6857911400df8093081c",
+          "sha256": "841e5decbff4cb171fef70ab4f83b14b84bf69a25a563b3aa2eb881dd0d0f480"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "24355d3572adc70ae93222f0e04e8e5754fed1222f5997f8133293aca3347c4c",
+          "sha256": "a91ac4fb2466a8874a37f5619d16cd1ebe7a211575f7c4f0d149b1f093ffdaab"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "2e101309d7b4bcc5768c010ec8751bfd35b803260ac9f29ac35e74a8f531ac2d",
+          "sha256": "391e644baaee7fced2ea3dcdca003cda5a4fac7cdfd57c34eeb5842359ca6850"
+        },
+        {
+          "path": "server/tests/security/test_model_binding.py",
+          "before_sha256": "fc3f2d40cae6811eb23194129f114c244f73a1584f9064b2d7b53652372760fc",
+          "sha256": "585d27b66e5eb48a2b409c148827823c088ed3cc878392a1d391022971963e9f"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "a65c3394f7317b06be41efe56641b87051ba972b771c426c51444ff7063132eb",
+          "sha256": "4cac679dcc9a6395bb05a0f78721886ff9f62b95f318addaea60ab61773c39c2"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "4489c1630ef4822b9880447ea0f9c7cce6a5ea97aed5da9b0ce8bdf9af7db3a0",
+          "sha256": "bb9e8c3a22335302cd3483e7f732e49b0be54bfc3b328cf0ea9de82f754d5a31"
+        },
+        {
+          "path": "tools/tests/test_check_model_deployment.py",
+          "before_sha256": "86c53717ff402b4be9a1d6a781c7146ba55a0c6a556e8ef8dd294602378bfd48",
+          "sha256": "de4f00bba292aaa2bbf12c9b8c7848cae34ed88f441816fd447b69b5f99ae02e"
+        }
+      ],
+      "server_routes_changed": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "provider_called": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }

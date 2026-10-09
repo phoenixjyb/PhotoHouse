@@ -1,6 +1,7 @@
 """Explicit model projections exercise real config parsers without model/storage I/O."""
 from contextlib import nullcontext
 import copy
+from dataclasses import replace
 import json
 import os
 from pathlib import Path
@@ -184,6 +185,107 @@ class ModelBindingTests(unittest.TestCase):
         self.enable('narrative', credential='PHOTOHOUSE_LLM_TOKEN')
         with self.assertRaisesRegex(ModelBindingError, 'credential_not_supported_by_target'):
             self.project('memory-narrative')
+
+    def test_story_title_projection_is_distinct_and_requires_its_own_opt_in(self):
+        self.enable('annotation_polish')
+        self.enable('narrative')
+        with self.assertRaisesRegex(ModelBindingError, 'required_binding_not_enabled'):
+            self.project('story-titles')
+
+        self.enable('title_suggestions', timeout=60)
+        with self.assertRaisesRegex(ModelBindingError, 'feature_opt_in_required'):
+            self.project('story-titles', enabled=False)
+        projection = self.project('story-titles')
+        self.assertEqual(projection.report()['projected_roles'], ['title_suggestions'])
+        self.assertEqual(projection.report()['request_timeouts_seconds'], {'title_suggestions': 30})
+        fields = projection.bind_fields({})
+        self.assertEqual(fields, {
+            'story_title_url': 'http://127.0.0.1:19002/api/generate',
+            'story_title_model': 'synthetic-language',
+            'story_title_timeout_seconds': 30,
+        })
+        self.assertNotIn('ollama_url', fields)
+        self.assertNotIn('ollama_model', fields)
+        self.assertNotIn('title_suggestions', projection.report().get('disabled_roles', []))
+
+    def test_story_title_projection_preserves_conflict_idempotence_and_redaction(self):
+        provider = self.enable('title_suggestions', timeout=11)
+        projection = self.project('story-titles')
+        fields = projection.bind_fields({})
+        self.assertEqual(projection.bind_fields(fields), fields)
+        self.assertEqual(fields['story_title_timeout_seconds'], 11)
+        for change in ({'story_title_url': 'http://localhost:19999/api/generate'},
+                       {'story_title_model': 'another-model'},
+                       {'story_title_timeout_seconds': 12}):
+            with self.subTest(change=tuple(change)):
+                with self.assertRaisesRegex(ModelBindingError, 'provider_configuration_conflict'):
+                    projection.bind_fields(fields | change)
+        for private in (provider['endpoint'], 'synthetic-language', '19002'):
+            self.assertNotIn(private, repr(projection) + json.dumps(projection.report()))
+
+    def test_story_title_projection_checks_platform_credentials_and_rollback_binding(self):
+        self.enable('title_suggestions', timeout=60)
+        with self.assertRaisesRegex(ModelBindingError, 'runtime_platform_mismatch'):
+            project_configuration(self.deployment(), target='story-titles', platform='linux',
+                                  feature_enabled=True)
+        rollback = self.project('story-titles', rollback=True)
+        self.assertEqual(rollback.report()['selection'], 'rollback')
+        self.assertEqual(rollback.bind_fields({})['story_title_url'],
+                         'http://127.0.0.1:19102/api/generate')
+        provider = next(p for p in self.doc['providers'] if p['role'] == 'title_suggestions')
+        provider['credential_env'] = 'PHOTOHOUSE_TEST_TITLE_TOKEN'
+        with self.assertRaisesRegex(ModelBindingError, 'credential_not_supported_by_target'):
+            self.project('story-titles')
+
+    def test_story_title_staging_and_runtime_projection_are_explicit_and_pure(self):
+        self.enable('title_suggestions', timeout=60)
+        deployment = self.deployment()
+        runtime_base = RuntimeConfiguration(self.root / 'db', 'https://photohouse.test',
+            (self.root / 'originals',), self.root / 'derived', assistant_enabled=True)
+        staging_base = staging_app.parse_configuration(self.staging | {'assistant_enabled': True})
+        with patch('sqlite3.connect', side_effect=AssertionError('storage forbidden')), \
+             patch('httpx.Client', side_effect=AssertionError('network forbidden')), \
+             patch.object(RuntimeConfiguration, 'build_app', side_effect=AssertionError('runtime build forbidden')) as runtime_build, \
+             patch.object(staging_app.StagingConfiguration, 'build_app', side_effect=AssertionError('staging build forbidden')) as staging_build:
+            with self.assertRaisesRegex(ModelBindingError, 'feature_opt_in_required'):
+                runtime_base.with_story_title_model_deployment(deployment, platform='windows')
+            with self.assertRaisesRegex(ModelBindingError, 'feature_opt_in_required'):
+                staging_base.with_story_title_model_deployment(deployment, platform='windows')
+
+            runtime = replace(runtime_base, story_title_suggestions_enabled=True)
+            staging = staging_app.parse_configuration(self.staging | {
+                'assistant_enabled': True, 'story_title_suggestions_enabled': True})
+            runtime_selected = runtime.with_story_title_model_deployment(deployment, platform='windows')
+            staging_selected = staging.with_story_title_model_deployment(deployment, platform='windows')
+            expected = {
+                'story_title_url': 'http://127.0.0.1:19002/api/generate',
+                'story_title_model': 'synthetic-language',
+                'story_title_timeout_seconds': 30,
+            }
+            for selected in (runtime_selected, staging_selected):
+                for key, value in expected.items():
+                    self.assertEqual(getattr(selected, key), value)
+                self.assertTrue(selected.story_title_suggestions_enabled)
+                self.assertTrue(selected.assistant_enabled)
+
+            runtime_rollback = runtime.with_story_title_model_deployment(
+                deployment, platform='windows', rollback=True)
+            staging_rollback = staging.with_story_title_model_deployment(
+                deployment, platform='windows', rollback=True)
+            for selected in (runtime_rollback, staging_rollback):
+                self.assertEqual(selected.story_title_url, 'http://127.0.0.1:19102/api/generate')
+                self.assertEqual(selected.story_title_timeout_seconds, 30)
+
+            for selected, method in ((runtime_selected, 'with_story_title_model_deployment'),
+                                     (staging_selected, 'with_story_title_model_deployment')):
+                conflicting = replace(selected, story_title_model='different-model')
+                with self.assertRaisesRegex(ModelBindingError, 'provider_configuration_conflict'):
+                    getattr(conflicting, method)(deployment, platform='windows')
+                with self.assertRaisesRegex(ModelBindingError, 'provider_configuration_conflict'):
+                    getattr(selected, method)(deployment, platform='windows', rollback=True)
+
+            runtime_build.assert_not_called()
+            staging_build.assert_not_called()
 
     def test_unvalidated_constructed_or_changed_snapshots_cannot_be_projected(self):
         with self.assertRaises(TypeError):

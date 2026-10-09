@@ -158,6 +158,34 @@ class DeploymentDoctorTests(unittest.TestCase):
         for value in ('ambient-private-secret', 'PRIVATE_ASR_CREDENTIAL', 'private-asr-name', '19001'):
             self.assertNotIn(value, output)
 
+    def test_title_projection_is_selectable_and_reports_only_its_bounded_role(self):
+        binding = next(b for b in self.doc['bindings'] if b['role'] == 'title_suggestions')
+        binding['enabled'] = True
+        provider = next(p for p in self.doc['providers'] if p['role'] == 'title_suggestions')
+        previous = copy.deepcopy(provider)
+        previous['id'] += '-previous'
+        previous['endpoint'] = previous['endpoint'].replace(':19002', ':19003')
+        self.doc['providers'].append(previous)
+        self.doc['rollback_bindings'].append({
+            'role': 'title_suggestions', 'provider': previous['id'], 'enabled': True})
+        self.write()
+        common = ['--manifest', str(self.path), '--project', 'story-titles',
+                  '--platform', 'windows', '--json']
+        code, output = self.call(common)
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(output), {'status': 'refused', 'reason': 'feature_opt_in_required'})
+        code, output = self.call([*common[:-1], '--feature-enabled', '--json'])
+        self.assertEqual(code, 0)
+        report = json.loads(output)
+        self.assertEqual(report['status'], 'projection_valid')
+        self.assertEqual(report['target'], 'story-titles')
+        self.assertEqual(report['projected_roles'], ['title_suggestions'])
+        self.assertEqual(report['request_timeouts_seconds'], {'title_suggestions': 30})
+        self.assertFalse(report['credential_values_included'])
+        self.assertFalse(report['activation_performed'])
+        for value in (str(self.path), self.doc['id'], 'synthetic-language', '19002'):
+            self.assertNotIn(value, output)
+
 
 if __name__ == '__main__':
     unittest.main()

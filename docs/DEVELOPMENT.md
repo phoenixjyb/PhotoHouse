@@ -33,6 +33,33 @@ started by this repair. The unchanged API route suite was not rerun locally
 because the current system Python lacks Alembic; its earlier profile result
 above remains bound to that source snapshot.
 
+## D1 family-note lifecycle qualification
+
+Pinned monorepo source `28f543c989230c8148c0af9c1300322aa8d604e5`
+passed the complete Python 3.12 API profile: **876 tests and 502 subtests**,
+followed by the generated no-listener demo. This includes the immutable extracted
+API package check, default-off erasure route, historical-scope owner checks,
+whole-edition prose erasure, journal failure fencing and explicit V1-to-V2 upgrade.
+A preservation regression confirms unrelated upload annotations, contributions
+and independent family notes survive erasure and replay. These cohorts use
+synthetic databases; no live schema, journal or household content changed.
+Native migration, paired backup/recovery and explicit live activation remain
+separate delivery gates. See [the lifecycle contract](../server/docs/security/FAMILY_NOTE_ERASURE_V2.md).
+
+## Independent title-provider wiring
+
+Runtime and staging configurations now accept optional title provider settings
+and their own default-off flag. The dedicated model projection requires the
+`title_suggestions` role and an explicit opt-in, preserves conflict/rollback
+checks and limits the timeout to 30 seconds. Default startup constructs no title
+adapter; explicit construction performs no provider request. Title proposals
+still require explicit selection and save in the existing Web/phone editors.
+The runtime/staging cohort passed **38 tests and 100 subtests**; projection
+checks passed **19 tests and 22 subtests**, with nine separate CLI tests. These
+overlap the integrated six-suite run (**102 tests and 196 subtests**) and are
+not combined into a total. No model,
+GPU, native service or title quality is qualified by these fixtures.
+
 ## Conversation navigation qualification
 
 The October 9–10 Web/phone slice keeps at most sixteen process-memory
