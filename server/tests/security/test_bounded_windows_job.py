@@ -46,9 +46,10 @@ class FakeAPI:
 
 class WindowsJobControllerTests(unittest.TestCase):
     def launch(self, api, **kwargs):
+        timeout_seconds = kwargs.pop('timeout_seconds', 2)
         return run_bounded(api, 'python.exe', ['python.exe', '-I', '-B', 'fixture.py'],
                            {'SystemRoot': 'C:\\Windows', 'TEMP': 'C:\\synthetic'},
-                           'C:\\synthetic', timeout_seconds=2, **kwargs)
+                           'C:\\synthetic', timeout_seconds=timeout_seconds, **kwargs)
 
     def test_assigns_before_resume_and_waits_for_empty_job_before_closing(self):
         api = FakeAPI()
@@ -105,9 +106,44 @@ class WindowsJobControllerTests(unittest.TestCase):
         now = [0.0]
         def sleep(seconds): now[0] += seconds
         with self.assertRaisesRegex(CheckRefused, 'job_did_not_drain'):
-            self.launch(api, monotonic=lambda: now[0], sleep=sleep)
+            self.launch(api, timeout_seconds=20, monotonic=lambda: now[0], sleep=sleep)
+        self.assertEqual(now[0], 5)
         self.assertIn('kill-job', api.events)
         self.assertEqual(api.descendants, 0)
+
+    def test_selected_grace_allows_slow_descendant_to_exit_naturally(self):
+        api = FakeAPI(descendants=1)
+        now = [0.0]
+        def sleep(seconds): now[0] += seconds
+        def active_processes(_job):
+            count = 1 if now[0] < 8 else 0
+            api.events.append(('active', count))
+            return count
+        api.active_processes = active_processes
+
+        self.assertEqual(self.launch(api, timeout_seconds=20, descendant_grace_seconds=10,
+                                     monotonic=lambda: now[0], sleep=sleep), 0)
+        self.assertAlmostEqual(now[0], 8, delta=0.05)
+        self.assertNotIn('kill-job', api.events)
+        self.assertLess(api.events.index(('active', 0)), api.events.index(('close', 'job')))
+
+    def test_selected_grace_is_capped_by_overall_deadline(self):
+        api = FakeAPI(descendants=1)
+        now = [0.0]
+        def sleep(seconds): now[0] += seconds
+        with self.assertRaisesRegex(CheckRefused, 'job_did_not_drain'):
+            self.launch(api, timeout_seconds=3, descendant_grace_seconds=10,
+                        monotonic=lambda: now[0], sleep=sleep)
+        self.assertEqual(now[0], 3)
+        self.assertIn('kill-job', api.events)
+
+    def test_invalid_descendant_grace_starts_nothing(self):
+        for grace in (True, False, 0, -1, float('nan'), float('inf'), float('-inf'), 60.1):
+            with self.subTest(grace=grace):
+                api = FakeAPI()
+                with self.assertRaisesRegex(CheckRefused, 'invalid_descendant_grace'):
+                    self.launch(api, descendant_grace_seconds=grace)
+                self.assertEqual(api.events, [])
 
     def test_partial_process_creation_is_cleaned_without_resume(self):
         api = FakeAPI(thread=None)

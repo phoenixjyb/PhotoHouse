@@ -28,6 +28,12 @@ retain replacement and modification checks, and have a separate Windows CI
 cohort. This improves metadata intake; it does not qualify generated stories.
 The next model-infra slice is native installed-provider/device verification and
 bounded Chinese voice/story evaluation, then separately approved activation.
+The [October 9 local text-model comparison](LOCAL_TEXT_MODEL_SHORTLIST_2026-10-09.md)
+now identifies Qwen 3.5 9B and Gemma 4 12B as initial candidates, with Qwen 3.8
+27B for an isolated larger-model comparison. Source requests explicitly disable
+thinking for bounded structured text. Registry identity, download authorization,
+native resource/JSON checks and human story review precede any provider switch;
+newer release dates and vendor benchmarks do not close these gates.
 The standalone [story canary](MODEL_QUALIFICATION.md#capture-one-synthetic-story-output)
 now captures one pinned synthetic narrative or companion response without the
 database-backed worker. It preserves private inputs, outputs and provider

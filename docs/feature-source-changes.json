@@ -6748,6 +6748,71 @@
           "before_sha256": "cf936380556aa4e14a8577d066274c2d3ea0c589e69d560024fd7fe760839a0a"
         }
       ]
+    },
+    {
+      "feature": "local-text-model-refresh-and-explicit-thinking-control-v1",
+      "files": [
+        {
+          "path": "docs/LOCAL_TEXT_MODEL_SHORTLIST_2026-10-09.md",
+          "sha256": "ba516f54f2feb678f4a517ca348d515ffd5ad072e48d15c479ef4aef9732318d",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "8c99c8388bf24181addbad8ab26b88122ba6b1011a5b3edf7d0b7ddfc7f41e2b",
+          "before_sha256": "d39a5d7f2882f94e290b6a67ebf3139bf706390a4e7d4ed85bfc90ec1d28a1fd"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "83d2ae260e5139956d5cfe8cf20c995c0485db53bd30dd0fb7881a1054da467e",
+          "before_sha256": "0d7c0e5912781bcc0785e4bc04b8a2e0f3fc40ce5ff68c298218cd1bf58a3272"
+        },
+        {
+          "path": "server/backend/app/access/annotation_local.py",
+          "sha256": "04f4edebf7c70c963e4227f5e3d70ea810ffcefcb6d44190a3495a8946077890",
+          "before_sha256": "3ca869b7350a5a3a264b6d87be2141df344f11f8e830ab1f19ca64a3da8044f6"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "sha256": "7eca9e4d17574c4353eeba95cfd3f40defd999063833175abd1b89fa790e3765",
+          "before_sha256": "f06931e2e599a513f9aadda7c0a32ce3a6a9734cc41c3693f501507114116a03"
+        },
+        {
+          "path": "server/backend/app/access/story_titles.py",
+          "sha256": "64a90fc80f956ae7810b6e2f2dc8a92f8e93348beaaa4a9b001a28e58050e19b",
+          "before_sha256": "f52766f45730a7c7dbd730cbe292a9b30901f73ed71287395b92534319911faf"
+        },
+        {
+          "path": "server/tests/security/test_annotation_local.py",
+          "sha256": "ca92d5578f65b20ed268f0a448898c90e9f578ea22183e44678134f3c41cd52d",
+          "before_sha256": "8e0b85236d1f779f140ab6e608067a584bc7b7627dde7f318249ccb464cfa63a"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "sha256": "e66df76158b92f8c9fce7c8314d262db34b65be7b0db488d98bfac894376df7d",
+          "before_sha256": "a32c7e2ff010f07e1b2228d1c2e1fafbf21a6fa53bcc9c5f7464e28f2fdcf176"
+        },
+        {
+          "path": "server/tests/security/test_story_titles.py",
+          "sha256": "34eaa9fe60493b281e2a589abbdd0abef34426113a4de9c0bd2ff459764cf552",
+          "before_sha256": "f2ec70a733a4bd8ca2718848a016ff1adb57e63821db8eda45a418bac9ebb6cb"
+        },
+        {
+          "path": "server/scripts/bounded_windows_job.py",
+          "sha256": "91ea2bdd389cfc1e037b9e526720cc98085fddff29a2e8adbc170346b663cd2f",
+          "before_sha256": "009301f865db4bc6c5e09bc163efa701ab5be0353c312d3bd5f706e4e94f9f78"
+        },
+        {
+          "path": "server/tests/security/test_bounded_windows_job.py",
+          "sha256": "c1b8a4c7984be51e81a6cbf0c173af00b3257c05e2212c6aa2ef1b803b3787e6",
+          "before_sha256": "f2506de30531114cbd38f8c36d992d7caf3f38e5871edc05fde8545bec5594e6"
+        },
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "sha256": "7cf929959d2bcb13db017189a4fe68a8770374ebd318e8e7bdfac0635962f9a3",
+          "before_sha256": "bdc47a07445040f3deb855e552be9ebb63e21cbe6a43f905b9f20e215730c76a"
+        }
+      ]
     }
   ]
 }

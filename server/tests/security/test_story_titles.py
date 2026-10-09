@@ -141,6 +141,7 @@ class LocalStoryTitleSuggesterTests(unittest.TestCase):
         self.assertEqual(seen['url'], 'http://localhost:11434/api/generate')
         self.assertEqual(seen['body']['model'], 'local-model')
         self.assertIs(seen['body']['stream'], False)
+        self.assertIs(seen['body']['think'], False)
         self.assertEqual(seen['body']['format'], 'json')
         self.assertIn('Do not invent dates, people, identities, relationships, or activities',
                       seen['body']['prompt'])

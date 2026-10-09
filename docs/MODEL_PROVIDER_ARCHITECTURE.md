@@ -103,6 +103,12 @@ establish model or data licensing rights.
 
 ## Qualification and migration gates
 
+The dated [local text-model shortlist](LOCAL_TEXT_MODEL_SHORTLIST_2026-10-09.md)
+records current replacement candidates, pinned registry metadata and a staged
+evaluation plan. Narrative/companion, polish and title requests explicitly send
+Ollama `think: false`; they retain strict JSON, citations and existing bounds.
+Actual support on the selected runtime remains a native qualification gate.
+
 Use separate evidence for each stage: source adapter exists; declared runtime and
 artifact are available; the endpoint reports the expected identity and effective
 device; bounded synthetic inputs pass schema and safety checks; quality and

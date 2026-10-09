@@ -38,7 +38,7 @@ jobs:
       - name: Check native private readers without providers
         shell: pwsh
         run: |
-          $cases = @('test_private_storage.py', 'test_model_deployment.py', 'test_model_qualification.py', 'test_windows_tts.py', 'test_memoir_quality_canary.py')
+          $cases = @('test_private_storage.py', 'test_model_deployment.py', 'test_model_qualification.py', 'test_windows_tts.py', 'test_memoir_quality_canary.py', 'test_bounded_windows_job.py')
           $failed = $false
           foreach ($case in $cases) {
             python -m unittest discover -s server/tests/security -p $case
