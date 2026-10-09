@@ -183,16 +183,43 @@ class AssistantTranscriptUiTest {
         rule.onNodeWithTag("assistant-turns").performScrollToNode(hasTestTag("assistant-transcript-review"))
         rule.onNodeWithTag("assistant-transcript-overflow").assertTextContains("超过消息长度限制", substring = true)
         rule.onNodeWithTag("assistant-insert-transcript").assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-message-overflow").assertTextContains("这条消息超出长度限制", substring = true)
         assertEquals(draft, rule.onNodeWithTag("assistant-text").fetchSemanticsNode().config[
             androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
         rule.onNodeWithTag("assistant-transcript-original").assertTextEquals(words)
         assertNull(client.value.confirmedTranscriptRequestId)
         assertEquals(0, sends)
+        rule.onNodeWithTag("assistant-text").performImeAction()
+        assertEquals("An unaccepted oversized transcript cannot be submitted", 0, sends)
+        assertEquals(transcript, client.value.transcript)
         rule.onNodeWithTag("assistant-discard-transcript").performClick()
         assertNull(client.value.transcript)
         assertNull(client.value.confirmedTranscriptRequestId)
         assertEquals(draft, rule.onNodeWithTag("assistant-text").fetchSemanticsNode().config[
             androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+        rule.onNodeWithTag("assistant-message-overflow").assertTextContains("这条消息超出长度限制", substring = true)
+        rule.onNodeWithTag("assistant-send").assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-text").performImeAction()
+        assertEquals("Discarded oversized draft still cannot send by IME", 0, sends)
+    }
+
+    @Test fun oversizedChineseDraftWithoutTranscriptShowsHelpAndCannotSend() {
+        val draft = "中".repeat(342) // 342 codepoints, 1026 UTF-8 bytes
+        val client = state()
+        val recording = mutableStateOf(false)
+        var sends = 0
+        showAt150(client, true, recording, onSend = { sends++; true }, onUseTranscript = accept(client),
+            onClearTranscript = { client.value = client.value.copy(transcript = null, confirmedTranscriptRequestId = null) })
+        rule.onNodeWithTag("assistant-text").performTextInput(draft)
+        assertEquals(draft, rule.onNodeWithTag("assistant-text").fetchSemanticsNode().config[
+            androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+        rule.onNodeWithTag("assistant-message-overflow").assertTextContains("这条消息超出长度限制", substring = true)
+        rule.onNodeWithTag("assistant-send").assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-text").performImeAction()
+        assertEquals(0, sends)
+        assertNull(client.value.confirmedTranscriptRequestId)
+        assertNull(client.value.transcript)
+        capture("zh-oversized-draft-150")
     }
 
     @Test fun recordingBlocksTranscriptActionsAndSending() {

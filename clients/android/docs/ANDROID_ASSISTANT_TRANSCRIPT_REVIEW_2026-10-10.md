@@ -6,10 +6,13 @@ message**, edits the message if needed, then explicitly sends it. Existing typed
 words are preserved with a newline before the recognized words. Discard leaves
 the typed draft intact and clears the recognition link.
 
-The combined draft must fit the existing 512 Unicode codepoint limit. An
+The combined draft must fit both the phone's 512 Unicode codepoint limit and
+the request contract's 1,024 UTF-8 byte limit. An
 overflow disables Add, preserves both texts and explains how to continue;
 nothing is truncated. While recording, transcribing or reviewing an unused
 transcript, Send stays blocked. A new recording also waits for review or discard.
+An oversized typed draft also stays intact, shows localized length guidance,
+and cannot submit by button or keyboard Send.
 
 The store accepts only the exact current transcript object for the current
 generation and library. A tracked successful transcription becomes the command's
@@ -31,6 +34,14 @@ reader cannot accept it. No API contract or audio retention policy changes.
   Original-resolution 150% text captures were inspected. The review card,
   recognized text, Add/Discard, typed composer and disabled Record/Send controls
   are visible; unclipped geometry is checked inside the assistant list.
+
+The subsequent byte-limit repair passed five helper tests, phone lint and
+Android-test compilation. Two focused API 36 journeys at 150% text passed for
+pending-transcript emoji overflow and a typed Chinese draft without a transcript.
+They check button/IME blocking and preserved text. The Chinese overflow capture
+was inspected: retained draft, length guidance and disabled Send remain visible.
+Exact 1,024-byte Chinese/mixed/emoji boundaries are checked without changing the
+request contract. This cohort is separate from the earlier six-case run.
 
 Fixtures use a separate unconfigured QA application ID and fake adapters.
 Initial fixture scrolling, repeated Compose setup and assertion errors are

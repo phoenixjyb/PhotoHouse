@@ -32,12 +32,15 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import dev.photohouse.connected.core.*
 
-/** Preserve typed wording; refuse an insertion that would exceed the command limit. */
+/** Match the phone's codepoint ceiling and the wire's UTF-8 byte ceiling. */
+internal fun assistantDraftWithinLimits(text: String): Boolean =
+    text.codePointCount(0, text.length) <= 512 && text.toByteArray(Charsets.UTF_8).size <= 1024
+
+/** Preserve typed wording; refuse an insertion that would exceed either command limit. */
 internal fun assistantDraftWithTranscript(draft: String, transcript: String): String? {
-    if (transcript.isBlank() || draft.codePointCount(0, draft.length) > 512 ||
-        transcript.codePointCount(0, transcript.length) > 512) return null
+    if (transcript.isBlank() || !assistantDraftWithinLimits(draft) || !assistantDraftWithinLimits(transcript)) return null
     val combined = if (draft.isBlank()) transcript else "$draft\n$transcript"
-    return combined.takeIf { it.codePointCount(0, it.length) <= 512 }
+    return combined.takeIf(::assistantDraftWithinLimits)
 }
 
 @Composable
@@ -58,7 +61,7 @@ internal fun AssistantScreen(
     val focusManager = LocalFocusManager.current
     val submit: () -> Unit = {
         val text = draft.trim()
-        if (text.isNotEmpty() && state?.pendingTurn == null && state?.busy != true &&
+        if (text.isNotEmpty() && assistantDraftWithinLimits(draft) && state?.pendingTurn == null && state?.busy != true &&
             state?.transcribing != true && state?.transcript == null && !recording) {
             keyboard?.hide(); focusManager.clearFocus()
             if (onSend(text) && draft.trim() == text) draft = ""
@@ -271,6 +274,10 @@ internal fun AssistantScreen(
                         placeholder = { Text(t("For example: find videos from last year", "例如：找去年9月的照片")) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(onSend = { submit() }), maxLines = 4)
+                    if (draft.isNotBlank() && !assistantDraftWithinLimits(draft))
+                        Text(t("This message exceeds the limit. Shorten it before sending.", "这条消息超出长度限制，请缩短后再发送。"),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("assistant-message-overflow"))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         val canTranscribe = assistant.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true
                         if (canTranscribe) {
@@ -285,7 +292,8 @@ internal fun AssistantScreen(
                             }
                         }
                         Button(onClick = submit,
-                            enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null && !recording && draft.isNotBlank(), modifier = Modifier.testTag("assistant-send")) {
+                            enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null && !recording &&
+                                draft.isNotBlank() && assistantDraftWithinLimits(draft), modifier = Modifier.testTag("assistant-send")) {
                             Text(if (assistant.busy) t("Thinking…", "正在整理…") else t("Ask", "发送"))
                         }
                     }

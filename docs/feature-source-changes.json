@@ -7900,6 +7900,35 @@
       "documentation_only": true,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "phone-assistant-utf8-message-limit-before-insertion-and-send",
+      "source_commit": "43081a888945043ea307998745bf16040edeb8f6",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "4a106c27ca4a06ad27ef9a9547d6ecfe1ccdd1f5f087da90782b759d8c5f955c",
+          "sha256": "cf8d3156e0fd5c1c68ef182fdda4adad4162d6778aa045d22adc98b7f9f0ae63"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/AssistantDraftTest.kt",
+          "before_sha256": "7d84d57648296e008f76fe131c44dfe00a1f8dfccce0ea28d2619c1a5b309a07",
+          "sha256": "cb3c6442972bc4d7f2e72897bcae8697acb1224aababd1a65059492ac60a17ab"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "before_sha256": "5469b98444984101df1aba15ca2ba944622719d9fcf49269b389999e0f74513f",
+          "sha256": "1fad28714262834930163321347d7e671bf60cb6b4a45545f337ab0becbb074b"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md",
+          "before_sha256": "ba1c4cfdbb50aea85d4fc854d3e9ee469f9167559894474d813accc8ba24fad5",
+          "sha256": "2ec82f94428c89121d2ca5f52597676cc42f7f4372e41b4dd97a56c6752e522b"
+        }
+      ],
+      "server_contract_changed": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }
