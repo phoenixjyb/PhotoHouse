@@ -21,23 +21,41 @@ or change permissions. On POSIX, use an owner-only directory (`0700`) and file
 other permissions. On Windows, the existing private-storage check inspects the
 file owner and DACL and rejects untrusted access; it does not rewrite ACLs.
 
-The sample [`models/deployment.synthetic.json`](../models/deployment.synthetic.json)
-contains deliberately fake metadata and disabled bindings. It is for understanding
-the schema only. Copy it to a separate private location, then replace every
-placeholder with declared values; do not treat it as a working deployment or
-evidence of runtime readiness.
+The samples [`models/deployment.synthetic.json`](../models/deployment.synthetic.json)
+and [`models/deployment.wsl.synthetic.json`](../models/deployment.wsl.synthetic.json)
+contain deliberately fake metadata and disabled bindings. The first demonstrates
+schema 1; the second demonstrates schema 2 placement metadata, including a
+synthetic WSL example. They are for understanding the schema only. Copy one to a
+separate private location, then replace every placeholder with declared values;
+do not treat either as a working deployment or evidence of runtime readiness.
 
 ## Graph structure
 
-Schema version 1 links five record groups:
+Schema versions 1 and 2 link the same five record groups. Schema 1 retains its
+existing exact field shape and represents native execution: `platform` is both
+the execution platform and the application-facing host platform. Schema 2 adds
+one required `placement` object to every runtime; all other runtime fields and
+validation rules remain in force.
 
-- **Runtimes** declare execution mode, operating system, environment identity,
-  runtime version, dependency-lock SHA-256, implementation repository/revision,
-  device identity, and resource budgets. Reuse an `environment_id` only for the
-  same platform and dependency-lock digest. Give distinct dependency stacks
-  distinct environment IDs. Keep VLM, ASR/TTS, face, and embedding environments
+- **Runtimes** declare execution mode, execution operating system, environment
+  identity, runtime version, dependency-lock SHA-256, implementation
+  repository/revision, device identity, and resource budgets. Reuse an
+  `environment_id` only for the same execution platform, dependency-lock digest,
+  and placement. Give distinct dependency stacks distinct environment IDs. Keep
+  VLM, ASR/TTS, face, and embedding environments
   separate when their package, accelerator, or resource needs differ; a single
   shared ML environment makes independent provider replacement risky.
+- **Schema 2 placement** has exactly `kind`, `host_platform`, and `instance`.
+  `kind` is `native` or `wsl2`; `host_platform` is `windows`, `linux`, or
+  `macos`; `instance` is either `null` or a nonempty bounded string (at most
+  120 UTF-8 bytes). Native placement requires `host_platform` to equal the
+  runtime's `platform` and `instance` to be `null`. WSL2 placement is restricted
+  to a Windows host, Linux execution, and `loopback_http`; it requires an
+  explicit instance identity. WSL2 placement is selectable only for the HTTP
+  ASR, TTS, and text roles (`assistant_asr`, `memory_asr`, `assistant_tts`,
+  `annotation_polish`, `narrative`, and `title_suggestions`). Provider endpoint
+  validation remains loopback-only with an explicit port. Placement records a
+  declaration; validation does not inspect a host, distribution, or forwarding.
 - **Artifacts** declare artifact kind, model/voice name and version, artifact
   identity digest, license reference, preprocessing digest, and optional vector
   space (`id`, dimension, normalization). An identity digest is a declaration in
@@ -87,8 +105,8 @@ From the repository root, select the private manifest explicitly:
 python3 tools/check_model_deployment.py --manifest /absolute/private/path --json
 ```
 
-To inspect a target-specific projection, also supply the target, its platform,
-and an explicit feature opt-in assertion:
+To inspect a target-specific projection, also supply the target, its application
+host platform, and an explicit feature opt-in assertion:
 
 ```sh
 python3 tools/check_model_deployment.py --manifest /absolute/private/path \
@@ -96,10 +114,15 @@ python3 tools/check_model_deployment.py --manifest /absolute/private/path \
 ```
 
 Supported targets are `assistant`, `memory-contributions`, and
-`memory-narrative`; platforms are `windows`, `linux`, and `macos`. The projection
-command reports only role IDs, selection hash, declared request timeouts, and
-fixed status flags. It never prints model names, endpoints, credential references,
-or credential values. `--feature-enabled` permits the projection check; it does
+`memory-narrative`; host platforms are `windows`, `linux`, and `macos`. For
+schema 1 and native schema 2 runtimes, host and execution platforms match. A
+schema 2 WSL2 runtime keeps `platform` as its Linux execution platform while
+projection uses its Windows `host_platform`. The projection report includes the
+requested host platform and per-role execution-platform and placement-kind
+enums, but never the WSL instance. It also reports role IDs, selection hash,
+declared request timeouts, and fixed status flags. It never prints model names,
+endpoints, credential references, paths, or credential values.
+`--feature-enabled` permits the projection check; it does
 not edit a feature flag, grant operational authority, or start an application or
 worker. The command accepts no credential-value argument and never resolves an
 environment variable. The CLI does not load an application or worker config, so
@@ -119,9 +142,9 @@ explicit false values for runtime probing, artifact verification, quality
 evaluation, and activation. The projection report uses `projection_valid` and
 contains fixed false flags for resource enforcement, runtime probing, artifact
 verification, quality evaluation, and activation. Both omit endpoint strings,
-implementation URLs, model names, artifact paths, credential references, and
-secret values. Keep the manifest itself private even though reports are designed
-for safe review. `configuration_valid` and `projection_valid` mean only that
+implementation URLs, model names, artifact paths, credential references, secret
+values, and WSL instance values. Keep the manifest itself private even though
+reports are designed for safe review. `configuration_valid` and `projection_valid` mean only that
 declared metadata or its mapping passed these offline checks; neither means
 `ready` or `active`.
 
@@ -160,8 +183,11 @@ Projection is deliberately narrow:
   request, with ASR and polishing sharing one 30-second item budget. A bounded
   run permits at most 32 items and 1,800 seconds. The projection does not extend
   these item or run limits.
-- Every source API call requires an explicit platform. A declared runtime for a
-  different platform is refused. Feature opt-ins remain independent and are
+- Every source API call requires an explicit platform, which means the
+  application-facing host platform. Projection matches it against the effective
+  host: schema 1 and native schema 2 use the runtime `platform`, while WSL2 uses
+  `placement.host_platform`. The report separately identifies execution
+  platforms and placement kinds. Feature opt-ins remain independent and are
   never changed by projection.
 - Credential environment names are references only. The source API accepts a
   caller-supplied `credential_values` dictionary as an explicit argument; it

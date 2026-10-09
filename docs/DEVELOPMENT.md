@@ -48,6 +48,12 @@ The synthetic test files are not playable speech or model checkpoints, and the
 recorded test verdicts are fixtures. No provider, GPU or semantic quality is
 qualified by this source cohort.
 
+The schema-2 WSL placement slice adds eight backend tests with ten subtests,
+plus two CLI checks for Windows host projection and Linux evidence execution.
+They cover strict placement, mixed native/WSL settings, rollback host refusal,
+environment/distro identities, split qualification and private-instance redaction.
+These tests use synthetic metadata and do not run a distro, model or service.
+
 Run `.venv/bin/python tools/doctor.py` or add `--json` before selecting a test
 profile. [Environment report](DEVELOPMENT_ENVIRONMENT.md) explains the read-only
 checks and available/missing/unverified states. It inspects pinned package
@@ -66,16 +72,17 @@ python3.12 -m venv .venv
 .venv/bin/python tools/check.py api
 ```
 
-The latest supported CPU run passed **732 tests and 438 independently reported subtests**
+The latest supported CPU run passed **740 tests and 448 independently reported subtests**
 on October 9, 2026, plus the generated-data demo. It used the existing macOS
 arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
 fresh dependency installation. The private model manifest contributes 19 tests
 and 39 subtests for declared identities, contracts, rollback and private-file
 handling; the explicit assistant/memory bridge adds 15 tests and 19 subtests.
-The 78 standalone tooling tests include seven deployment doctor checks and eight qualification checks;
+The 80 standalone tooling tests include eight deployment doctor checks and nine qualification checks;
 these counts are separate from the API profile. No model runtime or quality is
 qualified by these checks. The isolated extracted API package imports the manifest, bridge and qualification
-modules without a checkout fallback. The earlier 714/419 profile predates the
+modules without a checkout fallback. The earlier 732/438 profile predates explicit
+WSL placement. The earlier 714/419 profile predates the
 qualification cohort. The earlier 699/400
 profile predates the bridge, and the 680/361 profile predates the manifest.
 The earlier 523/215 profile used a fresh

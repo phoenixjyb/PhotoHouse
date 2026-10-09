@@ -26,6 +26,7 @@ TEXT_ROLES = {'annotation_polish', 'narrative', 'title_suggestions'}
 # The inventory also names implementations behind adapters. These are not
 # interchangeable with the reviewed HTTP request adapters for these roles.
 INVENTORY_ONLY_ADAPTERS = {'CaptionSubprocessProvider', 'WindowsSystemSpeech'}
+WSL_HTTP_ROLES = {'assistant_asr', 'memory_asr', 'assistant_tts', *TEXT_ROLES}
 _VALIDATION_SEAL = object()
 
 
@@ -110,11 +111,24 @@ def _records(value, maximum, reason):
     return records
 
 
-def _runtime(record):
-    _object(record, {'id', 'execution_mode', 'platform', 'environment_id', 'runtime_version',
-                     'dependency_lock_sha256', 'implementation', 'device', 'resources'}, 'runtime_fields')
+def _runtime(record, schema):
+    keys = {'id', 'execution_mode', 'platform', 'environment_id', 'runtime_version',
+            'dependency_lock_sha256', 'implementation', 'device', 'resources'}
+    _object(record, keys | ({'placement'} if schema == 2 else set()), 'runtime_fields')
     _choice(record['execution_mode'], {'http_service', 'loopback_http', 'bounded_child', 'in_process'}, 'runtime_mode')
     _choice(record['platform'], {'windows', 'linux', 'macos'}, 'runtime_platform')
+    if schema == 2:
+        placement = _object(record['placement'], {'kind', 'host_platform', 'instance'}, 'placement_fields')
+        _choice(placement['host_platform'], {'windows', 'linux', 'macos'}, 'placement_host_platform')
+        _choice(placement['kind'], {'native', 'wsl2'}, 'placement_kind')
+        if placement['kind'] == 'native':
+            if placement['host_platform'] != record['platform'] or placement['instance'] is not None:
+                _fail('native_placement_identity')
+        else:
+            if (placement['host_platform'] != 'windows' or record['platform'] != 'linux'
+                    or record['execution_mode'] != 'loopback_http'):
+                _fail('wsl_placement_contract')
+            _text(placement['instance'], 120, 'wsl_instance_identity')
     _match(record['environment_id'], ID, 'runtime_environment')
     _text(record['runtime_version'], 120, 'runtime_version')
     _match(record['dependency_lock_sha256'], DIGEST, 'runtime_lock_identity')
@@ -223,11 +237,20 @@ def _validated_snapshot(value):
             and hashlib.sha256(value._payload).hexdigest() == value.selection_sha256)
 
 
+def runtime_host_platform(runtime):
+    """Effective application-facing host from an already validated runtime copy.
+
+    Schema 1 remains native, while schema 2 preserves a separate execution OS.
+    This helper does not establish actual host/distro placement or forwarding.
+    """
+    return runtime['placement']['host_platform'] if 'placement' in runtime else runtime['platform']
+
+
 def validate_deployment(document, catalog) -> ValidatedDeployment:
     """Validate selections against the reviewed source catalog, with no I/O."""
     _object(document, {'schema', 'kind', 'id', 'runtimes', 'artifacts', 'providers',
                        'bindings', 'rollback_bindings'}, 'manifest_fields')
-    if type(document['schema']) is not int or document['schema'] != 1 or document['kind'] != 'photohouse-model-deployment':
+    if type(document['schema']) is not int or document['schema'] not in {1, 2} or document['kind'] != 'photohouse-model-deployment':
         _fail('manifest_version')
     _match(document['id'], ID, 'manifest_identity')
     # The catalog is source-maintained metadata, not supplied by the private record.
@@ -248,8 +271,9 @@ def validate_deployment(document, catalog) -> ValidatedDeployment:
     providers = _records(document['providers'], 64, 'provider_inventory')
     environments = {}
     for runtime in runtimes.values():
-        _runtime(runtime)
-        identity = (runtime['platform'], runtime['dependency_lock_sha256'])
+        _runtime(runtime, document['schema'])
+        identity = (runtime['platform'], runtime['dependency_lock_sha256'],
+                    json.dumps(runtime.get('placement'), sort_keys=True))
         if runtime['environment_id'] in environments and environments[runtime['environment_id']] != identity:
             _fail('environment_identity_conflict')
         environments[runtime['environment_id']] = identity
@@ -287,6 +311,8 @@ def validate_deployment(document, catalog) -> ValidatedDeployment:
         runtime, artifact = runtimes[provider['runtime']], artifacts[provider['artifact']]
         if runtime['execution_mode'] not in spec['execution_modes']:
             _fail('provider_execution_mode')
+        if runtime.get('placement', {}).get('kind') == 'wsl2' and role not in WSL_HTTP_ROLES:
+            _fail('wsl_role_not_supported')
         http = runtime['execution_mode'] in {'loopback_http', 'http_service'}
         if http:
             _endpoint(provider['endpoint'], role)

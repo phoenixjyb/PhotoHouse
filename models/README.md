@@ -36,11 +36,17 @@ Its `configuration_valid` result means the selected metadata graph passes offlin
 schema and source-catalog checks. It does not probe endpoints, inspect installed
 files, load provider packages, verify weights, check a GPU, evaluate quality, or
 activate any binding. [`deployment.synthetic.json`](deployment.synthetic.json)
-is fake schema-validation data with all bindings disabled; use it only as a
-starting template for a separate private file, never as a runtime profile.
+is fake schema-1 validation data with all bindings disabled. The
+[`deployment.wsl.synthetic.json`](deployment.wsl.synthetic.json) sample is fake
+schema-2 placement data, also with all bindings disabled. Both are source
+examples only; use one as a starting template for a separate private file, never
+as a runtime profile or evidence of an installed host, WSL instance, endpoint,
+model, or activation.
 
 Add `--project assistant --platform windows --feature-enabled --json` to inspect
-an opted-in assistant mapping. Memory targets are `memory-contributions` and
+an opted-in assistant mapping. Here `--platform` is the application host OS;
+schema-2 reports also include execution-platform and placement-kind enums, but
+omit WSL instance names. Memory targets are `memory-contributions` and
 `memory-narrative`. The source bridge returns private in-memory configuration
 copies, refuses conflicting legacy settings, and preserves feature flags and
 worker deadlines. It does not start a service or resolve tokens in the offline

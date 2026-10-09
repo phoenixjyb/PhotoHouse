@@ -17,6 +17,12 @@ scoped identity observations, resource samples and human voice/story reviews to
 the exact current or rollback selection. ASR uses a separate pinned private audio
 inventory; optional explicit hashing verifies only named files. It does not
 collect observations or establish provider/device/runtime/semantic acceptance.
+Schema 2 also declares native or WSL2 placement: the application host stays
+separate from a provider's execution OS. Windows assistant/memory projections
+can select Linux WSL loopback services alongside native Windows services without
+changing schema 1. Qualification records bind the placement and keep Linux ASR
+and Windows TTS in separate scopes. This describes topology only; loopback
+forwarding, installed identities and voice quality still require native checks.
 The next model-infra slice is native installed-provider/device verification and
 bounded Chinese voice/story evaluation, then separately approved activation.
 Embedding/face bindings and independent runtime catalog packaging remain future

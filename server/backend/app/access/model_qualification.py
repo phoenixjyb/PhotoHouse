@@ -18,7 +18,8 @@ import time
 
 from .model_deployment import (DIGEST, ID, DeploymentError, _integer as _deployment_integer,
                                _match as _deployment_match, _object as _deployment_object,
-                               _text as _deployment_text, _validated_snapshot, _load_private_document)
+                               _text as _deployment_text, _validated_snapshot, _load_private_document,
+                               runtime_host_platform)
 
 ROLES = {'assistant_asr', 'memory_asr', 'assistant_tts', 'narrative'}
 FILE_KINDS = {'artifact', 'dependency_lock', 'preprocessing'}
@@ -319,6 +320,7 @@ def validate_qualification(document, deployment, case_plan, *, now, audio_plan=N
     if type(records) is not list or len(records) > len(scope):
         _fail('evidence_inventory')
     role_reports = {}
+    host_platforms = {}
     for record in records:
         _object(record, {'role', 'selection_identity_sha256', 'observed_identity',
                          'runtime_capture_sha256', 'files', 'resources', 'quality'}, 'evidence_record_fields')
@@ -331,10 +333,13 @@ def validate_qualification(document, deployment, case_plan, *, now, audio_plan=N
         runtime, artifact = resolved['runtime'], resolved['artifact']
         if document['platform'] != runtime['platform']:
             _fail('evidence_platform_mismatch')
+        host_platforms[role] = runtime_host_platform(runtime)
         _match(record['runtime_capture_sha256'], DIGEST, 'runtime_capture_identity')
         expected = {'runtime_version': runtime['runtime_version'], 'implementation': runtime['implementation'],
                     'dependency_lock_sha256': runtime['dependency_lock_sha256'], 'device': runtime['device'],
                     'artifact_sha256': artifact['identity_sha256'], 'preprocessing_sha256': artifact['preprocessing_sha256']}
+        if 'placement' in runtime:
+            expected['placement'] = runtime['placement']
         # Observed values may be unknown/mismatched. They are private and never
         # become defaults copied from declarations by this validator.
         observed = _object(record['observed_identity'], set(expected), 'observed_identity_fields')
@@ -362,6 +367,7 @@ def validate_qualification(document, deployment, case_plan, *, now, audio_plan=N
                'selection_sha256': deployment.selection_sha256, 'selection': document['selection'],
                'case_plan_sha256': plan_digest, 'audio_plan_sha256': audio_digest,
                'scope_roles': sorted(scope), 'other_declared_roles': sorted(set(declared_roles) - set(scope)),
+               'execution_platform': document['platform'], 'host_platforms': host_platforms,
                'records': role_reports, 'complete_deployment_qualification': False,
                'files_verified': False, 'provider_probed': False, 'device_verified': False,
                'runtime_environment_verified': False, 'quality_independently_verified': False,

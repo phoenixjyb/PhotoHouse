@@ -55,6 +55,34 @@ class QualificationDoctorTests(unittest.TestCase):
             verifier.assert_not_called()
         self.assertEqual(code,0);self.assertEqual(report['audio_plan_sha256'],self.doc['audio_plan_sha256'])
 
+    def test_wsl_evidence_keeps_linux_execution_and_private_placement(self):
+        self.manifest['schema'] = 2
+        for runtime in self.manifest['runtimes']:
+            runtime['placement'] = {'kind': 'native', 'host_platform': runtime['platform'], 'instance': None}
+        provider = next(p for p in self.manifest['providers'] if p['role'] == 'assistant_asr')
+        runtime = next(r for r in self.manifest['runtimes'] if r['id'] == provider['runtime'])
+        runtime.update(platform='linux', execution_mode='loopback_http')
+        runtime['placement'] = {'kind': 'wsl2', 'host_platform': 'windows', 'instance': 'Private-Synthetic-Distro'}
+        from app.access.model_deployment import validate_deployment
+        from app.access.model_qualification import selection_identity
+        selected = validate_deployment(self.manifest, self.catalog)
+        self.doc.update(platform='linux', scope_roles=['assistant_asr'], selection_sha256=selected.selection_sha256)
+        record = next(r for r in self.doc['records'] if r['role'] == 'assistant_asr')
+        self.doc['records'] = [record]
+        record['selection_identity_sha256'] = selection_identity(selected, 'assistant_asr')
+        record['observed_identity']['placement'] = runtime['placement']
+        self.paths['manifest'].write_text(json.dumps(self.manifest))
+        self.paths['evidence'].write_text(json.dumps(self.doc))
+        code, report = self.call(*self.argv())
+        self.assertEqual(code, 0)
+        self.assertEqual(report['execution_platform'], 'linux')
+        self.assertEqual(report['host_platforms'], {'assistant_asr': 'windows'})
+        self.assertNotIn('Private-Synthetic-Distro', json.dumps(report))
+        with patch.object(sys, 'platform', 'win32'):
+            code, report = self.call(*self.argv(), '--verify-files')
+        self.assertEqual(code, 1)
+        self.assertEqual(report['reason'], 'identity_file_platform_mismatch')
+
     def test_record_review_never_reads_artifacts_until_requested(self):
         with patch.object(self.doctor,'verify_identity_files') as verifier:
             code,report=self.call(*self.argv());verifier.assert_not_called()

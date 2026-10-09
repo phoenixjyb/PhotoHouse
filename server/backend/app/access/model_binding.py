@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .model_deployment import _validated_snapshot
+from .model_deployment import _validated_snapshot, runtime_host_platform
 
 TARGET_ROLES = {
     'assistant': ('assistant_asr', 'assistant_tts'),
@@ -38,6 +38,8 @@ class ProviderBinding:
     model: str | None
     credential_env: str | None
     request_timeout_seconds: int
+    execution_platform: str
+    placement_kind: str
 
 
 def _credential(reference, values):
@@ -60,6 +62,7 @@ class ConfigurationProjection:
     selection_sha256: str
     providers: tuple[ProviderBinding, ...]
     disabled_roles: tuple[str, ...]
+    host_platform: str
 
     def report(self):
         return {'status': 'projection_valid', 'target': self.target, 'selection': self.selection,
@@ -67,6 +70,9 @@ class ConfigurationProjection:
                 'projected_roles': [provider.role for provider in self.providers],
                 'disabled_roles': list(self.disabled_roles),
                 'request_timeouts_seconds': {p.role: p.request_timeout_seconds for p in self.providers},
+                'host_platform': self.host_platform,
+                'execution_platforms': {p.role: p.execution_platform for p in self.providers},
+                'placement_kinds': {p.role: p.placement_kind for p in self.providers},
                 'credential_values_included': False, 'feature_flags_changed': False,
                 'runtime_resources_enforced': False, 'runtime_probed': False,
                 'artifacts_verified': False, 'quality_evaluated': False, 'activation_performed': False}
@@ -127,7 +133,7 @@ def project_configuration(deployment, *, target, platform, feature_enabled=False
         if not feature_enabled:
             _fail('feature_opt_in_required')
         provider, runtime, artifact = selected['provider'], selected['runtime'], selected['artifact']
-        if runtime['platform'] != platform:
+        if runtime_host_platform(runtime) != platform:
             _fail('runtime_platform_mismatch')
         if provider['credential_env'] is not None and FIELDS[role][2] is None:
             _fail('credential_not_supported_by_target')
@@ -135,8 +141,9 @@ def project_configuration(deployment, *, target, platform, feature_enabled=False
         timeout = min(cap, runtime['resources']['timeout_seconds'])
         providers.append(ProviderBinding(role, provider['endpoint'],
             None if role == 'assistant_tts' else artifact['model_name'],
-            provider['credential_env'], timeout))
+            provider['credential_env'], timeout, runtime['platform'],
+            runtime.get('placement', {}).get('kind', 'native')))
     if rollback and not providers:
         _fail('required_binding_not_enabled')
     return ConfigurationProjection(target, 'rollback' if rollback else 'current',
-                                   deployment.selection_sha256, tuple(providers), tuple(disabled))
+                                   deployment.selection_sha256, tuple(providers), tuple(disabled), platform)

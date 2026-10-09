@@ -33,7 +33,11 @@ for the private metadata graph check. To inspect a target mapping, add
 `--project assistant|memory-contributions|memory-narrative --platform windows|linux|macos`
 and, when that feature is already opted in, `--feature-enabled`. Its redacted
 `configuration_valid` or `projection_valid` report does not probe runtimes, verify
-artifacts, resolve tokens, evaluate quality, or activate bindings. Runtime health
+artifacts, resolve tokens, evaluate quality, or activate bindings. For
+deployment-manifest schema 2, `--platform` names the application host; each
+projection report also lists role execution-platform and placement-kind enums.
+Those safe fields omit WSL instance names. Schema 1 keeps its native-only field
+shape. Runtime health
 and quality qualification are separate evidence. The CLI reads no existing
 application or worker configuration, so its projection report does not check for
 conflicts with legacy provider settings.
@@ -64,6 +68,15 @@ OCR or dedicated video foundation-model adapter is not established by this
 inventory; future capabilities need their own contract and reviewed adapter.
 
 ## Runtime and replacement rules
+
+Schema 2 separates execution OS from application host through a required
+three-field runtime `placement`. Native placement keeps them equal. The WSL2
+case is restricted to Windows-hosted Linux `loopback_http` runtimes and the
+protected ASR, TTS, and text HTTP roles. Loopback endpoint rules still apply.
+This is declared topology metadata; it proves neither that WSL is installed nor
+that a listener, port forwarding, provider, or model is available. The
+[`deployment.wsl.synthetic.json`](../models/deployment.wsl.synthetic.json)
+example keeps every binding disabled and contains only synthetic values.
 
 The API-facing adapter defines the capability contract. Inference can live in a
 separate process, service, or repository, provided that the adapter validates the
@@ -112,8 +125,10 @@ annotation-polish bindings; narrative requires its own binding. Memory projectio
 also requires a caller-supplied processing opt-in. These feature flags are
 independent and the bridge never changes them.
 
-The source API requires the intended platform explicitly and rejects a selected
-runtime declared for another platform. Credential references are resolved only
+The source API requires the intended application-host platform explicitly and
+refuses a selected runtime on another host. Schema-1 and native schema-2 runtimes
+use their execution `platform` as the host; WSL2 uses
+`placement.host_platform`, while its execution platform remains Linux. Credential references are resolved only
 from an explicit `credential_values` dictionary supplied by the caller; the
 bridge and CLI do not read ambient environment variables. If existing endpoint,
 model, token, or timeout settings conflict with the selected provider, projection

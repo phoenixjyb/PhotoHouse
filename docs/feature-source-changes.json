@@ -6453,6 +6453,91 @@
           "before_sha256": "e5b4cea56e1633333f9e9e97da68d64ec45629f2b2389f98e4846f6f2ce36ca0"
         }
       ]
+    },
+    {
+      "feature": "explicit-wsl-runtime-placement-v2",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "052efffb236ac87f62fb7fe4ca594a00789989a4c11e9bf326da1192c69ea5e8",
+          "before_sha256": "6c0a857ed1923ca5c7fb72758b2b1eb3579017838bf29d4743cb6eb1442876f8"
+        },
+        {
+          "path": "docs/MODEL_DEPLOYMENT_MANIFEST.md",
+          "sha256": "0fc1e8afe42295872d5dd6a0cd6deec7b0e5ad426fdcb6d0b1b6056b9a12f28b",
+          "before_sha256": "3f94784aa590bc3218359f881a570e59135aa459de0f5fe21ccd8375649c1977"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "983ab183cfed306e03c3097254fba96ee0dd558ba34af54b4ed45add70e51dad",
+          "before_sha256": "12c133dce90b3a2af2a13edcb00cc336714143814f5f1103f4bf12e7614fe97f"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "4f80bb6217ad6b508ee613a7aaf5d2d7f5c18caaa24bec2435f4a3ecc8978823",
+          "before_sha256": "11d178bfbc7131db65d1bb18e36a85548913f07a6ca7ab1a74569821a5b910cd"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "398cd5665c73845a0a90d1f626bd91959a4628c50668c17828e9f72ed8dacbae",
+          "before_sha256": "716d4583d0d2781f269399dc1a50e732ed77dd57e508bb857d15860dc15f11e1"
+        },
+        {
+          "path": "models/README.md",
+          "sha256": "bfe31e18d80aaed9f384744c194bd52df622d8183662a899d2b65bd455808748",
+          "before_sha256": "bfaa63e943fb66dcc06301efb402d47df65adbb969dc029e7eb81fb48b0c40de"
+        },
+        {
+          "path": "models/deployment.wsl.synthetic.json",
+          "sha256": "6e196a5d0567dfa55ea5c5563e888db92d2fd0e6d10e437b64c1004613d23c01",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/model_binding.py",
+          "sha256": "8a13aac6bdd15be5b4e94e46c5bf120061773ddd745e6857911400df8093081c",
+          "before_sha256": "488efe6f6355458f3571c881d62fe7b52930fa1d55e132bf243b7e4ba16c697f"
+        },
+        {
+          "path": "server/backend/app/access/model_deployment.py",
+          "sha256": "009677f9a1c48313386b4c12de1c353ca343aa8e12591a133433a841d3d7f490",
+          "before_sha256": "ab37918dc2399aa08bd22a80116fba4d758f59acd974744c8013dbe24cead167"
+        },
+        {
+          "path": "server/backend/app/access/model_qualification.py",
+          "sha256": "461c34efe3a8901919b1f71520b62b237c9c71cbd236e3fe66d1fd8eba575b75",
+          "before_sha256": "23d706258a0e84a75c16140468cee55c1306c5e921df419d0d50d53ea20dae90"
+        },
+        {
+          "path": "server/tests/security/test_model_topology.py",
+          "sha256": "bd22f66568c83c7f06777a20547ed155fa3b7b8c4fe9de5df3543afcf3878452",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "bde0456b42557542ed16c7da2910c52bfde40a0d358ff2c935a25a7989b3f988",
+          "before_sha256": "593442ce0bd31906f04534e8dadd3db5be35cf2ea005f908942c8f7f714a8a2e"
+        },
+        {
+          "path": "tools/tests/test_check_model_deployment.py",
+          "sha256": "86c53717ff402b4be9a1d6a781c7146ba55a0c6a556e8ef8dd294602378bfd48",
+          "before_sha256": "0806d4e59bb115fd350121c23a6285816e585966698cfca915cdc71e50cfba36"
+        },
+        {
+          "path": "tools/tests/test_check_model_qualification.py",
+          "sha256": "7b363c78b6c7d1d5c807ad537112aff1a13d2d2e2a90115e64ee06b21e57ffaa",
+          "before_sha256": "d7d9a1a8293e212ebcb681bef26d1bcbc2c4a9b44a39a863ba0d3356acf05e42"
+        }
+      ]
+    },
+    {
+      "feature": "wsl-placement-cpu-qualification-evidence",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "1fa02b3e088d270d6f5d5ff4685db64e4403dd88f26654bd07811a9d0efb8640",
+          "before_sha256": "052efffb236ac87f62fb7fe4ca594a00789989a4c11e9bf326da1192c69ea5e8"
+        }
+      ]
     }
   ]
 }
