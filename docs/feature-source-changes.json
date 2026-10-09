@@ -6583,6 +6583,41 @@
           "before_sha256": "419363e1f092e2dc80b28f73ddb3d5373f48a483756ccab450be8b827c14016b"
         }
       ]
+    },
+    {
+      "feature": "private-human-model-review-workflow-v1",
+      "files": [
+        {
+          "path": "tools/review_model_qualification.py",
+          "sha256": "0122a80e1e0f312a359996e3956e94e56bad6ff5d4c416dd56d9db726faf4e0f",
+          "before_sha256": null
+        },
+        {
+          "path": "tools/tests/test_review_model_qualification.py",
+          "sha256": "5077d98f30791e5cc306aa4fbc00b289c38aac662833b4764e6a0c7d19f0fb42",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "sha256": "97059c6f177f2ab4d6d6241aee88401147fb733b137d0872a1842ac8912b88bb",
+          "before_sha256": "1dd8f8b40f18c13b7ff6e2c23ca4fa2085e920081b28ec8b90f15a34390879c8"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "d39a5d7f2882f94e290b6a67ebf3139bf706390a4e7d4ed85bfc90ec1d28a1fd",
+          "before_sha256": "983ab183cfed306e03c3097254fba96ee0dd558ba34af54b4ed45add70e51dad"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "4efd49e723e2d30de33c90f6e15df245cfe6b4eafc2d3b848a008d5684a2ffed",
+          "before_sha256": "4a158c387d669e600b2dd4e3d3ca53c887efdb014bbbea708243d9d2843612e0"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "4b3da760ff3c3300ac9f3b0e9f09b6286f2a4c8346635ea7d71b7b46181697a6",
+          "before_sha256": "f8288cd344c7044a9c00e803f7e4c754536a321c574ef03f8aa526306860eae4"
+        }
+      ]
     }
   ]
 }

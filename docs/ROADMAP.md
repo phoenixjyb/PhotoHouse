@@ -30,6 +30,11 @@ now captures one pinned synthetic narrative or companion response without the
 database-backed worker. It preserves private inputs, outputs and provider
 configuration identity while leaving the quality rubric unreviewed. Native
 model availability, resource supervision and human assessment remain separate.
+A private [human-review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
+now exports existing unreviewed case entries and imports judgments into a new
+qualification record. It refuses stale or changed case/source identities and
+preserves missing runtime/resource evidence. Provider activation and actual
+listening/story assessment remain separate operator gates.
 Embedding/face bindings and independent runtime catalog packaging remain future
 integration work. Metadata validation does not establish installed models or
 allow automatic activation.
