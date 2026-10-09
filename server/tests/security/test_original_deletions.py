@@ -56,9 +56,9 @@ class OriginalDeletionTests(unittest.TestCase):
         self.fixture = self.fixture_type()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
-        self.work = tempfile.TemporaryDirectory(prefix='photohouse-deletion-replay-',dir='/private/tmp')
+        self.work = tempfile.TemporaryDirectory(prefix='photohouse-deletion-replay-')
         self.addCleanup(self.work.cleanup)
-        self.work_path = Path(self.work.name)
+        self.work_path = Path(self.work.name).resolve()
         self.namespace = _uuid()
         self.journal_path = self.work_path / 'external-ledger.sqlite'
         self.journal = OriginalDeletionJournal.initialize(self.journal_path, self.namespace)

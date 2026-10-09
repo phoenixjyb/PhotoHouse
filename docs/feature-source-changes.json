@@ -6011,6 +6011,33 @@
           "sha256": "97030b65d52054e51c8f05eba72d9f6504b29f1158cbc63a1e5c178f52008aec"
         }
       ]
+    },
+    {
+      "feature": "first-hosted-ci-sdk-discovery-and-portable-temp-fixtures",
+      "source_kind": "unified-local-tooling-and-test-portability",
+      "source_base_commit": "266decd98174e15e138383c679c5ea4373040796",
+      "workflow_fix_commit": "ef40a54d853086a78d860a8bf950218dc5b72e94",
+      "scope_note": "Use the explicit hosted Android SDK manager path and resolve the platform temporary directory for private generated SQLite fixtures. Preserve private child ownership/mode, original-deletion checks, and runtime behavior. First hosted runs exposed missing PATH SDK manager and a Mac-only test root; record all revised bytes rather than bypassing the source ledger.",
+      "provider_calls": false,
+      "production_connections": false,
+      "schema_changed": false,
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "before_sha256": "c1a39f9fd3bc50ffbc2362dbf9ed469733681ab5bce8895cae9efabdbb48dafa",
+          "sha256": "8eec4cc76db54066ee5899407ac68cdc0c71c3fd8e99e7fd28b099ab45961076"
+        },
+        {
+          "path": "server/tests/security/test_original_deletions.py",
+          "before_sha256": "398cc1480865f7e9f044397773cd900c253b08f5ad7e84e76308adc8af6c8ed5",
+          "sha256": "2a42b72be4e73795ac5696fa0330c4804ea1ef1ea61936ce373409114a94fc0d"
+        },
+        {
+          "path": "server/tests/security/test_initialize_original_deletions.py",
+          "before_sha256": "61293a6655d7bca5bb689899eec1bb2b304d2839a9acf16b6de247b13703b92c",
+          "sha256": "f2a15aa28ac73764886c9dc4e4c3e7e4639065b72f7cc1d115f605a61e785eff"
+        }
+      ]
     }
   ]
 }

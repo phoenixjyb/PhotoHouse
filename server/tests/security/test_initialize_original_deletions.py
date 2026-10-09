@@ -35,7 +35,7 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         self.f = fixture.LibraryReadTests()
         self.f.setUp()
         self.addCleanup(self.f.doCleanups)
-        self.tmp = tempfile.TemporaryDirectory(prefix='original-journal-bootstrap-', dir='/private/tmp')
+        self.tmp = tempfile.TemporaryDirectory(prefix='original-journal-bootstrap-')
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name).resolve()
         self.primary = self.root / 'primary.sqlite'
