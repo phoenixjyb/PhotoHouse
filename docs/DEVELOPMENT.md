@@ -79,6 +79,12 @@ native file metadata and DACL handling; provider calls remain faked, and no mode
 GPU, speech playback or production activation is required. Linux API and Android
 checks retain their separate acceptance scope.
 
+The explicit cold-start canary profile has two additional source tests for
+plan-only refusal and a single fake request receiving and recording a 90-second
+timeout. The existing configuration suite also checks that the default cap stays
+at 30 seconds, that 91 seconds is refused in cold-start mode, and that nonfinite,
+boolean or invalid mode values fail closed. These tests do not contact a model.
+
 ## CPU quick start
 
 The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)

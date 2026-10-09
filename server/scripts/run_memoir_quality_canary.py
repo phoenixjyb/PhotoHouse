@@ -28,6 +28,7 @@ import plan_memoir_quality_cases as planner  # noqa: E402
 
 
 MAX_TIMEOUT_SECONDS = 30
+COLD_START_MAX_TIMEOUT_SECONDS = 90
 CASE_IDS = frozenset({
     "synthetic-coherence", "synthetic-conflict", "synthetic-provenance",
 })
@@ -68,7 +69,10 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _load_configuration(path: Path) -> dict:
+def _load_configuration(path: Path, cold_start: bool = False) -> dict:
+    if type(cold_start) is not bool:
+        raise CanaryError("configuration_invalid")
+    maximum_timeout = COLD_START_MAX_TIMEOUT_SECONDS if cold_start else MAX_TIMEOUT_SECONDS
     try:
         from app.access.model_deployment import DeploymentError, _load_private_document
         from app.access.annotation_local import local_url
@@ -89,7 +93,7 @@ def _load_configuration(path: Path) -> dict:
                        or 0xd800 <= ord(char) <= 0xdfff for char in model)):
             raise ValueError("model")
         timeout = document["timeout_seconds"]
-        if (type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS):
+        if (type(timeout) not in (int, float) or not 0 < timeout <= maximum_timeout):
             raise ValueError("timeout")
         local_url(document["ollama_url"])
         return {"ollama_url": document["ollama_url"], "ollama_model": model,
@@ -291,6 +295,8 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
 def _parser() -> argparse.ArgumentParser:
     parser = _SafeArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true", help="make one provider request for one case")
+    parser.add_argument("--cold-start", action="store_true",
+                        help="allow the longer cold-start timeout for one explicit run")
     parser.add_argument("--case", choices=sorted(CASE_IDS))
     parser.add_argument("--configuration", type=Path)
     parser.add_argument("--output-directory", type=Path)
@@ -303,7 +309,8 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
         parser = _parser()
         args = parser.parse_args(argv)
         if not args.run:
-            if args.case is not None or args.configuration is not None or args.output_directory is not None:
+            if (args.cold_start or args.case is not None or args.configuration is not None
+                    or args.output_directory is not None):
                 raise CanaryError("arguments_invalid")
             cases = _validated_plan()
             report = {
@@ -320,7 +327,7 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
                 raise CanaryError("arguments_invalid")
             if not args.configuration.is_absolute():
                 raise CanaryError("configuration_invalid")
-            configuration = _load_configuration(args.configuration)
+            configuration = _load_configuration(args.configuration, cold_start=args.cold_start)
             case, criteria = _case_plan(args.case)
             report = _run_case(case, criteria, configuration, args.output_directory)
         output.write(json.dumps(report, ensure_ascii=False, separators=(",", ":")) + "\n")

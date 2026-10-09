@@ -33,6 +33,10 @@ now captures one pinned synthetic narrative or companion response without the
 database-backed worker. It preserves private inputs, outputs and provider
 configuration identity while leaving the quality rubric unreviewed. Native
 model availability, resource supervision and human assessment remain separate.
+An explicit offline cold-start profile allows a single request with at most a
+90-second timeout. Ordinary requests retain the 30-second cap. It adds no warm-up,
+retry or production setting change; actual startup latency and story quality
+still need native evidence.
 A private [human-review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
 now exports existing unreviewed case entries and imports judgments into a new
 qualification record. It refuses stale or changed case/source identities and

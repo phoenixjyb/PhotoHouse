@@ -119,10 +119,20 @@ python3 server/scripts/run_memoir_quality_canary.py --run \
 The coherence and conflict cases use the narrative contract; the provenance
 case uses the companion contract and can return an answer, clarification, or
 proposal. The command makes one request without retries or fallback. Client
-timeouts are at most 30 seconds; the adapter also checks an elapsed deadline.
+timeouts are at most 30 seconds by default; the adapter also checks an elapsed deadline.
 This does not prove server cancellation or enforce GPU/RAM budgets. Use a
 supervised execution boundary when needed and inspect failures before another
 explicit run.
+
+For a separately authorized cold-start test, set `timeout_seconds` in a new
+private configuration to at most 90 and explicitly add `--cold-start` to the
+`--run` command. This accommodates initial model loading within the selected
+request budget; it does not issue a warm-up request or retry a failed request.
+The flag is invalid in plan-only mode. Without it, configurations above 30
+seconds remain refused. The effective timeout is retained in the private record
+and configuration hash. This offline profile does not change application
+timeouts, start a service, or establish acceptable interactive latency. Keep an
+independent process/resource supervisor with enough time for owned cleanup.
 
 The private directory retains the exact canonical input and output bytes, their
 hashes, selected provider configuration and its canonical identity, timestamps,
