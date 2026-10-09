@@ -253,6 +253,7 @@ internal val LocalMemoryContributionCaptureFactory = staticCompositionLocalOf<Me
     DefaultMemoryContributionCaptureFactory
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MemoryCommunityPanel(store: ConnectedStore, reading: SavedMemoryStoriesReading, zh: Boolean) {
     val live by store.state.collectAsState()
@@ -272,8 +273,10 @@ internal fun MemoryCommunityPanel(store: ConnectedStore, reading: SavedMemorySto
                 style = MaterialTheme.typography.bodyMedium)
             return@Column
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("共同讲述", "聊聊故事", "整理建议").forEachIndexed { index, label ->
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(t("Family memories", "共同讲述"), t("Story chat", "聊聊故事"),
+                t("Draft suggestions", "整理建议")).forEachIndexed { index, label ->
                 FilterChip(selected = community.tab == index, onClick = { store.selectMemoryCommunityTab(index) },
                     enabled = (!community.contributionAudioBusy || community.tab == index) && (index != 2 || reading.detail?.canEdit == true),
                     label = { Text(label) }, modifier = Modifier.testTag("memory-community-tab-$index"))
@@ -680,6 +683,10 @@ private fun StoryChatPanel(
                 modifier = Modifier.testTag("memory-chat-new")) { Text(t("New chat", "新对话")) }
         }
     }
+    if (community.conversationRestored) Text(
+        t("Back in the conversation you last selected.", "已回到上次选择的对话。"),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag("memory-chat-restored").semantics { liveRegion = LiveRegionMode.Polite })
     if (community.conversationId == null) {
         Text(t("Start a private conversation about this story.", "开始一段只围绕这个故事的对话。"))
         Button(onClick = store::startMemoryConversation, enabled = canChangeThread,
@@ -936,6 +943,10 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
                     modifier = Modifier.testTag("memory-book-chat-new")) { Text(t("New chat", "新对话")) }
             }
         }
+        if (chat.conversationRestored) Text(
+            t("Back in the conversation you last selected.", "已回到上次选择的对话。"),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("memory-book-chat-restored").semantics { liveRegion = LiveRegionMode.Polite })
         if (chat.failure != null) Text(communityMessage(chat.failure!!, zh), color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag("memory-book-chat-failure"))
         if (chat.conversationId == null) {

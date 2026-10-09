@@ -2396,7 +2396,7 @@
   Object.assign(words.zh,{assistantTitle:'PhotoHouse 助手',assistantFindPhotos:'找照片',assistantFindVideos:'找视频',assistantOpenFirst:'打开第一个',storyWorkspaceAlbum:'用这些画面编排故事',storyWorkspaceResults:'把这些结果编排成故事'});
   Object.assign(words.en,{assistantTitle:'Your PhotoHouse companion',assistantFindPhotos:'Find photos',assistantFindVideos:'Find videos',assistantOpenFirst:'Open the first result',storyWorkspaceAlbum:'Shape a story from these frames',storyWorkspaceResults:'Shape a story from these results'});
   const focusAssistant=()=>{$('assistant-panel').open=true;$('assistant-panel').scrollIntoView({behavior:'smooth',block:'start'});$('assistant-text').focus();};
-  const memoryScope=()=>({account:state.profile?.account_id,library:state.library,language:state.language,locked:state.locked});
+  const memoryScope=()=>{const membership=state.profile?.memberships?.find(item=>item.library_id===state.library&&item.available===true),revision=membership?.revision;return {account:state.profile?.account_id,library:state.library,membership_revision:Number.isSafeInteger(revision)&&revision>0?revision:null,language:state.language,locked:state.locked};};
   const communityRequest=(path,options={})=>{
     if(!/^\/(?:memory-community\/v1\/|memory-stories(?:\/|\?|$))/.test(path))throw new Error('Invalid memory route');
     const [base,query]=path.split('?');

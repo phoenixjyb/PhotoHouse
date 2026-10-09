@@ -6996,6 +6996,144 @@
       "model_activation": false,
       "api_deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "scoped-conversation-navigation-and-browser-fixture-qualification-v1",
+      "base_commit": "747c05099dc62cac36fe439c5019d4ddf6554ea2",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "3a3a8f34d6b0b392294a0472f6ebe2f8527c4e395ffdb1be0d9c412e9e11e22c",
+          "sha256": "12646ad56278f16ad10c8daac2d58ae467a748fa29c220d3da311b9cab2ae53a"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryCommunityUiTest.kt",
+          "before_sha256": "7ac3d8a5637684cc0df82064c61ee619503de4bf87791e3abdf3e342bd1b9401",
+          "sha256": "db0b8c073736f100ba2e63f47b68ac260614ec4f2db8dc026d343613c7abf92c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "64373a69772181ea6fb7fbdebcdf25d8669c19a503905bf3b1f29b8b628baf76",
+          "sha256": "566824282f1976327cbbb9ea6ec66e8fbd0b1fca2f6b98a9422f7e9bc179cacd"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "b07fb01ba87dee55d48c229280e7f3025217fd4579df21c2e6647344a6d5e7bf",
+          "sha256": "59fceb879f99397d97b3dba8ddd8017616f799e8c3e0dc6d6a89497101077025"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryCommunityRepository.kt",
+          "before_sha256": "5501481faa3ffa4876acbe473c0f957e7d79d4f17d4274a66e5720ea0134ae18",
+          "sha256": "0e262af19c5646eae200b492f85507897034bc7642418b4870710dd8d1f3988c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryConversationNavigation.kt",
+          "before_sha256": null,
+          "sha256": "0e519c1819104eb999bdd70af2559b1e985106b5f8a9b4a6d36a6af5459df852"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityRepositoryTest.kt",
+          "before_sha256": "579728a908dfb80cbdec57846296b3d547845b222f767735e31e30b91109c83f",
+          "sha256": "4e9c0074725424c5ce135f215b5dbf4dc23ae9271d99786e673184e5f6403d29"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "8cfa7245d48a917d89f64738f021688e53a0809b74452baff8cbbcfc86e7dbcc",
+          "sha256": "e5eb8cec1e2dea565b45f54e0a54dda070e401161019ecafc92019cc08f86c31"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryConversationNavigationTest.kt",
+          "before_sha256": null,
+          "sha256": "b2bae4bca246c99575d70660d10ff41ac3772a76f40aa2c7630da5e69251d578"
+        },
+        {
+          "path": "clients/android/docs/ANDROID_CONVERSATION_NAVIGATION_2026-10-10.md",
+          "before_sha256": null,
+          "sha256": "32eae63e404eafae7cb99e3d93c8dce8b6fafa9f5cf0df1ca78f8e8e92954efc"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "d5dd15b807e65975f946b3b60bc5b06b6a4f1f8ad6809afc94ec852d65deb49b",
+          "sha256": "e31546161a2c4c70955bf8943e62b3a19f301725918f1c54aecdfd7f266e918c"
+        },
+        {
+          "path": "docs/CONVERSATION_NAVIGATION.md",
+          "before_sha256": null,
+          "sha256": "62c06c24cad9b09382795c55f11ca107b6f431b78933f4eb91a0c7515456c968"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "9924b82bfbfa8c565e4c12b791a4847e52f114f2f42c3c129f978b45980d9f44",
+          "sha256": "de18489ec923865d1608df1d8ee178213201b39aa8d6e0a27950538ade16906a"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "48519c1a432d45344459bcc00276929f0645f211dc660eb540ad46ac46a0967f",
+          "sha256": "d649784ef7b7bc8eddd7facad35eb27065a62ba06d77dfa64743daa01609cc5c"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "before_sha256": "11dc503f8672aad3f98bf9ea5c8258046b1ac04659a5e600b2ea569205cfa6b0",
+          "sha256": "7dc5ea9e21b3acca38d34e22fd42c59ee6da677a1368fee72a670cc919222f03"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "862b743d44a58a0a9fdb6879b2db5d440ec4377164f21153782085ac8182cf9f",
+          "sha256": "f5ca827e4bf947bb09405189762b491917e4ac1095e97922a2736294a7ff5cd9"
+        },
+        {
+          "path": "docs/STORY_EXPERIENCE.md",
+          "before_sha256": "24b41907ea012b439e7677875ada141419e81fc2ec3c0ce4687348794564b483",
+          "sha256": "6ca5f14ead7d62c150c1fd504de9cfebdd2c9f02ee5fb8cf5aac13685fe99bf8"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "e5759dea369403270d063451eb12b0b49891a9e5cbd9a37991d1cf5054f21632",
+          "sha256": "ca134d3e2da0ad15d37477ad3cf69d7a5c6cce617904d8e18ca59ce3b7db0a52"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9832e2771852b68f0fb47149735eb3e7db82638ee8aad7a1c63528532de1fee8",
+          "sha256": "41f5283955e79698d6f51b6861c62bcbac771608f29f720a37bf3802c07122d6"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "1e3eb6ae69eb9c5482577dfa0037b83f3a9d90a21ef8c0c1e9f7795ddc6e4dc4",
+          "sha256": "f92cbd21aafd78cab27b58471df0168c919eb8b146d63b2f82119a8f1301523a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_recovery_browser.cjs",
+          "before_sha256": "a99337fb7a72147ec9f241df28489abd19d3fcb6b1fa0daac0e53ff5feb56018",
+          "sha256": "19a8aa9568407942c7f5e157efbfe3ee285105e18f7537a3451a08f38a96dd98"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "45cddb6f3a7c8d01d6000db3a0ae96aa985619e7af0c97947baad66ca1003d31",
+          "sha256": "7613dcb59647e5ff8542f6f2413315d412e2e619fff58d7e6e12e9646c799fe0"
+        },
+        {
+          "path": "server/tests/security/test_memory_conversation_navigation_browser.cjs",
+          "before_sha256": null,
+          "sha256": "5c113d525672c7227d76b4219eccd3c05e67990adab62cd15c3b7cc1a1b869a0"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d01716579bbecdc617b3a8e8f50a004a1d7e35ea7a31c3a8cededdfa86997a7f",
+          "sha256": "aa6d1af44664017164093c144433c4d94f577c6fb93eae08da5409317cabdf18"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "016c577f3d57c96e878fd654d09c85053665d8f60b565be4f893ad5a3a5abb98",
+          "sha256": "dcfc01af3856de6d782864fc9d3e14b3392806b2469e165225715a9f900831af"
+        }
+      ],
+      "server_routes_changed": false,
+      "schema_changed": false,
+      "recordings_retained": false,
+      "navigation_persisted": false,
+      "model_activation": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }

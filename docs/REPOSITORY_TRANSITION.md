@@ -51,9 +51,12 @@ The October 9 source comparison identified these concrete preservation items:
   baseline has ordinary story soft removal and separate memoir-contribution
   deletion contracts; those do not provide the D1 family-note erasure route.
   Import and qualify its dependency/schema/recovery closure as a separate slice.
-- The legacy Android checkout contains a process-memory conversation-navigation
-  helper and test absent from the public baseline. Review the behavior and its
-  dependent store before importing or explicitly superseding it.
+- The legacy Android process-memory conversation-navigation helper is now
+  imported with its dependent story/memoir store behavior and UI notice. The
+  matching Web implementation uses fresh directory/history reads and the same
+  membership and target revision boundaries. See [navigation](CONVERSATION_NAVIGATION.md)
+  and [current development evidence](DEVELOPMENT.md). Source preservation does
+  not replace signed delivery or installed-device acceptance.
 - Windows launchers, supervisors, worker packages and data-dependent repair
   utilities need individual disposition and an operator owner. Preserve the
   private originals while reviewing portable replacements.

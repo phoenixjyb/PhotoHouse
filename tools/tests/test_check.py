@@ -154,6 +154,25 @@ class WebProfileTests(unittest.TestCase):
                 check.web()
         which.assert_not_called()
 
+    def test_web_artifact_records_survive_later_suites(self):
+        artifacts = self.root / "synthetic captures"
+
+        def record(_args, *, env):
+            directory = Path(env["PH_BROWSER_ARTIFACTS"])
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "result.json").write_text(Path(_args[1]).stem)
+
+        with mock.patch.object(check, "ROOT", self.root), \
+                mock.patch.object(check.shutil, "which", return_value="/existing/node"), \
+                mock.patch.object(check, "run", side_effect=record), \
+                mock.patch.dict(check.os.environ, {"PH_BROWSER_ARTIFACTS": str(artifacts)}, clear=True):
+            check.web()
+
+        self.assertEqual(len(list(artifacts.glob("*/result.json"))), len(check.WEB_TESTS))
+        for relative in check.WEB_TESTS:
+            name = Path(relative).stem
+            self.assertEqual((artifacts / name / "result.json").read_text(), name)
+
 
 if __name__ == "__main__":
     unittest.main()

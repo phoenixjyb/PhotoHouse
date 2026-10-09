@@ -33,6 +33,38 @@ started by this repair. The unchanged API route suite was not rerun locally
 because the current system Python lacks Alembic; its earlier profile result
 above remains bound to that source snapshot.
 
+## Conversation navigation qualification
+
+The October 9–10 Web/phone slice keeps at most sixteen process-memory
+conversation selections bound to current account, library, membership and
+story/memoir revisions. Reopening uses a fresh authorized directory and history,
+with an empty composer and no automatic recording or submission. Current access
+denial clears the reader; delayed denial from an old phone reader cannot close
+its replacement. See the [shared contract](CONVERSATION_NAVIGATION.md) and
+[phone evidence](../clients/android/docs/ANDROID_CONVERSATION_NAVIGATION_2026-10-10.md).
+
+The complete live-core cohort passed **610 JVM tests** with no failures or
+errors. Phone debug and Android-test Kotlin compilation, lint and QA APK/test
+assembly passed. **Five API 36 emulator tests** passed, including story and
+memoir reopening in Chinese and English at 150% text; the four reader renders
+were inspected. These use generated data and a separate QA application ID.
+Earlier fixture-navigation and Android system-overlay failures remain separate
+failed evidence. Keyboard/physical-device behavior, production signing, served
+Web delivery and Windows OTA publication are not qualified by this cohort.
+
+The complete ten-suite Web profile passed with cached Node 22, Playwright Core
+1.55 and Chromium, using generated fixtures and an in-process ASGI bridge with
+no listening server or production endpoint. Its navigation journey passed 23
+checkpoint groups; Chinese and English 390 px/150% captures were inspected.
+The profile also rechecked existing assistant recovery, memoir editors/readers,
+edition inspection, title suggestions and related-media selection. Two stale
+fixture issues were corrected without changing their assertions: deterministic
+recovery-control scrolling and the current optional picker DOM in the shelf.
+
+The check dispatcher has twelve passing tests. When a Web artifact directory is
+selected, each suite now receives its own child directory so common result
+filenames cannot replace another journey's evidence.
+
 ## Inspect the local environment
 
 ## Worker diagnostics and matched picker qualification

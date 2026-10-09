@@ -124,12 +124,15 @@ profile passed after its test waited for the disclosure rule to load. See the
 The next conversational work is understandable follow-up context and
 clarification, with explicit recording and submission controls.
 
-The legacy Android process-memory selected-conversation restoration is a
-specific migration gap: this public baseline still chooses the first listed
-thread when reopening. Import the bounded navigation helper and dependent
-store/UI/test changes with current account/library/membership/target/revision
-checks before retiring that legacy feature. This does not preserve unsent text
-or bypass fresh authorization.
+Web and Android now implement bounded process-memory selected-conversation
+restoration for saved stories and memoirs. They choose only from a fresh
+authorized directory, load current messages before showing the notice, and open
+an empty composer. Account, library, membership and target revision bindings,
+plus ordered memoir children, prevent stale selection reuse. See
+[conversation navigation](CONVERSATION_NAVIGATION.md) and the revision-specific
+[development evidence](DEVELOPMENT.md). Served Web files, signed phone delivery
+and family acceptance remain separate; navigation does not qualify a provider
+or preserve unsent text.
 
 The public source candidate now includes memoir source inspection and explicit
 chapter/reply narration in Web and Android. Its four-suite Web profile passed;

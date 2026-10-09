@@ -62,6 +62,7 @@ WEB_TESTS = (
     "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
     "server/tests/security/test_memory_book_edition_sources_browser.cjs",
     "server/tests/security/test_memory_community_browser.cjs",
+    "server/tests/security/test_memory_conversation_navigation_browser.cjs",
     "server/tests/security/test_story_titles_browser.cjs",
     "server/tests/security/test_story_related_media_browser.cjs",
 )
@@ -146,7 +147,14 @@ def web():
     env["PH_BROWSER_PYTHON"] = env.get("PH_BROWSER_PYTHON") or sys.executable
 
     for path in paths:
-        run([node, str(path)], env=env)
+        suite_env = env.copy()
+        if env.get("PH_BROWSER_ARTIFACTS"):
+            # Suites use common result filenames. Give each its own directory
+            # so a later journey cannot replace an earlier acceptance record.
+            suite_env["PH_BROWSER_ARTIFACTS"] = str(
+                Path(env["PH_BROWSER_ARTIFACTS"]) / path.stem
+            )
+        run([node, str(path)], env=suite_env)
 
 
 if __name__ == "__main__":

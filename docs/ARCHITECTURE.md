@@ -98,3 +98,11 @@ titles. It adds no narration or original contribution to that preparation and
 keeps the conversation attached to the whole memoir. The user reviews and sends
 through existing controls; server source checks still run at submission and
 processing. A loaded chapter is a reading position, not a new permission scope.
+
+The [conversation navigation hint](CONVERSATION_NAVIGATION.md) is client process
+state, separate from server conversation history and pending submission receipts.
+It stores at most 16 conversation IDs with account, library, membership and
+target revision bindings. Memoirs also bind ordered child story revisions.
+Reopening reads the authorized directory and current messages before reporting
+restoration. It clears composition and cannot replay a mutation. The hint does
+not survive a client restart or grant access to an omitted conversation.

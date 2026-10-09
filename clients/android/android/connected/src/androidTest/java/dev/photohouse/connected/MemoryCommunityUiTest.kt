@@ -12,6 +12,7 @@ import android.speech.tts.Voice
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -101,6 +102,114 @@ class MemoryCommunityUiTest {
         assertFalse(canReplaceComposerWithReplyQuestion(TextFieldValue("unfinished text")))
         assertFalse(canReplaceComposerWithReplyQuestion(TextFieldValue(
             text = "", selection = TextRange.Zero, composition = TextRange(0, 0))))
+    }
+
+    @Test fun conversationRestorationNoticeIsLocalizedWithoutAutomaticVoiceOrSend() {
+        val communityApi = CommunityApi()
+        val storyApi = StoryApi()
+        val store = ConnectedStore(storyApi, scope, memoryCommunityApi = communityApi, memoryCommunityEnabled = true)
+        val story = SavedMemoryStory(
+            id, "family", 3, 1, 10, false, "a".repeat(64), "花园的一天", "everyday", "zh",
+            listOf(MemoryStoryAsset(photo, emptyList())),
+            listOf(SavedMemoryStoryChapter("chapter-1", "早晨", "奶奶带我们走进花园。", listOf("1"), emptyList())), emptyList(),
+        )
+        val restored = MemoryCommunityStoryState(
+            id, capabilities = MemoryCommunityCapabilities(true, true, true, 30, "wav_pcm16_mono_16000", 30, 8192,
+                "until_owner_deletes"),
+            conversations = MemoryConversationPage(listOf(MemoryConversationSummary(conversation, 1_780_000_000, 4_102_444_800))),
+            conversationId = conversation, tab = 1, conversationRestored = true,
+        )
+        var chinese by androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            MaterialTheme {
+                MemoryCommunityPanel(store, SavedMemoryStoriesReading("family", detail = story, community = restored), chinese)
+            }
+        }
+
+        rule.onNodeWithTag("memory-chat-restored").assertTextEquals("已回到上次选择的对话。")
+        rule.runOnIdle { chinese = false }
+        rule.onNodeWithTag("memory-chat-restored").assertTextEquals("Back in the conversation you last selected.")
+        assertEquals(0, communityApi.chatSent)
+        assertEquals(0, storyApi.assistantTranscriptions)
+    }
+
+    @Test fun storyConversationRestoresZh150() = conversationReaderRestoration("zh", false)
+    @Test fun storyConversationRestoresEn150() = conversationReaderRestoration("en", false)
+    @Test fun memoirConversationRestoresZh150() = conversationReaderRestoration("zh", true)
+    @Test fun memoirConversationRestoresEn150() = conversationReaderRestoration("en", true)
+
+    private fun conversationReaderRestoration(language: String, memoir: Boolean) {
+        val community = CommunityApi()
+        val storyApi = StoryApi()
+        val store = ConnectedStore(storyApi, scope, memoryCommunityApi = community, memoryCommunityEnabled = true)
+        rule.setContent {
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(base.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = language)
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { store.state.value.library == "family" }
+        val prefix = if (memoir) "memory-book-chat" else "memory-chat"
+        fun selected() = if (memoir) store.state.value.memoryBooks?.companion?.conversationId
+            else store.state.value.savedMemoryStories?.community?.conversationId
+        fun openReader() {
+            if (memoir) {
+                rule.onNodeWithTag("memory-book-$bookId").performScrollTo().performClick()
+                rule.waitUntil(5000) { store.state.value.memoryBooks?.selectedBook != null }
+                rule.onNodeWithTag("memory-book-entry-0").performScrollTo().performClick()
+                rule.waitUntil(5000) { store.state.value.memoryBooks?.story?.id == id && store.state.value.memoryBooks?.companion != null }
+                rule.onNodeWithTag("memory-book-chat-disclosure").performScrollTo().performClick()
+            } else {
+                rule.onNodeWithTag("saved-memory-story-$id").performScrollTo().performClick()
+                rule.waitUntil(5000) { store.state.value.savedMemoryStories?.community?.capabilities != null }
+                rule.onNodeWithTag("memory-community-tab-1").performScrollTo().performClick()
+            }
+        }
+        rule.onNodeWithTag(if (memoir) "open-memory-books" else "open-saved-memory-stories")
+            .performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.result != null
+            else store.state.value.savedMemoryStories?.result != null
+        }
+        openReader()
+        rule.onNodeWithTag("$prefix-start").performScrollTo().performClick()
+        rule.waitUntil(5000) { selected() != null }
+        val first = selected()
+        rule.onNodeWithTag("$prefix-new").performScrollTo().performClick()
+        rule.waitUntil(5000) { selected() != null && selected() != first }
+        rule.onNodeWithTag("$prefix-thread-1").performScrollTo().performClick()
+        rule.waitUntil(5000) { selected() == first }
+        rule.runOnIdle {
+            if (memoir) store.updateMemoryBookChatDraft("private unsent memoir words")
+            else store.updateMemoryChatDraft("private unsent story words")
+        }
+        val beforeReads = community.conversationDirectoryReads
+        rule.onNodeWithTag(if (memoir) "memory-books-back" else "saved-memory-back-list")
+            .performClick()
+        rule.onNodeWithTag(if (memoir) "memory-book-discard-confirm" else "memory-community-discard-confirm").performClick()
+        openReader()
+        rule.waitUntil(5000) {
+            if (memoir) store.state.value.memoryBooks?.companion?.conversationRestored == true
+            else store.state.value.savedMemoryStories?.community?.conversationRestored == true
+        }
+        rule.onNodeWithTag("$prefix-restored").performScrollTo().assertIsDisplayed()
+            .assertTextEquals(if (language == "zh") "已回到上次选择的对话。"
+                else "Back in the conversation you last selected.")
+        if (memoir) captureBooks("navigation-memoir-$language-150")
+        else capture("navigation-story-$language-150")
+        rule.onNodeWithTag("$prefix-input").performScrollTo()
+        rule.runOnIdle {
+            assertEquals(first, selected())
+            assertEquals("", if (memoir) store.state.value.memoryBooks?.companion?.draft
+                else store.state.value.savedMemoryStories?.community?.chatDraft)
+            assertEquals(beforeReads + 1, community.conversationDirectoryReads)
+            assertEquals(2, community.conversationStarted)
+            assertEquals(0, community.chatSent)
+            assertEquals(0, storyApi.assistantTranscriptions)
+        }
+        assertEquals("", rule.onNodeWithTag("$prefix-input").fetchSemanticsNode()
+            .config[SemanticsProperties.EditableText].text)
     }
 
     private fun syntheticGardenPng(title: String, background: Int): ByteArray {
@@ -216,6 +325,8 @@ class MemoryCommunityUiTest {
         var lastConversationTargetType: String? = null
         var lastConversationTargetId: String? = null
         var previewConversationLists = 0
+        var conversationDirectoryReads = 0
+        var conversationStarted = 0
         private val conversationIds = mutableListOf<String>()
         var sentChatText: String? = null
         private val conversationTurnTexts = mutableMapOf<String, String>()
@@ -419,9 +530,11 @@ class MemoryCommunityUiTest {
             return receipt()
         }
         override suspend fun listConversations(token: Bearer, library: String, targetType: String, targetId: String): ByteArray {
+            conversationDirectoryReads++
             return """{"version":1,"items":[${conversationIds.mapIndexed { index, id -> """{"id":"$id","created_at":${1_780_000_000L - index},"expires_at":4102444800}""" }.joinToString(",")}] }""".toByteArray()
         }
         override suspend fun listConversationsWithPreview(token: Bearer, library: String, targetType: String, targetId: String): ByteArray {
+            conversationDirectoryReads++
             previewConversationLists++
             return """{"version":1,"items":[${conversationIds.mapIndexed { index, id ->
                 val preview = JsonPrimitive(previewForFirstTurn(firstTurnTexts[id])).toString()
@@ -429,6 +542,7 @@ class MemoryCommunityUiTest {
             }.joinToString(",")}] }""".toByteArray()
         }
         override suspend fun startConversation(token: Bearer, library: String, json: String): ByteArray {
+            conversationStarted++
             val request = Json.parseToJsonElement(json).jsonObject
             val targetType = request.getValue("target_type").jsonPrimitive.content
             val targetId = request.getValue("target_id").jsonPrimitive.content
