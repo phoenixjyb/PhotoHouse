@@ -33,6 +33,23 @@ started by this repair. The unchanged API route suite was not rerun locally
 because the current system Python lacks Alembic; its earlier profile result
 above remains bound to that source snapshot.
 
+## Web assistant transcript acceptance (October 10)
+
+The focused generated-browser journey passed six scenario groups covering
+preserved typed text, explicit insertion and successful ASR receipt links,
+1,024-byte boundaries, discard, malformed/untracked replies, invalid generated
+WAV rejection before POST and overlapping old/current account requests. English
+and Chinese 390 px/150% captures were inspected; detected-language labels update
+with the UI language. No browser errors or external requests occurred. The
+standard-library Web dispatcher suite passed 12 tests. These are local synthetic
+checks, not a real microphone, provider, served UI or signed APK result. See
+[the review contract](ASSISTANT_TRANSCRIPT_REVIEW.md).
+
+The complete twelve-suite Web profile also passed. Its transcript suite preceded
+the final detected-language label correction; the corrected fixture then passed
+separately with six scenario groups and fresh inspected bilingual captures.
+These overlapping checks are not combined into an additional total.
+
 ## D1 family-note lifecycle qualification
 
 Pinned monorepo source `28f543c989230c8148c0af9c1300322aa8d604e5`

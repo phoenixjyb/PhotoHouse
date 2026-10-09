@@ -5,6 +5,7 @@ listed in `tools/check.py`. It includes:
 
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
 - `server/tests/security/test_assistant_turn_trail_browser.cjs`
+- `server/tests/security/test_assistant_transcript_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_reader_browser.cjs`
 - `server/tests/security/test_memory_book_edition_browser.cjs`
@@ -27,6 +28,12 @@ reload clearing. Its scroll region is keyboard accessible and reveals the
 latest successful reply without moving focus or scrolling the page. This
 temporary client list is distinct from server troubleshooting retention; see
 [the trail contract](ASSISTANT_TURN_TRAIL.md).
+
+The [transcript review journey](ASSISTANT_TRANSCRIPT_REVIEW.md) uses synthetic
+capture and ASR responses. It checks valid WAV submission, editable transcript
+review, preservation of typed text, explicit insertion and receipt linking,
+the UTF-8 byte limit, discard, and overlapping account changes. It uses no
+microphone, household recording or inference provider.
 
 The conversation suite covers first-user-message previews, unchanged legacy
 list responses, one-request fallback for an older server, stale-scope rejection,

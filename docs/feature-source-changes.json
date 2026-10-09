@@ -7975,6 +7975,61 @@
       "provider_called": false,
       "api_deployed": false,
       "runtime_integration_added": false
+    },
+    {
+      "feature": "web-assistant-explicit-transcript-acceptance-and-wav-validation",
+      "source_commit": "051ceb49bc03b594876276a99c966b170c1df144",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f6bd51193fa0bc6b6bf4bf5433be808c63562d83b1a85db135f04ac004d38caf",
+          "sha256": "a01f379c3ff302da866cc154b3619b8ffd7f9db925bc00bc5c90f837c5d41d9c"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e499adb0aae36d7e2f9a02148712d1bb617bffb48fcf8927bcb3aec3cd05d0bf",
+          "sha256": "61e87f8872fecd83d8d096a82f718a33795ed90a933a3cf1eaada22927d238f3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": null,
+          "sha256": "cf27d1618ca2f35bfeaa1347e76c093228b30c1c9c5a91066fa2ea611ab6901d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "ce580c903974ddb50aba613e80ab3e9887653404048ed77f344c54f4b8c3ee44",
+          "sha256": "7ca8ac177e7ec992a1d9d978dbd39dfdccd1c6a924ede432abaa8bcb2c9a44b0"
+        },
+        {
+          "path": "docs/ASSISTANT_TRANSCRIPT_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "7448151a5963746dc28f14ff888e36aff982615e38a43f6056b74e461d027592"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "20102c1b09b4a8676936e0dff132b1900e55385150a1145c56303de5c957b20e",
+          "sha256": "2c68c77fd09a7a0d88eb4edf73038f1c09c2e6c3d4493c7ede78644978500b54"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "0734a1fb509a8cb03c4ffbbd4c6ab355e66a387528bb11f17796237b4abbf540",
+          "sha256": "5208ad1ea24f4c8dd3ee0c1957672032ba0b1291dd00a9401ac5637ac0d29db8"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "dee6d573f1b9a605db537f0cdfe0dbf35190f5b2fd6450abd293c17360a1d748",
+          "sha256": "4b3906e8cefb01ae1e630cce8bb89e9a4747d835234ba1844ba26dda38ad63b3"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "20e99e065b6c3901e0874940c4d4deca21130ac2e50675451595683a6085015e",
+          "sha256": "caa6fabd01c998a2891caa2189e2a874f14eb1eb33d263e735fd2f85d78c5373"
+        }
+      ],
+      "server_contract_changed": false,
+      "api_deployed": false,
+      "provider_called": false,
+      "apk_published": false
     }
   ]
 }
