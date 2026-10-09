@@ -148,3 +148,9 @@ still stored in the monorepo; packaging a private manifest/catalog for independe
 deployment remains future work. Provider activation still requires measured
 runtime/artifact and resource checks, bounded quality evaluation, shadow outputs,
 and an explicit owner decision.
+Human judgments can be entered through the private
+[review worksheet workflow](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet).
+It binds each judgment to the original evidence and exact case/input/output
+identities, preserving observations in a new evidence copy. This records a
+reviewer's assertions; it does not establish installed-provider identity or
+independently verify quality.

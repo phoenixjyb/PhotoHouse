@@ -72,6 +72,13 @@ or native runtime is qualified by these tests.
 
 ## CPU quick start
 
+The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
+has nine standard-library tests for exact source/case/rubric bindings, explicit
+reviewer/time metadata, malformed inputs, private output creation before payload
+write, path refusals and preserved failed/incomplete observations. Its guarded
+import check refuses provider/network/process modules. These are synthetic
+operator-workflow checks; they do not perform listening or establish quality.
+
 From the repository root:
 
 ```sh
@@ -86,7 +93,8 @@ arm64 Python 3.12.12 / pytest 9.0.3 CPU environment; this run did not perform a
 fresh dependency installation. The private model manifest contributes 19 tests
 and 39 subtests for declared identities, contracts, rollback and private-file
 handling; the explicit assistant/memory bridge adds 15 tests and 19 subtests.
-The 80 standalone tooling tests include eight deployment doctor checks and nine qualification checks;
+The 89 standalone tooling tests include eight deployment doctor checks, nine qualification checks
+and nine private review-workflow checks;
 these counts are separate from the API profile. No model runtime or quality is
 qualified by these checks. The isolated extracted API package imports the manifest, bridge and qualification
 modules without a checkout fallback. The earlier 740/448 profile predates the standalone memoir inference canary.

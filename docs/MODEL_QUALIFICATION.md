@@ -126,6 +126,57 @@ observed runtime/artifact/device/resource identities and human review in the
 qualification schema below. A captured proposal does not enable generation,
 alter library stories, or establish story quality.
 
+### Enter human judgments with a private worksheet
+
+[`review_model_qualification.py`](../tools/review_model_qualification.py) exports
+the existing quality entries from a valid private qualification record into a
+smaller worksheet. It requires an all-unreviewed source record and does not
+construct runtime observations from a canary response. Unknown identities,
+missing measurements and missing cases remain qualification gaps.
+
+```sh
+python3 tools/review_model_qualification.py export \
+  --manifest /absolute/private/deployment.json \
+  --evidence /absolute/private/unreviewed-evidence.json \
+  --audio-inputs /absolute/private/audio-inputs.json \
+  --output /absolute/private/new-review-worksheet.json
+```
+
+ASR scopes require `--audio-inputs`; omit it for a scope without an audio plan.
+All files must use owner-private storage outside the checkout. Outputs must be
+new files under an existing private parent; links, reparse points and overwrites
+are refused. The worksheet binds the original evidence, selection, source rubric,
+input and output hashes. It contains no media, playback paths or generated prose.
+
+Listen to or read the separately retained synthetic input/output matching those
+hashes. Edit only each criterion's `verdict` (`unreviewed`, `passed`, or `failed`)
+and the entry's `reviewed_by` and `reviewed_at`. Any reviewed verdict requires a
+reviewer ID and UTC timestamp in `YYYY-MM-DDTHH:MM:SSZ` form, between the recorded
+run start and the current time. Leave judgments unreviewed until the review is
+performed; successful capture does not imply a passing judgment.
+
+```sh
+python3 tools/review_model_qualification.py import \
+  --manifest /absolute/private/deployment.json \
+  --evidence /absolute/private/unreviewed-evidence.json \
+  --audio-inputs /absolute/private/audio-inputs.json \
+  --worksheet /absolute/private/new-review-worksheet.json \
+  --output /absolute/private/new-reviewed-evidence.json
+```
+
+Import preserves the source file and all runtime/resource observations. It
+refuses changed identities, rubric definitions, case inventory or source
+evidence. To revise judgments, retain the original unreviewed evidence and
+worksheet, then import into another new output file. An already reviewed source
+is refused so its judgments cannot be silently reset by export.
+
+Exit code 0 means a worksheet or evidence copy was written. Failed and incomplete
+reviews can still be written successfully. Run the existing qualification checker
+on that copy to inspect its gaps. This tool does not read or hash media/weights,
+verify the reviewer's identity or listening, measure resources, or activate a
+provider. Its safe report omits private values and keeps independent quality
+verification and activation false.
+
 The private evidence document uses schema version 1 and has these top-level
 fields: `schema`, `kind`, `selection_sha256`, `selection`, `case_plan_sha256`,
 `audio_plan_sha256`, `scope_roles`, `platform`, `started_at`, `ended_at`, and
