@@ -45,6 +45,11 @@ current transcript and its successful receipt into the editable command draft.
 Discard clears that link. Recording, recognition and review block Send until
 the user resolves the pending input; overflow preserves both texts.
 
+The Web [recent-turn list](ASSISTANT_TURN_TRAIL.md) keeps eight successful
+exchanges in page memory. It supplies no hidden chat history to the model;
+explicit subsequent commands retain the existing bounded structured context.
+Client clearing and server troubleshooting retention are separate lifecycles.
+
 | Step | Where it happens |
 |---|---|
 | Capture and transcript review | Web browser or Android phone; the user starts, stops and reviews. |

@@ -119,6 +119,17 @@ are retained separately from the passing journeys. These are generated browser
 and unconfigured emulator results, not served Web files, a signed APK or family
 acceptance. See [the presentation contract](CONVERSATION_CLARIFICATION.md).
 
+## Web assistant trail qualification
+
+The subsequent complete **eleven-suite Web profile passed**, including the new
+[assistant turn trail](ASSISTANT_TURN_TRAIL.md). Five trail scenario groups cover
+bounded plain-text exchanges, structured context, uncertain/malformed responses,
+reload and delayed old-scope completion. The actual 390 px/150% Chinese/English
+captures were inspected. Keyboard scrolling, newest-reply visibility, focus and
+page-position preservation are checked without external-origin requests. The
+dispatcher retains twelve passing standard-library tests. This generated profile
+does not serve an update or qualify a production provider.
+
 ## Phone assistant transcript qualification
 
 The subsequent phone assistant transcript slice passed **102 ConnectedStore JVM

@@ -4,12 +4,14 @@
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null};
   let storyWorkspace, memoryCommunity;
-  const assistantState={context:null,binding:null,busy:false,items:[],controller:null,transcriptionController:null,speechController:null,speechUrl:null,speech:false,transcribe:false,capture:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null};
+  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],controller:null,transcriptionController:null,speechController:null,speechUrl:null,speech:false,transcribe:false,capture:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null};
   const assistantRecoveryKey='photohouse.assistant.turn-recovery.v1',assistantRecoveryMaxChars=512;
   const words = {
     en: {manageMembers:'Review library members',revokeHelp:'Revoking access stops future requests to this library. Files already downloaded cannot be recalled.',revoke:'Revoke access',confirmRevoke:'Confirm revocation',cancel:'Cancel',confirmFor:'Revoke library access for',revoked:'Access revoked.',conflict:'Membership changed. Review the refreshed list before trying again.',owner:'Owner',viewer:'Viewer',contributor:'Contributor',approved:'Approved',requested:'Requested',rejected:'Rejected',unavailableMember:'Currently unavailable',memberRevoked:'Revoked',tagline:'A place for our memories',eyebrow:'YOUR FAMILY, TOGETHER',welcome:'The moments we keep close.',intro:'A private home for family photos. Sign in, or join with the invitation your library owner sent you.',signIn:'Sign in',join:'Join with an invitation',phone:'Phone number',phoneHelp:'Include the country code. Your phone number is your sign-in name.',password:'Password',passwordHelp:'Choose a passphrase of 8–128 characters.',invitation:'Invitation code',inviteHelp:'Use the code sent for this phone number. An accepted invitation opens that library.',help:'Need an invitation or help signing in? Contact your library owner.',yourLibrary:'YOUR FAMILY LIBRARY',gallery:'Little moments. Lasting memories.',signOut:'Sign out',libraryLabel:'Library',refresh:'Refresh',previous:'Previous',next:'Next',anotherInvite:'Have an invitation to another library?',accept:'Accept invitation',inviteSomeone:'Invite someone to this library',ownerHelp:'Create a code for their phone number, then send it privately. They join as a viewer. Original downloads are not included.',createInvite:'Create invitation',sendCode:'Send this code privately. It expires in 24 hours.',cancelInvite:'Cancel this invitation',close:'Close',download:'Download original',captionNote:'Generated descriptions may be inaccurate. Original downloads require separate permission.',footer:'PhotoHouse · Shared by invitation',checking:'Checking your session…',loading:'Loading your library…',denied:'Access could not be confirmed. Check your details or contact your library owner.',unavailable:'PhotoHouse is unavailable. Please try again later.',limited:'Too many attempts. Please wait before trying again.',changed:'Your access changed. Refresh or contact your library owner.',noLibrary:'No library is currently available. Ask your owner for an invitation.',noPhotos:'No photos are available in this library yet.',signedOut:'You are signed out.',logoutFailed:'Sign out could not be completed. Your photos are hidden; try Sign out again.',accepted:'Invitation accepted.',cancelled:'Invitation cancelled.',noCaptions:'No description is available yet.',edited:'Family description',generated:'Generated description',moreCaptions:'Only the first 20 descriptions are shown.',truncated:'Description shortened.',photo:'Photo',video:'Video',other:'Media',previewMissing:'Preview unavailable',working:'Please wait…',invalidPhone:'Include an explicit country code, for example +86.',invalidPassword:'Choose a passphrase of 8–128 characters.',page:'Page',of:'of',photos:'items'},
     zh: {manageMembers:'查看相册库成员',revokeHelp:'撤销权限后，对方的新请求将无法访问此相册库。已下载的文件无法收回。',revoke:'撤销访问权限',confirmRevoke:'确认撤销',cancel:'取消',confirmFor:'撤销以下成员的相册库访问权限：',revoked:'已撤销访问权限。',conflict:'成员信息已更新，请查看刷新后的列表再操作。',owner:'主人',viewer:'浏览者',contributor:'协作者',approved:'已批准',requested:'待批准',rejected:'已拒绝',unavailableMember:'当前不可访问',memberRevoked:'已撤销',tagline:'珍藏一家人的时光',eyebrow:'属于我们一家人的回忆',welcome:'把美好时光，留在身边。',intro:'一个私密的家庭相册。登录，或使用相册主人发给你的邀请码加入。',signIn:'登录',join:'使用邀请码加入',phone:'手机号码',phoneHelp:'请包含国家区号。手机号码用作登录名。',password:'密码',passwordHelp:'请设置 8–128 个字符的密码或短语。',invitation:'邀请码',inviteHelp:'请使用为此手机号码生成的邀请码。验证成功后即可访问对应相册。',help:'需要邀请码或登录帮助？请联系相册主人。',yourLibrary:'我们的家庭相册',gallery:'小小瞬间，长长回忆。',signOut:'退出登录',libraryLabel:'相册库',refresh:'刷新',previous:'上一页',next:'下一页',anotherInvite:'收到另一个相册库的邀请码？',accept:'接受邀请',inviteSomeone:'邀请家人加入这个相册库',ownerHelp:'为对方的手机号码生成邀请码，再私下发送。对方将以浏览者身份加入，不包含原文件下载权限。',createInvite:'生成邀请码',sendCode:'请私下发送此邀请码，有效期为 24 小时。',cancelInvite:'取消此邀请',close:'关闭',download:'下载原文件',captionNote:'自动生成的描述可能不准确。下载原文件需要单独授权。',footer:'PhotoHouse · 受邀共享的家庭相册',checking:'正在检查登录状态…',loading:'正在加载相册…',denied:'暂时无法确认访问权限。请检查信息或联系相册主人。',unavailable:'PhotoHouse 暂时不可用，请稍后重试。',limited:'尝试次数过多，请稍后再试。',changed:'访问权限已发生变化，请刷新或联系相册主人。',noLibrary:'目前没有可访问的相册库，请向相册主人索取邀请。',noPhotos:'这个相册库暂时没有可浏览的照片。',signedOut:'已退出登录。',logoutFailed:'暂时未能完成退出。照片已隐藏，请再次点击退出登录。',accepted:'已接受邀请。',cancelled:'已取消邀请。',noCaptions:'暂时没有描述。',edited:'家人描述',generated:'自动生成的描述',moreCaptions:'仅显示前 20 条描述。',truncated:'描述已缩短。',photo:'照片',video:'视频',other:'媒体',previewMissing:'预览暂不可用',working:'请稍候…',invalidPhone:'请包含国家区号，例如 +86。',invalidPassword:'请设置 8–128 个字符的密码或短语。',page:'第',of:'/',photos:'项'}
   };
+  Object.assign(words.en,{assistantTrailTitle:'Recent turns on this page',assistantTrailYou:'You',assistantTrailAssistant:'Assistant'});
+  Object.assign(words.zh,{assistantTrailTitle:'本页最近对话',assistantTrailYou:'你',assistantTrailAssistant:'助手'});
   const t = key => words[state.language][key] || key;
   Object.assign(words.en,{libraryTools:'Explore this library'});
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
@@ -394,11 +396,12 @@
     assistantState.controller?.abort();assistantState.transcriptionController?.abort();stopAssistantSpeech();
     if(assistantState.capture)void assistantState.capture.stop(false);
     assistantState.capture=null;assistantState.captureStarting=false;assistantState.releaseRequested=false;assistantState.cancelRequested=false;assistantState.pressPointerId=null;assistantState.transcribing=false;
-    assistantState.context=null;assistantState.binding=null;assistantState.items=[];assistantState.pendingTurn=null;assistantState.turnAttempt=null;assistantState.controller=null;assistantState.busy=false;
+    assistantState.context=null;assistantState.binding=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.pendingTurn=null;assistantState.turnAttempt=null;assistantState.controller=null;assistantState.busy=false;
     assistantState.transcriptRequestId=null;assistantState.turnRequestId=null;assistantState.turnReceipt=null;assistantState.receipt=null;
     if($('assistant-receipt')){$('assistant-receipt').hidden=true;$('assistant-pending-turn').hidden=true;$('assistant-generic-receipt').hidden=false;$('assistant-pending-status').textContent='';$('assistant-pending-question').textContent='';$('assistant-pending-help').textContent='';$('assistant-receipt-status').textContent='';$('assistant-receipt-id').value='';$('assistant-receipt-check').disabled=false;$('assistant-pending-check').disabled=false;}
     if($('assistant-results'))$('assistant-results').replaceChildren();
     if($('assistant-reply'))$('assistant-reply').textContent='';
+    renderAssistantTrail();
     if($('assistant-status'))$('assistant-status').textContent='';
     if(clearText&&$('assistant-text'))$('assistant-text').value='';
     if($('assistant-transcript'))$('assistant-transcript').value='';
@@ -447,9 +450,9 @@
     if(saved.account_id!==state.profile.account_id||!available.some(item=>item.library_id===saved.library_id)||saved.library_id!==state.library){clearAssistantRecoveryPointer();return;}
     const binding={library:saved.library_id,account:saved.account_id,generation:epoch};
     const receipt={id:saved.request_id,operation:'turn',tracking:'unknown',status:null,binding,recovered:true,recoveryCleared:false};
-    assistantState.context=null;assistantState.items=[];assistantState.turnRequestId=null;assistantState.transcriptRequestId=null;
+    assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnRequestId=null;assistantState.transcriptRequestId=null;
     assistantState.binding=binding;assistantState.receipt=receipt;assistantState.turnReceipt=null;
-    $('assistant-results').replaceChildren();$('assistant-reply').textContent='';
+    $('assistant-results').replaceChildren();$('assistant-reply').textContent='';renderAssistantTrail();
     showAssistantReceipt(receipt,'assistantRecoveryOffer');
     $('assistant-panel').open=true;$('assistant-panel').scrollIntoView({block:'start'});
     $('assistant-receipt-check').focus({preventScroll:true});syncAssistantControls();
@@ -657,6 +660,37 @@
     if(!keep)$('assistant-status').textContent=t('assistantCancelled');
     void capture.stop(keep);
   }
+  function renderAssistantTrail(revealLatest=false){
+    const section=$('assistant-turn-trail'),list=$('assistant-turn-trail-list');
+    if(!section||!list)return;
+    list.tabIndex=0;list.setAttribute('aria-labelledby','assistant-turn-trail-title');
+    if(list.dataset.keyboardScrollBound!=='true'){
+      list.dataset.keyboardScrollBound='true';
+      list.addEventListener('keydown',event=>{
+        const step=Math.max(48,Math.floor(list.clientHeight*.8));
+        if(event.key==='Home'){list.scrollTop=0;event.preventDefault();}
+        else if(event.key==='End'){list.scrollTop=list.scrollHeight;event.preventDefault();}
+        else if(event.key==='PageDown'||event.key==='ArrowDown'){list.scrollTop+=event.key==='PageDown'?step:48;event.preventDefault();}
+        else if(event.key==='PageUp'||event.key==='ArrowUp'){list.scrollTop-=event.key==='PageUp'?step:48;event.preventDefault();}
+      });
+    }
+    list.replaceChildren();
+    for(const exchange of assistantState.turnTrail){
+      const item=document.createElement('li');item.className='assistant-turn-trail-entry';
+      const questionLabel=document.createElement('strong');questionLabel.className='assistant-turn-trail-role';questionLabel.textContent=t('assistantTrailYou');
+      const question=document.createElement('p');question.className='assistant-turn-trail-text';question.textContent=exchange.question;
+      const replyLabel=document.createElement('strong');replyLabel.className='assistant-turn-trail-role';replyLabel.textContent=t('assistantTrailAssistant');
+      const reply=document.createElement('p');reply.className='assistant-turn-trail-text';reply.textContent=exchange.reply;
+      item.append(questionLabel,question,replyLabel,reply);list.append(item);
+    }
+    section.hidden=assistantState.turnTrail.length===0;
+    if(revealLatest&&assistantState.turnTrail.length)list.scrollTop=list.scrollHeight;
+  }
+  function rememberAssistantTurn(question,turn){
+    assistantState.turnTrail.push({question,reply:turn.reply});
+    if(assistantState.turnTrail.length>8)assistantState.turnTrail.shift();
+    renderAssistantTrail(true);
+  }
   function renderAssistantTurn(turn,epoch) {
     stopAssistantSpeech();
     const root=$('assistant-results');root.replaceChildren();assistantState.items=turn.items;
@@ -686,7 +720,7 @@
     stopAssistantSpeech();
     const epoch=state.generation,binding=Object.freeze({library:String(state.library),account:String(state.profile.account_id),generation:epoch});
     const bindingKey=JSON.stringify(binding);
-    if(JSON.stringify(assistantState.binding)!==bindingKey){assistantState.context=null;assistantState.items=[];assistantState.binding=binding;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';}
+    if(JSON.stringify(assistantState.binding)!==bindingKey){assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.binding=binding;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';renderAssistantTrail();}
     const requestId=assistantRequestId(),receipt={id:requestId,operation:'turn',tracking:'unknown',status:null,binding};
     writeAssistantRecoveryPointer(requestId,binding);
     const context=assistantState.context===null?null:JSON.parse(JSON.stringify(assistantState.context));
@@ -706,6 +740,7 @@
       if(assistantState.turnAttempt!==attempt||!currentAssistantPending(pending))return;
       if(!validAssistantTurn(turn))throw new Error('Invalid assistant response');
       assistantState.pendingTurn=null;assistantState.context=turn.context;assistantState.binding=binding;
+      rememberAssistantTurn(pending.text,turn);
       if(receipt.tracking==='enabled'&&receipt.status==='succeeded')assistantState.turnRequestId=requestId;
       assistantState.transcriptRequestId=null;
       showAssistantReceipt(receipt,receipt.status?assistantReceiptLabel(receipt.status):'assistantReceiptSucceeded');

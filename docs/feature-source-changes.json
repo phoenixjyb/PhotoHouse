@@ -7821,6 +7821,71 @@
       "recording_started": false,
       "apk_published": false,
       "api_deployed": false
+    },
+    {
+      "feature": "web-bounded-current-page-assistant-turn-trail",
+      "source_commit": "0e02603c8be33ae02c70e299e92a3734fb005d15",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "41f5283955e79698d6f51b6861c62bcbac771608f29f720a37bf3802c07122d6",
+          "sha256": "f6bd51193fa0bc6b6bf4bf5433be808c63562d83b1a85db135f04ac004d38caf"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "acd9b0578ef1af18e1d04349d268a11df492c242a27ef05227f102acb5a1f3eb",
+          "sha256": "e499adb0aae36d7e2f9a02148712d1bb617bffb48fcf8927bcb3aec3cd05d0bf"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "fd599fd0ac2b9ce323d00defb5925f1755e26d1a2549db99eb31fa2bbbb17836",
+          "sha256": "bef9668edde98ab50a84d37dca0ac8e7ee5cff0a944b41360c2a84e50c568df0"
+        },
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": null,
+          "sha256": "9a777da38698f57df79acb49f4c3783925ea7df22772a9552fc0f2ea53cf0c22"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3cd0031a87ce8f57fb8188ee796bbe871944835496481520476f4f0f71ff149e",
+          "sha256": "a9c20f7bae8aeb7bf5b846b5d7c7bd008fca15ac9c50651766fa6f61e4e84aa0"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "dcfc01af3856de6d782864fc9d3e14b3392806b2469e165225715a9f900831af",
+          "sha256": "0442b97813bace17e8ff1469200d1fc40ebeca4974f92f09161a23dd2836c019"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "ca134d3e2da0ad15d37477ad3cf69d7a5c6cce617904d8e18ca59ce3b7db0a52",
+          "sha256": "0734a1fb509a8cb03c4ffbbd4c6ab355e66a387528bb11f17796237b4abbf540"
+        },
+        {
+          "path": "docs/ASSISTANT_TURN_TRAIL.md",
+          "before_sha256": null,
+          "sha256": "1749670d9a1d63ecabab348729f85a32e1dd806f90d9c49bb14aa44f26993baf"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "496ec41127c27729266072ce2f010993696c9110da29fe82dcc2e464f829f812",
+          "sha256": "20102c1b09b4a8676936e0dff132b1900e55385150a1145c56303de5c957b20e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7513a610cfd1cfe1b4bbdafeb36608cf585fa2cd0a3bd31d353f849998449e60",
+          "sha256": "b86286e74f9cd451276454eefdfe6c8a2b752f43f7b016c2939cfb11217b2baa"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2e6c2548e196349dba33d275ea422af60272d81479de414208dadafeac0760ec",
+          "sha256": "fdbc7bdf8c700490edebcc7908bc65cae396ddbbfa46dc84fbe8a449c63752f2"
+        }
+      ],
+      "server_contract_changed": false,
+      "hidden_history_sent": false,
+      "provider_called": false,
+      "api_deployed": false
     }
   ]
 }

@@ -64,6 +64,7 @@ ANDROID_TASKS = (
 )
 WEB_TESTS = (
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
+    "server/tests/security/test_assistant_turn_trail_browser.cjs",
     "server/tests/security/test_memory_book_editorial_browser.cjs",
     "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
     "server/tests/security/test_memory_book_edition_browser.cjs",

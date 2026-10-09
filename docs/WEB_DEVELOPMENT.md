@@ -4,6 +4,7 @@ The optional `web` profile runs the generated-data CommonJS browser suites
 listed in `tools/check.py`. It includes:
 
 - `server/tests/security/test_assistant_pending_recovery_browser.cjs`
+- `server/tests/security/test_assistant_turn_trail_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_browser.cjs`
 - `server/tests/security/test_memory_book_editorial_reader_browser.cjs`
 - `server/tests/security/test_memory_book_edition_browser.cjs`
@@ -19,6 +20,13 @@ shelf journey checks fresh detail reads, current chapter scope, source
 invalidation, reader-only access, localized speech controls and stopping
 speech when the shelf refreshes. It does not activate C2 or contact a household
 service.
+
+The assistant trail journey checks eight bounded in-page turns, safe text,
+current structured context, no replay of uncertain replies, scope changes and
+reload clearing. Its scroll region is keyboard accessible and reveals the
+latest successful reply without moving focus or scrolling the page. This
+temporary client list is distinct from server troubleshooting retention; see
+[the trail contract](ASSISTANT_TURN_TRAIL.md).
 
 The conversation suite covers first-user-message previews, unchanged legacy
 list responses, one-request fallback for an older server, stale-scope rejection,
