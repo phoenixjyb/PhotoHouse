@@ -74,7 +74,7 @@ class ReviewQualificationTests(unittest.TestCase):
         output, report = self.export()
         worksheet = json.loads(output.read_text())
         self.assertEqual(worksheet['kind'], 'photohouse-model-review-worksheet')
-        self.assertEqual(len(worksheet['records']), 9)
+        self.assertEqual(len(worksheet['records']), 12)
         self.assertTrue(all(item['reviewed_by'] is None and item['reviewed_at'] is None
                             for item in worksheet['records']))
         self.assertTrue(all(criterion['verdict'] == 'unreviewed'
@@ -88,6 +88,28 @@ class ReviewQualificationTests(unittest.TestCase):
         self.assertFalse(report['activation_performed'])
         if os.name != 'nt':
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+
+    def test_title_review_rows_are_title_specific_and_remain_separate_from_narrative(self):
+        output, _ = self.export('title-review.json')
+        worksheet = json.loads(output.read_text())
+        title_rows = [row for row in worksheet['records'] if row['role'] == 'title_suggestions']
+        narrative_rows = [row for row in worksheet['records'] if row['role'] == 'narrative']
+        self.assertEqual({row['case_id'] for row in title_rows},
+                         {'synthetic-title-family', 'synthetic-title-uncertainty',
+                          'synthetic-title-abstention'})
+        self.assertEqual(3, len(narrative_rows))
+        self.assertEqual({'title_grounded', 'exact_title_citations', 'title_language_fit',
+                          'title_review_required'},
+                         {criterion['id'] for row in title_rows
+                          if row['case_id'] == 'synthetic-title-family'
+                          for criterion in row['criteria']})
+        abstention = next(row for row in title_rows if row['case_id'] == 'synthetic-title-abstention')
+        self.assertIn('title_abstains_without_sources',
+                      {criterion['id'] for criterion in abstention['criteria']})
+        narrative_criteria = {'grounded_facts', 'exact_citations', 'attribution_uncertainty',
+                              'coherent_chapters', 'no_withheld_sources'}
+        self.assertTrue(all(criterion['id'] not in narrative_criteria
+                            for row in title_rows for criterion in row['criteria']))
 
     def test_import_changes_only_review_fields_and_keeps_failed_incomplete(self):
         worksheet_path, _ = self.export()

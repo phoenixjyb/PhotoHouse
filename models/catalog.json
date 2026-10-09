@@ -141,7 +141,7 @@
       "runtime_requirements": [
         "Separate Ollama-compatible service/runtime"
       ],
-      "replacement_note": "Independent default-off story-titles projection and explicit loopback provider settings; cited proposals require user adoption. Native runtime, resource and title quality qualification remain separate."
+      "replacement_note": "Independent default-off story-titles projection and explicit loopback provider settings; cited proposals require user adoption. Independent synthetic title cases and explicit canary capture prepare human review. Native runtime, resource and title quality qualification remain separate."
     },
     {
       "id": "assistant_tts",

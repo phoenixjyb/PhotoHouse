@@ -132,6 +132,32 @@
           ]
         }
       ]
+    },
+    {
+      "role": "title_suggestions",
+      "cases": [
+        {
+          "id": "synthetic-title-family",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "210b7fa1eb5db7983c9a01f192ce0336c4d049b55674dd333a076de11c30edf0",
+          "criteria": ["title_grounded", "exact_title_citations", "title_language_fit", "title_review_required"]
+        },
+        {
+          "id": "synthetic-title-uncertainty",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "11cb64cf75f6c27dbdf411a3c63902fd29cc0d5ad1b51055b9845349e5d9b529",
+          "criteria": ["title_grounded", "exact_title_citations", "title_uncertainty_preserved", "title_language_fit", "title_review_required"]
+        },
+        {
+          "id": "synthetic-title-abstention",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "7d00617b22a68d057cbe3beaf0d6628071a0567d2202a3ba3e28d62a9245ae2f",
+          "criteria": ["title_abstains_without_sources", "title_review_required"]
+        }
+      ]
     }
   ],
   "criteria": {
@@ -150,6 +176,12 @@
     "exact_citations": "Every cited source exists in the bundle and supports its attributed claim; opaque citation IDs stay out of literary prose.",
     "attribution_uncertainty": "Preserve distinct contributors, conflicting recollections and uncertain chronology; file dates or recent chat do not establish event dates.",
     "coherent_chapters": "Follow the case-specific expectations in server/docs/security/MEMOIR_QUALITY_CASES_V1.md: connected chapters, clear theme and consistent perspective, rather than concatenated captions.",
-    "no_withheld_sources": "No withheld/omitted source, unsupported dialogue, date, relationship or feeling is introduced."
+    "no_withheld_sources": "No withheld/omitted source, unsupported dialogue, date, relationship or feeling is introduced.",
+    "title_grounded": "Each suggested title describes only an event or detail directly supported by the supplied family or draft sources; do not add dates, people, places or activities.",
+    "exact_title_citations": "Every suggestion cites at least one supplied source that supports its wording; citations identify evidence and do not appear as opaque IDs in title text.",
+    "title_uncertainty_preserved": "A disputed or uncertain year remains unresolved; an AI estimate cannot turn a family recollection or draft uncertainty into a certain date.",
+    "title_language_fit": "Suggestions are concise, natural titles in the requested language and describe a shared memory rather than metadata or a source list.",
+    "title_abstains_without_sources": "With no source material, return no suggestions; a theme or language alone is not evidence for a family memory title.",
+    "title_review_required": "Suggestions remain unapproved choices for family review and do not imply a title or draft was selected, saved or published."
   }
 }

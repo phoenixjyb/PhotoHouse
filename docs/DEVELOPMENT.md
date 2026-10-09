@@ -754,3 +754,20 @@ journey has 22 checkpoints, no page errors or external requests, and reviewed
 question without switching the whole-book conversation or sending anything.
 Opening prompts now share draft/IME/voice/send guards with follow-up questions.
 Fifty standalone tooling tests passed, including ten report-inventory checks.
+
+## Independent title qualification cases (October 10)
+
+The source planner now retains the original three memoir bundle hashes and tasks
+and adds three title-only bundles. A combined offline run of planner, canary,
+qualification, checker and human-review worksheet tests passed **68 tests and
+59 subtests**. The title cases cover Chinese family/draft input, conflicting
+English recollections and empty-source abstention. The real title adapter handles
+the empty case without constructing an HTTP client; nonempty canary contract
+checks use fake providers and keep every semantic criterion unreviewed.
+
+The canary dispatches each pinned case to its explicit role/task, refuses input
+or rubric substitution before output/provider construction, and validates cited,
+revision-bound, review-required title outputs before private capture. No native
+inference, household material, provider activation or live configuration change
+was performed. Current and rollback title provider observations and human review
+remain open. See [model qualification](MODEL_QUALIFICATION.md).

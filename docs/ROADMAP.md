@@ -67,7 +67,11 @@ pages and preview bytes bounded, and reject stale scope/selection responses.
 See the [phone source evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md).
 Title runtime/staging wiring and the dedicated `story-titles` projection are now
 implemented, default off and bounded to 30 seconds. The next storytelling slice
-is provider-qualified title suggestions and reviewed activity grouping; continuous conversation recovery remains a parallel priority. This source
+is provider-qualified title suggestions and reviewed activity grouping. The title
+role now has three independent synthetic review cases and bounded opt-in capture;
+empty-source abstention makes no provider request. Current/rollback bindings and
+human title judgments remain required. Continuous conversation recovery remains
+a parallel priority. This source
 change does not update a live server, publish an APK or enable generation.
 
 Source implementations and accepted installed behavior are different milestones.

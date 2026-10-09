@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "server" / "backend"))
 sys.path.insert(0, str(ROOT / "server" / "scripts"))
 
 import run_memoir_quality_canary as canary  # noqa: E402
-from app.access import memory_narrative, model_deployment, private_storage  # noqa: E402
+from app.access import memory_narrative, model_deployment, private_storage, story_titles  # noqa: E402
 
 
 class MemoirQualityCanaryTests(unittest.TestCase):
@@ -111,7 +111,9 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         with patch.object(model_deployment, "_load_private_document",
                           side_effect=AssertionError("private config read")), \
              patch.object(memory_narrative, "LocalMemoryNarrator",
-                          side_effect=AssertionError("adapter constructed")):
+                          side_effect=AssertionError("adapter constructed")), \
+             patch.object(story_titles, "LocalStoryTitleSuggester",
+                          side_effect=AssertionError("title adapter constructed")):
             code = canary.main([], stdout=type("Writer", (), {"write": output.append})())
         self.assertEqual(0, code)
         report = json.loads(output[0])
@@ -119,8 +121,90 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         self.assertFalse(report["quality_evaluated"])
         self.assertFalse(report["activation_performed"])
         self.assertFalse(report["resource_limits_verified"])
-        self.assertEqual({"synthetic-coherence", "synthetic-conflict", "synthetic-provenance"},
-                         {case["case_id"] for case in report["cases"]})
+        self.assertEqual(canary.CASE_IDS, {case["case_id"] for case in report["cases"]})
+        self.assertEqual({"narrative", "title_suggestions"}, {case["role"] for case in report["cases"]})
+
+    def test_title_cases_dispatch_only_to_title_provider_and_keep_review_unresolved(self):
+        for case_id in ("synthetic-title-family", "synthetic-title-uncertainty"):
+            with self.subTest(case_id=case_id):
+                case, criteria = self.case(case_id)
+                calls = []
+                class TitleProvider:
+                    def suggest(self, bundle):
+                        calls.append(bundle)
+                        return {"version": 1, "selection_revision": bundle["selection_revision"],
+                                "titles": [{"text": "Synthetic family title",
+                                            "source_ids": [bundle["sources"][0]["id"]]}],
+                                "needs_review": True}
+                output = self.root / case_id
+                report = canary._run_case(case, criteria,
+                    {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture", "timeout_seconds": 12.0},
+                    output, narrator_factory=lambda *_args, **_kwargs: self.fail("narrative fallback"),
+                    title_suggester_factory=lambda *_args, **_kwargs: TitleProvider())
+                self.assertEqual("captured_for_human_review", report["status"])
+                self.assertEqual([case["bundle"]], calls)
+                record = json.loads((output / "record.json").read_text())
+                self.assertEqual("title_suggestions", record["role"])
+                self.assertEqual("suggest", record["task"])
+                self.assertEqual({criterion: "unreviewed" for criterion in criteria}, record["quality"])
+                self.assertFalse(record["quality_evaluated"])
+                self.assertFalse(record["activation_performed"])
+                self.assertEqual(report["input_sha256"], hashlib.sha256((output / "input-bundle.json").read_bytes()).hexdigest())
+                self.assertEqual(report["output_sha256"], hashlib.sha256((output / "output.json").read_bytes()).hexdigest())
+
+    def test_title_abstention_uses_real_adapter_without_http(self):
+        case, criteria = self.case("synthetic-title-abstention")
+        output = self.root / "title-abstention"
+        report = canary._run_case(case, criteria,
+            {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture", "timeout_seconds": 12.0},
+            output, narrator_factory=lambda *_args, **_kwargs: self.fail("narrative fallback"))
+        self.assertEqual("captured_for_human_review", report["status"])
+        captured = json.loads((output / "output.json").read_text())
+        self.assertEqual([], captured["titles"])
+        self.assertIs(True, captured["needs_review"])
+
+    def test_title_malformed_output_records_fixed_failure_without_capture(self):
+        case, criteria = self.case("synthetic-title-family")
+        for mutation in ("unknown_source", "wrong_revision", "no_review"):
+            with self.subTest(mutation=mutation):
+                class MalformedTitleProvider:
+                    def suggest(self, bundle):
+                        return {"version": 1,
+                                "selection_revision": "wrong" if mutation == "wrong_revision" else bundle["selection_revision"],
+                                "titles": [{"text": "Title", "source_ids": ["invented" if mutation == "unknown_source" else bundle["sources"][0]["id"]]}],
+                                "needs_review": mutation != "no_review"}
+                output = self.root / mutation
+                report = canary._run_case(case, criteria,
+                    {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture", "timeout_seconds": 12.0},
+                    output, title_suggester_factory=lambda *_args, **_kwargs: MalformedTitleProvider())
+                self.assertEqual("request_failed", report["status"])
+                self.assertEqual("invalid_response", report["error_code"])
+                self.assertFalse((output / "output.json").exists())
+                self.assertEqual({"input-bundle.json", "record.json"}, {path.name for path in output.iterdir()})
+
+    def test_substituted_title_input_task_or_criteria_refuses_before_provider_or_output(self):
+        import copy
+        original, criteria = self.case("synthetic-title-family")
+        for mutation in ("task", "input", "criteria", "hash"):
+            with self.subTest(mutation=mutation):
+                case = copy.deepcopy(original)
+                supplied_criteria = list(criteria)
+                if mutation == "task":
+                    case["task"] = "narrative"
+                elif mutation == "input":
+                    case["bundle"]["theme"] = "Changed source theme"
+                    case["bundle_sha256"] = canary._sha256(canary._canonical(case["bundle"]))
+                elif mutation == "criteria":
+                    supplied_criteria = ["narrative_coherence"]
+                else:
+                    case["bundle_sha256"] = "0" * 64
+                output = self.root / mutation
+                with self.assertRaises(canary.CanaryError) as caught:
+                    canary._run_case(case, supplied_criteria,
+                        {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture", "timeout_seconds": 12.0},
+                        output, title_suggester_factory=lambda *_args, **_kwargs: self.fail("provider constructed"))
+                self.assertEqual("case_unavailable", caught.exception.code)
+                self.assertFalse(output.exists())
 
     def test_private_configuration_is_closed_bounded_loopback_only_and_redacted(self):
         path = self.configuration()

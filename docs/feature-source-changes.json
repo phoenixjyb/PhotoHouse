@@ -7596,6 +7596,92 @@
       "optional_inference_enabled": false,
       "schema_changed": false,
       "api_deployed": false
+    },
+    {
+      "feature": "independent-pinned-title-quality-cases-and-explicit-canary-capture",
+      "base_commit": "28cac878282a4ed6bde958022e17bbfd252a6bf8",
+      "files": [
+        {
+          "path": "models/catalog.json",
+          "before_sha256": "39da234a1c2cdbf2cfbf6209311b8ef1fe46b05c3dcae31a0089e4dfae90f767",
+          "sha256": "e403abb207123966c5fc9274f07e4f9f7c9a1b017ce0b0f92903bbbf19a9ee21"
+        },
+        {
+          "path": "models/quality-cases.json",
+          "before_sha256": "b8215c24da47b0f12be461ab8c3769e74f026d3efafa40116ea3782ad1ca9010",
+          "sha256": "1bb8215724322e11b09ea3b6d6506cfcecb8116c338bbf6e920105900af95a82"
+        },
+        {
+          "path": "server/backend/app/access/model_qualification.py",
+          "before_sha256": "1d9856cb283aa44752ece7d210d8a4fd361e1ee026ab8fe56b11069aca1d4a73",
+          "sha256": "f9f60bf24a12ac925e843b38e70c280c9cf6b929248b0a4d3e3f542eaa398452"
+        },
+        {
+          "path": "server/scripts/plan_memoir_quality_cases.py",
+          "before_sha256": "f6bb353110f0122f60cd9ee9084e1d37f34d0b82ea9cb024a3ad30bdbf185f8e",
+          "sha256": "5b751816dbca4ae2b9aa60a7a9399065063c81593004de43a1e4d9a4321b3289"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "before_sha256": "2935d549d9758a9e8b2e996e91192e0478ffd118251b4a58d82d8aabe8b45daa",
+          "sha256": "927000deb779aa70409bf9f74e6b4af87e5413002eb2653fd1e0b8f24520b810"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "before_sha256": "b265a9feb913316da105e913298ffcbc341718c32c201d2bf93d2eabcc008ed8",
+          "sha256": "a71dbe193a8be6e414fec765c45362e5f706324b6a2a422ab38049f3ed5fa6c6"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_cases.py",
+          "before_sha256": "1ba60c438aaca4f9b2f2db12744b139de9ea3ae8e189e2a8dde68f8d7ba809a9",
+          "sha256": "bcc975d034040611b285771255fc7592e5a27fa8863cf625f62f34053394fcdc"
+        },
+        {
+          "path": "server/tests/security/test_model_qualification.py",
+          "before_sha256": "a9ad34853ab429fd48b60ae2dd0c8c923c47041d1bca51647d5a47846e3bbd6e",
+          "sha256": "4f2255b67871aa0094af456a13cf3956924e9c7f27abc95cecbb8cadd41b3cda"
+        },
+        {
+          "path": "tools/tests/test_check_model_qualification.py",
+          "before_sha256": "7b363c78b6c7d1d5c807ad537112aff1a13d2d2e2a90115e64ee06b21e57ffaa",
+          "sha256": "4fddbc1fb8d2b56eb99d69ecff8fa7e204e69d59a21b9a3f431c0e8af5742b75"
+        },
+        {
+          "path": "tools/tests/test_review_model_qualification.py",
+          "before_sha256": "5077d98f30791e5cc306aa4fbc00b289c38aac662833b4764e6a0c7d19f0fb42",
+          "sha256": "73dc32abde412d539ab1a35b7f006a56f3199b34c741ff66b554d2129452d542"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "before_sha256": "14e1a4efe3ae32e4cfaddf9a2b2d223471daa3707468796fa3d6fb60381d85b3",
+          "sha256": "056fc937b8a0396f79f960d30a1bec458ea68ce741eb820ebfb1ea68d86afa06"
+        },
+        {
+          "path": "server/docs/security/MEMOIR_QUALITY_CASES_V1.md",
+          "before_sha256": "81816f4dc1f2b5f3e7f821aa6b26ec074691e650b347c563dd205645a5b3132b",
+          "sha256": "3fc224194a47c3be5fd5d4e658c2e3af4e799da0edbf2fc9c73a7c3e1289c28d"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "262146f98483ba52983743de9efe231ebea5f07c99bbaf09169c5bb93feb283e",
+          "sha256": "9ee3c1e3b8d609e5966bc2dcc7d9b21286b5b0d93ed42eca4a4d2b2ec760f176"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7feb0ad145214f9dc9e3eda1747bc6e3ca0945b229f37b12ca49a985937cf00e",
+          "sha256": "7fe4416ac6b82a4646da8d1d185047bebb48726351864709ec3391de942dd7f2"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "09ac6407c4bc7dd38543169a345a5b8066f316566b44bda698a518d00ac868d3",
+          "sha256": "e26ac1d250fb60d358dff6c93b02640c104b75ebae9f2e7b26aeb4476be6c0cc"
+        }
+      ],
+      "provider_called": false,
+      "generation_enabled": false,
+      "schema_changed": false,
+      "api_deployed": false,
+      "apk_published": false
     }
   ]
 }

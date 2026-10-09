@@ -22,7 +22,7 @@ from .model_deployment import (DIGEST, ID, DeploymentError, _integer as _deploym
                                runtime_host_platform)
 from .private_storage import stable_stat_identity
 
-ROLES = {'assistant_asr', 'memory_asr', 'assistant_tts', 'narrative'}
+ROLES = {'assistant_asr', 'memory_asr', 'assistant_tts', 'narrative', 'title_suggestions'}
 FILE_KINDS = {'artifact', 'dependency_lock', 'preprocessing'}
 MAX_FILE_BYTES = 64 * 1024 ** 3
 MAX_TOTAL_BYTES = 128 * 1024 ** 3

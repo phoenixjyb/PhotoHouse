@@ -6,8 +6,8 @@ collect those observations, run a model, contact a provider, or activate a
 selection. A consistent report means only that the submitted record is
 internally consistent for its stated roles and selections.
 
-The checker supports `assistant_asr`, `memory_asr`, `assistant_tts`, and
-`narrative`. It binds each role to the selected current or rollback branch of a
+The checker supports `assistant_asr`, `memory_asr`, `assistant_tts`,
+`narrative`, and independent `title_suggestions`. It binds each role to the selected current or rollback branch of a
 private [deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md), the source quality
 case plan, and—when ASR is in scope—a separate pre-run audio input inventory.
 The source cases and rubric are in [`models/quality-cases.json`](../models/quality-cases.json).
@@ -86,7 +86,7 @@ operator procedure; the checker does not prove when the inventory was created.
 
 The separate [`run_memoir_quality_canary.py`](../server/scripts/run_memoir_quality_canary.py)
 can submit one pinned generated bundle without a family database, API, or worker.
-Its default command validates the three source cases and prints a redacted plan:
+Its default command validates three memoir cases and three independent title cases and prints a redacted plan:
 
 ```sh
 python3 server/scripts/run_memoir_quality_canary.py
@@ -118,7 +118,27 @@ python3 server/scripts/run_memoir_quality_canary.py --run \
 
 The coherence and conflict cases use the narrative contract; the provenance
 case uses the companion contract and can return an answer, clarification, or
-proposal. The command makes one request without retries or fallback. Client
+proposal. Title cases use the separate title suggester and its `suggest` contract:
+
+| Case | Input | Review focus |
+|---|---|---|
+| `synthetic-title-family` | Chinese family recollection and draft | Natural Chinese titles, supported wording and exact source citations |
+| `synthetic-title-uncertainty` | English family recollection, uncertain AI estimate and conflicting draft | Preserve uncertainty; do not present an estimated year as confirmed |
+| `synthetic-title-abstention` | Empty source list | No invented title; the real adapter returns an empty proposal without an HTTP request |
+
+Select a title case with the same explicit `--run` procedure. Nonempty cases
+make one request without retries or a narrative fallback. Each output must pass
+the existing revision, citation and review-required title contract before capture.
+The runner refuses substituted tasks, bundles, hashes and review criteria before
+creating an output directory or constructing a provider. Human criteria stay
+unreviewed: a structurally valid title does not establish grounded wording.
+
+The original three memoir bundle hashes and tasks remain unchanged. Adding the
+title suite changes the overall case-plan hash; existing evidence must match
+its exact source plan and cannot be relabeled as title qualification. Current and
+rollback title bindings require their own observations and review.
+
+Client
 timeouts are at most 30 seconds by default; the adapter also checks an elapsed deadline.
 This does not prove server cancellation or enforce GPU/RAM budgets. Use a
 supervised execution boundary when needed and inspect failures before another

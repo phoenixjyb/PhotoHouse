@@ -5,10 +5,10 @@ possible future human quality review. It does not run inference, contact a
 provider, load a model, read family material, or write to the database. Its
 output is planning data, not a model result or quality acceptance.
 
-The planner is intentionally separate from the existing three-case memory
-model canary. These cases do not expand that canary or authorize an inference
-run. Runtime qualification, human review and family adoption remain separate
-gates. The curated candidate's scope and future gates are summarized in the
+The planner is separate from database-backed memory processing. Its optional
+synthetic canary captures one explicitly selected case for review; generating a
+plan does not authorize an inference run. Runtime qualification, human review
+and family adoption remain separate gates. The curated candidate's scope and future gates are summarized in the
 [feature matrix](../../../docs/FEATURES.md) and [roadmap](../../../docs/ROADMAP.md).
 
 ## Generate and check
@@ -20,7 +20,7 @@ python server/scripts/plan_memoir_quality_cases.py
 ```
 
 The helper sends the generated bundles through the existing
-`app.access.memory_narrative._validate_bundle` contract. Every bundle
+`app.access.memory_narrative._validate_bundle` contract for the three memoir cases. Each memoir bundle
 targets a `book`, stays within 24 chapters, 96 sources, eight recent turns and
 64 KiB, and uses synthetic identifiers. The full output is limited to 256 KiB.
 Each invocation builds fresh nested objects. Source citations and asset links
@@ -67,6 +67,27 @@ hedging. The JSON intentionally reports no score, semantic pass, model identity
 or generated proposal. Known source IDs and bundle validation establish shape
 and reference boundaries only; a human must compare any future output with its
 exact sources and the case-specific review expectations above.
+
+## Independent title cases
+
+The same planner also emits three smaller, separately validated story-title
+bundles through `app.access.story_titles.validate_bundle`. They use `task=suggest`,
+not the memoir narrative or companion contract. The original three memoir case
+IDs, tasks and canonical bundle hashes remain unchanged.
+
+- `synthetic-title-family`: Chinese family recollection and draft about planting
+  sunflowers with grandma, with grounded wording and exact citations.
+- `synthetic-title-uncertainty`: English picnic recollection alongside an uncertain
+  AI year estimate and a draft preserving the unresolved year.
+- `synthetic-title-abstention`: no sources; a valid response contains no titles.
+
+Title bundles contain only version, language, theme, selection revision and
+sources. They have no book, chapter, recent-turn or asset-crosslink fields.
+Their review criteria cover grounding, exact title citations, uncertainty,
+language, empty-input abstention and required human review. See
+[model qualification](../../../docs/MODEL_QUALIFICATION.md) for the independently
+bound title role and opt-in capture procedure. Plan fixtures and structural
+validation do not establish a provider's title quality.
 
 ## Limits
 
