@@ -1,0 +1,1264 @@
+import os, json, time, random, re, shutil, numpy as np
+import subprocess
+import tempfile
+import threading
+from sqlalchemy.orm import Session
+from sqlalchemy import select, or_, text, update, text as sql_text
+from .db import Task, Asset, Embedding, Caption, FaceDetection, Person
+from .runtime_paths import derived_path
+from .vector_index import InMemoryVectorIndex, FaissVectorIndex, EmbeddingService
+from .config import get_settings
+from .image_utils import safe_exif_transpose
+from .face_assignment_audit import record_face_assignment_event
+from pathlib import Path
+from PIL import Image
+import imagehash
+from datetime import datetime, timedelta
+from . import metrics as metrics_mod
+from .gps_utils import probe_video_metadata
+from .caption_policy import (
+    DEFAULT_DETAILED_CAPTION_PROMPT,
+    bilingual_caption_issue_summary,
+    bilingual_caption_issues,
+    build_caption_retry_prompt,
+    correct_chinese_policy_translation,
+    factual_rewrite_caption_prompt,
+    infant_care_allowed,
+    infant_care_caption_prompt,
+    neutralize_person_terms,
+    parse_bilingual_caption,
+    truncate_caption_text,
+)
+import logging
+logger = logging.getLogger(__name__)
+
+# Allow very large photos from camera roll exports; avoids PIL decompression-bomb guard
+# causing caption/face fallbacks on valid high-resolution images.
+Image.MAX_IMAGE_PIXELS = None
+
+EMBED_DIM = 512  # default; may be updated after loading real model
+DERIVED_DIR = derived_path()
+( DERIVED_DIR / 'embeddings').mkdir(parents=True, exist_ok=True)
+( DERIVED_DIR / 'thumbnails' / '256').mkdir(parents=True, exist_ok=True)
+( DERIVED_DIR / 'thumbnails' / '1024').mkdir(parents=True, exist_ok=True)
+( DERIVED_DIR / 'faces' / '256').mkdir(parents=True, exist_ok=True)
+( DERIVED_DIR / 'face_embeddings').mkdir(parents=True, exist_ok=True)
+( DERIVED_DIR / 'person_embeddings').mkdir(parents=True, exist_ok=True)
+THUMB_SIZES = [256, 1024]
+VIDEO_KEYFRAME_LIMIT = 32
+VIDEO_KEYFRAME_BYTES = 128 * 1024 * 1024
+VIDEO_PROCESS_LOG_BYTES = 64 * 1024
+FACE_CLUSTER_DIST_THRESHOLD = 0.35  # default; overridden by settings
+FACE_ASSIGNMENT_TASK_TYPES = ('person_cluster', 'person_recluster', 'person_label_propagate')
+
+
+def _run_bounded_media_process(args, *, timeout, output_dir):
+    """Run one owned media child with bounded logs and deterministic cleanup."""
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        process = subprocess.Popen([str(arg) for arg in args], stdin=subprocess.DEVNULL,
+                                   stdout=stdout, stderr=stderr, creationflags=flags,
+                                   start_new_session=(os.name != 'nt'))
+        started = time.monotonic()
+        try:
+            while process.poll() is None:
+                if time.monotonic() - started > timeout:
+                    raise ValueError('video processing timeout')
+                if stdout.tell() > VIDEO_PROCESS_LOG_BYTES or stderr.tell() > VIDEO_PROCESS_LOG_BYTES:
+                    raise ValueError('video processing log budget exceeded')
+                output = [p for p in Path(output_dir).glob('frame_*.jpg') if p.is_file() and not p.is_symlink()]
+                if len(output) > VIDEO_KEYFRAME_LIMIT or sum(p.stat().st_size for p in output) > VIDEO_KEYFRAME_BYTES:
+                    raise ValueError('video processing disk budget exceeded')
+                time.sleep(0.02)
+            if process.returncode or stdout.tell() > VIDEO_PROCESS_LOG_BYTES or stderr.tell() > VIDEO_PROCESS_LOG_BYTES:
+                raise ValueError('video processing failed')
+        finally:
+            if process.poll() is None:
+                process.kill()
+                if os.name != 'nt':
+                    try:
+                        os.killpg(process.pid, 9)
+                    except OSError:
+                        pass
+            process.wait()
+
+INDEX_SINGLETON: InMemoryVectorIndex | None = None
+VIDEO_INDEX_SINGLETON: InMemoryVectorIndex | None = None
+VIDEO_SEG_INDEX_SINGLETON: InMemoryVectorIndex | None = None
+EMBED_SERVICE: EmbeddingService | None = None
+
+
+def _caption_model_allowed_for_auto_tag(model_name: str | None) -> bool:
+    model_filter = str(os.getenv('CAPTION_AUTO_TAG_SOURCE_MODEL_CONTAINS', 'qwen') or '').strip().lower()
+    if not model_filter:
+        return True
+    return model_filter in str(model_name or '').lower()
+
+class TaskExecutor:
+    def __init__(self, session_factory=None, settings=None, *, caption_only=False, face_assignment_only=False):
+        if type(caption_only) is not bool or type(face_assignment_only) is not bool or (caption_only and face_assignment_only):
+            raise TypeError('Exclusive worker mode must be explicit boolean')
+        if (caption_only or face_assignment_only) and (session_factory is None or settings is None):
+            raise TypeError('Restricted executor requires explicit dependencies')
+        self._caption_only = caption_only
+        self._face_assignment_only = face_assignment_only
+        # Allow tests to instantiate without wiring by pulling from app.main lazily
+        if session_factory is None or settings is None:
+            try:
+                from . import dependencies as _deps
+                from .config import get_settings as _gs
+                if session_factory is None:
+                    session_factory = _deps.SessionLocal
+                if settings is None:
+                    settings = _gs()
+            except Exception:
+                raise TypeError("TaskExecutor requires session_factory and settings when app deps unavailable")
+        self.session_factory = session_factory
+        self.settings = settings
+        self._last_dim_backfill_scan = 0.0
+        self._dim_backfill_interval = 300  # seconds
+        # Legacy single-worker fields (still used by tests)
+        self._stop = False
+        self._threads: list = []
+        # New multi-worker control
+        self._workers: list[threading.Thread] = []
+        self._stop_event = threading.Event()
+        # The standalone caption worker must not initialize embedding models or
+        # indexes. Default mixed-worker initialization remains unchanged.
+        if caption_only or face_assignment_only:
+            return
+        global INDEX_SINGLETON, VIDEO_INDEX_SINGLETON, VIDEO_SEG_INDEX_SINGLETON, EMBED_SERVICE, EMBED_DIM, FACE_CLUSTER_DIST_THRESHOLD
+        if EMBED_SERVICE is None:
+            EMBED_SERVICE = EmbeddingService(self.settings.embed_model_image, self.settings.embed_model_text, EMBED_DIM, getattr(self.settings,'embed_device','cpu'))
+            if EMBED_SERVICE.dim != EMBED_DIM:
+                EMBED_DIM = EMBED_SERVICE.dim
+        if INDEX_SINGLETON is None:
+            if self.settings.vector_index_backend == 'faiss':
+                INDEX_SINGLETON = FaissVectorIndex(EMBED_DIM, getattr(self.settings,'vector_index_path',None))  # type: ignore
+            else:
+                INDEX_SINGLETON = InMemoryVectorIndex(EMBED_DIM)
+        if VIDEO_INDEX_SINGLETON is None:
+            # Video index: memory-only for MVP
+            VIDEO_INDEX_SINGLETON = InMemoryVectorIndex(EMBED_DIM)
+        if VIDEO_SEG_INDEX_SINGLETON is None:
+            VIDEO_SEG_INDEX_SINGLETON = InMemoryVectorIndex(EMBED_DIM)
+        # override cluster threshold if provided
+        if getattr(self.settings, 'face_cluster_threshold', None):
+            FACE_CLUSTER_DIST_THRESHOLD = self.settings.face_cluster_threshold
+
+    def start_workers(self, concurrency: int):
+        # Avoid double start
+        if self._threads:
+            return
+        for wid in range(concurrency):
+            import threading
+            t = threading.Thread(target=self._worker_loop, args=(wid,), daemon=True, name=f"worker-{wid}")
+            t.start()
+            self._threads.append(t)
+
+    def _worker_loop(self, worker_id: int):
+        base_idle = self.settings.worker_poll_interval
+        while not self._stop:
+            worked = self.run_once(worker_id=worker_id)
+            if not worked:
+                # jittered backoff when idle
+                sleep_for = base_idle * (0.5 + random.random())
+                time.sleep(min(2.0, sleep_for))
+            else:
+                # brief yield
+                time.sleep(0.01)
+
+    def _claim_next_task(self, session: Session):
+        """Atomically claim the next pending task using optimistic update.
+
+        Works on SQLite by performing an UPDATE guarded by state predicate.
+        Returns the Task object if claim succeeded else None.
+        """
+        # Fetch candidate id first (simple query) then attempt guarded update
+        now = datetime.utcnow()
+        query = select(Task.id).where(
+                Task.state=='pending',
+                (Task.scheduled_at==None) | (Task.scheduled_at <= now)
+            )
+        if self._caption_only:
+            query = query.where(Task.type == 'caption')
+        elif self._face_assignment_only:
+            query = query.where(Task.type.in_(FACE_ASSIGNMENT_TASK_TYPES))
+        candidate = session.execute(query.order_by(Task.priority, Task.id).limit(1)).scalar_one_or_none()
+        if candidate is None:
+            return None
+        # Optimistic claim
+        now = datetime.utcnow()
+        updated = session.execute(
+            text("UPDATE tasks SET state='running', started_at=:now WHERE id=:tid AND state='pending'"
+                 + (" AND type='caption'" if self._caption_only else
+                    " AND type IN ('person_cluster','person_recluster','person_label_propagate')" if self._face_assignment_only else '')).bindparams(now=now, tid=candidate)
+        )
+        if updated.rowcount != 1:  # lost race
+            session.rollback()
+            return None
+        session.commit()  # persist state change before loading full row
+        return session.get(Task, candidate)
+
+    def run_once(self, worker_id: int | None = None):
+        with self.session_factory() as session:
+            task = self._claim_next_task(session)
+            if not task:
+                # maybe enqueue dim backfill batch periodically
+                if not self._caption_only and not self._face_assignment_only:
+                    self._maybe_enqueue_dim_backfill(session)
+                # update gauges (pending / running) periodically when idle
+                try:
+                    pending = session.query(Task).filter(Task.state=='pending').count()
+                    running = session.query(Task).filter(Task.state=='running').count()
+                    metrics_mod.update_queue_gauges(pending, running)
+                except Exception:
+                    pass
+                return False
+            # task already transitioned to running by _claim_next_task
+            # initialize progress fields for known long-running tasks
+            if task.type in ('person_recluster',) and task.progress_current is None:
+                task.progress_current = 0
+                session.commit()
+            try:
+                start_time = time.time()
+                if task.type == 'embed':
+                    self._handle_embed(session, task)
+                elif task.type == 'thumb':
+                    self._handle_thumb(session, task)
+                elif task.type == 'caption':
+                    self._handle_caption(session, task)
+                elif task.type == 'face':
+                    self._handle_face(session, task)
+                elif task.type == 'face_embed':
+                    self._handle_face_embed(session, task)
+                elif task.type == 'person_cluster':
+                    self._handle_person_cluster(session, task)
+                elif task.type == 'person_recluster':
+                    result = self._handle_person_recluster(session, task)
+                    payload = dict(task.payload_json or {})
+                    payload['summary'] = result
+                    task.payload_json = payload
+                elif task.type == 'person_label_propagate':
+                    self._handle_person_label_propagate(session, task)
+                elif task.type == 'dim_backfill':
+                    self._handle_dim_backfill(session, task)
+                elif task.type == 'image_tag':
+                    self._handle_image_tag(session, task)
+                elif task.type == 'phash':
+                    self._handle_phash(session, task)
+                elif task.type == 'video_probe':
+                    self._handle_video_probe(session, task)
+                elif task.type == 'video_keyframes':
+                    self._handle_video_keyframes(session, task)
+                elif task.type == 'video_embed':
+                    self._handle_video_embed(session, task)
+                elif task.type == 'video_scene_detect':
+                    self._handle_video_scene_detect(session, task)
+                elif task.type == 'video_segment_embed':
+                    self._handle_video_segment_embed(session, task)
+                elif task.type == 'fail_transient':
+                    # Deterministic transient failure used by retry/dead-letter tests.
+                    raise OSError('Simulated transient failure')
+                else:
+                    raise ValueError(f'Unsupported task type: {task.type}')
+            except Exception as exc:
+                task.retry_count += 1
+                task.last_error = str(exc)[:4000]
+                if self._classify_permanent(exc):
+                    task.state = 'failed'
+                    task.finished_at = datetime.utcnow()
+                elif task.retry_count >= self.settings.max_task_retries:
+                    task.state = 'dead'
+                    task.finished_at = datetime.utcnow()
+                else:
+                    task.state = 'pending'
+                    task.scheduled_at = datetime.utcnow() + self._compute_backoff(
+                        task.retry_count
+                    )
+                session.commit()
+                try:
+                    metrics_mod.tasks_retried.labels(task.type).inc()
+                    if task.state in ('failed', 'dead'):
+                        metrics_mod.tasks_processed.labels(
+                            task.type, task.state
+                        ).inc()
+                except Exception:
+                    pass
+                return True
+            # Handlers may complete the task by canceling it. Only transition a
+            # still-running task to the canonical success state.
+            if task.state == 'running':
+                task.state = 'finished'
+                task.finished_at = datetime.utcnow()
+            session.commit()
+            try:
+                metrics_mod.task_duration.labels(task.type).observe(
+                    time.time() - start_time
+                )
+                metrics_mod.tasks_processed.labels(
+                    task.type, task.state
+                ).inc()
+            except Exception:
+                pass
+            return True
+        return False
+
+    def stop_workers(self):
+        self._stop = True
+        self._stop_event.set()
+        for t in self._threads + self._workers:
+            try:
+                t.join(timeout=1.0)
+            except Exception:
+                pass
+        self._threads.clear()
+        self._workers.clear()
+
+    def _handle_embed(self, session: Session, task: Task):
+        asset_id = task.payload_json['asset_id']
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('asset missing')
+        embed_sleep = float(os.getenv('EMBED_TASK_SLEEP','0') or '0')
+        if embed_sleep > 0:
+            time.sleep(embed_sleep)
+        vec = EMBED_SERVICE.embed_image(asset.path) if EMBED_SERVICE else np.random.rand(EMBED_DIM).astype('float32')
+        emb_path = DERIVED_DIR / 'embeddings' / f'{asset_id}.npy'
+        np.save(emb_path, vec)
+        existing = session.query(Embedding).filter_by(asset_id=asset_id, modality='image').first()
+        if existing:
+            existing.storage_path = str(emb_path)
+            existing.model = self.settings.embed_model_image
+            existing.dim = EMBED_DIM
+            existing.device = getattr(self.settings, 'embed_device', 'cpu')
+            if getattr(self.settings, 'embed_model_version', None):
+                existing.model_version = self.settings.embed_model_version
+        else:
+            session.add(Embedding(asset_id=asset_id, modality='image', model=self.settings.embed_model_image, dim=EMBED_DIM, storage_path=str(emb_path), device=getattr(self.settings,'embed_device','cpu'), model_version=getattr(self.settings,'embed_model_version', None)))
+        session.commit()
+        if INDEX_SINGLETON:
+            INDEX_SINGLETON.add([asset_id], vec.reshape(1, -1))
+        try:
+            metrics_mod.embeddings_generated.inc()
+            metrics_mod.update_vector_index_size(len(INDEX_SINGLETON) if INDEX_SINGLETON else 0)
+        except Exception:
+            pass
+
+    def _handle_thumb(self, session: Session, task: Task):
+        asset_id = task.payload_json['asset_id']
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('asset missing')
+        thumb_sleep = float(os.getenv('THUMB_TASK_SLEEP','0') or '0')
+        if thumb_sleep > 0:
+            time.sleep(thumb_sleep)
+        src = Path(asset.path)
+        if not src.exists():
+            raise FileNotFoundError(src)
+        for size in THUMB_SIZES:
+            out_dir = DERIVED_DIR / 'thumbnails' / str(size)
+            out_path = out_dir / f"{asset_id}.jpg"
+            if out_path.exists():
+                continue
+            with Image.open(src) as im:
+                im = safe_exif_transpose(im)
+                im.thumbnail((size, size))
+                im.convert('RGB').save(out_path, 'JPEG', quality=85)
+
+    def _load_caption_image(self, asset: Asset) -> Image.Image:
+        """Load an image for captioning, including representative frame extraction for videos."""
+        from PIL import Image as _Im
+
+        path = str(asset.path)
+        mime = (asset.mime or '').lower()
+        is_video = mime.startswith('video/')
+        if not is_video:
+            ext = Path(path).suffix.lower()
+            is_video = ext in {'.mp4', '.mov', '.m4v', '.avi', '.mkv', '.webm', '.wmv'}
+
+        if not is_video:
+            with _Im.open(path) as im:
+                return safe_exif_transpose(im).convert('RGB')
+
+        # Video captioning path: extract a representative frame with ffmpeg.
+        tmp_dir = os.getenv('VLM_TMP_DIR') or tempfile.gettempdir()
+        os.makedirs(tmp_dir, exist_ok=True)
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False, dir=tmp_dir) as tmp:
+            frame_path = tmp.name
+
+        duration = float(asset.duration_sec or 0.0)
+        seek_candidates = []
+        if duration > 0.0:
+            seek_candidates.append(max(0.0, duration * 0.5))
+            seek_candidates.append(max(0.0, duration * 0.1))
+        seek_candidates.append(0.0)
+
+        extracted = False
+        last_err = None
+        try:
+            for seek in seek_candidates:
+                cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y']
+                if seek > 0.0:
+                    cmd += ['-ss', f"{seek:.3f}"]
+                cmd += ['-i', path, '-frames:v', '1', frame_path]
+                try:
+                    subprocess.run(cmd, check=True, timeout=90, capture_output=True)
+                    if os.path.exists(frame_path) and os.path.getsize(frame_path) > 0:
+                        extracted = True
+                        break
+                except Exception as e:
+                    last_err = e
+
+            if not extracted:
+                raise RuntimeError(f"Unable to extract video frame for captioning: {last_err}")
+
+            with _Im.open(frame_path) as im:
+                return safe_exif_transpose(im).convert('RGB')
+        finally:
+            try:
+                os.unlink(frame_path)
+            except OSError:
+                pass
+
+    def _handle_caption(self, session: Session, task: Task):
+        """Generate a caption (or variant) for an asset and update status fields."""
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        force = bool(payload.get('force', False))
+        replace_generated = bool(payload.get('replace_generated', False))
+        profile = (payload.get('profile') or os.getenv('CAPTION_PROFILE','balanced')).lower()
+        max_variants = int(os.getenv('CAPTION_MAX_VARIANTS','3') or '3')
+        word_limit = int(os.getenv('CAPTION_WORD_LIMIT','120') or '120')
+        caption_prompt = (os.getenv('CAPTION_PROMPT', DEFAULT_DETAILED_CAPTION_PROMPT) or '').strip()
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('asset missing')
+        if replace_generated and asset.status != 'active':
+            raise ValueError('Caption refresh requires an active asset')
+        existing = session.query(Caption).filter(Caption.asset_id==asset_id).order_by(Caption.created_at.asc()).all()
+        if replace_generated and any(c.user_edited for c in existing):
+            return next(c for c in existing if c.user_edited)
+        if existing and not force and not replace_generated and len(existing) >= max_variants:
+            return existing[-1]
+        allow_infant_care = infant_care_allowed(
+            asset.id, os.getenv('CAPTION_INFANT_CARE_ASSET_IDS', ''),
+        )
+        if allow_infant_care:
+            caption_prompt = infant_care_caption_prompt(caption_prompt)
+        factual_rewrite = payload.get('caption_review') == 'factual_rewrite'
+        if factual_rewrite:
+            caption_prompt = factual_rewrite_caption_prompt(caption_prompt)
+        text = ''
+        model_name = 'unknown'
+        err = None
+        prov = None
+        caption_image = None
+        try:
+            from .caption_service import get_caption_provider
+            prov = get_caption_provider()
+            caption_image = self._load_caption_image(asset)
+            if getattr(prov, 'supports_image_preparation', False) is True:
+                prepared_image = prov.prepare_image(caption_image)
+                if prepared_image is not caption_image:
+                    caption_image.close()
+                    caption_image = prepared_image
+            text = prov.generate_caption(caption_image, prompt=caption_prompt or None)
+            text = neutralize_person_terms(text)
+            model_name = prov.get_model_name()
+        except Exception as e:  # fallback heuristics
+            err = str(e)
+            allow_stub_fallback = os.getenv('CAPTION_ENABLE_STUB_FALLBACK', 'false').lower() in ('1', 'true', 'yes')
+            if not allow_stub_fallback:
+                try:
+                    asset.caption_variant_count = session.query(Caption).filter(Caption.asset_id==asset_id, Caption.superseded==False).count()
+                    asset.caption_processed = bool(asset.caption_variant_count > 0)
+                    asset.caption_processed_at = datetime.utcnow()
+                    asset.caption_model_profile_last = profile
+                    asset.caption_error_last = err
+                    session.commit()
+                except Exception:
+                    session.rollback()
+                # Do not report success when the real provider failed. Propagate the
+                # original exception so TaskExecutor can apply its retry/dead-letter
+                # policy while keeping the asset eligible for future backfill.
+                raise
+            base = os.path.splitext(Path(asset.path).name)[0]
+            toks = [t for t in base.replace('-',' ').replace('_',' ').split() if t]
+            text = 'Photo' if not toks else ' '.join(toks[:8])
+            model_name = 'stub-fallback'
+        # Word cap (prefer complete sentences over hard mid-sentence truncation)
+        try:
+            if word_limit > 0:
+                text = self._truncate_caption_text(text, word_limit)
+        except Exception:
+            pass
+        bilingual_output = parse_bilingual_caption(text)
+        if 'ZH-CN: ...' in caption_prompt:
+            policy_issues = bilingual_caption_issues(text, allow_infant_care=allow_infant_care)
+            try:
+                max_policy_retries = max(0, min(2, int(os.getenv('CAPTION_POLICY_MAX_RETRIES', '2') or '2')))
+            except (TypeError, ValueError):
+                max_policy_retries = 2
+            policy_retry_count = 0
+            while (
+                policy_issues
+                and prov is not None
+                and caption_image is not None
+                and policy_retry_count < max_policy_retries
+            ):
+                can_translate_text = getattr(prov, 'supports_text_translation', False) is True
+                translated_correction = None
+                # Use the cheaper text-only correction once. Repeating the same
+                # deterministic translation request after it still violates policy
+                # produces the same rejected output, so let the next bounded retry use
+                # the visual corrective prompt instead.
+                if (
+                    policy_retry_count == 0
+                    and policy_issues == ['chinese_policy']
+                    and bilingual_output
+                    and can_translate_text
+                ):
+                    translated_correction = correct_chinese_policy_translation(
+                        text,
+                        lambda english, avoid_terms: prov.translate_caption(
+                            english,
+                            avoid_terms=avoid_terms,
+                        ),
+                        allow_infant_care=allow_infant_care,
+                    )
+                if translated_correction is not None:
+                    text = translated_correction
+                else:
+                    retry_prompt = build_caption_retry_prompt(caption_prompt, policy_issues, text)
+                    text = prov.generate_caption(caption_image, prompt=retry_prompt)
+                policy_retry_count += 1
+                text = neutralize_person_terms(text)
+                try:
+                    if word_limit > 0:
+                        text = self._truncate_caption_text(text, word_limit)
+                except Exception:
+                    pass
+                bilingual_output = parse_bilingual_caption(text)
+                policy_issues = bilingual_caption_issues(text, allow_infant_care=allow_infant_care)
+            if policy_issues:
+                asset.caption_processed_at = datetime.utcnow()
+                asset.caption_error_last = (
+                    'caption policy validation failed: ' + bilingual_caption_issue_summary(
+                        text, allow_infant_care=allow_infant_care,
+                    )
+                )
+                session.commit()
+                raise ValueError(asset.caption_error_last)
+        caption_model_version = None
+        if bilingual_output and 'zh-cn' not in model_name.lower():
+            model_name = f'{model_name}|bilingual-en-zh-cn'
+            caption_model_version = 'bilingual-v1'
+        if bilingual_output and allow_infant_care:
+            caption_model_version = 'bilingual-v1-infant-care-v1'
+        if bilingual_output and factual_rewrite:
+            caption_model_version = (caption_model_version or 'bilingual-v1') + '-factual-review-v1'
+        if replace_generated:
+            if not model_name.startswith('qwen3-vl-http') or bilingual_caption_issues(
+                text, allow_infant_care=allow_infant_care,
+            ):
+                raise ValueError('Caption refresh requires validated bilingual Qwen3 output')
+            # End the inference-time read transaction, then serialize the write
+            # against edits made while the model was generating its response.
+            session.rollback()
+            session.execute(sql_text('BEGIN IMMEDIATE'))
+            asset = session.get(Asset, asset_id, populate_existing=True)
+            if not asset or asset.status != 'active':
+                session.rollback()
+                raise ValueError('Asset changed during caption refresh')
+            existing = session.query(Caption).filter(Caption.asset_id==asset_id).populate_existing().all()
+            edited = next((c for c in existing if c.user_edited), None)
+            if edited is not None:
+                session.rollback()
+                return edited
+            for previous in existing:
+                previous.superseded = True
+        # Replace oldest non user_edited if at capacity
+        if existing and len(existing) >= max_variants and not replace_generated:
+            target = next((c for c in existing if not c.user_edited), None)
+            if target is None:
+                return existing[-1]
+            target.text = text
+            target.model = model_name
+            target.model_version = caption_model_version
+            session.commit()
+            return target
+        # Infer quality tier
+        qtier = 'balanced'
+        if profile in ('fast','quality','balanced'):
+            qtier = profile
+        elif 'qwen' in model_name.lower():
+            qtier = 'quality'
+        elif 'blip' in model_name.lower():
+            qtier = 'balanced'
+        elif 'vit' in model_name.lower() or 'mini' in model_name.lower():
+            qtier = 'fast'
+        cap = Caption(
+            asset_id=asset_id,
+            text=text,
+            model=model_name,
+            user_edited=False,
+            quality_tier=qtier,
+            model_version=caption_model_version,
+        )
+        session.add(cap)
+        session.flush()
+        # Optionally derive lightweight keyword tags from generated caption text.
+        auto_tag_enabled = os.getenv('CAPTION_AUTO_TAG_ENABLE', 'true').lower() in ('1', 'true', 'yes')
+        model_allowed = _caption_model_allowed_for_auto_tag(model_name)
+        if auto_tag_enabled and text and model_allowed:
+            try:
+                from .tagging import extract_caption_tag_candidates, upsert_asset_tags
+
+                max_auto_tags = int(os.getenv('CAPTION_AUTO_TAG_MAX_TAGS', '8') or '8')
+                auto_tag_type = os.getenv('CAPTION_AUTO_TAG_TYPE', 'caption-auto') or 'caption-auto'
+                candidates = extract_caption_tag_candidates(text, max_tags=max(1, max_auto_tags))
+                if candidates:
+                    tag_names = [str(c.get('name') or '').strip() for c in candidates]
+                    tag_names = [x for x in tag_names if x]
+                    if tag_names:
+                        name_types = {
+                            str(c.get('name') or '').strip(): str(c.get('type') or auto_tag_type).strip()
+                            for c in candidates
+                            if str(c.get('name') or '').strip()
+                        }
+                        score_by_name = {
+                            str(c.get('name') or '').strip(): float(c.get('score') or 0.0)
+                            for c in candidates
+                            if str(c.get('name') or '').strip()
+                        }
+                        upsert_asset_tags(
+                            session,
+                            asset_id=asset_id,
+                            names=tag_names,
+                            tag_type=auto_tag_type,
+                            name_types=name_types,
+                            source='cap',
+                            source_model=model_name,
+                            score_by_name=score_by_name,
+                        )
+            except Exception:
+                logger.warning("Auto-tag derivation failed for asset_id=%s", asset_id, exc_info=True)
+        # Update asset status
+        try:
+            asset.caption_variant_count = session.query(Caption).filter(Caption.asset_id==asset_id, Caption.superseded==False).count()
+            asset.caption_processed = True
+            asset.caption_processed_at = datetime.utcnow()
+            asset.caption_model_profile_last = profile
+            asset.caption_error_last = err
+            session.commit()
+        except Exception:
+            session.rollback()
+            if replace_generated:
+                raise
+        return cap
+
+    def _handle_image_tag(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        max_tags = int(payload.get('max_tags', os.getenv('IMAGE_TAG_MAX_TAGS', '8')) or 8)
+        if not asset_id:
+            raise ValueError('asset_id missing')
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('asset missing')
+        if bool(asset.mime and str(asset.mime).lower().startswith('video/')):
+            return []
+        src = Path(asset.path)
+        if not src.exists():
+            raise FileNotFoundError(src)
+
+        image_tag_enabled = str(os.getenv('IMAGE_TAG_AUTO_ENABLE', str(getattr(self.settings, 'image_tag_auto_enable', False)))).lower() in ('1', 'true', 'yes')
+        if not image_tag_enabled:
+            return []
+
+        from .image_tag_service import get_image_tag_provider
+        from .tagging import extract_caption_tag_candidates, upsert_asset_tags
+
+        provider = get_image_tag_provider()
+        with Image.open(src) as im_raw:
+            im = safe_exif_transpose(im_raw).convert('RGB')
+            raw = provider.generate_tags(im, max_tags=max(1, max_tags))
+        if not raw:
+            return []
+
+        raw_names = [str(x.get('name') or '').strip() for x in raw if isinstance(x, dict)]
+        raw_names = [x for x in raw_names if x]
+        if not raw_names:
+            return []
+        raw_scores = {
+            str(x.get('name') or '').strip(): float(x.get('score') or 0.0)
+            for x in raw
+            if isinstance(x, dict) and str(x.get('name') or '').strip()
+        }
+
+        candidates = extract_caption_tag_candidates(' '.join(raw_names), max_tags=max(1, max_tags))
+        if candidates:
+            tag_names = [str(c.get('name') or '').strip() for c in candidates if str(c.get('name') or '').strip()]
+            name_types = {
+                str(c.get('name') or '').strip(): str(c.get('type') or 'caption-auto').strip()
+                for c in candidates
+                if str(c.get('name') or '').strip()
+            }
+            score_by_name = {
+                str(c.get('name') or '').strip(): float(c.get('score') or 0.0)
+                for c in candidates
+                if str(c.get('name') or '').strip()
+            }
+        else:
+            tag_names = raw_names[: max(1, max_tags)]
+            name_types = {nm: 'caption-auto' for nm in tag_names}
+            score_by_name = {nm: float(raw_scores.get(nm, 0.0)) for nm in tag_names}
+
+        if not tag_names:
+            return []
+        added = upsert_asset_tags(
+            session,
+            asset_id=int(asset_id),
+            names=tag_names,
+            tag_type='caption-auto',
+            name_types=name_types,
+            source='img',
+            source_model=provider.get_model_name(),
+            score_by_name=score_by_name,
+        )
+        session.commit()
+        return added
+
+    @staticmethod
+    def _truncate_caption_text(text: str, word_limit: int) -> str:
+        return truncate_caption_text(text, word_limit)
+
+    def _handle_face(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        force_redetect = bool(payload.get('force_redetect', False))
+        supplement_only = bool(payload.get('supplement_only', True))
+        dedupe_iou = float(payload.get('dedupe_iou', 0.60) or 0.60)
+        if dedupe_iou < 0.0:
+            dedupe_iou = 0.0
+        if dedupe_iou > 1.0:
+            dedupe_iou = 1.0
+
+        def _iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+            ax1, ay1, aw, ah = a
+            bx1, by1, bw, bh = b
+            ax2 = ax1 + aw
+            ay2 = ay1 + ah
+            bx2 = bx1 + bw
+            by2 = by1 + bh
+            ix1 = max(ax1, bx1)
+            iy1 = max(ay1, by1)
+            ix2 = min(ax2, bx2)
+            iy2 = min(ay2, by2)
+            iw = max(0.0, ix2 - ix1)
+            ih = max(0.0, iy2 - iy1)
+            inter = iw * ih
+            if inter <= 0.0:
+                return 0.0
+            union = (aw * ah) + (bw * bh) - inter
+            if union <= 0.0:
+                return 0.0
+            return inter / union
+
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError(f'Asset {asset_id} not found for face task')
+        src = Path(asset.path)
+        if not src.exists():
+            raise FileNotFoundError(src)
+        faces = session.query(FaceDetection).filter(FaceDetection.asset_id==asset.id).all()
+        if force_redetect or not faces:
+            # Run detection provider
+            try:
+                from .face_detection_service import get_face_detection_provider
+                provider = get_face_detection_provider()
+                from PIL import Image as _Im
+                import time as _t
+                t0_det = _t.time()
+                with _Im.open(src) as im_det:
+                    upright = safe_exif_transpose(im_det)
+                    dets = provider.detect(upright.convert('RGB'))
+                try:  # pragma: no cover
+                    import app.metrics as m
+                    prov_name = type(provider).__name__.replace('DetectionProvider','').lower()
+                    m.face_detection_inference_seconds.labels(prov_name or 'unknown').observe(_t.time()-t0_det)
+                except Exception:
+                    pass
+            except Exception:
+                # Do not turn detector failures into successful zero-face tasks. The task
+                # executor must see the exception so normal retry/dead-letter handling can
+                # preserve the distinction between "no face found" and "detector failed".
+                # Optional legacy behavior can still be enabled explicitly.
+                if os.getenv('FACE_DETECT_CENTER_FALLBACK', 'false').lower() in ('1', 'true', 'yes'):
+                    dets = []
+                    from PIL import Image as _Im
+                    with _Im.open(src) as im_det:
+                        w,h = safe_exif_transpose(im_det).size
+                    size = min(w,h)*0.4
+                    dets.append(type('DF',(),{'x':(w-size)/2,'y':(h-size)/2,'w':size,'h':size,'landmarks':None})())
+                else:
+                    logger.exception(
+                        "Face detection failed for asset_id=%s; task will retry",
+                        asset.id,
+                    )
+                    raise
+            detector_model = type(provider).__name__ if 'provider' in locals() else None
+            known_faces = [
+                ((float(f.bbox_x), float(f.bbox_y), float(f.bbox_w), float(f.bbox_h)), f)
+                for f in faces
+            ]
+            for d in dets:
+                cand = (float(d.x), float(d.y), float(d.w), float(d.h))
+                best_match = max(
+                    ((_iou(cand, box), existing_face) for box, existing_face in known_faces),
+                    default=(0.0, None),
+                    key=lambda item: item[0],
+                )
+                landmarks = getattr(d, 'landmarks', None)
+                landmarks_json = (
+                    [[float(x), float(y)] for x, y in landmarks]
+                    if landmarks is not None and len(landmarks) == 5
+                    else None
+                )
+                if best_match[0] >= dedupe_iou and supplement_only:
+                    existing_face = best_match[1]
+                    if (
+                        existing_face is not None
+                        and landmarks_json is not None
+                        and not existing_face.landmarks_json
+                    ):
+                        existing_face.landmarks_json = landmarks_json
+                        existing_face.landmark_model = detector_model
+                    continue
+                face = FaceDetection(
+                    asset_id=asset.id,
+                    bbox_x=cand[0],
+                    bbox_y=cand[1],
+                    bbox_w=cand[2],
+                    bbox_h=cand[3],
+                    embedding_path=None,
+                    landmarks_json=landmarks_json,
+                    landmark_model=detector_model,
+                )
+                session.add(face)
+                known_faces.append((cand, face))
+            session.flush()
+            faces = session.query(FaceDetection).filter(FaceDetection.asset_id==asset.id).all()
+        # Generate / ensure crops
+        out_dir = DERIVED_DIR / 'faces' / '256'
+        aligned_dir = DERIVED_DIR / 'faces' / 'aligned-112'
+        out_dir.mkdir(parents=True, exist_ok=True)
+        aligned_dir.mkdir(parents=True, exist_ok=True)
+        with Image.open(src) as im_raw:
+            im = safe_exif_transpose(im_raw)
+            w, h = im.size
+            for face in faces:
+                crop_path = out_dir / f"{face.id}.jpg"
+                if not crop_path.exists():
+                    x1 = int(max(0, face.bbox_x))
+                    y1 = int(max(0, face.bbox_y))
+                    x2 = int(min(w, face.bbox_x + face.bbox_w))
+                    y2 = int(min(h, face.bbox_y + face.bbox_h))
+                    # Optional margin expansion
+                    try:
+                        from .config import get_settings as _gs
+                        _s = _gs()
+                        margin = getattr(_s, 'face_crop_margin', 0.0)
+                    except Exception:
+                        margin = 0.0
+                    if margin > 0:
+                        mw = int(margin * max(w,h))
+                        x1 = max(0, x1 - mw)
+                        y1 = max(0, y1 - mw)
+                        x2 = min(w, x2 + mw)
+                        y2 = min(h, y2 + mw)
+                    if x2 > x1 and y2 > y1:
+                        face_crop = im.crop((x1, y1, x2, y2))
+                        face_crop.thumbnail((256,256))
+                        face_crop.convert('RGB').save(crop_path, 'JPEG', quality=85)
+
+                if face.landmarks_json:
+                    aligned_path = aligned_dir / f"{face.id}.png"
+                    if not aligned_path.exists():
+                        try:
+                            from .face_alignment import align_face_112
+                            aligned = align_face_112(im, face.landmarks_json)
+                            aligned.save(aligned_path, 'PNG')
+                        except Exception:
+                            logger.warning(
+                                "Could not align face_id=%s from stored landmarks",
+                                face.id,
+                                exc_info=True,
+                            )
+        # enqueue embedding tasks for faces lacking embeddings
+        for face in faces:
+            if not face.embedding_path:
+                session.add(Task(type='face_embed', priority=135, payload_json={'face_id': face.id}))
+        session.commit()
+        try:
+            import app.metrics as m
+            m.faces_detected.inc(len(faces))
+        except Exception:
+            pass
+        return faces
+
+    def _handle_face_embed(self, session: Session, task: Task):
+        face_id = task.payload_json.get('face_id') if task.payload_json else None
+        if not face_id:
+            raise ValueError('face_id missing in payload')
+        face = session.get(FaceDetection, face_id)
+        if not face:
+            raise ValueError(f'FaceDetection {face_id} not found')
+        if face.embedding_path:
+            return  # already done
+        crop_path = DERIVED_DIR / 'faces' / '256' / f'{face.id}.jpg'
+        if not crop_path.exists():
+            raise ValueError('face crop missing for embedding')
+        from PIL import Image
+        from .face_embedding_service import get_face_embedding_provider
+        provider = get_face_embedding_provider()
+        with Image.open(crop_path) as im:
+            import time as _t
+            t0_emb = _t.time()
+            vec = provider.embed_face(im.convert('RGB'))
+        try:  # pragma: no cover
+            import app.metrics as m
+            prov_name = type(provider).__name__.replace('FaceEmbeddingProvider','').replace('EmbeddingProvider','').lower()
+            m.face_embedding_inference_seconds.labels(prov_name or 'unknown').observe(_t.time()-t0_emb)
+        except Exception:
+            pass
+        emb_path = DERIVED_DIR / 'face_embeddings' / f'{face_id}.npy'
+        np.save(emb_path, vec.astype('float32'))
+        face.embedding_path = str(emb_path)
+        session.commit()
+        try:
+            import app.metrics as m
+            m.face_embeddings_generated.inc()
+        except Exception:
+            pass
+        # Embedding completion carries neither library-owner authority nor reviewed
+        # artifact provenance. Never synthesize an unscoped assignment job here.
+        # A separately qualified producer must submit the explicit scoped payload.
+        return str(emb_path)
+
+    def _handle_person_cluster(self, session: Session, task: Task):
+        from .scoped_face_worker import run_scoped_assignment
+        return run_scoped_assignment(session, task, embedding_root=DERIVED_DIR)
+
+    def _handle_person_recluster(self, session: Session, task: Task):
+        from .scoped_face_worker import run_scoped_assignment
+        return run_scoped_assignment(session, task, embedding_root=DERIVED_DIR)
+
+    def _handle_person_label_propagate(self, session: Session, task: Task):
+        from .scoped_face_worker import run_scoped_assignment
+        return run_scoped_assignment(session, task, embedding_root=DERIVED_DIR)
+
+    def _handle_dim_backfill(self, session: Session, task: Task):
+        asset_id = task.payload_json.get('asset_id') if task.payload_json else None
+        if not asset_id:
+            return
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('asset missing')
+        if asset.width and asset.height:
+            return
+        p = Path(asset.path)
+        if not p.exists():
+            raise FileNotFoundError(f'dimension source missing: {p}')
+        with Image.open(p) as im:
+            upright = safe_exif_transpose(im)
+            w, h = upright.size
+        asset.width = w
+        asset.height = h
+        session.commit()
+
+    def _maybe_enqueue_dim_backfill(self, session: Session):
+        now = time.time()
+        if now - self._last_dim_backfill_scan < self._dim_backfill_interval:
+            return
+        self._last_dim_backfill_scan = now
+        # Keep only a single batch in flight to avoid unbounded duplicate queue growth.
+        existing = session.query(Task.id).filter(
+            Task.type == 'dim_backfill',
+            Task.state.in_(['pending', 'running'])
+        ).first()
+        if existing:
+            return
+        # Each asset gets one automatically-created task. The task's own retry
+        # policy handles transient failures; retaining terminal task history keeps
+        # missing or corrupt sources from being re-enqueued every scan forever.
+        attempted_asset_ids = select(
+            Task.payload_json['asset_id'].as_integer()
+        ).where(Task.type == 'dim_backfill')
+        missing = session.query(Asset.id).filter(
+            or_(Asset.width==None, Asset.height==None),
+            Asset.status == 'active',
+            Asset.mime.like('image/%'),
+            ~Asset.id.in_(attempted_asset_ids),
+        ).limit(50).all()
+        if not missing:
+            return
+        # enqueue tasks
+        for (aid,) in missing:
+            session.add(Task(type='dim_backfill', priority=200, payload_json={'asset_id': aid}))
+        session.commit()
+
+    def _handle_phash(self, session: Session, task: Task):
+        asset_id = task.payload_json.get('asset_id') if task.payload_json else None
+        if not asset_id:
+            return
+        asset = session.get(Asset, asset_id)
+        if not asset or asset.perceptual_hash:
+            return
+        p = Path(asset.path)
+        if not p.exists():
+            return
+        try:
+            with Image.open(p) as im:
+                upright = safe_exif_transpose(im)
+                ph = imagehash.phash(upright)
+            asset.perceptual_hash = ph.__str__()
+            session.commit()
+        except Exception:
+            pass
+
+    # ---- Minimal Video Handlers (MVP stubs) ----
+    def _handle_video_probe(self, session: Session, task: Task):
+        # Probe is the validation barrier; failures must remain visible in task state.
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        if not asset_id:
+            raise ValueError('video asset_id missing')
+        asset = session.get(Asset, asset_id)
+        if not asset:
+            raise ValueError('video asset missing')
+        if not str(asset.mime or '').lower().startswith('video/'):
+            raise ValueError('video probe received non-video asset')
+        (DERIVED_DIR / 'video_frames' / str(asset_id)).mkdir(parents=True, exist_ok=True)
+        (DERIVED_DIR / 'video_embeddings').mkdir(parents=True, exist_ok=True)
+        meta = probe_video_metadata(asset.path, timeout_sec=10, strict=True)
+        asset.duration_sec = float(meta['duration_sec'])
+        asset.fps = float(meta['fps'])
+        asset.width, asset.height = int(meta['width']), int(meta['height'])
+        if meta.get('gps_lat') is not None and meta.get('gps_lon') is not None:
+            asset.gps_lat, asset.gps_lon = float(meta['gps_lat']), float(meta['gps_lon'])
+        session.add(Task(type='video_keyframes', priority=70,
+                         payload_json={'asset_id': asset_id}))
+        session.commit()
+
+    def _handle_video_keyframes(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        if not asset_id:
+            raise ValueError('video asset_id missing')
+        src = None
+        with self.session_factory() as s2:
+            a = s2.get(Asset, asset_id)
+            if a and str(a.mime or '').lower().startswith('video/'):
+                src = a.path
+            elif a:
+                raise ValueError('video keyframes received non-video asset')
+        if not src or not os.path.exists(src):
+            raise ValueError('video source missing')
+        probe = probe_video_metadata(src, timeout_sec=10, strict=True)
+        interval = max(0.5, float(getattr(self.settings, 'video_keyframe_interval_sec', 2.0)))
+        duration = float(probe.get('duration_sec') or 0.0)
+        sample_rate = max(1.0 / interval, 1.0 / max(duration, 1.0))
+        parent_dir = DERIVED_DIR / 'video_frames'
+        parent_dir.mkdir(parents=True, exist_ok=True)
+        out_dir = Path(tempfile.mkdtemp(prefix=f'.{asset_id}-', dir=parent_dir))
+        cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+               '-threads', '1', '-protocol_whitelist', 'file', '-i', src,
+               '-map', '0:v:0', '-an', '-sn', '-dn', '-vf',
+               f'fps={sample_rate:.6f},scale=1024:1024:force_original_aspect_ratio=decrease',
+               '-pix_fmt', 'yuvj420p',
+               '-frames:v', str(VIDEO_KEYFRAME_LIMIT), str(out_dir / 'frame_%05d.jpg')]
+        try:
+            _run_bounded_media_process(cmd, timeout=120, output_dir=out_dir)
+            frames = sorted(out_dir.glob('frame_*.jpg'))
+            if not frames or len(frames) > VIDEO_KEYFRAME_LIMIT:
+                raise ValueError('video keyframe output missing or unbounded')
+            total = 0
+            for frame in frames:
+                if not frame.is_file() or frame.is_symlink():
+                    raise ValueError('video keyframe output invalid')
+                total += frame.stat().st_size
+            if total <= 0 or total > VIDEO_KEYFRAME_BYTES:
+                raise ValueError('video keyframe output exceeds budget')
+            published = parent_dir / str(asset_id)
+            old = published.with_name(published.name + '.old')
+            if old.exists():
+                shutil.rmtree(old)
+            if published.exists():
+                os.replace(published, old)
+            os.replace(out_dir, published)
+            if old.exists():
+                shutil.rmtree(old)
+        except Exception:
+            shutil.rmtree(out_dir, ignore_errors=True)
+            raise
+        session.add(Task(type='video_embed', priority=90,
+                         payload_json={'asset_id': asset_id}))
+        # Captioning already extracts one bounded representative frame. Face detection is
+        # image-only, so no face task is fabricated for a video asset.
+        session.add(Task(type='caption', priority=110,
+                         payload_json={'asset_id': asset_id}))
+        session.commit()
+
+    def _handle_video_embed(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        if not asset_id:
+            raise ValueError('video asset_id missing')
+        frames_dir = DERIVED_DIR / 'video_frames' / str(asset_id)
+        vecs = []
+        if frames_dir.exists():
+            try:
+                from PIL import Image as _Im
+                import glob
+                frame_files = sorted(glob.glob(str(frames_dir / 'frame_*.jpg')))[:32]
+                for fp in frame_files:
+                    try:
+                        with _Im.open(fp) as im:
+                            v = EMBED_SERVICE.embed_image(fp) if EMBED_SERVICE else None
+                            if v is None:
+                                continue
+                            vecs.append(v.astype('float32'))
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+        if not vecs:
+            raise ValueError('video embedding has no usable keyframe vectors')
+        import numpy as _np
+        vec = _np.mean(_np.stack(vecs, axis=0), axis=0).astype('float32')
+        emb_path = DERIVED_DIR / 'video_embeddings' / f'{asset_id}.npy'
+        emb_path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(emb_path, vec)
+        # Add to dedicated video index if available
+        try:
+            import app.metrics as m
+            m.embeddings_generated.inc()
+        except Exception:
+            pass
+        try:
+            if VIDEO_INDEX_SINGLETON is not None:
+                VIDEO_INDEX_SINGLETON.add([asset_id], vec.reshape(1,-1))
+        except Exception:
+            pass
+
+    def _handle_video_scene_detect(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        asset_id = payload.get('asset_id')
+        if not asset_id:
+            return
+        asset = session.get(Asset, asset_id)
+        if not asset or not os.path.exists(asset.path):
+            return
+        min_len = float(getattr(self.settings, 'video_scene_min_sec', 1.0))
+        scenes: list[tuple[float,float]] = []
+        # Try pyscenedetect (optional dep)
+        try:
+            from scenedetect import detect, ContentDetector  # type: ignore
+            detected = detect(video_path=asset.path, detector=ContentDetector())
+            # detected is list of Scene objects with start/end timecodes
+            for sc in detected:
+                try:
+                    s = float(sc[0].get_seconds())
+                    e = float(sc[1].get_seconds())
+                    if e - s >= min_len:
+                        scenes.append((s,e))
+                except Exception:
+                    continue
+        except Exception:
+            # Fallback: split into fixed windows
+            dur = float(asset.duration_sec or 0)
+            if dur <= 0:
+                dur = 10.0
+            win = max(min_len, 3.0)
+            t = 0.0
+            while t < dur:
+                e = min(dur, t + win)
+                if e - t >= min_len:
+                    scenes.append((t,e))
+                t = e
+        # Store segments
+        from .db import VideoSegment
+        for s,e in scenes:
+            seg = VideoSegment(asset_id=asset_id, start_sec=s, end_sec=e)
+            session.add(seg)
+        session.commit()
+        # Enqueue per-segment embedding jobs
+        for seg in session.query(VideoSegment).filter_by(asset_id=asset_id).all():
+            session.add(Task(type='video_segment_embed', priority=95, payload_json={'segment_id': seg.id}))
+        session.commit()
+
+    def _handle_video_segment_embed(self, session: Session, task: Task):
+        payload = task.payload_json or {}
+        seg_id = payload.get('segment_id')
+        if not seg_id:
+            return
+        from .db import VideoSegment
+        seg = session.get(VideoSegment, seg_id)
+        if not seg:
+            return
+        # Extract a representative frame near segment midpoint for embedding
+        a = session.get(Asset, seg.asset_id)
+        if not a or not os.path.exists(a.path):
+            return
+        mid = max(0.0, (seg.start_sec + seg.end_sec) / 2.0)
+        out_dir = DERIVED_DIR / 'video_frames' / f"asset_{a.id}_segments"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        kf_path = out_dir / f"seg_{seg.id}_mid.jpg"
+        try:
+            import subprocess
+            # extract single frame at time 'mid'
+            cmd = ['ffmpeg','-hide_banner','-loglevel','error','-y','-ss', str(mid), '-i', a.path, '-frames:v','1', str(kf_path)]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+            seg.keyframe_path = str(kf_path)
+        except Exception:
+            # If ffmpeg missing, skip image extraction
+            pass
+        # Embed representative image if available, else zero vector
+        vec = np.zeros((EMBED_DIM,), dtype='float32')
+        if seg.keyframe_path and os.path.exists(seg.keyframe_path):
+            try:
+                v = EMBED_SERVICE.embed_image(seg.keyframe_path) if EMBED_SERVICE else None
+                if v is not None:
+                    vec = v.astype('float32')
+            except Exception:
+                pass
+        emb_path = DERIVED_DIR / 'video_embeddings' / f'seg_{seg.id}.npy'
+        np.save(emb_path, vec)
+        seg.embedding_path = str(emb_path)
+        session.commit()
+        # Add to segment index
+        try:
+            if VIDEO_SEG_INDEX_SINGLETON is not None:
+                VIDEO_SEG_INDEX_SINGLETON.add([seg.id], vec.reshape(1,-1))
+        except Exception:
+            pass
+
+    # ---- Retry Classification & Backoff ----
+    def _classify_permanent(self, exc: Exception) -> bool:
+        transient = (TimeoutError, ConnectionError, OSError)
+        return not isinstance(exc, transient)
+
+    def _compute_backoff(self, retry_count: int):
+        base = getattr(self.settings, 'retry_backoff_base_seconds', 2.0)
+        cap = getattr(self.settings, 'retry_backoff_cap_seconds', 300.0)
+        jitter_fraction = getattr(self.settings, 'retry_backoff_jitter', 0.25)
+        raw = base * (2 ** max(0, retry_count - 1))
+        raw = min(raw, cap)
+        jitter = (
+            raw * random.uniform(-jitter_fraction, jitter_fraction)
+            if raw > 0
+            else 0
+        )
+        return timedelta(seconds=max(0.0, raw + jitter))

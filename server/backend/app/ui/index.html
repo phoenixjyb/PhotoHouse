@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="app_title">PhotoHouse</title>
+  <link rel="icon" type="image/svg+xml" href="/ui/photohouse-icon.svg" />
+  <link rel="apple-touch-icon" href="/ui/photohouse-icon.svg" />
+  <link rel="stylesheet" href="/ui/styles.css?v=20260912-brand" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+</head>
+<body data-ui-mode="family">
+  <a class="skip-link" href="#main-content" data-i18n="skip_content">Skip to memories</a>
+  <div class="bg-orb bg-orb-a"></div>
+  <div class="bg-orb bg-orb-b"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-mark" src="/ui/photohouse-icon.svg" width="48" height="48" alt="" decoding="async" />
+        <div>
+          <h1 data-i18n="app_title">PhotoHouse</h1>
+          <p class="subtitle" data-i18n="subtitle">Your family's story, all together.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="btn-quick-search" class="btn ghost quick-search" type="button" data-i18n="quick_search">Find a memory</button>
+        <div id="lang-switch" class="lang-switch">
+          <button class="btn ghost lang-btn" data-lang="en" type="button">EN</button>
+          <button class="btn ghost lang-btn" data-lang="zh" type="button">中文</button>
+        </div>
+        <button id="btn-ui-mode" class="btn ghost" type="button" aria-pressed="false">Advanced</button>
+        <button id="btn-voice-chat" class="btn ghost advanced-only" data-i18n="voice_chat">Voice Chat</button>
+        <button id="btn-voice-chat-reset" class="btn ghost advanced-only" data-i18n="voice_chat_reset">Delete Chat</button>
+        <button id="btn-voice-command" class="btn ghost advanced-only" data-i18n="voice_command">Voice Command</button>
+        <span id="voice-status" class="small muted"></span>
+        <button id="btn-refresh-all" class="btn ghost advanced-only" data-i18n="refresh">Refresh</button>
+        <a class="btn ghost advanced-only" href="/docs" target="_blank" rel="noopener" data-i18n="api_docs">API Docs</a>
+      </div>
+    </header>
+
+    <section id="voice-history-panel" class="voice-history-panel advanced-only">
+      <div class="voice-history-header">
+        <strong data-i18n="voice_history">Voice History</strong>
+        <button id="btn-voice-history-clear" class="btn ghost" data-i18n="voice_history_clear">Clear</button>
+      </div>
+      <div id="voice-history-list" class="voice-history-list"></div>
+    </section>
+
+    <section class="status-cards advanced-only" aria-label="System status">
+      <article class="stat-card">
+        <p class="label" data-i18n="assets">Assets</p>
+        <p id="stat-assets" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="captions">Captions</p>
+        <p id="stat-captions" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="faces">Faces</p>
+        <p id="stat-faces" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="people">People</p>
+        <p id="stat-persons" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="tags_total">Tag Links</p>
+        <p id="stat-tags" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="tagged_assets">Tagged Assets</p>
+        <p id="stat-tag-assets" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="tasks_pending">Tasks Pending</p>
+        <p id="stat-pending" class="value">-</p>
+      </article>
+      <article class="stat-card">
+        <p class="label" data-i18n="health">Health</p>
+        <p id="stat-health" class="value">-</p>
+      </article>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Photo House sections">
+      <button id="tab-button-home" class="tab active" data-tab="home" data-i18n="tab_home" role="tab" aria-controls="tab-home" aria-selected="true" tabindex="0">Home</button>
+      <button id="tab-button-library" class="tab" data-tab="library" data-i18n="tab_library" role="tab" aria-controls="tab-library" aria-selected="false" tabindex="-1">All photos</button>
+      <button id="tab-button-people" class="tab" data-tab="people" data-i18n="tab_people" role="tab" aria-controls="tab-people" aria-selected="false" tabindex="-1">People</button>
+      <button id="tab-button-tags" class="tab" data-tab="tags" data-i18n="tab_tags" role="tab" aria-controls="tab-tags" aria-selected="false" tabindex="-1">Tags</button>
+      <button id="tab-button-stories" class="tab" data-tab="stories" data-i18n="tab_stories" role="tab" aria-controls="tab-stories" aria-selected="false" tabindex="-1">Albums</button>
+      <button id="tab-button-similarity" class="tab advanced-only" data-tab="similarity" data-i18n="tab_similarity" role="tab" aria-controls="tab-similarity" aria-selected="false" tabindex="-1">Similarity</button>
+      <button id="tab-button-map" class="tab" data-tab="map" data-i18n="tab_map" role="tab" aria-controls="tab-map" aria-selected="false" tabindex="-1">Map</button>
+      <button id="tab-button-tasks" class="tab advanced-only" data-tab="tasks" data-i18n="tab_tasks" role="tab" aria-controls="tab-tasks" aria-selected="false" tabindex="-1">Tasks</button>
+      <button id="tab-button-admin" class="tab advanced-only" data-tab="admin" data-i18n="tab_admin" role="tab" aria-controls="tab-admin" aria-selected="false" tabindex="-1">Admin</button>
+    </nav>
+
+    <main id="main-content" tabindex="-1">
+      <section id="tab-home" class="tab-panel active" role="tabpanel" aria-labelledby="tab-button-home">
+        <div class="home-hero">
+          <div class="home-hero-copy">
+          <p class="home-eyebrow" data-i18n="home_eyebrow">WELCOME TO YOUR FAMILY ALBUM</p>
+          <h2 data-i18n="home_title">Ordinary days. Extraordinary memories.</h2>
+          <p class="home-intro" data-i18n="home_intro">The places you've been. The people you love. A lifetime of little moments, waiting to be found again.</p>
+          <div class="home-search-row">
+            <label class="grow">
+              <span class="sr-only" data-i18n="family_search">Family search</span>
+              <input id="home-search-query" type="search" data-i18n-placeholder="home_search_ph" placeholder="Try ‘birthday’, ‘by the sea’, or a name…" />
+            </label>
+            <button id="btn-home-search" class="btn home-search-btn" type="button" data-i18n="find_memories">Find Memories</button>
+          </div>
+          <div id="home-search-suggestions" class="home-suggestions" aria-label="Search suggestions">
+            <button class="home-suggestion" type="button" data-home-query="playing outside" data-home-query-zh="户外玩耍" data-i18n="home_suggestion_play">Playing outside</button>
+            <button class="home-suggestion" type="button" data-home-query="birthday" data-home-query-zh="生日" data-i18n="home_suggestion_birthday">Birthday moments</button>
+            <button class="home-suggestion" type="button" data-home-query="family trip" data-home-query-zh="家庭旅行" data-i18n="home_suggestion_trip">Family trips</button>
+          </div>
+          <div id="home-search-interpretation" class="home-search-interpretation hidden" aria-live="polite"></div>
+          </div>
+          <div class="home-keepsake">
+            <div id="home-featured-photos" class="home-featured-photos"></div>
+            <p class="keepsake-note" data-i18n="keepsake_note">The little things. The big feelings.</p>
+          </div>
+        </div>
+        <div id="home-load-status" class="home-load-status hidden" role="status"></div>
+
+        <div class="home-section-heading">
+          <div>
+            <p class="home-eyebrow" data-i18n="home_recent_eyebrow">LATEST ADDITIONS</p>
+            <h2 data-i18n="home_recent_title">Recent moments</h2>
+          </div>
+          <div class="home-heading-actions">
+            <button id="btn-home-slideshow" class="btn ghost" type="button" data-i18n="watch_memories" disabled>Watch memories</button>
+            <button id="btn-home-view-library" class="btn ghost" type="button" data-i18n="view_all">View all</button>
+          </div>
+        </div>
+        <div id="home-recent-grid" class="asset-grid home-asset-grid"></div>
+
+        <div class="home-columns">
+          <section class="panel home-panel">
+            <div class="home-section-heading compact">
+              <div>
+                <p class="home-eyebrow" data-i18n="home_people_eyebrow">FAMILY</p>
+                <h2 data-i18n="home_people_title">Your favourite people</h2>
+              </div>
+              <button id="btn-home-view-people" class="btn ghost" type="button" data-i18n="view_all">View all</button>
+            </div>
+            <div id="home-people-list" class="home-people-list"></div>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="home-section-heading compact">
+              <div>
+                <p class="home-eyebrow" data-i18n="home_albums_eyebrow">READY TO EXPLORE</p>
+                <h2 data-i18n="home_albums_title">Stories worth revisiting</h2>
+              </div>
+              <button id="btn-home-view-stories" class="btn ghost" type="button" data-i18n="view_all">View all</button>
+            </div>
+            <div id="home-story-list" class="home-story-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="tab-library" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-library">
+        <div class="panel-grid">
+          <div class="panel left-panel">
+            <h2 data-i18n="search">Search</h2>
+            <div class="controls">
+              <label>
+                <span data-i18n="mode">Mode</span>
+                <select id="search-mode">
+                  <option value="path" data-i18n="mode_path">Path</option>
+                  <option value="caption" data-i18n="mode_caption">Caption</option>
+                  <option value="smart" data-i18n="mode_smart" selected>Smart</option>
+                  <option value="person" data-i18n="mode_person">Person Name</option>
+                </select>
+              </label>
+              <label class="grow">
+                <span data-i18n="query">Query</span>
+                <input id="search-query" type="text" data-i18n-placeholder="query_ph" placeholder="Type query text..." />
+              </label>
+            </div>
+            <div class="controls">
+              <label class="grow">
+                <span data-i18n="tags_for_smart">Tags (for smart mode)</span>
+                <input id="search-tags" type="text" data-i18n-placeholder="tags_for_smart_ph" placeholder="family, beach, sunset" />
+              </label>
+              <label>
+                <span data-i18n="media">Media</span>
+                <select id="search-media">
+                  <option value="all" data-i18n="media_all">All</option>
+                  <option value="image" data-i18n="media_image">Image</option>
+                  <option value="video" data-i18n="media_video">Video</option>
+                </select>
+              </label>
+            </div>
+            <div class="controls">
+              <button id="btn-search" class="btn" data-i18n="run_search">Run Search</button>
+              <button id="btn-library-load" class="btn ghost" data-i18n="browse_latest">Browse Latest</button>
+            </div>
+            <div id="search-interpretation" class="home-search-interpretation hidden" aria-live="polite"></div>
+
+            <h3 data-i18n="results">Results</h3>
+            <p id="library-result-meta" class="muted"></p>
+            <div class="pager-row">
+              <button id="btn-library-prev" class="btn ghost" type="button" data-i18n="prev_page">Prev</button>
+              <button id="btn-library-next" class="btn ghost" type="button" data-i18n="next_page">Next</button>
+              <input id="library-page-input" class="pager-input" type="number" min="1" step="1" data-i18n-placeholder="page_input_ph" placeholder="Page" />
+              <button id="btn-library-jump" class="btn ghost" type="button" data-i18n="jump_page">Go</button>
+              <span id="library-page-meta" class="muted small"></span>
+            </div>
+            <div id="library-grid" class="asset-grid scroll-grid"></div>
+          </div>
+
+          <div class="panel right-panel">
+            <h2 data-i18n="inspector">Inspector</h2>
+            <p id="asset-empty" class="muted" data-i18n="asset_empty">Select any result card to inspect captions, tags, and faces.</p>
+            <div id="asset-inspector" class="hidden">
+              <div class="asset-header">
+                <p id="asset-id" class="mono"></p>
+                <p id="asset-path" class="muted mono small"></p>
+                <div class="asset-header-actions">
+                  <button id="btn-asset-back" class="btn ghost" data-i18n="back_to_results">Back</button>
+                  <button id="btn-preview-fullscreen" class="btn ghost" data-i18n="fullscreen">Full Screen</button>
+                  <button id="btn-delete-photo" class="btn danger advanced-only" data-i18n="delete_photo">Delete Photo</button>
+                  <button id="btn-delete-asset" class="btn danger advanced-only" data-i18n="delete_asset">Delete Asset</button>
+                </div>
+              </div>
+              <div id="asset-preview" class="asset-preview"></div>
+
+              <div class="section">
+                <h3 data-i18n="captions">Captions</h3>
+                <div class="controls">
+                  <button id="btn-caption-regenerate" class="btn advanced-only" data-i18n="regenerate">Regenerate</button>
+                </div>
+                <div id="caption-list"></div>
+              </div>
+
+              <div class="section">
+                <h3 data-i18n="tags">Tags</h3>
+                <div id="tag-list" class="tag-list"></div>
+                <div class="controls">
+                  <input id="tag-input" type="text" data-i18n-placeholder="tags_input_ph" placeholder="comma separated tags" />
+                  <button id="btn-add-tags" class="btn" data-i18n="add_tags">Add Tags</button>
+                </div>
+              </div>
+
+              <div class="section">
+                <h3 data-i18n="faces">Faces</h3>
+                <div id="face-list" class="face-grid"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-people" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-people">
+        <div class="panel-grid">
+          <div class="panel left-panel">
+            <div class="controls">
+              <h2 data-i18n="people">People</h2>
+              <label class="small muted" style="display:flex; align-items:center; gap:6px;">
+                <input id="people-show-unnamed" type="checkbox" />
+                <span data-i18n="show_unnamed_clusters">Show unnamed clusters</span>
+              </label>
+              <button id="btn-refresh-people" class="btn ghost" data-i18n="refresh">Refresh</button>
+            </div>
+            <div class="controls">
+              <input id="people-new-person-name" type="text" data-i18n-placeholder="new_person_name_ph" placeholder="New person name" />
+              <button id="btn-create-person" class="btn ghost" data-i18n="create_person">Create Person</button>
+            </div>
+            <div id="people-list" class="people-list"></div>
+          </div>
+          <div class="panel right-panel">
+            <h2 data-i18n="person_assets">Person Assets</h2>
+            <p id="person-assets-meta" class="muted" data-i18n="person_assets_meta_default">Select a person to view related assets.</p>
+            <div class="pager-row">
+              <button id="btn-person-assets-prev" class="btn ghost" type="button" data-i18n="prev_page">Prev</button>
+              <button id="btn-person-assets-next" class="btn ghost" type="button" data-i18n="next_page">Next</button>
+              <input id="person-assets-page-input" class="pager-input" type="number" min="1" step="1" data-i18n-placeholder="page_input_ph" placeholder="Page" />
+              <button id="btn-person-assets-jump" class="btn ghost" type="button" data-i18n="jump_page">Go</button>
+              <span id="person-assets-page-meta" class="muted small"></span>
+            </div>
+            <div id="person-assets-grid" class="asset-grid scroll-grid"></div>
+            <h3 data-i18n="unassigned_faces">Unassigned Faces</h3>
+            <div class="pager-row">
+              <button id="btn-unassigned-prev" class="btn ghost" type="button" data-i18n="prev_page">Prev</button>
+              <button id="btn-unassigned-next" class="btn ghost" type="button" data-i18n="next_page">Next</button>
+              <input id="unassigned-page-input" class="pager-input" type="number" min="1" step="1" data-i18n-placeholder="page_input_ph" placeholder="Page" />
+              <button id="btn-unassigned-jump" class="btn ghost" type="button" data-i18n="jump_page">Go</button>
+              <span id="unassigned-page-meta" class="muted small"></span>
+            </div>
+            <div id="unassigned-faces" class="face-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-tags" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-tags">
+        <div class="panel-grid">
+          <div class="panel left-panel">
+            <div class="controls">
+              <h2 data-i18n="tag_catalog">Tag Catalog</h2>
+              <label class="grow">
+                <span data-i18n="query">Query</span>
+                <input id="tags-filter-query" type="text" data-i18n-placeholder="tag_filter_name_ph" placeholder="Filter tags..." />
+              </label>
+              <label>
+                <span data-i18n="tag_source">Source</span>
+                <select id="tags-filter-source">
+                  <option value="all" data-i18n="tag_source_all">All</option>
+                  <option value="cap" data-i18n="tag_source_cap">Caption</option>
+                  <option value="img" data-i18n="tag_source_img">Image</option>
+                  <option value="cap+img" data-i18n="tag_source_capimg">Caption+Image</option>
+                  <option value="manual" data-i18n="tag_source_manual">Manual</option>
+                  <option value="rule" data-i18n="tag_source_rule">Rule</option>
+                  <option value="(null)" data-i18n="tag_source_null">Unknown</option>
+                </select>
+              </label>
+              <button id="btn-refresh-tags" class="btn ghost" data-i18n="refresh">Refresh</button>
+            </div>
+            <p id="tags-meta" class="muted"></p>
+            <div class="pager-row">
+              <button id="btn-tags-prev" class="btn ghost" type="button" data-i18n="prev_page">Prev</button>
+              <button id="btn-tags-next" class="btn ghost" type="button" data-i18n="next_page">Next</button>
+              <input id="tags-page-input" class="pager-input" type="number" min="1" step="1" data-i18n-placeholder="page_input_ph" placeholder="Page" />
+              <button id="btn-tags-jump" class="btn ghost" type="button" data-i18n="jump_page">Go</button>
+              <span id="tags-page-meta" class="muted small"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="task-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="tags">Tags</th>
+                    <th data-i18n="type">Type</th>
+                    <th data-i18n="tag_assets">Assets</th>
+                    <th data-i18n="tag_links">Links</th>
+                    <th data-i18n="tag_sources">Sources</th>
+                    <th data-i18n="action">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tags-rows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel right-panel">
+            <div class="controls">
+              <h2 data-i18n="tag_assets_panel">Tag Assets</h2>
+              <label>
+                <span data-i18n="media">Media</span>
+                <select id="tag-assets-media">
+                  <option value="all" data-i18n="media_all">All</option>
+                  <option value="image" data-i18n="media_image">Image</option>
+                  <option value="video" data-i18n="media_video">Video</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="tag_source">Source</span>
+                <select id="tag-assets-source">
+                  <option value="all" data-i18n="tag_source_all">All</option>
+                  <option value="cap" data-i18n="tag_source_cap">Caption</option>
+                  <option value="img" data-i18n="tag_source_img">Image</option>
+                  <option value="cap+img" data-i18n="tag_source_capimg">Caption+Image</option>
+                  <option value="manual" data-i18n="tag_source_manual">Manual</option>
+                  <option value="rule" data-i18n="tag_source_rule">Rule</option>
+                  <option value="(null)" data-i18n="tag_source_null">Unknown</option>
+                </select>
+              </label>
+              <button id="btn-refresh-tag-assets" class="btn ghost" data-i18n="refresh">Refresh</button>
+            </div>
+            <p id="tag-assets-meta" class="muted" data-i18n="tag_assets_meta_default">Select a tag to view related assets.</p>
+            <div class="pager-row">
+              <button id="btn-tag-assets-prev" class="btn ghost" type="button" data-i18n="prev_page">Prev</button>
+              <button id="btn-tag-assets-next" class="btn ghost" type="button" data-i18n="next_page">Next</button>
+              <input id="tag-assets-page-input" class="pager-input" type="number" min="1" step="1" data-i18n-placeholder="page_input_ph" placeholder="Page" />
+              <button id="btn-tag-assets-jump" class="btn ghost" type="button" data-i18n="jump_page">Go</button>
+              <span id="tag-assets-page-meta" class="muted small"></span>
+            </div>
+            <div id="tag-assets-grid" class="asset-grid scroll-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-stories" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-stories">
+        <div class="panel-grid">
+          <div class="panel left-panel">
+            <div class="controls">
+              <h2 data-i18n="story_albums">Story Albums</h2>
+              <label>
+                <span data-i18n="story_type">Type</span>
+                <select id="stories-filter-type">
+                  <option value="all" data-i18n="story_type_all">All</option>
+                  <option value="person" data-i18n="story_type_person">Person</option>
+                  <option value="tag" data-i18n="story_type_tag">Tag</option>
+                  <option value="location" data-i18n="story_type_location">Location</option>
+                  <option value="caption" data-i18n="story_type_caption">Caption</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="media">Media</span>
+                <select id="stories-filter-media">
+                  <option value="all" data-i18n="media_all">All</option>
+                  <option value="image" data-i18n="media_image">Image</option>
+                  <option value="video" data-i18n="media_video">Video</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="story_min_assets">Min assets</span>
+                <input id="stories-min-assets" type="number" min="2" max="200" step="1" value="3" />
+              </label>
+              <button id="btn-refresh-stories" class="btn ghost" data-i18n="refresh">Refresh</button>
+            </div>
+            <p id="stories-meta" class="muted"></p>
+            <div class="table-wrap">
+              <table class="task-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="story_type">Type</th>
+                    <th data-i18n="query">Topic</th>
+                    <th data-i18n="assets">Assets</th>
+                    <th data-i18n="action">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="stories-rows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel right-panel">
+            <section class="album-drafts-panel" aria-labelledby="album-drafts-title">
+              <div class="home-section-heading compact">
+                <div>
+                  <p class="home-eyebrow" data-i18n="album_drafts_eyebrow">YOUR COLLECTIONS</p>
+                  <h3 id="album-drafts-title" data-i18n="album_drafts_title">Saved album drafts</h3>
+                </div>
+                <button id="btn-refresh-album-drafts" class="btn ghost" type="button" data-i18n="refresh">Refresh</button>
+              </div>
+              <div id="album-draft-list" class="album-draft-list"></div>
+            </section>
+            <h2 data-i18n="story_assets_panel">Story Assets</h2>
+            <p id="story-assets-meta" class="muted" data-i18n="story_assets_meta_default">Select a story to view related assets.</p>
+            <section class="album-composer" aria-labelledby="album-composer-title">
+              <div class="home-section-heading compact">
+                <div>
+                  <p class="home-eyebrow" data-i18n="album_composer_eyebrow">ALBUM COMPOSER</p>
+                  <h3 id="album-composer-title" data-i18n="album_composer_title">Create a keepsake</h3>
+                </div>
+                <button id="btn-album-use-story" class="btn ghost" type="button" data-i18n="album_use_story">Use selected story</button>
+              </div>
+              <div class="album-composer-grid">
+                <label>
+                  <span data-i18n="album_title_en">English title</span>
+                  <input id="album-title" type="text" maxlength="160" data-i18n-placeholder="album_title_en_ph" placeholder="Our summer together" />
+                </label>
+                <label>
+                  <span data-i18n="album_title_zh">Chinese title</span>
+                  <input id="album-title-zh" type="text" maxlength="160" data-i18n-placeholder="album_title_zh_ph" placeholder="一起过夏天" />
+                </label>
+                <label>
+                  <span data-i18n="album_theme">Theme</span>
+                  <select id="album-theme">
+                    <option value="custom" data-i18n="album_theme_custom">Custom</option>
+                    <option value="birthday" data-i18n="album_theme_birthday">Birthday</option>
+                    <option value="trip" data-i18n="album_theme_trip">Trip</option>
+                    <option value="growing_up" data-i18n="album_theme_growing_up">Growing up</option>
+                    <option value="grandparents" data-i18n="album_theme_grandparents">Grandparents</option>
+                    <option value="year_in_review" data-i18n="album_theme_year_in_review">Year in review</option>
+                    <option value="seasonal" data-i18n="album_theme_seasonal">Seasonal</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="album_sort">Photo order</span>
+                  <select id="album-sort-mode">
+                    <option value="chronological" data-i18n="album_sort_chronological">Oldest to newest</option>
+                    <option value="newest" data-i18n="album_sort_newest">Newest first</option>
+                    <option value="as_provided" data-i18n="album_sort_story">Story order</option>
+                  </select>
+                </label>
+                <label class="album-cover-field">
+                  <span data-i18n="album_cover">Cover photo</span>
+                  <select id="album-cover-asset"></select>
+                </label>
+              </div>
+              <div class="album-composer-actions">
+                <button id="btn-save-album-draft" class="btn" type="button" data-i18n="album_save_draft">Save album draft</button>
+                <span id="album-composer-meta" class="muted small" data-i18n="album_composer_hint">Choose a suggested story to start.</span>
+              </div>
+            </section>
+            <div id="story-assets-grid" class="asset-grid scroll-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-similarity" class="tab-panel advanced-only" role="tabpanel" aria-labelledby="tab-button-similarity">
+        <div class="panel-grid">
+          <div class="panel left-panel">
+            <div class="controls">
+              <h2 data-i18n="similarity_title">Similarity Reduction</h2>
+              <label>
+                <span data-i18n="similarity_min_group_size">Min group</span>
+                <input id="sim-min-group-size" type="number" min="2" max="20" step="1" value="2" />
+              </label>
+              <label>
+                <span data-i18n="similarity_max_distance">Max distance</span>
+                <input id="sim-max-distance" type="number" min="1" max="32" step="1" value="5" />
+              </label>
+              <label>
+                <span data-i18n="similarity_sample_limit">Sample</span>
+                <input id="sim-sample-limit" type="number" min="100" max="5000" step="100" value="1000" />
+              </label>
+              <label>
+                <span data-i18n="similarity_cluster_limit">Clusters</span>
+                <input id="sim-cluster-limit" type="number" min="1" max="200" step="1" value="60" />
+              </label>
+              <button id="btn-sim-preview" class="btn ghost" data-i18n="similarity_preview">Preview</button>
+              <button id="btn-sim-apply" class="btn" data-i18n="similarity_apply">Hide Similar</button>
+              <button id="btn-sim-restore" class="btn ghost" data-i18n="similarity_restore_all">Restore Hidden</button>
+            </div>
+            <p id="sim-meta" class="muted"></p>
+            <div class="table-wrap">
+              <table class="task-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="similarity_kind">Kind</th>
+                    <th data-i18n="query">Group</th>
+                    <th data-i18n="similarity_keep">Keep</th>
+                    <th data-i18n="similarity_hide_count">Hide</th>
+                    <th data-i18n="action">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sim-rows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel right-panel">
+            <h2 data-i18n="similarity_group_assets_panel">Group Assets</h2>
+            <p id="sim-assets-meta" class="muted" data-i18n="similarity_group_assets_meta_default">Select a group to inspect candidates.</p>
+            <div id="sim-assets-grid" class="asset-grid scroll-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-map" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-map">
+        <div class="panel">
+          <div class="controls">
+            <h2 data-i18n="geo_map">Geo Map</h2>
+            <label>
+              <span data-i18n="media">Media</span>
+              <select id="map-media-filter">
+                <option value="all" data-i18n="media_all">All</option>
+                <option value="image" data-i18n="media_image">Image</option>
+                <option value="video" data-i18n="media_video">Video</option>
+              </select>
+            </label>
+            <label>
+              <span data-i18n="points">Points</span>
+              <input id="map-limit" type="number" min="100" max="20000" step="100" value="3000" />
+            </label>
+            <button id="btn-refresh-map" class="btn ghost" data-i18n="refresh_map">Refresh Map</button>
+          </div>
+          <p id="map-meta" class="muted" data-i18n="map_loading">Loading map data...</p>
+          <div id="geo-map" class="geo-map"></div>
+        </div>
+      </section>
+
+      <section id="tab-tasks" class="tab-panel advanced-only" role="tabpanel" aria-labelledby="tab-button-tasks">
+        <div class="panel">
+          <div class="controls">
+            <h2 data-i18n="task_queue">Task Queue</h2>
+            <button id="btn-refresh-tasks" class="btn ghost" data-i18n="refresh">Refresh</button>
+          </div>
+          <p id="task-meta" class="muted"></p>
+          <div id="task-system-usage" class="usage-grid"></div>
+          <div class="table-wrap">
+            <table class="task-table">
+              <thead>
+                <tr>
+                  <th data-i18n="id">ID</th>
+                  <th data-i18n="type">Type</th>
+                  <th data-i18n="state">State</th>
+                  <th data-i18n="progress">Progress</th>
+                  <th data-i18n="retry">Retry</th>
+                  <th data-i18n="error">Error</th>
+                  <th data-i18n="action">Action</th>
+                </tr>
+              </thead>
+              <tbody id="task-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-admin" class="tab-panel advanced-only" role="tabpanel" aria-labelledby="tab-button-admin">
+        <div class="panel-grid">
+          <div class="panel">
+            <h2 data-i18n="health">Health</h2>
+            <pre id="admin-health" class="json-box"></pre>
+          </div>
+          <div class="panel">
+            <h2 data-i18n="metrics">Metrics</h2>
+            <pre id="admin-metrics" class="json-box"></pre>
+          </div>
+          <div class="panel">
+            <h2 data-i18n="actions">Actions</h2>
+            <div class="controls">
+              <button id="btn-rebuild-index" class="btn" data-i18n="rebuild_vector_index">Rebuild Vector Index</button>
+              <button id="btn-recluster" class="btn" data-i18n="trigger_reclustering">Trigger Reclustering</button>
+            </div>
+            <div class="controls">
+              <input id="ingest-root" type="text" data-i18n-placeholder="ingest_root_ph" placeholder="Choose a local originals directory" />
+              <button id="btn-ingest" class="btn" data-i18n="ingest_scan">Ingest Scan</button>
+            </div>
+            <p class="muted" data-i18n="admin_maintenance_hint">Use this for controlled maintenance operations from browser.</p>
+          </div>
+          <div class="panel">
+            <h2 data-i18n="caption_lvface">Caption/LVFace</h2>
+            <pre id="admin-services" class="json-box"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="family-footer"><span aria-hidden="true">♡</span> <span data-i18n="family_footer">A little closer, every time you look back.</span></footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="preview-modal" class="preview-modal hidden" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <div class="viewer-toolbar">
+      <div><p id="preview-title" class="viewer-title"></p><p id="preview-position" class="small muted" aria-live="polite"></p></div>
+      <div class="viewer-actions">
+        <button id="btn-preview-play" class="preview-close" type="button" data-i18n="play_slideshow">Play slideshow</button>
+        <button id="btn-preview-details" class="preview-close" type="button" data-i18n="photo_details">Photo details</button>
+        <button id="btn-preview-close" class="preview-close" type="button" data-i18n="close_preview">Close</button>
+      </div>
+    </div>
+    <div class="viewer-tools">
+      <div class="viewer-size-controls">
+        <button id="btn-viewer-fit" class="preview-close" type="button" data-i18n="viewer_fit" aria-pressed="true">Fit</button>
+        <button id="btn-viewer-actual" class="preview-close" type="button" data-i18n="viewer_actual" aria-pressed="false">Actual size</button>
+        <button id="btn-viewer-zoom-out" class="preview-close" type="button" aria-label="Zoom out">−</button>
+        <output id="viewer-zoom" aria-label="Zoom level">—</output>
+        <button id="btn-viewer-zoom-in" class="preview-close" type="button" aria-label="Zoom in">+</button>
+        <button id="btn-viewer-fullscreen" class="preview-close" type="button" data-i18n="viewer_fullscreen" aria-pressed="false">Full screen</button>
+      </div>
+      <span id="viewer-image-status" class="viewer-hint" role="status"></span>
+    </div>
+    <div class="viewer-stage">
+      <button id="btn-preview-prev" class="viewer-arrow" type="button" aria-label="Previous photo">&#8592;</button>
+      <div id="preview-modal-body" class="preview-modal-body" tabindex="0" role="region" aria-label="Photo viewer"></div>
+      <button id="btn-preview-next" class="viewer-arrow" type="button" aria-label="Next photo">&#8594;</button>
+    </div>
+    <div id="preview-caption" class="viewer-caption" tabindex="0" role="region" aria-label="Photo description"></div>
+    <div id="preview-filmstrip" class="viewer-filmstrip" aria-label="Photos in this view"></div>
+  </div>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="/ui/app.js?v=20260911-face-people" defer></script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+{
+  "profile": "api-development",
+  "packages": [
+    {
+      "name": "alembic",
+      "version": "1.19.2",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/alembic-1.19.2/LICENSE",
+          "sha256": "6e68d94a03a0e3e327ddf3e86d1ebedc14eece3922022618fc246a36296fd0cc"
+        }
+      ]
+    },
+    {
+      "name": "annotated-doc",
+      "version": "0.0.5",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/annotated-doc-0.0.5/LICENSE",
+          "sha256": "fff170779a6acbf65abdb405c087f1cee1786691e4a96a4034517e4a504a0cdf"
+        }
+      ]
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/annotated-types-0.8.0/LICENSE",
+          "sha256": "fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d"
+        }
+      ]
+    },
+    {
+      "name": "anyio",
+      "version": "4.15.1",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/anyio-4.15.1/LICENSE",
+          "sha256": "5361ac9dc58f2ef5fd2e9b09c68297c17f04950909bbc8023bdb82eacf22c2b0"
+        }
+      ]
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/certifi-2026.7.22/LICENSE",
+          "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+        }
+      ]
+    },
+    {
+      "name": "click",
+      "version": "8.5.0",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/click-8.5.0/LICENSE.txt",
+          "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d"
+        }
+      ]
+    },
+    {
+      "name": "fastapi",
+      "version": "0.135.2",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/fastapi-0.135.2/LICENSE",
+          "sha256": "4ec89ffc81485b97fec584b2d4a961032eeffe834453894fd9c1274906cc744e"
+        }
+      ]
+    },
+    {
+      "name": "greenlet",
+      "version": "3.5.5",
+      "license_expression": "MIT AND PSF-2.0",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/greenlet-3.5.5/LICENSE",
+          "sha256": "769831d6e5dfaf2c20802faccff1fafb4c2025dd8f6253dfa47fcad59d4d0979"
+        },
+        {
+          "path": "third_party/licenses/python/greenlet-3.5.5/LICENSE.PSF",
+          "sha256": "e5ff3c23c110e494cd7d736c10fd96d462457bafeca310840db6527298c7d46b"
+        }
+      ]
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/h11-0.16.0/LICENSE.txt",
+          "sha256": "37db5bb85926db28a427a25867f10b1232003aea1be69ccb851138adb8e6f361"
+        }
+      ]
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/httpcore-1.0.9/LICENSE.md",
+          "sha256": "fdcb59154c74cbaba16a11242f7740bea9f23d6feb5547917d8c5f94a80392a5"
+        }
+      ]
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/httpx-0.28.1/LICENSE.md",
+          "sha256": "4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d"
+        }
+      ]
+    },
+    {
+      "name": "idna",
+      "version": "3.19",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/idna-3.19/LICENSE.md",
+          "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04"
+        }
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.1.0",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/iniconfig-2.1.0/LICENSE",
+          "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4"
+        }
+      ]
+    },
+    {
+      "name": "Mako",
+      "version": "1.4.1",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/mako-1.4.1/LICENSE",
+          "sha256": "8c1d171bc5d341ad9cd33d5e2c39b96a82c7bd49b3ae89a470c37e5822232054"
+        }
+      ]
+    },
+    {
+      "name": "MarkupSafe",
+      "version": "3.0.3",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/markupsafe-3.0.3/LICENSE.txt",
+          "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+        }
+      ]
+    },
+    {
+      "name": "packaging",
+      "version": "25.0",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/packaging-25.0/LICENSE",
+          "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+        },
+        {
+          "path": "third_party/licenses/python/packaging-25.0/LICENSE.APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        },
+        {
+          "path": "third_party/licenses/python/packaging-25.0/LICENSE.BSD",
+          "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+        }
+      ]
+    },
+    {
+      "name": "pillow",
+      "version": "12.3.0",
+      "license_expression": "MIT-CMU",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pillow-12.3.0/LICENSE",
+          "sha256": "dda12a98c1979cf3d94df1cff45d27a4cb3f04a60c76f76902ac54cac03ec0ce"
+        }
+      ]
+    },
+    {
+      "name": "pluggy",
+      "version": "1.6.0",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pluggy-1.6.0/LICENSE",
+          "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+        }
+      ]
+    },
+    {
+      "name": "pydantic",
+      "version": "2.12.5",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pydantic-2.12.5/LICENSE",
+          "sha256": "a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3"
+        }
+      ]
+    },
+    {
+      "name": "pydantic_core",
+      "version": "2.41.5",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pydantic-core-2.41.5/LICENSE",
+          "sha256": "2afdd30d54b4d62b6f488a6bcc1546e84ec5061f13f4209c03d012348783795a"
+        }
+      ]
+    },
+    {
+      "name": "Pygments",
+      "version": "2.19.2",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pygments-2.19.2/AUTHORS",
+          "sha256": "0660e318a6f215802adc8731ab85d0c65ff27cfcca3f5d28597f306476195bd9"
+        },
+        {
+          "path": "third_party/licenses/python/pygments-2.19.2/LICENSE",
+          "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+        }
+      ]
+    },
+    {
+      "name": "pytest",
+      "version": "9.0.3",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/pytest-9.0.3/LICENSE",
+          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+        }
+      ]
+    },
+    {
+      "name": "SQLAlchemy",
+      "version": "2.0.52",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/sqlalchemy-2.0.52/LICENSE",
+          "sha256": "e862bb5b904fb5513c3e14288d7a25a12eb0ecc7847a0a965d310e9a955e7cb9"
+        }
+      ]
+    },
+    {
+      "name": "starlette",
+      "version": "1.3.1",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/starlette-1.3.1/LICENSE.md",
+          "sha256": "dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf"
+        }
+      ]
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4",
+      "license_expression": "MIT",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/typing-inspection-0.4.4/LICENSE",
+          "sha256": "804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3"
+        }
+      ]
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "license_expression": "PSF-2.0",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/typing-extensions-4.16.0/LICENSE",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ]
+    },
+    {
+      "name": "uvicorn",
+      "version": "0.52.4",
+      "license_expression": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/uvicorn-0.52.4/LICENSE.md",
+          "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
+        }
+      ]
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6",
+      "license_expression": null,
+      "license_files": [
+        {
+          "path": "third_party/licenses/python/colorama-0.4.6/LICENSE.txt",
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
+        }
+      ]
+    }
+  ]
+}

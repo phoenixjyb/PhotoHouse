@@ -1,0 +1,34 @@
+{
+  "artifact_files_scanned": 69,
+  "files_with_notice_or_license_entries": 1,
+  "limits": [
+    "Archive scanning was limited to the exact 69 external files resolved from these two debug runtime configurations.",
+    "Preserve this notice and the complete MPL-2.0 text in binary distribution notices. Other Gradle variant or packaged files may need a fresh scan."
+  ],
+  "notice_entry_count": 1,
+  "production_profile": "production_phone_connected_plus_tv",
+  "required_notices": [
+    {
+      "additional_license": "MPL-2.0",
+      "archive_entry": "okhttp3/internal/publicsuffix/NOTICE",
+      "artifact_file": "okhttp-4.12.0.jar",
+      "artifact_lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "artifact_sha256": "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0",
+      "coordinate": "com.squareup.okhttp3:okhttp:4.12.0",
+      "copied_notice": "../../third_party/licenses/android/okhttp-publicsuffix-NOTICE.txt",
+      "copied_notice_sha256": "8a9c58fbded5ea3474315e4a9824ca8b1486098a1a03e897e0b19419d5e1876a",
+      "data_source": "https://publicsuffix.org/list/public_suffix_list.dat",
+      "distribution_action": "retain this upstream notice in unified THIRD_PARTY_NOTICES and include MPL-2.0 license text for the bundled Public Suffix List data",
+      "entry_bytes": 218,
+      "entry_sha256": "8a9c58fbded5ea3474315e4a9824ca8b1486098a1a03e897e0b19419d5e1876a",
+      "kind": "notice",
+      "license_source": "https://www.mozilla.org/MPL/2.0/index.txt",
+      "license_text": "../../third_party/licenses/android/MPL-2.0.txt"
+    }
+  ],
+  "schema": 1,
+  "source_revision": "8a4864202665786e0d93b76dc0c9a85ac80c8777"
+}

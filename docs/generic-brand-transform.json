@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "status": "applied_locally_api_android_build_verified",
+  "excluded_original_raster_sha256": "c8fc559e39c5c4d0b9902cafca47e15ac4e6cfa2cbc18d81a40d956e8a8f8909",
+  "authorship": "Generic SVG and vector geometry authored for the Apache-2.0 source candidate",
+  "transformations": [
+    {
+      "path": "clients/android/android/branding/res/drawable/photohouse_icon_foreground.xml",
+      "operation": "replace",
+      "before_sha256": "86d318f099cb803bbb165ff1fc946d68072aea12ae761ef85fd0d929e85ab52b",
+      "after_sha256": "091712705681d408833a5533293418ce969a6bd75e091e37ccb1b6e4c7e051ef",
+      "purpose": "authored generic icon with no original raster"
+    },
+    {
+      "path": "server/backend/app/routers/ui.py",
+      "operation": "replace",
+      "before_sha256": "635f618cc410ea392157749c17d85f8346924b7ba3a9b43aea17b0ab665d29fa",
+      "after_sha256": "58728638b875f4b900e3cf0a1e465b02d36e579e58366dcbc9d0b2f82cb8f1df",
+      "purpose": "authored generic icon with no original raster"
+    },
+    {
+      "path": "server/backend/app/ui/index.html",
+      "operation": "replace",
+      "before_sha256": "714b132ca89d3702e517bae09cd6071be321082e920357378515483394ac5a3b",
+      "after_sha256": "f5ccc1321974deec4642a6ee48547c565a671c869c952602c3c61e8d77eb44c3",
+      "purpose": "authored generic icon with no original raster"
+    },
+    {
+      "path": "server/backend/app/ui/photohouse-icon.svg",
+      "operation": "add",
+      "sha256": "c9cbb58524c209c3bc9f6e452a1d40bc0eeeaf9b254d85fe6a42fda452ac5ad8",
+      "purpose": "new authored geometric icon"
+    },
+    {
+      "path": "server/tests/security/test_closed_application.py",
+      "operation": "replace",
+      "before_sha256": "ba8922f1681c6e824f61c0b66a71f62ca2d70145d7a10e7961c4d27ac4307a33",
+      "after_sha256": "c26e41343d1ac6a1139e9d3baccea4fbf2638d1800e638900b2b0a0b4c4c3cdd",
+      "purpose": "authored SVG icon route and matching access inventory"
+    },
+    {
+      "path": "server/docs/security/route_capabilities.json",
+      "operation": "replace",
+      "before_sha256": "2e76dbcdb9680966bf5f5d5cf667e92c41d26483baa35a6bcecd700df42eadaf",
+      "after_sha256": "cfd488bc6612c73497fd93f7e655578fc42c008800306fe6c6137d7cfddb4962",
+      "purpose": "authored SVG icon route and matching access inventory"
+    },
+    {
+      "path": "server/backend/app/access/boundary.py",
+      "operation": "replace",
+      "before_sha256": "b2cfd8a3e5eb9e34930b575d594664ad61fcb8232da08d246c22d970ac7feaf6",
+      "after_sha256": "4117f4f0576420de5ae9db636e0ee8cf6ee3f0986262b44f36b2babc2e2e13d0",
+      "purpose": "authored SVG icon route and matching access inventory"
+    },
+    {
+      "path": "clients/android/android/tv/src/main/res/drawable/tv_banner.xml",
+      "operation": "replace",
+      "before_sha256": "f8a452161a15c738a6f6aee1bcb47d9f2b939b7c48733365b2f52db08d945b9d",
+      "after_sha256": "eb0511397534ce8becaf41249f03c868980800dbfe111510f1a0128cd2ec8d73",
+      "purpose": "TV banner uses the authored vector instead of excluded original raster"
+    }
+  ]
+}

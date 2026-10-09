@@ -1,0 +1,149 @@
+{
+  "status": "proposal_only_not_adopted_not_consumed_by_networking",
+  "producer_source_commit": "97e9cc4eaa2c0ff34aa60837e84099c017927ef1",
+  "producer_inputs_sha256": {
+    "backend/app/access/stories.py": "340ca10ae4cfce5a08497aae2a4a9b43846a70faa32cd9e431d2822ea70e609c",
+    "backend/app/access/story_schema.py": "de338f0d23ccedc1bea18b07729dbb51df5cdad39b9e9678accc2f9428bd656b",
+    "backend/app/access/library.py": "5c280e0047771a43274615b77617f896ef2ef075b4fa3f926ae05bf8c49372fe",
+    "backend/app/access/transport.py": "0fdf1df60fbf6040906834739145c561adbbe7c0844719736f08dbfb04e85d80",
+    "tests/security/test_family_stories.py": "5041b3605f81a088163387afa6d7d7839c2020c00ceb3034d651077196879419",
+    "docs/FAMILY_STORIES.md": "1c1882ab65baa0e6f602c4992b4adcb38c2c1d95d736253db3b8b98e953463a6"
+  },
+  "limits": {
+    "request_json_bytes": 524288,
+    "response_json_bytes": 3145728,
+    "text_utf8_bytes": 65536,
+    "title_utf8_bytes": 512,
+    "byline_utf8_bytes": 256,
+    "story_page_size": 5,
+    "history_page_size": 5,
+    "search_page_size": 24
+  },
+  "story_fields": {
+    "id": "canonical UUID",
+    "asset_id": "decimal string",
+    "author_id": "opaque account ID",
+    "title": "literal string",
+    "text": "literal string",
+    "byline": "unverified display string",
+    "language": "en|zh|mixed|und",
+    "revision": "positive integer",
+    "created_at": "Unix seconds number",
+    "updated_at": "Unix seconds number",
+    "deleted": "boolean",
+    "source": "family",
+    "can_edit": "boolean",
+    "can_view_history": "boolean"
+  },
+  "request_rules": {
+    "library": "required query string on every route",
+    "revision": "positive decimal string for updates/deletes",
+    "page": "decimal string",
+    "mutation_id": "canonical UUID retained with identical logical request on uncertain retry",
+    "content_fields": [
+      "title",
+      "text",
+      "byline",
+      "language"
+    ]
+  },
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/assets/{asset_id}/stories",
+      "response_fields": [
+        "library_id",
+        "asset_id",
+        "page",
+        "has_more",
+        "can_create",
+        "items"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/assets/{asset_id}/stories",
+      "status": 201,
+      "response": "whole story"
+    },
+    {
+      "method": "PUT",
+      "path": "/stories/{story_id}",
+      "status": 200,
+      "response": "whole current story"
+    },
+    {
+      "method": "DELETE",
+      "path": "/stories/{story_id}",
+      "status": 200,
+      "response": "whole tombstoned story"
+    },
+    {
+      "method": "GET",
+      "path": "/stories/{story_id}/history",
+      "response_fields": [
+        "story",
+        "page",
+        "has_more",
+        "items"
+      ],
+      "history_item_fields": [
+        "revision",
+        "title",
+        "text",
+        "language",
+        "byline",
+        "editor_id",
+        "occurred_at",
+        "deleted"
+      ],
+      "history_deleted": "integer 0 or 1"
+    },
+    {
+      "method": "POST",
+      "path": "/library/search",
+      "request_fields": [
+        "text",
+        "source",
+        "media",
+        "page"
+      ],
+      "source": "all|family|ai",
+      "media": "all|image|video",
+      "response_fields": [
+        "library_id",
+        "page",
+        "page_size",
+        "total",
+        "items"
+      ],
+      "item_extension": {
+        "match": [
+          "source",
+          "id",
+          "excerpt"
+        ]
+      },
+      "match_source": "family|legacy_family|ai"
+    }
+  ],
+  "needed_wire_vectors": [
+    "five maximum-escaped whole stories",
+    "five history rows plus current story",
+    "malformed Unicode",
+    "viewer permissions",
+    "own versus other contributor permissions",
+    "owner permissions",
+    "wrong-library and revoked access",
+    "exact retry returning newer current revision",
+    "stale revision conflict",
+    "duplicate UUID with changed body",
+    "literal Chinese search",
+    "family and legacy source ranking",
+    "deduplicated asset search",
+    "offset boundary movement",
+    "background and account/library switch late reply"
+  ],
+  "tv": "No producer route. Requires separate reviewed published projection and audience/catalog/publication/withdrawal binding. Never adapt the protected routes into anonymous Home.",
+  "fixture_scope": "Existing lab models are presentation-only, not wire DTOs. Local card matching is not producer asset grouping/ranking. Coordinator must adopt frozen snapshot and replay before networking."
+}

@@ -1,0 +1,4974 @@
+{
+  "schema": 1,
+  "source_pins": {
+    "android": "312b40e1f865061ff98ec7f4d52fe3cdd31f4ff6",
+    "server": "0d8b9f66424a6a62b9b1f4c3cea7e6a70bb15316"
+  },
+  "exported_files": [
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "37ea4f9b96b5c1339d40866c7f3a467673cbfeae6263a6aa189df4bc52d2c270",
+      "size": 1751,
+      "source_path": ".github/workflows/android.yml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "65b1023623fb87849b0d7e7a39141bd9d2662d98dcd55fefc9e8bf1683d2d934",
+      "size": 20,
+      "source_path": "android/.gitattributes"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "075aea8dc3e499b07093d81105a013d7e4d5851202e901587991db21e22a02f2",
+      "size": 1936,
+      "source_path": "android/app/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5b8fc6b064ca30fdba490baf00e239136e8e7936a4a4f7157fe284617bdab0da",
+      "size": 5617,
+      "source_path": "android/app/src/androidTest/java/dev/photohouse/fixture/FixtureUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "08f191214dd432cd729254b9e4a95dda418626b3b97e72cc0e9837dc4f2671d3",
+      "size": 845,
+      "source_path": "android/app/src/main/AndroidManifest.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9e55c076a99e88611768dc2d1290b768040627255d4ec54e6782d597af8c9de3",
+      "size": 1884,
+      "source_path": "android/app/src/main/java/dev/photohouse/fixture/MainActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ddf797e682ba072b39a82cda27c8cc71393ef0cb14d0042f812f373a4ca9f533",
+      "size": 18942,
+      "source_path": "android/app/src/main/java/dev/photohouse/fixture/PhotoHouseApp.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9aa023e247b68e535db0748276199b5f5b73ae93e1c92a9c8f3d9e7f7e575f83",
+      "size": 475,
+      "source_path": "android/app/src/main/res/values/styles.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1ac0f769ed9190a86eb4fc5da4f02a48fa4ccafc5497dbd760cfa15ceb6239e2",
+      "size": 625,
+      "source_path": "android/app/src/main/res/xml/data_extraction_rules.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "86d318f099cb803bbb165ff1fc946d68072aea12ae761ef85fd0d929e85ab52b",
+      "size": 236,
+      "source_path": "android/branding/res/drawable/photohouse_icon_foreground.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "56bd3b9a04b29168ee4457648647a04f581a47e3ed76303641ed198d0f8ec0f2",
+      "size": 265,
+      "source_path": "android/branding/res/mipmap-anydpi/photohouse_icon.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ef01d8ce64600ce8af5a004efef01fbb7a9d36b1f57ecbea871560c73b47c33d",
+      "size": 236,
+      "source_path": "android/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4b2ab9056fadab3dd028f8ad10cd92805cf245e141613e39ef67a861f084d88b",
+      "size": 5626,
+      "source_path": "android/calendar-contract/examples-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1be4917230c9bf5b6cfef22611de14ebece9d6f776773869eea7ce133e4a47e5",
+      "size": 6373,
+      "source_path": "android/calendar-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "26515f41743ec78c383db674f1d3af4aab7c3e6c81edb3f6a337ae3acf463266",
+      "size": 8421,
+      "source_path": "android/connected/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7d53063fc30d48424b585294ce2499b1a5a96296fd1bf30ef471dfcd098b59b2",
+      "size": 3259506,
+      "source_path": "android/connected/src/androidTest/assets/synthetic-long-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "efb71000b8dc2807396c0d342dd7efe8823d4281e125b9281b980ddf1ae2f9b0",
+      "size": 522344,
+      "source_path": "android/connected/src/androidTest/assets/synthetic-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "257eab711a14dbec46d06680d91360ffee82574e845893ef0851787e1ffbc339",
+      "size": 2343,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/AccessModeTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bfcdb90427325e142751f4a6d5488f27fa108db11327d66b80155443b153d78b",
+      "size": 1049,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/AnnotationAudioRecorderTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0971c6c3303a5e8f54b1e69d76a51bb65f57350ca2ca4a74e7717cb748dd8b16",
+      "size": 20493,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/ChapterReadAloudUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0766db9943eaf18eb72b53250673794c69f3365f9f6063a17befc72f51e1e065",
+      "size": 69271,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "505bd8cbe46b297b7297870724ec9aa2a8c54ed8cba41410ace9180d8e87cd59",
+      "size": 9093,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/HomeDiscoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6348ba35693d6df89be6c7eff0224232a1117c8cc65ce8de04bb43c1c616e949",
+      "size": 10095,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/HomeMemorySectionUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "20ff76f0060eb7db8b6a6d79b1792fa2113bb586fa5966736c15e05b6d13632e",
+      "size": 9569,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/HomePhoneTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "dc19577d3a2c35b83aba47e2d8acd55aec9cf2b2b0e201aed36ac2a9734a2383",
+      "size": 4407,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/KeystoreSessionPersistenceTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "10a24edd0a4df7a689b5539812c9bac578a2c57dc6c4e59766b5a9ad9c0fc385",
+      "size": 83391,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/MemoryCommunityUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4137d5a499cc4bd5aeb5907bde4849387494a9b0174388cbfb8bbb0cfc16016d",
+      "size": 9991,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/MemoryDictationUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "47028abfeff8ae7841f6674f1a28816af6a0c5eca3635e3b0ceb6d944942d581",
+      "size": 8418,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/MemoryFeaturesUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e6ba4f77920b7c3318019bf6d32d3bc357ea402852098ebbc045984b01592c2f",
+      "size": 2301,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/OnDemandPhotoTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "93c07c83a23b60e067102b798ca14c8198e8bcf4cfda7ab7e0fbb975b2c33514",
+      "size": 3705,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/PhotoFullscreenTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "176857cb4e546d2b735e65674dc63620458580b809a2adfe18fc0b2d16771dfd",
+      "size": 6267,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/PlaybackRecoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "546a09b11b4a0ce1e94949e4e70e375d961c422dca29328d284bedbc5ac63b39",
+      "size": 3751,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/ProgressiveVideoDataSourceTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2609c9f65bc2124dd5475d14b1dff727b51ed1fb562e294fe0ccf0d3b091e71f",
+      "size": 19205,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/ProtectedJourneyTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9af1af4e78f29dd1b1664041deb90106a1b1413ff3618aa1f8d7aecb2b7456c2",
+      "size": 37093,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/SavedMemoryStoriesUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ee19f3cad94750a13685934ddebcc0961bcf69bea8c0c18e10a4d3a8943f339b",
+      "size": 4477,
+      "source_path": "android/connected/src/androidTest/java/dev/photohouse/connected/UploadScreenTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e1dace0e8bdebd90fb11b839dd09989d71aeb3fb27f231b19452dd840f70da6b",
+      "size": 1334,
+      "source_path": "android/connected/src/main/AndroidManifest.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "08a3e5f3df108db5491c741bf9d8bda95277a0682f0449cef6ee79a4bca9b89f",
+      "size": 3598,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AccessActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cb77b571f2cf4413755239b9870288a18b2c423506cbfe91e42535537b72a475",
+      "size": 2274,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AnnotationAudioDataSource.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b2a0ae84fcc3144343c25d2bf935c3b418738818d3edd4b6f0f2766905b0c81c",
+      "size": 5365,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AnnotationAudioPlayback.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4dd2c40a183930a23a4b707275451af288ae3620d5698d9e10eb398e4802f234",
+      "size": 6745,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AnnotationAudioRecorder.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6847de4a949cbe38aaa3fce1200f24d1d539d1a0c7460af25b2da6362b412df0",
+      "size": 1914,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AssetLookupDialog.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bc4b82f3ff1afd211a21f7944e6d56250cb4efae1e2cd36e6049ebab1da45cd5",
+      "size": 20194,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3305a8b29251466c77dc9ee96fbf39ac874cc0e690112079317d286676bf8985",
+      "size": 16398,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/ChapterReadAloud.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cb28da5382a7ab2908186c9e23cf55bb69b110653354cc9d8569d4e5a83809ab",
+      "size": 3282,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/ChapterSourceReferences.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1988d7f7f3de4cee3c7e7bc131eb0735867c4e10c49ec160566ed6bec26239f0",
+      "size": 117386,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ae19eb2a6260bfac359d55ccbf460f534611c94a7da41b61af9ab0c635a56bd8",
+      "size": 2552,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/HomeActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1e256926f747ec74d9a0cd89b2425e75998c512be4bd887597d2c6ca3a8a1e2a",
+      "size": 3794,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/HomeCalendarPicker.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c17e093be30c0124254bb550514343ba5ce3f3417ed3a6e76f91f5313707fd55",
+      "size": 10442,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/HomeDiscoveryEditor.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c6e23113d903ef26b67d6aae721ae4f919bd497262ccbd2c355536af40b497a6",
+      "size": 16960,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/HomePhoneApp.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fb26e608eb0051bc9785cf88abfbbd3e0c246f5e7c2607fdc6f67b335c2028e4",
+      "size": 550,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/HomePlaybackSource.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e88ac5e1af33208951445504437930f95336a1e8fc318a53ee1d10808e7caa8f",
+      "size": 8274,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/KeystoreSessionPersistence.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5c8545ff777cdc085ee3ab7cf5ede05033549cec48e645abea1ce0eede9b04ed",
+      "size": 6327,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/KeystoreUploadQueuePersistence.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1e35ce05aabf58f610277f01b010535e95d3bd8dd9fc4664ee9e59b7d61e49b9",
+      "size": 3708,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e53aa76dfeb7be2c6330369044d36bc3939d8d5f4fc691e38c1d74e360720848",
+      "size": 1864,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/MediaWindow.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "86f0982b35245bec844af59e6a741d3e0dd3ab82df2e98be27aaa9fd12b237cc",
+      "size": 20110,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0313e7695b21e3ab67bd11a3cdb951fb104fa2645a552c4ddb06526900fc198b",
+      "size": 77664,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f211426f6e839a8ebe1b531167999a3a37bd2b2c639ef93b3cd131bc8324686e",
+      "size": 12785,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/MemoryDictationInput.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b79530876d24b64f481659c1ddaba37554c9ea2552ae1fea40c834c9c3ddb645",
+      "size": 16487,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/OriginalPhotoViewer.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "aad6f68f642370853d095f54a03684e5b0eb3fb7a111495717468ce2eb5a74f9",
+      "size": 17034,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/PhoneDiscoveryEditor.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "aa4101b97d6e832d1bca15c161d189531bfb0d503494f2ce03138cea2f45328c",
+      "size": 2002,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/PhonePageJump.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4bbb40198f7a47fdbf82f5926e076518e16d33776144d713c406e9acfb3d3b67",
+      "size": 3047,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/ProgressiveVideoDataSource.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0f0f675c64a924d4df4373804ab3472c9d78d325d093cb535d18cd5477ab3cd7",
+      "size": 11780,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/ProtectedStoryEditor.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "15f4fc4bed2d62ddb45688ce8cf39c123f99b36021f080c4efa7b7e1c4a4ea88",
+      "size": 51346,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/SavedMemoryStoriesDialog.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "196d6e4871060c23b77b93482e8c1555cac260eb5b2bf097618e8f50ed1ca6af",
+      "size": 15628,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/UploadAnnotationComposer.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d37474845e9c52603ef6b405cef0f9bc444b0617928823f49e08dfcbd30e0c7e",
+      "size": 8075,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/UploadScreen.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ec424c486a85abc4fb3e1dd0e48f47c65053516387c507ec8b4d89305d9e91ab",
+      "size": 5630,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/UploadSourceAndroid.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "84b82e3ef8385f436651805c2a5c49a5132fc621092ef167336649cce18bf354",
+      "size": 22905,
+      "source_path": "android/connected/src/main/java/dev/photohouse/connected/VideoPlayer.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5c2db82bd0ffe0aef7eef0ee6b16264330677ded1efe2a0da018adfddcbcdc4b",
+      "size": 477,
+      "source_path": "android/connected/src/main/res/values/styles.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1ac0f769ed9190a86eb4fc5da4f02a48fa4ccafc5497dbd760cfa15ceb6239e2",
+      "size": 625,
+      "source_path": "android/connected/src/main/res/xml/data_extraction_rules.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "66a131709b1437959f5476354196646c773b544732709ff209614e6bdcde721f",
+      "size": 231,
+      "source_path": "android/connected/src/main/res/xml/network_security_config.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2e40c3e751493319ea8ce678674252a7be125ea771cb0a9037ce6fdbe90790b2",
+      "size": 1956,
+      "source_path": "android/connected/src/test/java/dev/photohouse/connected/AnnotationAudioRecorderLifecycleTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4658595e9f6920f07ca8918d75308f2fccbc8cb2c539f2923b45f3cc37fd9890",
+      "size": 2190,
+      "source_path": "android/connected/src/test/java/dev/photohouse/connected/ChapterReadAloudTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5c571fd732ea9c5e7e9081e71281d111c0dc37e12df619cb6674abd183ec2c05",
+      "size": 1596,
+      "source_path": "android/connected/src/test/java/dev/photohouse/connected/ChapterSourceReferencesTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0ee232fa49f59aaafc91fda3b758cf6d03e98d8b77d0c7cb38efe60ce18f25ea",
+      "size": 404,
+      "source_path": "android/core/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e98bd4eb8db9508c0aab68095634645a8e53cb99cc89033c31ed80424cc34940",
+      "size": 1683,
+      "source_path": "android/core/src/main/kotlin/dev/photohouse/fixture/core/Contract.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "97bcfa67d1a5cc7f89c9401f44595b52ec9b524901104643502bbbcf903f57c7",
+      "size": 1367,
+      "source_path": "android/core/src/main/kotlin/dev/photohouse/fixture/core/FixtureRepository.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f688d0e02c1e0ef729b5aa8609dc7b72b53df66c62ee76b517e79e5a742286d4",
+      "size": 14392,
+      "source_path": "android/core/src/main/kotlin/dev/photohouse/fixture/core/PhotoHouseStore.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "695dccf346c9767558c7a9fe829f8eb595fc39847f63632f57be5387ada8e5a1",
+      "size": 16385,
+      "source_path": "android/core/src/test/kotlin/dev/photohouse/fixture/core/FixtureTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "265efcd72f31f4ebc11d54deab79b8211f911acabec4305faef751fef79922b2",
+      "size": 1302,
+      "source_path": "android/core/src/test/kotlin/dev/photohouse/fixture/core/LibraryNamesTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "43ef7b3216635ff54417da9ad47382b949e7aee954bbe3efaf94a45a6df27871",
+      "size": 13417,
+      "source_path": "android/discovery-delivery-contract/examples-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d0d090fc79afedc5e60ad7a2802e46e077a927d3cecb46220fda54a0208e097f",
+      "size": 5138,
+      "source_path": "android/discovery-delivery-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fe8ad63d0fe452f9ae0adc3a6c3ca52c0ea3a6917bcf4dc2b7ce2f62ad317d1f",
+      "size": 162,
+      "source_path": "android/gradle.properties"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cf88b4a66647a6d0849a41e82378a0dd9036656220cffb6846cfd3d788687c80",
+      "size": 64,
+      "source_path": "android/gradle/distribution.sha256"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5570df288066d96cd005c31d4b6f79e309149a71fcd55fcaf77146a8db1ee9a0",
+      "size": 64,
+      "source_path": "android/gradle/wrapper.sha256"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046",
+      "size": 43583,
+      "source_path": "android/gradle/wrapper/gradle-wrapper.jar"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "55a589afdeeb990a58218265c84659f81108842ffbbaac94a7abdf4ad79cee91",
+      "size": 338,
+      "source_path": "android/gradle/wrapper/gradle-wrapper.properties"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "a3648413b47ef77af21d5ebc36c687c7d103aaef3e17f33de7d4f080a6f300a3",
+      "size": 8762,
+      "source_path": "android/gradlew"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "57931b17dd228e5c24dac90e815d0bf82477e831a4618dfab4136f5446b42a9f",
+      "size": 2966,
+      "source_path": "android/gradlew.bat"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9d7a76397ffd9644d753572fc53888734591b741998b7a0dddf6cc2846220785",
+      "size": 1909,
+      "source_path": "android/home-core/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c172c131df98d10f3aad6d720df41a725fd81afedba6007df3725c06bb8e3055",
+      "size": 41,
+      "source_path": "android/home-core/contract-v2/backend-pin.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "13cf10892dc4e91631ad71b5ee4bed21baa44697f1e779851c19026dbe606120",
+      "size": 16767,
+      "source_path": "android/home-core/contract-v2/home-catalog-contract-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2cde48dd6de163e9fb0f78baf6de14e4da5bcdf12ce9d3830681d91dc4f109f9",
+      "size": 1756,
+      "source_path": "android/home-core/contract-v2/home-catalog-response-v2.example.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "77586ebb028751d9600b0f04356c2e943f89f432253b3bb647916acec9bf0cb0",
+      "size": 2702,
+      "source_path": "android/home-core/contract-v2/source-inputs.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "70328a653ddaa559bad6a4d654cf9870c89c5217e8e9e6c46a3501e9dd9e7548",
+      "size": 3576,
+      "source_path": "android/home-core/contract/home-feed-contract-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "90e49245370c3695de22d5c0bd261c0bee9bfd9ce99f7085c3d1e652e30600d7",
+      "size": 665,
+      "source_path": "android/home-core/contract/home-feed-manifest.example.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "32e8346b0a7d5a46de97bbdb1255de84d8e72a96d1ae84ff56cb991b5ee4b6f4",
+      "size": 1620,
+      "source_path": "android/home-core/contract/source-inputs.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f1a8d54bb28e83cd0901c8e49f8c5a8110187633245bef4165385db9586a005d",
+      "size": 41,
+      "source_path": "android/home-core/discovery-contract/backend-pin.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "754c9edcb7d8dec250d900d942f8a7a6318a1e54680d06d3a1743ff27e05d9cd",
+      "size": 6959,
+      "source_path": "android/home-core/discovery-contract/home-discovery-contract-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bebb456c9acb4e386400b13888c0c407681c19dbd63903fd9edf39e935c4cdff",
+      "size": 10526,
+      "source_path": "android/home-core/discovery-contract/home-discovery-examples-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bc15d646ef83a6c5ee91199b3ba212ceaec068cb769541e7373cd2303cf8b92d",
+      "size": 31387,
+      "source_path": "android/home-core/discovery-contract/home-discovery-schema-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bf4afdfe74e2c45e0b8bd129637a314f50da1e582e9635d8cf7bd8a201c76ccf",
+      "size": 3345,
+      "source_path": "android/home-core/discovery-contract/source-inputs.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3a5c148c8e84aae4bf42ddb0bc34172bb3f02ad9d4babebab58a28cef553b409",
+      "size": 1567,
+      "source_path": "android/home-core/integration/bundle-inputs.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8bbb08443c8072d76814a54ec85196b2f9bf68ffdc34957a4e66394f363d616e",
+      "size": 3844,
+      "source_path": "android/home-core/integration/catalog-smoke.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3bb03e86639c5a0df3c44ffc0e6c1e8c8a2507aacfdb4cc6cb424432c9c3d114",
+      "size": 498,
+      "source_path": "android/home-core/integration/discovery-export-pin.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "730b0ba4d887799d30c8705c6e03146fa19d4cf8997092478bafb68792f9445f",
+      "size": 3396,
+      "source_path": "android/home-core/integration/package_smoke.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6e23982c83c11f9614b8084e13819fb466384ee900e24d54e820e274d638431a",
+      "size": 4338,
+      "source_path": "android/home-core/integration/probe-discovery-export.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ef6fda1c5050cd7d81e42838e2a46e0781ac57f29bddfe3fbdc44efce91bde22",
+      "size": 2333,
+      "source_path": "android/home-core/integration/verify-backend.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e2c1784876a20c3d4dc50462b0bd9caee068ecbd42232372367f9b20f59ef842",
+      "size": 1706,
+      "source_path": "android/home-core/integration/verify-catalog-backend.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5eedc656671d15a4fa2533682d900ca9517798941d618f78a6f6c8db9eca077d",
+      "size": 1973,
+      "source_path": "android/home-core/integration/verify-discovery-backend.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "632d778c832dc11d24b4132311064899bc793f3e9e060b13b1df587b901d0e74",
+      "size": 2485,
+      "source_path": "android/home-core/integration/verify-discovery-export.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2882da8b03279436b496d4abf0187df06a852fc5beda05bf0f2c9c498492afe7",
+      "size": 1261,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/BrowseSelection.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8b4f63d58a4e2a3c8199fd9b46e447d6b46c942dfb500a0d1482e02cd440f4b7",
+      "size": 10144,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/CatalogWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2da375edaa30e7df5344c525f01d96a373eb24de6cd60819dea98538e93725a0",
+      "size": 9037,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/DiscoveryController.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b5581b9ebb7e7638c7ee516f347af147e22828f94e50289063c9430400694465",
+      "size": 4330,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/DiscoveryDraft.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "beb2f55fdb5a70c4903b000a64446322fdd0ca3a37e0d39ba6ae7de972890c49",
+      "size": 15025,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/DiscoveryWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cb93eff4dcc1783ce074aec6bb7782f1c3de9db95dbe25d73347bc384332f123",
+      "size": 5528,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HomeCalendar.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e2da596d4586ac7e0670c2f226209085509fd7713056811b2e4daf81413b7092",
+      "size": 1768,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HomeLanAddress.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5540fc49b38a338d61eb92dec2aa4b13c278bb949250bf7ba0b7f50444ebd38b",
+      "size": 15409,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HomeStore.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2b6e67a5a110c45b64da49ce89cbf0ae8a69aa842a1cd05982ce52c77778387c",
+      "size": 4609,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HomeVideoReader.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "801bb85bbc586f6ca03c92b3cda47326251a37749127ac542e71d87125089228",
+      "size": 11951,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HomeWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "903956033cbbc73a0f539471a13032988d6d61a590c3a26377e4f0fe83e86f9e",
+      "size": 10400,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HttpsCatalogApi.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1237e54e7dcca847738ad1e43ab4c5111dd0b9d79878daddf267c58976dcc125",
+      "size": 12150,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HttpsDiscoveryGateway.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "255a362b7694f07e7d510974f44395a938fded586b3aa199fec3c0a8e88c526e",
+      "size": 6880,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/HttpsHomeApi.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fa6dc4c09f6fd5f06a32b4eb81ded09cefcb981ff52e4994bbcbb56c53eb23be",
+      "size": 902,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/PlaybackWaitDeadline.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e7b72f73e531d331424d98ade5eb44ba22421b69d8bd6b0f6680b558234e62b8",
+      "size": 11285,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/UpdateClient.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "72b4d86962f3d3d158222acde4fbd2e39ddd55171f643b991aea9dfe2d9c0c0d",
+      "size": 862,
+      "source_path": "android/home-core/src/main/kotlin/dev/photohouse/home/VideoReadRecovery.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e6eeec7874dcdc5ab07eb64c9b858a3c630fa3a683c32c5d46aa645d99c96223",
+      "size": 10768,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/BrowseTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "db6c4a5ac2867bcb50b581d42ed1617b348b92a4806b61ce0173c29a00a3b4e4",
+      "size": 4758,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/CalendarGatewayTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "470e1ef4a9f2c0e286925264656b0d3754b791289a84cac7200368b125d8317a",
+      "size": 3628,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/CatalogLanPilotTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fc0939f67193a72a844a1fff28bc4a0f9d23bba73240eb964fbc2318fb03a7c6",
+      "size": 19632,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/CatalogTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9e3d7e9c8e6d412e17e943115dbb11cc5a6b5d14b6c9e1fbd0ce67b9b55e9dfa",
+      "size": 10076,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryControllerTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "591951dca3645f73a1b38e5a7fada2ff70ceb7919c096f65ea3e25a3d55ae1ad",
+      "size": 4442,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryDeliveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ebd10c7a6aac2ada8155355afbe701743dc0f61a83fcf801f2d87b92f5c827f3",
+      "size": 2929,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryDraftTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9d5b2c74080ffe02d0e92255716e95df77b0a54c3610971df8ccedaaf30120fb",
+      "size": 2842,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryExportCompatibilityTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6dc6c5322b725b796a85e1e0b338b1e37c921d677cdcd645bce0eb2f498fbada",
+      "size": 8919,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryHttpTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "632d7ec1ea3e8ed427aba8f3fc9ae9bda3cc7a3cdcfc6aedbb3dc1c8bb18df1a",
+      "size": 8431,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a7b266b2381cebaaebe1dc4969baa170756012c57e64b69017ca1f7e4eb2088c",
+      "size": 1402,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/HomeLanPilotTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "46ff6d6c67c7b01004679e316b8172ff67b6de9514bb855a54b97a3292a9853c",
+      "size": 4254,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/HomeLanTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4d177275ac401c6e8a0a5c46e15a6818f5f6dac37642a34b3ff8fa23a726f5fc",
+      "size": 14970,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/HomeTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1ca4e280f0cacc057857fa6362e8f7e87f19de64ef3d2fc53b4cdc07f1f70af5",
+      "size": 7696,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/HomeVideoReaderTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fdaa3a131559171091e3a1f45f8988bf10b87af104727dc8439aba156bc1ca8a",
+      "size": 8071,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/OnDemandTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c6306f3a4bf8f23ec47aebbf7f9b980888992b8e3b4eb228f2b9d97953202a77",
+      "size": 1308,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/PlaybackWaitDeadlineTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "92a380a579fa25e20a69c5b63b58ea2bfb373ac5908544e4edbe2360ca0cd242",
+      "size": 5192,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/TagDiscoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c1b2dba89342ad090e2f70b07872c073443dfcb4c05a5412d0fa1e4043a352ba",
+      "size": 4233,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/UpdateClientTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7e6ed0921dc6450fd3d3829f61a6e1d3c316299932e071caac2539538f2cc637",
+      "size": 2049,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/UpdateWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "10b51511c3e5fa70862310c2e8063c06cbeebf24df391fd573192be49d0981c4",
+      "size": 751,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/VideoNavigationTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2c35708b90c61d772348d7fc05e27e341ce40cbaf87e627e8ed2a512eb400b85",
+      "size": 2838,
+      "source_path": "android/home-core/src/test/kotlin/dev/photohouse/home/VideoReadRecoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "66080372b184a3c4645e6966b05e050a973107c478ac98601a4a49d7741404c8",
+      "size": 83203,
+      "source_path": "android/home-core/src/test/resources/browse-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4b2ab9056fadab3dd028f8ad10cd92805cf245e141613e39ef67a861f084d88b",
+      "size": 5626,
+      "source_path": "android/home-core/src/test/resources/calendar-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2cde48dd6de163e9fb0f78baf6de14e4da5bcdf12ce9d3830681d91dc4f109f9",
+      "size": 1756,
+      "source_path": "android/home-core/src/test/resources/catalog-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "caaa1b8103e805a44d0ba5c27c16d155fd2116ec19c92edb74508d532e592807",
+      "size": 968,
+      "source_path": "android/home-core/src/test/resources/catalog-v3.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5ab7d5d27cc6b3f557068ce21cc07e332939ae92f8240233b5eb087c1012afe8",
+      "size": 24336,
+      "source_path": "android/home-core/src/test/resources/catalog-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c311363ddcc33e304b4f657d7fb3353c839bcdbdb9bdbd09bea62b1152fac42d",
+      "size": 632,
+      "source_path": "android/home-core/src/test/resources/discovery-delivery-photo.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "43ef7b3216635ff54417da9ad47382b949e7aee954bbe3efaf94a45a6df27871",
+      "size": 13417,
+      "source_path": "android/home-core/src/test/resources/discovery-delivery-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4e7e9a2aa54ece03323625fc0f2652c90977790450857d333c8536cdc1927e58",
+      "size": 16228,
+      "source_path": "android/home-core/src/test/resources/discovery-export-generated.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0202ea5c8c432da8aa6866cce47a2c1f2e73a31531da47886fda1fa8d471d17b",
+      "size": 2725,
+      "source_path": "android/home-core/src/test/resources/discovery-facets-locations.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a4a28a96c049446fe2ccc5f57b92dd689ae49f608c702d68ea47a27700723edb",
+      "size": 2799,
+      "source_path": "android/home-core/src/test/resources/discovery-facets-people.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "dd05b42266d787f0d39823d0d4ae6a7f07d53767f256ce826bb924edc270b1f5",
+      "size": 2856,
+      "source_path": "android/home-core/src/test/resources/discovery-facets-tags.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cd413f562ee76485074b05639b81e9a708118d0bd7248059d7a606312752adb8",
+      "size": 426,
+      "source_path": "android/home-core/src/test/resources/discovery-search-request.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1105ebeb7bcc5f1e6570ccee2fb5f543e4d54666b11f370a2d41e5c978ce9180",
+      "size": 733,
+      "source_path": "android/home-core/src/test/resources/discovery-search-response.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ec04359040255045fb7887189ff54edea2fbfceca047615fdcce350cb0d6f691",
+      "size": 47556,
+      "source_path": "android/home-core/src/test/resources/discovery-tags-v3.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "045f8e1673bf24a9e4bf378b04f782d2fa455af455b7f547545313aba9cf8290",
+      "size": 695,
+      "source_path": "android/home-core/src/test/resources/feed.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c610ec0406005683fc6acf9ee48b5fd1bcb37e2bb23667c46e1fd01dc9979434",
+      "size": 523448,
+      "source_path": "android/home-core/src/test/resources/home-3840x2160.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c311363ddcc33e304b4f657d7fb3353c839bcdbdb9bdbd09bea62b1152fac42d",
+      "size": 632,
+      "source_path": "android/home-core/src/test/resources/home-8x8.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8910fb0b7114031c4840c6385772b964be948d3f736159970f5a61e23b4bb70f",
+      "size": 7391,
+      "source_path": "android/integration/backend_server.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "618c9d802b645833b5e082b6410be8485affa1247f09ad6453bb5be6ca25517e",
+      "size": 6512,
+      "source_path": "android/integration/verify-backend.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7afe4cc44042a26fad0bcd1fbcc7c9f2121e5faf116df28a2325ecb1a705a01a",
+      "size": 1619,
+      "source_path": "android/live-core/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "46a27b2bd8259dd45200cb04af3b48151993a7401bdc4ff4a6ebccf9c416dfc4",
+      "size": 12302,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b1022cae52300e0644e6b2de673edc2202baa2c76d963b8aaa7333ed4ac14e32",
+      "size": 13063,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bbe913e21a76c66861ec001bafac9c86d11f7219d5af9936ca91d79e28382a64",
+      "size": 202492,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f62e15c8184cedade21b006a2da0823636b2bf64fc474dead8a697f5a5ca0fed",
+      "size": 3121,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/DiscoveryJson.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "228ab7b9b85fdde4f523828fdbedee533c7b0667dba52feaa8f8041d77d26112",
+      "size": 6692,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/FamilyTagsWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6bf4a8c9ee8084ecb8359142e7c9d3cccedb4a17891ac9e478241dec6dcce53c",
+      "size": 13004,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsMemoryCommunityApi.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "354d9b9f882b19619a001209c77842d2d8d8e76205020264850fae9a6a298c79",
+      "size": 66893,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "867a6208896bebb6a72330c321ed9557ba3c2f23385c3b296fd447b79e6fbd68",
+      "size": 1016,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/MediaViewport.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8007db08d6548264fbb64aeb89da066e0dea8834f70b7e5ecc270c0f84aa4768",
+      "size": 16487,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryCommunityRepository.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e5b97a99ec07e3af675bab6dfb0d14e4a15b3a25370966f6ae28775d5342b91e",
+      "size": 12121,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryDictation.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5b254e55c4ae643e1f6a38f996d9cbd6c54a2129a7d06f767f922752459294af",
+      "size": 3638,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhoneDiscovery.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4fa472d3e5bd3cfa077c2840d5327592b77e5c03b917b820c9dc65d014f8060b",
+      "size": 10954,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhoneDiscoveryWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a97e7f91c9f3c8d61fe05339562202442507167df5908bcf5abf13cdfae70799",
+      "size": 16233,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0c3b476740dd966b3b02e06a7ec81c4de7c4c0d638ee953902f026910ac4ef12",
+      "size": 2213,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoViewport.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5ff3ced88424f66d1777e9bae823b6c33bf12178afa58e31aeab5c99e8ebf934",
+      "size": 1383,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedAccountWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "807c3211c3cce9a3c73122b6d3a59217621a96d21824146b3449e2f595a6015d",
+      "size": 1746,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedAnnotationAudio.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0a2345d358926065a759c3237b517ca12fe7b89f59be14ad782dca82af7c727c",
+      "size": 30130,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedMemoryCommunity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9e982112b5e77da5545450e34b5dadd8e8cfc954e730f0f558659861f63512f0",
+      "size": 16836,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedMemoryStories.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "056e66ac06728f399f26996a16ed5d32db54d287052073f4fb87ba31e1e9feb0",
+      "size": 6303,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedStories.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6311013f4779342e0ec98a708aac6f4870127e4f09c92f2c8d75f645a63403a4",
+      "size": 11397,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedStoryEditing.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "77dfc4db53829bfb31c7bc96b1d1435f7838d34d6e13d1a0d04c97868bc4ddb3",
+      "size": 440,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/SessionPersistence.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ba3dd3c23640fc1a935626fc461c262e9d62bfd2cfc8568ada66915f7f8d8c36",
+      "size": 9209,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadAnnotationsWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2104d0ebaf0d408a10c1f91065263d110e58e78c3d66b2c2c6f64ab8fdf06862",
+      "size": 3449,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadHistoryWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "78c586c149d56ae88e6009f8bc88ad2109e6d01b77158b15f39021267fea0270",
+      "size": 2825,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadSessionWire.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b04bf8329a9d6e6d080dd71727b69211131ec1a503b18936fff2702412202f5c",
+      "size": 7166,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadStore.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d4c2dc8242a84b349828c1bfbd0d9b098887fcead0e56b47b3e1199f4839f5fc",
+      "size": 2054,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/VideoPlaybackFailure.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4a1d5ef2620b58ace7a40fd7c832baf75489edeb4e6a131d7c69f61f6283dbbb",
+      "size": 7247,
+      "source_path": "android/live-core/src/main/kotlin/dev/photohouse/connected/core/VideoReader.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "75259601002f7d83addd694e65825a56a8f8593f2fdff7d9f4fc571427d49955",
+      "size": 9581,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantTransportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "592799b623311cc52a06175e32058494208206d20bff6baa4b09031b5fb63cab",
+      "size": 6504,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0d7ee4d07b5fc2e52af3fa00bef8daf516f60f4b07d79a8fad132c8e3fb766e9",
+      "size": 14662,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/BackendIntegrationTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f0fedbab42ab3e8d58aade840591cc1a214fc2514e4b7862e341a06f372d5411",
+      "size": 7349,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadQueueTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4e5ad791af816286b3d21062055610c2d51658c8f028d44a18123d5d5ae68e59",
+      "size": 5811,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreFamilyTagTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d3bfa510ec570697a02859fd7a5689bbbb8e6c3d24205aabc5ba1044cbc9cb3c",
+      "size": 87057,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9d0f40824fce6434919117369943f815bd88b30afc4f85019bf89f919d10a432",
+      "size": 5480,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/FamilyTagsTransportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ec58303c37507b19e513b7251f7b70de5b3543b02860560daf3a0e0285c92669",
+      "size": 4931,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/FamilyTagsWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7c3618166b27cccefbd5fbdfa93879ac234d3baf69cee1b4ac016f9f4edbb7ab",
+      "size": 6962,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/GalleryMediaStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ae8c89cc38017a372df5bb67fedbc13585c3fa386c182c036e53362921c23599",
+      "size": 45717,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ae844b30a418a74ba0d71931b55d8a1f463c1ac2b1066b360830708601950e61",
+      "size": 8053,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsMemoryCommunityApiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "98458919f64eac31dcecba7858b53eefe41ed826c5c73f8f66caf970c3ab46b2",
+      "size": 1637,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/MediaViewportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3b431316eea0d81667ccb6f28b529b48706f4a195e2a9e7a7af0eb36a6bc2c4b",
+      "size": 8109,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityRepositoryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "479728d95849792b6aeb5133204ec9febf5a6847d9cd2ac7b1b640fbc66b7910",
+      "size": 76765,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "caa34aa0957d33b59ec6e394f58467d3231796b8780165bb72ce7491515ffb40",
+      "size": 17133,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "31afff87ac698dc9e6d33e94c09709bf18c0e5d9a209a012a857c581c6e9bd42",
+      "size": 6813,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryDictationTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "586e0d02c1c103465c1600f1b6e1d338b89bca2164b321ea0fd1d91369f04dd8",
+      "size": 12258,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhoneDiscoveryStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "970c634b7dec5e6d1ba8f77ed53f072401d643ef9be0e9cb41a65f71d22cba9f",
+      "size": 6491,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhoneDiscoveryTransportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8b477827d3c01304f14e10fbc43820e114e0bb337b2d04c0f4d15a36e943f640",
+      "size": 6353,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhoneDiscoveryWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c2807d5da8eb4b6c0fd9c303a3884a6728d6f183933712bd00de7f285b32acad",
+      "size": 2771,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhotoViewportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c53343031e58e5a66590391a31915cb8955a5f6d557b96b8d4ee672884d362e1",
+      "size": 5904,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/PreparedVideoApiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "33457118b09a6b3445626f1f1be822ca5a654eaad5a70429940139fd00e59884",
+      "size": 10064,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedAccountTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d37bb3068635c291ffce54bc415ebad4af5aa6f0a641f60bb3f50356688a4032",
+      "size": 872,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedAnnotationAudioTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "828cde3e802616054888b08ed946b5f2b01de6ff70f417284a6dc09f1b346e73",
+      "size": 5487,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedCapturedContractTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "717ebdb449b1601964ea3a776f375436222f8513a764de4d7910952b18bf9549",
+      "size": 8486,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedMemoryStoriesTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5db91af4edf80043f0f133a3272b90cff570fd5a2f1cea04804381fcbb239e00",
+      "size": 8067,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedNativeApiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3b514cadcd7219b39181080c39678a4edcebbd674e1fc855a2b6a5f06205bea2",
+      "size": 3259,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoriesTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7e20438da0d1c6317cae6605a309252f142db26faee472eadf38787721799c4c",
+      "size": 6770,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoryEditingTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1a20173037fef7b5a90c6115f6553a8d4300c7bd307a35d196d172a67bd37cb2",
+      "size": 15917,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoryStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bc6c4fe30a301b6edee1bc2cc4f49fc9da3b9f16f612ec8c447c7bbd8ae49021",
+      "size": 8623,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoryWriteTransportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c08296a9613c7c916276fd34d23e3acf73b0c6a9ff3eea447cec7653cd36dc16",
+      "size": 4959,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/ReadinessAdapterTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4e50e4a61a6c46d5599689bfddbfaa1e4ebf5eacddb07ff16b56f581dc03725f",
+      "size": 9279,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/RememberedSessionStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3cd2e0fd36b9fcefaab7318df4040cc383cc548de84982c65d9dfa75a60a78d6",
+      "size": 30446,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/SavedMemoryStoriesStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "951d9970b7fa86f60e621dcccbe72958cd54ffb7f47791ac71b301f4ea8739f4",
+      "size": 3650,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/TvPreviewTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "109b61762661caa77a8d44dfc2c0c28a6b1b8768c700313a363495df788aff00",
+      "size": 5697,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadAnnotationsWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "81af37b38344ec6e49a6f906f6f997b09c24591f1c631fce2920634a1da87902",
+      "size": 3100,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadHistoryWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e46fb1e31d5aea706a9d6f9b1a0ecc9fda21344ba7c3ca0b632d4d45bcecc731",
+      "size": 1818,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadSessionWireTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a564852af46f1b59c7af63a038c86e0f9fd8bcaa1f64ace3917f439f70da9570",
+      "size": 7647,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadStoreTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "746a48f17057d7d5bf40dc6624570a3f5f92cc607959c82d592364bc3ff08a5b",
+      "size": 8637,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadTransportTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "3da119e48c957114ddb046f56ea104f945098f7500e89ad7be3e997a2d9ea674",
+      "size": 14069,
+      "source_path": "android/live-core/src/test/kotlin/dev/photohouse/connected/core/VideoReaderTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ad640514ad0c8d1627e44e773496b9ba1bd5027d54d07ad19c5118b59bdf9a9b",
+      "size": 5362,
+      "source_path": "android/live-core/src/test/resources/upload-history-candidate24.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "caaa1b8103e805a44d0ba5c27c16d155fd2116ec19c92edb74508d532e592807",
+      "size": 968,
+      "source_path": "android/on-demand-contract/catalog-v3.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c0bfbc7ae6f89b136301917f13a676f22ea29a47731d61c31bd3fd6773accd64",
+      "size": 2049,
+      "source_path": "android/on-demand-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ef669b1722847cc54009052e502d179afbe58ad03dc484ece78bedae06597ab9",
+      "size": 741,
+      "source_path": "android/ota-android/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7feceb9b85ac8d9ebd66d4de33e1f98707e0aecb6994b683920429e548269392",
+      "size": 482,
+      "source_path": "android/ota-android/src/main/AndroidManifest.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1556af4474a6f5d28d8021581cfb8b009e15719f79d16017ccba6c5b509a2437",
+      "size": 4644,
+      "source_path": "android/ota-android/src/main/java/dev/photohouse/ota/PhotoHouseOta.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1749e444c89d4204d2ff69bbc16fa3b719ccb8e8f558d6e5935d6fd6c3c98033",
+      "size": 3976,
+      "source_path": "android/ota-android/src/main/java/dev/photohouse/ota/PhotoHouseOtaControl.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c70855ad4a9d5372b794117b806d3fc039b9b537e6ecc6adc0673629cfb15bc7",
+      "size": 135,
+      "source_path": "android/ota-android/src/main/res/xml/update_file_paths.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "d52b23a1e7e6709cc995e1c17fc41b389e09da8a41b356b358e5f699a534c62f",
+      "size": 5743,
+      "source_path": "android/phone-discovery-contract/backend-inputs.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8ff6d7213eb2a6efaafc1ce202d9792f90706eb80bacfd87204325fbdb064cd5",
+      "size": 20811,
+      "source_path": "android/phone-discovery-contract/examples.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "21c17651cc102f21c387b280146f399add807900ee147e848e4d27d404295c9e",
+      "size": 560,
+      "source_path": "android/phone-discovery-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9b08873c1c65557a23b0aee80f6707e160703c9566ecf0a7f7f6cb3989680bd8",
+      "size": 17944,
+      "source_path": "android/phone-discovery-contract/schema.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "27eb2394d20c8c256cf2c9cf4bddb706b486ef2a21cc94c509c062213eeacea5",
+      "size": 128,
+      "source_path": "android/playback-core/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9715bbbd22d34d4bc7f53f82bdea9c4c37855545c0a797f121a19a33e8ca24a6",
+      "size": 1279,
+      "source_path": "android/playback-core/src/main/kotlin/dev/photohouse/playback/PlaybackProgress.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8aa126a643735e830f4b0964eb0538261ac7cd25dcf1c06851e3c6b432034cda",
+      "size": 1621,
+      "source_path": "android/playback-core/src/test/kotlin/dev/photohouse/playback/PlaybackProgressTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "13f4c6a9af089cfb461409bfb97333cdc8a760b71c5afa5c9509bbfec3af33cd",
+      "size": 70672,
+      "source_path": "android/protected-native-contract/cases.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a38f6fdcee38c857bcb7e3364d971c9f3acb807cecda4789dc67b5691eaf8b71",
+      "size": 14261,
+      "source_path": "android/protected-native-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "db5d01f6e2a0f523b3fd6faca33be88ad8d0c5eff7f89bbc4198abf06289a24f",
+      "size": 181,
+      "source_path": "android/protocol/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2f98347924fd00d266a8885381c0c83082d78c442e4f73c739bcdaae9c50ff22",
+      "size": 996,
+      "source_path": "android/protocol/src/main/kotlin/dev/photohouse/protocol/LibraryNames.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fa46907a26080006d42a582561f80369ee0ec5b3e83fe2c0714b182ab82dc55c",
+      "size": 2392,
+      "source_path": "android/protocol/src/main/kotlin/dev/photohouse/protocol/WireModels.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "66080372b184a3c4645e6966b05e050a973107c478ac98601a4a49d7741404c8",
+      "size": 83203,
+      "source_path": "android/readiness-browse-contract/browse-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8589b7c98915c0bfd2eda1a4ed0fa689a21f7364dadf112628732b96cd39d0ba",
+      "size": 1203,
+      "source_path": "android/readiness-browse-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "af190554f3e45b480bcb702e2fbc4ddb37a2207364c24aaacd2ad19982028cac",
+      "size": 28,
+      "source_path": "android/readiness/.gitignore"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b900922c73076d335fd3dbdb46c3491b7dc93e5a22e0a5a645f69144b693742b",
+      "size": 722,
+      "source_path": "android/readiness/NoNetwork.java"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5061f213763ec85ac44b61d6b75146e2bfa0cbd485d61078b7b4d4c42f1654be",
+      "size": 4942,
+      "source_path": "android/readiness/verify-jvm.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f9857449453e1520289d2db93a4a8c7b63c968cae4fac203216dd3e89e82738e",
+      "size": 431,
+      "source_path": "android/settings.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2a3679a09b3df397b76eb20c7f387f577bbdf0c3b87b484f65de2d1d1e17a517",
+      "size": 3867,
+      "source_path": "android/smoke-existing-emulator.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f6d3eb852f9503d8e313725c98658b4fbfbe99578b89aec62d4598e45521c172",
+      "size": 195,
+      "source_path": "android/story-fixture-core/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b35d62a30ed68ac7aa47c65bea5c8d0833ac7c1f47269f34f376e7e4533e317b",
+      "size": 4534,
+      "source_path": "android/story-fixture-core/proposed-contract.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2a4fb7c1812572baacf39ee42db7906bd3f44e267e800d6a94577d300d29901a",
+      "size": 10995,
+      "source_path": "android/story-fixture-core/src/main/kotlin/dev/photohouse/stories/StoryFixture.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "e60a0ff12b17727ccd2050601fc843cedf6cfc6f6f0726443921129ccfd8563c",
+      "size": 6713,
+      "source_path": "android/story-fixture-core/src/test/kotlin/dev/photohouse/stories/StoryFixtureTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2e0a4599e9308f07ba49611c388d6260dd009bbb3bae9970c99f95c01f4ad05e",
+      "size": 7050,
+      "source_path": "android/story-fixture-ui/src/androidTest/java/dev/photohouse/stories/fixture/StoryFixtureUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f12cad04909be63101704c4573505314c94c3223a178f929ebab1f50bc062acf",
+      "size": 367,
+      "source_path": "android/story-fixture-ui/src/main/AndroidManifest.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1a2869c5f90e0c8d6d665af0631fcdba22a128d57339cc7d1f1370ea61e90820",
+      "size": 898,
+      "source_path": "android/story-fixture-ui/src/main/java/dev/photohouse/stories/fixture/StoryFixtureActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "770f196e05ffce4f69bfcd06e9e02ff9c9c6207dc2c3d5abcde584661cdd8625",
+      "size": 15381,
+      "source_path": "android/story-fixture-ui/src/main/java/dev/photohouse/stories/fixture/StoryFixtureScreen.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ec04359040255045fb7887189ff54edea2fbfceca047615fdcce350cb0d6f691",
+      "size": 47556,
+      "source_path": "android/tag-discovery-contract/examples-v3.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "27ea88ac384d563709039e7ba88ac137d3d0698010acd20a2f826a258766f669",
+      "size": 5598,
+      "source_path": "android/tag-discovery-contract/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "9c9fc37677e3f161ad086e5bc080d31edc7bc6eaa95eecc46b9d4d5e7e7e7703",
+      "size": 6235,
+      "source_path": "android/tv/build.gradle.kts"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2cde48dd6de163e9fb0f78baf6de14e4da5bcdf12ce9d3830681d91dc4f109f9",
+      "size": 1756,
+      "source_path": "android/tv/src/androidTest/assets/catalog-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "5ab7d5d27cc6b3f557068ce21cc07e332939ae92f8240233b5eb087c1012afe8",
+      "size": 24336,
+      "source_path": "android/tv/src/androidTest/assets/catalog-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "045f8e1673bf24a9e4bf378b04f782d2fa455af455b7f547545313aba9cf8290",
+      "size": 695,
+      "source_path": "android/tv/src/androidTest/assets/feed.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c610ec0406005683fc6acf9ee48b5fd1bcb37e2bb23667c46e1fd01dc9979434",
+      "size": 523448,
+      "source_path": "android/tv/src/androidTest/assets/home-3840x2160.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c311363ddcc33e304b4f657d7fb3353c839bcdbdb9bdbd09bea62b1152fac42d",
+      "size": 632,
+      "source_path": "android/tv/src/androidTest/assets/home-8x8.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "efb71000b8dc2807396c0d342dd7efe8823d4281e125b9281b980ddf1ae2f9b0",
+      "size": 522344,
+      "source_path": "android/tv/src/androidTest/assets/synthetic-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2c0131a7d4bab974611c31894ae46dfd2e28b2710efbf2809e28bd026f596783",
+      "size": 3313,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/ProgressiveVideoDataSourceTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "93032d62597f45e6744e6905c3ec6965d3086b77b75c27da66a1540e25e91ee9",
+      "size": 12727,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvBrowseTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "744e5bc61522398e63639988c82e7b6f9cf083e24c2df0f21866786deaa70603",
+      "size": 10785,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvCatalogTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "275f46d8264eb4dd3ada2d7330431f410c298770af5f7896414dc9b8a1ab176e",
+      "size": 8101,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvDiscoveryResultsTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "af762bd2a4647134f6d97a45f31cb8de2176f8b510a79b54f6738fc0ae9f08df",
+      "size": 10479,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvDiscoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "da992199f7ad2ee60f61ee9421e0e570446b400e072fb728efebcdd7562c3281",
+      "size": 4800,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvLiveCatalogTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ed4f2bf35c98cfdaa588b37beced2b0b4e87fb87abbee7afef8364c0db4b8505",
+      "size": 4172,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvMediaRecoveryTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4dab458d23b846b93d2cb79b4cc7589b9421b6f9ecb576022739fe28595bad99",
+      "size": 331,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvMenuTestSupport.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "7d5fc2c3eacbb3139e5e33cb1cfa1c5e2c9633137183cfef92316eb105d4abdd",
+      "size": 5685,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvOnDemandTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "334877504d7dcc2877dbbdc867453b46e2eb26169c76590992e49f09f9d963f1",
+      "size": 22143,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvUiTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "fddc1f8f6ec0d0aeb7b4e5e8cbfb9532a3eb1baa616b01e8b7514755c366bd69",
+      "size": 14273,
+      "source_path": "android/tv/src/androidTest/java/dev/photohouse/tv/TvVideoTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "78ef83892cd619f369e6088e51293aac0e1b7865343652ec35db676cbf0141d8",
+      "size": 1413,
+      "source_path": "android/tv/src/main/AndroidManifest.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "64b4a696a01053bf2ddc47968c45c5bd55f5ad005e1582e2891c4211f3e850c6",
+      "size": 3228,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/MainActivity.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f85ca111bc518599fa0e08a6141f4e7a37f89c5331c929a4c2bcc7a1062c7065",
+      "size": 3363,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/PageJump.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b2b8ac311737b93b6b88e2b86ed4ff3850ef52a402dc98de44e22b14142f67ce",
+      "size": 58263,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvApp.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "a2a18d273d01f9ba29dce54fb12c165ca296dc3b8b7fd45e47b55f4414fdf875",
+      "size": 4190,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvCalendarPicker.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "ee676649c31b23a9e7dcd5fc8cc05b6ae15ff5defc2980e2aedf255c6d710db0",
+      "size": 25246,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvDiscovery.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "63bf759f0a59e08ece12b200020b8659d7d4bb1526255399893f42245ed67a7f",
+      "size": 7394,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvImage.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4f7ed2ff5a6917f8d1bc333a6b603d164f0cc2be654e5fcae8e61a9babe965e0",
+      "size": 3652,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvPlaybackFailure.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "aac1ad8cadbfc50937de394172181b4e42ec479b4e62f6640a548b0e463fc750",
+      "size": 677,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvSlideshow.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "15e622554bb8792ebc4420254f536ee7aebee2bd5c3b464b5cd8a8f618f32947",
+      "size": 22577,
+      "source_path": "android/tv/src/main/java/dev/photohouse/tv/TvVideoPlayer.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "f8a452161a15c738a6f6aee1bcb47d9f2b939b7c48733365b2f52db08d945b9d",
+      "size": 441,
+      "source_path": "android/tv/src/main/res/drawable/tv_banner.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6dc929eda3c6f5a738d4b6a9407d4a3116d664ff3489e6d0d9d7d8eee7537618",
+      "size": 465,
+      "source_path": "android/tv/src/main/res/values/styles.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "1ac0f769ed9190a86eb4fc5da4f02a48fa4ccafc5497dbd760cfa15ceb6239e2",
+      "size": 625,
+      "source_path": "android/tv/src/main/res/xml/data_extraction_rules.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "66a131709b1437959f5476354196646c773b544732709ff209614e6bdcde721f",
+      "size": 231,
+      "source_path": "android/tv/src/main/res/xml/network_security_config.xml"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2700fa70bd9f05cd7dec30c227b8cb1fa881764e9f7326fc20ef2422e39ac1b7",
+      "size": 2311,
+      "source_path": "android/tv/src/test/java/dev/photohouse/tv/DiscoveryLabelsTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "b844ce36dd2b4c495988bb494d3493ebd286887465489747c953ec9da0f78279",
+      "size": 1556,
+      "source_path": "android/tv/src/test/java/dev/photohouse/tv/TvPlaybackFailureTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c72d24d3d8f013925ccb2be65e079d380fc7401d35aae774dbb65253cae851dc",
+      "size": 1878,
+      "source_path": "android/tv/src/test/java/dev/photohouse/tv/TvSlideshowTest.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "418fa371237d6e4eef2ab4cc85754ea44a5c09402efa231c4287bdc9d91c2ab4",
+      "size": 1811,
+      "source_path": "android/verify-calendar-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "cd8964583b101e36a3427403bdf5f1c1ea220043598d5ec27df3c3b7e4c3ae3c",
+      "size": 1431,
+      "source_path": "android/verify-catalog-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "700ec1dcbf7f4dca097c79d61285bc7fd4b0f8bb10efba987ea9f956207a917d",
+      "size": 3491,
+      "source_path": "android/verify-connected-boundaries.py"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "c05376620890947151f80753d32e6f3a5f9c3dd93a5e0a8f8a25560eed21abee",
+      "size": 3148,
+      "source_path": "android/verify-connected-emulator.sh"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "678121f116e7fac1e0621ee12be4862a8d9fb8a27c61c3e4e5c1f6685c1a7f5f",
+      "size": 1504,
+      "source_path": "android/verify-discovery-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bec7a3718901774ffee7e695ad4a201cccb9d871fba7eabc650f99e5de393d2d",
+      "size": 1863,
+      "source_path": "android/verify-discovery-delivery-contract.py"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "dcbce50c438b5dec3694dc4dce01b264ab7190c3b3384c44eba35b52d5609f80",
+      "size": 2328,
+      "source_path": "android/verify-emulator.sh"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "57ba1a3ea42e7772bc297ffca34f5fadeff0ba3abc03a62824f5e9a7f63a8e6f",
+      "size": 2547,
+      "source_path": "android/verify-fixture-boundaries.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "76604b168e7ecb9e16c3a6af71e9377c6deecd12392a3811aed37f23d3180442",
+      "size": 2139,
+      "source_path": "android/verify-home-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "913c822d7c92a826b8b9f10c132ff55697ff12cf8f33a7623a81362f01c094ac",
+      "size": 1592,
+      "source_path": "android/verify-on-demand-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "11da81d7f5a6e5d41c011de1b8db74ff5024cde0f0e88b6735e0fa0ccda8db45",
+      "size": 2264,
+      "source_path": "android/verify-phone-discovery-contract.py"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "aae1c476d87c69bfca3d8b5bd8ef1bed90c7e520c3d94e6941c8424627f80f7b",
+      "size": 3849,
+      "source_path": "android/verify-protected-native-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "79752c4266c8e29f49b5c4ac7ca49f1b884e52476795ea220aa4b94e6a5332e4",
+      "size": 1380,
+      "source_path": "android/verify-readiness-browse-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "571aa6cc7c9558d66f87c1776b0b0a208dd42aaf05d206f9e4f6dea5daf9f14c",
+      "size": 1857,
+      "source_path": "android/verify-tag-discovery-contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "8436654c73af45a6a93efcb5743a26567103564cd517ac37097cc45b617f9af1",
+      "size": 2872,
+      "source_path": "android/verify-tv-boundaries.py"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "435869b1c54e2b647508c28f9a091b7d7cfc06c1f316200f422a6aadc560e076",
+      "size": 3227,
+      "source_path": "android/verify-tv-emulator.sh"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2500eee8bba4d2cb84040c42ec83a5cc1a7664011367aacd0ab38e33b74e2a55",
+      "size": 2381,
+      "source_path": "contracts/README.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "bb5924cd8b240da40102cebd2586e41fb35156de99afbc327c682bef685cfbf9",
+      "size": 8337,
+      "source_path": "contracts/v1/CONTRACT.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "893b20887e1427497dadf47abda5cb9401d0feb627adc80eb40fb8f48df02bee",
+      "size": 2441,
+      "source_path": "contracts/v1/client-scenarios.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "146ccc3885fab73ae2dbfa57166027ed1235c658ce35b166889e44e5681da6a1",
+      "size": 11445,
+      "source_path": "contracts/v1/fixtures.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "69a058e5e9d8ffa889b6c52e5339a7ddf755dc6c7dd2aa7591e0133b4f8483e6",
+      "size": 1987,
+      "source_path": "contracts/v1/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "4de87cd21c6c2078583b97998902e66918b5dddea43a2be35524ff3a6d745be1",
+      "size": 8864,
+      "source_path": "contracts/v1/media/amber.png"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0c8762afc9150632f99d62ee0b65ee3c8687eff7e9fb7c8d44d6364c5d7e803b",
+      "size": 264,
+      "source_path": "contracts/v1/media/amber.svg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "77b997ec08452046d7f9930ab953feddddd03179ed4240d4ee2b3aa7ee7d567c",
+      "size": 9047,
+      "source_path": "contracts/v1/media/blue.png"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "6b46cd8cd422ae5bd8f8625b0b29e3963c429ec10f795ca65c5426803c3bd40a",
+      "size": 264,
+      "source_path": "contracts/v1/media/blue.svg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "0b99bd505f7e1f9584180be7ab6d8b341d271cba0df7507fe04ccaade459fcfc",
+      "size": 46262,
+      "source_path": "contracts/v1/openapi.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "c311363ddcc33e304b4f657d7fb3353c839bcdbdb9bdbd09bea62b1152fac42d",
+      "size": 632,
+      "source_path": "scripts/fixtures/replay-8x8.jpg"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "android",
+      "sha256": "bb04b54e365a8b6bd6592be4f1f94453a1535eaf9c34b99c940c9d8c96c481bf",
+      "size": 7108,
+      "source_path": "scripts/verify-android.sh"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "android",
+      "sha256": "2fadd4f7a7be223e28f9d1e6291c157d34f2aabe8f1e8effefe6af5e3100de4b",
+      "size": 15670,
+      "source_path": "scripts/verify-contracts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c960fee7fd66f781d5bfe9f6bb035b22b7b07db450e122c0200b0a89e7f0ecee",
+      "size": 1072,
+      "source_path": "backend/Dockerfile"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "00797ba09e2df360339fd89185dcc8c08e5434c59e26e723f8804604a74e4768",
+      "size": 622,
+      "source_path": "backend/alembic.ini"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f378e6b73a28874ade0c801a7446c03d279a4c7b9b0827f05ebd23183e1a340d",
+      "size": 87,
+      "source_path": "backend/app/__init__.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "342fc5abcc46c492d5682aaf6cb9697f167399adbdd49675af2a2be78bdd6562",
+      "size": 83,
+      "source_path": "backend/app/access/__init__.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "12d77f6193298bafd67cc888412638d85a495028c5c809e17afdb611709f448c",
+      "size": 3907,
+      "source_path": "backend/app/access/admission.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "196911e78cf27e5cee1c204a9544d7b8d0800f5caa2c242906dbaf460d4df048",
+      "size": 15615,
+      "source_path": "backend/app/access/albums.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3ca869b7350a5a3a264b6d87be2141df344f11f8e830ab1f19ca64a3da8044f6",
+      "size": 8779,
+      "source_path": "backend/app/access/annotation_local.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "710d6a3df86e87eef712119d153063d38686026fe722709b519073254aec16c3",
+      "size": 10163,
+      "source_path": "backend/app/access/annotation_processing.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e6e5e2f3b95c1e626231aceda977ced0d7ecce46bf2005093c2574d0a58bfaf8",
+      "size": 5203,
+      "source_path": "backend/app/access/annotation_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fa6391d0164c7edc3b3d3377745ba1ec3b052e91ad26af6bb0f43f1feb8d2a9d",
+      "size": 26078,
+      "source_path": "backend/app/access/annotations.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "69efaabc79dff5cbce3998e2ffd75aeeb3663509da44408ce15ae0735f819a38",
+      "size": 30346,
+      "source_path": "backend/app/access/assistant.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e388ec4dd7bd651aad100d0e5115bdfdd58bde0bd0e171f7b0f3174c49ee8fff",
+      "size": 11320,
+      "source_path": "backend/app/access/assistant_journal.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "31d4840f487f1b3b20e47e31508fb4e03ba3b114a87a861933a04d193d58d9f8",
+      "size": 6444,
+      "source_path": "backend/app/access/assistant_speech.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d047446ae23196f8f24ea8c1b93c78b88ea77b1ece1594313595a79a8bba77f0",
+      "size": 1879,
+      "source_path": "backend/app/access/bootstrap.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b2cfd8a3e5eb9e34930b575d594664ad61fcb8232da08d246c22d970ac7feaf6",
+      "size": 11534,
+      "source_path": "backend/app/access/boundary.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1744e5de0f0c4e12d8cdd1de1585a484f2c902d7a1f6d95fbf9d0a23ecff142d",
+      "size": 5584,
+      "source_path": "backend/app/access/captions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "daee4f9549bc258b1b98319da2b411210f288a1896b61833ad867ad544933a50",
+      "size": 4880,
+      "source_path": "backend/app/access/credentials.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "da88df15e774070743b1681d3588dd89374597c308fe5da3b683dcd19006471a",
+      "size": 1893,
+      "source_path": "backend/app/access/date_hints.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "06eb543011d7a06e0825bad292d5be52b2a248a02419b6d501cb14efd8c46354",
+      "size": 27007,
+      "source_path": "backend/app/access/discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "404ad89e448e9afc960f05740879aa14c7995b431136aead07088e8e8ca1adbf",
+      "size": 9396,
+      "source_path": "backend/app/access/discovery_index.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6486f518116c60f6d3e91ac5782c7bc143a7cd228cd2d069d90ae1466d31f6df",
+      "size": 2826,
+      "source_path": "backend/app/access/discovery_provider.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "025e5f2f23cd952f61fdab52a055fecc3baccc9d3aaf8f0be566bccd60d172e4",
+      "size": 9291,
+      "source_path": "backend/app/access/discovery_transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "685296fe257e5c3e3c112474ccb831666c7580f5d986a862c40727467a305656",
+      "size": 6192,
+      "source_path": "backend/app/access/duplicates.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8a9c8c13dc5280935b39e510462e5518df006e464cb2b006a3d4c1067390db63",
+      "size": 6001,
+      "source_path": "backend/app/access/face_jobs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f79711a079b28eebd371b9f3961b1efd8103fb1edc30c3587cbd847425b58859",
+      "size": 10923,
+      "source_path": "backend/app/access/library.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9cd387945ae2047da9bdbb862f99eb9b7eb16dde6f8170cc19b7eda7b330eaf7",
+      "size": 11643,
+      "source_path": "backend/app/access/library_organization.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0327e9251b1bda088491ed918eae156ec8fc0cb46cd9fc12c4e7acf1dbcdf0e9",
+      "size": 9382,
+      "source_path": "backend/app/access/management_import.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8ad058d760f569e6ecebb4351792109fc1ba52711593afca66910edd95da36ba",
+      "size": 990,
+      "source_path": "backend/app/access/management_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "985a4d32c43609403891138e1954e3f5eee13a3802d2276f288c5e3bebf50f4c",
+      "size": 21391,
+      "source_path": "backend/app/access/media.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d04fe7891812b79b0f56aefed9974f2e101f11df054c008e927d2da77129adf6",
+      "size": 1656,
+      "source_path": "backend/app/access/members.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cf4e1fa4fa5d4a9d2a97358b1d9cc81fec127389c382a938c4bef96ae63cc7a6",
+      "size": 3615,
+      "source_path": "backend/app/access/memory_book_planning.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1c9c587764e3bcfbfec6a572c1478860db0f0ab56bb3113b7923f13bc4254a47",
+      "size": 12043,
+      "source_path": "backend/app/access/memory_books.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "396af9cc9cde16f8d052e0c240a61fbee506344ca2f32b9ae85d183ce1cdca48",
+      "size": 12282,
+      "source_path": "backend/app/access/memory_collaboration_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "977f0d4bb80358ff1c08535d89c3ac57bb9d2926e8cd7c100f5e5942e1d78313",
+      "size": 17175,
+      "source_path": "backend/app/access/memory_contributions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "20ac8155fa29405110bb2f17f115fa8843812850aa61f6916746674f3c614162",
+      "size": 24917,
+      "source_path": "backend/app/access/memory_jobs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9e5b5ad9e6383f29a64b20f395bda6a41629019ad5b62111a53593ef6739b1e9",
+      "size": 18833,
+      "source_path": "backend/app/access/memory_narrative.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d14ac957dc4e92bbdac0acb9e31518c45280bab293afd0de1b4d09c411b9232d",
+      "size": 14009,
+      "source_path": "backend/app/access/memory_processing.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fe0a56c69776627421a78edba9a19cb1a6f5ba8fd1e537c99d3a4308c50b185b",
+      "size": 1552,
+      "source_path": "backend/app/access/memory_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5fe01d403443fc24d5386425e1e845e328b6fb0dd3d4d24a461bdb2056dafb60",
+      "size": 6254,
+      "source_path": "backend/app/access/memory_source_refs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e833b99d3669ea58ad2c6b605ba069eb73e4e62215773e6d8be755eceddb882e",
+      "size": 17655,
+      "source_path": "backend/app/access/memory_stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "09178c6d8206ecb2d86e59f189c8f8223d873b9e20d99bda48380ccaec8ca596",
+      "size": 12956,
+      "source_path": "backend/app/access/memory_transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c742d2ffba3081da377cbee727270ef5d46b6e7083904cd585bb78e22ff95235",
+      "size": 6308,
+      "source_path": "backend/app/access/metadata.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6b6b5734bc6ffdd00fd6196d9d126e88dda2fe70d92ce10ef66985de0317a56c",
+      "size": 44771,
+      "source_path": "backend/app/access/original_deletions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a978677755d4c16f536000db575b4ea0221266ac00d77b899c69dd20699a1f07",
+      "size": 11192,
+      "source_path": "backend/app/access/owner_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7ac69e511bfb8f39bfcf7124ca6edb1256817e6759618973f4bf3fc4e8324a1e",
+      "size": 13106,
+      "source_path": "backend/app/access/ownership_repair.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2ca2f3036f2cb9062d85aecb2480db753c61364c814f6e01e75d4d69649d50fd",
+      "size": 28660,
+      "source_path": "backend/app/access/people.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "bd3a0b23a294ce9c5d3a2f509f38c5209fec78f905eac674e4ae78c7e17773d6",
+      "size": 5529,
+      "source_path": "backend/app/access/prepared_video.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "468288ef438e2881760fef30672847b4edeea958acbb93730b483f92615d9e4f",
+      "size": 7493,
+      "source_path": "backend/app/access/private_storage.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a2ccf2778536bf0cb15b63be275de8252895c4c3ca66a33e5f61f3437bd162d6",
+      "size": 39577,
+      "source_path": "backend/app/access/promotion.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9c7528f3f38f93801de5d4d1c87a87fc8cf70dfb8caa521dff5028f1709c5415",
+      "size": 11526,
+      "source_path": "backend/app/access/provisioning.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9f082a6b5ef26244fbb15f9de6699a261e60e02b61a56daa6223ec6842775a84",
+      "size": 16828,
+      "source_path": "backend/app/access/provisioning_apply.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "66e6ca07e55c412ac1521defdbbe6112eabafd7a37d0c8fb28ec80ed2bb9fe97",
+      "size": 9341,
+      "source_path": "backend/app/access/recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "891bcf8499a7727a07d23df36f7013109b24b26fbf9b1a98ba6f25255f0fe37a",
+      "size": 17716,
+      "source_path": "backend/app/access/resumable.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5fd5383e388aa49b5e8934787c617ce10e376d2657cdfce7eb4170ee945ac2ac",
+      "size": 1633,
+      "source_path": "backend/app/access/resumable_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c83be31f4533dacdb6e031056edffe2b107ca137d865fd0307fe6cddd86f2e42",
+      "size": 13939,
+      "source_path": "backend/app/access/runtime.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0a6eac6c8c26e57b242801b4e7ea87631de81512224dbdad06a6400bcab5931a",
+      "size": 3289,
+      "source_path": "backend/app/access/schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ed29a7a1205ad97e333425505fd55fd806882da46d39e63d56d60992c5f96a91",
+      "size": 29402,
+      "source_path": "backend/app/access/service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cc9cd8adda72683fcd51bc7578695c8ab32324580d47e5821456fac2fad1cc0c",
+      "size": 17066,
+      "source_path": "backend/app/access/stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "404d99d8edbeb7766c324c13691e073fc824f015004ec5701efd7298fcaa5a4f",
+      "size": 7675,
+      "source_path": "backend/app/access/story_outline.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "de338f0d23ccedc1bea18b07729dbb51df5cdad39b9e9678accc2f9428bd656b",
+      "size": 2022,
+      "source_path": "backend/app/access/story_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "88b9d0110ef227c4d876f39060e952a04740311cfb3554884bb0f39019344b6a",
+      "size": 5038,
+      "source_path": "backend/app/access/story_workspace.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "917ba9b8e9e4d3b77174ff0dfd7fb08960592430e80d970f930da98c2257a54d",
+      "size": 11131,
+      "source_path": "backend/app/access/tags.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "45193e18615fe9162dd668ad766f66314a7773d380f9d3dc3aa2c99b597ef9e7",
+      "size": 10218,
+      "source_path": "backend/app/access/task_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d19b0f23ed69acc7b7843f773e8e5d24af8366bf8dfc497bc88e50b6c9e1a384",
+      "size": 13085,
+      "source_path": "backend/app/access/transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5924c3215f71aa6f45bfd946f43822965b3cd2071c98187d950d634513e84d89",
+      "size": 15429,
+      "source_path": "backend/app/access/upload.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3e477d9bec041b9ed28db38a3d593eb2ce26d4ebb982cc205995424d4ce9ae8e",
+      "size": 21035,
+      "source_path": "backend/app/access/upload_review.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4cd0a55ecdb335f2648bd93c5959c310df09bd3d4f6d0fabf032dd940df68143",
+      "size": 3343,
+      "source_path": "backend/app/access/upload_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ec7b0e62617be9c44656c8e7e3322766cd28b430545d7e4de17b54ced385f007",
+      "size": 9193,
+      "source_path": "backend/app/access/upload_transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b27827763f78626ff1091e1872c02cade833de2fd8cfaf33a3cd66a3f5890983",
+      "size": 16488,
+      "source_path": "backend/app/access/windows_tts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d8689fb8ad90d03c3b8dccd573979460e681bd378fb4362a25fa8842ec4d1340",
+      "size": 11059,
+      "source_path": "backend/app/caption_policy.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ac24d422091f1dbb56729996160077e5b26359eff8760c4e60ed269b491ea48e",
+      "size": 23403,
+      "source_path": "backend/app/caption_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "072e166ac4cd62b1f7f8e7016ee0156e19121fca99987b72eb0fcb13d03fb1ad",
+      "size": 7767,
+      "source_path": "backend/app/caption_subprocess.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "048f2c898a15b19ba789308f5262f96a4086a3282e4dd3eb05a67813e4b0a95e",
+      "size": 4066,
+      "source_path": "backend/app/caption_validation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "758f0fc292ba9666b626fdc8cfe155cfed7d4bd61a18064bb0d2d254520f39e2",
+      "size": 69158,
+      "source_path": "backend/app/cli.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "132992a4ad7cd6fddf04da695db29cc96794e4659784fd318612b3628c4b60ff",
+      "size": 14612,
+      "source_path": "backend/app/config.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "83aa77c078f9e9726d3a1776e6da44379a4dabf75927308251e2476cdd627858",
+      "size": 16647,
+      "source_path": "backend/app/db.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "04e374e24d7a0d9777525e24c63a52a0d7d33f230ef1839a88a79eff9891ddca",
+      "size": 8679,
+      "source_path": "backend/app/dependencies.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d25f49ee1aa1194e546a3398714491b44272520f8e9757075bbd1c80f5900a13",
+      "size": 2333,
+      "source_path": "backend/app/face_alignment.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "155c9a3dcd099aacfd91f037394a43c5c4fa06b021337984c888f48c23870014",
+      "size": 2089,
+      "source_path": "backend/app/face_assignment_audit.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "126c8519f8e31794afece08cfa9990830c90ad7114f163688c8a0021a7e3e45d",
+      "size": 13225,
+      "source_path": "backend/app/face_detection_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b9eec487a461cfdb39aa468417d40f1fbdee2a086a71fa12eaac0f35068ef3d9",
+      "size": 1742,
+      "source_path": "backend/app/face_embedding_artifacts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "054fe9b33acd608e99ce9e32d7298f50509434a3fde860f04357a0ef9bdaa3b8",
+      "size": 22014,
+      "source_path": "backend/app/face_embedding_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b1cee0570547cf76326f72ab0bd9af8331953bc5f1bf5982752c1108da053dc1",
+      "size": 3550,
+      "source_path": "backend/app/flowchart TB.mmd"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "078882f372016614d454e90871ba7d08d4473ff79b65c83c5dc1fd2b11e1b0f8",
+      "size": 10977,
+      "source_path": "backend/app/gps_utils.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "93da45d436cae253ea16f142ca739ee3e7b76abdb7074098ea8a02f306ca70d0",
+      "size": 5483,
+      "source_path": "backend/app/home_calendar.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "467b7fc9bcd04e07ff0578a4f4fe80a453d949fc850372986444c36c0592ab40",
+      "size": 15515,
+      "source_path": "backend/app/home_catalog.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "685c62de47311e80e48fef3fa2c5af3adb3fb0d2aa87f2298c7f5c4c4ccbb5a2",
+      "size": 4064,
+      "source_path": "backend/app/home_collections.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "97ddb87eabc7c551d06672c2bd32fe571f07c4e94d0bc3c52e4fb5165d22c958",
+      "size": 17350,
+      "source_path": "backend/app/home_discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6e2c32acd1f301fe4383025fc787cbc7574e453aec56a0a5dc7f2dd3fb4500f9",
+      "size": 5676,
+      "source_path": "backend/app/home_discovery_delivery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c7f22deab8cd58a7bc6060ce6427086568a30073c13917727da30be9865cf37c",
+      "size": 14397,
+      "source_path": "backend/app/home_feed.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b57aa0e847a720284a5b44a236be18bf15ab81eb80f2945c945a684ba87fc2ec",
+      "size": 15218,
+      "source_path": "backend/app/home_originals.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a0f4d4eb8833d673ea7f45c8cc4ddfcfa83dd51a20957c996b9a55c21e49fb34",
+      "size": 8295,
+      "source_path": "backend/app/home_tag_discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0e188febde4b04b8e660abb780d9fd8fb295cd562a25e1f5c10a7b11dd52ba52",
+      "size": 4884,
+      "source_path": "backend/app/image_tag_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a95fdf9707c07109388611c9f6e739aee1dc784d080323e22650fcb5d684b7cc",
+      "size": 1151,
+      "source_path": "backend/app/image_utils.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1960af99882075216c3b72c6573c91689c18c1994ee1d79c6812fd7a0b67fb59",
+      "size": 6279,
+      "source_path": "backend/app/ingest.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0484e79e0d82068dc3fbb41f41b20208bc79598037ffe35bc2121ee09a274b2f",
+      "size": 91785,
+      "source_path": "backend/app/legacy_main.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "bbf40d0cee69004cf52036bce689d2f3a66c925bbe8bfc3410cafb207ced1ea9",
+      "size": 1638,
+      "source_path": "backend/app/logging.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5e866780e0e9a09273e441caf4b7149b78d8a09edfd9aed5e72de120c622ad31",
+      "size": 3819,
+      "source_path": "backend/app/lvface_http_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6bf6e627e44e670eee11ded782033a51d5456baa1d0797c94476c7e2a340602b",
+      "size": 8708,
+      "source_path": "backend/app/lvface_subprocess.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "154f548ee68071c04be056f7c956119f2cc2b7b4a50bfbee2ab07a1fe82ae646",
+      "size": 5677,
+      "source_path": "backend/app/lvface_validation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f77736434c8830156d33cfc0067d46b99aa59ce8d98061132e6c83bebd4428d3",
+      "size": 6611,
+      "source_path": "backend/app/main.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "21822899b502e338deb1f97cdbe22a4a19bde83b6839cbacd0667eb1e12c51aa",
+      "size": 2804,
+      "source_path": "backend/app/metrics.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "85e536bf6bba7b6cc83e08149f1854407b9a4c09ef5e45427988776d8dfe1281",
+      "size": 71,
+      "source_path": "backend/app/paths.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f7f4ce861105532f7bf2891b7b70d7bce4c9788f50c80c10ce886a5f87010c44",
+      "size": 1718,
+      "source_path": "backend/app/phone_discovery_candidate.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cbfd1841a6edd9259e28ff6a549eb6f465a6d319176e2faf56d7799956208803",
+      "size": 8357,
+      "source_path": "backend/app/photo_delivery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a8724e30549f260de7548a53eee1613934ec40ee7cfb4007d52923f0b28175db",
+      "size": 9725,
+      "source_path": "backend/app/routers/albums.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "14c1279656e1ab4503388aafdfba7c727ab807bbbce34dd99d1142061e8a9205",
+      "size": 32943,
+      "source_path": "backend/app/routers/people.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "635f618cc410ea392157749c17d85f8346924b7ba3a9b43aea17b0ab665d29fa",
+      "size": 2257,
+      "source_path": "backend/app/routers/ui.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "715b4967e6e82dfe7908ec6f5eecbd36f354aebf40ec7214530bdf43ffb40edb",
+      "size": 80748,
+      "source_path": "backend/app/routers/voice.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ea87e543a2dc6809d27b1841ddc736b5984eb8a609372f26f531fc8d73c94181",
+      "size": 24659,
+      "source_path": "backend/app/routers/voice_photo.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "958d6d4fde003218d717c09f2e3cd9c2846f65a6febfb5abfb10af418cea4cfd",
+      "size": 1375,
+      "source_path": "backend/app/runtime_paths.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "df83f1e2cf8ba75c48d91ae85468d29b0136bc7090384b89c114e8a2cd6b4b8c",
+      "size": 7504,
+      "source_path": "backend/app/schemas.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0a85af1bc4d7097aefb6dd357d23240a7e1cb5e23bbfe5a1ccae33947b57f010",
+      "size": 17212,
+      "source_path": "backend/app/scoped_face_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a5047d6a4a997293a286572719a4546061b267c3e3f32f391af6d5769860d54a",
+      "size": 1296,
+      "source_path": "backend/app/services/assets.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "97320b87ab2bc98851fd2f23ea358caaa5f2bed3b03a36747c59febec14137e4",
+      "size": 13664,
+      "source_path": "backend/app/tagging.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "74ec72e3295b956016852e8daa25412fc343164598731b7f2357f479682a7332",
+      "size": 59470,
+      "source_path": "backend/app/tasks.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6d7dfbeca6c9a8ef9e20630754317335d2fc0d7bb750ca22366475f5cecd1c8e",
+      "size": 275360,
+      "source_path": "backend/app/ui/access/app.js"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a7ba56c9e0828076b10979c8cce17342ce6408c4bba102f67c997fcb96a38997",
+      "size": 39447,
+      "source_path": "backend/app/ui/access/index.html"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "be93f7860bb95483fe726be939b89fb33ddc5555b6fca9f22fb55bdff5122523",
+      "size": 160856,
+      "source_path": "backend/app/ui/access/memory-community.js"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8f41b77e36a4a75422e3a660d861ba389e25c384116788a051765c52f4027064",
+      "size": 91229,
+      "source_path": "backend/app/ui/access/story-workspace.js"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9ba1bb162947cf1261357f93b1ae1c1b82386ced0b517d1403c7de9ffc24ba7f",
+      "size": 70704,
+      "source_path": "backend/app/ui/access/styles.css"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "39f3695dd8f5bd2db345e33dedea367a72fc6a03c747580ff2652f7c5e6e61c3",
+      "size": 173884,
+      "source_path": "backend/app/ui/app.js"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "714b132ca89d3702e517bae09cd6071be321082e920357378515483394ac5a3b",
+      "size": 37765,
+      "source_path": "backend/app/ui/index.html"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8a2d0378755391f72664ca48f53131a7d7dba8b9a306d73f5b7cfd3daabf2732",
+      "size": 33292,
+      "source_path": "backend/app/ui/styles.css"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b5f0ecc9c4989088648caa8b014b896f9e126e8a88d53972cfa7c004d12b723b",
+      "size": 3799,
+      "source_path": "backend/app/updates.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "318427887f184f0390ce266ea7536ef05aa1d155f0a61ff1a0f1606e970791bb",
+      "size": 15150,
+      "source_path": "backend/app/vector_index.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "85e33379b63094686713cff80962782d2ef85a81198c1cbe4be988251c4010a2",
+      "size": 39,
+      "source_path": "backend/migrations/README"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "77b712207d64ac59191db85bbe01ab13dd523303425a996e48b61065a4c6743d",
+      "size": 2683,
+      "source_path": "backend/migrations/env.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d3b168dcad5d2eb372951e24e515c8fa3b311d675942bf16ca4edad3da839c6b",
+      "size": 645,
+      "source_path": "backend/migrations/script.py.mako"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d62fc446d100b143addba5adf97c31427b772a6f0942ff30061ee6eab4cd0562",
+      "size": 4990,
+      "source_path": "backend/migrations/versions/0001_initial.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e436e296abffb66ed37f8758eff6582e60a108d1e26bf7bf4b9530add8d1874e",
+      "size": 888,
+      "source_path": "backend/migrations/versions/402a07259e4a_sqlalchemy2_typing_refactor.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ef9e39cca6d24780810259eb4d0cef57235fe300c35712e11b492873c7a0258c",
+      "size": 1468,
+      "source_path": "backend/migrations/versions/5b6b4d1c2a3f_task_progress_cancel.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c68a2f437ea78674060cc27f3e82011cdaac39bdbfdaff48f2aec8b1af47c025",
+      "size": 1051,
+      "source_path": "backend/migrations/versions/6f2a8c1d9b7e_embedding_metadata.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7db0da24fe2e632393afac493a44c3512d9ae71ada08a8ab1fd08a3f5d294bb7",
+      "size": 1634,
+      "source_path": "backend/migrations/versions/7c1c2d4e5f6a_task_timing_columns.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f961bc69e6c207c048129ff3d7898bf1d7692bf5c18077166ebebea1f19991a2",
+      "size": 3165,
+      "source_path": "backend/migrations/versions/8a2f1c3d4b5e_captions_multi_variants.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "05436a7f20c8b8b96c2e04135be9568ac828186147adfaf3f500c72d676fca1d",
+      "size": 2697,
+      "source_path": "backend/migrations/versions/9b1e7d2a5c6f_caption_status_and_variant_meta.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "aa75aa099a8e240943d973ca78aa4900892903f636da4e0ebb45eca907d60717",
+      "size": 1009,
+      "source_path": "backend/migrations/versions/a0c9d2e4f817_saved_story_contribution_refs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8f1dd08035f1e0d1d4db2ba5c1b2e9173b074f81527dcd9d17d8f4588ccbe85f",
+      "size": 2731,
+      "source_path": "backend/migrations/versions/a1c9d4e5f8b2_face_assignment_events.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3d5b99952f0fb7dd0fa197dacc848e376410ec66f78872eb88f78d4ac4a9340f",
+      "size": 7389,
+      "source_path": "backend/migrations/versions/a5d2e8f4b610_legacy_read_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3f335a247fa43e656d05ea4d49e4f0ba54147a6a7b8c49a6b269d3fcb8532ab0",
+      "size": 696,
+      "source_path": "backend/migrations/versions/a8d4c2e6f901_resumable_uploads.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "18e3f2ebb651722e1d25dcc7ada5e9aefa7bfccb3b1b5bd16fe3ebf5df327abb",
+      "size": 619,
+      "source_path": "backend/migrations/versions/b6e3f9a5c721_offline_receipts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b064243a6932d8055d80cb300b44c10d6a656be83342df19f452cc3c2500918d",
+      "size": 2043,
+      "source_path": "backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0f23de3f281423b37ffee932a72bceff6f6b90b9ee7b6aaae3a8534cd21cae1b",
+      "size": 4304,
+      "source_path": "backend/migrations/versions/c4e7a2d9f1b3_versioned_face_embeddings.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "49e7ca191596f3cfcc72d46cdb90e35970e735a5251b71e31d2408a085b22900",
+      "size": 845,
+      "source_path": "backend/migrations/versions/c7f4a9e2b610_family_stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "79a96550fca0de340f877e32946177eb072c8e501a4816f947b0f8ea0ec3e627",
+      "size": 2936,
+      "source_path": "backend/migrations/versions/d2b7e4f6a901_album_drafts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1a84c69e37bdef36727246b8f83b8c396072dcbc26483b640d82c6ac25f01c7d",
+      "size": 1198,
+      "source_path": "backend/migrations/versions/d4a7e3c9b821_family_annotations.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5f506fc5a38d076805463dff1003ebf7823c4cbf7c0f9eda83f8f9aa84cf0902",
+      "size": 810,
+      "source_path": "backend/migrations/versions/d8e5b2f7a904_library_management.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5c0dd2ec89ea43b9357bc4c5a8c65774002c3218d63561daed025a68be5a5d34",
+      "size": 988,
+      "source_path": "backend/migrations/versions/e3a9b1c7d402_access_foundation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4c1f58f7c4c42d461a0016cea79b29ce2891904074db36c1fdfa30a757618d8e",
+      "size": 663,
+      "source_path": "backend/migrations/versions/e6b2f8a1c903_memory_stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cd4023151da806b86e68c78f858c79cc1c5fbb7b3a3755f33ae22fb384e43375",
+      "size": 1846,
+      "source_path": "backend/migrations/versions/f2a6d8b4c915_protected_upload.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "79f50add07ed79921745e798f2b905ba0700192d6c23fdd2c82a3c3d26059636",
+      "size": 697,
+      "source_path": "backend/migrations/versions/f4c1a8d2e703_access_admission.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "988cb96c9071a58f0142f1c3b82f4c7a01f6c0799003eb0ecfa73f7e282a8139",
+      "size": 1071,
+      "source_path": "backend/migrations/versions/f7c3a9d2e614_memory_collaboration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fb2242c24a69de539a52577a446c4cba0b2a651b1513a3b9fb6e85bb604de4a6",
+      "size": 240,
+      "source_path": "backend/pytest.ini"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "72d91572aa7cf682b4875bdb4d4a103816e470a6d83a4a1224d463adb76f55c9",
+      "size": 113,
+      "source_path": "backend/requirements-access-test.in"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ded98cb724b9ad408683824bab31c249fbf1a905658dbfc90776bce07ce1c1c5",
+      "size": 32239,
+      "source_path": "backend/requirements-access-test.lock"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f4f69a63a43b12a77eecd272dc27e79e8f5fdbe6f22cc2da7c24f1eab32b4555",
+      "size": 326,
+      "source_path": "backend/requirements-access.in"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ded98cb724b9ad408683824bab31c249fbf1a905658dbfc90776bce07ce1c1c5",
+      "size": 32239,
+      "source_path": "backend/requirements-access.lock"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "65547069aa22dc5239c419c0558a3451b98df70c516e01b96ee3b21c6de01e08",
+      "size": 361,
+      "source_path": "backend/requirements-core.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "49f76e6e76a0cea5eb7f4bafc0221c057475fa37bc62901ebae96c860e911018",
+      "size": 1432,
+      "source_path": "backend/requirements-current.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "681f282d6c5e10e0d1e271330c3b112f0c90fac97f6dc96cf13237d4189366ff",
+      "size": 42,
+      "source_path": "backend/requirements-dev.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "652c7ca450144abf07fc3b7e6bdcd76af6cb7ff46fbf6b673c2a7fe141ca9076",
+      "size": 361,
+      "source_path": "backend/requirements-home-preparation.lock"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "source_path": "backend/requirements-lock-core.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "source_path": "backend/requirements-lock-ml.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "53de2f876d5af099bfe2230628519b4a0d604ecb652643d3b5e65d7ae41a094e",
+      "size": 1424,
+      "source_path": "backend/requirements-lock-updated.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "278765454f5e9aacb39d4bd15c7b37f1fbca080742bdee54ddc25bbc1a9f4a95",
+      "size": 1346,
+      "source_path": "backend/requirements-lock.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cff3e7964b51d9a50d04498e479d41e4c0c18d2b9e7d5581a3621e0460590865",
+      "size": 1466,
+      "source_path": "backend/requirements-ml.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6d1410044bf96342266a8090abd8a1b06cf0227a90bffd1a2107e2e7a74d787b",
+      "size": 190,
+      "source_path": "backend/requirements-security-test.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b3f1152ada56b5ac9b7cdac0d998767d7e7c6afb369dbbc045ce70ce87c75d91",
+      "size": 2272,
+      "source_path": "backend/requirements-windows-production.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "34b1a7be4455eb9464d7ee9f9111d19516eea352cecf1627adb5c66c8b934046",
+      "size": 360,
+      "source_path": "backend/requirements.txt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "539a9fd99ab6732afe05367470001d66834fc4d772b020c524c329ee966dffc5",
+      "size": 4149,
+      "source_path": "backend/tests/test_runtime_paths.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ef8a985dc83409cb5a48b9c9b20738085b9b48d57ff0db7e907331e78b006f95",
+      "size": 46825,
+      "source_path": "docs/contracts/protected-native-v2/CONTRACT.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "33925dd7c7124c330e14785e6c5050863860942b126e9d1d5be55c50f1b8b28f",
+      "size": 8405,
+      "source_path": "docs/contracts/protected-native-v2/UPLOAD_NEXT.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3c8201a881e6577675868bb3e4f0aa0abb6c372d2f72265e8e8c17e081471b4f",
+      "size": 53446,
+      "source_path": "docs/contracts/protected-native-v2/VALIDATION.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1832faca5730e29ded55b004ffbae2940a506ddf569af654758505a2518938a8",
+      "size": 86367,
+      "source_path": "docs/contracts/protected-native-v2/cases.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2b44848e12a0317dcff95f438c4fdc93fd37415f5ef235399360ab51444ccc79",
+      "size": 19097,
+      "source_path": "docs/contracts/protected-native-v2/manifest.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "13cf10892dc4e91631ad71b5ee4bed21baa44697f1e779851c19026dbe606120",
+      "size": 16767,
+      "source_path": "docs/security/home-catalog-contract-v2.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "70328a653ddaa559bad6a4d654cf9870c89c5217e8e9e6c46a3501e9dd9e7548",
+      "size": 3576,
+      "source_path": "docs/security/home-feed-contract-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2e76dbcdb9680966bf5f5d5cf667e92c41d26483baa35a6bcecd700df42eadaf",
+      "size": 225985,
+      "source_path": "docs/security/route_capabilities.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1812046c6983d140f465f653f6f9de0fd95bfea1fe554593e951f9da43b5bb95",
+      "size": 273,
+      "source_path": "mypy.ini"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1d6b2a8194c59d714caeb98a496378e0cb34a4b13aae9deec1e6d3b843d7aa8a",
+      "size": 9654,
+      "source_path": "scripts/apply_access_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "360eb984225bd1a01dacad2485c60876706be717ef939cbab0073c9a4b051665",
+      "size": 11456,
+      "source_path": "scripts/apply_memory_collaboration_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "767fc8d3550ec8049aebb84ddeb4d40d8e46ff0903661d6ed1ad8355ec8c335d",
+      "size": 6130,
+      "source_path": "scripts/home_media_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "dbc3cbc9a9609a2ad314385f123b0b0d87c8a9513d8680eebe2c9076239b50a8",
+      "size": 5228,
+      "source_path": "scripts/home_preparation_resources.py"
+    },
+    {
+      "git_mode": "100755",
+      "repo": "server",
+      "sha256": "c9d0007076e3fb5ff08e7fa8e753c3dae70f075234b6c033c8f398c3194ad808",
+      "size": 14177,
+      "source_path": "scripts/initialize_original_deletions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f59f818747ecf28b6af8b48e9edf8ac2035d05716e32396a94934489f15a6c79",
+      "size": 12804,
+      "source_path": "scripts/prepare_access_database.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8f716a093decf6656b0d87cad5e1f2b3a3d0da69878912a0192c9a33ff862104",
+      "size": 15030,
+      "source_path": "scripts/prepare_access_discovery_index.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "26c4e80f50ff993b9e2d98a9610bbc51455e2d9f25f4e94c867d3043d1d68161",
+      "size": 17627,
+      "source_path": "scripts/provision_access.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "986ea952d891b7d2282c61f7810c3a88a22bb46ee4258cc2f92dde462b7f488d",
+      "size": 5637,
+      "source_path": "scripts/publish_android_update.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6e7a4950e15e4c3ae5828f341d648366357de42afacdcf92b9e0b1bae88a7a2d",
+      "size": 11103,
+      "source_path": "scripts/refresh_captions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fd0f9caf1ca1f889ecbb2b8476cbb697ae4290294b57b6f2c2576677c3edf65d",
+      "size": 12420,
+      "source_path": "scripts/rehearse_fullsize_database.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3c4cb3bc1613a2fa8d6fc6b0087b88d97be67333e990bf70cfc80aecd4f7782c",
+      "size": 7981,
+      "source_path": "scripts/replay_original_deletions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "bf243b363356960b9ce3396039078097c3e6e335e4ba771fb7925a6e2f6d229b",
+      "size": 6250,
+      "source_path": "scripts/verify_protected_native_contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8394c1e1223b2a06bf5656d88d70dcacedfb7dc86d0f0605d1dc65d4f8b03b4a",
+      "size": 1613,
+      "source_path": "tests/README.md"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5ebc0a58fc0010af7c9b63444781d0d33e9bd747d5f2219082ff2f92874c7501",
+      "size": 3993,
+      "source_path": "tests/security/android/CaptionBudgetCheck.kt"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "88a891f794ad17da13ac7913094d064dd94e324f732a0e4a2839e4f62c860f38",
+      "size": 24287,
+      "source_path": "tests/security/browser_bridge.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b5ce6f80f9226c3b45f36db6c186dc937fe1968b469bddf66400d007f53c6e22",
+      "size": 10149,
+      "source_path": "tests/security/caption_worker_fixture.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "66080372b184a3c4645e6966b05e050a973107c478ac98601a4a49d7741404c8",
+      "size": 83203,
+      "source_path": "tests/security/fixtures/browse-v1.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "caaa1b8103e805a44d0ba5c27c16d155fd2116ec19c92edb74508d532e592807",
+      "size": 968,
+      "source_path": "tests/security/fixtures/catalog-v3.json"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c610ec0406005683fc6acf9ee48b5fd1bcb37e2bb23667c46e1fd01dc9979434",
+      "size": 523448,
+      "source_path": "tests/security/fixtures/home-3840x2160.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c311363ddcc33e304b4f657d7fb3353c839bcdbdb9bdbd09bea62b1152fac42d",
+      "size": 632,
+      "source_path": "tests/security/fixtures/home-8x8.jpg"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5ab7d5d27cc6b3f557068ce21cc07e332939ae92f8240233b5eb087c1012afe8",
+      "size": 24336,
+      "source_path": "tests/security/fixtures/home-video.mp4"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2fd4db03fc54cf7af3b47c298b1e8009e177cc8551f8fc7412c55781936e5ec8",
+      "size": 3879,
+      "source_path": "tests/security/fullsize_provisioning_canary.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0875d98385744a4250b50cbeef4d6ee66bdaebb7d87399c802b7056f93160053",
+      "size": 13132,
+      "source_path": "tests/security/harness.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7700a86e2872b732895f92bcac0ea4465b3816f99e911bed99adac40529934ca",
+      "size": 6777,
+      "source_path": "tests/security/legacy_caption_schema_canary.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5cfb43d727f946b0111b95f18ba856c7d5afb71da85235def4c6a6f85e964972",
+      "size": 11491,
+      "source_path": "tests/security/memory_community_browser_bridge.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "83b47e0c8eb0178d20acc34d7ef60cc62b5eada90f4d288dc5da5c3928dceebb",
+      "size": 24782,
+      "source_path": "tests/security/native_contract_v2_probe.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4957c23e6b8c31bafb4e17547b2f5f820d3cace84d9becea2ed5849a982c2fd9",
+      "size": 1989,
+      "source_path": "tests/security/native_home_guards.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c5f1c76173b9558326f5ac682756516953641c6a2cd13aaab42f122226f550e6",
+      "size": 17184,
+      "source_path": "tests/security/package_smoke.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5b527838431b74e87f3e00e1f3963823d5479d36c5658a5c455d5f35e5293581",
+      "size": 4721,
+      "source_path": "tests/security/phone_discovery_fixture.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f130d010ac3348d46ff4442fcec5eb4d235df26c87de3cc96ab52cc982b83023",
+      "size": 8512,
+      "source_path": "tests/security/scoped_worker_handler_fixture.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a8cae50b2f35be764c28813ca237698416eb146a64f5b6d9a495647b3ef3cbce",
+      "size": 4452,
+      "source_path": "tests/security/test_access_environment.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ff83fd4736a790319683ae909d5b04cd1a919f4c00d8d0e302c1eeea234e9dae",
+      "size": 22305,
+      "source_path": "tests/security/test_access_foundation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5f47ff0dfb760dce50aaa21243d58688ad47e63d1ceccf2c7262dc6c5d83f5dd",
+      "size": 28840,
+      "source_path": "tests/security/test_access_transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "992ab0935985e1cf4a3d861619803dd5beebc3251d7c8621fe5311496dc719c7",
+      "size": 8450,
+      "source_path": "tests/security/test_album_archive.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "71e055877306f63198436cf5f4b91e5ed1861865cc1ad0245c2b47cea0c82db2",
+      "size": 5301,
+      "source_path": "tests/security/test_android_updates.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8e0b85236d1f779f140ab6e608067a584bc7b7627dde7f318249ccb464cfa63a",
+      "size": 8705,
+      "source_path": "tests/security/test_annotation_local.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "832e627b6561fe124d0b4addeb8b46ee6b8cb36306b6c7cad1f150a326769b9b",
+      "size": 1226,
+      "source_path": "tests/security/test_annotation_web_wav.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "353e0024ef19acea20aee4059efec27d2901db5b303e4dcd6670c96cfcb35e63",
+      "size": 8624,
+      "source_path": "tests/security/test_apply_access_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9d1bc5524941d19b93b4e44d174cb988da94d1c2a0f13975c8f1ed806b61f2aa",
+      "size": 10194,
+      "source_path": "tests/security/test_apply_family_annotations_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a14acf20e7cba6680f914b42040eba95b251f1cb5adbf522d5f615ca05fc4ae8",
+      "size": 10540,
+      "source_path": "tests/security/test_apply_memory_collaboration_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "eee29fc6dc81dc60134a9315b7bc7f0f6651952835809a5cd27bdc74cd6ef6ce",
+      "size": 9186,
+      "source_path": "tests/security/test_apply_memory_sources_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0f732b625c772c33329975efed7344837d28a5478e2f134f8bdd90564b0479a1",
+      "size": 11391,
+      "source_path": "tests/security/test_apply_memory_stories_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a0385bf1e77c70353959bf1507314969dccb6059d53eeae4ec754eb36f222b9b",
+      "size": 11158,
+      "source_path": "tests/security/test_approved_cpu_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a2f500d2a405d6d78ded699a291560fdb0834df2a39384f39bd4b0aec831b6bc",
+      "size": 7213,
+      "source_path": "tests/security/test_approved_face_inference_child.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f4befab455d853b4f38f2388c95c646a26138e28aa191d103b02ae7d43fa5f18",
+      "size": 9014,
+      "source_path": "tests/security/test_approved_face_pipeline.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6d9157959031188e923816e214ba0eab4de6474a4faa741a235e0f4eb1e4d3f1",
+      "size": 7928,
+      "source_path": "tests/security/test_approved_face_queue.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9a106d2fec2e14e0df65fc2aa9a3e1d582e36ff65ad09c97394b14272ef1236f",
+      "size": 8178,
+      "source_path": "tests/security/test_approved_face_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "771836f81907db9f5c2ec5dc8615330ebe7339008800a645dcb0d5560ca3b772",
+      "size": 16859,
+      "source_path": "tests/security/test_approved_image_embed_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b67e04dc0da77b99017fd324b0fffdfd65a9261078a4f183cb7c4b8c32d85c1f",
+      "size": 9224,
+      "source_path": "tests/security/test_approved_video_embed_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1c169c23e37588b4d62a5fd16be5d614103a38f3629d58c407cbe5d113f03d84",
+      "size": 17256,
+      "source_path": "tests/security/test_approved_video_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b26d660426fbf497feae2f92319f18c4e510691837824f2434572d0552175916",
+      "size": 2229,
+      "source_path": "tests/security/test_approved_worker_bytecode.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b5eac264156304c569872977ea8dc0782ea156eba5cb9bf5e186158fa9c2cf5a",
+      "size": 2450,
+      "source_path": "tests/security/test_approved_worker_package.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f117ebe16416572188dfba05f49eec41d7d78383ba5276a8d6b494e2a314fc63",
+      "size": 2393,
+      "source_path": "tests/security/test_assistant_asr_service.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d3a7cc1e0abcf0085b6943a6d81ce8a838f3309d6cdaee1feea5d1bfdcd17b5f",
+      "size": 15512,
+      "source_path": "tests/security/test_assistant_http.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "72e19788b5639437e2399a237ed207c81e4d4d0503f51e4593233710d7ca3b6c",
+      "size": 12898,
+      "source_path": "tests/security/test_assistant_journal.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "26ef749d8b3bc70e019ecd1c547224b75d921ad93d545ddda3c9ca12d8639bb8",
+      "size": 4073,
+      "source_path": "tests/security/test_bad_video_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a4789fe53121d505348082ee9cb7a3dd491dd5029c761450cd0a8fcb265558b1",
+      "size": 12176,
+      "source_path": "tests/security/test_caption_supervisor.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7215252fc2ac1b73d6a2d35b1905118b5c73bce1f72753ecf90e7ea9b462e38f",
+      "size": 10617,
+      "source_path": "tests/security/test_caption_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "bb5c73d74545c0a2ae8fd61fe7ceb65c48a2b0c7083894e6d6724a7663cfedc2",
+      "size": 2279,
+      "source_path": "tests/security/test_caption_worker_package.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1c4c3ce20c3970d0e8e0b86699cd5a18e3a4498efceb664db89a55deb23ad954",
+      "size": 5844,
+      "source_path": "tests/security/test_caption_write.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ba8922f1681c6e824f61c0b66a71f62ca2d70145d7a10e7961c4d27ac4307a33",
+      "size": 34702,
+      "source_path": "tests/security/test_closed_application.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "40fb4ff1c9fc8a821152a8c318bdcdac2296f063c9521ce205b6f54b3148b0d3",
+      "size": 4892,
+      "source_path": "tests/security/test_current_gaps.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "40857af5d9d72e1a0387b0f48d0031297e583979f302b30e9b72ee9811277492",
+      "size": 12205,
+      "source_path": "tests/security/test_database_preparation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0ad4a6148aa37087cd0c0d31b0a34402f389839d171672b142aa6d6ab4ebdafe",
+      "size": 15189,
+      "source_path": "tests/security/test_discovery_index_producer.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "279f20681c331d9518622204805667f2084358ceef4649483134a501fae469dd",
+      "size": 11912,
+      "source_path": "tests/security/test_discovery_wiring.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a7c2681176d835995f0c917a7359d26c554b297ba98d45a3da5def4cd10c7c3f",
+      "size": 3772,
+      "source_path": "tests/security/test_disk_provisioning.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c66e270dcdee811cbb557ffe33981fc16f38208574626fa6f297a59add3aaec5",
+      "size": 5381,
+      "source_path": "tests/security/test_duplicates.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "37d8e1074f774cfb75f5bd88361325e47e19a57b36415a67224143eb65c28483",
+      "size": 9142,
+      "source_path": "tests/security/test_existing_access_upgrade.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7047f9fa25f41bee1b1614c6cf66a62ec547bc2fcd7e19af978bd8d016dad752",
+      "size": 11235,
+      "source_path": "tests/security/test_face_job_control.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "087c32b6acfab582574c0896310073d76595a5f8ed03e0c2bc706251c598d676",
+      "size": 11940,
+      "source_path": "tests/security/test_face_worker_launcher.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6bc96d439b508b9c713a84be7a31b1df3ff7988abfbf9ee7effefb397e59012b",
+      "size": 2361,
+      "source_path": "tests/security/test_face_worker_package.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9f52f2bd94dcb0a9782a26736f18628db74d435acc1b879fc67649aad44d1902",
+      "size": 7272,
+      "source_path": "tests/security/test_family_annotation_migration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5041b3605f81a088163387afa6d7d7839c2020c00ceb3034d651077196879419",
+      "size": 13487,
+      "source_path": "tests/security/test_family_stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a86ef656bee7be1e79c06d4154a41c71d1015afefaeffdaf236f57198882b2ec",
+      "size": 9542,
+      "source_path": "tests/security/test_fullsize_preparation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2f0bbf69a5c6cda94e3f279fec3e5931d541b913e96847a9e7dae9d514bc4714",
+      "size": 6283,
+      "source_path": "tests/security/test_gallery_media_filter.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "078aa3f900cdfdf98992cf6e2fca624bff5fc0a42760926e7db98be54741ce8d",
+      "size": 3442,
+      "source_path": "tests/security/test_home_calendar.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c70adf3b1326dd257604d3daaae7c76e9044344dd9ec1c26393e283b8aac4611",
+      "size": 20521,
+      "source_path": "tests/security/test_home_catalog.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "df61e57bac7986dba1b5a4aa3d7669df29faca448d12600df7cfb259d91fa2c4",
+      "size": 7293,
+      "source_path": "tests/security/test_home_collections.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4f5adad5072ec8c161906a32571c1843778aebbdc15b732c815eacbd42a33327",
+      "size": 14349,
+      "source_path": "tests/security/test_home_discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "116324efc6745c24961950b2f301116315708d53edeaff4a4c793a07a16503b8",
+      "size": 9556,
+      "source_path": "tests/security/test_home_discovery_delivery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "87243adc2394d318b18ee23a09504ff7486dc6a6eebf7a190ba8b6dc07d9dfa1",
+      "size": 17263,
+      "source_path": "tests/security/test_home_discovery_export.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4c65e2ca1749bca3b398c92d086c0c0c4082585374ef4a59b16b658b548e1a54",
+      "size": 15323,
+      "source_path": "tests/security/test_home_feed.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1d2c978e13fa4e0f59f17a4ce5c4aa6dd7a36d19ecc1983e9cc39f4460b348b5",
+      "size": 9029,
+      "source_path": "tests/security/test_home_feed_background.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "83913a630b99512efbf280ea786cb3fbc12667f2a8b4b28de3c6f49ba56f7ce6",
+      "size": 3356,
+      "source_path": "tests/security/test_home_feed_background_rollback.ps1"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ff0918fc342812d0dd3698e30cfc881a64160d52b483ddbf8f683d0e57045909",
+      "size": 24725,
+      "source_path": "tests/security/test_home_library.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "45eb831090903cd642160e08666fc09c9b43f608b9fa9ca6162e6e4980e082d9",
+      "size": 21463,
+      "source_path": "tests/security/test_home_media_profiles.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4dda2bc9bf3ce4a26c864180687db8b16ab344579ca0693e6e4b9b3db87c0e97",
+      "size": 4508,
+      "source_path": "tests/security/test_home_memory_envelope.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2196d779b98bd45d759619a7ae78ae5c105b774c95a552406665928d0dac4f9b",
+      "size": 1235,
+      "source_path": "tests/security/test_home_memory_sampling.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f82dbac05ae53bffe2a277f7884ea26fb4466ea115f089d00ef31d20b16639c8",
+      "size": 3075,
+      "source_path": "tests/security/test_home_people_review.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6874af27ade355c54aafcfa69107b687b996267c287581d6f47007ed0d9cfd09",
+      "size": 20631,
+      "source_path": "tests/security/test_home_preparer.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "14e0528bdf50e3c4e98cba374e0cb7fe07692899adb4a3a08677c15166b7d9a8",
+      "size": 9917,
+      "source_path": "tests/security/test_home_read_access.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "85e9b1f2724376f3bbee19698f56cdae7325d042122ba58e22f82421b795b13e",
+      "size": 4770,
+      "source_path": "tests/security/test_home_search_metadata.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "decfc23e7a54d8998f5a68359069ea0e40e7929013cd8d19638c7dff19c7de22",
+      "size": 7742,
+      "source_path": "tests/security/test_home_tag_discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "539ccf7c24a43bf439c34fdccb328cabdefb80ee8023369a499e9f4f27dc5c67",
+      "size": 13324,
+      "source_path": "tests/security/test_initialize_original_deletions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "90bc648ea1654662f362d988406b2f364c5d04491619b89df3f035b3c7367d52",
+      "size": 7862,
+      "source_path": "tests/security/test_inventory.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f821e9f0235f050bafd30bf14c4d6db5ea47ceccedf529e8a9afcc37e0bdc6a8",
+      "size": 6795,
+      "source_path": "tests/security/test_legacy_read_migration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5d3a30b11f545f6170192462c6c944d9312495dcfbf330d67526906c490fa77e",
+      "size": 6719,
+      "source_path": "tests/security/test_library_albums.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "74d21b15e452273c365dd14ea11ccc368762abf4825e614ea21c7aa6b64dc3e0",
+      "size": 14984,
+      "source_path": "tests/security/test_library_organization.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2c00799869b3db4a5c941f01ccf94af58a4c8c312a2d508895654872f2ba4d4d",
+      "size": 19159,
+      "source_path": "tests/security/test_library_reads.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "23c2d9c662b97e051976b1cb9f1a5c05d84ec9b6a586a754f03062584703f8b7",
+      "size": 17176,
+      "source_path": "tests/security/test_management_import.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d24a44f396887cf2f12cf52c7ea1f115ba8249b5112798c8362a241c5e1b0b73",
+      "size": 6677,
+      "source_path": "tests/security/test_management_migration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9612d287bba98941f0f35dbd51d099c1840f9c5982585d1070836d7b571d2f90",
+      "size": 7698,
+      "source_path": "tests/security/test_member_management.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fcdf9d93847b2b790aa7d494da8adf6105607447e0eda70d145ebc6771daa5b8",
+      "size": 22700,
+      "source_path": "tests/security/test_memoir_source_refs_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "183cf270d8215d993e0a888ae7a49c6158fb96267677ea3fcd33fa406ad4af20",
+      "size": 8212,
+      "source_path": "tests/security/test_memory_book_planning.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "01d0943b099bf3766bb99fc311f2584497fe80fa61b4efb6694c10c980af026f",
+      "size": 9389,
+      "source_path": "tests/security/test_memory_books.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7144eec488f954f554451470f5a76c0f8fcd793825fba0da9636664306d2f9a4",
+      "size": 11660,
+      "source_path": "tests/security/test_memory_collaboration_schema.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "81af8a9dfb4a6332dc51ed762c54bea3b29250c63f52ba42456429bc405eb7f4",
+      "size": 105850,
+      "source_path": "tests/security/test_memory_community_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "0690b75446d68cd8ee46d9fb0fefd15cd88957cf1f9095a48552264da6e1e1e5",
+      "size": 190377,
+      "source_path": "tests/security/test_memory_community_ui.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "622053ee555304649c3e53aa67c7b89a87736762c30a3f79b18b67133c656606",
+      "size": 27692,
+      "source_path": "tests/security/test_memory_contribution_refs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e08da5d9fca2c3f64a8281de4e51705a625d01c8197d49a586989a45e9e6598f",
+      "size": 14097,
+      "source_path": "tests/security/test_memory_contributions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "097d76f90121f00771c3504897901737b64693b238aa6fcc529bdfb0859020b5",
+      "size": 8305,
+      "source_path": "tests/security/test_memory_home_navigation_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5884295ad79b11201961a07475ae00ef9d58d2667f5b56bb5061c89080c4350a",
+      "size": 28564,
+      "source_path": "tests/security/test_memory_jobs.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c221ed75d930affa86595717ef7dafb85646aca33531b893b627eafeef466ab0",
+      "size": 15214,
+      "source_path": "tests/security/test_memory_narrative.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ebf06b4a89f2de62dd9d93a18a5cbe9aca30980924325af05a321b2a1220636f",
+      "size": 30271,
+      "source_path": "tests/security/test_memory_processing.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6ba650733e27755d89d943f7323526862bac9598b18c738ce469c1f81497dcd6",
+      "size": 17214,
+      "source_path": "tests/security/test_memory_reader_leave_guard_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "50ff203d7f7ac320a4d25df1532ed14b2da3f43b0a9065a994c30b12c39cc5f5",
+      "size": 7657,
+      "source_path": "tests/security/test_memory_retention.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "ef077d5863ac5fbfad97ae1c135054084471fb7d129daa7b50a1312ea89f72fe",
+      "size": 12572,
+      "source_path": "tests/security/test_memory_stories.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "46a594add3c303dd5d70083c1ecaf34b72a695cdd1a5c40cfddaf3e42dda9725",
+      "size": 24200,
+      "source_path": "tests/security/test_memory_stories_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "db75a239858e7eb5f3f66d0d438d81d7ec68b57e14e95b8d81f405e21afecd84",
+      "size": 22035,
+      "source_path": "tests/security/test_memory_transport.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1cc8eaa0f5755e49f772e0cdcac85378622f23330823641379db9b1ec040d5b5",
+      "size": 11443,
+      "source_path": "tests/security/test_memory_worker_launcher.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "bd5709accac13adfc8533b6bd048f3d9d05c53032f97281b495fd8d757ba56de",
+      "size": 16392,
+      "source_path": "tests/security/test_migration_candidate.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9e33fb60a1f55d3c23b5324dd6f50c4e8f5a8fc9a4b44b321f66ca0490fbe968",
+      "size": 3739,
+      "source_path": "tests/security/test_model_gpu_evidence.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "39ce95dc93881dec17cdd1a3ef1fe73da620907ddce42da5275f6b258ad20274",
+      "size": 1657,
+      "source_path": "tests/security/test_native_home_guards.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "33f922a9439d231ed68cdb4d2fc2feab68600dc2def2e48020ae4282f608bbe8",
+      "size": 18524,
+      "source_path": "tests/security/test_offline_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "6f52f5c92951ed6be2fcbb9ace9fb4820e9f89c96e9297b243ec780e892f359b",
+      "size": 12141,
+      "source_path": "tests/security/test_on_demand_delivery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8b308f1bc341b4798dc6fd3b5442eac3b5f02347fcfe9fbefd84e4d437dc42aa",
+      "size": 11463,
+      "source_path": "tests/security/test_operator_cli.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "5eebbf7111eeffc0ead796712347042642eeaad22bc5993dc2c3bfa155dc28c5",
+      "size": 6409,
+      "source_path": "tests/security/test_original_deletion_integration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "398cc1480865f7e9f044397773cd900c253b08f5ad7e84e76308adc8af6c8ed5",
+      "size": 27375,
+      "source_path": "tests/security/test_original_deletions.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "26cfa3a871503fbdfebedeb3083d4183c98382aa8eec678b620257a752b08410",
+      "size": 14033,
+      "source_path": "tests/security/test_orm_migrations.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "8a170dd6d0296027a610639d5c851f3544abe4b15d9b711628dd2a900318dbfc",
+      "size": 18838,
+      "source_path": "tests/security/test_owner_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3ce8c8ed2617537681f9346aabb39d52b1ba7730bdc340712029a7be1dd844ae",
+      "size": 1159,
+      "source_path": "tests/security/test_password_policy.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "c863538150ee7afd2c138362351070a8b66f88221f2cca21e32c42a073ed463c",
+      "size": 37727,
+      "source_path": "tests/security/test_people_management.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e9ced4a7abad171a955cfc5dc893463c58aa311e604759ac59f292c7a8acc0f9",
+      "size": 6226,
+      "source_path": "tests/security/test_person_assets.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "30618eb75434266e753209470c92c5bb9c4be189a551b5d98a1bc595048d128e",
+      "size": 992,
+      "source_path": "tests/security/test_phone_default.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a4011b551086960af179ba4384ae10a3f2faca31d2f1fa2aa4c71f30e5051df0",
+      "size": 21300,
+      "source_path": "tests/security/test_phone_discovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "008ca991dba923bb9daa7a35464168da5f02f34381cd5977b87541459fe4893e",
+      "size": 13931,
+      "source_path": "tests/security/test_phone_discovery_http.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b81cae025415e3cbd12ede022ad79ae94a652784e4acfaef467354b9d96d4993",
+      "size": 4830,
+      "source_path": "tests/security/test_place_name_search.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "94cbadc0260543a9e45b64df1c3614499b96c1600146885515d686f050c9d17d",
+      "size": 3810,
+      "source_path": "tests/security/test_prepared_gallery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fead53918ebfec9d2652d700d5957152f61503856ce9281b04b47ed1bdfccafb",
+      "size": 2581,
+      "source_path": "tests/security/test_private_storage.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f9e445753e6043c4cedcd01e47532dd0af672c76102b18d3d8bcbeb524557783",
+      "size": 13225,
+      "source_path": "tests/security/test_projected_places.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b3a2655466dbd036839bb58c278419090ec63a45b8d3e61e18cf75c82bdb4f86",
+      "size": 38633,
+      "source_path": "tests/security/test_promotion.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2ecf9ba4c9e5271c99650f043da5dab3c20a0cd542d1a6cc417576182dc10336",
+      "size": 4668,
+      "source_path": "tests/security/test_promotion_transfer.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "790c005230f2831ca4cda26a9e9af886497c103b518cabaf19005bd833fd4b90",
+      "size": 8307,
+      "source_path": "tests/security/test_protected_native_contract.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "03f698c3a25cee9ac3cca94b525b67b11a38062af677d4e94f292758b1cd6d4d",
+      "size": 5819,
+      "source_path": "tests/security/test_protected_photo_delivery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d032a2ae49434068fe6e703f1ff75a1280ff39bf82129980e22975ae8136c7cb",
+      "size": 15231,
+      "source_path": "tests/security/test_protected_prepared_video.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "29de856172d019aed909b6300671c010c67940aae5b25836d0f07b3a3bc4c09b",
+      "size": 18238,
+      "source_path": "tests/security/test_protected_video_collection.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "a8a1ce93916bce5d8ed317a4ac8acfbddf6bff2f7df2c019e3c08c0fc6016346",
+      "size": 14616,
+      "source_path": "tests/security/test_protected_video_export.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "945eb11075ccb1270079a4674551f6fa026f9ffad42ae1a9de993db2c45beb03",
+      "size": 10464,
+      "source_path": "tests/security/test_protected_video_staging.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "96b72863cecd766e3c80ae395e84e781ccff168d0060bb0a70b799af35d3ba42",
+      "size": 16346,
+      "source_path": "tests/security/test_provisioning_apply.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4608ff2e5713abd742b6be8118474c7ca060d99e3c31824a588b8439bfdd02be",
+      "size": 9438,
+      "source_path": "tests/security/test_provisioning_plans.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "51813fa026f8f6ad251ac188c5b7cc6edc82813dd728cf1723022d7018ded431",
+      "size": 5185,
+      "source_path": "tests/security/test_readiness_browse.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "45749ddeb4d64d6a79b1fa6d8d59c2d372452061fd6f7235477a9ad3ee53307e",
+      "size": 8398,
+      "source_path": "tests/security/test_refresh_home_tv_catalog.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "57c5547ecbb77babea1b704aac5e4093c8167bf9dd8572b28fd6d5e2743ff095",
+      "size": 12082,
+      "source_path": "tests/security/test_refreshing_places.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3655a4ecc176d7912018f612f3f3d717cfa727c1dbb68d86abc96b6581347169",
+      "size": 11865,
+      "source_path": "tests/security/test_resumable_upload.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e7c4b5f67475cc422a047fbc70e11191c119411cc5f4ef7fdf4d4581b298e94d",
+      "size": 1797,
+      "source_path": "tests/security/test_retired_launchers.ps1"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "80a7f15d0b96307027d1d438392948fd25b94620947c441fb024ad1e9eaa1a3b",
+      "size": 10883,
+      "source_path": "tests/security/test_runtime_adapter.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "379e576d23276102b09f19ec0b00fe72a1d5a994a8233bb68ea3b0431fdce306",
+      "size": 23714,
+      "source_path": "tests/security/test_scoped_face_worker.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f29009395878a621df9c915db061cd8bf83f3363a0c4f44fbcc9714594232463",
+      "size": 1224,
+      "source_path": "tests/security/test_scoped_worker_handlers.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "92051378e28d7fd165ad9be0f93f820b13cccd808224792a4e0c21ae3ffbb988",
+      "size": 11316,
+      "source_path": "tests/security/test_staging_config.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f8d5af32049fc3e70d532b1400bc746f10eaec2b2020aa63fcec9daf17a7a138",
+      "size": 12022,
+      "source_path": "tests/security/test_staging_launcher.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "95fd95034e79b90bd66f9cca68372cd31b38d82d39c10ab91735186765831060",
+      "size": 6595,
+      "source_path": "tests/security/test_staging_package.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "3d9d23f836ffd4005a41583fd8be11a194ff8a7a1a1d3a3a94c6f8a7a6e66c44",
+      "size": 22301,
+      "source_path": "tests/security/test_story_contribution_refs_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "66df2b514e01b5a9324ae4e3aa90db8aee1093a874c98f329493a8213c682f65",
+      "size": 16900,
+      "source_path": "tests/security/test_story_narration_ui.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "66e7755530caf1307ea009dc4e2bec9bc7c274f163dd02cd1e64bfb44262d444",
+      "size": 4598,
+      "source_path": "tests/security/test_story_outline.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4045ced257df718c355105738badbb72d85fcb4291a3da5e74bcd238eae74223",
+      "size": 7512,
+      "source_path": "tests/security/test_story_proposal_comparison_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "cf19fa6b772e6aaeb8a191247bdb8eec6a813e185cd0395e990a876ba4d5e659",
+      "size": 5048,
+      "source_path": "tests/security/test_story_workspace.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e73715701ce8eb7832e49af8c6b1769585401408c7594eb5b3c4732a734c22b2",
+      "size": 36008,
+      "source_path": "tests/security/test_story_workspace_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "57ff8171de231c45831b19c86f64b3f8b1d266eb34308cc98dc91351ae52ccfe",
+      "size": 7282,
+      "source_path": "tests/security/test_strict_inference_providers.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d553e1393d656a83c60c54d33212d7d001b338b91e9776adae5dc1fccfc7571f",
+      "size": 14371,
+      "source_path": "tests/security/test_suppressed_ownership_repair.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "9d72a3e02b2ecb3e8bf8041d48f969801328aebdb63eaddf3057c3cffecb2b62",
+      "size": 8293,
+      "source_path": "tests/security/test_tag_catalog.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "d133e8f838dc57c225f6003200d40b839236d8cad6f179bd972b0ca8e6cb68e9",
+      "size": 12657,
+      "source_path": "tests/security/test_task_recovery.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "50e0e8f9f3b01ad72f35727a917e51cb0d4169db1597dfa13acd8945901dd0ee",
+      "size": 15941,
+      "source_path": "tests/security/test_upload.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "365886a3bce2eaf3de5796da447642b0631232d7adb247b789d827eacbb47033",
+      "size": 31506,
+      "source_path": "tests/security/test_upload_annotations.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "19633b3318a47e93c5e351e98370aee57e136b78352a2d4078d448a574562591",
+      "size": 13799,
+      "source_path": "tests/security/test_upload_auto_approval.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f7706576676bfda3f1d39a8f61719d12b90d6824aace54e482ba80c096fca5a2",
+      "size": 6417,
+      "source_path": "tests/security/test_upload_auto_policy_migration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e993170b0827e330c8d1604613154bcda3d93f1e34853b8b554607c3839d8c99",
+      "size": 6763,
+      "source_path": "tests/security/test_upload_history.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f795d3519836c0121ee1202673859e632492142c0662df80bb3a82f721660220",
+      "size": 10674,
+      "source_path": "tests/security/test_upload_history_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e58475a0f8d684f7e8205016706991160cf3c9894e8eb0483ae3cdfeafa3b239",
+      "size": 7591,
+      "source_path": "tests/security/test_upload_migration.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "830df3997e5f0439ff648d06e37645cc2f69d83249ae9e7e41ca5227f90ae4f8",
+      "size": 17280,
+      "source_path": "tests/security/test_upload_retry.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "322b88b7356bb362132c5bcc8dabd1cbb735443962f17c6fc59dea596bef9cdc",
+      "size": 26481,
+      "source_path": "tests/security/test_upload_review.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4ec75ac7356671d92845631d16a9090be01aeb2cd6c32cf74bd25e15445a280a",
+      "size": 7796,
+      "source_path": "tests/security/test_upload_review_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "7f75841c2a570d72cee8003be4300eff9b85f501f264a90e771d4b36af816d95",
+      "size": 5417,
+      "source_path": "tests/security/test_uploaded_video_tasks.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "fd877ffe9ec43b6cd0957ac745e5ff8f5304dd60eec7e73d935eb2a5b8968b8c",
+      "size": 6131,
+      "source_path": "tests/security/test_video_batch_encoder.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "463fe7bafcb2735b854ada908c3c7484cbc7853e95939a5d96f73de9c7fc0489",
+      "size": 4319,
+      "source_path": "tests/security/test_video_upload_review_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "1f8ab6c40814ef7f4159771d8e6cd005e66984f169303ac49c6f4adaa53024af",
+      "size": 112650,
+      "source_path": "tests/security/test_web_browser.cjs"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "dadddfca26f20e812a368f1514c4836c35578e48c10c0aeb840a7e8e48db396d",
+      "size": 15164,
+      "source_path": "tests/security/test_windows_tts.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "2f8c3099ae9135b1ea6f93b82dd527d366fb9c1909b31e92c86327e8e6906c72",
+      "size": 4291,
+      "source_path": "tests/security/upload_history_browser_bridge.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "71436c2aa6cb7f124abca658fd7fb8639b7e61e3791b9277660062db1a728d92",
+      "size": 4601,
+      "source_path": "tests/security/upload_review_browser_bridge.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e4ace6eb395af7363aef1bc768e45d15f73bd2cf6b5eeac7c649e2c9b6e04b86",
+      "size": 2617,
+      "source_path": "tests/test_interactive_face_commands.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "f346bbb895a47e3d2b3a564d7eda162122493c222e7082b139d7a31f4f5f65e2",
+      "size": 1563,
+      "source_path": "tests/test_path_conversion.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "b7e6efe429a96eb0225dd06fff8dfa39bd9fa38bc387761d444dbc8edad04268",
+      "size": 4801,
+      "source_path": "tests/test_yolo_face.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e4c887957f3016bb2b05a96677c39229746ae25c6e9bda5afa7785a199ef9c21",
+      "size": 8076,
+      "source_path": "tests/worker/test_caption_input_preparation.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "e384b1242366cc994bdd4024a07bc5bb06d23acb18f88b7380dd262cfa98f148",
+      "size": 1242,
+      "source_path": "tools/generate_dummy_lvface_model.py"
+    },
+    {
+      "git_mode": "100644",
+      "repo": "server",
+      "sha256": "4da8aaa7b6e3bbe605820c3543f37663e207de362f960c77606aef1acbce0aac",
+      "size": 4592,
+      "source_path": "tools/inference_backend.py"
+    }
+  ],
+  "reviewed_exception_count": 370,
+  "historical_git_imported": false
+}

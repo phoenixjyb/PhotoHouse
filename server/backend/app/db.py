@@ -1,0 +1,276 @@
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Boolean, Text, Float, LargeBinary, Index, JSON, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
+from sqlalchemy.sql import func
+from typing import Optional, List as _List
+
+class Base(DeclarativeBase):
+    pass
+
+class Asset(Base):
+    __tablename__ = 'assets'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    path: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    hash_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    perceptual_hash: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    mime: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    duration_sec: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    fps: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    orientation: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    taken_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, index=True)
+    camera_make: Mapped[Optional[str]] = mapped_column(String(64))
+    camera_model: Mapped[Optional[str]] = mapped_column(String(64))
+    lens: Mapped[Optional[str]] = mapped_column(String(64))
+    iso: Mapped[Optional[int]] = mapped_column(Integer)
+    f_stop: Mapped[Optional[float]] = mapped_column(Float)
+    exposure: Mapped[Optional[str]] = mapped_column(String(32))
+    focal_length: Mapped[Optional[float]] = mapped_column(Float)
+    gps_lat: Mapped[Optional[float]] = mapped_column(Float)
+    gps_lon: Mapped[Optional[float]] = mapped_column(Float)
+    file_size: Mapped[Optional[int]] = mapped_column(Integer)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    imported_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    # The original SQLite schema permits NULL; visibility treats it as legacy-active.
+    status: Mapped[Optional[str]] = mapped_column(String(16), default='active', nullable=True, index=True)
+    # Caption processing status fields (added via migration 9b1e7d2a5c6f)
+    caption_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    caption_variant_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    caption_processed_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True)
+    caption_error_last: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    caption_model_profile_last: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    embeddings = relationship('Embedding', back_populates='asset', cascade='all, delete-orphan')
+    captions = relationship('Caption', back_populates='asset', cascade='all, delete-orphan')
+    faces = relationship('FaceDetection', back_populates='asset', cascade='all, delete-orphan')
+
+Index('ix_assets_path', Asset.path)
+Index('ix_assets_hash', Asset.hash_sha256)
+
+class Embedding(Base):
+    __tablename__ = 'embeddings'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    modality: Mapped[str] = mapped_column(String(16), index=True, nullable=False)
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    dim: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    vector_checksum: Mapped[Optional[str]] = mapped_column(String(64))
+    device: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    model_version: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+    asset = relationship('Asset', back_populates='embeddings')
+
+class Caption(Base):
+    __tablename__ = 'captions'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_edited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, onupdate=func.now())
+    # Variant metadata
+    quality_tier: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    model_version: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    superseded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    asset = relationship('Asset', back_populates='captions')
+
+class Person(Base):
+    __tablename__ = 'persons'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    display_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    embedding_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    face_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, onupdate=func.now())
+
+    faces = relationship('FaceDetection', back_populates='person')
+
+class FaceDetection(Base):
+    __tablename__ = 'face_detections'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    bbox_x: Mapped[float] = mapped_column(Float, nullable=False)
+    bbox_y: Mapped[float] = mapped_column(Float, nullable=False)
+    bbox_w: Mapped[float] = mapped_column(Float, nullable=False)
+    bbox_h: Mapped[float] = mapped_column(Float, nullable=False)
+    person_id: Mapped[Optional[int]] = mapped_column(ForeignKey('persons.id', ondelete='SET NULL'), nullable=True, index=True)
+    embedding_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    landmarks_json: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    landmark_model: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    label_source: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, index=True)  # manual|dnn
+    label_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+    asset = relationship('Asset', back_populates='faces')
+    person = relationship('Person', back_populates='faces')
+
+
+class FaceEmbeddingArtifact(Base):
+    __tablename__ = 'face_embedding_artifacts'
+    __table_args__ = (
+        UniqueConstraint('face_id', 'model_version', name='uq_face_embedding_artifact_version'),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    face_id: Mapped[int] = mapped_column(
+        ForeignKey('face_detections.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(96), nullable=False, index=True)
+    dim: Mapped[int] = mapped_column(Integer, nullable=False)
+    alignment: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    vector_checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='shadow', index=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+
+class PersonEmbeddingArtifact(Base):
+    __tablename__ = 'person_embedding_artifacts'
+    __table_args__ = (
+        UniqueConstraint('person_id', 'model_version', name='uq_person_embedding_artifact_version'),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    person_id: Mapped[int] = mapped_column(
+        ForeignKey('persons.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(96), nullable=False, index=True)
+    dim: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_face_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    vector_checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='shadow', index=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+class FaceAssignmentEvent(Base):
+    __tablename__ = 'face_assignment_events'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    face_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    asset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    old_person_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    new_person_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    old_label_source: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    new_label_source: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    old_label_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    new_label_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, index=True)  # manual|dnn|system
+    reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    task_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    actor: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+class VideoSegment(Base):
+    __tablename__ = 'video_segments'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    start_sec: Mapped[float] = mapped_column(Float, nullable=False)
+    end_sec: Mapped[float] = mapped_column(Float, nullable=False)
+    keyframe_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    embedding_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+class Task(Base):
+    __tablename__ = 'tasks'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default={})
+    state: Mapped[str] = mapped_column(String(16), nullable=False, index=True, default='pending')
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[Optional[str]] = mapped_column(Text)
+    progress_current: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    progress_total: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    scheduled_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, index=True, server_default=func.now())
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, onupdate=func.now())
+    started_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True, index=True)
+    finished_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True, index=True)
+
+Index('idx_task_state_priority', Task.state, Task.priority, Task.scheduled_at)
+Index('idx_task_type_state', Task.type, Task.state)
+Index('idx_face_assignment_events_face_created', FaceAssignmentEvent.face_id, FaceAssignmentEvent.created_at)
+Index('idx_face_assignment_events_person_created', FaceAssignmentEvent.new_person_id, FaceAssignmentEvent.created_at)
+
+Index('idx_embeddings_asset_mod', Embedding.asset_id, Embedding.modality, unique=True)
+
+# --- Tags ---
+class Tag(Base):
+    __tablename__ = 'tags'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # e.g., date|location|person|scene|custom
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+class AssetTag(Base):
+    __tablename__ = 'asset_tags'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tags.id', ondelete='CASCADE'), index=True, nullable=False)
+    source: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, index=True)  # cap|img|cap+img|manual|rule
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    Index('idx_asset_tag_unique', asset_id, tag_id, unique=True)
+
+class AssetTagBlock(Base):
+    __tablename__ = 'asset_tag_blocks'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id', ondelete='CASCADE'), index=True, nullable=False)
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tags.id', ondelete='CASCADE'), index=True, nullable=False)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    Index('idx_asset_tag_block_unique', asset_id, tag_id, unique=True)
+
+
+class Album(Base):
+    __tablename__ = 'albums'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    title_zh: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    theme: Mapped[str] = mapped_column(String(32), nullable=False, default='custom', index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='draft', index=True)
+    cover_asset_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('assets.id', ondelete='SET NULL'), nullable=True, index=True
+    )
+    source_kind: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    source_ref: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    items = relationship(
+        'AlbumAsset',
+        back_populates='album',
+        cascade='all, delete-orphan',
+        order_by='AlbumAsset.position',
+    )
+
+
+class AlbumAsset(Base):
+    __tablename__ = 'album_assets'
+    __table_args__ = (
+        UniqueConstraint('album_id', 'asset_id', name='uq_album_asset'),
+        UniqueConstraint('album_id', 'position', name='uq_album_asset_position'),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    album_id: Mapped[int] = mapped_column(
+        ForeignKey('albums.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey('assets.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, server_default=func.now())
+
+    album = relationship('Album', back_populates='items')
+    asset = relationship('Asset')

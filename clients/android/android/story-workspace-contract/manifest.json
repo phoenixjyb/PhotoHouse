@@ -1,0 +1,25 @@
+{
+  "contract": "1-preview-title-create",
+  "backend_source": "f282472a29d291a8b7ffae1cf6c6ccddd07dc15a",
+  "fixture_sha256": "7879847086210c4ef6c01b63ccf6ecc552a1136f58fd43e5f88c9f9ea1e0c257",
+  "files": {
+    "CONTRACT.md": "bc329e26462ef423cc56e0f3a1f5c477096f2b7eec95b08d7bd8b5c9d66e5388",
+    "examples.json": "7879847086210c4ef6c01b63ccf6ecc552a1136f58fd43e5f88c9f9ea1e0c257"
+  },
+  "backend_files": {
+    "backend/app/access/story_workspace.py": "74a7b1cc038e482c9140b65cdc1eff9ecffcc512fc27f4ceea368ab69dc313e9",
+    "backend/app/access/story_outline.py": "404d99d8edbeb7766c324c13691e073fc824f015004ec5701efd7298fcaa5a4f",
+    "backend/app/access/story_titles.py": "f52766f45730a7c7dbd730cbe292a9b30901f73ed71287395b92534319911faf",
+    "backend/app/access/boundary.py": "f1955ea988d3cbd313259fa7964f8dfbb8e13c7a7c44fbb7e90a6a61a39d4364",
+    "backend/app/main.py": "10d83e269ee4f09f76ed808535ae2db16d9b362217f686dfe85dafd6a806033d",
+    "backend/app/access/memory_stories.py": "e833b99d3669ea58ad2c6b605ba069eb73e4e62215773e6d8be755eceddb882e"
+  },
+  "candidate_backend_files": {
+    "backend/app/access/story_workspace.py": "74a7b1cc038e482c9140b65cdc1eff9ecffcc512fc27f4ceea368ab69dc313e9",
+    "backend/app/access/story_outline.py": "404d99d8edbeb7766c324c13691e073fc824f015004ec5701efd7298fcaa5a4f",
+    "backend/app/access/story_titles.py": "f52766f45730a7c7dbd730cbe292a9b30901f73ed71287395b92534319911faf",
+    "backend/app/access/boundary.py": "bc4536ad88daaa4011e1a22d61a145fd7a9cd7dbee91ac957c13cad17196ee3d",
+    "backend/app/main.py": "e85ed9793fee6ca3edb0a3529c1dd08080c3766bc34ce42673f48eb4332915b7",
+    "backend/app/access/memory_stories.py": "e833b99d3669ea58ad2c6b605ba069eb73e4e62215773e6d8be755eceddb882e"
+  }
+}

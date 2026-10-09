@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "providers": [
+    {
+      "id": "local-asr",
+      "purpose": "transcription",
+      "enabled": false,
+      "adapter": "LocalAssistantAsr",
+      "endpoint": null,
+      "model": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "data_policy": "transient assistant audio; explicit family-memory retention is separate"
+    },
+    {
+      "id": "local-narrative",
+      "purpose": "reviewable story proposals and grounded conversation",
+      "enabled": false,
+      "adapter": "LocalMemoryNarrativeProvider",
+      "endpoint": null,
+      "model": null,
+      "checkpoint_sha256": null,
+      "license_source": null,
+      "qualification": "bounded synthetic canary and human quality review required"
+    },
+    {
+      "id": "local-tts",
+      "purpose": "explicit reply narration",
+      "enabled": false,
+      "adapter": "LocalAssistantTts",
+      "endpoint": null,
+      "model": null,
+      "license_source": null,
+      "data_policy": "no automatic playback; yield to recording"
+    }
+  ]
+}

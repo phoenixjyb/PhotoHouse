@@ -1,0 +1,145 @@
+import hashlib, os, time, mimetypes, io
+from pathlib import Path
+from typing import List, Optional, Tuple
+from datetime import datetime
+import exifread
+from sqlalchemy.orm import Session
+from .db import Asset, Task
+from .config import get_settings
+from .gps_utils import parse_exif_gps, probe_video_metadata
+from PIL import Image
+from .image_utils import safe_exif_transpose
+
+# Image extensions always supported
+SUPPORTED_IMAGE_EXT = {'.jpg','.jpeg','.png','.heic','.webp'}
+
+def sha256_file(path: Path, buf_size: int = 1024*1024) -> str:
+    before = path.stat()
+    h = hashlib.sha256()
+    with path.open('rb') as f:
+        while True:
+            chunk = f.read(buf_size)
+            if not chunk: break
+            h.update(chunk)
+    after = path.stat()
+    if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+        raise RuntimeError(f'File changed while hashing: {path}')
+    return h.hexdigest()
+
+def extract_exif_datetime(tags) -> Optional[datetime]:
+    for key in ("EXIF DateTimeOriginal","EXIF DateTimeDigitized","Image DateTime"):
+        if key in tags:
+            try:
+                raw = str(tags[key])
+                return datetime.strptime(raw, "%Y:%m:%d %H:%M:%S")
+            except Exception:
+                continue
+    return None
+
+def read_exif(path: Path) -> dict:
+    out = {}
+    try:
+        with path.open('rb') as f:
+            tags = exifread.process_file(f, details=False)
+        dt = extract_exif_datetime(tags)
+        if dt: out['taken_at'] = dt
+        out['camera_make'] = str(tags.get('Image Make','') )[:64]
+        out['camera_model'] = str(tags.get('Image Model','') )[:64]
+        gps = parse_exif_gps(tags)
+        if gps is not None:
+            out['gps_lat'] = gps[0]
+            out['gps_lon'] = gps[1]
+    except Exception:
+        pass
+    return out
+
+def ingest_paths(session: Session, roots: List[str], *, enqueue_embeddings: bool = True) -> dict:
+    new_assets = 0
+    skipped = 0
+    start = time.time()
+    settings = get_settings()
+    # Build allowed extensions set (images + optional videos)
+    allowed_ext = set(SUPPORTED_IMAGE_EXT)
+    if getattr(settings, 'video_enabled', False):
+        try:
+            vids = [e.strip().lower() for e in settings.video_extensions.split(',') if e.strip()]
+            allowed_ext.update(vids)
+        except Exception:
+            pass
+    for root in roots:
+        root_path = Path(root)
+        # Explicit files support bounded intake without rescanning a live folder.
+        candidates = [root_path] if root_path.is_file() else root_path.rglob('*')
+        for p in candidates:
+            if not p.is_file():
+                continue
+            if p.suffix.lower() not in allowed_ext:
+                continue
+            rel = str(p.resolve())
+            existing = session.query(Asset).filter_by(path=rel).first()
+            if existing:
+                skipped +=1
+                continue
+            sha = sha256_file(p)
+            width = height = None
+            mime = None
+            exif = {}
+            if p.suffix.lower() in SUPPORTED_IMAGE_EXT:
+                exif = read_exif(p)
+                try:
+                    with Image.open(p) as im:
+                        upright = safe_exif_transpose(im)
+                        width, height = upright.size
+                except Exception:
+                    pass
+                mime = 'image/jpeg' if p.suffix.lower() in ('.jpg','.jpeg') else mimetypes.guess_type(p.name)[0]
+            else:
+                # Video: try lightweight metadata probe (duration/fps/GPS) at ingest time.
+                mime = mimetypes.guess_type(p.name)[0] or 'video/unknown'
+                try:
+                    meta = probe_video_metadata(p, timeout_sec=8)
+                    if meta.get('duration_sec') is not None:
+                        exif['duration_sec'] = float(meta['duration_sec'])
+                    if meta.get('fps') is not None:
+                        exif['fps'] = float(meta['fps'])
+                    if meta.get('gps_lat') is not None and meta.get('gps_lon') is not None:
+                        exif['gps_lat'] = float(meta['gps_lat'])
+                        exif['gps_lon'] = float(meta['gps_lon'])
+                except Exception:
+                    pass
+            asset = Asset(path=rel, hash_sha256=sha, file_size=p.stat().st_size, width=width, height=height, mime=mime, **exif)
+            session.add(asset)
+            session.flush()
+            # enqueue tasks
+            tasks_to_create = []
+            if p.suffix.lower() in SUPPORTED_IMAGE_EXT:
+                tasks_to_create.extend([
+                    Task(type='embed', priority=50, payload_json={'asset_id': asset.id, 'modality': 'image'}),
+                    Task(type='phash', priority=60, payload_json={'asset_id': asset.id}),
+                    Task(type='thumb', priority=80, payload_json={'asset_id': asset.id}),
+                    Task(type='caption', priority=110, payload_json={'asset_id': asset.id}),
+                    Task(type='face', priority=120, payload_json={'asset_id': asset.id}),
+                ])
+                if bool(getattr(settings, 'image_tag_auto_enqueue', False)):
+                    tasks_to_create.append(
+                        Task(type='image_tag', priority=115, payload_json={'asset_id': asset.id})
+                    )
+            else:
+                # Probe is the validation barrier; successful handlers enqueue their children.
+                if settings.video_enabled:
+                    tasks_to_create.append(
+                        Task(type='video_probe', priority=40, payload_json={'asset_id': asset.id}))
+                    # Optional scene detection
+                    if getattr(settings, 'video_scene_detect', False):
+                        tasks_to_create.append(Task(type='video_scene_detect', priority=80, payload_json={'asset_id': asset.id}))
+            for t in tasks_to_create:
+                if not enqueue_embeddings and t.type in {'embed', 'video_embed'}:
+                    continue
+                session.add(t)
+            new_assets +=1
+        session.commit()
+    return {
+        'new_assets': new_assets,
+        'skipped': skipped,
+        'elapsed_sec': round(time.time()-start,2)
+    }

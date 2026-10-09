@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Explicit protected staging entry point; no discovery, provisioning or migration.
+
+--check-config reads only the selected JSON configuration and validates its syntax.
+--serve is a separate, deliberate operation that opens the selected TLS listener.
+Importing this module never imports the application, opens storage or starts serving.
+"""
+import argparse
+from dataclasses import dataclass
+import ipaddress
+import json
+from pathlib import Path
+import re
+import stat
+import sys
+from urllib.parse import urlsplit
+
+ROOT = Path(__file__).resolve().parents[1]
+FIELDS = {'format_version', 'database', 'web_origin', 'original_roots', 'derived_root',
+          'bind_host', 'port', 'tls_certificate', 'tls_private_key'}
+# Optional on purpose. A configuration written before member upload existed must keep loading,
+# and an operator who has not created an incoming area must not be forced to invent one: absent
+# means the upload route answers 503 and no deployment gains a write surface by accident.
+OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled',
+                   'annotation_intake_enabled', 'assistant_enabled', 'memory_collaboration_enabled',
+                   'memory_originals_enabled', 'memory_generation_enabled', 'memory_editorial_enabled',
+                   'memory_editions_enabled', 'assistant_asr_url',
+                   'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
+                   'assistant_tts_token', 'assistant_journal_path', 'update_root',
+                   'original_deletion_journal_path', 'original_deletion_namespace'}
+PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network,
+    ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
+     '127.0.0.0/8', 'fc00::/7', '::1/128')))
+
+
+class InvalidConfiguration(ValueError):
+    def __init__(self):
+        super().__init__('Invalid staging configuration')
+
+
+def _path(value):
+    if (type(value) is not str or not value or len(value) > 4096
+            or any(ord(c) < 32 for c in value) or value.startswith(('//', '\\\\'))):
+        raise InvalidConfiguration()
+    path = Path(value)
+    if (not path.is_absolute() or '..' in path.parts or str(path) != value
+            or path == Path(path.anchor)):
+        raise InvalidConfiguration()
+    return path
+
+
+@dataclass(frozen=True, repr=False)
+class StagingConfiguration:
+    database: Path
+    web_origin: str
+    original_roots: tuple[Path, ...]
+    derived_root: Path
+    bind_host: str
+    port: int
+    tls_certificate: Path
+    tls_private_key: Path
+    incoming_root: Path | None = None
+    discovery_indexes: tuple[Path, ...] = ()
+    upload_review_enabled: bool = False
+    annotation_intake_enabled: bool = False
+    assistant_enabled: bool = False
+    memory_collaboration_enabled: bool = False
+    memory_originals_enabled: bool = False
+    memory_generation_enabled: bool = False
+    memory_editorial_enabled: bool = False
+    memory_editions_enabled: bool = False
+    original_deletion_journal_path: Path | None = None
+    original_deletion_namespace: str | None = None
+    assistant_journal_path: Path | None = None
+    assistant_asr_url: str | None = None
+    assistant_asr_model: str | None = None
+    assistant_asr_token: str | None = None
+    assistant_tts_url: str | None = None
+    assistant_tts_token: str | None = None
+    update_root: Path | None = None
+
+    def __post_init__(self):
+        try:
+            if type(self.port) is not int or not 1 <= self.port <= 65535:
+                raise InvalidConfiguration()
+            if type(self.bind_host) is not str or '%' in self.bind_host:
+                raise InvalidConfiguration()
+            address = ipaddress.ip_address(self.bind_host)
+            if str(address) != self.bind_host or not any(address in net for net in PRIVATE_NETWORKS):
+                raise InvalidConfiguration()
+            if type(self.web_origin) is not str or len(self.web_origin) > 512:
+                raise InvalidConfiguration()
+            origin = urlsplit(self.web_origin)
+            host = origin.hostname or ''
+            labels = host.split('.')
+            if (len(host) > 253 or len(labels) < 2 or any(not re.fullmatch(
+                    r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label) for label in labels)
+                    or re.fullmatch(r'[0-9.]+', host)):
+                raise InvalidConfiguration()
+            canonical = 'https://' + host + (f':{self.port}' if self.port != 443 else '')
+            if self.web_origin != canonical:
+                raise InvalidConfiguration()
+            if type(self.original_roots) is not tuple or not 1 <= len(self.original_roots) <= 8:
+                raise InvalidConfiguration()
+            media = (*self.original_roots, self.derived_root)
+            files = (self.database, self.tls_certificate, self.tls_private_key)
+            for path in (*media, *files):
+                if not isinstance(path, Path) or _path(str(path)) != path:
+                    raise InvalidConfiguration()
+            if len(set(files)) != len(files):
+                raise InvalidConfiguration()
+            if any(left.is_relative_to(right) or right.is_relative_to(left)
+                   for i, left in enumerate(media) for right in media[i+1:]):
+                raise InvalidConfiguration()
+            if any(file.is_relative_to(root) or root.is_relative_to(file)
+                   for file in files for root in media):
+                raise InvalidConfiguration()
+            if self.incoming_root is not None:
+                if (not isinstance(self.incoming_root, Path)
+                        or _path(str(self.incoming_root)) != self.incoming_root):
+                    raise InvalidConfiguration()
+                # The incoming area must not overlap anything else the service already owns.
+                # Overlapping a media root would put unaccepted bytes inside the tree the media
+                # routes serve from; overlapping a file would nest the database inside it.
+                if any(self.incoming_root.is_relative_to(other) or other.is_relative_to(self.incoming_root)
+                       for other in (*media, *files)):
+                    raise InvalidConfiguration()
+            if (type(self.discovery_indexes) is not tuple or len(self.discovery_indexes) > 8
+                    or len(set(self.discovery_indexes)) != len(self.discovery_indexes)):
+                raise InvalidConfiguration()
+            if (type(self.upload_review_enabled) is not bool or
+                    (self.upload_review_enabled and (self.incoming_root is None or len(self.original_roots) != 1))):
+                raise InvalidConfiguration()
+            if any(type(flag) is not bool for flag in (self.memory_collaboration_enabled,
+                    self.memory_originals_enabled, self.memory_generation_enabled, self.memory_editorial_enabled,
+                    self.memory_editions_enabled)):
+                raise InvalidConfiguration()
+            if (self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and not self.memory_collaboration_enabled:
+                raise InvalidConfiguration()
+            if type(self.annotation_intake_enabled) is not bool:
+                raise InvalidConfiguration()
+            if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
+                raise InvalidConfiguration()
+            if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled) and self.original_deletion_journal_path is None:
+                raise InvalidConfiguration()
+            if self.original_deletion_journal_path is not None:
+                import uuid
+                journal = self.original_deletion_journal_path
+                namespace = self.original_deletion_namespace
+                if (not isinstance(journal, Path) or _path(str(journal)) != journal
+                        or type(namespace) is not str or str(uuid.UUID(namespace)) != namespace):
+                    raise InvalidConfiguration()
+                if any(journal.is_relative_to(other) or other.is_relative_to(journal)
+                       for other in (*media,*files,*self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()))):
+                    raise InvalidConfiguration()
+            if type(self.assistant_enabled) is not bool:
+                raise InvalidConfiguration()
+            if (self.assistant_asr_url is None) != (self.assistant_asr_model is None):
+                raise InvalidConfiguration()
+            if self.assistant_asr_url is not None:
+                if not self.assistant_enabled:
+                    raise InvalidConfiguration()
+                asr = urlsplit(self.assistant_asr_url)
+                if (asr.scheme != 'http' or asr.hostname not in {'127.0.0.1', 'localhost'}
+                        or not asr.port or not asr.path.startswith('/') or asr.query or asr.fragment
+                        or asr.username or asr.password or type(self.assistant_asr_model) is not str
+                        or not self.assistant_asr_model.strip() or len(self.assistant_asr_model) > 120
+                        or (self.assistant_asr_token is not None and
+                            (type(self.assistant_asr_token) is not str or not self.assistant_asr_token))):
+                    raise InvalidConfiguration()
+            elif self.assistant_asr_token is not None:
+                raise InvalidConfiguration()
+            if self.assistant_tts_url is not None:
+                tts = urlsplit(self.assistant_tts_url)
+                if (not self.assistant_enabled or tts.scheme != 'http'
+                        or tts.hostname not in {'127.0.0.1', 'localhost'} or not tts.port
+                        or not tts.path.startswith('/') or tts.query or tts.fragment
+                        or tts.username or tts.password
+                        or (self.assistant_tts_token is not None and
+                            (type(self.assistant_tts_token) is not str or not self.assistant_tts_token))):
+                    raise InvalidConfiguration()
+            elif self.assistant_tts_token is not None:
+                raise InvalidConfiguration()
+            if self.update_root is not None:
+                if not isinstance(self.update_root, Path) or _path(str(self.update_root)) != self.update_root:
+                    raise InvalidConfiguration()
+                if any(self.update_root.is_relative_to(other) or other.is_relative_to(self.update_root)
+                       for other in (*media, *files, *((self.incoming_root,) if self.incoming_root else ()), *self.discovery_indexes)):
+                    raise InvalidConfiguration()
+            if self.assistant_journal_path is not None:
+                journal = self.assistant_journal_path
+                if not self.assistant_enabled or not isinstance(journal, Path) or _path(str(journal)) != journal:
+                    raise InvalidConfiguration()
+                if any(journal.is_relative_to(other) or other.is_relative_to(journal)
+                       for other in (*media,*files,*self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()))):
+                    raise InvalidConfiguration()
+            protected = (*media, *files, *((self.incoming_root,) if self.incoming_root else ()))
+            for index in self.discovery_indexes:
+                if not isinstance(index, Path) or _path(str(index)) != index:
+                    raise InvalidConfiguration()
+                if any(index.is_relative_to(other) or other.is_relative_to(index)
+                       for other in protected):
+                    raise InvalidConfiguration()
+        except (TypeError, ValueError):
+            raise InvalidConfiguration() from None
+
+    def build_app(self):
+        # Deliberate source root; no .env, legacy config or model entry point.
+        sys.path.insert(0, str(ROOT/'backend'))
+        from app.access.runtime import RuntimeConfiguration
+        return RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
+            original_roots=self.original_roots, derived_root=self.derived_root,
+            incoming_root=self.incoming_root, discovery_indexes=self.discovery_indexes,
+            upload_review_enabled=self.upload_review_enabled,
+            annotation_intake_enabled=self.annotation_intake_enabled,
+            assistant_enabled=self.assistant_enabled,
+            memory_collaboration_enabled=self.memory_collaboration_enabled,
+            memory_originals_enabled=self.memory_originals_enabled,
+            memory_generation_enabled=self.memory_generation_enabled,
+            memory_editorial_enabled=self.memory_editorial_enabled,
+            memory_editions_enabled=self.memory_editions_enabled,
+            original_deletion_journal_path=self.original_deletion_journal_path,
+            original_deletion_namespace=self.original_deletion_namespace,
+            assistant_journal_path=self.assistant_journal_path,
+            assistant_asr_url=self.assistant_asr_url,
+            assistant_asr_model=self.assistant_asr_model,
+            assistant_asr_token=self.assistant_asr_token,
+            assistant_tts_url=self.assistant_tts_url,
+            assistant_tts_token=self.assistant_tts_token,
+            update_root=self.update_root).build_app()
+
+    def server_options(self):
+        return dict(host=self.bind_host, port=self.port, ssl_certfile=str(self.tls_certificate),
+            ssl_keyfile=str(self.tls_private_key), workers=1, loop='asyncio', http='h11',
+            ws='none', reload=False, proxy_headers=False, forwarded_allow_ips='',
+            access_log=False, server_header=False, env_file=None, root_path='',
+            limit_concurrency=16, timeout_keep_alive=5, timeout_graceful_shutdown=10,
+            h11_max_incomplete_event_size=8192, log_level='warning')
+
+
+def parse_configuration(value):
+    try:
+        if (type(value) is not dict or not FIELDS <= set(value)
+                or set(value) - FIELDS - OPTIONAL_FIELDS
+                or type(value['format_version']) is not int or value['format_version'] != 1
+                or type(value['original_roots']) is not list):
+            raise InvalidConfiguration()
+        incoming = value.get('incoming_root')
+        indexes = value.get('discovery_indexes', [])
+        if type(indexes) is not list:
+            raise InvalidConfiguration()
+        return StagingConfiguration(database=_path(value['database']), web_origin=value['web_origin'],
+            original_roots=tuple(_path(p) for p in value['original_roots']),
+            derived_root=_path(value['derived_root']), bind_host=value['bind_host'], port=value['port'],
+            tls_certificate=_path(value['tls_certificate']), tls_private_key=_path(value['tls_private_key']),
+            incoming_root=None if incoming is None else _path(incoming),
+            discovery_indexes=tuple(_path(p) for p in indexes),
+            upload_review_enabled=value.get('upload_review_enabled', False),
+            annotation_intake_enabled=value.get('annotation_intake_enabled', False),
+            assistant_enabled=value.get('assistant_enabled', False),
+            memory_collaboration_enabled=value.get('memory_collaboration_enabled', False),
+            memory_originals_enabled=value.get('memory_originals_enabled', False),
+            memory_generation_enabled=value.get('memory_generation_enabled', False),
+            memory_editorial_enabled=value.get('memory_editorial_enabled', False),
+            memory_editions_enabled=value.get('memory_editions_enabled', False),
+            original_deletion_journal_path=_path(value['original_deletion_journal_path']) if value.get('original_deletion_journal_path') is not None else None,
+            original_deletion_namespace=value.get('original_deletion_namespace'),
+            assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,
+            assistant_asr_url=value.get('assistant_asr_url'),
+            assistant_asr_model=value.get('assistant_asr_model'),
+            assistant_asr_token=value.get('assistant_asr_token'),
+            assistant_tts_url=value.get('assistant_tts_url'),
+            assistant_tts_token=value.get('assistant_tts_token'),
+            update_root=None if value.get('update_root') is None else _path(value['update_root']))
+    except (TypeError, ValueError, KeyError):
+        raise InvalidConfiguration() from None
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise InvalidConfiguration()
+        result[key] = value
+    return result
+
+
+def load_configuration(path):
+    try:
+        path = _path(str(path))
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or path.resolve(strict=True) != path:
+            raise InvalidConfiguration()
+        with path.open('rb') as stream:
+            data = stream.read(65537)
+        if len(data) > 65536:
+            raise InvalidConfiguration()
+        config = parse_configuration(json.loads(data.decode('utf-8'), object_pairs_hook=_unique_object))
+        # A config file must not be reachable as an original or cached image.
+        if any(path.is_relative_to(root) for root in (*config.original_roots, config.derived_root)):
+            raise InvalidConfiguration()
+        if path in (config.database, config.tls_certificate, config.tls_private_key,
+                    *config.discovery_indexes):
+            raise InvalidConfiguration()
+        if config.update_root is not None and path.is_relative_to(config.update_root):
+            raise InvalidConfiguration()
+        return config
+    except (OSError, ValueError, UnicodeError, RecursionError):
+        raise InvalidConfiguration() from None
+
+
+def delivery_paths(config, photo_cache=None, prepared_index=None, prepared_root=None, prepared_sha256=None):
+    selected = [p for p in (photo_cache, prepared_index, prepared_root) if p is not None]
+    if any(_path(str(p)) != p for p in selected): raise InvalidConfiguration()
+    if any(v is not None for v in (prepared_index, prepared_root, prepared_sha256)):
+        if (prepared_index is None or prepared_root is None or type(prepared_sha256) is not str
+                or not re.fullmatch('[0-9a-f]{64}', prepared_sha256)):
+            raise InvalidConfiguration()
+    protected = (*config.original_roots, config.derived_root, config.database,
+        config.tls_certificate, config.tls_private_key, *config.discovery_indexes,
+        *((config.incoming_root,) if config.incoming_root else ()))
+    if config.update_root is not None:
+        protected = (*protected, config.update_root)
+    for i, path in enumerate(selected):
+        if any(path.is_relative_to(other) or other.is_relative_to(path)
+               for other in (*protected, *selected[i+1:])):
+            raise InvalidConfiguration()
+
+
+def serve(config, *, server_run=None, photo_cache=None, prepared_index=None,
+          prepared_root=None, prepared_sha256=None):
+    delivery_paths(config, photo_cache, prepared_index, prepared_root, prepared_sha256)
+    app = config.build_app()
+    if photo_cache is not None:
+        from dataclasses import replace
+        from app.photo_delivery import PhotoCache
+        cache = PhotoCache(photo_cache)
+        app.state.media_runtime = replace(app.state.media_runtime, photo_cache=cache)
+        if app.state.upload_review_runtime is not None:
+            app.state.upload_review_runtime = replace(app.state.upload_review_runtime, photo_cache=cache)
+    if prepared_index is not None:
+        from dataclasses import replace
+        from app.access.prepared_video import PreparedVideos
+        provider = PreparedVideos(prepared_index, prepared_sha256, prepared_root)
+        app.state.media_runtime = replace(app.state.media_runtime, prepared_videos=provider)
+    if server_run is None:
+        import uvicorn
+        server_run = uvicorn.run
+    server_run(app, **config.server_options())
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config', type=Path, required=True)
+    parser.add_argument('--photo-cache', type=Path, help='Opt-in bounded on-demand JPEG cache; separate from originals')
+    parser.add_argument('--prepared-index', type=Path)
+    parser.add_argument('--prepared-root', type=Path)
+    parser.add_argument('--prepared-sha256')
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--check-config', action='store_true')
+    mode.add_argument('--serve', action='store_true')
+    args = parser.parse_args(argv)
+    try:
+        config = load_configuration(args.config)
+        delivery_paths(config, args.photo_cache, args.prepared_index, args.prepared_root, args.prepared_sha256)
+        if any(args.config.is_relative_to(p) or p.is_relative_to(args.config)
+               for p in (args.photo_cache, args.prepared_index, args.prepared_root) if p is not None):
+            raise InvalidConfiguration()
+        if args.check_config:
+            print(json.dumps({'configuration_syntax': 'valid', 'storage_checked': False,
+                'certificate_checked': False, 'network_checked': False, 'listener_started': False}))
+        else:
+            serve(config, photo_cache=args.photo_cache, prepared_index=args.prepared_index,
+                  prepared_root=args.prepared_root, prepared_sha256=args.prepared_sha256)
+        return 0
+    except InvalidConfiguration:
+        print('Invalid staging configuration', file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -1,0 +1,6 @@
+PhotoHouse
+
+First-party source is prepared under the Apache License, Version 2.0.
+Third-party components remain under their respective licenses.
+The Gradle Wrapper is distributed by the Gradle project under Apache-2.0.
+See THIRD_PARTY_NOTICES.md for provenance and release review status.

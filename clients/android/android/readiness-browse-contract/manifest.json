@@ -1,0 +1,18 @@
+{
+  "contract": "photohouse-readiness-browse-1",
+  "backend_commit": "a72aa320801787cd066c6e04c33764e9271c9ab5",
+  "backend_sources": {
+    "backend/app/home_originals.py": "01bac6f9c7d02c40cb41ce555566a3edeea3526e0d3ef51715de5ee4ff409d7a",
+    "backend/app/home_catalog.py": "467b7fc9bcd04e07ff0578a4f4fe80a453d949fc850372986444c36c0592ab40",
+    "backend/app/home_feed.py": "c7f22deab8cd58a7bc6060ce6427086568a30073c13917727da30be9865cf37c",
+    "backend/app/photo_delivery.py": "cbfd1841a6edd9259e28ff6a549eb6f465a6d319176e2faf56d7799956208803",
+    "tests/security/test_readiness_browse.py": "51813fa026f8f6ad251ac188c5b7cc6edc82813dd728cf1723022d7018ded431",
+    "tests/security/test_on_demand_delivery.py": "6b1f664c34163da674638088d35cb78a28e5457b21df2353b49b1fd8ed462126",
+    "tests/security/fixtures/browse-v1.json": "66080372b184a3c4645e6966b05e050a973107c478ac98601a4a49d7741404c8",
+    "docs/security/READINESS_BROWSE.md": "cdc4404a3cc3c96902edd8222b4eadcece288928cc0408a81838082b552f4f42"
+  },
+  "files": {
+    "CONTRACT.md": "cdc4404a3cc3c96902edd8222b4eadcece288928cc0408a81838082b552f4f42",
+    "browse-v1.json": "66080372b184a3c4645e6966b05e050a973107c478ac98601a4a49d7741404c8"
+  }
+}

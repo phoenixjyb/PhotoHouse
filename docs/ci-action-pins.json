@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "actions/checkout",
+    "tag": "v7",
+    "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "source": "https://api.github.com/repos/actions/checkout/git/ref/tags/v7"
+  },
+  {
+    "repo": "actions/setup-python",
+    "tag": "v7",
+    "commit": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+    "source": "https://api.github.com/repos/actions/setup-python/git/ref/tags/v7"
+  },
+  {
+    "repo": "actions/setup-java",
+    "tag": "v6",
+    "commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
+    "source": "https://api.github.com/repos/actions/setup-java/git/ref/tags/v6"
+  }
+]

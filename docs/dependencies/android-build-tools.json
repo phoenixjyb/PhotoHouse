@@ -1,0 +1,42 @@
+{
+  "android_gradle_plugin": "8.5.2",
+  "android_sdk_platform_34_revision": "3",
+  "gradle_wrapper": {
+    "distribution_checksum_verified_by_successful_wrapper_bootstrap": true,
+    "distribution_sha256": "31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26",
+    "distribution_zip_retained": false,
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/gradle/gradle/blob/v8.10.2/LICENSE",
+    "version": "8.10.2",
+    "wrapper_checksum_docs": "https://docs.gradle.org/8.10.2/userguide/gradle_wrapper.html",
+    "wrapper_jar_sha256": "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046"
+  },
+  "jdk_major": 17,
+  "limitations": [
+    "The Gradle distribution ZIP was removed after wrapper checksum verification; no post-download rehash was retained.",
+    "No publisher signatures or independent publisher checksums were checked.",
+    "No Gradle dependency verification metadata was generated; consider generating and reviewing it before a binary release.",
+    "A release variant and final APK/R8/packaging notice scan remain separate gates."
+  ],
+  "not_run": [
+    "assemble",
+    "signing",
+    "install",
+    "device/emulator",
+    "application requests"
+  ],
+  "production_classpaths": [
+    {
+      "configuration": "debugRuntimeClasspath",
+      "module": ":connected",
+      "result": "BUILD_SUCCESSFUL"
+    },
+    {
+      "configuration": "debugRuntimeClasspath",
+      "module": ":tv",
+      "result": "BUILD_SUCCESSFUL"
+    }
+  ],
+  "schema": 1,
+  "source_revision": "8a4864202665786e0d93b76dc0c9a85ac80c8777"
+}

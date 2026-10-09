@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Pillow",
+    "version": "12.3.0",
+    "metadata_url": "https://pypi.org/pypi/Pillow/12.3.0/json",
+    "license_expression": "MIT-CMU",
+    "artifacts": 87
+  },
+  {
+    "name": "pytest",
+    "version": "9.0.3",
+    "metadata_url": "https://pypi.org/pypi/pytest/9.0.3/json",
+    "license_expression": "MIT",
+    "artifacts": 2
+  },
+  {
+    "name": "iniconfig",
+    "version": "2.1.0",
+    "metadata_url": "https://pypi.org/pypi/iniconfig/2.1.0/json",
+    "license_expression": "MIT",
+    "artifacts": 2
+  },
+  {
+    "name": "packaging",
+    "version": "25.0",
+    "metadata_url": "https://pypi.org/pypi/packaging/25.0/json",
+    "license_expression": null,
+    "artifacts": 2
+  },
+  {
+    "name": "pluggy",
+    "version": "1.6.0",
+    "metadata_url": "https://pypi.org/pypi/pluggy/1.6.0/json",
+    "license_expression": null,
+    "artifacts": 2
+  },
+  {
+    "name": "pygments",
+    "version": "2.19.2",
+    "metadata_url": "https://pypi.org/pypi/pygments/2.19.2/json",
+    "license_expression": null,
+    "artifacts": 2
+  },
+  {
+    "name": "colorama",
+    "version": "0.4.6",
+    "license_expression": null,
+    "metadata_url": "https://pypi.org/pypi/colorama/0.4.6/json",
+    "artifacts": 2
+  }
+]

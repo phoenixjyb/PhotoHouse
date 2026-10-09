@@ -1,0 +1,9 @@
+# Android memoir editorial context core
+
+This slice adds an opt-in request bit for saved-book memoir conversations and book narrative jobs, plus a read-only saved structure plan. Editorial narrative requests are rejected for story targets. `MemoryTurnRequest` and `MemoryNarrativeRequest` append `editorialContext=false`, so existing positional constructors and legacy request JSON remain unchanged. The HTTPS adapter adds `editorial_context=1` only when a caller explicitly sets the bit. Older API adapters delegate the false case to their original methods and fail closed for true.
+
+`MemoryCommunityRepository.bookPlan(bookId, expectedRevision, editorialContext, currentRequest)` binds the read to the current authenticated library and book revision. The optional request predicate is checked before the GET and after the response; stale responses are dropped. The bounded parser accepts the legacy plan shape when opt-in is false, and requires `context_profile=memoir_editorial_v1` plus whole-book `context_bytes` when true. It validates IDs, revisions, counts, limits, source-kind totals, section and chapter consistency, exact field sets, and the 512 KiB response cap. The plan contains structure and aggregate metadata only; it does not return source prose or generate a draft.
+
+The caller owns the choice and must freeze it with each pending request/retry. The plan is informational: `can_draft=false` does not prevent a separate chat request. This core change does not enable the feature by default, select sources, send automatically, or change the request body.
+
+Offline checks cover strict plan parsing, legacy and editorial query behavior, unchanged POST JSON, fail-closed legacy adapters, transport choice propagation, response-buffer wiping, and store scope flows. These are local synthetic tests; they do not establish live service, Windows runtime, device, or provider acceptance.

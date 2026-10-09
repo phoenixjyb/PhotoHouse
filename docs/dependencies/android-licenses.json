@@ -1,0 +1,2837 @@
+{
+  "component_count": 98,
+  "components": [
+    {
+      "artifact": "activity",
+      "group": "androidx.activity",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.activity:activity:1.9.2",
+          "file": "activity-1.9.2.pom",
+          "kind": "maven_pom",
+          "sha256": "254705490527a4db047bb7a2554af10a902a1e79b461856aa2502cdce324cfa3"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.2"
+    },
+    {
+      "artifact": "activity-compose",
+      "group": "androidx.activity",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.activity:activity-compose:1.9.2",
+          "file": "activity-compose-1.9.2.pom",
+          "kind": "maven_pom",
+          "sha256": "9d8cd9169d225d9e3c6c99bb902db110554cb3b93ba3bc7714c2fcb556c5c3c1"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.2"
+    },
+    {
+      "artifact": "activity-ktx",
+      "group": "androidx.activity",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.activity:activity-ktx:1.9.2",
+          "file": "activity-ktx-1.9.2.pom",
+          "kind": "maven_pom",
+          "sha256": "c59229bd2e01786a4544c729161211a56e47901d6282b36f843f4d97a31d6d9e"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.2"
+    },
+    {
+      "artifact": "annotation",
+      "group": "androidx.annotation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.annotation:annotation:1.8.0",
+          "file": "annotation-1.8.0.pom",
+          "kind": "maven_pom",
+          "sha256": "7c38c18a6e8acc7bd88efacd7e147a897a945b99db722e54e0b9ce2446102d5b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.0"
+    },
+    {
+      "artifact": "annotation-experimental",
+      "group": "androidx.annotation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.annotation:annotation-experimental:1.4.0",
+          "file": "annotation-experimental-1.4.0.pom",
+          "kind": "maven_pom",
+          "sha256": "41d2b9d879fc9221acda8e873ec7d26b153b9b8e04770ac79491e0576baef038"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.4.0"
+    },
+    {
+      "artifact": "annotation-jvm",
+      "group": "androidx.annotation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.annotation:annotation-jvm:1.8.0",
+          "file": "annotation-jvm-1.8.0.pom",
+          "kind": "maven_pom",
+          "sha256": "d9f908ee6d488124aced556fd8a6ba9dfe647fe014b85ad7221461110d032361"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.0"
+    },
+    {
+      "artifact": "core-common",
+      "group": "androidx.arch.core",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.arch.core:core-common:2.2.0",
+          "file": "core-common-2.2.0.pom",
+          "kind": "maven_pom",
+          "sha256": "1e17d4af8d6425be2a69f8af4d654a87e0456259a9eef1542869bcb023547e28"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.2.0"
+    },
+    {
+      "artifact": "core-runtime",
+      "group": "androidx.arch.core",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.arch.core:core-runtime:2.2.0",
+          "file": "core-runtime-2.2.0.pom",
+          "kind": "maven_pom",
+          "sha256": "0f953706598140d9d8735cdd5aeb1fa35933f4e2f31c0bf3eb81a053a4c8c1a5"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.2.0"
+    },
+    {
+      "artifact": "autofill",
+      "group": "androidx.autofill",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.autofill:autofill:1.0.0",
+          "file": "autofill-1.0.0.pom",
+          "kind": "maven_pom",
+          "sha256": "3677abead5d4e06cf76cbacb954151e051779c2274494451fb424e375aa9e450"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "artifact": "collection",
+      "group": "androidx.collection",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.collection:collection:1.4.0",
+          "file": "collection-1.4.0.pom",
+          "kind": "maven_pom",
+          "sha256": "1cd85a651065381a587ee28444c97ab0bc903ff0a2bd739b04f22e31c299a06c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.4.0"
+    },
+    {
+      "artifact": "collection-jvm",
+      "group": "androidx.collection",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.collection:collection-jvm:1.4.0",
+          "file": "collection-jvm-1.4.0.pom",
+          "kind": "maven_pom",
+          "sha256": "5924dea03e018e321b3d795f23fb6659726640326e0a320758ae59a67992b6da"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.4.0"
+    },
+    {
+      "artifact": "collection-ktx",
+      "group": "androidx.collection",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.collection:collection-ktx:1.4.0",
+          "file": "collection-ktx-1.4.0.pom",
+          "kind": "maven_pom",
+          "sha256": "e0f315d63b8e7e54ba277cdb34a58050438ba2abcf14d8272aefdcff3bc38630"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.4.0"
+    },
+    {
+      "artifact": "compose-bom",
+      "group": "androidx.compose",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose:compose-bom:2024.06.00",
+          "file": "compose-bom-2024.06.00.pom",
+          "kind": "maven_pom",
+          "sha256": "1b391a969ff81c0bb43b3711e92d977e8bfa72457a11d8a37910a7051bdc3045"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2024.06.00"
+    },
+    {
+      "artifact": "animation",
+      "group": "androidx.compose.animation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.animation:animation:1.6.8",
+          "file": "animation-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "f286cd315b819f77c4b8962986210d2601adc3bdf7677aa21d7e50caa4dd7bc2"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "animation-android",
+      "group": "androidx.compose.animation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.animation:animation-android:1.6.8",
+          "file": "animation-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "a82a3f7b7302ecba3dfc628bdcad83ae2d2f4431582fdb279f1bdc7b56b0fcff"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "animation-core",
+      "group": "androidx.compose.animation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.animation:animation-core:1.6.8",
+          "file": "animation-core-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "08ba2953b79272f60da245b23ab2df244d156c87e874b6562d023b02509faa24"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "animation-core-android",
+      "group": "androidx.compose.animation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.animation:animation-core-android:1.6.8",
+          "file": "animation-core-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "886eaac76be0d0c9df5eb8394f97518c687b39ff78d0f572811b669c479a687d"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "foundation",
+      "group": "androidx.compose.foundation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.foundation:foundation:1.6.8",
+          "file": "foundation-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "07aa4953dd7d1ee15a7ae290ad35fb346994e2421497866d1fb4ff1b60b013d0"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "foundation-android",
+      "group": "androidx.compose.foundation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.foundation:foundation-android:1.6.8",
+          "file": "foundation-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "9682ffc446c62942fcb14a10ace168cc17c7ae61e18cd726585f805eba031977"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "foundation-layout",
+      "group": "androidx.compose.foundation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.foundation:foundation-layout:1.6.8",
+          "file": "foundation-layout-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "7632f103da88fc6c822fb6dd7cce8672ca63d3407bdf08e5fc01e8d658910d2d"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "foundation-layout-android",
+      "group": "androidx.compose.foundation",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.foundation:foundation-layout-android:1.6.8",
+          "file": "foundation-layout-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "629e510f14abec6da8a7be1dfea899437d9acf193c9d6b64d1c0765e294c798b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "material-icons-core",
+      "group": "androidx.compose.material",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material:material-icons-core:1.6.8",
+          "file": "material-icons-core-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "ff78a3118d4bd3731d32f14cfdd222ab0683190e6cc51f444948b1c9638e964c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "material-icons-core-android",
+      "group": "androidx.compose.material",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material:material-icons-core-android:1.6.8",
+          "file": "material-icons-core-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "2a9c8f0d6922cc45f5d0d133ec171b5b0fd0a74e0f13e9a249e44e50bdd47fc4"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "material-ripple",
+      "group": "androidx.compose.material",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material:material-ripple:1.6.8",
+          "file": "material-ripple-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "cc63ad6e2c26ade2c03de807d57cd1b730db82cfb9b7ced8ef8b7320e42beda3"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "material-ripple-android",
+      "group": "androidx.compose.material",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material:material-ripple-android:1.6.8",
+          "file": "material-ripple-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "18b336cb36339f8cc294e062b9639f75d47c030d13c2ee96706f398b6a33f2ef"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "material3",
+      "group": "androidx.compose.material3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material3:material3:1.2.1",
+          "file": "material3-1.2.1.pom",
+          "kind": "maven_pom",
+          "sha256": "6dcfc45e0f5fcc0a3bf86d39c3b17af344cf1e54dbd9546e53344bfe91fe59ea"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.2.1"
+    },
+    {
+      "artifact": "material3-android",
+      "group": "androidx.compose.material3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.material3:material3-android:1.2.1",
+          "file": "material3-android-1.2.1.pom",
+          "kind": "maven_pom",
+          "sha256": "bff9b3e54506db7a1617b81f39ba4d3cd7b8adee47f727420c23b47e76500b13"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.2.1"
+    },
+    {
+      "artifact": "runtime",
+      "group": "androidx.compose.runtime",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.runtime:runtime:1.6.8",
+          "file": "runtime-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "b78ecbe40972b23fb9a22e99093b7aee1da3ef60dbcb90de698664efbb08ac5c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "runtime-android",
+      "group": "androidx.compose.runtime",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.runtime:runtime-android:1.6.8",
+          "file": "runtime-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "7098041201b0121354a4fd65583d874ab9b7464b22fd4dc95ff0b61ed7c85627"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "runtime-saveable",
+      "group": "androidx.compose.runtime",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.runtime:runtime-saveable:1.6.8",
+          "file": "runtime-saveable-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "a20fbaaf18b9d47bed591d2102eb67df231ce314ccdcfed324d7c0a9b9587962"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "runtime-saveable-android",
+      "group": "androidx.compose.runtime",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.runtime:runtime-saveable-android:1.6.8",
+          "file": "runtime-saveable-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "802a364f8f798850d0dae8e7a4401b9696680d2b2cb4cb23f9b8d42d6d9ec10a"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui:1.6.8",
+          "file": "ui-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "82c2e63f335692e590efbd6d50b9c643d27be143387517430f33a4571fe1dee4"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-android:1.6.8",
+          "file": "ui-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "382550623a7bc606eb4f7983dba304efee22c5702a526b631cdd9f8718063b1a"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-geometry",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-geometry:1.6.8",
+          "file": "ui-geometry-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "071f3d773cd9f0a6dfcd90c30a5beb2edfa09d3753205a1781f35f3c22d29bdf"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-geometry-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-geometry-android:1.6.8",
+          "file": "ui-geometry-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "3120c563bf2e92ad551d4b7e6d841d8ed06e501f026855deda73b206c7d366eb"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-graphics",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-graphics:1.6.8",
+          "file": "ui-graphics-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "4a9c632ebfe500e24e015c76640ed5151f3874e4fada15361dc1e5b2b94ad86b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-graphics-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-graphics-android:1.6.8",
+          "file": "ui-graphics-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "26647e7dbb007cd5a16d59557a39ba870934c057684b9e8b8898dd5dbfdf0baf"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-test-manifest",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-test-manifest:1.6.8",
+          "file": "ui-test-manifest-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "21ddbefb94cdbe2dc70efb5e90a8621cdfc75fdccf0140a171de1551d5e15e9e"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-text",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-text:1.6.8",
+          "file": "ui-text-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "6568fde9537c0ed6ce22c7ae7f78f73d78aa6337b3cbf63658752cbb60eee6dc"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-text-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-text-android:1.6.8",
+          "file": "ui-text-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "566f40062503a73c85c8413b9920b1d7682c9bd169cf7f72b74ccfef12c9cac5"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-unit",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-unit:1.6.8",
+          "file": "ui-unit-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "152a5f0e49aad38bb22012364d63f68b75bcdf6dc5d79a2723b01c2eefae7dd6"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-unit-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-unit-android:1.6.8",
+          "file": "ui-unit-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "e3efeb493cb25006f3e296a3ccf25ea251efbe0f881814c9bc7aed739380c42b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-util",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-util:1.6.8",
+          "file": "ui-util-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "205a6170c60ffcfd4fba7a49948deedb3b00114d7322e489729a6ca7d54176da"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "ui-util-android",
+      "group": "androidx.compose.ui",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.compose.ui:ui-util-android:1.6.8",
+          "file": "ui-util-android-1.6.8.pom",
+          "kind": "maven_pom",
+          "sha256": "6312b563a7c3a8c47eeff2ad513c9065a6ef413166f66965892fb07d1478d89a"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.8"
+    },
+    {
+      "artifact": "concurrent-futures",
+      "group": "androidx.concurrent",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.concurrent:concurrent-futures:1.1.0",
+          "file": "concurrent-futures-1.1.0.pom",
+          "kind": "maven_pom",
+          "sha256": "748a34eb5d13d19d187adecaea82667fded5f1b0b98a655e13ed2e4a8b3d8ae6"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.1.0"
+    },
+    {
+      "artifact": "core",
+      "group": "androidx.core",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.core:core:1.13.1",
+          "file": "core-1.13.1.pom",
+          "kind": "maven_pom",
+          "sha256": "527abfa5a8d6af748b37e1c0162d1633a2d5ea4387b0205a8b436b6214ba1cf6"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.13.1"
+    },
+    {
+      "artifact": "core-ktx",
+      "group": "androidx.core",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.core:core-ktx:1.13.1",
+          "file": "core-ktx-1.13.1.pom",
+          "kind": "maven_pom",
+          "sha256": "31cc345b8c6cdd2046dcf67872df8a8cb4f44ea0cade4df80002caa7e3b71809"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.13.1"
+    },
+    {
+      "artifact": "customview-poolingcontainer",
+      "group": "androidx.customview",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.customview:customview-poolingcontainer:1.0.0",
+          "file": "customview-poolingcontainer-1.0.0.pom",
+          "kind": "maven_pom",
+          "sha256": "9fa62196c4c4e79b6a58dbb38a8c022bef8db21989d7dae2da0f6f5b66289a9c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "artifact": "emoji2",
+      "group": "androidx.emoji2",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.emoji2:emoji2:1.3.0",
+          "file": "emoji2-1.3.0.pom",
+          "kind": "maven_pom",
+          "sha256": "14ebbea8234f013211965fdd08b42ee907ce0075af321018c8c2865c2e5db0eb"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.0"
+    },
+    {
+      "artifact": "exifinterface",
+      "group": "androidx.exifinterface",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.exifinterface:exifinterface:1.3.6",
+          "file": "exifinterface-1.3.6.pom",
+          "kind": "maven_pom",
+          "sha256": "59cfe5bd98506c27617b778143eb09a6b986a5417a0b1b0fd8b875eaa8db4bab"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.6"
+    },
+    {
+      "artifact": "interpolator",
+      "group": "androidx.interpolator",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.interpolator:interpolator:1.0.0",
+          "file": "interpolator-1.0.0.pom",
+          "kind": "maven_pom",
+          "sha256": "0ddc07cc39699f48ecd9ec894b5830c0f09e22e82959294edf37217224c88b7b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "artifact": "lifecycle-common",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-common:2.8.4",
+          "file": "lifecycle-common-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "4ba18fc5bb3208384801a0266c3f1c0d23fb88a8f94b1b435a37f1f839617ce0"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-common-java8",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-common-java8:2.8.4",
+          "file": "lifecycle-common-java8-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "96f31b215a58f55da35de45a316cbb07d7b14c8457d74dd067ee8e2c0b9b8887"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-common-jvm",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-common-jvm:2.8.4",
+          "file": "lifecycle-common-jvm-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "73ceb9167b28bbe5a8cbb92999ad927632ca596e581bf73582a50fa088e972db"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-livedata-core",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-livedata-core:2.8.4",
+          "file": "lifecycle-livedata-core-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "1c950fece0d9618d3ed68d5c3073b098a08b3a1f5024a058a2fad5c33f8d6437"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-process",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-process:2.8.4",
+          "file": "lifecycle-process-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "1f3214952cc9309c4ac71a34de9be1a8443865f2366a80f562689c4a07b68c09"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-runtime",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-runtime:2.8.4",
+          "file": "lifecycle-runtime-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "db3c1dd542a72a90c820fe23fa8be7ab82b752952b11e7ac511fed7f9eef8c64"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-runtime-android",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-runtime-android:2.8.4",
+          "file": "lifecycle-runtime-android-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "8393d056b4a0c7d83661bc46b1fe84ec197b8dba0db9c17a0aff11d3279b8cbc"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-runtime-ktx",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-runtime-ktx:2.8.4",
+          "file": "lifecycle-runtime-ktx-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "ccf5a604605fda20c0a1aaca34b8e7b28f583bb0aeb663f733e4f8083d42a343"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-runtime-ktx-android",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.4",
+          "file": "lifecycle-runtime-ktx-android-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "24b1ddd4424a68ed04e47c034019f5576515d9c3c8deb5aec9ff76055956fb0b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-viewmodel",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel:2.8.4",
+          "file": "lifecycle-viewmodel-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "81e7fa41c03a2572f2d8b5f396f9f7edaba82e31b590da5678bac92fa8dad53f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-viewmodel-android",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-android:2.8.4",
+          "file": "lifecycle-viewmodel-android-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "ebc1b16ccb51296a69da7583b6ad2c7fbb5ad5cdf73f9447854490a3ea300315"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-viewmodel-ktx",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4",
+          "file": "lifecycle-viewmodel-ktx-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "01eb765b771ac4867383295e038a3ac90b9f8ca6b874cbf112717dfc404839ec"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "lifecycle-viewmodel-savedstate",
+      "group": "androidx.lifecycle",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.4",
+          "file": "lifecycle-viewmodel-savedstate-2.8.4.pom",
+          "kind": "maven_pom",
+          "sha256": "c30ff57d2ab319dc218de4a6199a9ea33655e54b85cd8dd95daa158e57b32210"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "2.8.4"
+    },
+    {
+      "artifact": "media3-common",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-common:1.3.1",
+          "file": "media3-common-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "62f902a2012875463133c2eb5f3b464b557fa4f383bba9d0a2ff5dc6af3f97c2"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-container",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-container:1.3.1",
+          "file": "media3-container-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "1f59dd1aed1b3e7ac1b2437aa2175fd8358bcdf98814daf1238088fa2fbbcdde"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-database",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-database:1.3.1",
+          "file": "media3-database-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "3792a6bb098f73df719b6ca85d0444232a04b99225b4416eb604248d27c68a3f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-datasource",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-datasource:1.3.1",
+          "file": "media3-datasource-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "618b3cd37dcb0a18b1f2fa287a48582a249a9165b95de5a3009f2cbbab5b5aad"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-decoder",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-decoder:1.3.1",
+          "file": "media3-decoder-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "b6bf9a9feb129da980effbd41015a15083239345e03c03c04cc447d169c73672"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-exoplayer",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-exoplayer:1.3.1",
+          "file": "media3-exoplayer-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "6c07ebf4d7cd351ee0f5a40f924e8ac9e746e306d4ed4822dfafdc14c5f57a64"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "media3-extractor",
+      "group": "androidx.media3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.media3:media3-extractor:1.3.1",
+          "file": "media3-extractor-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "a691c4afb7421ca43ef4879440fbbf68fe90700132d4db9e7a9f86418a9be33c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "profileinstaller",
+      "group": "androidx.profileinstaller",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.profileinstaller:profileinstaller:1.3.1",
+          "file": "profileinstaller-1.3.1.pom",
+          "kind": "maven_pom",
+          "sha256": "08263eb70a814a7cb26d11d3a83825f84c29f3e4b59f9134724e0e02e2bbd768"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.3.1"
+    },
+    {
+      "artifact": "savedstate",
+      "group": "androidx.savedstate",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.savedstate:savedstate:1.2.1",
+          "file": "savedstate-1.2.1.pom",
+          "kind": "maven_pom",
+          "sha256": "0d33bc285df1e12f22780f1624a6f0b38ea2a6181b0955ec6641caf620c50cbf"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.2.1"
+    },
+    {
+      "artifact": "savedstate-ktx",
+      "group": "androidx.savedstate",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.savedstate:savedstate-ktx:1.2.1",
+          "file": "savedstate-ktx-1.2.1.pom",
+          "kind": "maven_pom",
+          "sha256": "d09553211f6703b19aefd608d6007c77132d27a281556a8e689d92764ec27d3b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.2.1"
+    },
+    {
+      "artifact": "startup-runtime",
+      "group": "androidx.startup",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.startup:startup-runtime:1.1.1",
+          "file": "startup-runtime-1.1.1.pom",
+          "kind": "maven_pom",
+          "sha256": "f4114b5c6859bb1bc3caf281cb6d6f25998fa7f7292c64ceaea74a93210e746b"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.1.1"
+    },
+    {
+      "artifact": "tracing",
+      "group": "androidx.tracing",
+      "lanes": [
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.tracing:tracing:1.0.0",
+          "file": "tracing-1.0.0.pom",
+          "kind": "maven_pom",
+          "sha256": "cd0299a90d4720d78f1cfb5ff7505f4dbc1a70d05fe23fd9f4d4b77ea59ca05e"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "artifact": "tracing",
+      "group": "androidx.tracing",
+      "lanes": [
+        ":connected"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.tracing:tracing:1.2.0",
+          "file": "tracing-1.2.0.pom",
+          "kind": "maven_pom",
+          "sha256": "f34bec4eb58871d31002901377108aaa1ebfe77fa6d882b8b86200b158e26ea1"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.2.0"
+    },
+    {
+      "artifact": "versionedparcelable",
+      "group": "androidx.versionedparcelable",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "androidx.versionedparcelable:versionedparcelable:1.1.1",
+          "file": "versionedparcelable-1.1.1.pom",
+          "kind": "maven_pom",
+          "sha256": "5f51e65873ca612de3838fa90d2ee95b8d040efd31b9c390a19bf94d615cdb2f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.1.1"
+    },
+    {
+      "artifact": "failureaccess",
+      "group": "com.google.guava",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.google.guava:failureaccess:1.0.1",
+          "file": "failureaccess-1.0.1.pom",
+          "kind": "maven_pom",
+          "sha256": "e96042ce78fecba0da2be964522947c87b40a291b5fd3cd672a434924103c4b9"
+        },
+        {
+          "coordinate": "com.google.guava:guava-parent:26.0-android",
+          "file": "guava-parent-26.0-android.pom",
+          "kind": "maven_pom",
+          "sha256": "f8698ab46ca996ce889c1afc8ca4f25eb8ac6b034dc898d4583742360016cc04"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": "com.google.guava:guava-parent:26.0-android",
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "inherited from exact cached Maven parent POM",
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.0.1"
+    },
+    {
+      "artifact": "guava",
+      "group": "com.google.guava",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.google.guava:guava:32.1.3-android",
+          "file": "guava-32.1.3-android.pom",
+          "kind": "maven_pom",
+          "sha256": "49f8055015e8687774cfd8939bd683c74f09d6b24bcc0fc26840bcd97a08866b"
+        },
+        {
+          "coordinate": "com.google.guava:guava-parent:32.1.3-android",
+          "file": "guava-parent-32.1.3-android.pom",
+          "kind": "maven_pom",
+          "sha256": "41fc26464fba8ab0b55b402676b45369e0aaa9ba8e0a5a5dec80452908ac97e1"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": "com.google.guava:guava-parent:32.1.3-android",
+          "name": "Apache License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "inherited from exact cached Maven parent POM",
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "32.1.3-android"
+    },
+    {
+      "artifact": "listenablefuture",
+      "group": "com.google.guava",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava",
+          "file": "listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.pom",
+          "kind": "maven_pom",
+          "sha256": "18d4b1db26153d4e55079ce1f76bb1fe05cdb862ef9954a88cbcc4ff38b8679b"
+        },
+        {
+          "coordinate": "com.google.guava:guava-parent:26.0-android",
+          "file": "guava-parent-26.0-android.pom",
+          "kind": "maven_pom",
+          "sha256": "f8698ab46ca996ce889c1afc8ca4f25eb8ac6b034dc898d4583742360016cc04"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": "com.google.guava:guava-parent:26.0-android",
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "inherited from exact cached Maven parent POM",
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "9999.0-empty-to-avoid-conflict-with-guava"
+    },
+    {
+      "artifact": "okhttp",
+      "group": "com.squareup.okhttp3",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.squareup.okhttp3:okhttp:4.12.0",
+          "file": "okhttp-4.12.0.pom",
+          "kind": "maven_pom",
+          "sha256": "7c737040a9419522e7c50cc027416a70fe7c7629e52b219935ade6b4119c7d38"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "4.12.0"
+    },
+    {
+      "artifact": "okio",
+      "group": "com.squareup.okio",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.squareup.okio:okio:3.6.0",
+          "file": "okio-3.6.0.pom",
+          "kind": "maven_pom",
+          "sha256": "aeb3b70a24c103ed0c54541f35f5c511d27ce60cae376a596d7d653697f8cc95"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "3.6.0"
+    },
+    {
+      "artifact": "okio-jvm",
+      "group": "com.squareup.okio",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "com.squareup.okio:okio-jvm:3.6.0",
+          "file": "okio-jvm-3.6.0.pom",
+          "kind": "maven_pom",
+          "sha256": "61b4d7c515a0894ffad925fd7052620c1425a86433fd35113b5fab0de890a57f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "3.6.0"
+    },
+    {
+      "artifact": "annotations",
+      "group": "org.jetbrains",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains:annotations:23.0.0",
+          "file": "annotations-23.0.0.pom",
+          "kind": "maven_pom",
+          "sha256": "c9490f655132328df2cfbcfdf743f53fc3916d6c1d10437175a6ca6e3a67771c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "23.0.0"
+    },
+    {
+      "artifact": "kotlin-stdlib",
+      "group": "org.jetbrains.kotlin",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlin:kotlin-stdlib:1.9.24",
+          "file": "kotlin-stdlib-1.9.24.pom",
+          "kind": "maven_pom",
+          "sha256": "b9cead4c222dee90c74f6f013d316a9e50f811a0293313c3351aecb2f7cced5f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.24"
+    },
+    {
+      "artifact": "kotlin-stdlib-common",
+      "group": "org.jetbrains.kotlin",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.24",
+          "file": "kotlin-stdlib-common-1.9.24.pom",
+          "kind": "maven_pom",
+          "sha256": "5d97e20cd5862e847a698175b939e8dc5c6bd75bed999d6f3d4ea084811216c0"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.24"
+    },
+    {
+      "artifact": "kotlin-stdlib-jdk7",
+      "group": "org.jetbrains.kotlin",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10",
+          "file": "kotlin-stdlib-jdk7-1.9.10.pom",
+          "kind": "maven_pom",
+          "sha256": "c7fa67c7961320b89d85a3ca59a2e18c2c65850845595dcae4b46af6945edcd5"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.10"
+    },
+    {
+      "artifact": "kotlin-stdlib-jdk8",
+      "group": "org.jetbrains.kotlin",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10",
+          "file": "kotlin-stdlib-jdk8-1.9.10.pom",
+          "kind": "maven_pom",
+          "sha256": "5f4b94dd3065a7764c37fa15de2ad6d81f40d59f8cb33f17d181c6384fb7a72e"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.9.10"
+    },
+    {
+      "artifact": "kotlinx-coroutines-android",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1",
+          "file": "kotlinx-coroutines-android-1.8.1.pom",
+          "kind": "maven_pom",
+          "sha256": "88e8c7ede4d29b8027a2da6ea9e3ce550c556a4213633f8f6de28bb9fb201c90"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.1"
+    },
+    {
+      "artifact": "kotlinx-coroutines-bom",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.8.1",
+          "file": "kotlinx-coroutines-bom-1.8.1.pom",
+          "kind": "maven_pom",
+          "sha256": "563e4aa29fa8fe09a6e1746d0a5b51308f7c7dedc468dc5a0ca810a485877030"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.1"
+    },
+    {
+      "artifact": "kotlinx-coroutines-core",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1",
+          "file": "kotlinx-coroutines-core-1.8.1.pom",
+          "kind": "maven_pom",
+          "sha256": "f88918dbfa8787c4d171ab02553a14ad1def8aa9b0c5c2c20cc99455d3241e22"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.1"
+    },
+    {
+      "artifact": "kotlinx-coroutines-core-jvm",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1",
+          "file": "kotlinx-coroutines-core-jvm-1.8.1.pom",
+          "kind": "maven_pom",
+          "sha256": "47c6a50b14151e8faf7f350a95235c37d12abc38bfb055b668974293172daf2c"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.8.1"
+    },
+    {
+      "artifact": "kotlinx-serialization-bom",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-bom:1.6.3",
+          "file": "kotlinx-serialization-bom-1.6.3.pom",
+          "kind": "maven_pom",
+          "sha256": "29d69842bb7d449be2aa4ade6a4a7ce6aa55827d0ab13d168745fe6d95739332"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.3"
+    },
+    {
+      "artifact": "kotlinx-serialization-core",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.3",
+          "file": "kotlinx-serialization-core-1.6.3.pom",
+          "kind": "maven_pom",
+          "sha256": "d2dbf6fc15364c8969d6aab6e3eccc75139953f2cc057b730e35267465b3b57e"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.3"
+    },
+    {
+      "artifact": "kotlinx-serialization-core-jvm",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.6.3",
+          "file": "kotlinx-serialization-core-jvm-1.6.3.pom",
+          "kind": "maven_pom",
+          "sha256": "2b4aa89499fc01b30d1c107596698e0af4340412d54019c501d9ba6b293ba2ba"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.3"
+    },
+    {
+      "artifact": "kotlinx-serialization-json",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3",
+          "file": "kotlinx-serialization-json-1.6.3.pom",
+          "kind": "maven_pom",
+          "sha256": "29c2217618e531d7d832cc880aea6ed1a8f40773e437f5a41d70bd15468d3ce3"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.3"
+    },
+    {
+      "artifact": "kotlinx-serialization-json-jvm",
+      "group": "org.jetbrains.kotlinx",
+      "lanes": [
+        ":connected",
+        ":tv"
+      ],
+      "license_evidence": [
+        {
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.6.3",
+          "file": "kotlinx-serialization-json-jvm-1.6.3.pom",
+          "kind": "maven_pom",
+          "sha256": "78df67d064d3baaf1af4e862e981469776297c6c878bb7bf1b42e3932f6faf8f"
+        }
+      ],
+      "licenses": [
+        {
+          "inherited_from": null,
+          "name": "The Apache Software License, Version 2.0",
+          "spdx_guess": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "metadata_sources": [
+        "resolved-artifact POM license metadata"
+      ],
+      "version": "1.6.3"
+    }
+  ],
+  "license_spdx_ids": [
+    "Apache-2.0"
+  ],
+  "license_texts": [
+    {
+      "applies_to": "PhotoHouse authored source; Apache-2.0 dependency declarations may be linked to this full text.",
+      "file": "../../LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "spdx_id": "Apache-2.0"
+    },
+    {
+      "applies_to": "full Apache-2.0 text retained for Android dependency attributions.",
+      "file": "../../third_party/licenses/android/Apache-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "spdx_id": "Apache-2.0"
+    },
+    {
+      "applies_to": "Public Suffix List data bundled inside OkHttp; see android-notices.json.",
+      "file": "../../third_party/licenses/android/MPL-2.0.txt",
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+      "source": "https://www.mozilla.org/MPL/2.0/index.txt",
+      "spdx_id": "MPL-2.0"
+    }
+  ],
+  "limits": [
+    "Maven POM license declarations and cached parent POM inheritance are metadata evidence, not legal clearance.",
+    "No downloaded model, GPU provider, runtime service, release-only, or optional dependency profile is covered."
+  ],
+  "parent_inherited_license_metadata_components": [
+    "com.google.guava:failureaccess:1.0.1",
+    "com.google.guava:guava:32.1.3-android",
+    "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava"
+  ],
+  "schema": 1,
+  "scope": "resolved external modules on production phone and TV debug runtime classpaths",
+  "source_revision": "8a4864202665786e0d93b76dc0c9a85ac80c8777",
+  "unresolved_license_metadata_count": 0,
+  "upstream_metadata_sources": [
+    {
+      "coordinate": "com.squareup.okhttp3:okhttp:4.12.0",
+      "role": "release POM declares Apache-2.0",
+      "url": "https://central.sonatype.com/artifact/com.squareup.okhttp3/okhttp/4.12.0"
+    },
+    {
+      "coordinate": "com.google.guava:guava:32.1.3-android",
+      "role": "tagged upstream Apache-2.0 license; four components also inherit Apache-2.0 in the exact cached guava-parent POM",
+      "url": "https://github.com/google/guava/blob/v32.1.3/LICENSE"
+    },
+    {
+      "coordinate": "Gradle 8.10.2 and wrapper",
+      "role": "tagged upstream Gradle license",
+      "url": "https://github.com/gradle/gradle/blob/v8.10.2/LICENSE"
+    },
+    {
+      "coordinate": "Gradle Wrapper",
+      "role": "official wrapper checksum verification guidance",
+      "url": "https://docs.gradle.org/8.10.2/userguide/gradle_wrapper.html"
+    },
+    {
+      "coordinate": "MPL-2.0 bundled data notice",
+      "role": "official text of additional data license",
+      "url": "https://www.mozilla.org/en-US/MPL/2.0/"
+    },
+    {
+      "coordinate": "Public Suffix List",
+      "role": "upstream list source referenced by the embedded OkHttp notice",
+      "url": "https://publicsuffix.org/list/public_suffix_list.dat"
+    }
+  ]
+}

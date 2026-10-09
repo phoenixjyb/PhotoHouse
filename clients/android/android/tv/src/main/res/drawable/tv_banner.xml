@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape><size android:width="320dp" android:height="180dp" /><solid android:color="#FFF9F3" /></shape></item>
+    <item android:width="160dp" android:height="160dp" android:gravity="center"
+        android:drawable="@drawable/photohouse_icon_foreground" />
+</layer-list>

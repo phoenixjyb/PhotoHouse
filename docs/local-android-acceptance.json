@@ -1,0 +1,393 @@
+{
+  "profile": "unified-source-android-debug",
+  "module_test_results": [
+    {
+      "module": "core",
+      "report_files": 2,
+      "state": "reported",
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "protocol",
+      "report_files": 0,
+      "state": "no_report",
+      "tests": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "live-core",
+      "report_files": 46,
+      "state": "reported",
+      "tests": 492,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "home-core",
+      "report_files": 23,
+      "state": "reported",
+      "tests": 130,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "playback-core",
+      "report_files": 1,
+      "state": "reported",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "story-fixture-core",
+      "report_files": 1,
+      "state": "reported",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "connected",
+      "report_files": 3,
+      "state": "reported",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "tv",
+      "report_files": 3,
+      "state": "reported",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "lint_and_debug_assembly": "passed",
+  "artifacts": [
+    {
+      "module": "connected",
+      "bytes": 12840375,
+      "sha256": "d2a74b25d0b2c65356d4a20b182474b0321c4727913f915d4663993d9eea7b19",
+      "configured_origin": false,
+      "household_release": false,
+      "build_type": "debug",
+      "application_id": "dev.photohouse.connected",
+      "version_code": 43,
+      "version_name": "0.43-memoir-voice-and-reading"
+    },
+    {
+      "module": "tv",
+      "bytes": 17583704,
+      "sha256": "1aa5bf460cdc28593fb307c8d0c0e082b356ca417494cc4a0ac9bdde33e3098c",
+      "configured_origin": false,
+      "household_release": false,
+      "build_type": "debug",
+      "application_id": "dev.photohouse.tv",
+      "version_code": 29,
+      "version_name": "0.29-paced-viewing"
+    }
+  ],
+  "physical_device_tested": false,
+  "hosted_ci_run": false,
+  "emulator_tested": false,
+  "emulator_scope": null,
+  "jvm_unit_test_total": 684,
+  "baseline_source_pins": {
+    "server": "0d8b9f66424a6a62b9b1f4c3cea7e6a70bb15316",
+    "android": "312b40e1f865061ff98ec7f4d52fe3cdd31f4ff6"
+  },
+  "feature_overlay_source_pins": {
+    "phone_v40": "9717b7aaf89f4516aa18b0daaef29ca9be7084ac",
+    "phone_conversation_previews": "a4583c147192dc0cda3d5b0a3f57285b0974cc1e",
+    "memoir_source_inspection": "d5b994874efe459cd0133bbf673e053cf9d4c1eb",
+    "reply_narration_continuity": "ddc00d1c8dc1d4a421c6cf5008adc0a1ada262a8"
+  },
+  "phone_conversation_previews": {
+    "source_commit": "a4583c147192dc0cda3d5b0a3f57285b0974cc1e",
+    "public_targeted_jvm_run": {
+      "command": "./gradlew --offline --no-daemon :live-core:test --tests dev.photohouse.connected.core.HttpsMemoryCommunityApiTest --tests dev.photohouse.connected.core.MemoryCommunityWireTest --tests dev.photohouse.connected.core.MemoryCommunityRepositoryTest --tests dev.photohouse.connected.core.ConnectedStoreTest",
+      "suites": {
+        "HttpsMemoryCommunityApiTest": 6,
+        "MemoryCommunityWireTest": 8,
+        "MemoryCommunityRepositoryTest": 11,
+        "ConnectedStoreTest": 97,
+        "MemoryCommunityStoreTest": 46
+      },
+      "tests": 168,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "emulator_run": false,
+      "separate_commands": [
+        "./gradlew --offline --no-daemon :live-core:test --tests dev.photohouse.connected.core.HttpsMemoryCommunityApiTest --tests dev.photohouse.connected.core.MemoryCommunityWireTest --tests dev.photohouse.connected.core.MemoryCommunityRepositoryTest --tests dev.photohouse.connected.core.ConnectedStoreTest",
+        "./gradlew --offline --no-daemon :live-core:test --tests dev.photohouse.connected.core.MemoryCommunityStoreTest"
+      ],
+      "all_failures": 0,
+      "all_errors": 0,
+      "all_skipped": 0,
+      "store_suite_distinct_from_connected_store_suite": true,
+      "logs": [
+        "/private/tmp/photohouse-phone-preview-public-20261005/jvm-focused-corrected.log",
+        "/private/tmp/photohouse-phone-preview-public-20261005/memory-community-store-focused.log"
+      ],
+      "MemoryCommunityStoreTest_command": "./gradlew --offline --no-daemon :live-core:test --tests dev.photohouse.connected.core.MemoryCommunityStoreTest"
+    },
+    "pinned_source_workspace_evidence": {
+      "revision": "a4583c147192dc0cda3d5b0a3f57285b0974cc1e",
+      "repository_tests": 11,
+      "community_store_tests": 46,
+      "emulator_journeys": 2,
+      "device": "Android API 36 synthetic emulator",
+      "text_scale": 1.5,
+      "rendered_screenshots_reviewed": true,
+      "applies_to_public_unified_layout": false
+    },
+    "frozen_unsigned_v41_contains_feature": false,
+    "signed_or_published": false,
+    "live_backend_qualified": false,
+    "physical_device_qualified": false
+  },
+  "memoir_source_inspection_import": {
+    "public_targeted_jvm_run": {
+      "command": "./gradlew --offline --no-daemon --console=plain :live-core:test --tests dev.photohouse.connected.core.MemoryBookEditorialSourceInspectionTest --tests dev.photohouse.connected.core.MemoryBookEditorialIntegrationTest --tests dev.photohouse.connected.core.ConnectedStoreTest",
+      "suites": {
+        "MemoryBookEditorialSourceInspectionTest": 9,
+        "MemoryBookEditorialIntegrationTest": 5,
+        "ConnectedStoreTest": 97
+      },
+      "tests": 111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "emulator_run": false
+    },
+    "emulator_or_instrumentation_run": false,
+    "release_package_built": false,
+    "physical_device_qualified": false
+  },
+  "reply_narration_continuity_import": {
+    "public_targeted_jvm_run": {
+      "command": "./gradlew --offline --no-daemon --console=plain :connected:testDebugUnitTest",
+      "suites": {
+        "ChapterReadAloudTest": 4,
+        "ChapterSourceReferencesTest": 1,
+        "AnnotationAudioRecorderLifecycleTest": 5
+      },
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "emulator_run": false
+    },
+    "emulator_or_instrumentation_run": false,
+    "release_package_built": false,
+    "physical_device_qualified": false
+  },
+  "memoir_voice_forms_import": {
+    "source_commits": [
+      "a8bacd12e512613d1c78da52c20acc79376cbf61",
+      "e2f08241b4beb245571a90aae296593bf2e9ade6"
+    ],
+    "public_targeted_jvm_run": {
+      "suites": {
+        "MemoryBookNarrativeDictationStoreTest": {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "MemoryBookNarrativeStoreTest": {
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "MemoryCommunityStoreTest": {
+          "tests": 53,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "MemoryBookEditorialIntegrationTest": {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "tests": 78,
+      "command": "./gradlew --offline --no-daemon --max-workers=2 :live-core:test --tests dev.photohouse.connected.core.MemoryBookNarrativeDictationStoreTest --tests dev.photohouse.connected.core.MemoryBookNarrativeStoreTest --tests dev.photohouse.connected.core.MemoryCommunityStoreTest --tests dev.photohouse.connected.core.MemoryBookEditorialIntegrationTest"
+    },
+    "emulator_or_instrumentation_run": false,
+    "release_package_built": false,
+    "physical_device_qualified": false,
+    "provider_called": false
+  },
+  "memoir_plan_story_reading": {
+    "source_commit": "694fd08",
+    "source_version_commit": "13b01ab7cbc030048a7be6ea34648db70b08a8d4",
+    "public_candidate_source_commit": "8257fdea090cd1ab51132ec9a55e22bcda91e5e4",
+    "focused_jvm_tests": 78,
+    "debug_compilation_passed": true,
+    "debug_lint_passed": true,
+    "public_candidate_emulator": false,
+    "source_workspace_final_emulator_tests": 2,
+    "source_workspace_languages": [
+      "zh",
+      "en"
+    ],
+    "source_workspace_text_size_percent": 150,
+    "whole_over_capacity_blocks_generation": true,
+    "in_book_read_reauthorizes_parent_then_child": true,
+    "instructions_and_form_preserved": true,
+    "signed": false,
+    "published": false,
+    "provider_qualified": false,
+    "family_acceptance": false
+  },
+  "previous_full_profile_592": {
+    "profile": "unified-source-android-debug",
+    "module_test_results": [
+      {
+        "module": "core",
+        "tests": 24,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "protocol",
+        "tests": 0,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "live-core",
+        "tests": 400,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "home-core",
+        "tests": 130,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "playback-core",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "story-fixture-core",
+        "tests": 16,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "connected",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "tv",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "lint_and_debug_assembly": "passed",
+    "artifacts": [
+      {
+        "module": "connected",
+        "sha256": "f5851e0fef734afb9ba572f5584c3f6a1af349389d59ddf8458266b89798b36a",
+        "bytes": 13418710,
+        "configured_origin": false,
+        "household_release": false,
+        "build_type": "debug"
+      },
+      {
+        "module": "tv",
+        "sha256": "97b54da269ae40974d48fa2a101b4fbe22058403abcf8fbadefdec5a7bcb06b7",
+        "bytes": 11485015,
+        "configured_origin": false,
+        "household_release": false,
+        "build_type": "debug"
+      }
+    ],
+    "jvm_unit_test_total": 592,
+    "emulator_tested": true,
+    "emulator_scope": {
+      "suite": "ConnectedUiTest focused v40 recovery and upload-history journeys",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "assistantUncertainTurnKeepsReviewedTextAndReceiptCheckNeverResends",
+        "uploadHistoryShowsStatesPagesTenPlusTwoAndOpensAvailableAsset"
+      ],
+      "device": "emulator-5558 / Medium_Phone_API_36.0 (API 36)",
+      "synthetic_api": true,
+      "large_text_scale": 1.5,
+      "configured_origin": false,
+      "physical_device_tested": false,
+      "hosted_ci_run": false,
+      "ime_open_asserted": true,
+      "ime_screenshot_available": false,
+      "rendered_screenshots_reviewed": true
+    },
+    "baseline_source_pins": {
+      "server": "0d8b9f66424a6a62b9b1f4c3cea7e6a70bb15316",
+      "android": "312b40e1f865061ff98ec7f4d52fe3cdd31f4ff6"
+    },
+    "feature_overlay_source_pins": {
+      "phone_v40": "9717b7aaf89f4516aa18b0daaef29ca9be7084ac",
+      "phone_conversation_previews": "a4583c147192dc0cda3d5b0a3f57285b0974cc1e",
+      "memoir_source_inspection": "d5b994874efe459cd0133bbf673e053cf9d4c1eb",
+      "reply_narration_continuity": "ddc00d1c8dc1d4a421c6cf5008adc0a1ada262a8"
+    }
+  },
+  "latest_full_profile": {
+    "profile_date": "2026-10-06",
+    "public_candidate_base_commit": "e05209f4318e45dff4c6f80ffb4261d3fca18296",
+    "phone_feature_source_commit": "13b01ab7cbc030048a7be6ea34648db70b08a8d4",
+    "tests": 684,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "command": "Gradle offline/no-daemon/max-workers=2; complete ANDROID_TASKS from tools/check.py",
+    "test_tasks_forced_to_execute": true,
+    "private_init_script_sha256": "38cc96356559532521404a1efe6cc053fa71b76524c9a20b28665e901a3da801",
+    "all_actual_test_tasks_executed": true,
+    "protocol_task": "NO-SOURCE; zero executed tests",
+    "lint_and_debug_assembly": "passed",
+    "generated_build_config_origins_empty": true,
+    "generated_feature_flags_disabled": true,
+    "physical_device_tested": false,
+    "emulator_tested": false,
+    "hosted_ci_run": false,
+    "release_package_qualified": false
+  }
+}

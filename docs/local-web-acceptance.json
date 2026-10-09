@@ -1,0 +1,256 @@
+{
+  "profile": "optional-synthetic-web",
+  "assistant_checkpoints": 11,
+  "memoir_editor_journey_passed": true,
+  "memoir_reader_checkpoints": 10,
+  "source_pins": {
+    "assistant_and_initial_editor": "7ae15d6342e9ef3297766cee1f81012685ee08c5",
+    "legacy_reader": "79a89cf7185e534e19010b5973a5e8307da86307",
+    "single_editor_disclosure": "6a04fb97e400004aa7924f90cbbcd1c828e438c0",
+    "assistant_reload_recovery": "277d0cde5534dee98ec60ec42c371bf9363695f7",
+    "memory_conversation_previews": "502d015f0ad74bf631c6235d4039e4854a5c76c8",
+    "memory_preview_style_readiness_test": "54c1d4dd5cc449f492a076f095c53508ebd7d5dd"
+  },
+  "toolchain": {
+    "node": "22.17.0",
+    "python": "3.12.12",
+    "playwright_core": "1.63.0",
+    "chromium_headless_shell": "151.0.7922.34"
+  },
+  "rendering": {
+    "viewport_width": 390,
+    "assistant_and_editor_browser_zoom_percent": 150,
+    "reader_text_size_percent": 150,
+    "screenshots_reviewed": true,
+    "preview_media_qualified": false,
+    "assistant_recovery_desktop_viewport": [
+      1280,
+      900
+    ]
+  },
+  "bridges": "Generated-data ASGI TestClient over stdin/stdout; intercepted reserved browser origin",
+  "production_connections": false,
+  "listening_socket": false,
+  "family_data_used": false,
+  "live_runtime_qualified": false,
+  "editorial_default_enabled": false,
+  "hosted_ci_run": false,
+  "source_overlay_qualification": {
+    "tests": 9,
+    "unified_layout_and_preserved_icon_qualified": true,
+    "native_entry_or_switch_qualified": false
+  },
+  "source_packager_tests": 13,
+  "current_source_verifier_tests": 7,
+  "latest_synthetic_profile_date": "2026-10-05",
+  "conversation_preview_profile": {
+    "focused_journey_passed": true,
+    "focused_journey_checkpoints": 17,
+    "combined_web_profile_attempt_exit_code": 0,
+    "combined_web_profile_failure": null,
+    "focused_suite_rerun_passed": true,
+    "combined_web_profile_clean_run_recorded": true,
+    "responsive_rendering": {
+      "viewport_width": 390,
+      "text_size_percent": 150,
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "overlap_assertions_passed": true,
+      "screenshots_reviewed": true
+    },
+    "screenshots": [
+      "memory-chat-conversation-list-mobile-text150.png",
+      "memory-chat-conversation-list-english-mobile-text150.png"
+    ],
+    "toolchain": {
+      "node": "22.17.0",
+      "python": "3.12.12",
+      "playwright_core": "1.55.0",
+      "chromium_headless": "140.0.7339.16"
+    },
+    "artifacts_directory_mode": "0700",
+    "combined_web_profile_suite_count": 4,
+    "stylesheet_readiness_test_only_fix": true,
+    "strict_native_disclosure_assertion_preserved": true,
+    "production_css_changed": false,
+    "prior_combined_web_profile_attempt": {
+      "exit_code": 1,
+      "failure": "The disclosure summary computed display was empty instead of list-item.",
+      "resolution": "Wait for the same-origin stylesheet rule and connected summary before asserting the computed marker."
+    },
+    "source_test_commit": "54c1d4dd5cc449f492a076f095c53508ebd7d5dd",
+    "source_test_git_blob": "02bd12f24d9d356049e0768e653ee958daef7b3a",
+    "source_test_sha256": "03ac98e4f54a631e0438da108c952e28fd5d6dc520be48d5af08a9e328082fa7",
+    "profile_scope": "Earlier focused preview qualification; its 17 checkpoints are separate from the current four-suite aggregate."
+  },
+  "cross_client_source_import": {
+    "source_commits": {
+      "reply_narration_continuity": "31a71dd5c7acb620291faedf60b3aa2b32d89267",
+      "memoir_source_inspection": "a682b4d8f4fc8fb3e15fd5ec7d11dfe74abb409a"
+    },
+    "optional_four_suite_profile": {
+      "passed": true,
+      "suite_count": 4,
+      "exit_code": 0,
+      "generated_data_only": true,
+      "conversation_checkpoints": 16
+    },
+    "focused_source_inspection_suite": {
+      "passed": true,
+      "generated_data_only": true
+    },
+    "focused_narration_journey": {
+      "passed": true,
+      "generated_data_only": true,
+      "checkpoints": 16
+    },
+    "narration_ui_vm_test": {
+      "passed": true
+    },
+    "reviewed_screenshots": [
+      "memoir-source-inspector-zh-390px-150.png",
+      "memoir-source-inspector-en-390px-150.png",
+      "memory-book-narration-mobile-text150.png"
+    ],
+    "provider_calls": false,
+    "live_runtime_qualified": false,
+    "household_data_used": false,
+    "toolchain": {
+      "node": "22.17.0",
+      "python": "3.12.12",
+      "playwright_core": "1.55.0",
+      "chromium_headless": "140.0.7339.16"
+    }
+  },
+  "toolchain_scope": "Earlier optional synthetic Web profile; the October 5 cross-client import run uses the toolchain recorded in cross_client_source_import.",
+  "memoir_narrative_forms": {
+    "source_commit": "b5dc212ed65677966e99ea4cdf08a9ccc1362485",
+    "unified_layout_browser_checkpoints": 18,
+    "page_errors": 0,
+    "external_requests": 0,
+    "ui_contract_harness_passed": true,
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "screenshots_reviewed": [
+      "memoir-form-en-existing-mobile-text150.png",
+      "memoir-form-en-mobile-text150-submit.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  },
+  "memoir_plan_story_reading": {
+    "source_commit": "e10409de8395c9d7b037af2303d1a2c3245482c9",
+    "unified_layout_browser_checkpoints": 19,
+    "page_errors": 0,
+    "external_requests": 0,
+    "ui_contract_harness_passed": true,
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "screenshots_reviewed": [
+      "memory-book-plan-story-open-mobile-text150.png",
+      "memory-book-plan-story-preserved-companion-mobile-text150.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  },
+  "memoir_draft_directory": {
+    "source_commit": "766e3274ef64bba0806ce8479c851d9c83dbccbc",
+    "unified_layout_browser_checkpoints": 20,
+    "page_errors": 0,
+    "external_requests": 0,
+    "ui_contract_harness_passed": true,
+    "harness_behavior_groups": 6,
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "maximum_fixture_stories": 4,
+    "chapters_per_story": 6,
+    "screenshots_reviewed": [
+      "memoir-directory-zh-390px-150.png",
+      "memoir-directory-en-390px-150.png",
+      "memoir-directory-en-390px-last-chapter-text150.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  },
+  "reviewable_draft_audio": {
+    "source_commit": "672cfd5c1a23fa50eb986312a9923975f07bc49b",
+    "browser_checkpoints": 20,
+    "ui_contract_harness_passed": true,
+    "narration_vm_harness_passed": true,
+    "page_errors": 0,
+    "external_requests": 0,
+    "maximum_draft_audio_controls": 24,
+    "autoplay": false,
+    "voice_fixture": "synthetic local Chinese and English voices",
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "screenshots_reviewed": [
+      "memoir-directory-en-390px-last-chapter-text150.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  },
+  "memoir_review_context": {
+    "source_commit": "4328770c5455ea17420844028301500cc6c1620c",
+    "browser_checkpoints": 20,
+    "ui_contract_harness_passed": true,
+    "page_errors": 0,
+    "external_requests": 0,
+    "whole_memoir_title_visible": true,
+    "compact_draft_chapter_positions": true,
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "screenshots_reviewed": [
+      "memoir-directory-en-390px-last-chapter-text150.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  },
+  "current_chapter_discussion": {
+    "source_commit": "635ce03f2d138daaa10bf2249b87fc67133319ed",
+    "browser_checkpoints": 22,
+    "all_four_supported_web_suites_passed": true,
+    "ui_contract_harness_passed": true,
+    "narration_harness_passed": true,
+    "page_errors": 0,
+    "external_requests": 0,
+    "current_loaded_chapter_used": true,
+    "whole_memoir_conversation_preserved": true,
+    "shared_draft_insertion_guards": true,
+    "viewport_width": 390,
+    "text_size_percent": 150,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "screenshots_reviewed": [
+      "memory-book-chapter-discussion-en-mobile-text150.png"
+    ],
+    "provider_calls": false,
+    "deployed": false,
+    "family_acceptance": false
+  }
+}
