@@ -6528,6 +6528,16 @@
           "before_sha256": "d7d9a1a8293e212ebcb681bef26d1bcbc2c4a9b44a39a863ba0d3356acf05e42"
         }
       ]
+    },
+    {
+      "feature": "wsl-placement-cpu-qualification-evidence",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "1fa02b3e088d270d6f5d5ff4685db64e4403dd88f26654bd07811a9d0efb8640",
+          "before_sha256": "052efffb236ac87f62fb7fe4ca594a00789989a4c11e9bf326da1192c69ea5e8"
+        }
+      ]
     }
   ]
 }
