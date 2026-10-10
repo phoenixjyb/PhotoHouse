@@ -88,3 +88,38 @@ complete exit/report and retained generated files. A pass establishes only the
 named process-crash, file binding, private-directory and catalog restore cases
 for that package/filesystem. It does not establish power-loss durability,
 installed producer/model qualification, task reconciliation or live cleanup.
+
+## October 11 vector catalog native result
+
+The explicitly approved corrected synthetic run passed on Windows:
+
+| Binding | Value |
+|---|---|
+| Source commit | `b8f103be05c02965b087172893ee3b8a42b475c5` |
+| API ZIP SHA-256 | `bb44437d1b1c723ae0cedf020303a39b1982d5e17b3ead7f63ba703621c90c7e` |
+| Source files verified | 172, before execution and during readback |
+| Report SHA-256 | `d3a8333f392d07e5bae257bca7a19c82058d3e9fb3c19feb07c246187878ac97` |
+| Limits | 900 seconds, 2 GiB Job memory, four processes, 8 GiB free-RAM floor |
+| Longest generated vector path | 246 UTF-16 units; no host registry change |
+
+Native PowerShell parsing and package/interpreter identity checks passed before
+execution. The normal isolated CLI used the verified Windows Job supervisor,
+exited with code zero and produced `native_windows=true` and `source_only=true`.
+Independent readback checked private storage, the exact source/report digests and
+the known synthetic SQLite/catalog/filesystem outcomes:
+
+| Generated case | Readback outcome |
+|---|---|
+| Complete manifest and process death after quarantine linking | Both known vector names and quarantine names absent; progress 2 of 2 |
+| Older-primary withdrawal replay and archived closure restoration | Restored artifact/publication metadata and cleanup job; progress 2 of 2; both vector names absent |
+| Corrupt quarantine refusal | Both vectors and corrupt quarantine retained; progress stayed 0 of 2 |
+
+Every generated original retained its exact bytes. Catalog readback verified each
+full immutable plan. Synthetic databases were opened read-only for inspection;
+the failed earlier candidate and both runs' evidence remain retained privately.
+No live database, original media, model, scheduled task or service was changed.
+The result reports `models_loaded=false`, `services_changed=false` and
+`power_loss_qualified=false`. This closes only the three named native generated
+cases. Additive schema/restore compatibility, independent catalog backups,
+installed producer/model qualification, interrupted task reconciliation and any
+real cleanup still require their own evidence and authority.

@@ -1,7 +1,8 @@
 # Derived vector erasure and recovery
 
-**Status:** optional internal source contract. No migration, HTTP route,
-installed cleanup task or Windows filesystem qualification is included.
+**Status:** optional internal source contract. Three named generated Windows
+recovery cases passed at `b8f103b`; no migration, HTTP route or installed cleanup
+task is enabled. Power-loss durability remains unqualified.
 
 [`VectorErasureStore`](../server/backend/app/access/visual_vector_erasure.py)
 removes only known versioned image-vector files after a committed
@@ -129,18 +130,21 @@ The October 11 native attempt with source `1db984c` verified all 172 packaged
 files and passed PowerShell parsing, but the generated child failed before the
 first vector file existed. Its computed filename needed 294 characters and the
 host's long-path setting was disabled. The old supervisor suppressed the child's
-error, so the exact exception was not captured. This attempt does not establish
-native recovery acceptance; the shorter layout and diagnostic changes require
-a fresh bounded qualification.
+error, so the exact exception was not captured. That attempt established no
+native recovery acceptance. The subsequent corrected `b8f103b` package passed
+all three named cases with a 246-character layout. Independent readback verified
+the source/report hashes, private storage, complete cleanup and restored progress,
+preserved corrupt quarantine and unchanged generated originals. See the
+[native result](WINDOWS_CPU_CHECKS.md#october-11-vector-catalog-native-result).
 
 ## Delivery gates
 
 Generated local tests establish source and process-interruption behavior only.
-Before Windows activation, qualify native hard-link behavior, private directory
-ACL inheritance, stable file birthtime and filesystem/process recovery. Python
-does not provide Windows directory fsync, so power-loss durability is a separate
-gate. Catalog restoration now has generated source evidence; native catalog
-durability and independently preserved backup coverage remain open. Then review
-additive schema/backup restore compatibility, exact installed producer profile
-and task reconciliation. Any real cleanup needs the reviewed
+The bounded Windows run adds native evidence for the three generated executor/
+catalog cases, including private ACL inheritance and stable file binding. It
+does not qualify an installed producer or every filesystem/volume configuration.
+Python does not provide Windows directory fsync, so power-loss durability and
+independently preserved catalog backup coverage remain separate gates. Review
+additive schema/backup restore compatibility, the exact installed producer profile
+and interrupted task reconciliation before activation. Any real cleanup needs the reviewed
 asset set, backup/recovery plan and operation-specific authority.

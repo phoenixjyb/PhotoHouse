@@ -53,9 +53,10 @@ adds a durable primary manifest and no-overwrite quarantine claims for completed
 and interrupted publications. Its optional private independent catalog preserves
 the known file closure and restores matching missing immutable records after
 withdrawal replay into an older primary, with atomic refusal on conflicts.
-Original media, contributions and immutable
-records remain retained. Installed cleanup, native Windows qualification and
-live capability switching are separate gates.
+Original media, contributions and immutable records remain retained. The three
+generated executor/catalog cases passed bounded native Windows qualification at
+`b8f103b`; installed producer recovery, independent catalog backup coverage,
+power-loss durability and live capability switching remain separate gates.
 
 The isolated image worker now verifies checkpoint bytes around model loading
 and inference, observes the supported evaluation transform configuration, and

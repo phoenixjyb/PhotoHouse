@@ -2,18 +2,21 @@
 
 ## October 11 native qualification follow-up
 
-The bounded vector cleanup/catalog qualification at `1db984c` was staged and
-run on Windows. The package's 172 source files and native PowerShell syntax
-were verified, but its child failed before the first vector file was created.
-The generated path needed 294 characters with long-path support disabled;
-the previous supervisor did not retain the child's error. No live data,
-model, worker or service was changed, and native acceptance remains open.
+The corrected package at `b8f103b` passed all three bounded Windows synthetic
+vector cleanup/catalog cases: process interruption after quarantine linking,
+older-primary restoration using the archived closure, and corrupt-quarantine
+refusal. Independent readback verified 172 source files, the report digest,
+private storage, database progress, expected vector names and unchanged generated
+originals. See the [exact native result](WINDOWS_CPU_CHECKS.md#october-11-vector-catalog-native-result).
+The earlier `1db984c` failure remains retained; its 294-character fixture path
+has been replaced with a 246-character layout. The runner now checks legacy
+path budgets before mutation and retains sanitized fixture failure receipts.
 
-The source runner now checks legacy Windows path budgets before mutation and
-retains sanitized fixture failure receipts. The next operation is one fresh
-short-layout synthetic qualification, followed by additive schema/restore and
-installed producer checks. Preserve the capture-day story picker until the
-visual-discovery delivery gates pass.
+The next gates are additive schema/backup restore compatibility, independent
+catalog backup coverage, the exact installed producer profile and interrupted
+task reconciliation. Power-loss durability remains unqualified. Preserve the
+capture-day story picker until the visual-discovery delivery gates pass.
+No live database, model, worker or service was changed by this qualification.
 
 ## October 10 installed release and next gates
 
@@ -55,13 +58,14 @@ no-overwrite quarantine claims. Original media and immutable metadata remain
 retained; interrupted task reconciliation is separate. A private independent
 catalog now preserves complete plans and can restore matching missing metadata
 into an older primary after withdrawal replay. The generated qualification runner
-checks process interruption and restoration; its Windows CLI is bounded and has
-not yet established native acceptance. The next gates are native
-qualification, additive schema/restore compatibility and the protected reviewed
+checks process interruption and restoration; its bounded Windows CLI later passed
+the three named synthetic cases at `b8f103b`. The next gates are additive
+schema/restore compatibility, installed producer qualification and the protected reviewed
 picker. See [vector erasure](VECTOR_ERASURE_LIFECYCLE.md).
 Journal and actual-worker recovery pass generated
 process-death tests;
-Windows filesystem qualification and actual vector coverage remain open.
+installed producer recovery, power-loss qualification and actual vector coverage
+remain open.
 The source image worker now hashes the inspected checkpoint before and after
 provider loading and after inference, and compares child receipts with the
 startup probe. Receipts describe the realized supported OpenCLIP evaluation
