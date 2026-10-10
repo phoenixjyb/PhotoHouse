@@ -14,6 +14,7 @@ API_TESTS = (
     "test_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_retry.py", "test_upload_review.py",
     "test_original_deletions.py", "test_original_deletion_integration.py",
+    "test_asset_tombstones.py",
     "test_family_note_identity.py", "test_family_note_identity_migration.py",
     "test_family_note_deletions.py", "test_family_note_deletion_boundaries.py",
     "test_family_note_erasure_api.py", "test_upgrade_original_deletion_journal.py",

@@ -30,8 +30,13 @@ activation. An optional internal producer now connects the verified profile to
 publication and exact task completion. It recovers prepared files before model
 loading, preserves interrupted claims and skips completed profiles. Legacy
 embeddings lack checkpoint and preprocessing identity and must not be promoted
-by guessing those values. The next slice is durable asset-tombstone replay using
-the all-version cleanup planner. Journal and actual-worker recovery pass generated
+by guessing those values. The V3 asset-withdrawal source contract now adds exact
+content-free tombstones, atomic offline restore replay and receipt-bound
+all-version cleanup planning. It preserves legacy journal digests and rejects
+uncommitted primary status. No live format upgrade or physical erasure is enabled.
+The next slice is a durable filesystem executor covering prepared publications
+as well as completed artifacts, then native qualification and the protected
+reviewed picker. Journal and actual-worker recovery pass generated
 process-death tests;
 Windows filesystem qualification and actual vector coverage remain open.
 The source image worker now hashes the inspected checkpoint before and after

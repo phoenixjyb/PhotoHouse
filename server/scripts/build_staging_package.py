@@ -29,6 +29,7 @@ FILES = (
     'backend/app/access/assistant.py',
     'backend/app/access/assistant_journal.py',
     'backend/app/access/assistant_speech.py',
+    'backend/app/access/asset_tombstones.py',
     'backend/app/access/bootstrap.py',
     'backend/app/access/boundary.py',
     'backend/app/access/captions.py',

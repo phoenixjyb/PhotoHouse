@@ -269,9 +269,12 @@ transaction. It validates every version, capped at 128 rather than truncated,
 and reports safely missing files idempotently. It refuses active or merely
 unassigned assets, drifted schemas and unsafe/corrupt files. Immutable records
 and parent asset tombstones are retained. The planner performs no unlink or
-database mutation: an authorized durable asset tombstone, restore replay and
-path revalidation at execution are still required before erasure. Current
-protected deletion journals do not yet carry asset tombstones.
+database mutation. The new [V3 asset-withdrawal contract](ASSET_WITHDRAWAL_LIFECYCLE.md)
+adds content-free exact asset bindings and offline restore replay. Its durable
+planner wrapper independently verifies committed primary status/marker before
+reading any vector. Path revalidation, pending-publication cleanup and a durable
+filesystem executor remain required before physical erasure. No live journal
+has been upgraded and no media deletion route is activated.
 
 The existing approved image worker separately pins payload bytes, start time
 and retry count at claim, then fences publication, task completion and failure
@@ -324,8 +327,10 @@ Implement and qualify in this order:
    provider qualification or proof of installed dependency code provenance.
    The optional internal producer persists the verified checkpoint/preprocessing
    identity, dimension and source into the immutable record, with exact task
-   guards and completion hooks. Native interruption recovery and durable asset
-   tombstone/replay execution using the cleanup planner remain open. Legacy rows
+   guards and completion hooks. Native interruption and asset replay
+   qualification, plus durable filesystem execution, remain
+   open. Asset withdrawal/replay and receipt-bound all-version planning are now
+   synthetic source contracts. Legacy rows
    remain insufficient for protected similarity lookup; add no legacy backfill.
 3. Wire the protected reader to a verified producer profile. Its current-library
    cohort and source/identity checks are implemented; qualify actual coverage

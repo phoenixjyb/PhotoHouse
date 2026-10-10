@@ -11,6 +11,13 @@ which exits after file linking, then verifies journal recovery from a reopened
 database. This is process-death evidence; Windows filesystem and power-loss
 qualification remain separate.
 
+The V3 asset journal suite exercises append/primary rollback, offline restore,
+exact source/library verification, stale prepared bindings, legacy digest-preserving
+upgrade and independently committed receipt checks for cleanup planning. It uses
+private disposable databases and generated files; withdrawal is a retained-parent
+status change, with no original/vector unlink. See
+[asset withdrawal](ASSET_WITHDRAWAL_LIFECYCLE.md).
+
 The actual-worker synthetic suite also dies after file publication and then
 restarts with the same task claim, without activating a provider. It verifies
 atomic task/artifact completion, approval/source guards, orphaned-intent refusal,
@@ -31,6 +38,7 @@ compatibility, dependency provenance and GPU execution.
   server/tests/security/test_visual_vector_worker.py \
   server/tests/security/test_immutable_image_worker.py \
   server/tests/security/test_visual_vector_cleanup.py \
+  server/tests/security/test_asset_tombstones.py \
   server/tests/security/test_image_worker_claims.py \
   server/tests/security/test_image_embedding_receipts.py \
   server/tests/security/test_image_preprocessing_receipts.py

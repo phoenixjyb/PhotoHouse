@@ -1,9 +1,10 @@
 """Content-free, external deletion journal for replay after restoring SQLite backups.
 
-Initialize the sidecar explicitly on a private, durable volume. Every live deletion
-must run in a primary ``BEGIN IMMEDIATE`` transaction, append its tombstone here,
-then erase the original and commit the primary transaction. On restore, replay this
-journal offline before opening the API or workers.
+Initialize the sidecar explicitly on a private, durable volume. Every contribution
+deletion must run in a primary ``BEGIN IMMEDIATE`` transaction, append here, then
+erase the original and commit the primary. V3 asset withdrawal retains the parent
+and media, changing only its status after the durable append. On restore, replay
+this journal offline before opening the API or workers.
 """
 from __future__ import annotations
 
@@ -33,6 +34,7 @@ _MAX_JOURNAL_BYTES = 128 * 1024 * 1024
 _MAX_ID = 128
 _FORMAT = 'photohouse-original-deletion-journal-v1'
 _FORMAT_V2 = 'photohouse-original-deletion-journal-v2'
+_FORMAT_V3 = 'photohouse-original-deletion-journal-v3'
 _RECORD_COLUMNS = ('seq','collection','library_id','object_id','original_kind','original_sha256',
                    'batch','asset_id','story_id','occurred_at','prev_digest','digest')
 _MARKER = 'access_original_deletion_state'
@@ -270,18 +272,27 @@ def _deletions_ddl(version):
                     UNIQUE(collection,library_id,object_id),
                     CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL)
                         OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL)))'''
-    return '''CREATE TABLE deletions (
-        seq INTEGER PRIMARY KEY CHECK(seq>0), collection TEXT NOT NULL CHECK(collection IN ('upload','memory','family_note')),
-        library_id TEXT NOT NULL, object_id TEXT NOT NULL, original_kind TEXT NOT NULL CHECK(original_kind IN ('text','audio')),
+    if version not in (2, 3):
+        raise OriginalDeletionError('Deletion journal version is invalid')
+    collections = "'upload','memory','family_note'" + (",'asset'" if version == 3 else '')
+    kinds = "'text','audio'" + (",'asset'" if version == 3 else '')
+    asset_column = ', asset_binding_json TEXT' if version == 3 else ''
+    no_asset = ' AND asset_binding_json IS NULL' if version == 3 else ''
+    asset_branch = (" OR (collection='asset' AND batch IS NULL AND story_id IS NULL AND asset_id>0 "
+                    "AND object_id=CAST(asset_id AS TEXT) AND original_kind='asset' "
+                    "AND family_binding_json IS NULL AND asset_binding_json IS NOT NULL)") if version == 3 else ''
+    return f'''CREATE TABLE deletions (
+        seq INTEGER PRIMARY KEY CHECK(seq>0), collection TEXT NOT NULL CHECK(collection IN ({collections})),
+        library_id TEXT NOT NULL, object_id TEXT NOT NULL, original_kind TEXT NOT NULL CHECK(original_kind IN ({kinds})),
         original_sha256 TEXT NOT NULL CHECK(length(original_sha256)=64 AND original_sha256 NOT GLOB '*[^0-9a-f]*'),
         batch TEXT, asset_id INTEGER, story_id TEXT, occurred_at INTEGER NOT NULL CHECK(occurred_at>=0),
         prev_digest TEXT NOT NULL CHECK(length(prev_digest)=64 AND prev_digest NOT GLOB '*[^0-9a-f]*'),
-        digest TEXT NOT NULL CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'), family_binding_json TEXT,
+        digest TEXT NOT NULL CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'), family_binding_json TEXT{asset_column},
         UNIQUE(collection,library_id,object_id),
-        CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL AND family_binding_json IS NULL)
-          OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL AND family_binding_json IS NULL)
+        CHECK((collection='upload' AND batch IS NOT NULL AND story_id IS NULL AND family_binding_json IS NULL{no_asset})
+          OR (collection='memory' AND batch IS NULL AND asset_id IS NULL AND story_id IS NOT NULL AND family_binding_json IS NULL{no_asset})
           OR (collection='family_note' AND batch IS NULL AND asset_id>0 AND story_id IS NULL
-              AND original_kind='text' AND family_binding_json IS NOT NULL)))'''
+              AND original_kind='text' AND family_binding_json IS NOT NULL{no_asset}){asset_branch}))'''
 
 
 class OriginalDeletionJournal:
@@ -296,7 +307,7 @@ class OriginalDeletionJournal:
     @classmethod
     def initialize(cls, path, namespace, *, format_version=1):
         """Exclusively create a new private ledger; never create parent directories."""
-        if type(format_version) is not int or format_version not in {1, 2}:
+        if type(format_version) is not int or format_version not in {1, 2, 3}:
             raise OriginalDeletionError('Deletion journal version is invalid')
         namespace = _canonical_uuid(namespace)
         target = _no_symlink_path(path)
@@ -334,7 +345,7 @@ class OriginalDeletionJournal:
                 db.execute(_deletions_ddl(format_version))
                 db.execute('CREATE INDEX ix_deletions_library_seq ON deletions(library_id,seq)')
                 db.execute('INSERT INTO journal_meta VALUES (1,?,?,0,?)',
-                           (_FORMAT if format_version == 1 else _FORMAT_V2, namespace, _genesis(namespace)))
+                           ({1: _FORMAT, 2: _FORMAT_V2, 3: _FORMAT_V3}[format_version], namespace, _genesis(namespace)))
                 db.commit()
                 db.execute('PRAGMA journal_mode=DELETE')
                 if db.execute('PRAGMA synchronous').fetchone()[0] != 2:
@@ -402,8 +413,10 @@ class OriginalDeletionJournal:
     @staticmethod
     def _verify_columns(db, meta):
         expected = set(_RECORD_COLUMNS)
-        if meta['format'] == _FORMAT_V2:
+        if meta['format'] in {_FORMAT_V2, _FORMAT_V3}:
             expected.add('family_binding_json')
+        if meta['format'] == _FORMAT_V3:
+            expected.add('asset_binding_json')
         if _columns(db, 'deletions') != expected:
             raise OriginalDeletionError('Deletion journal format is invalid')
 
@@ -430,7 +443,7 @@ class OriginalDeletionJournal:
                 raise OriginalDeletionError('Journal changed after reviewed plan')
             if precommit_guard is not None:
                 precommit_guard(primary_db)
-            if meta['format'] == _FORMAT_V2:
+            if meta['format'] in {_FORMAT_V2, _FORMAT_V3}:
                 ledger.commit()
                 return head
             ledger.execute('DROP INDEX ix_deletions_library_seq')
@@ -457,8 +470,95 @@ class OriginalDeletionJournal:
         try:
             ledger.execute('BEGIN')
             meta, _ = self._meta(ledger)
-            if meta['format'] != _FORMAT_V2:
+            if meta['format'] not in {_FORMAT_V2, _FORMAT_V3}:
                 raise OriginalDeletionError('Family note deletion requires journal version 2')
+        finally:
+            ledger.close()
+
+    def upgrade_asset_format(self, primary_db, *, expected_head, precommit_guard=None):
+        """Explicit offline V1/V2→V3 capability upgrade; preserve every old digest.
+
+        Caller owns the primary write transaction and quiescence. No migration,
+        primary commit, asset adoption or withdrawal happens in this method.
+        """
+        if not primary_db.in_transaction:
+            raise OriginalDeletionError('Upgrade requires a primary write transaction')
+        _primary_file(primary_db, self.path)
+        if not {'id', 'path', 'hash_sha256', 'file_size', 'mime', 'status'} <= _columns(primary_db, 'assets'):
+            raise OriginalDeletionError('Asset identity fields are unavailable')
+        marker = self._primary_marker(primary_db)
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN IMMEDIATE')
+            meta, _ = self._meta(ledger)
+            head = (self.namespace, meta['head_seq'], meta['head_digest'])
+            if head != expected_head or marker != head[1:]:
+                raise OriginalDeletionError('Journal changed after reviewed plan')
+            if precommit_guard is not None:
+                precommit_guard(primary_db)
+            if meta['format'] == _FORMAT_V3:
+                ledger.commit()
+                return head
+            names = list(_RECORD_COLUMNS)
+            if meta['format'] == _FORMAT_V2:
+                names.append('family_binding_json')
+            ledger.execute('DROP INDEX ix_deletions_library_seq')
+            ledger.execute('ALTER TABLE deletions RENAME TO legacy_deletions')
+            ledger.execute(_deletions_ddl(3))
+            columns = ','.join(names)
+            ledger.execute('INSERT INTO deletions (' + columns + ') SELECT ' + columns + ' FROM legacy_deletions')
+            ledger.execute('DROP TABLE legacy_deletions')
+            ledger.execute('CREATE INDEX ix_deletions_library_seq ON deletions(library_id,seq)')
+            ledger.execute('UPDATE journal_meta SET format=? WHERE id=1', (_FORMAT_V3,))
+            checked, _ = self._meta(ledger)
+            if (self.namespace, checked['head_seq'], checked['head_digest']) != head:
+                raise OriginalDeletionError('Deletion journal upgrade changed history')
+            ledger.commit()
+            return head
+        except BaseException:
+            ledger.rollback()
+            raise
+        finally:
+            ledger.close()
+
+    def asset_record(self, primary_db, asset_id):
+        """Internal receipt for a current committed asset withdrawal, in a transaction."""
+        from .asset_tombstones import verify_asset_record, _valid_id
+        if not _valid_id(asset_id) or not primary_db.in_transaction:
+            raise OriginalDeletionError('Asset withdrawal unavailable')
+        primary_path = _primary_file(primary_db, self.path)
+        self.assert_current(primary_db)
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN')
+            meta, _ = self._meta(ledger)
+            if meta['format'] != _FORMAT_V3 or self._primary_marker(primary_db) != (meta['head_seq'], meta['head_digest']):
+                raise OriginalDeletionError('Asset withdrawal unavailable')
+            rows = ledger.execute("SELECT * FROM deletions WHERE collection='asset' AND object_id=?",
+                                  (str(asset_id),)).fetchall()
+            if len(rows) != 1:
+                raise OriginalDeletionError('Asset withdrawal unavailable')
+            record = dict(rows[0])
+            verify_asset_record(primary_db, record)
+            status = primary_db.execute('SELECT status FROM assets WHERE id=?', (asset_id,)).fetchone()
+            if status is None or status[0] != 'deleted':
+                raise OriginalDeletionError('Asset withdrawal unavailable')
+            # The caller's marker/status may be an uncommitted append. A
+            # separate read must observe the durable primary withdrawal too.
+            committed = sqlite3.connect(primary_path.as_uri() + '?mode=ro', uri=True, timeout=1)
+            try:
+                committed.execute('PRAGMA query_only=ON')
+                committed.execute('BEGIN')
+                status = committed.execute('SELECT status FROM assets WHERE id=?', (asset_id,)).fetchone()
+                if (self._primary_marker(committed) != (meta['head_seq'], meta['head_digest'])
+                        or status is None or status[0] != 'deleted'):
+                    raise OriginalDeletionError('Asset withdrawal unavailable')
+                verify_asset_record(committed, record)
+            finally:
+                committed.close()
+            return record
+        except sqlite3.Error:
+            raise JournalUnavailable('Asset withdrawal unavailable') from None
         finally:
             ledger.close()
 
@@ -493,7 +593,7 @@ class OriginalDeletionJournal:
             rows = db.execute('SELECT id,format,namespace,head_seq,head_digest FROM journal_meta').fetchall()
         except sqlite3.Error:
             raise OriginalDeletionError('Deletion journal format is invalid') from None
-        if len(rows) != 1 or rows[0]['id'] != 1 or rows[0]['format'] not in {_FORMAT, _FORMAT_V2}:
+        if len(rows) != 1 or rows[0]['id'] != 1 or rows[0]['format'] not in {_FORMAT, _FORMAT_V2, _FORMAT_V3}:
             raise OriginalDeletionError('Deletion journal format is invalid')
         meta = rows[0]
         self._verify_columns(db, meta)
@@ -517,9 +617,10 @@ class OriginalDeletionJournal:
                 if record['seq'] != number or record['prev_digest'] != previous:
                     raise OriginalDeletionError('Deletion journal hash chain mismatch')
                 self._validate_record(record)
-                if meta['format'] == _FORMAT and record['collection'] == 'family_note':
+                if ((meta['format'] == _FORMAT and record['collection'] == 'family_note')
+                        or (meta['format'] != _FORMAT_V3 and record['collection'] == 'asset')):
                     raise OriginalDeletionError('Deletion journal format is invalid')
-                key = (record['collection'], record['library_id'], record['object_id'])
+                key = (record['collection'], None if record['collection'] == 'asset' else record['library_id'], record['object_id'])
                 if key in seen:
                     raise OriginalDeletionError('Duplicate deletion journal object')
                 seen.add(key)
@@ -550,7 +651,7 @@ class OriginalDeletionJournal:
                 raise OriginalDeletionError('Deletion journal format is invalid')
             meta = meta_rows[0]
             self._verify_columns(db, meta)
-            if (meta['format'] not in {_FORMAT, _FORMAT_V2} or meta['namespace'] != self.namespace
+            if (meta['format'] not in {_FORMAT, _FORMAT_V2, _FORMAT_V3} or meta['namespace'] != self.namespace
                     or type(meta['head_seq']) is not int or not 0 <= meta['head_seq'] <= _MAX_RECORDS
                     or type(meta['head_digest']) is not str or not _HEX64.fullmatch(meta['head_digest'])):
                 raise OriginalDeletionError('Deletion journal head is invalid')
@@ -584,8 +685,8 @@ class OriginalDeletionJournal:
         if (type(record.get('seq')) is not int or not 1 <= record['seq'] <= _MAX_RECORDS
                 or type(record.get('prev_digest')) is not str or not _HEX64.fullmatch(record['prev_digest'])
                 or type(record.get('digest')) is not str or not _HEX64.fullmatch(record['digest'])
-                or record.get('collection') not in {'upload', 'memory', 'family_note'}
-                or record.get('original_kind') not in {'text', 'audio'}
+                or record.get('collection') not in {'upload', 'memory', 'family_note', 'asset'}
+                or record.get('original_kind') not in {'text', 'audio', 'asset'}
                 or type(record.get('object_id')) is not str
                 or len(record['object_id']) > _MAX_ID
                 or type(record.get('original_sha256')) is not str
@@ -593,10 +694,23 @@ class OriginalDeletionJournal:
                 or type(record.get('occurred_at')) is not int or record['occurred_at'] < 0):
             raise OriginalDeletionError('Deletion journal record is invalid')
         _bounded_id(record['library_id'])
-        _canonical_uuid(record['object_id'])
+        if record['collection'] != 'asset':
+            _canonical_uuid(record['object_id'])
+            if record.get('asset_binding_json') is not None or record['original_kind'] == 'asset':
+                raise OriginalDeletionError('Unexpected asset binding')
         if record['collection'] != 'family_note' and record.get('family_binding_json') is not None:
             raise OriginalDeletionError('Unexpected family note binding')
-        if record['collection'] == 'family_note':
+        if record['collection'] == 'asset':
+            from .asset_tombstones import parse_asset_binding
+            binding = parse_asset_binding(record.get('asset_binding_json'))
+            if (record['object_id'] != str(binding['asset_id'])
+                    or type(record.get('asset_id')) is not int or record['asset_id'] != binding['asset_id']
+                    or record['original_sha256'] != binding['source_sha256']
+                    or record['library_id'] != binding['library_id']
+                    or record.get('batch') is not None or record.get('story_id') is not None
+                    or record['original_kind'] != 'asset'):
+                raise OriginalDeletionError('Asset withdrawal record is invalid')
+        elif record['collection'] == 'family_note':
             from .family_note_deletions import parse_family_binding
             parse_family_binding(record.get('family_binding_json'))
             if (record.get('batch') is not None or record.get('story_id') is not None
@@ -732,6 +846,7 @@ class OriginalDeletionJournal:
             meta, history = self._meta(ledger)
             if marker_seq > meta['head_seq'] or history[marker_seq] != marker_digest:
                 raise OriginalDeletionError('Primary marker is outside journal history')
+            self._verify_applied_assets(primary_db, ledger, marker_seq)
             pending = {}
             for row in ledger.execute('SELECT * FROM deletions WHERE seq>? ORDER BY seq', (marker_seq,)):
                 record = dict(row)
@@ -755,6 +870,16 @@ class OriginalDeletionJournal:
                 ledger.close()
             primary_db.rollback()
             primary_db.execute('PRAGMA query_only=OFF')
+
+    def _verify_applied_assets(self, primary_db, ledger, marker_seq):
+        """A current marker cannot excuse a revived or reused asset parent."""
+        for row in ledger.execute("SELECT * FROM deletions WHERE collection='asset' AND seq<=? ORDER BY seq",
+                                  (marker_seq,)):
+            record = dict(row)
+            self._verify_record(primary_db, record)
+            status = primary_db.execute('SELECT status FROM assets WHERE id=?', (record['asset_id'],)).fetchone()
+            if status is None or status[0] != 'deleted':
+                raise OriginalDeletionError('Applied asset withdrawal differs from restored primary')
 
     @staticmethod
     def _replayable_fk_violations(db, violations, pending):
@@ -835,7 +960,7 @@ class OriginalDeletionJournal:
         ``primary_db`` must be owned by an active ``BEGIN IMMEDIATE`` transaction.
         This method updates its marker but does not commit that transaction.
         """
-        if collection not in {'upload', 'memory', 'family_note'} or not (
+        if collection not in {'upload', 'memory', 'family_note', 'asset'} or not (
                 isinstance(row, Mapping) or callable(getattr(row, 'keys', None))):
             raise OriginalDeletionError('Deletion request is invalid')
         try:
@@ -851,12 +976,19 @@ class OriginalDeletionJournal:
             raise OriginalDeletionError('Primary secure deletion must be enabled first')
         marker_seq, marker_digest = self._primary_marker(primary_db)
         object_id = row.get('id')
-        _canonical_uuid(object_id)
-        if collection == 'family_note':
+        if collection == 'asset':
+            from .asset_tombstones import prepare_asset_tombstone
+            candidate = prepare_asset_tombstone(primary_db, object_id, row.get('library_id'), occurred_at)
+            if row.get('asset_binding_json') != candidate['asset_binding_json']:
+                raise OriginalDeletionError('Asset identity changed after preparation')
+            object_id = candidate['object_id']
+        elif collection == 'family_note':
+            _canonical_uuid(object_id)
             from .family_note_deletions import prepare_family_tombstone, preflight_family_erasure
             candidate = prepare_family_tombstone(primary_db, object_id, row.get('revision'), occurred_at)
             preflight_family_erasure(primary_db, candidate)
         else:
+            _canonical_uuid(object_id)
             current = _source_row(primary_db, collection, object_id)
             if current is None:
                 raise OriginalDeletionError('Original is already absent')
@@ -870,8 +1002,14 @@ class OriginalDeletionJournal:
         try:
             ledger.execute('BEGIN IMMEDIATE')
             meta, history = self._meta(ledger)
-            if collection == 'family_note' and meta['format'] != _FORMAT_V2:
+            if collection == 'family_note' and meta['format'] not in {_FORMAT_V2, _FORMAT_V3}:
                 raise OriginalDeletionError('Family note deletion requires journal version 2')
+            if collection == 'asset' and meta['format'] != _FORMAT_V3:
+                raise OriginalDeletionError('Asset withdrawal requires journal version 3')
+            if collection == 'asset' and ledger.execute(
+                    "SELECT 1 FROM deletions WHERE collection='asset' AND object_id=? AND library_id!=?",
+                    (object_id, candidate['library_id'])).fetchone():
+                raise OriginalDeletionError('Asset withdrawal history differs from current scope')
             existing_row=ledger.execute('''SELECT * FROM deletions
                 WHERE collection=? AND library_id=? AND object_id=?''',
                 (collection,candidate['library_id'],object_id)).fetchone()
@@ -885,8 +1023,10 @@ class OriginalDeletionJournal:
                 entry['digest'] = _record_digest(entry['prev_digest'], entry)
                 self._validate_record(entry)
                 names = list(_RECORD_COLUMNS)
-                if meta['format'] == _FORMAT_V2:
+                if meta['format'] in {_FORMAT_V2, _FORMAT_V3}:
                     names.append('family_binding_json')
+                if meta['format'] == _FORMAT_V3:
+                    names.append('asset_binding_json')
                 ledger.execute('INSERT INTO deletions (' + ','.join(names) + ') VALUES (' +
                     ','.join('?' for _ in names) + ')', tuple(entry.get(name) for name in names))
                 ledger.execute('UPDATE journal_meta SET head_seq=?,head_digest=? WHERE id=1',
@@ -948,6 +1088,7 @@ class OriginalDeletionJournal:
                 raise OriginalDeletionError('Journal changed after reviewed plan')
             if marker_seq > meta['head_seq'] or history[marker_seq] != marker_digest:
                 raise OriginalDeletionError('Restored primary marker is outside journal history')
+            self._verify_applied_assets(primary_db, ledger, marker_seq)
             if precommit_guard is not None:
                 precommit_guard(primary_db)
             count = 0
@@ -982,6 +1123,11 @@ class OriginalDeletionJournal:
                     ledger.close()
 
     def _apply_record(self, db, record):
+        if record['collection'] == 'asset':
+            self._validate_record(record)
+            from .asset_tombstones import apply_asset_tombstone
+            apply_asset_tombstone(db, record)
+            return
         if record['collection'] == 'family_note':
             self._validate_record(record)
             from .family_note_deletions import erase_family_note_original
@@ -1012,6 +1158,9 @@ class OriginalDeletionJournal:
     def _verify_record(self, db, record):
         self._validate_record(record)
         collection = record['collection']
+        if collection == 'asset':
+            from .asset_tombstones import verify_asset_record
+            return verify_asset_record(db, record)
         if collection == 'family_note':
             from .family_note_deletions import preflight_family_erasure
             return preflight_family_erasure(db, record)[2]
@@ -1030,8 +1179,11 @@ class OriginalDeletionJournal:
 
     @staticmethod
     def _public_record(record):
-        return {key: record[key] for key in ('seq','collection','library_id','object_id',
+        result = {key: record[key] for key in ('seq','collection','library_id','object_id',
             'original_kind','original_sha256','batch','asset_id','story_id','occurred_at','digest')}
+        if record['collection'] == 'asset':
+            result['asset_binding_json'] = record['asset_binding_json']
+        return result
 
 
 def _journal_fields(collection, row, digest, occurred_at):
@@ -1051,10 +1203,15 @@ def _record_digest(previous, record):
     if record['collection'] == 'family_note':
         body['family_binding_json'] = record['family_binding_json']
         body['format'] = _FORMAT_V2
+    elif record['collection'] == 'asset':
+        body['asset_binding_json'] = record['asset_binding_json']
+        body['format'] = _FORMAT_V3
     return _digest(bytes.fromhex(previous) + _json(body))
 
 
 def _same_tombstone(existing, candidate):
+    if existing.get('asset_binding_json') != candidate.get('asset_binding_json'):
+        return False
     if existing.get('family_binding_json') != candidate.get('family_binding_json'):
         return False
     return all(existing[name] == candidate[name] for name in (

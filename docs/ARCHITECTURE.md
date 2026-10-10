@@ -44,6 +44,13 @@ fixtures. Installed producer identity, native filesystem recovery and durable
 asset-deletion replay must be qualified before activation. See
 [activity grouping](ACTIVITY_GROUPING_DESIGN.md).
 
+The [asset-withdrawal lifecycle](ASSET_WITHDRAWAL_LIFECYCLE.md) adds an explicit
+V3 external journal capability. Exact source/library bindings survive primary
+rollback and offline restore replay; replay marks the retained parent deleted.
+Receipt-bound vector cleanup planning checks independently committed primary
+state. Original media, contributions, vector files and immutable records remain
+retained; physical erasure and live capability switching are separate gates.
+
 The isolated image worker now verifies checkpoint bytes around model loading
 and inference, observes the supported evaluation transform configuration, and
 requires probe/embed receipt consistency. Package versions and current source

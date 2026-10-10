@@ -218,6 +218,26 @@ class OriginalDeletionTests(unittest.TestCase):
             self.assertEqual(restored.execute('PRAGMA quick_check').fetchone()[0],'ok')
             self.assertEqual(self.journal.replay(restored)[3],0)
 
+    def test_v3_keeps_upload_and_memory_append_replay_compatible(self):
+        upload, _ = self._insert_upload()
+        memory, story, _book, _turns = self._insert_memory()
+        with self.fixture.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            self.journal.upgrade_asset_format(db, expected_head=self.journal.head())
+            db.commit()
+        backup = self.work_path / 'v3-contributions-backup.sqlite'
+        _snapshot(self.fixture.path, backup)
+        self._live_delete_upload(upload)
+        self._live_delete_memory(memory, story)
+        _, restored = self._restore(backup)
+        with closing(restored):
+            self.assertEqual(self.journal.replay(restored)[3], 2)
+            self.assertIsNone(restored.execute('SELECT id FROM access_upload_annotations WHERE id=?',
+                                               (upload,)).fetchone())
+            self.assertIsNone(restored.execute('SELECT id FROM access_memory_contributions WHERE id=?',
+                                               (memory,)).fetchone())
+            self.assertEqual(self.journal.replay(restored)[3], 0)
+
     def test_memory_delete_scrubs_ai_copies_but_preserves_story_book_and_manual_turns(self):
         ident,story_id,book_id,conversation_ids=self._insert_memory()
         backup=self.work_path / 'memory-backup.sqlite'
