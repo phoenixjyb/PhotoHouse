@@ -272,8 +272,10 @@ and parent asset tombstones are retained. The planner performs no unlink or
 database mutation. The new [V3 asset-withdrawal contract](ASSET_WITHDRAWAL_LIFECYCLE.md)
 adds content-free exact asset bindings and offline restore replay. Its durable
 planner wrapper independently verifies committed primary status/marker before
-reading any vector. Path revalidation, pending-publication cleanup and a durable
-filesystem executor remain required before physical erasure. No live journal
+reading any vector. The optional [durable filesystem executor](VECTOR_ERASURE_LIFECYCLE.md)
+now covers known pending/final files using an immutable plan and no-overwrite
+quarantine claims, while retaining task and publication evidence. Native
+qualification and explicit reconciliation remain required. No live journal
 has been upgraded and no media deletion route is activated.
 
 The existing approved image worker separately pins payload bytes, start time

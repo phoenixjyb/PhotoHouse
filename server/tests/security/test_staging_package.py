@@ -59,6 +59,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/visual_candidates.py',
             'backend/app/access/visual_vector_artifacts.py',
             'backend/app/access/visual_vector_cleanup.py',
+            'backend/app/access/visual_vector_erasure.py',
             'backend/app/access/asset_tombstones.py',
             'backend/app/access/visual_vector_loader.py',
             'backend/app/access/visual_vector_publication.py',
@@ -129,6 +130,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_publication import VectorPublicationStore, verify_visual_publication_schema\n'
                 'from app.access.visual_vector_worker import ApprovedImageClaim, approved_vector_store\n'
                 'from app.access.visual_vector_cleanup import plan_asset_vector_cleanup\n'
+                'from app.access.visual_vector_erasure import VectorErasureStore, verify_visual_erasure_schema\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'

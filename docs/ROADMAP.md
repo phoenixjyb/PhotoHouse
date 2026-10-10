@@ -34,9 +34,13 @@ by guessing those values. The V3 asset-withdrawal source contract now adds exact
 content-free tombstones, atomic offline restore replay and receipt-bound
 all-version cleanup planning. It preserves legacy journal digests and rejects
 uncommitted primary status. No live format upgrade or physical erasure is enabled.
-The next slice is a durable filesystem executor covering prepared publications
-as well as completed artifacts, then native qualification and the protected
-reviewed picker. Journal and actual-worker recovery pass generated
+The optional filesystem executor now covers prepared publications and completed
+artifacts with a committed manifest, checksum/identity checks and recoverable
+no-overwrite quarantine claims. Original media and immutable metadata remain
+retained; interrupted task reconciliation is separate. The next gates are native
+qualification, additive schema/restore compatibility and the protected reviewed
+picker. See [vector erasure](VECTOR_ERASURE_LIFECYCLE.md).
+Journal and actual-worker recovery pass generated
 process-death tests;
 Windows filesystem qualification and actual vector coverage remain open.
 The source image worker now hashes the inspected checkpoint before and after

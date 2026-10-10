@@ -3,7 +3,8 @@
 ## Visual-vector publication and lifecycle checks
 
 The ordinary `api` profile includes the optional vector publication journal,
-read-only all-version cleanup planner, approved-task adapter and CPU-only
+read-only all-version cleanup planner, optional durable vector-erasure journal,
+approved-task adapter and CPU-only
 image-worker claim/publication checks.
 They use generated SQLite/NPY fixtures and the standard library, with no model
 or live service. The publication suite also runs one isolated synthetic child
@@ -17,6 +18,11 @@ upgrade and independently committed receipt checks for cleanup planning. It uses
 private disposable databases and generated files; withdrawal is a retained-parent
 status change, with no original/vector unlink. See
 [asset withdrawal](ASSET_WITHDRAWAL_LIFECYCLE.md).
+
+The separate [vector-erasure suite](VECTOR_ERASURE_LIFECYCLE.md) performs actual
+filesystem cleanup only inside generated private temporary directories. It
+checks complete manifests, known publication links, checksum/refusal boundaries
+and resumable quarantine states. No household files or original media are deleted.
 
 The actual-worker synthetic suite also dies after file publication and then
 restarts with the same task claim, without activating a provider. It verifies
@@ -38,6 +44,7 @@ compatibility, dependency provenance and GPU execution.
   server/tests/security/test_visual_vector_worker.py \
   server/tests/security/test_immutable_image_worker.py \
   server/tests/security/test_visual_vector_cleanup.py \
+  server/tests/security/test_visual_vector_erasure.py \
   server/tests/security/test_asset_tombstones.py \
   server/tests/security/test_image_worker_claims.py \
   server/tests/security/test_image_embedding_receipts.py \

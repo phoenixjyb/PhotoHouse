@@ -107,6 +107,7 @@ FILES = (
     'backend/app/access/visual_candidates.py',
     'backend/app/access/visual_vector_artifacts.py',
     'backend/app/access/visual_vector_cleanup.py',
+    'backend/app/access/visual_vector_erasure.py',
     'backend/app/access/visual_vector_loader.py',
     'backend/app/access/visual_vector_publication.py',
     'backend/app/access/visual_vector_worker.py',

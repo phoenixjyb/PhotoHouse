@@ -81,8 +81,10 @@ changes visible only in the caller's uncommitted transaction are insufficient.
 It then uses the bounded all-version vector planner, preserving metadata and
 files. A status-only update, stale journal marker or changed source refuses.
 
-This planner performs no physical cleanup. An executor must revalidate paths,
-every pending/final vector version and publication intent under exclusive
-maintenance, persist progress and survive interruption. Native Windows journal/
+This planner performs no physical cleanup. The optional
+[derived-vector executor](VECTOR_ERASURE_LIFECYCLE.md) now binds complete ready
+and pending-publication file sets to a durable plan, revalidates them under the
+primary writer reservation and resumes known quarantine states. It retains
+originals, immutable metadata and interrupted task claims. Native Windows journal/
 filesystem qualification, additive vector migration, installed producer profile,
 protected similarity route and reviewed picker remain delivery gates.

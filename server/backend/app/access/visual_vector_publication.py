@@ -272,6 +272,12 @@ class VectorPublicationStore:
             self.db.set_authorizer(None)
 
     def _guard(self, record, claim):
+        # A completed withdrawal also fences future writes after cleanup releases
+        # its SQLite reservation. This invariant cannot be weakened by a callback.
+        parent = self.db.execute("SELECT status FROM assets WHERE id=?",
+                                 (int(record.asset_id),)).fetchone()
+        if parent is None or parent[0] not in (None, "active"):
+            raise VectorPublicationRefused()
         if self._callback(self.guard, record, claim, read_only=True) is not True:
             raise VectorPublicationRefused()
 

@@ -81,7 +81,7 @@ def connect(path):
 
 
 def base_schema(db):
-    db.execute("CREATE TABLE assets(id INTEGER PRIMARY KEY)")
+    db.execute("CREATE TABLE assets(id INTEGER PRIMARY KEY,status TEXT)")
     db.execute("INSERT INTO assets(id) VALUES(1)")
     db.execute("CREATE TABLE synthetic_tasks(record_id TEXT PRIMARY KEY, asset_id TEXT NOT NULL, "
                "claim_sha256 TEXT NOT NULL, status TEXT NOT NULL)")

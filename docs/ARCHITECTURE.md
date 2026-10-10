@@ -48,8 +48,11 @@ The [asset-withdrawal lifecycle](ASSET_WITHDRAWAL_LIFECYCLE.md) adds an explicit
 V3 external journal capability. Exact source/library bindings survive primary
 rollback and offline restore replay; replay marks the retained parent deleted.
 Receipt-bound vector cleanup planning checks independently committed primary
-state. Original media, contributions, vector files and immutable records remain
-retained; physical erasure and live capability switching are separate gates.
+state. The optional [vector-erasure coordinator](VECTOR_ERASURE_LIFECYCLE.md)
+adds a durable primary manifest and no-overwrite quarantine claims for completed
+and interrupted publications. Original media, contributions and immutable
+records remain retained. Installed cleanup, native Windows qualification and
+live capability switching are separate gates.
 
 The isolated image worker now verifies checkpoint bytes around model loading
 and inference, observes the supported evaluation transform configuration, and
