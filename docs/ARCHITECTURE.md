@@ -35,8 +35,9 @@ are resolved in one SQLite snapshot before file access; source and exact model/
 preprocessing identity, file and component checksums are required. The loader
 returns candidate IDs only and never invokes a model or global index.
 The optional table has no migration or producer yet, and similarity is not
-exposed in the product. Worker publication, crash reconciliation and deletion
-enumeration must be qualified before activation. See
+exposed in the product. A guarded publication journal and all-version cleanup
+planner are tested with synthetic data. Producer identity, native filesystem
+recovery and durable asset-deletion replay must be qualified before activation. See
 [activity grouping](ACTIVITY_GROUPING_DESIGN.md).
 
 ## Voice pipeline

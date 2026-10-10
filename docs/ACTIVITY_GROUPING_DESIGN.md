@@ -218,6 +218,48 @@ that an unqualified producer actually used the declared checkpoint.
 
 ## Remaining integration architecture
 
+### Implemented publication and cleanup contracts
+
+[`VectorPublicationStore`](../server/backend/app/access/visual_vector_publication.py)
+adds an optional primary-database publication journal. A prepared intent binds
+the canonical immutable record to the worker's exact claim digest before any
+file writes. The coordinator requires a dedicated SQLite connection, both exact
+schema contracts, an approval/source/task guard and a task finalizer. The guard
+runs under a writer reservation before filesystem access; the finalizer runs in
+the same transaction as the ready artifact and committed intent. Callback
+transaction control is refused, and guards cannot change rows. These callbacks
+are trusted worker integration points, not a replacement for authorization or
+proof that a model produced the declared vector.
+
+Publication writes a bounded, checksummed stage with exclusive creation and
+file sync, then uses a same-volume no-overwrite hardlink to the immutable path.
+Recovery can settle the exact two links left by process death, or reuse a
+verified final/staged file without producing another vector. Only prepared
+intents are visited, at most 128 per call (32 by default); completed records are
+not reprocessed. A record-ID cursor advances past unavailable intents, so they
+cannot monopolize later batches. Conflicting, malformed or partial files remain unavailable and
+are preserved for inspection. Recovery does not retry a model, reset tasks or
+infer missing provenance. The synthetic suite includes a subprocess exiting
+immediately after the link, then reopening the database and recovering.
+POSIX directory entries are synced; Windows filesystem and power-loss behavior
+still require native qualification. No live worker invokes this coordinator.
+
+[`plan_asset_vector_cleanup`](../server/backend/app/access/visual_vector_cleanup.py)
+is a read-only planner for an already-deleted asset inside a caller-owned
+transaction. It validates every version, capped at 128 rather than truncated,
+and reports safely missing files idempotently. It refuses active or merely
+unassigned assets, drifted schemas and unsafe/corrupt files. Immutable records
+and parent asset tombstones are retained. The planner performs no unlink or
+database mutation: an authorized durable asset tombstone, restore replay and
+path revalidation at execution are still required before erasure. Current
+protected deletion journals do not yet carry asset tombstones.
+
+The existing approved image worker separately pins payload bytes, start time
+and retry count at claim, then fences publication, task completion and failure
+updates with those same fields. A changed or cancelled task stays untouched.
+This fixes claim handling on existing revisions; it does not replace the
+legacy publication path or enable the optional vector journal.
+
 Use a new versioned identity table in the primary SQLite database, paired with
 immutable derived vector files. This is a design decision for a later additive
 migration; the optional contract above does not install the table or change a worker.
@@ -239,9 +281,9 @@ Replacement produces a new path and row; it does not overwrite an old vector.
 The approved image worker currently publishes `embeddings/<asset-id>.npy`, then
 inserts its row and completes its task in a transaction. Ordinary failures
 remove the published file, but a hard crash can strand it. The new path therefore
-needs a publication journal and bounded reconciliation before it is exposed.
-Deletion cleanup must enumerate all versioned artifacts rather than only the
-legacy embedding path. Tombstoning and unassignment must exclude media from
+needs integration with the tested publication journal before it is exposed.
+Deletion execution must use all versioned artifacts from the planner rather
+than only the legacy embedding path. Tombstoning and unassignment must exclude media from
 every protected lookup immediately, independently of physical file cleanup.
 
 Implement and qualify in this order:
@@ -250,9 +292,12 @@ Implement and qualify in this order:
    after publication and deletion lifecycle rules are ready. Preserve ordinary
    worker behavior on a0/b1/c2/d1. Visual lookup remains unavailable when the
    new table or a qualified profile is absent.
-2. Propagate the verified worker profile, publish versioned files/rows, and prove
-   interruption recovery, reindex immutability and deletion enumeration with
-   generated media. Add no legacy identity backfill.
+2. Verify the checkpoint and realized decoder/OpenCLIP preprocessing in the
+   child receipt, then propagate that profile into the tested publisher. The
+   current receipt has provider/device/dimension and a caller-supplied version,
+   so it does not yet prove preprocessing identity. Wire exact task guards and
+   finalize hooks, qualify native interruption recovery, and add durable asset
+   tombstone/replay execution using the cleanup planner. Add no legacy backfill.
 3. Wire the protected reader to a verified producer profile. Its current-library
    cohort and source/identity checks are implemented; qualify actual coverage
    and lifecycle behavior without a global index or ID-prefix truncation.

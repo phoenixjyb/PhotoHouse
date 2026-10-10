@@ -151,6 +151,63 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         self.assertTrue(stored.is_file())
         np.testing.assert_array_equal(np.load(stored, allow_pickle=False), [0.25, 0.5, 0.75])
 
+    def test_claim_pins_reject_task_mutation_before_publication(self):
+        def fake_decode(source, stage, derived, deadline, stop_file):
+            target = stage / '1024.jpg'
+            Image.new('RGB', (32, 32), (100, 20, 30)).save(target)
+            return target
+
+        def fake_embed(image, stage, args, checkpoint, deadline):
+            vector = np.array([0.25, 0.5, 0.75], dtype=np.float32)
+            target = stage / 'vector.npy'
+            with target.open('wb') as stream:
+                np.save(stream, vector, allow_pickle=False)
+            meta = {'provider': 'open_clip', 'effective_device': 'cpu', 'dimension': 3,
+                    'model_version': args.model_version}
+            return vector, meta, hashlib.sha256(target.read_bytes()).hexdigest()
+
+        args = self.args()
+        mutations = {
+            'payload_json': json.dumps({'modality': 'image', 'asset_id': 1}),
+            'retry_count': 8,
+            'started_at': '2001-02-03 04:05:06',
+            'cancel_requested': 1,
+        }
+        with patch.object(worker, '_run_bounded_decoder', side_effect=fake_decode), \
+             patch.object(worker, '_run_embed_child', side_effect=fake_embed):
+            for field, changed_value in mutations.items():
+                with self.subTest(field=field):
+                    task_id = self.task()
+                    candidate = worker._claim_one(self.dbpath)
+                    self.assertEqual(candidate['claimed_payload_json'],
+                                     '{"asset_id": 1, "modality": "image"}')
+                    self.assertEqual(candidate['claim_retry_count'], 0)
+                    self.assertIsNotNone(candidate['claim_started_at'])
+                    self.db.execute(f'UPDATE tasks SET {field}=? WHERE id=?',
+                                    (changed_value, task_id))
+                    self.db.commit()
+
+                    with self.assertRaisesRegex(ValueError, 'task_ownership_lost'):
+                        worker._process_task(candidate, self.dbpath, self.originals,
+                            self.derived, args, self.checkpoint,
+                            worker.identity(self.checkpoint), self.stop)
+
+                    fields = ('state,retry_count,payload_json,started_at,cancel_requested,'
+                              'last_error,finished_at,scheduled_at')
+                    before_failure = self.db.execute(
+                        f'SELECT {fields} FROM tasks WHERE id=?', (task_id,)).fetchone()
+                    self.assertEqual(worker.record_failure(
+                        self.dbpath, candidate, ValueError('task_ownership_lost')), 0)
+                    after_failure = self.db.execute(
+                        f'SELECT {fields} FROM tasks WHERE id=?', (task_id,)).fetchone()
+                    self.assertEqual(after_failure, before_failure)
+                    state = after_failure[0]
+                    self.assertNotEqual(state, 'finished')
+                    self.assertEqual(self.db.execute('SELECT count(*) FROM embeddings').fetchone()[0], 0)
+                    self.assertFalse((self.derived / 'embeddings' / '1.npy').exists())
+                    self.db.execute('DELETE FROM tasks WHERE id=?', (task_id,))
+                    self.db.commit()
+
     def test_changed_source_hash_never_finishes_and_failure_is_sanitized(self):
         task_id = self.task()
         candidate = worker._claim_one(self.dbpath)
@@ -159,7 +216,8 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker._process_task(candidate, self.dbpath, self.originals, self.derived,
                                  args, self.checkpoint, worker.identity(self.checkpoint), self.stop)
-        worker.record_failure(self.dbpath, task_id, candidate['retry_count'], ValueError('source_fingerprint_mismatch'))
+        self.assertEqual(worker.record_failure(
+            self.dbpath, candidate, ValueError('source_fingerprint_mismatch')), 1)
         state, retries, error = self.db.execute('SELECT state,retry_count,last_error FROM tasks WHERE id=?',
                                                 (task_id,)).fetchone()
         self.assertEqual((state, retries, error), ('failed', 1, 'source_fingerprint_mismatch'))

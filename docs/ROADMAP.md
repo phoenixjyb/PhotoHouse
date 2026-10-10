@@ -28,9 +28,15 @@ contract and a protected, bounded library-scoped reader. These are source-only
 contracts with synthetic fixtures: there is no migration, producer, route or
 picker activation. Legacy embeddings lack checkpoint and preprocessing identity
 and must not be promoted by guessing those values. The next slice is verified
-worker identity propagation, journaled immutable publication, interruption
-recovery and deletion enumeration; then qualify native coverage and the reviewed
-picker. Preserve the current capture-day picker until those gates pass.
+worker checkpoint/preprocessing receipts and wiring into the tested publication
+journal, plus durable asset-tombstone replay using the all-version cleanup
+planner. Journal recovery currently passes generated process-death tests;
+Windows filesystem qualification and actual vector coverage remain open.
+The existing image worker now fences task completion and failure against the
+exact claimed payload/start/retry fields. These are source changes; installed
+workers still use their previously verified release. Preserve the current
+capture-day picker until producer, lifecycle, native coverage and reviewed
+picker gates pass.
 See [activity grouping](ACTIVITY_GROUPING_DESIGN.md) and
 [provider qualification](MODEL_QUALIFICATION.md).
 

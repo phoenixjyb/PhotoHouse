@@ -192,6 +192,7 @@ def matching_candidates_with_skips(db):
             continue
         candidates.append({
             'task_id': task_id, 'retry_count': retry_count, 'priority': priority,
+            'payload_json': raw_payload,
             **asset,
         })
     return candidates, skipped
@@ -490,6 +491,19 @@ def _claim_one(database):
                 last_error=NULL WHERE id=? AND type='embed' AND state='pending'
                   AND cancel_requested=0''', (candidate['task_id'],)).rowcount
             if changed == 1:
+                claim = db.execute('''SELECT payload_json,started_at,retry_count,state,cancel_requested
+                    FROM tasks WHERE id=? AND type='embed' ''', (candidate['task_id'],)).fetchone()
+                if (claim is None or claim[0] != candidate['payload_json']
+                        or claim[2] != candidate['retry_count']
+                        or claim[3:] != ('running', 0)):
+                    db.rollback()
+                    raise Refused('Claimed task changed during acquisition')
+                candidate.update({
+                    'claimed_payload_json': claim[0],
+                    'claim_started_at': claim[1],
+                    'claim_retry_count': claim[2],
+                    'retry_count': claim[2],
+                })
                 db.commit(); return candidate
         db.rollback()
     return None
@@ -584,14 +598,22 @@ def _process_task(candidate, database, originals, derived, args, checkpoint,
         with closing(_sqlite(database, writable=True)) as db:
             db.execute('BEGIN IMMEDIATE')
             validate_schema(db)
+            task = db.execute('''SELECT type,state,cancel_requested,payload_json,started_at,retry_count
+                FROM tasks WHERE id=?''', (candidate['task_id'],)).fetchone()
+            expected_task = (
+                'embed', 'running', 0, candidate['claimed_payload_json'],
+                candidate['claim_started_at'], candidate['claim_retry_count'],
+            )
+            if task != expected_task:
+                db.rollback(); raise ValueError('task_ownership_lost')
             if not _scope_still_valid(db, candidate):
-                db.execute("UPDATE tasks SET state='failed',finished_at=CURRENT_TIMESTAMP,last_error='approval_scope_changed' WHERE id=? AND state='running'",
-                           (candidate['task_id'],))
+                db.execute("""UPDATE tasks SET state='failed',finished_at=CURRENT_TIMESTAMP,
+                    last_error='approval_scope_changed' WHERE id=? AND type='embed'
+                    AND state='running' AND cancel_requested=0 AND payload_json=?
+                    AND started_at=? AND retry_count=?""",
+                    (candidate['task_id'], candidate['claimed_payload_json'],
+                     candidate['claim_started_at'], candidate['claim_retry_count']))
                 db.commit(); return False
-            task = db.execute('''SELECT state,cancel_requested FROM tasks WHERE id=? AND type='embed' ''',
-                              (candidate['task_id'],)).fetchone()
-            if task != ('running', 0):
-                db.rollback(); raise ValueError('task_state_changed')
             if db.execute("SELECT 1 FROM embeddings WHERE asset_id=? AND modality='image'",
                           (candidate['asset_id'],)).fetchone():
                 db.rollback(); raise ValueError('embedding_record_already_exists')
@@ -604,8 +626,11 @@ def _process_task(candidate, database, originals, derived, args, checkpoint,
                 VALUES (?,'image',?,?,?,?,?,?)''',
                 (candidate['asset_id'], args.image_model, int(vector.shape[0]), str(final_path),
                  vector_checksum, args.device, args.model_version))
-            done = db.execute("UPDATE tasks SET state='finished',finished_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=? AND state='running' AND cancel_requested=0",
-                              (candidate['task_id'],)).rowcount
+            done = db.execute("""UPDATE tasks SET state='finished',finished_at=CURRENT_TIMESTAMP,
+                last_error=NULL WHERE id=? AND type='embed' AND state='running'
+                AND cancel_requested=0 AND payload_json=? AND started_at=? AND retry_count=?""",
+                (candidate['task_id'], candidate['claimed_payload_json'],
+                 candidate['claim_started_at'], candidate['claim_retry_count'])).rowcount
             if done != 1:
                 db.rollback(); raise ValueError('task_ownership_lost')
             db.commit(); committed = True
@@ -655,19 +680,23 @@ def _failure_code(error):
     return 'worker_error'
 
 
-def record_failure(database, task_id, retry_count, error):
+def record_failure(database, candidate, error):
     code = _failure_code(error)
     permanent = isinstance(error, (ValueError, PermissionError, FileNotFoundError))
-    attempts = retry_count + 1
+    attempts = candidate['claim_retry_count'] + 1
     state = 'failed' if permanent else 'pending' if attempts < MAX_ATTEMPTS else 'dead'
     with closing(_sqlite(database, writable=True)) as db:
         db.execute('BEGIN IMMEDIATE')
-        db.execute('''UPDATE tasks SET state=?,retry_count=?,last_error=?,started_at=NULL,
+        changed = db.execute('''UPDATE tasks SET state=?,retry_count=?,last_error=?,started_at=NULL,
           finished_at=CASE WHEN ? IN ('failed','dead') THEN CURRENT_TIMESTAMP ELSE NULL END,
           scheduled_at=CASE WHEN ?='pending' THEN datetime('now','+60 seconds') ELSE scheduled_at END
-          WHERE id=? AND state='running' AND type='embed' ''',
-          (state, attempts, code, state, state, task_id))
+          WHERE id=? AND type='embed' AND state='running' AND cancel_requested=0
+            AND payload_json=? AND started_at=? AND retry_count=?''',
+          (state, attempts, code, state, state, candidate['task_id'],
+           candidate['claimed_payload_json'], candidate['claim_started_at'],
+           candidate['claim_retry_count'])).rowcount
         db.commit()
+    return changed
 
 
 def _verified_runtime(service, device):
@@ -795,7 +824,7 @@ def run(args):
             except Exception as error:
                 if candidate is None:
                     raise
-                record_failure(database, candidate['task_id'], candidate['retry_count'], error)
+                record_failure(database, candidate, error)
                 if args.once:
                     break
             if candidate is None:

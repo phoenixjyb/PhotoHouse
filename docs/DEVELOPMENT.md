@@ -1,5 +1,28 @@
 # Development and public release qualification
 
+## Visual-vector publication and lifecycle checks
+
+The ordinary `api` profile includes the optional vector publication journal,
+read-only all-version cleanup planner and CPU-only image-worker claim checks.
+They use generated SQLite/NPY fixtures and the standard library, with no model
+or live service. The publication suite also runs one isolated synthetic child
+which exits after file linking, then verifies journal recovery from a reopened
+database. This is process-death evidence; Windows filesystem and power-loss
+qualification remain separate.
+
+```sh
+.venv/bin/python -m pytest --noconftest -c config/pytest.ini -q \
+  server/tests/security/test_visual_vector_publication.py \
+  server/tests/security/test_visual_vector_cleanup.py \
+  server/tests/security/test_image_worker_claims.py
+```
+
+The existing image-worker media suite additionally needs NumPy/Pillow from the
+optional worker test environment. No synthetic schema helper is a migration or
+live activation command. See [activity grouping](ACTIVITY_GROUPING_DESIGN.md).
+
+## Public source qualification history
+
 This public monorepo is PhotoHouse's development home. The reviewed initial
 import at `3140f1729872f689a276dcf8ecbfc0b9777c456f` passed hosted API and
 Android CI through PR #1: 674 API tests with 352 subtests, 54 tooling tests,

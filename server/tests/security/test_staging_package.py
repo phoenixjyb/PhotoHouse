@@ -58,7 +58,9 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/upload_transport.py',
             'backend/app/access/visual_candidates.py',
             'backend/app/access/visual_vector_artifacts.py',
+            'backend/app/access/visual_vector_cleanup.py',
             'backend/app/access/visual_vector_loader.py',
+            'backend/app/access/visual_vector_publication.py',
             'backend/app/access/visual_vector_schema.py',
             'backend/app/access/windows_tts.py',
             'backend/app/home_catalog.py',
@@ -122,6 +124,8 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
                 'from app.access.visual_vector_schema import sqlite_visual_vector_contract\n'
+                'from app.access.visual_vector_publication import VectorPublicationStore, verify_visual_publication_schema\n'
+                'from app.access.visual_vector_cleanup import plan_asset_vector_cleanup\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
