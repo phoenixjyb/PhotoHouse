@@ -70,6 +70,14 @@ No task claim is reset and no prepared intent is silently marked completed.
 Interrupted publication tasks require separate explicit reconciliation; keeping
 the evidence can intentionally block optional producer startup.
 
+The cleanup manifest lives in the primary database, unlike the external V3
+withdrawal receipt. Restoring a backup from before plan creation can therefore
+lose the manifest while leaving quarantine files. Withdrawal replay alone does
+not recover that file closure. Before activation, preserve reviewed manifests
+in an independent recovery catalog and qualify their restoration together with
+publication metadata. An older primary backup alone cannot establish that every
+derived file has been removed; this executor never guesses or scans for orphans.
+
 ## Delivery gates
 
 Generated local tests establish source and process-interruption behavior only.
