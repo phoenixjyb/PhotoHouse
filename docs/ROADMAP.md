@@ -1,5 +1,20 @@
 # Product roadmap
 
+## October 11 native qualification follow-up
+
+The bounded vector cleanup/catalog qualification at `1db984c` was staged and
+run on Windows. The package's 172 source files and native PowerShell syntax
+were verified, but its child failed before the first vector file was created.
+The generated path needed 294 characters with long-path support disabled;
+the previous supervisor did not retain the child's error. No live data,
+model, worker or service was changed, and native acceptance remains open.
+
+The source runner now checks legacy Windows path budgets before mutation and
+retains sanitized fixture failure receipts. The next operation is one fresh
+short-layout synthetic qualification, followed by additive schema/restore and
+installed producer checks. Preserve the capture-day story picker until the
+visual-discovery delivery gates pass.
+
 ## October 10 installed release and next gates
 
 The protected API/Web release at `489460b` has passed Windows synthetic

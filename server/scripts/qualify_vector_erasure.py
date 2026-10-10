@@ -5,7 +5,7 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import shutil
 import sqlite3
 import struct
@@ -46,6 +46,95 @@ SOURCE = (b"\x89PNG\r\n\x1a\n" +
           _png_chunk(b"IEND", b""))
 SOURCE_SHA = hashlib.sha256(SOURCE).hexdigest()
 IDENTITY = VectorSpaceIdentity("a" * 64, "b" * 64, "qualification-space", "v1", 2, "unit_l2")
+CASES = ("complete-and-crash", "catalog-restore", "corrupt-quarantine")
+FAILURE_PHASES = CASES + ("report",)
+FAILURE_CLASSES = ("OSError", "sqlite3.Error", "ValueError", "RuntimeError", "Exception")
+
+
+def _check_windows_paths(target, *, windows=None):
+    """Keep generated fixtures within legacy limits without changing host policy."""
+    if windows is None:
+        windows = os.name == "nt"
+    if not windows:
+        return
+    root = PureWindowsPath(target)
+    digest = "a" * 64
+    files = [root / name for name in ("qualification-report.json", "qualification-failure.json")]
+    for case in CASES:
+        fixture = root / case
+        files.extend(fixture / name for name in ("synthetic-original.png", "primary.sqlite",
+            "deletions.sqlite", "older-primary.sqlite", "restored-primary.sqlite"))
+        files.append(fixture / "catalog" / (digest + ".json"))
+        vectors = fixture / "vectors" / "image-vectors"
+        files.extend((vectors / digest / (digest + ".npy"),
+            vectors / ".staging" / (digest + ".npy"),
+            vectors / ".erasing" / digest / "000.npy"))
+    files.extend(PureWindowsPath(str(path) + suffix) for path in tuple(files)
+                 if path.suffix == ".sqlite" for suffix in ("-journal", "-wal", "-shm"))
+    directories = {root, root.parent}
+    for path in files:
+        directories.update(parent for parent in path.parents if parent == root or root in parent.parents)
+    # MAX_PATH includes the terminating NUL. Directory creation also reserves
+    # room for an 8.3 child name (the legacy 248-character directory limit).
+    units = lambda path: len(str(path).encode("utf-16le")) // 2
+    if any(units(path) > 259 for path in files) or any(units(path) > 247 for path in directories):
+        raise ValueError("windows_fixture_path_too_long")
+    if any(units(path) > 259 for path in (sys.executable, Path(__file__).resolve())):
+        raise ValueError("windows_launch_path_too_long")
+
+
+def _validate_output(target):
+    if not target.is_absolute() or ".." in target.parts or target.exists() or os.path.lexists(target):
+        raise ValueError("Output must be an absent absolute directory")
+    require_private_directory(target.parent)
+    _check_windows_paths(target)
+
+
+def _failure_receipt(target, phase, error):
+    """Best-effort diagnostics for our newly created synthetic output only."""
+    require_private_directory(target)
+    kind = next((label for cls, label in ((OSError, "OSError"), (sqlite3.Error, "sqlite3.Error"),
+        (ValueError, "ValueError"), (RuntimeError, "RuntimeError")) if isinstance(error, cls)), "Exception")
+    code = getattr(error, "winerror", None)
+    if type(code) is not int or not 0 <= code <= 65535:
+        code = None
+    receipt = {"status": "failed", "source_only": True, "phase": phase,
+               "exception_class": kind, "winerror": code}
+    path = target / "qualification-failure.json"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "w", encoding="ascii", newline="\n") as stream:
+        require_private_file(path)
+        json.dump(receipt, stream, sort_keys=True, separators=(",", ":"))
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def _retain_failure(target, phase, error):
+    try:
+        _failure_receipt(target, phase, error)
+    except Exception:
+        pass  # Diagnostics must never replace the original failure.
+
+
+def _read_failure(target):
+    try:
+        path = target / "qualification-failure.json"
+        require_private_file(path)
+        with path.open("rb") as stream:
+            raw = stream.read(4097)
+        if not 0 < len(raw) <= 4096:
+            return None
+        receipt = json.loads(raw)
+        if (type(receipt) is not dict or set(receipt) != {"status", "source_only", "phase", "exception_class", "winerror"}
+                or receipt["status"] != "failed" or receipt["source_only"] is not True
+                or receipt["phase"] not in FAILURE_PHASES or receipt["exception_class"] not in FAILURE_CLASSES
+                or (receipt["winerror"] is not None and
+                    (type(receipt["winerror"]) is not int or not 0 <= receipt["winerror"] <= 65535))):
+            return None
+        return receipt
+    except (OSError, ValueError, TypeError, RecursionError):
+        return None
 
 
 def _sha(data):
@@ -262,32 +351,35 @@ def _case_corrupt_refusal(root):
 
 def run(output: Path | str) -> dict:
     target = Path(output)
-    if not target.is_absolute() or ".." in target.parts or target.exists() or os.path.lexists(target):
-        raise ValueError("Output must be an absent absolute directory")
-    require_private_directory(target.parent)
+    _validate_output(target)
     _private_dir(target)
-    _case_crash(target)
-    _case_restore(target)
-    _case_corrupt_refusal(target)
+    for phase, check in zip(CASES, (_case_crash, _case_restore, _case_corrupt_refusal)):
+        try:
+            check(target)
+        except Exception as error:
+            _retain_failure(target, phase, error)
+            raise
     report = {"source_only": True, "models_loaded": False, "services_changed": False,
         "native_windows": os.name == "nt", "power_loss_qualified": False,
         "cases_passed": ["complete_manifest_catalog_and_quarantine_link_process_recovery",
             "restore_older_primary_from_archived_closure_and_resume", "corrupt_quarantine_refused"]}
     report_path = target / "qualification-report.json"
-    descriptor = os.open(report_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(descriptor, "w", encoding="ascii", newline="\n") as stream:
-        json.dump(report, stream, sort_keys=True, separators=(",", ":"))
-        stream.write("\n")
-        stream.flush()
-        os.fsync(stream.fileno())
+    try:
+        descriptor = os.open(report_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="ascii", newline="\n") as stream:
+            json.dump(report, stream, sort_keys=True, separators=(",", ":"))
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+    except Exception as error:
+        _retain_failure(target, "report", error)
+        raise
     return report
 
 
 def _bounded_report(target: Path):
     """Supervise a generated child; split out for portable controller checks."""
-    if not target.is_absolute() or ".." in target.parts or target.exists() or os.path.lexists(target):
-        raise ValueError("Output must be an absent absolute directory")
-    require_private_directory(target.parent)
+    _validate_output(target)
     from bounded_windows_job import CheckRefused, WindowsAPI, run_bounded
     system_root = os.environ.get("SystemRoot")
     if not system_root:
@@ -304,7 +396,9 @@ def _bounded_report(target: Path):
         environment, str(target.parent), timeout_seconds=900, memory_limit=2 * 1024**3,
         process_limit=4, minimum_free_ram=8 * 1024**3)
     if code != 0:
-        raise CheckRefused("qualification_child_failed")
+        failure = _read_failure(target)
+        suffix = "" if failure is None else ":" + json.dumps(failure, sort_keys=True, separators=(",", ":"))
+        raise CheckRefused("qualification_child_failed" + suffix)
     report_path = target / "qualification-report.json"
     require_private_file(report_path)
     if not 0 < report_path.stat().st_size <= 8192:

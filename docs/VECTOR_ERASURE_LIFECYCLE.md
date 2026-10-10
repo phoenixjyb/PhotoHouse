@@ -118,6 +118,21 @@ Private directory/ACL inheritance and stable Windows file birthtime are exercise
 by the actual source functions. A Mac run reports `native_windows=false` and
 cannot establish Windows acceptance. See [Windows checks](WINDOWS_CPU_CHECKS.md).
 
+The runner now refuses generated Windows paths which exceed legacy limits
+before creating output or launching a child. Choose a short private candidate
+and output name; no registry change or extended-path alias is required. A
+failed fixture attempts to retain an exclusive, bounded, content-free failure
+receipt, which the supervisor validates before reporting its phase and Windows
+error code. Diagnostics cannot replace the original failure or count as a pass.
+
+The October 11 native attempt with source `1db984c` verified all 172 packaged
+files and passed PowerShell parsing, but the generated child failed before the
+first vector file existed. Its computed filename needed 294 characters and the
+host's long-path setting was disabled. The old supervisor suppressed the child's
+error, so the exact exception was not captured. This attempt does not establish
+native recovery acceptance; the shorter layout and diagnostic changes require
+a fresh bounded qualification.
+
 ## Delivery gates
 
 Generated local tests establish source and process-interruption behavior only.

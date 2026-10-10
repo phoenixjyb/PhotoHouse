@@ -68,6 +68,20 @@ parent must have a private inheritable DACL; the runner verifies created childre
 with the native private-storage check and does not change existing ACLs. Do not
 point it at a database or media root; those arguments do not exist.
 
+Use a short candidate directory and output name. Before creating fixtures or
+launching the child, the runner checks every known generated filename, SQLite
+sidecar, directory and launch path against the legacy Windows path limits,
+counting UTF-16 units. It does not depend on or change `LongPathsEnabled`.
+A long destination refuses with `windows_fixture_path_too_long` before any
+output is created. Keep a failed candidate intact and prepare a fresh destination.
+
+If a fixture fails after this run creates its output, it attempts to retain
+`qualification-failure.json` there. The receipt contains only a fixed phase,
+allowlisted exception class and numeric Windows error code, with synthetic-only
+status. It never contains exception messages, tracebacks or private paths.
+The supervisor validates the bounded receipt before surfacing it on failure;
+a missing, malformed or unwritable receipt never turns failure into acceptance.
+
 The Windows CLI supervises a generated child for at most 15 minutes, with a
 2 GiB Job limit, four-process cap and 8 GiB free-RAM admission floor. Review the
 complete exit/report and retained generated files. A pass establishes only the
