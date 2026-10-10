@@ -40,6 +40,14 @@ planner are tested with synthetic data. Producer identity, native filesystem
 recovery and durable asset-deletion replay must be qualified before activation. See
 [activity grouping](ACTIVITY_GROUPING_DESIGN.md).
 
+The isolated image worker now verifies checkpoint bytes around model loading
+and inference, observes the supported evaluation transform configuration, and
+requires probe/embed receipt consistency. Package versions and current source
+digests are snapshot evidence; they do not independently prove installed
+provider code provenance. Legacy embedding rows retain their existing schema.
+Writing the optional immutable record and qualifying native recovery remain
+separate producer gates.
+
 ## Voice pipeline
 
 ```text

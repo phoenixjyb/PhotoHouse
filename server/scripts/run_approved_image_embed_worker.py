@@ -28,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MEDIA_CHILD = ROOT / 'scripts' / 'home_media_worker.py'
 sys.path.insert(0, str(ROOT / 'scripts'))
 from home_preparation_resources import emit_worker_failure, memory as observe_memory
+from image_embedding_receipts import inspect_checkpoint, verify_checkpoint, recipe_sha256
+from image_preprocessing_receipts import observe_preprocessing
 
 REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'}
 MAX_INPUT_BYTES = 256 * 1024**2
@@ -92,11 +94,15 @@ def sha256_file(path, maximum):
     if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= maximum:
         raise ValueError('file_size_or_type')
     digest = hashlib.sha256()
+    total = 0
     with path.open('rb') as stream:
         opened = os.fstat(stream.fileno())
         if (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns) != pin:
             raise ValueError('file_changed')
         while chunk := stream.read(4 * 1024**2):
+            total += len(chunk)
+            if total > before.st_size:
+                raise ValueError('file_changed')
             digest.update(chunk)
     after = path.stat(follow_symlinks=False)
     if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != pin:
@@ -459,6 +465,7 @@ def _probe_provider(args, checkpoint, *, deadline):
     try:
         argv = [sys.executable, '-I', '-B', str(Path(__file__).resolve()), '_probe',
                 '--checkpoint', str(checkpoint), '--image-model', args.image_model,
+                '--checkpoint-sha256', args.checkpoint_sha256,
                 '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
                 '--receipt', str(receipt)]
         run_supervised(argv, env=_child_environment(args.device, checkpoint),
@@ -467,6 +474,7 @@ def _probe_provider(args, checkpoint, *, deadline):
         if len(raw) > 8192:
             raise Refused('Provider preflight receipt too large')
         result = json.loads(raw)
+        _validate_identity_receipt(result, args)
         if (result.get('provider') != 'open_clip'
                 or result.get('effective_device') != ('cpu' if args.device == 'cpu' else 'cuda:0')
                 or result.get('dimension') not in (512, 768, 1024, 1280, 2560)):
@@ -544,6 +552,7 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     receipt = stage / 'result.json'
     argv = [sys.executable, '-I', '-B', str(Path(__file__).resolve()), '_embed',
             '--image', str(image), '--stage', str(stage), '--checkpoint', str(checkpoint),
+            '--checkpoint-sha256', args.checkpoint_sha256,
             '--image-model', args.image_model,
             '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
             '--model-version', args.model_version, '--receipt', str(receipt)]
@@ -555,6 +564,7 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     if not receipt.is_file() or receipt.is_symlink() or receipt.stat().st_size > 8192:
         raise ValueError('embedding_receipt_validation')
     metadata = json.loads(receipt.read_bytes())
+    _validate_identity_receipt(metadata, args)
     if (metadata.get('provider') != 'open_clip'
             or metadata.get('effective_device') != ('cpu' if args.device == 'cpu' else 'cuda:0')
             or metadata.get('model_version') != args.model_version):
@@ -563,7 +573,8 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     vector = np.load(vector_path, allow_pickle=False)
     if (vector.ndim != 1 or vector.dtype != np.float32
             or vector.shape[0] != metadata.get('dimension')
-            or not np.isfinite(vector).all() or float(np.linalg.norm(vector)) == 0.0):
+            or not np.isfinite(vector).all()
+            or abs(float(np.linalg.norm(vector)) - 1.0) > 1e-3):
         raise ValueError('embedding_output_validation')
     return vector, metadata, hashlib.sha256(vector_path.read_bytes()).hexdigest()
 
@@ -715,10 +726,54 @@ def _verified_runtime(service, device):
     return runtime
 
 
+def _receipt_sources():
+    sources = {
+        'decoder': MEDIA_CHILD,
+        'embedding_service': ROOT / 'backend' / 'app' / 'vector_index.py',
+        'worker': Path(__file__).resolve(),
+        'checkpoint_receipts': ROOT / 'scripts' / 'image_embedding_receipts.py',
+        'preprocessing_receipts': ROOT / 'scripts' / 'image_preprocessing_receipts.py',
+    }
+    return {name: sha256_file(path, 2 * 1024**2) for name, path in sources.items()}
+
+
+def _observed_preprocessing(service):
+    # Only the isolated provider child reads installed optional package metadata.
+    # Observe realized transforms; a model name or dimension is not a recipe.
+    from importlib.metadata import version
+    packages = {name: version(name) for name in
+                ('open_clip_torch', 'torch', 'torchvision', 'Pillow', 'numpy')}
+    return observe_preprocessing(service._clip_preprocess,
+                                 package_versions=packages,
+                                 source_digests=_receipt_sources())
+
+
+def _validate_identity_receipt(receipt, args):
+    if (type(receipt) is not dict or type(receipt.get('identity_receipt_version')) is not int
+            or receipt.get('identity_receipt_version') != 1
+            or type(receipt.get('dimension')) is not int
+            or receipt.get('dimension') not in (512, 768, 1024, 1280, 2560)
+            or receipt.get('checkpoint_sha256') != args.checkpoint_sha256
+            or receipt.get('image_model') != args.image_model):
+        raise ValueError('embedding_checkpoint_receipt_mismatch')
+    recipe = receipt.get('preprocessing_recipe')
+    if (type(recipe) is not dict or recipe.get('source_digests') != _receipt_sources()
+            or recipe.get('schema') != 'photohouse.image_preprocessing_recipe.v1'
+            or receipt.get('preprocessing_sha256') != recipe_sha256(recipe)):
+        raise ValueError('embedding_preprocessing_receipt_mismatch')
+    expected = getattr(args, 'expected_preprocessing_sha256', None)
+    if expected is not None and receipt['preprocessing_sha256'] != expected:
+        raise ValueError('embedding_preprocessing_changed_since_probe')
+    expected_dimension = getattr(args, 'expected_vector_dimension', None)
+    if expected_dimension is not None and receipt['dimension'] != expected_dimension:
+        raise ValueError('embedding_dimension_changed_since_probe')
+
+
 def _probe_or_embed_child(args):
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('operation', choices=('_probe', '_embed'))
     parser.add_argument('--checkpoint', required=True)
+    parser.add_argument('--checkpoint-sha256', required=True)
     parser.add_argument('--image-model', required=True)
     parser.add_argument('--device', required=True)
     parser.add_argument('--receipt', required=True)
@@ -727,6 +782,11 @@ def _probe_or_embed_child(args):
     parser.add_argument('--model-version')
     values = parser.parse_args(args)
     checkpoint = direct_path(values.checkpoint)
+    if os.environ.get('PHOTOHOUSE_IMAGE_EMBEDDING_CHECKPOINT') != str(checkpoint):
+        raise Refused('Provider checkpoint environment does not match inspected path')
+    if not 0 < checkpoint.stat().st_size <= MAX_CHECKPOINT_BYTES:
+        raise Refused('Checkpoint outside byte budget')
+    checkpoint_pin = inspect_checkpoint(checkpoint, values.checkpoint_sha256)
     if not values.image_model.startswith('clip-') or values.device not in ('cpu', 'cuda:0'):
         raise Refused('Unsupported child model or device')
     if values.operation == '_embed':
@@ -740,7 +800,14 @@ def _probe_or_embed_child(args):
     from app.vector_index import EmbeddingService
     service = EmbeddingService(values.image_model, 'stub-clip', 512,
                                values.device, strict=True)
+    verify_checkpoint(checkpoint_pin)
     runtime = _verified_runtime(service, values.device)
+    recipe = _observed_preprocessing(service)
+    runtime.update({'identity_receipt_version': 1,
+                    'checkpoint_sha256': checkpoint_pin.sha256,
+                    'image_model': values.image_model,
+                    'preprocessing_recipe': recipe,
+                    'preprocessing_sha256': recipe_sha256(recipe)})
     if values.operation == '_probe':
         _write_json_receipt(Path(values.receipt), runtime)
         return 0
@@ -751,8 +818,10 @@ def _probe_or_embed_child(args):
             raise ValueError('bounded_image_validation')
         opened.verify()
     vector = np.asarray(service.embed_image(str(image)), dtype=np.float32)
-    if (vector.ndim != 1 or not np.isfinite(vector).all()
-            or float(np.linalg.norm(vector)) == 0.0):
+    verify_checkpoint(checkpoint_pin)
+    if (vector.ndim != 1 or vector.size != runtime['dimension']
+            or not np.isfinite(vector).all()
+            or abs(float(np.linalg.norm(vector)) - 1.0) > 1e-3):
         raise RuntimeError('Invalid strict image vector')
     vector_path = stage / 'vector.npy'
     with vector_path.open('xb') as stream:
@@ -790,7 +859,10 @@ def run(args):
         result.update({'provider': provider['effective_provider'],
                        'effective_device': provider['effective_device'],
                        'selected_physical_device': provider['selected_physical_device'],
-                       'selected_gpu_uuid': provider['selected_gpu_uuid']})
+                       'selected_gpu_uuid': provider['selected_gpu_uuid'],
+                       'preprocessing_sha256': provider['preprocessing_sha256'],
+                       'observed_dimension': provider['dimension'],
+                       'child_checkpoint_and_recipe_verified': True})
         return result
     if os.path.lexists(stop_file):
         raise Refused('Stop request already present')
@@ -802,6 +874,8 @@ def run(args):
     with kernel_lock(database, blocking=True):
         provider = _probe_provider(args, checkpoint,
                                    deadline=time.monotonic() + MAX_TASK_SECONDS)
+    args.expected_preprocessing_sha256 = provider['preprocessing_sha256']
+    args.expected_vector_dimension = provider['dimension']
     stop = threading.Event()
     previous = {}
     def request_stop(*_): stop.set()
@@ -842,6 +916,9 @@ def run(args):
         'effective_device': provider['effective_device'],
         'selected_physical_device': provider['selected_physical_device'],
         'selected_gpu_uuid': provider['selected_gpu_uuid'],
+        'checkpoint_sha256': provider['checkpoint_sha256'],
+        'preprocessing_sha256': provider['preprocessing_sha256'],
+        'observed_dimension': provider['dimension'],
     }
 
 

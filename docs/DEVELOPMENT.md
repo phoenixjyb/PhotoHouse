@@ -10,11 +10,21 @@ which exits after file linking, then verifies journal recovery from a reopened
 database. This is process-death evidence; Windows filesystem and power-loss
 qualification remain separate.
 
+Checkpoint and preprocessing receipt helpers are also in the ordinary CPU
+profile. Synthetic transform objects exercise order, interpolation, crop size,
+normalization and module bookkeeping without importing OpenCLIP or torchvision.
+The optional image-worker suite additionally checks parent/child receipt binding,
+checkpoint mutation during loading and dimension/recipe changes after probing.
+An installed Windows provider canary is still required for actual transform
+compatibility, dependency provenance and GPU execution.
+
 ```sh
 .venv/bin/python -m pytest --noconftest -c config/pytest.ini -q \
   server/tests/security/test_visual_vector_publication.py \
   server/tests/security/test_visual_vector_cleanup.py \
-  server/tests/security/test_image_worker_claims.py
+  server/tests/security/test_image_worker_claims.py \
+  server/tests/security/test_image_embedding_receipts.py \
+  server/tests/security/test_image_preprocessing_receipts.py
 ```
 
 The existing image-worker media suite additionally needs NumPy/Pillow from the

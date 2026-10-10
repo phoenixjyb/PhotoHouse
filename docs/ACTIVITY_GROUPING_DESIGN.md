@@ -293,9 +293,16 @@ Implement and qualify in this order:
    worker behavior on a0/b1/c2/d1. Visual lookup remains unavailable when the
    new table or a qualified profile is absent.
 2. Verify the checkpoint and realized decoder/OpenCLIP preprocessing in the
-   child receipt, then propagate that profile into the tested publisher. The
-   current receipt has provider/device/dimension and a caller-supplied version,
-   so it does not yet prove preprocessing identity. Wire exact task guards and
+   installed child, then propagate that profile into the tested publisher. The
+   source worker now verifies checkpoint SHA-256 and stable file identity before
+   and after provider loading and after inference. Its receipt snapshots the
+   realized supported evaluation transforms, package versions, current decoder/
+   embedding/worker source digests and dimension; the parent checks the receipt
+   and requires consistency with the startup probe. Unsupported transforms fail
+   preflight before task claims. These are synthetic source checks, not native
+   provider qualification or proof of installed dependency code provenance.
+   Receipts are not yet persisted in the optional immutable vector table; legacy
+   rows remain insufficient for protected similarity lookup. Wire exact task guards and
    finalize hooks, qualify native interruption recovery, and add durable asset
    tombstone/replay execution using the cleanup planner. Add no legacy backfill.
 3. Wire the protected reader to a verified producer profile. Its current-library

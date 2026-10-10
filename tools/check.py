@@ -36,6 +36,7 @@ API_TESTS = (
     "test_approved_face_queue.py", "test_approved_worker_package.py",
     "test_approved_worker_failure_reports.py",
     "test_image_worker_claims.py", "test_visual_vector_publication.py", "test_visual_vector_cleanup.py",
+    "test_image_embedding_receipts.py", "test_image_preprocessing_receipts.py",
     "test_approved_workers_c2_compatibility.py", "test_approved_workers_d1_compatibility.py",
     "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",

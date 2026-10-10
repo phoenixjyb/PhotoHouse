@@ -28,10 +28,15 @@ contract and a protected, bounded library-scoped reader. These are source-only
 contracts with synthetic fixtures: there is no migration, producer, route or
 picker activation. Legacy embeddings lack checkpoint and preprocessing identity
 and must not be promoted by guessing those values. The next slice is verified
-worker checkpoint/preprocessing receipts and wiring into the tested publication
-journal, plus durable asset-tombstone replay using the all-version cleanup
+worker publication wiring, plus durable asset-tombstone replay using the all-version cleanup
 planner. Journal recovery currently passes generated process-death tests;
 Windows filesystem qualification and actual vector coverage remain open.
+The source image worker now hashes the inspected checkpoint before and after
+provider loading and after inference, and compares child receipts with the
+startup probe. Receipts describe the realized supported OpenCLIP evaluation
+transforms, source digests, package versions and vector dimension. These are
+synthetically checked snapshots, not installed-provider qualification; they
+do not populate the optional immutable vector table or backfill legacy rows.
 The existing image worker now fences task completion and failure against the
 exact claimed payload/start/retry fields. These are source changes; installed
 workers still use their previously verified release. Preserve the current

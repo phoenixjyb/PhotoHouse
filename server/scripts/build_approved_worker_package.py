@@ -27,6 +27,7 @@ FILES = tuple(sorted([
         'scoped_face_worker')),
     *('scripts/' + name + '.py' for name in (
         'home_media_worker', 'home_preparation_resources', 'home_memory_envelope',
+        'image_embedding_receipts', 'image_preprocessing_receipts',
         'run_approved_cpu_worker', 'run_approved_video_worker',
         'run_approved_image_embed_worker', 'run_approved_video_embed_worker',
         'run_approved_face_worker', 'approved_face_inference_child',
