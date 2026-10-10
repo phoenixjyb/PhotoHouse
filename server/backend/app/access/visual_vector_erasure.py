@@ -22,6 +22,7 @@ import stat
 from .original_deletions import OriginalDeletionError, OriginalDeletionJournal
 from .private_storage import require_private_directory, sync_directory
 from .visual_vector_cleanup import MAX_CLEANUP_ARTIFACTS, _COLUMNS, _validated_artifact
+from .visual_vector_erasure_catalog import VectorErasureCatalog, validate_manifest
 from .visual_vector_loader import _checked_root, _is_reparse, _root_snapshot, _same_file
 from .visual_vector_publication import (
     _artifact, _valid_raw, verify_visual_publication_schema,
@@ -160,10 +161,13 @@ class VectorErasureStore:
     Concurrent same-owner filesystem editing is outside this maintenance scope.
     """
 
-    def __init__(self, db, root: Path, journal):
+    def __init__(self, db, root: Path, journal, *, catalog=None):
         if not isinstance(journal, OriginalDeletionJournal):
             raise VectorErasureRefused()
-        self.db, self.root, self.journal = db, root, journal
+        if (catalog is not None and (not isinstance(catalog, VectorErasureCatalog)
+                or root == catalog.root or root in catalog.root.parents)):
+            raise VectorErasureRefused()
+        self.db, self.root, self.journal, self.catalog = db, root, journal, catalog
         self._owned = False
 
     @contextmanager
@@ -270,7 +274,7 @@ class VectorErasureStore:
             if any(item[3] != len(group) or item[2] != group[0][2] for item in group):
                 raise VectorErasureRefused()
 
-    def prepare(self, asset_id: int) -> str:
+    def _prepare(self, asset_id: int) -> str:
         """Commit a complete immutable plan; reads files but never creates paths."""
         if type(asset_id) is not int or not 1 <= asset_id <= 2**63 - 1:
             raise VectorErasureRefused()
@@ -313,6 +317,20 @@ class VectorErasureStore:
                             (job_id, asset_id, raw, len(paths)))
         return job_id
 
+    def prepare(self, asset_id: int) -> str:
+        """Commit the plan, then archive it if a recovery catalog is configured.
+
+        An archive failure retains the committed plan and all vector files.
+        No cleanup step can use this configured path until archive verification.
+        """
+        job_id = self._prepare(asset_id)
+        if self.catalog is not None:
+            with self._transaction():
+                manifest, progress = self._load(job_id)
+                self._preflight(manifest, progress)
+                self.catalog.archive(manifest)
+        return job_id
+
     def _load(self, job_id):
         if type(job_id) is not str or not _SHA.fullmatch(job_id):
             raise VectorErasureRefused()
@@ -320,18 +338,96 @@ class VectorErasureStore:
                               (job_id,)).fetchone()
         if row is None or type(row[1]) is not str or len(row[1]) > _MAX_MANIFEST:
             raise VectorErasureRefused()
-        manifest = json.loads(row[1])
-        if (type(manifest) is not dict
-                or set(manifest) != {"version", "asset_id", "metadata", "root", "paths", "bindings"}
-                or type(manifest["version"]) is not int or manifest["version"] != 1
-                or type(manifest["asset_id"]) is not int or manifest["asset_id"] != row[0]
-                or _json(manifest) != row[1] or _digest(manifest) != job_id
-                or type(manifest["paths"]) is not list or type(manifest["bindings"]) is not list
+        manifest = validate_manifest(row[1], job_id)
+        if (manifest["asset_id"] != row[0]
                 or len(manifest["paths"]) != row[2] or len(manifest["bindings"]) != row[2]
                 or type(row[2]) is not int or type(row[3]) is not int
                 or not 0 <= row[3] <= row[2] <= 256):
             raise VectorErasureRefused()
         return manifest, row[3]
+
+    def restore(self, job_id: str) -> str:
+        """Explicit offline restoration of the reviewed closure into an older DB.
+
+        The caller first restores and replays the external withdrawal journal.
+        All optional schemas must already be present. Only matching missing
+        immutable rows and this job are restored; no tasks, source media or
+        filesystem names are changed. Conflicting/newer metadata refuses.
+        """
+        if self.catalog is None:
+            raise VectorErasureRefused()
+        with self._transaction():
+            manifest = self.catalog.read(job_id)
+            asset_id = manifest["asset_id"]
+            if self._root() != manifest["root"]:
+                raise VectorErasureRefused()
+            current, _records, _paths = self._metadata(asset_id)
+            expected = manifest["metadata"]
+            if (set(expected) != {"receipt", "ready", "intents"}
+                    or expected["receipt"] != current["receipt"]
+                    or type(expected["ready"]) is not list or type(expected["intents"]) is not list
+                    or len(expected["ready"]) > 128 or len(expected["intents"]) > 128):
+                raise VectorErasureRefused()
+            ready = {}
+            for value in expected["ready"]:
+                record = _artifact(_json(value), None)
+                if record.asset_id != str(asset_id) or record.record_id in ready:
+                    raise VectorErasureRefused()
+                ready[record.record_id] = record
+            intents = {}
+            for row in expected["intents"]:
+                if type(row) is not list or len(row) != 6:
+                    raise VectorErasureRefused()
+                record_id, parent, claim, raw, state, created = row
+                record = _artifact(raw, None)
+                if (type(parent) is not int or parent != asset_id or record.asset_id != str(asset_id)
+                        or record.record_id != record_id or record_id in intents
+                        or type(claim) is not str or _SHA.fullmatch(claim) is None
+                        or type(created) is not int or created != record.created_at
+                        or state not in ("prepared", "committed")
+                        or (state == "committed" and ready.get(record_id) != record)
+                        or (state == "prepared" and record_id in ready)):
+                    raise VectorErasureRefused()
+                intents[record_id] = row
+            if len(set(ready) | set(intents)) > 128:
+                raise VectorErasureRefused()
+            for value in current["ready"]:
+                record = ready.get(value["record_id"])
+                if record is None or value != asdict(record):
+                    raise VectorErasureRefused()
+            current_intents = {row[0]: row for row in current["intents"]}
+            for record_id, row in current_intents.items():
+                target = intents.get(record_id)
+                if (target is None or row[:4] != target[:4] or row[5] != target[5]
+                        or (row[4] != target[4] and (row[4], target[4]) != ("prepared", "committed"))):
+                    raise VectorErasureRefused()
+            columns = _COLUMNS.split(",")
+            for record_id, record in ready.items():
+                if any(value["record_id"] == record_id for value in current["ready"]):
+                    continue
+                values = [getattr(record, column) for column in columns]
+                values[1] = asset_id
+                self.db.execute(f"INSERT INTO image_vector_artifacts ({_COLUMNS}) VALUES (" +
+                                ",".join("?" for _ in values) + ")", values)
+            for record_id, row in intents.items():
+                if record_id not in current_intents:
+                    self.db.execute("INSERT INTO image_vector_publications VALUES (?,?,?,?,?,?)", row)
+                elif current_intents[record_id][4] != row[4]:
+                    self.db.execute("UPDATE image_vector_publications SET state='committed' WHERE record_id=?",
+                                    (record_id,))
+            existing = self.db.execute(f"SELECT job_id FROM {_TABLE} WHERE asset_id=?", (asset_id,)).fetchone()
+            if existing:
+                if existing[0] != job_id:
+                    raise VectorErasureRefused()
+                recovered, progress = self._load(job_id)
+                if recovered != manifest:
+                    raise VectorErasureRefused()
+            else:
+                progress = 0
+                self.db.execute(f"INSERT INTO {_TABLE} VALUES (?,?,?,?,0)",
+                                (job_id, asset_id, _json(manifest), len(manifest["paths"])))
+            self._preflight(manifest, progress)
+        return job_id
 
     def _quarantine(self, job_id):
         current = self.root
@@ -357,6 +453,8 @@ class VectorErasureStore:
         with self._transaction():
             manifest, index = self._load(job_id)
             self._preflight(manifest, index)
+            if self.catalog is not None and self.catalog.read(job_id) != manifest:
+                raise VectorErasureRefused()
             if index == len(manifest["paths"]):
                 return True
             relative, _record_id = manifest["paths"][index]

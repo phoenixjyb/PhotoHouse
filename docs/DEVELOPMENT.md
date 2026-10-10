@@ -23,6 +23,11 @@ The separate [vector-erasure suite](VECTOR_ERASURE_LIFECYCLE.md) performs actual
 filesystem cleanup only inside generated private temporary directories. It
 checks complete manifests, known publication links, checksum/refusal boundaries
 and resumable quarantine states. No household files or original media are deleted.
+Catalog tests additionally restore an older primary lacking publication records,
+exercise actual process death during archive creation and preserve partial
+archives on refusal. The generated qualification runner performs the same source
+operations with retained fixtures; its Windows supervisor is checked with a fake
+native API locally. Source checks do not establish native Windows acceptance.
 
 The actual-worker synthetic suite also dies after file publication and then
 restarts with the same task claim, without activating a provider. It verifies
@@ -45,6 +50,8 @@ compatibility, dependency provenance and GPU execution.
   server/tests/security/test_immutable_image_worker.py \
   server/tests/security/test_visual_vector_cleanup.py \
   server/tests/security/test_visual_vector_erasure.py \
+  server/tests/security/test_visual_vector_erasure_catalog.py \
+  server/tests/security/test_vector_erasure_qualification.py \
   server/tests/security/test_asset_tombstones.py \
   server/tests/security/test_image_worker_claims.py \
   server/tests/security/test_image_embedding_receipts.py \

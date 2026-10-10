@@ -60,6 +60,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/visual_vector_artifacts.py',
             'backend/app/access/visual_vector_cleanup.py',
             'backend/app/access/visual_vector_erasure.py',
+            'backend/app/access/visual_vector_erasure_catalog.py',
             'backend/app/access/asset_tombstones.py',
             'backend/app/access/visual_vector_loader.py',
             'backend/app/access/visual_vector_publication.py',
@@ -87,6 +88,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/apply_memory_editorial_schema.py',
             'scripts/apply_memory_sources_schema.py',
             'scripts/home_memory_envelope.py',
+            'scripts/bounded_windows_job.py',
+            'scripts/qualify_vector_erasure.py',
             'scripts/initialize_original_deletions.py',
             'scripts/prepare_access_discovery_index.py',
             'scripts/replay_original_deletions.py',
@@ -131,6 +134,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_worker import ApprovedImageClaim, approved_vector_store\n'
                 'from app.access.visual_vector_cleanup import plan_asset_vector_cleanup\n'
                 'from app.access.visual_vector_erasure import VectorErasureStore, verify_visual_erasure_schema\n'
+                'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'

@@ -50,7 +50,10 @@ rollback and offline restore replay; replay marks the retained parent deleted.
 Receipt-bound vector cleanup planning checks independently committed primary
 state. The optional [vector-erasure coordinator](VECTOR_ERASURE_LIFECYCLE.md)
 adds a durable primary manifest and no-overwrite quarantine claims for completed
-and interrupted publications. Original media, contributions and immutable
+and interrupted publications. Its optional private independent catalog preserves
+the known file closure and restores matching missing immutable records after
+withdrawal replay into an older primary, with atomic refusal on conflicts.
+Original media, contributions and immutable
 records remain retained. Installed cleanup, native Windows qualification and
 live capability switching are separate gates.
 

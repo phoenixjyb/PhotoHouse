@@ -70,13 +70,53 @@ No task claim is reset and no prepared intent is silently marked completed.
 Interrupted publication tasks require separate explicit reconciliation; keeping
 the evidence can intentionally block optional producer startup.
 
-The cleanup manifest lives in the primary database, unlike the external V3
-withdrawal receipt. Restoring a backup from before plan creation can therefore
-lose the manifest while leaving quarantine files. Withdrawal replay alone does
-not recover that file closure. Before activation, preserve reviewed manifests
-in an independent recovery catalog and qualify their restoration together with
-publication metadata. An older primary backup alone cannot establish that every
-derived file has been removed; this executor never guesses or scans for orphans.
+## Independent catalog and older-primary restoration
+
+The optional [`VectorErasureCatalog`](../server/backend/app/access/visual_vector_erasure_catalog.py)
+stores a complete canonical plan outside SQLite and outside the vector root.
+With `catalog=` configured, `prepare` first commits the primary plan, then
+exclusively creates, syncs and reads back the exact digest-named private archive.
+Every cleanup step verifies that archive before changing a vector name. Archive
+failure retains the primary plan and all vectors. An interrupted partial archive
+refuses cleanup and is never silently overwritten; an exact complete retry is
+synced again. There is no catalog scan or inferred job identity.
+
+After restoring an older primary, replay the external V3 journal and commit its
+withdrawals first. Under explicit offline maintenance, `restore(reviewed_job_id)`
+can then import the archived missing artifact/publication records and cleanup
+job. All three optional schemas must already exist. Current records must be an
+exact subset of the archived closure, apart from an exact prepared intent which
+the catalog proves committed. Conflicting/newer rows, source/library changes,
+wrong roots and corrupt known files refuse. Imports and final filesystem
+preflight share one SQLite writer transaction; failure rolls back all imports.
+Existing matching progress is retained. Missing progress restarts at zero and
+verifies all known source/quarantine names; no original or task row is changed.
+
+The original primary-only internal mode remains available for its earlier
+source fixtures. It does not close the backup gate: withdrawal replay alone
+cannot recover lost cleanup manifests or publication metadata. Activation must
+use the qualified catalog path and independently preserve its files. An older
+primary backup alone cannot establish that every derived file has been removed;
+this executor never guesses or scans for orphans. Catalog relocation, a different
+vector volume, missing optional schemas and task reconciliation require separate
+operator planning.
+
+## Generated qualification runner
+
+[`qualify_vector_erasure.py`](../server/scripts/qualify_vector_erasure.py) creates
+only new synthetic databases, PNG/NPY files and archives beneath an absent
+absolute `--out` directory with an existing private parent. It has no real
+database, model, media or endpoint argument. Fixtures are retained for inspection.
+It checks complete hardlink closure, child process death after quarantine linking,
+older-primary replay/catalog restoration and corrupt-quarantine refusal.
+
+On Windows the normal CLI uses the existing Job supervisor: a 15-minute limit,
+2 GiB Job memory, at most four processes and an 8 GiB free-RAM admission floor.
+The child receives a clean environment, isolated Python flags and a generated
+child marker. Nonzero child exit or an unexpected report refuses qualification.
+Private directory/ACL inheritance and stable Windows file birthtime are exercised
+by the actual source functions. A Mac run reports `native_windows=false` and
+cannot establish Windows acceptance. See [Windows checks](WINDOWS_CPU_CHECKS.md).
 
 ## Delivery gates
 
@@ -84,6 +124,8 @@ Generated local tests establish source and process-interruption behavior only.
 Before Windows activation, qualify native hard-link behavior, private directory
 ACL inheritance, stable file birthtime and filesystem/process recovery. Python
 does not provide Windows directory fsync, so power-loss durability is a separate
-gate. Then review additive schema/backup restore compatibility, exact installed
-producer profile and task reconciliation. Any real cleanup needs the reviewed
+gate. Catalog restoration now has generated source evidence; native catalog
+durability and independently preserved backup coverage remain open. Then review
+additive schema/backup restore compatibility, exact installed producer profile
+and task reconciliation. Any real cleanup needs the reviewed
 asset set, backup/recovery plan and operation-specific authority.

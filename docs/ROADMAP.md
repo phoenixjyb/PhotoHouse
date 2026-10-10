@@ -37,7 +37,11 @@ uncommitted primary status. No live format upgrade or physical erasure is enable
 The optional filesystem executor now covers prepared publications and completed
 artifacts with a committed manifest, checksum/identity checks and recoverable
 no-overwrite quarantine claims. Original media and immutable metadata remain
-retained; interrupted task reconciliation is separate. The next gates are native
+retained; interrupted task reconciliation is separate. A private independent
+catalog now preserves complete plans and can restore matching missing metadata
+into an older primary after withdrawal replay. The generated qualification runner
+checks process interruption and restoration; its Windows CLI is bounded and has
+not yet established native acceptance. The next gates are native
 qualification, additive schema/restore compatibility and the protected reviewed
 picker. See [vector erasure](VECTOR_ERASURE_LIFECYCLE.md).
 Journal and actual-worker recovery pass generated
