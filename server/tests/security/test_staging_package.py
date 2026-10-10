@@ -56,6 +56,10 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/upload.py',
             'backend/app/access/upload_schema.py',
             'backend/app/access/upload_transport.py',
+            'backend/app/access/visual_candidates.py',
+            'backend/app/access/visual_vector_artifacts.py',
+            'backend/app/access/visual_vector_loader.py',
+            'backend/app/access/visual_vector_schema.py',
             'backend/app/access/windows_tts.py',
             'backend/app/home_catalog.py',
             'backend/app/ui/access/memory-community.js',
@@ -115,6 +119,10 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
+                'from app.access.visual_vector_loader import VisualVectorReads\n'
+                'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
+                'from app.access.visual_vector_schema import sqlite_visual_vector_contract\n'
+                'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
                 " if name=='app' or name.startswith('app.') or name=='staging_app':\n"

@@ -27,6 +27,18 @@ Originals, transcripts, polished text, tags and chapter links remain distinct. L
 | Workers | Bounded derived media and model processing; explicit queue state and resource limits |
 | Operator tools | Backups, migration, qualification, release and recovery; separate from product flows |
 
+## Visual discovery provenance
+
+Image similarity has an optional immutable vector-record contract and a
+protected library-scoped reader. Authorization and the complete bounded cohort
+are resolved in one SQLite snapshot before file access; source and exact model/
+preprocessing identity, file and component checksums are required. The loader
+returns candidate IDs only and never invokes a model or global index.
+The optional table has no migration or producer yet, and similarity is not
+exposed in the product. Worker publication, crash reconciliation and deletion
+enumeration must be qualified before activation. See
+[activity grouping](ACTIVITY_GROUPING_DESIGN.md).
+
 ## Voice pipeline
 
 ```text

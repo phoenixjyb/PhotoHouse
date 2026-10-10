@@ -17,12 +17,20 @@ provider configuration until bounded native execution, exact GPU residency and
 human Chinese story/voice reviews pass. Generation and title-provider activation
 remain separate gates.
 
-The next shared-story slice is immutable image-vector provenance and a bounded,
-library-scoped loader. Legacy embeddings lack checkpoint and preprocessing
-identity and must not be promoted by guessing those values. Persist the verified
-identity when a worker produces a new vector, then load the authorized complete
-cohort before reading files or scoring. Preserve the current capture-day picker;
-add similarity suggestions only after this contract and native coverage pass.
+A read-only diagnostic confirmed the configured 24 GiB Job cap and observed
+about 11.4 MiB peak Job commit, while the GPU query still returned an NVML
+unknown error. This does not establish the cause: a rejected allocation can
+fail without raising the recorded peak. No model inference passed, and no
+resource limit or live provider was changed.
+
+The shared-story foundation now has an optional immutable image-vector record
+contract and a protected, bounded library-scoped reader. These are source-only
+contracts with synthetic fixtures: there is no migration, producer, route or
+picker activation. Legacy embeddings lack checkpoint and preprocessing identity
+and must not be promoted by guessing those values. The next slice is verified
+worker identity propagation, journaled immutable publication, interruption
+recovery and deletion enumeration; then qualify native coverage and the reviewed
+picker. Preserve the current capture-day picker until those gates pass.
 See [activity grouping](ACTIVITY_GROUPING_DESIGN.md) and
 [provider qualification](MODEL_QUALIFICATION.md).
 
