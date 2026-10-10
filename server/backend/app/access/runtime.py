@@ -15,10 +15,12 @@ from .media import MediaRuntime
 from .transport import AccessRuntime
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
 from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
+from .memory_group_schema import GROUP_REVISION, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
-EDITION_REVISIONS = frozenset({EDITION_REVISION, IDENTITY_REVISION})
+IDENTITY_REVISIONS = frozenset({IDENTITY_REVISION, GROUP_REVISION})
+EDITION_REVISIONS = frozenset({EDITION_REVISION, *IDENTITY_REVISIONS})
 EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, *EDITION_REVISIONS})
 SOURCE_REFERENCE_REVISIONS = frozenset({REQUIRED_REVISION, *EDITORIAL_REVISIONS})
 COLLABORATION_REVISIONS = frozenset({'f7c3a9d2e614', *SOURCE_REFERENCE_REVISIONS})
@@ -38,7 +40,7 @@ REQUIRED_TABLES = frozenset({
     'access_original_deletion_state',
     'access_memory_contribution_refs',
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
-    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES,
+    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES, GROUP_TABLE, GROUP_HISTORY,
 })
 
 
@@ -47,7 +49,9 @@ def required_tables_for_revision(revision):
     if type(revision) is not str or revision not in COMPATIBLE_REVISIONS:
         raise ValueError('Unsupported schema revision')
     required_tables = REQUIRED_TABLES
-    if revision != IDENTITY_REVISION:
+    if revision != GROUP_REVISION:
+        required_tables = required_tables - {GROUP_TABLE, GROUP_HISTORY}
+    if revision not in IDENTITY_REVISIONS:
         required_tables = required_tables - IDENTITY_TABLES
     if revision not in EDITION_REVISIONS:
         required_tables = required_tables - {EDITION_TABLE, SOURCES_TABLE}
@@ -116,7 +120,11 @@ class ExistingDatabase:
             required_tables = required_tables_for_revision(versions[0][0])
             if not required_tables <= tables:
                 raise RuntimeUnavailable('Access unavailable')
-            if versions[0][0] == IDENTITY_REVISION:
+            if versions[0][0] == GROUP_REVISION:
+                from .memory_group_schema import verify_memory_group_schema
+                if not verify_memory_group_schema(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in IDENTITY_REVISIONS:
                 from .family_note_identity import verify_family_note_identity_schema
                 from .transport import TransportError
                 try:
@@ -163,6 +171,8 @@ class RuntimeConfiguration:
     upload_review_enabled: bool = False
     annotation_intake_enabled: bool = False
     assistant_enabled: bool = False
+    memory_groups_enabled: bool = False
+    memory_group_vectors: object = None
     memory_collaboration_enabled: bool = False
     memory_originals_enabled: bool = False
     memory_generation_enabled: bool = False
@@ -314,6 +324,8 @@ class RuntimeConfiguration:
                           upload_runtime=upload, upload_review_runtime=review,
                           annotation_intake_enabled=self.annotation_intake_enabled,
                           assistant_enabled=self.assistant_enabled,
+                          memory_groups_enabled=self.memory_groups_enabled,
+                          memory_group_vectors=self.memory_group_vectors,
                           memory_collaboration_enabled=self.memory_collaboration_enabled,
                           memory_originals_enabled=self.memory_originals_enabled,
                           memory_generation_enabled=self.memory_generation_enabled,

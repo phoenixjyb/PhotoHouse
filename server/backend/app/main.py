@@ -13,6 +13,7 @@ from .access.library import router as library_router
 from .access.members import router as member_router
 from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
+from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
 from .access.memory_stories import router as memory_router
 from .access.memory_transport import router as memory_community_router
 from .access.memory_book_edition_transport import router as memory_edition_router
@@ -39,7 +40,12 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                memory_generation_enabled=False, memory_editorial_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None, update_root=None,
-               story_title_suggester=None):
+               story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None):
+    if type(memory_groups_enabled) is not bool:
+        raise ValueError('Explicit memory group opt-in required')
+    if memory_group_vectors is not None and (not memory_groups_enabled or
+            type(memory_group_vectors) is not GroupVectorConfiguration):
+        raise ValueError('Explicit enabled memory group vector configuration required')
     if story_title_suggester is not None and not callable(getattr(story_title_suggester, 'suggest', None)):
         raise ValueError('Explicit story title adapter required')
     if type(annotation_intake_enabled) is not bool:
@@ -108,6 +114,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.media_runtime = media_runtime
     app.state.discovery_runtime = discovery_runtime
     app.state.assistant_enabled = assistant_enabled
+    app.state.memory_groups_enabled = memory_groups_enabled
+    app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
     app.state.memory_generation_enabled = memory_generation_enabled
@@ -129,6 +137,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(member_router)
     app.include_router(story_router)
     app.include_router(story_workspace_router)
+    app.include_router(memory_group_router)
     app.include_router(memory_router)
     app.include_router(memory_edition_router)
     app.include_router(memory_community_router)

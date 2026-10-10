@@ -45,6 +45,11 @@ async def ui_story_workspace():
     return _ui_file_response(UI_DIR / "story-workspace.js", "application/javascript")
 
 
+@router.get("/ui/memory-groups.js")
+async def ui_memory_groups():
+    return _ui_file_response(UI_DIR / "memory-groups.js", "application/javascript")
+
+
 @router.get("/ui/memory-community.js")
 async def ui_memory_community():
     return _ui_file_response(UI_DIR / "memory-community.js", "application/javascript")

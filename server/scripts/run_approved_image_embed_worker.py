@@ -31,7 +31,7 @@ from home_preparation_resources import emit_worker_failure, memory as observe_me
 from image_embedding_receipts import inspect_checkpoint, verify_checkpoint, recipe_sha256
 from image_preprocessing_receipts import observe_preprocessing
 
-REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'}
+REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304'}
 MAX_INPUT_BYTES = 256 * 1024**2
 MAX_CHECKPOINT_BYTES = 8 * 1024**3
 MAX_SOURCE_PIXELS = 64_000_000

@@ -110,6 +110,10 @@ FILES = (
     'backend/app/access/visual_vector_erasure.py',
     'backend/app/access/visual_vector_erasure_catalog.py',
     'backend/app/access/visual_vector_loader.py',
+    'backend/app/access/memory_grouping.py',
+    'backend/app/access/memory_group_schema.py',
+    'backend/app/access/memory_groups.py',
+    'backend/app/access/memory_group_transport.py',
     'backend/app/access/visual_vector_publication.py',
     'backend/app/access/visual_vector_worker.py',
     'backend/app/access/visual_vector_schema.py',
@@ -128,6 +132,7 @@ FILES = (
     'backend/app/ui/access/index.html',
     'backend/app/ui/access/memory-community.js',
     'backend/app/ui/access/story-workspace.js',
+    'backend/app/ui/access/memory-groups.js',
     'backend/app/ui/access/styles.css',
     'backend/app/ui/photohouse-icon.svg',
     'backend/app/updates.py',
@@ -150,6 +155,7 @@ FILES = (
     'backend/migrations/versions/c4e7a2d9f1b3_versioned_face_embeddings.py',
     'backend/migrations/versions/c7f4a9e2b610_family_stories.py',
     'backend/migrations/versions/d1f6a8c3e920_family_note_identities.py',
+    'backend/migrations/versions/e7c1a9d5b304_memory_groups.py',
     'backend/migrations/versions/d2b7e4f6a901_album_drafts.py',
     'backend/migrations/versions/d4a7e3c9b821_family_annotations.py',
     'backend/migrations/versions/d8e5b2f7a904_library_management.py',
@@ -167,6 +173,7 @@ FILES = (
     'docs/security/MEMORY_COMMUNITY_V1.md',
     'docs/security/REVIEWED_MEMOIR_EDITIONS_V1.md',
     'docs/security/FAMILY_NOTE_IDENTITIES_V1.md',
+    'docs/security/MEMORY_GROUPS_V1.md',
     'docs/security/FAMILY_NOTE_ERASURE_V2.md',
     'docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md',
     'scripts/apply_access_schema.py',
@@ -222,7 +229,7 @@ def package_bytes(commit, files):
     if set(files) != set(FILES):
         raise ValueError('Exact source allowlist required')
     manifest = {'format_version':1,'source_commit':commit,'artifact_kind':'source_only_not_deployed',
-        'migration_revision':'d1f6a8c3e920','dependencies_included':False,'private_configuration_included':False,
+        'migration_revision':'e7c1a9d5b304','dependencies_included':False,'private_configuration_included':False,
         'files':{name:hashlib.sha256(files[name]).hexdigest() for name in FILES}}
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_STORED) as archive:

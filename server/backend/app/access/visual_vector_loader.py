@@ -59,6 +59,23 @@ class VisualVectorReads:
 
     def candidates(self, token, library_id, seed_ids) -> RankingResult:
         """Return IDs only, or the fixed unavailable result for any bad cohort."""
+        return self._read(token, library_id, seed_ids)
+
+    def memory_group(self, token, library_id, seed_ids, *, excluded_ids=()):
+        """Read qualified vectors and propose capture-proximate group members."""
+        return self._read(token, library_id, seed_ids, grouping=True, excluded_ids=excluded_ids)
+
+    def memory_group_items(self, token, library_id, seed_ids, *, excluded_ids=()):
+        """Hydrate proposal thumbnails in the same authorization snapshot."""
+        return self._read(token, library_id, seed_ids, grouping=True,
+                          excluded_ids=excluded_ids, present_items=True)
+
+    def _read(self, token, library_id, seed_ids, *, grouping=False, excluded_ids=(),
+              present_items=False):
+        from .memory_grouping import UNAVAILABLE as GROUP_UNAVAILABLE, propose_memory_group
+        unavailable = GROUP_UNAVAILABLE if grouping else UNAVAILABLE
+        capture_column = ",a.taken_at" if grouping else ""
+        metadata_size = 2 if grouping else 1
         with self.service._transaction():
             # Do not inspect caller IDs, paths, schema, or artifact storage until
             # the current membership policy has approved this library read.
@@ -72,12 +89,12 @@ class VisualVectorReads:
                         or len(set(seed_ids)) != len(seed_ids)
                         or not _valid_identity(self.expected_identity)
                         or not _valid_root_argument(self.vector_root)):
-                    return UNAVAILABLE
+                    return unavailable
 
                 db = self.service.db
                 seed_marks = ",".join("?" for _ in seed_ids)
                 seed_rows = db.execute(
-                    f"""SELECT a.id,a.mime,a.hash_sha256 FROM assets a
+                    f"""SELECT a.id,a.mime,a.hash_sha256{capture_column} FROM assets a
                         JOIN access_asset_libraries scope ON scope.asset_id=a.id
                         WHERE scope.library_id=? AND a.id IN ({seed_marks})
                           AND (a.status IS NULL OR a.status='active')""",
@@ -91,11 +108,11 @@ class VisualVectorReads:
                 # or paths for a video/non-image seed.
                 if any(type(row[1]) is not str or not row[1].startswith("image/")
                        for row in seed_by_id.values()):
-                    return UNAVAILABLE
+                    return unavailable
 
                 expected_digest = identity_sha256(self.expected_identity)
                 if not verify_visual_vector_schema(db):
-                    return UNAVAILABLE
+                    return unavailable
 
                 seed_artifact_rows = db.execute(
                     f"SELECT {_COLUMNS} FROM image_vector_artifacts WHERE asset_id IN ({seed_marks}) "
@@ -104,7 +121,7 @@ class VisualVectorReads:
                 ).fetchall()
 
                 candidate_artifact_rows = db.execute(
-                    f"""SELECT {_VECTOR_COLUMNS},a.hash_sha256 FROM image_vector_artifacts v
+                    f"""SELECT {_VECTOR_COLUMNS},a.hash_sha256{capture_column} FROM image_vector_artifacts v
                         JOIN assets a ON a.id=v.asset_id
                         JOIN access_asset_libraries scope ON scope.asset_id=a.id
                         WHERE scope.library_id=? AND (a.status IS NULL OR a.status='active')
@@ -114,43 +131,43 @@ class VisualVectorReads:
                     (library_id, expected_digest, *seed_ids, MAX_CANDIDATES + 1),
                 ).fetchall()
                 if len(candidate_artifact_rows) > MAX_CANDIDATES:
-                    return UNAVAILABLE
+                    return unavailable
 
                 # Convert and validate every row, including the current source
                 # hash and one-record-per-asset coverage, before any filesystem
                 # operation. A corrupt tail cannot produce a partial ranking.
                 seed_records = _validated_rows(seed_artifact_rows, self.expected_identity)
                 candidate_records = _validated_rows(
-                    [row[:-1] for row in candidate_artifact_rows], self.expected_identity
+                    [row[:-metadata_size] for row in candidate_artifact_rows], self.expected_identity
                 )
                 if len(seed_records) != len(seed_ids) or set(seed_records) != set(seed_ids):
-                    return UNAVAILABLE
+                    return unavailable
                 if any(seed_by_id[asset_id][2] != artifact.source_sha256
                        for asset_id, artifact in seed_records.items()):
-                    return UNAVAILABLE
+                    return unavailable
                 if len(candidate_records) != len(candidate_artifact_rows):
-                    return UNAVAILABLE
+                    return unavailable
                 # The candidate SQL's last field is the current asset digest.
                 for row in candidate_artifact_rows:
-                    artifact = _artifact_from_row(row[:-1])
-                    if artifact is None or row[-1] != artifact.source_sha256:
-                        return UNAVAILABLE
+                    artifact = _artifact_from_row(row[:-metadata_size])
+                    if artifact is None or row[-metadata_size] != artifact.source_sha256:
+                        return unavailable
 
                 root = _checked_root(self.vector_root)
                 if root is None:
-                    return UNAVAILABLE
+                    return unavailable
                 all_artifacts = list(seed_records.values()) + list(candidate_records.values())
                 vectors: dict[str, VectorRecord] = {}
                 for artifact in all_artifacts:
                     vector = _read_vector(root, artifact)
                     if vector is None:
-                        return UNAVAILABLE
+                        return unavailable
                     try:
                         component_hash = canonical_vector_checksum(vector)
                     except (OverflowError, TypeError, ValueError):
-                        return UNAVAILABLE
+                        return unavailable
                     if component_hash != artifact.component_sha256:
-                        return UNAVAILABLE
+                        return unavailable
                     vectors[artifact.asset_id] = VectorRecord(
                         asset_id=artifact.asset_id,
                         identity=self.expected_identity,
@@ -162,6 +179,31 @@ class VisualVectorReads:
                 candidate_ids = tuple(candidate_records)
                 candidate_vector_records = tuple(vectors[item] for item in candidate_ids)
                 authorized_ids = frozenset((*seed_ids, *candidate_ids))
+                if grouping:
+                    capture_times = {asset_id: row[3] for asset_id, row in seed_by_id.items()}
+                    capture_times.update({str(row[1]): row[-1] for row in candidate_artifact_rows})
+                    result = propose_memory_group(
+                        AuthorizationSnapshot(library_id=library_id, photo_ids=authorized_ids),
+                        seed_ids=tuple(seed_ids), seed_vectors=seed_vector_records,
+                        candidate_ids=candidate_ids, candidate_vectors=candidate_vector_records,
+                        expected_identity=self.expected_identity, capture_times=capture_times,
+                        excluded_ids=excluded_ids,
+                    )
+                    if not present_items or result.status != 'ready':
+                        return result
+                    from .library import FIELDS, SOURCE, _asset
+                    items = []
+                    for candidate in result.candidates:
+                        row = db.execute('SELECT ' + FIELDS + SOURCE + ' AND a.id=?',
+                                         (library_id, int(candidate.asset_id))).fetchone()
+                        if row is None:
+                            raise AccessDenied('Access denied')
+                        item = _asset(row, library_id)
+                        item.update(matched_seed_asset_id=candidate.matched_seed_asset_id,
+                                    time_reason=candidate.time_reason)
+                        items.append(item)
+                    return {'version': 1, 'status': 'ready', 'library_id': library_id,
+                            'needs_review': True, 'seed_asset_ids': list(seed_ids), 'items': items}
                 return rank_visual_candidates(
                     AuthorizationSnapshot(library_id=library_id, photo_ids=authorized_ids),
                     seed_ids=tuple(seed_ids),
@@ -173,7 +215,7 @@ class VisualVectorReads:
             except AccessDenied:
                 raise
             except (OSError, sqlite3.Error, TypeError, ValueError, OverflowError):
-                return UNAVAILABLE
+                return unavailable
 
 
 def _valid_identity(identity: object) -> bool:

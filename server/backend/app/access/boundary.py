@@ -10,6 +10,7 @@ from .library import router as library_router
 from .members import router as member_router
 from .stories import router as story_router
 from .story_workspace import router as story_workspace_router
+from .memory_group_transport import router as memory_group_router
 from .memory_stories import router as memory_router
 from .memory_transport import router as memory_community_router
 from .memory_book_edition_transport import router as memory_edition_router
@@ -36,10 +37,10 @@ class ClosedBoundary:
         ('GET', '/auth/session'), ('POST', '/auth/logout'),
         ('POST', '/auth/invitations/accept'),
     }
-    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-community.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
+    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -58,6 +59,10 @@ class ClosedBoundary:
 
     @classmethod
     def allowed(cls, method, path):
+        if method == 'GET' and path == '/memory-groups/capabilities': return True
+        if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals'}: return True
+        if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
+        if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
         prefix = '/memory-community/v1'
         if method == 'GET' and path == prefix+'/capabilities': return True
         if method in {'GET','POST'} and path == prefix+'/books': return True

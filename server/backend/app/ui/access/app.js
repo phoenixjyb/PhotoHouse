@@ -3,7 +3,8 @@
   const $ = id => document.getElementById(id);
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null};
-  let storyWorkspace, memoryCommunity;
+  let storyWorkspace, memoryCommunity, memoryGroups;
+  let memoryGroupGalleryItems=[];
   const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechUrl:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null};
   const assistantRecoveryKey='photohouse.assistant.turn-recovery.v1',assistantRecoveryMaxChars=512;
   const words = {
@@ -246,7 +247,7 @@
     }catch(error){if(!current()||error.name==='AbortError')return;$('my-uploads-list').replaceChildren();$('my-uploads-status').textContent=t('myUploadsUnavailable');if(error.status===401)await failure(error,epoch);}
     finally{if(current()){myUploadsState.busy=false;$('my-uploads-refresh').disabled=false;}}
   }
-  const storyState={asset:null,editing:null,dirty:false,busy:false,page:1,load:0,loading:false,history:0,deletes:new Map(),pending:null,search:null,suspended:null};
+  const storyState={asset:null,editing:null,dirty:false,busy:false,page:1,load:0,loading:false,history:0,deletes:new Map(),pending:null,search:null,suspended:null,notes:[]};
   const peopleState={page:1,total:0,load:0,query:'',named:'all'};
   const directoryState={page:1,total:0,load:0,query:'',person:null,assetLoad:0,assetPage:1,assetTotal:0};
   Object.assign(words.en,{familyTagsTitle:'Family note tags',familyTagsHelp:'Labels suggested from family notes and accepted by the library owner. Only photos in this library appear here.',findFamilyTag:'Find a family tag',familyTagsEmpty:'No accepted family note tags in this library yet.',familyTagAssets:'Photos with this family tag',clearFamilyTag:'Close'});
@@ -311,7 +312,7 @@
   const uploadState={page:1,total:0,load:0,items:[],plans:new Map(),dialogItem:null,dialogEpoch:0,previewQueue:{token:0,pending:[],active:false}};
   const tagReviewState={page:1,total:0,load:0,busy:false};
   function storyStatus(key){$('story-status').textContent=key?t(key):'';}
-  function abandonStory(){return !storyState.busy&&(!storyState.dirty||window.confirm(t('unsavedStory')))&&(storyWorkspace?.canLeave()??true);}
+  function abandonStory(){return !storyState.busy&&(!storyState.dirty||window.confirm(t('unsavedStory')))&&(storyWorkspace?.canLeave()??true)&&(memoryGroups?.canLeave()??true);}
   function resetStoryEditor(){
     storyState.editing=null;storyState.dirty=false;storyState.pending=null;
     $('story-form').reset();$('story-form').hidden=true;$('story-compare').hidden=true;$('story-conflict').replaceChildren();
@@ -352,6 +353,7 @@
     syncAssistantControls();
   }
   function closeViewer({keepFrame=false}={}) {
+    memoryGroups?.clear();storyState.notes=[];
     if(state.videoRetryTimer){clearTimeout(state.videoRetryTimer);state.videoRetryTimer=null;}
     if(state.videoController){state.videoController.abort();state.videoController=null;}
     stopSlideshow();sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;updateSequence();
@@ -369,6 +371,7 @@
     $('original').removeAttribute('href'); $('original').hidden=true;
   }
   function clearPhotos({cancelMemoryJobs=true}={}) {
+    memoryGroupGalleryItems=[];memoryGroups?.clear();
     storyWorkspace?.clear({cancelCommunityJobs:cancelMemoryJobs});
     transferState.selected.clear();transferState.review=null;transferState.source=null;transferState.destinations=[];transferState.busy=false;transferState.canMove=null;
     transferState.load++;if($('transfer-review').open)$('transfer-review').close();
@@ -1073,7 +1076,7 @@
   async function movePhoto(delta,automatic=false){
     const s=sequenceState;
     if(s.busy||state.locked||!$('viewer').open)return;
-    if(document.hidden||state.busy||storyState.busy||storyState.dirty||!$('story-form').hidden||$('face-panel').open){stopSlideshow();if(automatic||state.busy||storyState.busy)return;}
+    if(document.hidden||state.busy||storyState.busy||storyState.dirty||memoryGroups?.isEditing()||!$('story-form').hidden||$('face-panel').open){stopSlideshow();if(automatic||state.busy||storyState.busy)return;}
     if(!automatic&&!abandonStory())return;
     const next=s.index+delta;
     if(next<0||next>=s.items.length){stopSlideshow();return;}
@@ -1183,6 +1186,8 @@
       const result=await request(libraryPath(`/assets/${asset.id}/stories`,{page:String(page)}),{epoch});
       if(stale(epoch)||viewer!==state.viewerGeneration||load!==storyState.load)return;
       storyState.page=page;
+      storyState.notes=append?[...storyState.notes,...result.items]:result.items.slice();
+      memoryGroups?.mount($('memory-groups'),asset,storyState.notes,memoryGroupGalleryItems);
       if(!append)$('story-list').replaceChildren();
       if(!result.items.length&&!append){const p=document.createElement('p');p.className='story-empty';p.textContent=t('storyEmpty');$('story-list').append(p);}
       for(const story of result.items){
@@ -1369,6 +1374,7 @@
     }finally{transferState.busy=false;if(choice)choice.disabled=false;updateTransferUI();}
   }
   function renderGalleryItems(items,isCurrent,origin='page') {
+    memoryGroupGalleryItems=items.slice(0,100);
     storyWorkspace?.setItems(items);
     for(const item of items) {
       const card=document.createElement('button');card.type='button';card.className='asset';card.dataset.assetId=item.id;
@@ -2556,6 +2562,11 @@
     onProposal:proposal=>{void storyWorkspace?.acceptProposal(proposal);},
     onOpenStory:value=>{if(typeof value==='string')void storyWorkspace?.reopen(value);else storyWorkspace?.openBook(value);},
     onOpenBookStory:context=>storyWorkspace?.openBookStory(context)??false});
+  memoryGroups=window.PhotoHouseMemoryGroups?.create({
+    scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,
+      epoch:state.generation,locked:state.locked}),
+    api:async(path,options={})=>{try{return await request(libraryPath(path),options);}
+      catch(error){if(error.status===401||error.status===403)await failure(error,options.epoch);throw error;}}});
   storyWorkspace=window.PhotoHouseStoryWorkspace({scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,locked:state.locked}),
     community:memoryCommunity,
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),

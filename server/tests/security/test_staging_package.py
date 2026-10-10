@@ -70,6 +70,12 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/home_catalog.py',
             'backend/app/ui/access/memory-community.js',
             'backend/app/ui/access/story-workspace.js',
+            'backend/app/ui/access/memory-groups.js',
+            'backend/app/access/memory_groups.py',
+            'backend/app/access/memory_group_transport.py',
+            'backend/app/access/memory_grouping.py',
+            'backend/app/access/memory_group_schema.py',
+            'backend/migrations/versions/e7c1a9d5b304_memory_groups.py',
             'backend/migrations/versions/a0c9d2e4f817_saved_story_contribution_refs.py',
             'backend/migrations/versions/b1d7e4a9c230_memory_book_editorial.py',
             'backend/migrations/versions/c2e6b8a1d490_reviewed_memoir_editions.py',
@@ -182,7 +188,7 @@ class StagingPackageTests(unittest.TestCase):
             for name in package.FILES:
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),manifest['files'][name])
             self.assertIn('backend/app/ui/photohouse-icon.svg',archive.namelist())
-            self.assertEqual(manifest['migration_revision'], 'd1f6a8c3e920')
+            self.assertEqual(manifest['migration_revision'], 'e7c1a9d5b304')
             self.assertIn('backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
                           archive.namelist())
             for name in ('backend/app/tasks.py', 'backend/app/gps_utils.py',

@@ -29,7 +29,7 @@ from app.access.memory_book_edition_schema import (  # noqa: E402
 )
 
 from app.access.runtime import (REQUIRED_REVISION, COLLABORATION_REVISIONS, EDITION_REVISIONS,
-                                SOURCE_REFERENCE_REVISIONS)
+                                SOURCE_REFERENCE_REVISIONS, IDENTITY_REVISIONS)
 from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
 
 REVISION = REQUIRED_REVISION
@@ -79,6 +79,9 @@ def _database_state(db, budget):
     revision = full.validate(db, budget)
     if revision not in COLLABORATION_REVISIONS:
         raise full.small.Refused('Supported collaboration schema required')
+    from app.access.memory_group_schema import GROUP_REVISION, verify_memory_group_schema
+    if revision == GROUP_REVISION and not verify_memory_group_schema(db):
+        raise full.small.Refused('Unexpected memory group schema')
     tables = full.schema(db)
     expected_tables = dict(schema_check.EXPECTED)
     if revision in SOURCE_REFERENCE_REVISIONS:
@@ -89,7 +92,7 @@ def _database_state(db, budget):
         expected_tables.update(edition_tables)
     if not set(expected_tables) <= set(tables):
         raise full.small.Refused('Complete collaboration schema required')
-    if revision == IDENTITY_REVISION:
+    if revision in IDENTITY_REVISIONS:
         from app.access.family_note_identity import verify_family_note_identity_schema
         from app.access.family_note_identity_schema import add_family_note_identity_tables
         from app.access.transport import TransportError
@@ -161,7 +164,7 @@ def _database_state(db, budget):
             'originals': originals, 'marker_rows': marker_rows,
             'edition_rows': edition_rows,
             'identity_rows': sum(db.execute('SELECT count(*) FROM ' + full.quoted(table)).fetchone()[0]
-                for table in IDENTITY_TABLES) if revision == IDENTITY_REVISION else 0}
+                for table in IDENTITY_TABLES) if revision in IDENTITY_REVISIONS else 0}
 
 
 def _read_state(path, budget):
@@ -222,7 +225,7 @@ def initialize(database, backup, journal_path, namespace, budget, *,
     if not execute and all_writers_stopped:
         raise full.small.Refused('--all-writers-stopped requires --execute')
     reviewed = _review(database, backup, journal_path, namespace, budget)
-    if format_version == 2 and reviewed['revision'] != IDENTITY_REVISION:
+    if format_version == 2 and reviewed['revision'] not in IDENTITY_REVISIONS:
         raise full.small.Refused('Family note identity schema required for journal version 2')
     reviewed['journal_format_version'] = format_version
     if not execute:

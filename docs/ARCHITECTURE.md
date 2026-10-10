@@ -32,10 +32,13 @@ Originals, transcripts, polished text, tags and chapter links remain distinct. L
 Image similarity has an optional immutable vector-record contract and a
 protected library-scoped reader. Authorization and the complete bounded cohort
 are resolved in one SQLite snapshot before file access; source and exact model/
-preprocessing identity, file and component checksums are required. The loader
-returns candidate IDs only and never invokes a model or global index.
-The optional tables have no migration, and similarity is not exposed in the
-product. An internal image-worker producer now binds the publication journal to
+preprocessing identity, file and component checksums are required. The ranker returns IDs only; the group adapter hydrates protected asset fields
+inside the same authorization snapshot. It never invokes a model or global index.
+The vector tables still have no migration or live activation. A separate e7
+migration adds ID-only memory groups; a default-off Web editor can link current
+family notes and review capture-time plus similarity suggestions. Qualified
+vector configuration is explicit, and manual groups work without vectors. See
+[the group contract](../server/docs/security/MEMORY_GROUPS_V1.md). An internal image-worker producer now binds the publication journal to
 the exact approved task and verified profile. Ready record, task completion and
 committed intent are atomic; restart can recover a verified file before loading
 a provider. The default worker path remains unchanged, with no CLI activation.

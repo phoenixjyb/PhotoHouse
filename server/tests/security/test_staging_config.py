@@ -33,6 +33,99 @@ def base():
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_memory_groups_are_manual_default_off_and_forward_a_typed_vector_profile_only_when_complete(self):
+        legacy = s.parse_configuration(base())
+        self.assertFalse(legacy.memory_groups_enabled)
+        self.assertIsNone(legacy.memory_group_vector_root)
+        self.assertIsNone(legacy.memory_group_vector_identity)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            legacy.build_app()
+        self.assertIs(runtime.call_args.kwargs['memory_groups_enabled'], False)
+        self.assertIsNone(runtime.call_args.kwargs['memory_group_vectors'])
+
+        manual = s.parse_configuration(dict(base(), memory_groups_enabled=True))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            manual.build_app()
+        self.assertIs(runtime.call_args.kwargs['memory_groups_enabled'], True)
+        self.assertIsNone(runtime.call_args.kwargs['memory_group_vectors'])
+
+        identity_json = {
+            'artifact_sha256': 'a' * 64,
+            'preprocessing_sha256': 'b' * 64,
+            'vector_space_id': 'family-photo-v1',
+            'model_version': 'clip-v2',
+            'dimension': 768,
+            'normalization': 'unit_l2',
+        }
+        source = dict(base(), memory_groups_enabled=True,
+            memory_group_vector_root='/synthetic/private/group-vectors',
+            memory_group_vector_identity=identity_json)
+        configuration = s.parse_configuration(source)
+        identity_json['model_version'] = 'mutated-after-parse'
+        self.assertEqual(configuration.memory_group_vector_identity[3], 'clip-v2')
+        derived = s.parse_configuration(dict(source, memory_group_vector_root=base()['derived_root']))
+        self.assertEqual(str(derived.memory_group_vector_root), base()['derived_root'])
+        child = s.parse_configuration(dict(source, memory_group_vector_root=base()['derived_root']+'/qualified'))
+        self.assertEqual(str(child.memory_group_vector_root), base()['derived_root']+'/qualified')
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            configuration.build_app()
+        fields = runtime.call_args.kwargs
+        self.assertIs(fields['memory_groups_enabled'], True)
+        from app.access.memory_group_transport import GroupVectorConfiguration
+        from app.access.visual_candidates import VectorSpaceIdentity
+        profile = fields['memory_group_vectors']
+        self.assertIs(type(profile), GroupVectorConfiguration)
+        self.assertEqual(profile.vector_root, Path('/synthetic/private/group-vectors'))
+        self.assertIs(type(profile.identity), VectorSpaceIdentity)
+        self.assertEqual(profile.identity.artifact_sha256, 'a' * 64)
+        self.assertEqual(profile.identity.preprocessing_sha256, 'b' * 64)
+        self.assertEqual(profile.identity.vector_space_id, 'family-photo-v1')
+        self.assertEqual(profile.identity.model_version, 'clip-v2')
+        self.assertEqual(profile.identity.dimension, 768)
+        self.assertEqual(profile.identity.normalization, 'unit_l2')
+
+    def test_memory_group_vector_configuration_is_all_or_nothing_and_strictly_qualified(self):
+        identity = {
+            'artifact_sha256': 'a' * 64,
+            'preprocessing_sha256': 'b' * 64,
+            'vector_space_id': 'family-photo-v1',
+            'model_version': 'clip-v2',
+            'dimension': 768,
+            'normalization': 'unit_l2',
+        }
+        invalid = [
+            {'memory_groups_enabled': 'true'}, {'memory_groups_enabled': 1},
+            {'memory_group_vector_root': '/synthetic/private/group-vectors'},
+            {'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': False, 'memory_group_vector_root': '/synthetic/private/group-vectors',
+             'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': True, 'memory_group_vector_root': 'relative/vectors',
+             'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': True, 'memory_group_vector_root': '/synthetic/01_INCOMING/vectors',
+             'memory_group_vector_identity': identity},
+        ]
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+
+        for field, value in (
+                ('artifact_sha256', 'A' * 64), ('preprocessing_sha256', 'x' * 64),
+                ('vector_space_id', 'Uppercase'), ('model_version', ' model'),
+                ('dimension', 0), ('dimension', 4097), ('dimension', True),
+                ('normalization', 'l2')):
+            bad = dict(identity, **{field: value})
+            with self.subTest(field=field, value=value), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), memory_groups_enabled=True,
+                    memory_group_vector_root='/synthetic/private/group-vectors',
+                    memory_group_vector_identity=bad))
+        for bad in ({**identity, 'extra': 'unexpected'},
+                    {key: value for key, value in identity.items() if key != 'model_version'},
+                    None, ['not', 'a', 'mapping']):
+            with self.subTest(identity=bad), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), memory_groups_enabled=True,
+                    memory_group_vector_root='/synthetic/private/group-vectors',
+                    memory_group_vector_identity=bad))
+
     def test_title_configuration_is_independent_optional_and_passed_to_runtime(self):
         default = s.parse_configuration(base())
         self.assertFalse(default.story_title_suggestions_enabled)

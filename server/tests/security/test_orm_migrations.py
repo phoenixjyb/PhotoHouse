@@ -19,7 +19,7 @@ from app.db import Base
 from app.access.metadata import migration_metadata
 
 PRE_ACCESS = 'd2b7e4f6a901'
-ACCESS_HEAD = 'd1f6a8c3e920'
+ACCESS_HEAD = 'e7c1a9d5b304'
 ACCESS_TABLES = {'access_accounts', 'access_sessions', 'access_operators', 'access_libraries',
     'access_memberships', 'access_invitations', 'access_asset_libraries', 'access_audit',
     'access_admission_key', 'access_attempts', 'access_kdf_slot', 'access_provisioning_receipts',
@@ -32,7 +32,8 @@ ACCESS_TABLES = {'access_accounts', 'access_sessions', 'access_operators', 'acce
     'access_original_deletion_state', 'access_memory_contribution_refs',
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
     'access_memory_book_editions', 'access_memory_book_edition_sources',
-    'access_family_note_identities', 'access_family_note_scopes', 'access_memory_book_edition_family_notes'}
+    'access_family_note_identities', 'access_family_note_scopes', 'access_memory_book_edition_family_notes',
+    'access_memory_groups', 'access_memory_group_revisions'}
 
 
 def config():

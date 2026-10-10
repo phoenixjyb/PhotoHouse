@@ -3,6 +3,21 @@
 **Status:** design proposal; no visual similarity route or provider activation is
 claimed here.
 
+## Implemented shared-memory review slice (October 11)
+
+The [memory-group contract](../server/docs/security/MEMORY_GROUPS_V1.md) now
+implements time-proximate visual suggestions, ID-only saved memberships and
+sticky exclusions, dynamic original-note sharing with preserved authorship,
+and a default-off Web editor. It uses recorded capture time and cosine similarity
+jointly; it does not change the older same-day route. Aware full timestamps may
+match across midnight; date-only metadata uses the written day. Unknown dates
+need manual grouping. Automatic visual proposals remain image-only.
+
+Schema e7 is prepared and tested locally; immutable vector schema migration,
+Windows vector coverage, exact installed producer qualification and live
+activation remain separate gates. The older design discussion below describes
+these provenance constraints and must not be read as a live acceptance claim.
+
 ## Goal and boundary
 
 Offer a family an explicit, reviewable list of visually similar **photo**

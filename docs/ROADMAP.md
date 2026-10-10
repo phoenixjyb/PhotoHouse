@@ -1,5 +1,26 @@
 # Product roadmap
 
+## October 11 adjustable shared-memory groups
+
+Capture-time and qualified image-similarity proposals now have a default-off
+protected API and a Web photo-viewer editor. Groups retain original note IDs,
+ordered media IDs, theme and sticky exclusions. Reads preserve the latest
+original wording and author; no note or audio is copied into group history.
+Users explicitly save and can adjust members and linked sources. Missing dates
+and unavailable vectors retain manual selection; video grouping is manual.
+
+Additive `e7c1a9d5b304` migration and companion approved-upload worker compatibility
+are prepared locally. The six-hour/0.9 similarity rule is a heuristic awaiting
+family calibration. See [the contract](../server/docs/security/MEMORY_GROUPS_V1.md).
+This is source and synthetic evidence, with no Windows operation in this chunk.
+
+Next delivery gates: qualify e7 upgrade and stopped-writer backup restoration,
+worker companion package, exact prepared-vector profile/coverage and protected
+lookup on Windows; then approve activation. Next product work: phone group
+review/edit, deduplicated shared sources in essay/memoir evidence, and explicit
+family feedback on suggested group boundaries. Do not automatically publish
+private memories to Home TV.
+
 ## October 11 native qualification follow-up
 
 The corrected package at `b8f103b` passed all three bounded Windows synthetic

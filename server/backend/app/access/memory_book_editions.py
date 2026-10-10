@@ -16,6 +16,7 @@ from .memory_book_edition_provenance import build_edition_provenance
 from .family_note_identity import (identity_enabled, resolve_note_identity,
     persist_edition_note_identities, edition_note_identities_match)
 from .family_note_identity_schema import IDENTITY_REVISION
+from .memory_group_schema import GROUP_REVISION
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
 from .memory_jobs import (
     EDITORIAL_CONTEXT_PROFILE, MemoryJobs, context, digest, editorial_choice, parent,
@@ -47,7 +48,7 @@ class MemoryBookEditions:
             raise TransportError(503, 'Reviewed memoir editions unavailable')
         try:
             if self.db.execute('SELECT version_num FROM alembic_version').fetchall() not in (
-                    [(EDITION_REVISION,)], [(IDENTITY_REVISION,)]):
+                    [(EDITION_REVISION,)], [(IDENTITY_REVISION,)], [(GROUP_REVISION,)]):
                 raise EditionDeletionError('memoir_edition_schema_unavailable')
             verify_edition_schema(self.db)
             identity_enabled(self.db)

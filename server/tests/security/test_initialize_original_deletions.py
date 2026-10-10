@@ -338,7 +338,7 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         code, report, _ = self.cli('--execute', '--all-writers-stopped')
         self.assertEqual(code, 0)
         self.assertEqual(report['status'], 'bound')
-        self.assertEqual(report['schema_revision'], IDENTITY_REVISION)
+        self.assertEqual(report['schema_revision'], 'e7c1a9d5b304')
         self.assertGreater(report['primary_rows'], report['original_rows'])
         with closing(sqlite3.connect(self.primary)) as db:
             self.assertEqual(db.execute(

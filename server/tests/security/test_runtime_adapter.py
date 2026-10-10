@@ -24,6 +24,9 @@ from test_orm_migrations import config
 from test_access_foundation import OWNER, MEMBER, PASSWORD, NOW
 
 
+from app.access.memory_group_schema import GROUP_REVISION
+
+
 class RuntimeAdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -239,7 +242,7 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.get('/assets?library=family-a',headers=self.headers()).status_code,200)
 
     def test_adapter_revision_pin_matches_actual_migration_head(self):
-        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[IDENTITY_REVISION])
+        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[GROUP_REVISION])
         for invalid in (Path('relative.sqlite'),':memory:'):
             with self.assertRaises(ValueError):ExistingDatabase(invalid)
         for timeout in (0,-1,11,float('nan'),True):

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/ui/styles.css">
   <script src="/ui/memory-community.js" defer></script>
   <script src="/ui/story-workspace.js" defer></script>
+  <script src="/ui/memory-groups.js" defer></script>
   <script src="/ui/app.js" defer></script>
 </head>
 <body>
@@ -206,6 +207,7 @@
       <form id="story-form" hidden><label for="story-title" data-i18n="storyTitle">Title (optional)</label><input id="story-title"><label for="story-byline" data-i18n="storyByline">Written by (display name)</label><input id="story-byline" autocomplete="off"><label for="story-language" data-i18n="storyLanguage">Language of your story</label><select id="story-language"><option value="en">English</option><option value="zh">中文</option><option value="mixed">English + 中文</option><option value="und" data-i18n="otherLanguage">Other / unspecified</option></select><label for="story-text" data-i18n="storyText">What would you like to remember?</label><textarea id="story-text" rows="8" required></textarea><p class="fine" data-i18n="storyLimit">No word-count limit. Up to 64 KiB of text; longer entries are rejected, never shortened.</p><div class="story-actions"><button id="story-save" class="primary" type="submit" data-i18n="saveStory">Save story</button><button id="story-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button><button id="story-compare" class="quiet" type="button" hidden data-i18n="compareLatest">Compare latest version</button></div><div id="story-conflict"></div></form>
       <section id="story-history" hidden aria-label="Story history"></section>
     </section>
+    <section id="memory-groups" class="memory-groups" aria-label="共享回忆"></section>
     <details class="ai-descriptions"><summary data-i18n="aiAndLegacy">AI descriptions and earlier caption edits</summary><div id="captions"></div><p class="fine" data-i18n="captionNote">Generated descriptions may be inaccurate. Original downloads require separate permission.</p></details><a id="original" class="quiet" hidden data-i18n="download">Download original</a></dialog>
   <dialog id="album-editor" aria-label="Album editor"></dialog>
   <dialog id="transfer-review" aria-labelledby="transfer-review-title"><button id="transfer-review-close" class="quiet close" type="button" data-i18n="cancel">Cancel</button><h2 id="transfer-review-title" data-i18n="reviewMove">Review move</h2><p id="transfer-review-copy" class="fine"></p><div id="transfer-review-summary" class="transfer-summary"></div><p id="transfer-review-status" role="status" aria-live="assertive"></p><div class="transfer-review-actions"><button id="transfer-review-confirm" class="primary" type="button" data-i18n="confirmMove">Confirm move</button><button id="transfer-review-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button></div></dialog>

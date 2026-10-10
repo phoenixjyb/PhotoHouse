@@ -30,7 +30,8 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
                    'original_deletion_journal_path', 'original_deletion_namespace',
                    'story_title_suggestions_enabled', 'story_title_url', 'story_title_model',
-                   'story_title_timeout_seconds'}
+                   'story_title_timeout_seconds', 'memory_groups_enabled',
+                   'memory_group_vector_root', 'memory_group_vector_identity'}
 PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network,
     ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
      '127.0.0.0/8', 'fc00::/7', '::1/128')))
@@ -88,6 +89,10 @@ class StagingConfiguration:
     update_root: Path | None = None
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
+    memory_groups_enabled: bool = False
+    memory_group_vector_root: Path | None = None
+    # An immutable tuple copied from the private JSON object.  The JSON mapping is never retained.
+    memory_group_vector_identity: tuple | None = None
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Project private provider settings explicitly without constructing the app."""
@@ -158,6 +163,38 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if type(self.annotation_intake_enabled) is not bool:
                 raise InvalidConfiguration()
+            if type(self.memory_groups_enabled) is not bool:
+                raise InvalidConfiguration()
+            if (self.memory_group_vector_root is None) != (self.memory_group_vector_identity is None):
+                raise InvalidConfiguration()
+            if self.memory_group_vector_root is not None:
+                vector_root = self.memory_group_vector_root
+                if (not self.memory_groups_enabled or not isinstance(vector_root, Path)
+                        or _path(str(vector_root)) != vector_root):
+                    raise InvalidConfiguration()
+                if any(vector_root.is_relative_to(other) or other.is_relative_to(vector_root)
+                       for other in (*self.original_roots, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
+                if (self.derived_root.is_relative_to(vector_root)
+                        and not vector_root.is_relative_to(self.derived_root)):
+                    raise InvalidConfiguration()
+                if (type(self.memory_group_vector_identity) is not tuple
+                        or len(self.memory_group_vector_identity) != 6):
+                    raise InvalidConfiguration()
+                artifact, preprocessing, vector_space, model_version, dimension, normalization = self.memory_group_vector_identity
+                digest = re.compile(r'[0-9a-f]{64}\Z', re.ASCII)
+                identifier = re.compile(r'[a-z0-9][a-z0-9._-]{0,63}\Z', re.ASCII)
+                if (type(artifact) is not str or not digest.fullmatch(artifact)
+                        or type(preprocessing) is not str or not digest.fullmatch(preprocessing)
+                        or type(vector_space) is not str or not identifier.fullmatch(vector_space)
+                        or type(model_version) is not str or not identifier.fullmatch(model_version)
+                        or type(dimension) is not int or not 1 <= dimension <= 4096
+                        or type(normalization) is not str or normalization != 'unit_l2'):
+                    raise InvalidConfiguration()
             if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
                 raise InvalidConfiguration()
             if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
@@ -262,6 +299,15 @@ class StagingConfiguration:
         # Deliberate source root; no .env, legacy config or model entry point.
         sys.path.insert(0, str(ROOT/'backend'))
         from app.access.runtime import RuntimeConfiguration
+        memory_group_vectors = None
+        if self.memory_group_vector_identity is not None:
+            from app.access.memory_group_transport import GroupVectorConfiguration
+            from app.access.visual_candidates import VectorSpaceIdentity
+            artifact, preprocessing, vector_space, model_version, dimension, normalization = self.memory_group_vector_identity
+            identity = VectorSpaceIdentity(artifact_sha256=artifact,
+                preprocessing_sha256=preprocessing, vector_space_id=vector_space,
+                model_version=model_version, dimension=dimension, normalization=normalization)
+            memory_group_vectors = GroupVectorConfiguration(self.memory_group_vector_root, identity)
         return RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
             original_roots=self.original_roots, derived_root=self.derived_root,
             incoming_root=self.incoming_root, discovery_indexes=self.discovery_indexes,
@@ -287,7 +333,9 @@ class StagingConfiguration:
             assistant_tts_token=self.assistant_tts_token,
             assistant_asr_timeout_seconds=self.assistant_asr_timeout_seconds,
             assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
-            update_root=self.update_root).build_app()
+            update_root=self.update_root,
+            memory_groups_enabled=self.memory_groups_enabled,
+            memory_group_vectors=memory_group_vectors).build_app()
 
     def server_options(self):
         return dict(host=self.bind_host, port=self.port, ssl_certfile=str(self.tls_certificate),
@@ -309,6 +357,17 @@ def parse_configuration(value):
         indexes = value.get('discovery_indexes', [])
         if type(indexes) is not list:
             raise InvalidConfiguration()
+        vector_root_value = value.get('memory_group_vector_root')
+        vector_identity_value = value.get('memory_group_vector_identity')
+        vector_identity = None
+        if vector_identity_value is not None:
+            required_identity = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
+                                 'model_version', 'dimension', 'normalization'}
+            if type(vector_identity_value) is not dict or set(vector_identity_value) != required_identity:
+                raise InvalidConfiguration()
+            vector_identity = tuple(vector_identity_value[key] for key in (
+                'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
+                'model_version', 'dimension', 'normalization'))
         return StagingConfiguration(database=_path(value['database']), web_origin=value['web_origin'],
             original_roots=tuple(_path(p) for p in value['original_roots']),
             derived_root=_path(value['derived_root']), bind_host=value['bind_host'], port=value['port'],
@@ -337,7 +396,10 @@ def parse_configuration(value):
             assistant_tts_token=value.get('assistant_tts_token'),
             assistant_asr_timeout_seconds=value.get('assistant_asr_timeout_seconds', 45),
             assistant_tts_timeout_seconds=value.get('assistant_tts_timeout_seconds', 45),
-            update_root=None if value.get('update_root') is None else _path(value['update_root']))
+            update_root=None if value.get('update_root') is None else _path(value['update_root']),
+            memory_groups_enabled=value.get('memory_groups_enabled', False),
+            memory_group_vector_root=None if vector_root_value is None else _path(vector_root_value),
+            memory_group_vector_identity=vector_identity)
     except (TypeError, ValueError, KeyError):
         raise InvalidConfiguration() from None
 
