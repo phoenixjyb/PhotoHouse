@@ -1,11 +1,38 @@
 # Product roadmap
 
+## October 10 installed release and next gates
+
+The protected API/Web release at `489460b` has passed Windows synthetic
+qualification and live HTTPS asset, icon, OTA and anonymous-access checks.
+A stopped-writer backup covered the main database and both journals; the schema
+and existing feature settings were preserved. The five existing approved-upload
+workers were restored with their task definitions unchanged. Phone v46 and TV
+v30 remain the published OTA releases; the owner reports installing phone v46.
+These checks do not establish a new family upload or conversational voice turn.
+
+Home TV recovery remains pending an interactive Windows desktop session. The
+small-model comparison has not produced an inference result: the GPU query
+passes outside the supervised Windows job and fails inside it. Keep the existing
+provider configuration until bounded native execution, exact GPU residency and
+human Chinese story/voice reviews pass. Generation and title-provider activation
+remain separate gates.
+
+The next shared-story slice is immutable image-vector provenance and a bounded,
+library-scoped loader. Legacy embeddings lack checkpoint and preprocessing
+identity and must not be promoted by guessing those values. Persist the verified
+identity when a worker produces a new vector, then load the authorized complete
+cohort before reading files or scoring. Preserve the current capture-day picker;
+add similarity suggestions only after this contract and native coverage pass.
+See [activity grouping](ACTIVITY_GROUPING_DESIGN.md) and
+[provider qualification](MODEL_QUALIFICATION.md).
+
 ## October 10 source delivery and reader refinement
 
 PR #13 is merged after its pinned API, Android and Windows private-reader jobs
 passed. Its conversation recovery, explicit transcript review, same-day story
-picker and lifecycle fixes are reviewed source. Delivery of those exact changes
-to the household API and signed phone remains a separate operation.
+picker and lifecycle fixes are reviewed source. Those changes are now included
+in the installed API/Web source and published phone v46; family/device behavior
+remains a separate acceptance tier.
 
 PR #14 is also merged after four hosted jobs, including the new native Windows
 CPU cohort. Its recording lifecycle, story readers and TV recovery are reviewed
@@ -21,13 +48,13 @@ microphone startup also rejects stale permission/context completions before
 showing a recording or submitting audio. A new generated Windows CPU CI profile
 checks database and source-package portability without private runtime data.
 
-Current priorities remain: deliver the qualified source; restore installed
-media processing and Home TV with exact operation checks; evaluate real family
-voice turns; then qualify provider-backed title/story quality and persisted
+Current priorities remain: finish Home TV recovery when its desktop session is
+available; evaluate real family uploads and voice turns; resolve bounded GPU
+qualification; then qualify provider-backed title/story quality and persisted
 visual identity before enabling similarity lookup. More source tests do not
 close those installed-service or human-quality gates.
 
-The next delivery candidate preserves older assistant reading positions and
+The installed `489460b` release preserves older assistant reading positions and
 provides explicit localized latest-reply navigation. Memoir citation loading now
 updates only its panel, preserving the focused title/intro form and composition;
 revision and scope checks still fence delayed results. The portable
