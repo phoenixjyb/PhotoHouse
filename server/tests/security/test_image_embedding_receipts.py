@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -116,3 +117,15 @@ def test_recipe_digest_rejects_non_json_or_noncanonical_inputs(recipe):
 def test_verify_rejects_malformed_pin():
     with pytest.raises(receipts.ReceiptError, match="invalid_checkpoint_pin"):
         receipts.verify_checkpoint(object())
+
+
+def test_windows_checkpoint_identity_uses_birth_time_across_path_and_handle_stats():
+    fields = dict(st_dev=1, st_ino=2, st_mode=0o100600, st_size=20,
+                  st_mtime_ns=3, st_nlink=1, st_birthtime_ns=4)
+    path = SimpleNamespace(**fields, st_ctime_ns=100)
+    handle = SimpleNamespace(**fields, st_ctime_ns=200)
+    assert receipts._stat_identity(path, windows=True) == receipts._stat_identity(handle, windows=True)
+    assert receipts._stat_identity(path, windows=False) != receipts._stat_identity(handle, windows=False)
+    del path.st_birthtime_ns
+    with pytest.raises(receipts.ReceiptError, match='stable_identity_unavailable'):
+        receipts._stat_identity(path, windows=True)

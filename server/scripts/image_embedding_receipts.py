@@ -38,14 +38,21 @@ def _valid_sha256(value: object) -> bool:
     return type(value) is str and _SHA256_RE.fullmatch(value) is not None
 
 
-def _stat_identity(info: os.stat_result) -> tuple[int, int, int, int, int, int, int]:
+def _stat_identity(info: os.stat_result, *, windows=None) -> tuple[int, int, int, int, int, int, int]:
+    if windows is None:
+        windows = os.name == 'nt'
+    # Windows path stat and handle fstat can disagree about ctime semantics.
+    # Match the stable birth-time pin used by the private vector-file reader.
+    stamp = getattr(info, 'st_birthtime_ns', None) if windows else info.st_ctime_ns
+    if type(stamp) is not int:
+        raise ReceiptError("checkpoint_stable_identity_unavailable")
     return (
         info.st_dev,
         info.st_ino,
         info.st_mode,
         info.st_size,
         info.st_mtime_ns,
-        info.st_ctime_ns,
+        stamp,
         info.st_nlink,
     )
 

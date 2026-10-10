@@ -3,12 +3,19 @@
 ## Visual-vector publication and lifecycle checks
 
 The ordinary `api` profile includes the optional vector publication journal,
-read-only all-version cleanup planner and CPU-only image-worker claim checks.
+read-only all-version cleanup planner, approved-task adapter and CPU-only
+image-worker claim/publication checks.
 They use generated SQLite/NPY fixtures and the standard library, with no model
 or live service. The publication suite also runs one isolated synthetic child
 which exits after file linking, then verifies journal recovery from a reopened
 database. This is process-death evidence; Windows filesystem and power-loss
 qualification remain separate.
+
+The actual-worker synthetic suite also dies after file publication and then
+restarts with the same task claim, without activating a provider. It verifies
+atomic task/artifact completion, approval/source guards, orphaned-intent refusal,
+and duplicate completed-profile skipping. These generated checks exercise the
+optional internal path; they do not decode real media or prove native inference.
 
 Checkpoint and preprocessing receipt helpers are also in the ordinary CPU
 profile. Synthetic transform objects exercise order, interpolation, crop size,
@@ -21,6 +28,8 @@ compatibility, dependency provenance and GPU execution.
 ```sh
 .venv/bin/python -m pytest --noconftest -c config/pytest.ini -q \
   server/tests/security/test_visual_vector_publication.py \
+  server/tests/security/test_visual_vector_worker.py \
+  server/tests/security/test_immutable_image_worker.py \
   server/tests/security/test_visual_vector_cleanup.py \
   server/tests/security/test_image_worker_claims.py \
   server/tests/security/test_image_embedding_receipts.py \

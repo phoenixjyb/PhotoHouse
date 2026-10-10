@@ -212,9 +212,9 @@ ranker runs. Decoding uses the standard library; no model, provider, global inde
 legacy embedding fallback is consulted.
 
 These are protected source contracts exercised with generated SQLite/vector
-fixtures. No API route, picker UI or worker publishes or exposes this optional
-storage yet. Records can describe exact provenance, but the reader cannot prove
-that an unqualified producer actually used the declared checkpoint.
+fixtures. An optional internal image-worker path now publishes these records;
+no API route or picker UI exposes them. The reader cannot prove that an
+unqualified installed producer actually used the declared checkpoint.
 
 ## Remaining integration architecture
 
@@ -244,6 +244,25 @@ immediately after the link, then reopening the database and recovering.
 POSIX directory entries are synced; Windows filesystem and power-loss behavior
 still require native qualification. No live worker invokes this coordinator.
 
+[`visual_vector_worker.py`](../server/backend/app/access/visual_vector_worker.py)
+binds that coordinator to an approved image task. Its guard rechecks the exact
+payload, start time and retry count, active source hash/path/size/MIME, assigned
+upload receipt and sole active library mapping before filesystem publication.
+The ready record, task completion and committed intent share one transaction.
+Only bounded float32 unit vectors matching the verified profile are accepted;
+legacy embedding rows are neither replaced nor backfilled.
+
+The approved image worker can use this path only when a trusted internal caller
+supplies the exact profile and both optional schema contracts already exist.
+There is no CLI activation switch, migration or schema creation in the worker.
+Startup recovers the exact running claim before provider activation. A generated
+subprocess-death test exercises this through the actual worker: restart commits
+the verified published file without decoding or model inference. Failures after
+a durable intent preserve the running claim instead of resetting its start time
+through ordinary retry handling. Missing files/intents, changed approval or
+source, and orphaned prepared intents require explicit reconciliation. Completed
+profiles are skipped; duplicate pending tasks remain visible for reconciliation.
+
 [`plan_asset_vector_cleanup`](../server/backend/app/access/visual_vector_cleanup.py)
 is a read-only planner for an already-deleted asset inside a caller-owned
 transaction. It validates every version, capped at 128 rather than truncated,
@@ -257,12 +276,13 @@ protected deletion journals do not yet carry asset tombstones.
 The existing approved image worker separately pins payload bytes, start time
 and retry count at claim, then fences publication, task completion and failure
 updates with those same fields. A changed or cancelled task stays untouched.
-This fixes claim handling on existing revisions; it does not replace the
-legacy publication path or enable the optional vector journal.
+This fixes claim handling on existing revisions. The legacy publication path
+remains the default; the optional internal path uses the journal described above.
 
 Use a new versioned identity table in the primary SQLite database, paired with
 immutable derived vector files. This is a design decision for a later additive
-migration; the optional contract above does not install the table or change a worker.
+migration; the optional contract above does not install the table or activate
+an installed worker.
 An external sidecar would need an independent locking, backup and recovery
 protocol, while the worker already commits its task and embedding row in the
 primary database. The current `embeddings` table permits only one representation
@@ -278,10 +298,11 @@ Legacy records with missing provenance remain unavailable for visual lookup;
 never infer preprocessing or artifact identity from a model name/dimension.
 
 Replacement produces a new path and row; it does not overwrite an old vector.
-The approved image worker currently publishes `embeddings/<asset-id>.npy`, then
+The default approved image worker publishes `embeddings/<asset-id>.npy`, then
 inserts its row and completes its task in a transaction. Ordinary failures
 remove the published file, but a hard crash can strand it. The new path therefore
-needs integration with the tested publication journal before it is exposed.
+uses the tested publication journal but still needs native qualification before
+it is exposed.
 Deletion execution must use all versioned artifacts from the planner rather
 than only the legacy embedding path. Tombstoning and unassignment must exclude media from
 every protected lookup immediately, independently of physical file cleanup.
@@ -301,10 +322,11 @@ Implement and qualify in this order:
    and requires consistency with the startup probe. Unsupported transforms fail
    preflight before task claims. These are synthetic source checks, not native
    provider qualification or proof of installed dependency code provenance.
-   Receipts are not yet persisted in the optional immutable vector table; legacy
-   rows remain insufficient for protected similarity lookup. Wire exact task guards and
-   finalize hooks, qualify native interruption recovery, and add durable asset
-   tombstone/replay execution using the cleanup planner. Add no legacy backfill.
+   The optional internal producer persists the verified checkpoint/preprocessing
+   identity, dimension and source into the immutable record, with exact task
+   guards and completion hooks. Native interruption recovery and durable asset
+   tombstone/replay execution using the cleanup planner remain open. Legacy rows
+   remain insufficient for protected similarity lookup; add no legacy backfill.
 3. Wire the protected reader to a verified producer profile. Its current-library
    cohort and source/identity checks are implemented; qualify actual coverage
    and lifecycle behavior without a global index or ID-prefix truncation.

@@ -25,18 +25,22 @@ resource limit or live provider was changed.
 
 The shared-story foundation now has an optional immutable image-vector record
 contract and a protected, bounded library-scoped reader. These are source-only
-contracts with synthetic fixtures: there is no migration, producer, route or
-picker activation. Legacy embeddings lack checkpoint and preprocessing identity
-and must not be promoted by guessing those values. The next slice is verified
-worker publication wiring, plus durable asset-tombstone replay using the all-version cleanup
-planner. Journal recovery currently passes generated process-death tests;
+contracts with synthetic fixtures: there is no migration, route or picker
+activation. An optional internal producer now connects the verified profile to
+publication and exact task completion. It recovers prepared files before model
+loading, preserves interrupted claims and skips completed profiles. Legacy
+embeddings lack checkpoint and preprocessing identity and must not be promoted
+by guessing those values. The next slice is durable asset-tombstone replay using
+the all-version cleanup planner. Journal and actual-worker recovery pass generated
+process-death tests;
 Windows filesystem qualification and actual vector coverage remain open.
 The source image worker now hashes the inspected checkpoint before and after
 provider loading and after inference, and compares child receipts with the
 startup probe. Receipts describe the realized supported OpenCLIP evaluation
 transforms, source digests, package versions and vector dimension. These are
 synthetically checked snapshots, not installed-provider qualification; they
-do not populate the optional immutable vector table or backfill legacy rows.
+populate the optional immutable table only through the internal opt-in producer,
+which has no CLI activation switch. They do not backfill legacy rows.
 The existing image worker now fences task completion and failure against the
 exact claimed payload/start/retry fields. These are source changes; installed
 workers still use their previously verified release. Preserve the current

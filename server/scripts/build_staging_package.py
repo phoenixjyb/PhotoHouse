@@ -108,6 +108,7 @@ FILES = (
     'backend/app/access/visual_vector_cleanup.py',
     'backend/app/access/visual_vector_loader.py',
     'backend/app/access/visual_vector_publication.py',
+    'backend/app/access/visual_vector_worker.py',
     'backend/app/access/visual_vector_schema.py',
     'backend/app/access/windows_tts.py',
     'backend/app/db.py',

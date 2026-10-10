@@ -31,6 +31,8 @@ class ApprovedWorkerPackageTests(unittest.TestCase):
             self.assertIn('scripts/run_approved_video_worker.py', archive.namelist())
             self.assertIn('scripts/image_embedding_receipts.py', archive.namelist())
             self.assertIn('scripts/image_preprocessing_receipts.py', archive.namelist())
+            self.assertIn('backend/app/access/visual_vector_worker.py', archive.namelist())
+            self.assertIn('backend/app/access/visual_vector_publication.py', archive.namelist())
             self.assertNotIn('backend/app/main.py', archive.namelist())
             for name, value in files.items():
                 self.assertEqual(manifest['files'][name], hashlib.sha256(value).hexdigest())

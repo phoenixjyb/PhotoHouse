@@ -389,6 +389,21 @@ class VectorPublicationStore:
                 return "committed"
             return self._publish_locked(record, claim, raw)
 
+    def recover_record(self, record_id: str) -> str:
+        """Recover one explicitly bound intent without inference or a scan.
+
+        The trusted worker supplies the original claim guard. Missing/partial
+        bytes and revoked claims remain unavailable; this never resets tasks.
+        """
+        with self._transaction():
+            record, claim, state = self._intent(record_id)
+            if state == "committed":
+                if (not self._ready(record)
+                        or not _valid_file(self.root, self.root / record.relative_path, record)):
+                    raise VectorPublicationRefused()
+                return "committed"
+            return self._publish_locked(record, claim, None)
+
     def recover(self, limit: int = 32, *, after_record_id: str | None = None) -> tuple[VectorRecoveryResult, ...]:
         """Advance a bounded pending-only pass even past unavailable intents."""
         if (type(limit) is not int or not 1 <= limit <= 128

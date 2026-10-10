@@ -25,6 +25,10 @@ FILES = tuple(sorted([
         '__init__', 'config', 'image_utils', 'vector_index',
         'face_detection_service', 'face_embedding_service', 'metrics',
         'scoped_face_worker')),
+    *('backend/app/access/' + name + '.py' for name in (
+        '__init__', 'credentials', 'service', 'private_storage',
+        'visual_candidates', 'visual_vector_artifacts', 'visual_vector_schema',
+        'visual_vector_loader', 'visual_vector_publication', 'visual_vector_worker')),
     *('scripts/' + name + '.py' for name in (
         'home_media_worker', 'home_preparation_resources', 'home_memory_envelope',
         'image_embedding_receipts', 'image_preprocessing_receipts',

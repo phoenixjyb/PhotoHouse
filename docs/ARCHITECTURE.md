@@ -34,10 +34,14 @@ protected library-scoped reader. Authorization and the complete bounded cohort
 are resolved in one SQLite snapshot before file access; source and exact model/
 preprocessing identity, file and component checksums are required. The loader
 returns candidate IDs only and never invokes a model or global index.
-The optional table has no migration or producer yet, and similarity is not
-exposed in the product. A guarded publication journal and all-version cleanup
-planner are tested with synthetic data. Producer identity, native filesystem
-recovery and durable asset-deletion replay must be qualified before activation. See
+The optional tables have no migration, and similarity is not exposed in the
+product. An internal image-worker producer now binds the publication journal to
+the exact approved task and verified profile. Ready record, task completion and
+committed intent are atomic; restart can recover a verified file before loading
+a provider. The default worker path remains unchanged, with no CLI activation.
+The producer, guarded journal and all-version cleanup planner use synthetic
+fixtures. Installed producer identity, native filesystem recovery and durable
+asset-deletion replay must be qualified before activation. See
 [activity grouping](ACTIVITY_GROUPING_DESIGN.md).
 
 The isolated image worker now verifies checkpoint bytes around model loading
@@ -45,8 +49,8 @@ and inference, observes the supported evaluation transform configuration, and
 requires probe/embed receipt consistency. Package versions and current source
 digests are snapshot evidence; they do not independently prove installed
 provider code provenance. Legacy embedding rows retain their existing schema.
-Writing the optional immutable record and qualifying native recovery remain
-separate producer gates.
+The internal producer writes that exact identity into its immutable record.
+Native provider/filesystem qualification remains a separate delivery gate.
 
 ## Voice pipeline
 
