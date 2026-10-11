@@ -7,6 +7,11 @@ import shutil
 import subprocess
 import sys
 
+if __package__:
+    from . import check_receipt
+else:
+    import check_receipt
+
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
@@ -200,17 +205,74 @@ def web():
         run([node, str(path)], env=suite_env)
 
 
-if __name__ == "__main__":
+def dispatch(profile):
+    if profile in ("api", "all"):
+        api()
+    if profile == "memory":
+        memory()
+    if profile in ("android", "all"):
+        android()
+    if profile == "web":
+        web()
+    if profile == "windows-cpu":
+        windows_cpu()
+
+
+def _exit_code(error):
+    if isinstance(error, subprocess.CalledProcessError):
+        return int(error.returncode)
+    if isinstance(error, KeyboardInterrupt):
+        return 130
+    if isinstance(error, SystemExit):
+        return error.code if type(error.code) is int else (0 if error.code is None else 1)
+    return 1
+
+
+def _with_receipt(profile, output):
+    try:
+        destination = check_receipt.preflight_destination(output, ROOT)
+    except check_receipt.ReceiptError as error:
+        print(f"check receipt refused: {error}", file=sys.stderr)
+        return 2
+    profiles = check_receipt.expanded_profiles(profile)
+    started = check_receipt.utc_now()
+    start_identity = check_receipt.source_identity(ROOT, profiles, destination)
+    failure = None
+    try:
+        dispatch(profile)
+    except BaseException as error:
+        failure = error
+        if isinstance(error, SystemExit) and isinstance(error.code, str):
+            print(error.code, file=sys.stderr)
+    end_identity = check_receipt.source_identity(ROOT, profiles, destination)
+    receipt = check_receipt.make_receipt(profile, profiles, started, check_receipt.utc_now(),
+                                         start_identity, end_identity,
+                                         _exit_code(failure) if failure is not None else 0)
+    try:
+        check_receipt.write_receipt(destination, receipt)
+    except check_receipt.ReceiptError as error:
+        print(f"check receipt write failed: {error}", file=sys.stderr)
+        if isinstance(failure, (subprocess.CalledProcessError, SystemExit, KeyboardInterrupt)):
+            return _exit_code(failure)
+        if failure is not None:
+            raise failure
+        return 2
+    if failure is not None and not isinstance(failure, (subprocess.CalledProcessError, SystemExit, KeyboardInterrupt)):
+        raise failure
+    return _exit_code(failure) if failure is not None else 0
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("profile", choices=("api", "memory", "windows-cpu", "android", "web", "all"))
-    choice = parser.parse_args().profile
-    if choice in ("api", "all"):
-        api()
-    if choice == "memory":
-        memory()
-    if choice in ("android", "all"):
-        android()
-    if choice == "web":
-        web()
-    if choice == "windows-cpu":
-        windows_cpu()
+    parser.add_argument("--receipt", type=Path,
+                        help="write a private local check-invocation receipt to a new JSON file")
+    args = parser.parse_args(argv)
+    if args.receipt is not None:
+        return _with_receipt(args.profile, args.receipt)
+    dispatch(args.profile)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
