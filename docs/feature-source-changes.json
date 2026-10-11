@@ -9796,6 +9796,37 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone title profile explicit chapter media layout",
+      "source_commit": "23a09fe176a046b8cec484a5ffd7b213c85776fe",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedStoryWorkspace.kt",
+          "before_sha256": "77a0e5ab66d3945a70b42cb0ee98adc3918206c327428c7ca1d708d4ab34ca81",
+          "sha256": "ee5faf1c5c192789d03ddc0edcc7d5d31805ba25d07524bd4889222869449617"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepository.kt",
+          "before_sha256": "0cd0f86f5fd204897096f2329dd5ed58c9995fd640af8a3bab3b24d526a2674e",
+          "sha256": "aeca1f70423a8fd58942ff1a9f744ecd6583d2a9d8fedc4988a2a274c7057b6e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoryWorkspaceTest.kt",
+          "before_sha256": "f989b76062d8f3f14ddfcfa0b56d8697f3bfda415ae62115e6fe3225d1213d5c",
+          "sha256": "b27696ae38d9218cd0080bd0537980ce51bfdb179c349f37054620286028eb16"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepositoryTest.kt",
+          "before_sha256": "ea5a13fdf5ba47a4b3d0a9b8c2b45ef208e0ac75f4b0f5124f343e6130b3367e",
+          "sha256": "6cf8d0c5612556543537ecafae65d4bd508d34b7ba4b31f7ad739711125734e5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
