@@ -15,12 +15,14 @@ import dev.photohouse.connected.core.*
 class ConnectedViewModel(api: PhotoHouseApi?, persistence: SessionPersistence? = null, uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN }, batchPersistence: UploadQueuePersistence? = null, batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null,
                          memoryCommunityApi: MemoryCommunityApi? = null, memoryCommunityEnabled: Boolean = false,
                          memoryGroupsApi: MemoryGroupsApi? = null, memoryGroupsEnabled: Boolean = false,
-                         savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null) : ViewModel() {
+                         savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
+                         memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null) : ViewModel() {
     val store = api?.let { ConnectedStore(it, viewModelScope, persistence, uploadNetwork = uploadNetwork,
         batchPersistence = batchPersistence, batchSource = batchSource, memoryCommunityApi = memoryCommunityApi,
         memoryCommunityEnabled = memoryCommunityEnabled, memoryGroupsApi = memoryGroupsApi,
         memoryGroupsEnabled = memoryGroupsEnabled,
-        savedStoryReaderPositionPersistence = savedStoryReaderPositionPersistence).also { store -> store.restoreSession() } }
+        savedStoryReaderPositionPersistence = savedStoryReaderPositionPersistence,
+        memoryBookReaderPositionPersistence = memoryBookReaderPositionPersistence).also { store -> store.restoreSession() } }
 }
 class MainActivity : ComponentActivity() {
     private val model by viewModels<ConnectedViewModel> {
@@ -51,6 +53,9 @@ class MainActivity : ComponentActivity() {
                     }, memoryGroupsEnabled = BuildConfig.PHOTOHOUSE_MEMORY_GROUPS_ENABLED,
                     savedStoryReaderPositionPersistence = origin?.let {
                         KeystoreSavedStoryReaderPositionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
+                    },
+                    memoryBookReaderPositionPersistence = origin?.let {
+                        KeystoreMemoryBookReaderPositionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
                     }) as T
             }
         }

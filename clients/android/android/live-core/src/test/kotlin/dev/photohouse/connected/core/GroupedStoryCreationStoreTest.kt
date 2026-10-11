@@ -34,6 +34,8 @@ class GroupedStoryCreationStoreTest {
         var updateResponseRevision: Long? = null
         var latestSavedStoryJson: String? = null
         var groupedUpdateFailure: ApiFailure? = null
+        var groupedCreateFailure: ApiFailure? = null
+        var groupedCreateGate: CompletableDeferred<Unit>? = null
         val groupedUpdateRequests = mutableListOf<Triple<String, String, Pair<Boolean, Boolean>>>()
         var detailFailures = 0
         var contributionReferenceFailures = 0
@@ -151,7 +153,11 @@ class GroupedStoryCreationStoreTest {
         }
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) = fixtureBytes("title_capabilities_off")
         override suspend fun storyTitles(token: Bearer, library: String, json: String) = fixtureBytes("titles")
-        override suspend fun createGroupedStory(token: Bearer, library: String, json: String) = fixtureBytes("created")
+        override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
+            groupedCreateGate?.let { withContext(NonCancellable) { it.await() } }
+            groupedCreateFailure?.let { throw it }
+            return fixtureBytes("created")
+        }
 
         override suspend fun capabilities(token: Bearer, library: String) =
             """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
@@ -196,11 +202,36 @@ class GroupedStoryCreationStoreTest {
         override fun clear(accountId: String) { clearedAccounts += accountId }
     }
 
+    private class BookReaderPositions : MemoryBookReaderPositionPersistence {
+        private val positions = mutableMapOf<String, List<MemoryBookReaderPosition>>()
+        val clearedAccounts = mutableListOf<String>()
+
+        override fun load(accountId: String) = positions[accountId].orEmpty().toList()
+        override fun save(accountId: String, position: MemoryBookReaderPosition) {
+            positions[accountId] = MemoryBookReaderPositions.upsert(accountId, positions[accountId].orEmpty(), position)
+        }
+        override fun remove(accountId: String, libraryId: String, bookId: String) {
+            positions[accountId] = MemoryBookReaderPositions.without(accountId, positions[accountId].orEmpty(), libraryId, bookId)
+        }
+        override fun clear(accountId: String) {
+            clearedAccounts += accountId
+            positions.remove(accountId)
+        }
+        fun seed(accountId: String) {
+            save(accountId, MemoryBookReaderPosition(accountId, "family-a",
+                "66666666-6666-4666-8666-666666666666", 1,
+                "11111111-1111-4111-8111-111111111111", 3, "chapter-1", "1"))
+        }
+    }
+
     private fun TestScope.newStore(api: FakeApi, community: Boolean = false,
-        positions: SavedStoryReaderPositionPersistence? = null) = ConnectedStore(
+        positions: SavedStoryReaderPositionPersistence? = null,
+        bookPositions: MemoryBookReaderPositionPersistence? = null) = ConnectedStore(
         api, backgroundScope, memoryCommunityApi = api, memoryCommunityEnabled = community,
         savedStoryReaderPositionPersistence = positions,
-    ) { testScheduler.currentTime }
+        memoryBookReaderPositionPersistence = bookPositions,
+        now = { testScheduler.currentTime },
+    )
 
     private suspend fun TestScope.signIn(store: ConnectedStore) {
         store.authenticate("+12025550123", "synthetic-password-only")
@@ -233,6 +264,21 @@ class GroupedStoryCreationStoreTest {
         assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
         assertTrue(store.readCreatedGroupedStory())
         runCurrent()
+    }
+
+    private suspend fun TestScope.prepareNewDraftForSave(store: ConnectedStore): StoryWorkspaceStore {
+        assertTrue(store.beginGroupedStoryCreation())
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertTrue(editor.selectAsset("102"))
+        assertTrue(store.loadGroupedStorySelectionPage(2))
+        runCurrent()
+        assertTrue(editor.selectAsset("101"))
+        assertTrue(editor.setTheme("trip"))
+        assertTrue(editor.preview())
+        runCurrent()
+        assertTrue(editor.confirmReviewed(true))
+        return editor
     }
 
     @Test fun serverCanCreateDeniesOwnersAndContributorsWhenCapabilityIsFalse() = runTest {
@@ -452,7 +498,8 @@ class GroupedStoryCreationStoreTest {
     @Test fun conflictReloadKeepsUnsavedWordsAcrossGatedLinkFailureAndReplacesOnlyAfterRetry() = runTest {
         val api = FakeApi().apply { groupedUpdateFailure = ApiFailure(FailureKind.HTTP, 409) }
         val positions = ReaderPositions()
-        val store = newStore(api, positions = positions)
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
         createReceiptAndOpenReader(store)
         assertTrue(store.beginSavedGroupedStoryEdit())
         runCurrent()
@@ -502,12 +549,15 @@ class GroupedStoryCreationStoreTest {
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
         assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
     }
 
     @Test fun staleSavedStoryEditDenialAfterCloseCannotClearTheReaderSession() = runTest {
         val api = FakeApi()
         val positions = ReaderPositions()
-        val store = newStore(api, positions = positions)
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
         createReceiptAndOpenReader(store)
         val gate = CompletableDeferred<Unit>()
         api.contributionReferencesGate = gate
@@ -524,6 +574,8 @@ class GroupedStoryCreationStoreTest {
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
         assertTrue("a stale denial must not erase current reading positions", positions.clearedAccounts.isEmpty())
+        assertTrue("a stale denial must not erase memoir positions", bookPositions.clearedAccounts.isEmpty())
+        assertEquals(1, bookPositions.load("synthetic-account").size)
     }
 
     @Test fun currentDictationDenialFromLoadedSavedStoryEditorCoversSession() = runTest {
@@ -532,7 +584,8 @@ class GroupedStoryCreationStoreTest {
             assistantCapabilityFailure = ApiFailure(FailureKind.HTTP, 403)
         }
         val positions = ReaderPositions()
-        val store = newStore(api, positions = positions)
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
         createReceiptAndOpenReader(store)
         assertTrue(store.beginSavedGroupedStoryEdit())
         runCurrent()
@@ -546,6 +599,52 @@ class GroupedStoryCreationStoreTest {
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
         assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
+    }
+
+    @Test fun currentNewDraftDenialClearsSavedStoryAndMemoirReadingPositions() = runTest {
+        val api = FakeApi().apply { groupedCreateFailure = ApiFailure(FailureKind.HTTP, 403) }
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        signIn(store)
+        val editor = prepareNewDraftForSave(store)
+
+        assertTrue(editor.save())
+        runCurrent()
+
+        assertEquals(Message.ACCESS_DENIED, store.state.value.problem?.message)
+        assertTrue(store.state.value.covered)
+        assertTrue(store.hasSession)
+        assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
+    }
+
+    @Test fun staleNewDraftDenialAfterCloseCannotClearEitherReaderPositionStore() = runTest {
+        val api = FakeApi()
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        signIn(store)
+        val editor = prepareNewDraftForSave(store)
+        val gate = CompletableDeferred<Unit>()
+        api.groupedCreateGate = gate
+
+        assertTrue(editor.save())
+        runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVING, editor.state.value.status)
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals("family-a", store.state.value.library)
+        assertTrue(store.hasSession)
+        assertTrue(positions.clearedAccounts.isEmpty())
+        assertTrue(bookPositions.clearedAccounts.isEmpty())
+        assertEquals(1, bookPositions.load("synthetic-account").size)
     }
 
     @Test fun conflictReloadCannotReplaceEditorWithStoryOlderThanItsBaseRevision() = runTest {

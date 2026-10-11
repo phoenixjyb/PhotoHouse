@@ -40,7 +40,16 @@ class MemoryCommunityStoreTest {
         var accountId = "account"
         var storyRevision = 3L
         var storyChapterIds = listOf("chapter-1")
+        var deniedChildId: String? = null
+        var childReadGateId: String? = null
+        var childReadGate: CompletableDeferred<Unit>? = null
+        var childReadGateEntered = CompletableDeferred<Unit>()
+        var denyChildInsideReadGate = false
+        var childReadFailure: ApiFailure? = null
+        var childReadException: Exception? = null
         val thumbnailReads = mutableListOf<String>()
+        val heroReads = mutableListOf<String>()
+        var originalReads = 0
         override val protectedNativeV2Enabled = true
         override val assistantEnabled get() = voiceEnabled
         override suspend fun assistantCapabilities(token: Bearer, library: String): AssistantCapabilities {
@@ -67,11 +76,29 @@ class MemoryCommunityStoreTest {
             mediaGate?.let { withContext(NonCancellable) { it.await() } }
             return byteArrayOf(9, 8, 7).also { lateMediaBytes = it }
         }
+        override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray? {
+            heroReads += asset.id
+            return byteArrayOf(9, 8, 7)
+        }
         override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int) = VideoChunk(start, 1, byteArrayOf(1))
-        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String) = byteArrayOf(1)
+        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray {
+            originalReads++
+            return byteArrayOf(1)
+        }
         override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int) = SavedMemoryStoryPage(library, page, 8, false, false, listOf(summary))
         override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory {
             childReads += storyId
+            if (storyId == childReadGateId) {
+                childReadGateEntered.complete(Unit)
+                childReadGate?.let { gate -> withContext(NonCancellable) {
+                    gate.await()
+                    if (denyChildInsideReadGate && storyId == deniedChildId) throw ApiFailure(FailureKind.HTTP, 403)
+                    childReadFailure?.let { childReadFailure = null; throw it }
+                    childReadException?.let { childReadException = null; throw it }
+                } }
+            }
+            childReadFailure?.let { childReadFailure = null; throw it }
+            if (storyId == deniedChildId) throw ApiFailure(FailureKind.HTTP, 403)
             val base = savedStory().copy(id = storyId, revision = storyRevision, canEdit = storyCanEdit)
             val withChapters = base.copy(chapters = storyChapterIds.mapIndexed { index, id ->
                 SavedMemoryStoryChapter(id, if (index == 0) "Morning" else "Afternoon", "A walk in the garden.", listOf("1"), emptyList())
@@ -272,8 +299,33 @@ class MemoryCommunityStoreTest {
         }
     }
 
-    private fun TestScope.newStore(api: StoryApi, community: CommunityApi?, enabled: Boolean = community != null) = ConnectedStore(
-        api, backgroundScope, memoryCommunityApi = community, memoryCommunityEnabled = enabled) { testScheduler.currentTime }
+    private class ReaderPositionMemoryStore : MemoryBookReaderPositionPersistence {
+        private val rows = linkedMapOf<String, List<MemoryBookReaderPosition>>()
+        val clearedAccounts = mutableListOf<String>()
+        var failLoad = false
+        var failSave = false
+        override fun load(accountId: String): List<MemoryBookReaderPosition> {
+            if (failLoad) error("synthetic persistence failure")
+            return rows[accountId].orEmpty().toList()
+        }
+        override fun save(accountId: String, position: MemoryBookReaderPosition) {
+            if (failSave) error("synthetic persistence failure")
+            rows[accountId] = MemoryBookReaderPositions.upsert(accountId, load(accountId), position)
+        }
+        override fun remove(accountId: String, libraryId: String, bookId: String) {
+            rows[accountId] = MemoryBookReaderPositions.without(accountId, load(accountId), libraryId, bookId)
+        }
+        override fun clear(accountId: String) { clearedAccounts += accountId; rows.remove(accountId) }
+        fun seed(position: MemoryBookReaderPosition) { save(position.accountId, position) }
+    }
+
+    private fun TestScope.newStore(
+        api: StoryApi,
+        community: CommunityApi?,
+        enabled: Boolean = community != null,
+        readerPositionPersistence: MemoryBookReaderPositionPersistence? = null,
+    ) = ConnectedStore(api, backgroundScope, memoryCommunityApi = community, memoryCommunityEnabled = enabled,
+        now = { testScheduler.currentTime }, memoryBookReaderPositionPersistence = readerPositionPersistence)
     private fun TestScope.openStory(store: ConnectedStore) {
         store.authenticate("+12025550123", "synthetic-password")
         runCurrent()
@@ -1617,7 +1669,7 @@ class MemoryCommunityStoreTest {
         assertTrue("Initial frame page overfetched: ${api.thumbnailReads}", api.thumbnailReads.size <= 9)
         store.loadMemoryBookFramePage(1); runCurrent()
         assertEquals(setOf("9", "10"), store.state.value.memoryBooks?.frames?.keys)
-        assertEquals(listOf("9", "10", "9"), api.thumbnailReads.takeLast(3))
+        assertEquals(listOf("9", "10"), api.thumbnailReads.takeLast(2))
         assertEquals("9", store.state.value.memoryBooks?.selectedAssetId)
         store.selectMemoryBookAsset("10"); runCurrent()
         assertEquals("10", store.state.value.memoryBooks?.selectedAssetId)
@@ -1701,6 +1753,205 @@ class MemoryCommunityStoreTest {
         store.openMemoryBooks(); runCurrent()
         store.openMemoryBook(bookId); runCurrent()
         assertNull(store.state.value.memoryBooks?.resumePosition)
+    }
+
+    @Test fun durableMemoirResumeOffersAfterFreshChildCheckAndReturnsToExactAssetPage() = runTest {
+        val community = CommunityApi().apply { bookItemCount = 10 }
+        val api = StoryApi().apply { tenFrameStory = true }
+        val positions = ReaderPositionMemoryStore()
+        val firstProcess = newStore(api, community, readerPositionPersistence = positions)
+        firstProcess.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        firstProcess.openMemoryBooks(); runCurrent()
+        firstProcess.openMemoryBook(bookId); runCurrent()
+        firstProcess.loadMemoryBookStory(0); runCurrent()
+        firstProcess.loadMemoryBookFramePage(1); runCurrent()
+        firstProcess.selectMemoryBookAsset("10")
+        assertEquals("10", positions.load("account").single().assetId)
+        firstProcess.background()
+        assertEquals("backgrounding must retain durable locations", "10", positions.load("account").single().assetId)
+
+        // A new store simulates process recreation; it must derive the offer from persistence.
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        val childReadsBeforeOpen = api.childReads.size
+        val thumbnailReadsBeforeOpen = api.thumbnailReads.size
+        store.openMemoryBook(bookId); runCurrent()
+
+        val offer = store.state.value.memoryBooks?.resumePosition
+        assertNotNull(offer)
+        assertEquals("account", offer?.accountId)
+        assertEquals("family", offer?.libraryId)
+        assertEquals(bookId, offer?.bookId)
+        assertEquals(1L, offer?.bookRevision)
+        assertEquals("10", offer?.assetId)
+        assertEquals(childReadsBeforeOpen + 1, api.childReads.size)
+        assertEquals("validating the offer must not load thumbnails", thumbnailReadsBeforeOpen, api.thumbnailReads.size)
+        assertEquals(0, api.originalReads)
+
+        val parentReads = community.bookReads
+        val childReads = api.childReads.size
+        assertTrue(store.resumeMemoryBookReading(offer!!))
+        runCurrent()
+        val reading = store.state.value.memoryBooks!!
+        assertEquals(parentReads + 1, community.bookReads)
+        assertEquals(childReads + 1, api.childReads.size)
+        assertEquals(0, reading.selectedChapter)
+        assertEquals(1, reading.framePage)
+        assertEquals("10", reading.selectedAssetId)
+        assertEquals("10", reading.heroAssetId)
+        assertEquals("10", api.heroReads.last())
+        assertNull(reading.resumePosition)
+        assertEquals(0, api.originalReads)
+    }
+
+    @Test fun durableOfferWithMissingExactMomentIsRemovedWithoutGuessingAReplacement() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi()
+        val positions = ReaderPositionMemoryStore()
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-1", "99"))
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        val thumbnailsBeforeOfferValidation = api.thumbnailReads.size
+        store.openMemoryBook(bookId); runCurrent()
+        assertNull(store.state.value.memoryBooks?.resumePosition)
+        assertTrue(positions.load("account").isEmpty())
+        assertEquals(thumbnailsBeforeOfferValidation, api.thumbnailReads.size)
+        assertEquals(0, api.originalReads)
+        assertFalse(store.state.value.memoryBooks!!.readerUnavailable)
+    }
+
+    @Test fun definitiveFreshChildFailureRemovesStalePointerButTransientFailureRetainsIt() = runTest {
+        val community = CommunityApi()
+        val positions = ReaderPositionMemoryStore()
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-1", "1"))
+        val definitiveApi = StoryApi().apply { childReadFailure = ApiFailure(FailureKind.HTTP, 409) }
+        val definitiveStore = newStore(definitiveApi, community, readerPositionPersistence = positions)
+        definitiveStore.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        definitiveStore.openMemoryBooks(); runCurrent()
+        definitiveStore.openMemoryBook(bookId); runCurrent()
+        assertNull(definitiveStore.state.value.memoryBooks?.resumePosition)
+        assertTrue("a definite child conflict invalidates the location", positions.load("account").isEmpty())
+
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-1", "1"))
+        val transientApi = StoryApi().apply { childReadFailure = ApiFailure(FailureKind.HTTP, 503) }
+        val transientStore = newStore(transientApi, community, readerPositionPersistence = positions)
+        transientStore.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        transientStore.openMemoryBooks(); runCurrent()
+        transientStore.openMemoryBook(bookId); runCurrent()
+        assertNull(transientStore.state.value.memoryBooks?.resumePosition)
+        assertEquals("transient failure keeps the stored pointer for a later fresh check", "1", positions.load("account").single().assetId)
+    }
+
+    @Test fun startOverRemovesOnlyTheBookPointerAndAutomaticFirstChapterLoadDoesNotRecreateIt() = runTest {
+        val community = CommunityApi().apply { bookItemCount = 10 }
+        val api = StoryApi().apply { tenFrameStory = true; storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val positions = ReaderPositionMemoryStore()
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-2", "10"))
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        val expected = store.state.value.memoryBooks!!.resumePosition!!
+        assertTrue(store.startMemoryBookReadingOver(expected))
+        runCurrent()
+        val reading = store.state.value.memoryBooks!!
+        assertEquals(0, reading.selectedChapter)
+        assertEquals(0, reading.framePage)
+        assertEquals("1", reading.selectedAssetId)
+        assertTrue(positions.load("account").isEmpty())
+        assertNull(reading.resumePosition)
+        assertEquals(0, api.originalReads)
+    }
+
+    @Test fun unfinishedBookCompanionDraftBlocksResumeAndStartOverWithoutReads() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi()
+        val positions = ReaderPositionMemoryStore()
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-1", "1"))
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        val reading = store.state.value.memoryBooks!!
+        val expected = reading.resumePosition!!
+        assertTrue(store.updateMemoryBookChatDraft("Unsent family question"))
+        val parents = community.bookReads
+        val children = api.childReads.size
+        assertFalse(store.resumeMemoryBookReading(expected))
+        assertFalse(store.startMemoryBookReadingOver(expected))
+        runCurrent()
+        assertEquals(parents, community.bookReads)
+        assertEquals(children, api.childReads.size)
+        assertEquals(expected, store.state.value.memoryBooks?.resumePosition)
+        assertEquals("Unsent family question", store.state.value.memoryBooks?.companion?.draft)
+    }
+
+    @Test fun currentDenialClearsMatchingAccountPositionsAndStorageFailureDoesNotBlockReading() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { deniedChildId = storyId }
+        val positions = ReaderPositionMemoryStore()
+        positions.seed(MemoryBookReaderPosition("account", "family", bookId, 1, storyId, 3, "chapter-1", "1"))
+        val deniedStore = newStore(api, community, readerPositionPersistence = positions)
+        deniedStore.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        deniedStore.openMemoryBooks(); runCurrent()
+        deniedStore.openMemoryBook(bookId); runCurrent()
+        assertEquals(listOf("account"), positions.clearedAccounts)
+        assertTrue(positions.load("account").isEmpty())
+
+        val unavailablePositions = ReaderPositionMemoryStore().apply { failLoad = true; failSave = true }
+        val ordinaryApi = StoryApi()
+        val ordinaryStore = newStore(ordinaryApi, CommunityApi(), readerPositionPersistence = unavailablePositions)
+        ordinaryStore.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        ordinaryStore.openMemoryBooks(); runCurrent()
+        ordinaryStore.openMemoryBook(bookId); runCurrent()
+        assertNull("failed persistence reads must not resurrect an in-memory offer", ordinaryStore.state.value.memoryBooks?.resumePosition)
+        ordinaryStore.loadMemoryBookStory(0); runCurrent()
+        assertEquals(storyId, ordinaryStore.state.value.memoryBooks?.story?.id)
+        assertFalse(ordinaryStore.state.value.memoryBooks!!.readerUnavailable)
+    }
+
+    @Test fun staleOldAccountOfferFailuresCannotDeleteReplacementPositionOrMountOldBook() = runTest {
+        val failures = listOf(
+            ApiFailure(FailureKind.HTTP, 403), ApiFailure(FailureKind.HTTP, 404),
+            ApiFailure(FailureKind.HTTP, 409), IllegalStateException("stale transport failure"),
+        )
+        failures.forEach { failure ->
+            val community = CommunityApi()
+            val positions = ReaderPositionMemoryStore()
+            val oldPosition = MemoryBookReaderPosition("account", "family", bookId, 1,
+                storyId, 3, "chapter-1", "1")
+            val replacementPosition = oldPosition.copy(accountId = "replacement-account", assetId = "2")
+            positions.seed(oldPosition)
+            positions.seed(replacementPosition)
+            val gate = CompletableDeferred<Unit>()
+            val api = StoryApi().apply {
+                childReadGateId = storyId
+                childReadGate = gate
+                when (failure) {
+                    is ApiFailure -> childReadFailure = failure
+                    else -> childReadException = failure
+                }
+            }
+            val store = newStore(api, community, readerPositionPersistence = positions)
+            store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+            store.openMemoryBooks(); runCurrent()
+            store.openMemoryBook(bookId); runCurrent()
+            api.childReadGateEntered.await()
+
+            api.accountId = "replacement-account"
+            store.authenticate("+12025550124", "synthetic-password"); runCurrent()
+            assertEquals("replacement-account", store.state.value.session?.account_id)
+            assertTrue(positions.load("replacement-account").contains(replacementPosition))
+
+            gate.complete(Unit); runCurrent()
+            assertTrue("stale offer failure must not clear either account", positions.clearedAccounts.isEmpty())
+            assertTrue(positions.load("account").contains(oldPosition))
+            assertTrue(positions.load("replacement-account").contains(replacementPosition))
+            assertNull("stale offer completion must not mount the old account's book", store.state.value.memoryBooks?.selectedBook)
+            assertEquals("replacement-account", store.state.value.session?.account_id)
+        }
     }
 
     @Test fun selectingFrameWhilePageLoadsDoesNotCancelPageOrStickBusy() = runTest {

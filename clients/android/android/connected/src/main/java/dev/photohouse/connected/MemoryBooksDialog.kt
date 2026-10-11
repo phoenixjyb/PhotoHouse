@@ -237,8 +237,15 @@ internal fun MemoryBooksDialog(
                                             if (narrativeExpanded) MemoryBookOriginalNavigation(reading, zh, onChapter, onStory)
                                         }
                                         else -> {
-                                            if (reading.resumePosition != null) Button(onClick = onResume, modifier = Modifier.fillMaxWidth().testTag("memory-book-resume")) {
-                                                Text(t("Continue last read", "继续上次阅读"))
+                                            reading.resumePosition?.let { position ->
+                                                MemoryBookReadingOffer(store, reading, book, position, zh,
+                                                    enabled = !reading.readerBusy && !hasUnsentCompanionWork &&
+                                                        !ownVoiceUnfinished && !hasUnsentEditorialWork && !edition.dirty &&
+                                                        !edition.composing && !edition.busy && !edition.hasPendingSave &&
+                                                        !narrative.hasUnfinishedInput && !narrative.busy && narrative.pendingRequest == null &&
+                                                        narrative.job?.state !in setOf("queued", "running") &&
+                                                        !reading.sourceInspection.busy && !reading.sourceInspection.audioBusy &&
+                                                        reading.sourceInspection.audio == null)
                                             }
                                             book.stories.forEachIndexed { i, item ->
                                                 Card(onClick = { onStory(i) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-entry-$i")) {

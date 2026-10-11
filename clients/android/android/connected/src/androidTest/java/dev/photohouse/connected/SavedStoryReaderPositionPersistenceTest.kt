@@ -3,6 +3,7 @@ package dev.photohouse.connected
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.connected.core.SavedStoryReaderPosition
+import dev.photohouse.connected.core.SavedStoryReaderPositions
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -41,6 +42,48 @@ class SavedStoryReaderPositionPersistenceTest {
         assertTrue(bytes.size in 12 + 16 + 1..16 * 1024 + 12 + 16)
         for (value in listOf(account, expected.libraryId, expected.storyId, expected.chapterId)) {
             assertFalse("unencrypted $value was found in the record", bytes.containsSubsequence(value.toByteArray()))
+        }
+    }
+
+    @Test fun refactoredAdapterReadsRecordWrittenWithOriginalStoryEnvelope() {
+        val expected = position(8, account)
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val alias = "photohouse.story-reader-positions.${hex(digest(origin))}"
+        val key = (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.secretKey
+            ?: run {
+                // Create the historical key using the unchanged alias before writing the legacy bytes.
+                persistence(origin).save(account, expected)
+                (KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                    .getEntry(alias, null) as KeyStore.SecretKeyEntry).secretKey
+            }
+        val plaintext = SavedStoryReaderPositions.encodeRecord(account, listOf(expected))
+        var iv: ByteArray? = null
+        var ciphertext: ByteArray? = null
+        var record: ByteArray? = null
+        var aad: ByteArray? = null
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            val nonce = cipher.iv
+            iv = nonce
+            assertEquals(12, nonce.size)
+            val aadBytes = ("PhotoHouse.SavedStoryReaderPositions/v1\n" + origin + "\n" + account)
+                .toByteArray(Charsets.UTF_8)
+            aad = aadBytes
+            cipher.updateAAD(aadBytes)
+            val encrypted = cipher.doFinal(plaintext)
+            ciphertext = encrypted
+            val legacyRecord = nonce + encrypted
+            record = legacyRecord
+            positionFile(origin, account).writeBytes(legacyRecord)
+
+            assertEquals(listOf(expected), persistence(origin).load(account))
+        } finally {
+            plaintext.fill(0)
+            iv?.fill(0)
+            ciphertext?.fill(0)
+            record?.fill(0)
+            aad?.fill(0)
         }
     }
 
