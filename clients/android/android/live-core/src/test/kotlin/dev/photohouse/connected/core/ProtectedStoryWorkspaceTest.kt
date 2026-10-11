@@ -202,6 +202,15 @@ class ProtectedStoryWorkspaceTest {
         val groupedRequest = ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"), "everyday", "zh", selectionRevision,
             listOf(ProtectedStoryWorkspaceChapterInput("chapter-1", narration), ProtectedStoryWorkspaceChapterInput("chapter-2", "")))
         assertEquals("1,2,3,4,5", Json.parseToJsonElement(groupedRequest).jsonObject.getValue("asset_ids").jsonPrimitive.content)
+        val reviewedRequest = ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2"), "everyday", "zh", selectionRevision,
+            listOf(ProtectedStoryWorkspaceChapterInput("chapter-1", narration, emptyList())), "chapter_sources_v1")
+        val reviewed = Json.parseToJsonElement(reviewedRequest).jsonObject
+        assertEquals("chapter_sources_v1", reviewed.getValue("source_policy").jsonPrimitive.content)
+        assertEquals(emptyList<String>(), Json.parseToJsonElement(reviewed.getValue("chapters").jsonPrimitive.content)
+            .jsonArray.single().jsonObject.getValue("evidence_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(ProtectedStoryWorkspaceSourceCapabilities("chapter_sources_v1", 12),
+            ProtectedStoryWorkspaceWire.decodeSourceCapabilities("""{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray()))
+        badResponse { ProtectedStoryWorkspaceWire.decodeSourceCapabilities("""{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":11,"needs_review":true}""".toByteArray()) }
         badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1"), "everyday", "zh", "bad", emptyList()) }
     }
 }

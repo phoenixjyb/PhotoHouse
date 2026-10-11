@@ -19,11 +19,12 @@ class ProtectedStoryWorkspaceCreate private constructor(
     val language: String,
     chapters: List<SavedMemoryStoryChapter>,
     val mutationId: UUID,
+    val sourcePolicy: String? = null,
 ) {
     val chapters: List<SavedMemoryStoryChapter> = immutableChapters(chapters)
     val assetIds: List<String> = Collections.unmodifiableList(this.chapters.flatMap { it.assetIds })
 
-    /** Eight string-valued fields for POST /memory-stories?library=... . */
+    /** Legacy requests retain eight fields; source-review requests add one policy field. */
     fun bodyJson(): String {
         val chapterJson = JsonArray(chapters.map { chapter -> JsonObject(mapOf(
             "id" to JsonPrimitive(chapter.id),
@@ -41,7 +42,7 @@ class ProtectedStoryWorkspaceCreate private constructor(
             "selection_revision" to JsonPrimitive(selectionRevision),
             "revision" to JsonPrimitive("0"),
             "mutation_id" to JsonPrimitive(mutationId.toString()),
-        )).toString()
+        ).apply { sourcePolicy?.let { put("source_policy", JsonPrimitive(it)) } }).toString()
     }
 
     override fun toString(): String =
@@ -55,7 +56,8 @@ class ProtectedStoryWorkspaceCreate private constructor(
             language: String,
             chapters: List<SavedMemoryStoryChapter>,
             mutationId: UUID,
-        ) = ProtectedStoryWorkspaceCreate(selectionRevision, title, theme, language, chapters, mutationId)
+            sourcePolicy: String? = null,
+        ) = ProtectedStoryWorkspaceCreate(selectionRevision, title, theme, language, chapters, mutationId, sourcePolicy)
 
         private fun immutableChapters(chapters: List<SavedMemoryStoryChapter>): List<SavedMemoryStoryChapter> =
             Collections.unmodifiableList(chapters.map { chapter ->
@@ -79,10 +81,12 @@ internal object ProtectedStoryWorkspaceCreateWire {
         title: String,
         chapters: List<SavedMemoryStoryChapter>,
         mutationId: String,
+        sourcePolicy: String? = null,
     ): String = guardedInput {
         input(PhoneDiscoveryWire.validLibrary(draft.libraryId))
         input(draft.selectionRevision.matches(Regex("[0-9a-f]{64}")))
         input(draft.theme in SAVED_MEMORY_STORY_THEMES && draft.language in setOf("zh", "en"))
+        input(sourcePolicy == null || sourcePolicy == ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
         validateText(title, 160, 640, allowNewline = false, allowBlank = false)
         val uuid = runCatching { UUID.fromString(mutationId) }.getOrNull()
         input(uuid != null && uuid.toString() == mutationId)
@@ -102,23 +106,25 @@ internal object ProtectedStoryWorkspaceCreateWire {
         }
         val editedChapters = chapters.mapIndexed { index, edited ->
             val source = draft.chapters[index]
-            input(edited.assetIds == source.assetIds && edited.evidenceIds == source.evidenceIds)
+            input(edited.assetIds == source.assetIds)
+            input(sourcePolicy != null || edited.evidenceIds == source.evidenceIds)
             validateText(edited.title, 160, 640, allowNewline = false, allowBlank = false)
             validateText(edited.narration, Int.MAX_VALUE, 6000, allowNewline = true, allowBlank = true)
             input(source.assetIds.isNotEmpty() && source.assetIds.size <= MAX_ASSETS_PER_CHAPTER)
             input(source.assetIds.distinct().size == source.assetIds.size)
-            input(source.evidenceIds.size <= MAX_EVIDENCE_PER_CHAPTER && source.evidenceIds.distinct().size == source.evidenceIds.size)
-            input(source.evidenceIds.all { ref ->
+            input(edited.evidenceIds.size <= MAX_EVIDENCE_PER_CHAPTER && edited.evidenceIds.distinct().size == edited.evidenceIds.size)
+            val eligibleEvidence = source.assetIds.flatMap { evidenceByAsset[it].orEmpty() }.toSet()
+            input(edited.evidenceIds.all { ref ->
                 ref.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")) &&
-                    source.assetIds.any { assetId -> ref in (evidenceByAsset[assetId] ?: emptySet()) }
+                    ref in eligibleEvidence
             })
             input(source.title.codePointCount(0, source.title.length) <= 160)
             validateText(source.title, 160, 640, allowNewline = false, allowBlank = true)
             validateText(source.narration, Int.MAX_VALUE, 6000, allowNewline = true, allowBlank = true)
-            SavedMemoryStoryChapter(source.id, edited.title, edited.narration, source.assetIds.toList(), source.evidenceIds.toList())
+            SavedMemoryStoryChapter(source.id, edited.title, edited.narration, source.assetIds.toList(), edited.evidenceIds.toList())
         }
         input(editedChapters.flatMap { it.assetIds } == selectedIds)
-        ProtectedStoryWorkspaceCreate.create(draft.selectionRevision, title, draft.theme, draft.language, editedChapters, uuid!!).bodyJson()
+        ProtectedStoryWorkspaceCreate.create(draft.selectionRevision, title, draft.theme, draft.language, editedChapters, uuid!!, sourcePolicy).bodyJson()
     }
 
     private fun validateAssetIds(ids: List<String>) {

@@ -71,6 +71,19 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-suggest")) { Text(t("Suggest titles", "建议故事标题")) }
             } else if (state.titleCapabilities != null) Text(t("Title assistance is unavailable. You can keep editing.",
                 "标题建议暂不可用，可以继续手动修改。"), style = MaterialTheme.typography.bodySmall)
+            if (!state.sourceReviewEnabled && !state.sourceCapabilitiesChecked) {
+                OutlinedButton(onClick = { finishTyping(); store.enableSourceReview() }, enabled = editable && !state.composing,
+                    modifier = Modifier.fillMaxWidth().testTag("grouped-story-source-review-enable")) {
+                    Text(t("Choose evidence for each chapter", "选择每篇使用的素材证据"))
+                }
+            } else if (state.sourceReviewEnabled) {
+                Text(t("These choices control which photo or video item evidence is used. Chapter text and accepted family contributions stay separate.",
+                    "这些选择决定使用哪些照片或视频素材证据。篇章文字与已确认的家人贡献保持独立。"),
+                    style = MaterialTheme.typography.bodySmall)
+            } else if (!state.sourceReviewEnabled && state.sourceCapabilitiesChecked && state.sourceCapabilities == null) {
+                Text(t("Per-chapter source choices are unavailable on this server.", "此服务器暂不支持按篇章选择素材证据。"),
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("grouped-story-source-review-unavailable"))
+            }
             state.titleCandidates.forEachIndexed { index, candidate ->
                 OutlinedButton(onClick = { store.adoptTitleCandidate(index) }, enabled = editable && !state.composing,
                     modifier = Modifier.fillMaxWidth()) { Text(candidate.text) }
@@ -101,6 +114,28 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     store.composition(value.composition != null) }, enabled = editable,
                     label = { Text(t("Tell this part in your own words", "用自己的话讲述这一段")) }, minLines = 4, maxLines = 9,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-chapter-words"))
+            }
+            if (state.sourceReviewEnabled) {
+                Text(t("Evidence used for this chapter", "本篇使用的素材证据"), style = MaterialTheme.typography.titleSmall)
+                val options = chapter.assetIds.flatMap { assetId ->
+                    draft.items.find { it.asset.id == assetId }?.evidence.orEmpty().map { evidence -> assetId to evidence }
+                }.distinctBy { it.second.id }
+                if (options.isEmpty()) Text(t("No item evidence is available.", "没有可选的素材证据。"), style = MaterialTheme.typography.bodySmall)
+                options.forEach { (assetId, evidence) ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                        value = evidence.id in chapter.evidenceIds,
+                        enabled = editable && !state.composing,
+                        role = Role.Checkbox,
+                        onValueChange = { checked -> finishTyping(); store.toggleChapterEvidence(index, evidence.id, checked) }
+                    ).testTag("grouped-story-evidence-${chapter.id}-${evidence.id}"), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(evidence.id in chapter.evidenceIds, onCheckedChange = null)
+                        Column(Modifier.weight(1f)) {
+                            Text(t("Photo/video $assetId · ${if (evidence.source == "family") "Family account" else "AI observation"}",
+                                "素材 $assetId · ${if (evidence.source == "family") "家人讲述" else "AI 观察"}"), style = MaterialTheme.typography.labelLarge)
+                            Text(evidence.text, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
             }
             key(chapter.id) {
                 var showSources by remember { mutableStateOf(false) }

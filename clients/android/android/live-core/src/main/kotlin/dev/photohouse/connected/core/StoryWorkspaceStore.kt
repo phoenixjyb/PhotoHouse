@@ -25,6 +25,9 @@ data class StoryWorkspaceStoreState(
     val editableChapters: List<SavedMemoryStoryChapter> = emptyList(),
     val savedStory: SavedMemoryStory? = null,
     val titleCapabilities: ProtectedStoryWorkspaceTitleCapabilities? = null,
+    val sourceCapabilities: ProtectedStoryWorkspaceSourceCapabilities? = null,
+    val sourceCapabilitiesChecked: Boolean = false,
+    val sourceReviewEnabled: Boolean = false,
     val titleCandidates: List<ProtectedStoryWorkspaceTitle> = emptyList(),
     val relatedCandidates: List<StoryRelatedMediaCandidate> = emptyList(),
     val relatedBusy: Boolean = false,
@@ -234,7 +237,8 @@ class StoryWorkspaceStore(
             reviewed = false, titleCandidates = emptyList(), failureStatus = null)
         else previous.copy(status = StoryWorkspaceStoreStatus.PREVIEWING, busy = true,
             draft = null, editableChapters = emptyList(), title = "", reviewed = false, composing = false,
-            invalidInput = false, sourcesReloaded = false, titleCandidates = emptyList(), failureStatus = null)
+            invalidInput = false, sourcesReloaded = false, titleCandidates = emptyList(), failureStatus = null,
+            sourceReviewEnabled = false, sourceCapabilities = null, sourceCapabilitiesChecked = false)
         operation = scope.launch {
             try {
                 val result = repository.preview(ids, theme, language, "") { current(expected, ticket) }
@@ -249,7 +253,11 @@ class StoryWorkspaceStore(
                         val carried = detached.copy(title = previous.title,
                             chapters = immutable(detached.chapters.map { fresh ->
                                 val old = prose[fresh.id] ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
-                                fresh.copy(title = old.title, narration = old.narration)
+                                val available = fresh.assetIds.flatMap { id -> detached.items.find { it.asset.id == id }
+                                    ?.evidence.orEmpty().map { it.id } }.toSet()
+                                val checked = old.evidenceIds.filter { it in available }
+                                fresh.copy(title = old.title, narration = old.narration,
+                                    evidenceIds = if (previous.sourceReviewEnabled) checked else fresh.evidenceIds)
                             }))
                         mutable.value = previous.copy(status = StoryWorkspaceStoreStatus.EDITING, busy = false,
                             draft = carried, editableChapters = immutable(carried.chapters.map(::detachChapter)),
@@ -297,6 +305,49 @@ class StoryWorkspaceStore(
         return true
     }
 
+    /** Explicit opt-in. Unsupported closed-boundary APIs leave source selection unavailable. */
+    fun enableSourceReview(): Boolean {
+        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy || state.value.sourceReviewEnabled) return false
+        val expected = bound ?: return false
+        clearOperationOnly()
+        val ticket = epoch
+        mutable.value = state.value.copy(busy = true, sourceCapabilities = null, sourceCapabilitiesChecked = false)
+        operation = scope.launch {
+            try {
+                val result = repository.sourceCapabilities { current(expected, ticket) }
+                if (current(expected, ticket)) mutable.value = state.value.copy(busy = false,
+                    sourceCapabilities = result, sourceCapabilitiesChecked = true,
+                    sourceReviewEnabled = result?.sourcePolicy == ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+            } catch (_: CancellationException) { stale(ticket) }
+            catch (_: Exception) { if (current(expected, ticket)) mutable.value = state.value.copy(busy = false,
+                sourceCapabilities = null, sourceCapabilitiesChecked = true) else stale(ticket) }
+            finally { if (ticket == epoch) operation = null }
+        }
+        return true
+    }
+
+    /** Checked source IDs apply only to asset evidence; chapter prose and accepted contributions remain separate. */
+    fun toggleChapterEvidence(index: Int, evidenceId: String, checked: Boolean): Boolean {
+        if (!editorReady() || !state.value.sourceReviewEnabled || state.value.composing) return false
+        val chapter = state.value.editableChapters.getOrNull(index) ?: return false
+        val eligible = chapter.assetIds.flatMap { assetId ->
+            state.value.draft?.items?.find { it.asset.id == assetId }?.evidence.orEmpty().map { it.id }
+        }.toSet()
+        if (evidenceId !in eligible) return false
+        val currentIds = chapter.evidenceIds
+        if ((evidenceId in currentIds) == checked) return true
+        if (checked && currentIds.size >= 12) return false
+        invalidateTitleWork()
+        titleRevision++
+        val revised = if (checked) currentIds + evidenceId else currentIds - evidenceId
+        val updated = immutable(state.value.editableChapters.mapIndexed { i, value ->
+            if (i == index) value.copy(evidenceIds = immutable(revised)) else detachChapter(value)
+        })
+        mutable.value = state.value.copy(editableChapters = updated, reviewed = false, dirty = true,
+            titleCandidates = emptyList())
+        return true
+    }
+
     /** Optional suggestion request. Results are discarded after any manual title edit or IME composition. */
     fun suggestTitles(): Boolean {
         if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy ||
@@ -310,7 +361,7 @@ class StoryWorkspaceStore(
         val ticket = epoch
         operation = scope.launch {
             try {
-                val candidates = repository.suggestTitles(editedDraft) { current(expected, ticket) }
+                val candidates = repository.suggestTitles(editedDraft, state.value.sourceReviewEnabled) { current(expected, ticket) }
                 if (current(expected, ticket) && capturedTitleRevision == titleRevision && !state.value.composing)
                     mutable.value = state.value.copy(titleCandidates = candidates.map(::detachTitle))
             } catch (_: CancellationException) { stale(ticket) }
@@ -397,7 +448,8 @@ class StoryWorkspaceStore(
         val expected = bound ?: return false
         val draft = state.value.draft ?: return false
         pending = try { repository.freeze(detachDraft(draft), state.value.title,
-            immutable(state.value.editableChapters.map(::detachChapter)), uuidSupplier().toString(), true) { current(expected) } }
+            immutable(state.value.editableChapters.map(::detachChapter)), uuidSupplier().toString(), true,
+            state.value.sourceReviewEnabled) { current(expected) } }
         catch (_: CancellationException) { stale(epoch); return false }
         catch (failure: ApiFailure) {
             mutable.value = state.value.copy(invalidInput = failure.kind == FailureKind.INVALID_INPUT,

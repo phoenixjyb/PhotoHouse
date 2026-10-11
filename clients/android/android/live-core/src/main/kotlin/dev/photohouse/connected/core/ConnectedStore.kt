@@ -760,7 +760,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val credential = token!!; val library = reading.library
         launch { activeGeneration ->
             try {
-                val result = api.savedMemoryStory(credential, library, summary.id, summary.revision)
+                val profileEnabled = try {
+                    val capabilityBytes = api.sourceCapabilities(credential, library)
+                    try { ProtectedStoryWorkspaceWire.decodeSourceCapabilities(capabilityBytes); true }
+                    finally { capabilityBytes.fill(0) }
+                } catch (failure: ApiFailure) {
+                    if (failure.status in setOf(400, 404, 503)) false else throw failure
+                }
+                val result = api.savedMemoryStory(credential, library, summary.id, summary.revision, profileEnabled)
                 if (!active(activeGeneration) || request != savedMemoryDetailRequest || readerEpoch != savedMemoryReaderEpoch ||
                     token !== credential || state.value.library != library) return@launch
                 validResponse(result.libraryId == library && result.id == summary.id && result.revision >= summary.revision && result.items.isNotEmpty())
@@ -921,7 +928,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             )) }
             val json = JsonArray(groups).toString()
             SavedMemoryStoryContributionReferencesMutation(story.id, story.revision, story.selectionRevision,
-                story.title, story.theme, story.language, story.chapters.toList(), json)
+                story.title, story.theme, story.language, story.chapters.toList(), json, sourcePolicy = story.sourcePolicy)
         }
         if (mutation.storyId != story.id || mutation.revision != story.revision || mutation.selectionRevision != story.selectionRevision) return
         val credential = token ?: return
@@ -932,7 +939,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             pendingContributionReferenceMutation = mutation))
         val job = scope.launch {
             try {
-                val saved = api.saveMemoryStoryContributionReferences(credential, reading.library, mutation)
+                val saved = api.saveMemoryStoryContributionReferences(credential, reading.library, mutation,
+                    sourceReview = mutation.sourcePolicy != null)
                 val current = state.value.savedMemoryStories ?: return@launch
                 if (!active(generation) || token !== credential || identity?.account_id != accountId || state.value.session?.account_id != accountId ||
                     state.value.library != reading.library || request != savedMemoryContributionReferenceSaveRequest ||

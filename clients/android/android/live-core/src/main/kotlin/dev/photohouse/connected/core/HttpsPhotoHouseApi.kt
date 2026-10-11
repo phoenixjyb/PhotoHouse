@@ -758,9 +758,11 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         return ProtectedStoriesWire.parse(result.bytes, library, assetId, page)
     }
     private suspend fun workspacePacket(token: Bearer, library: String, path: String,
-        body: String? = null, requestLimit: Int = 4096, responseLimit: Int = 256 * 1024): ByteArray {
+        body: String? = null, requestLimit: Int = 4096, responseLimit: Int = 256 * 1024,
+        sourceReview: Boolean = false): ByteArray {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library))
-        val result = packet(url(path, library), token, body, limit = responseLimit,
+        val target = url(path, library).newBuilder().apply { if (sourceReview) addQueryParameter("source_review", "1") }.build()
+        val result = packet(target, token, body, limit = responseLimit,
             requestLimit = requestLimit, method = if (body == null) "GET" else "POST")
         if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
             result.bytes.fill(0)
@@ -772,12 +774,26 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         workspacePacket(token, library, "/story-workspace/preview", json)
     override suspend fun storyTitleCapabilities(token: Bearer, library: String) =
         workspacePacket(token, library, "/story-workspace/title-capabilities")
+    override suspend fun sourceCapabilities(token: Bearer, library: String): ByteArray = try {
+        workspacePacket(token, library, "/story-workspace/source-capabilities")
+    } catch (denied: ApiFailure) {
+        if (denied.status != 403) throw denied
+        val membership = session(token).memberships.firstOrNull { it.library_id == library }
+        if (membership?.available == true) throw ApiFailure(FailureKind.HTTP, 404)
+        throw denied
+    }
+    override suspend fun storySourceCapabilities(token: Bearer, library: String) =
+        sourceCapabilities(token, library)
     override suspend fun storyTitles(token: Bearer, library: String, json: String) =
         workspacePacket(token, library, "/story-workspace/title-suggestions", json, 64 * 1024)
+    override suspend fun storyTitles(token: Bearer, library: String, json: String, sourceReview: Boolean) =
+        workspacePacket(token, library, "/story-workspace/title-suggestions", json, 64 * 1024, sourceReview = sourceReview)
     override suspend fun relatedStoryMedia(token: Bearer, library: String, json: String) =
         workspacePacket(token, library, "/story-workspace/related-media", json)
     override suspend fun createGroupedStory(token: Bearer, library: String, json: String) =
         workspacePacket(token, library, "/memory-stories", json, 384 * 1024)
+    override suspend fun createGroupedStory(token: Bearer, library: String, json: String, sourceReview: Boolean) =
+        workspacePacket(token, library, "/memory-stories", json, 384 * 1024, sourceReview = sourceReview)
 
     override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int): SavedMemoryStoryPage {
         return savedMemoryStories(token, library, page, null)
@@ -789,14 +805,17 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         return ProtectedMemoryStoriesWire.page(result.bytes, library, page)
     }
     override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory {
+        return savedMemoryStory(token, library, storyId, revision, false)
+    }
+    override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long, sourceReview: Boolean): SavedMemoryStory {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && revision > 0)
         val canonicalId = storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
         val target = origin.url.newBuilder().addPathSegments("memory-stories").addPathSegment(canonicalId)
-            .addQueryParameter("library", library).build()
+            .addQueryParameter("library", library).apply { if (sourceReview) addQueryParameter("source_review", "1") }.build()
         val result = packet(target, token, limit = MEMORY_STORIES_LIMIT, method = "GET")
         if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json")
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
-        return ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, revision)
+        return ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, revision, sourceReview)
     }
     override suspend fun savedMemoryStoryContributionReferences(
         token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
@@ -816,17 +835,24 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
     override suspend fun saveMemoryStoryContributionReferences(
         token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation,
     ): SavedMemoryStory {
+        return saveMemoryStoryContributionReferences(token, library, mutation, mutation.sourcePolicy != null)
+    }
+    override suspend fun saveMemoryStoryContributionReferences(
+        token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation, sourceReview: Boolean,
+    ): SavedMemoryStory {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library))
         val canonicalId = mutation.storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
+        require(sourceReview == (mutation.sourcePolicy != null))
         val body = ProtectedMemoryStoriesWire.contributionReferencesMutation(mutation)
         val target = origin.url.newBuilder().addPathSegments("memory-stories").addPathSegment(canonicalId)
-            .addQueryParameter("library", library).addQueryParameter("contribution_refs", "1").build()
+            .addQueryParameter("library", library).addQueryParameter("contribution_refs", "1")
+            .apply { if (sourceReview) addQueryParameter("source_review", "1") }.build()
         val result = packet(target, token, String(body, Charsets.UTF_8), limit = MEMORY_STORIES_LIMIT, requestLimit = 384 * 1024, method = "PUT")
         if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
             body.fill(0)
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
         }
-        return try { ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, mutation.revision + 1) }
+        return try { ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, mutation.revision + 1, sourceReview) }
         finally { result.bytes.fill(0); body.fill(0) }
     }
     override suspend fun savedMemoryContributionDetail(

@@ -88,6 +88,10 @@ class HttpsApiTest {
             assertEquals("/memory-stories/$storyId?library=family", detail.path)
             assertEquals(token.header(), detail.getHeader("Authorization"))
 
+            f.server.enqueue(json(body.replace("\"questions\":[]", "\"questions\":[],\"source_policy\":null")))
+            assertNull(api.savedMemoryStory(token, "family", storyId, 3, sourceReview = true).sourcePolicy)
+            assertEquals("/memory-stories/$storyId?library=family&source_review=1", f.server.takeRequest().path)
+
             f.server.enqueue(json(body.replace("\"library_id\":\"family\"", "\"library_id\":\"other\"", false)))
             assertEquals(FailureKind.INVALID_RESPONSE, failure { api.savedMemoryStory(token, "family", storyId, 3) }.kind)
             assertEquals("GET", f.server.takeRequest().method)
@@ -177,6 +181,12 @@ class HttpsApiTest {
                 chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
             })
             assertEquals(groups, body.getValue("contribution_refs").jsonPrimitive.content)
+            f.server.enqueue(json("""{"version":1,"library_id":"family","id":"$storyId","revision":"5","created_at":1,"updated_at":2,"can_edit":true,"saved":true,"state":"draft","generator":"family_edited_outline","needs_review":true,"selection_revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","title":"Garden day","theme":"everyday","language":"zh","items":[{"id":"1","kind":"image","width":1,"height":1,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":null,"evidence":[]}],"chapters":[{"id":"chapter-1","title":"Garden","narration":"A quiet day.","asset_ids":["1"],"evidence_ids":[]}],"questions":[],"source_policy":"chapter_sources_v1"}"""))
+            api.saveMemoryStoryContributionReferences(token, "family", mutation.copy(sourcePolicy = "chapter_sources_v1"), sourceReview = true)
+            val profileRequest = f.server.takeRequest()
+            assertEquals("/memory-stories/$storyId?library=family&contribution_refs=1&source_review=1", profileRequest.path)
+            val profileBody = Json.parseToJsonElement(profileRequest.body.readUtf8()).jsonObject
+            assertEquals("chapter_sources_v1", profileBody.getValue("source_policy").jsonPrimitive.content)
         }
     }
 

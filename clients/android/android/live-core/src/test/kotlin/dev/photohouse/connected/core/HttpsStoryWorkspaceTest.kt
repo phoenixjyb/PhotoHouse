@@ -12,6 +12,65 @@ import org.junit.Test
 import java.net.InetAddress
 
 class HttpsStoryWorkspaceTest {
+    @Test fun capability403IsLegacyOnlyAfterProtectedMembershipRecheck() = runBlocking {
+        val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val server = MockWebServer()
+        val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
+        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager).build()
+        server.useHttps(HandshakeCertificates.Builder().heldCertificate(cert).build().sslSocketFactory(), false)
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
+        try {
+            val api = HttpsPhotoHouseApi(TrustedOrigin.parse("https://localhost:${server.port}"), client, protectedNativeV2Enabled = true)
+            val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+            val active = """{"account_id":"acct","phone_login":"+12025550123","display_name":"Member","memberships":[{"library_id":"family-a","status":"active","role":"member","revision":1,"expires_at":null,"originals":1,"available":true}]}"""
+            server.enqueue(MockResponse().setResponseCode(403))
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(active))
+            try { api.sourceCapabilities(token, "family-a"); fail("Expected legacy-only result") }
+            catch (failure: ApiFailure) { assertEquals(404, failure.status) }
+            assertEquals("/story-workspace/source-capabilities?library=family-a", server.takeRequest().path)
+            assertEquals("/auth/session", server.takeRequest().path)
+
+            val revoked = active.replace("\"status\":\"active\"", "\"status\":\"revoked\"").replace("\"available\":true", "\"available\":false")
+            server.enqueue(MockResponse().setResponseCode(403))
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(revoked))
+            try { api.sourceCapabilities(token, "family-a"); fail("Membership denial must remain visible") }
+            catch (failure: ApiFailure) { assertEquals(403, failure.status) }
+            server.takeRequest(); server.takeRequest()
+            Unit
+        } finally {
+            server.shutdown(); client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll()
+        }
+    }
+
+    @Test fun sourceReviewCapabilityAndMutationUseExplicitProfileQuery() = runBlocking {
+        val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val server = MockWebServer()
+        val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
+        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager).build()
+        server.useHttps(HandshakeCertificates.Builder().heldCertificate(cert).build().sslSocketFactory(), false)
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
+        try {
+            val api = HttpsPhotoHouseApi(TrustedOrigin.parse("https://localhost:${server.port}"), client, protectedNativeV2Enabled = true)
+            val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+            val body = "{\"source_policy\":\"chapter_sources_v1\"}"
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
+            api.sourceCapabilities(token, "family-a")
+            assertEquals("/story-workspace/source-capabilities?library=family-a", server.takeRequest().path)
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
+            api.storyTitles(token, "family-a", body, sourceReview = true)
+            val titles = server.takeRequest()
+            assertEquals("/story-workspace/title-suggestions?library=family-a&source_review=1", titles.path)
+            assertEquals(body, titles.body.readUtf8())
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
+            api.createGroupedStory(token, "family-a", body, sourceReview = true)
+            val save = server.takeRequest()
+            assertEquals("/memory-stories?library=family-a&source_review=1", save.path)
+            assertEquals(body, save.body.readUtf8())
+        } finally {
+            server.shutdown(); client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll()
+        }
+    }
+
     @Test fun protectedRoutesKeepExactBodyAndHaveNoRedirectOrLegacyFallback() = runBlocking {
         val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
         val server = MockWebServer()

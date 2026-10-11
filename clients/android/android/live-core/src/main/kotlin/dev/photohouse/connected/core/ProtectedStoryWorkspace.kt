@@ -22,7 +22,16 @@ data class ProtectedStoryWorkspaceTitleCapabilities(
     val maxSuggestions: Int,
 )
 
-data class ProtectedStoryWorkspaceChapterInput(val id: String, val narration: String)
+data class ProtectedStoryWorkspaceSourceCapabilities(
+    val sourcePolicy: String,
+    val maxSourcesPerChapter: Int,
+)
+
+data class ProtectedStoryWorkspaceChapterInput(
+    val id: String,
+    val narration: String,
+    val evidenceIds: List<String>? = null,
+)
 data class ProtectedStoryWorkspaceTitle(val text: String, val sourceIds: List<String>)
 
 /** Wire-only draft foundation. It neither persists drafts nor invokes transport or a model. */
@@ -41,6 +50,7 @@ internal object ProtectedStoryWorkspaceWire {
     private const val MAX_NARRATION_BYTES = 6000
     private const val MAX_QUESTIONS = 3
     private const val MAX_QUESTION_CODE_POINTS = 1000
+    const val CHAPTER_SOURCES_V1 = "chapter_sources_v1"
 
     private fun bad(): Nothing = throw ApiFailure(FailureKind.INVALID_RESPONSE)
     private fun input(ok: Boolean) { require(ok) { "Invalid story workspace input" } }
@@ -175,33 +185,56 @@ internal object ProtectedStoryWorkspaceWire {
         ProtectedStoryWorkspaceTitleCapabilities(enabled, max)
     }
 
+    fun decodeSourceCapabilities(bytes: ByteArray): ProtectedStoryWorkspaceSourceCapabilities = guarded {
+        val root = obj(DiscoveryJson.parse(bytes, 16 * 1024, 32))
+        exact(root, "version", "source_policy", "max_sources_per_chapter", "needs_review")
+        check(integer(root["version"], 1, 1) == 1 && bool(root["needs_review"]))
+        val policy = string(root["source_policy"], 32, 32).also { check(it == CHAPTER_SOURCES_V1) }
+        val max = integer(root["max_sources_per_chapter"], 12, 12)
+        ProtectedStoryWorkspaceSourceCapabilities(policy, max)
+    }
+
     fun encodeTitleRequest(
         assetIds: List<String>, theme: String, language: String, selectionRevision: String,
         chapters: List<ProtectedStoryWorkspaceChapterInput>,
+        sourcePolicy: String? = null,
     ): String = guardedInput {
         validateSelection(assetIds)
         input(theme in SAVED_MEMORY_STORY_THEMES && language in setOf("zh", "en"))
         input(validSelectionRevision(selectionRevision))
         input(chapters.size == (assetIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
         input(chapters.size in 1..MAX_CHAPTERS && chapters.map { it.id } == (1..chapters.size).map { "chapter-$it" })
-        chapters.forEach { inputText(it.narration, Int.MAX_VALUE, MAX_NARRATION_BYTES, allowNewline = true, blank = true) }
+        input(sourcePolicy == null || sourcePolicy == CHAPTER_SOURCES_V1)
+        chapters.forEach { chapter ->
+            inputText(chapter.narration, Int.MAX_VALUE, MAX_NARRATION_BYTES, allowNewline = true, blank = true)
+            if (sourcePolicy != null) {
+                val refs = chapter.evidenceIds ?: throw IllegalArgumentException()
+                input(refs.size <= MAX_EVIDENCE_PER_CHAPTER && refs.distinct().size == refs.size)
+                refs.forEach { input(it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}"))) }
+            } else input(chapter.evidenceIds == null)
+        }
         val chapterJson = JsonArray(chapters.map { chapter -> buildJsonObject {
             put("id", chapter.id); put("narration", chapter.narration)
+            if (sourcePolicy != null) put("evidence_ids", JsonArray(requireNotNull(chapter.evidenceIds).map(::JsonPrimitive)))
         } }).toString()
         buildJsonObject {
             put("asset_ids", assetIds.joinToString(",")); put("theme", theme); put("language", language)
             put("selection_revision", selectionRevision); put("chapters", chapterJson)
+            sourcePolicy?.let { put("source_policy", it) }
         }.toString().also { input(utf8(it).size <= MAX_TITLE_REQUEST_BYTES) }
     }
 
-    fun decodeTitles(bytes: ByteArray, draft: ProtectedStoryWorkspaceDraft): List<ProtectedStoryWorkspaceTitle> = guarded {
+    fun decodeTitles(bytes: ByteArray, draft: ProtectedStoryWorkspaceDraft, sourcePolicy: String? = null): List<ProtectedStoryWorkspaceTitle> = guarded {
         check(validSelectionRevision(draft.selectionRevision))
         val root = obj(DiscoveryJson.parse(bytes, MAX_RESPONSE_BYTES, 128))
         exact(root, "version", "selection_revision", "titles", "needs_review")
         check(integer(root["version"], 1, 1) == 1)
         check(string(root["selection_revision"], 64, 64) == draft.selectionRevision)
         check(bool(root["needs_review"]))
-        val known = draft.items.flatMap { item -> item.evidence.filter { it.text.isNotBlank() }.map { it.id } }.toMutableSet()
+        check(sourcePolicy == null || sourcePolicy == CHAPTER_SOURCES_V1)
+        val selected = draft.chapters.flatMap { it.evidenceIds }.toSet()
+        val known = draft.items.flatMap { item -> item.evidence.filter { it.text.isNotBlank() &&
+            (sourcePolicy == null || it.id in selected) }.map { it.id } }.toMutableSet()
         draft.chapters.filter { it.narration.isNotBlank() }.forEach { known += "draft-${it.id}" }
         val titles = array(root["titles"], 3).map { raw ->
             val title = obj(raw); exact(title, "text", "source_ids")

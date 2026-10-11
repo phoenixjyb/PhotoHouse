@@ -62,6 +62,21 @@ class ProtectedStoryWorkspaceCreateTest {
         assertFalse(bodyString.contains("author"))
     }
 
+    @Test fun profileOptInAddsOnlyPolicyAndAllowsExplicitEvidenceSubsetIncludingEmpty() {
+        val current = draft()
+        val edits = edits(current).mapIndexed { index, chapter ->
+            chapter.copy(evidenceIds = if (index == 0) emptyList() else chapter.evidenceIds)
+        }
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(current, "title", edits,
+            "22222222-2222-4222-8222-222222222222", "chapter_sources_v1")).jsonObject
+        assertEquals(setOf("title", "theme", "language", "asset_ids", "chapters", "selection_revision", "revision", "mutation_id", "source_policy"), body.keys)
+        assertEquals("chapter_sources_v1", body.getValue("source_policy").jsonPrimitive.content)
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertTrue(chapters.first().jsonObject.getValue("evidence_ids").jsonArray.isEmpty())
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "title", edits,
+            "22222222-2222-4222-8222-222222222222", "unknown") }
+    }
+
     @Test fun acceptsUnicodeAtCodePointAndUtf8LimitsAndKeepsSnapshotPrivateAndImmutable() {
         val current = draft(listOf(1))
         val maxTitle = "😀".repeat(160)
@@ -112,5 +127,14 @@ class ProtectedStoryWorkspaceCreateTest {
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse().toByteArray(), "family", listOf("2", "1")) }
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse(revision = "0").toByteArray(), "family", listOf("1", "2")) }
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse().replace("\"questions\":[]", "\"questions\":[],\"extra\":true").toByteArray(), "family", listOf("1", "2")) }
+    }
+
+    @Test fun savedDetailAcceptsSourcePolicyOnlyOnProfileRoute() {
+        val profile = savedResponse().replace("\"questions\":[]", "\"questions\":[],\"source_policy\":\"chapter_sources_v1\"").toByteArray()
+        badResponse { ProtectedMemoryStoriesWire.detail(profile, "family", storyId, 4) }
+        val decoded = ProtectedMemoryStoriesWire.detail(profile, "family", storyId, 4, sourceReview = true)
+        assertEquals("chapter_sources_v1", decoded.sourcePolicy)
+        val legacy = ProtectedMemoryStoriesWire.detail(savedResponse().replace("\"questions\":[]", "\"questions\":[],\"source_policy\":null").toByteArray(), "family", storyId, 4, sourceReview = true)
+        assertNull(legacy.sourcePolicy)
     }
 }

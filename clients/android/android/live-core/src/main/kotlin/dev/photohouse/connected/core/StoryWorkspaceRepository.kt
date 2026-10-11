@@ -11,6 +11,12 @@ interface StoryWorkspaceApi {
     suspend fun storyTitleCapabilities(token: Bearer, library: String): ByteArray
     suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray
     suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray
+    suspend fun storySourceCapabilities(token: Bearer, library: String): ByteArray =
+        throw ApiFailure(FailureKind.HTTP, 404)
+    suspend fun storyTitles(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
+        if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403) else storyTitles(token, library, json)
+    suspend fun createGroupedStory(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
+        if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403) else createGroupedStory(token, library, json)
     /** Optional v1 same-recorded-day candidate lookup; legacy adapters remain unsupported. */
     suspend fun relatedStoryMedia(token: Bearer, library: String, json: String): ByteArray =
         throw ApiFailure(FailureKind.INVALID_INPUT)
@@ -21,6 +27,7 @@ class PendingGroupedStorySave internal constructor(
     internal val binding: MemoryCommunityBinding,
     internal val body: String,
     assetIds: List<String>,
+    val sourceReview: Boolean = false,
 ) {
     val assetIds: List<String> = Collections.unmodifiableList(ArrayList(assetIds))
     override fun toString() = "PendingGroupedStorySave(content omitted)"
@@ -94,15 +101,24 @@ class StoryWorkspaceRepository(
             }
         }
 
+    suspend fun sourceCapabilities(editorCurrent: () -> Boolean): ProtectedStoryWorkspaceSourceCapabilities? =
+        scoped(editorCurrent = editorCurrent) { bound ->
+            try { owned({ api.storySourceCapabilities(bound.token, bound.libraryId) }, ProtectedStoryWorkspaceWire::decodeSourceCapabilities) }
+            catch (failure: ApiFailure) {
+                if (failure.status in setOf(400, 404, 503)) null else throw failure
+            }
+        }
+
     suspend fun suggestTitles(
-        draft: ProtectedStoryWorkspaceDraft, editorCurrent: () -> Boolean,
+        draft: ProtectedStoryWorkspaceDraft, sourceReview: Boolean = false, editorCurrent: () -> Boolean,
     ): List<ProtectedStoryWorkspaceTitle> = scoped(editorCurrent = editorCurrent) { bound ->
         if (draft.libraryId != bound.libraryId) throw ApiFailure(FailureKind.INVALID_INPUT)
         val body = ProtectedStoryWorkspaceWire.encodeTitleRequest(draft.items.map { it.asset.id },
             draft.theme, draft.language, draft.selectionRevision,
-            draft.chapters.map { ProtectedStoryWorkspaceChapterInput(it.id, it.narration) })
-        owned({ api.storyTitles(bound.token, bound.libraryId, body) }) {
-            ProtectedStoryWorkspaceWire.decodeTitles(it, draft)
+            draft.chapters.map { ProtectedStoryWorkspaceChapterInput(it.id, it.narration, if (sourceReview) it.evidenceIds else null) },
+            if (sourceReview) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null)
+        owned({ api.storyTitles(bound.token, bound.libraryId, body, sourceReview) }) {
+            ProtectedStoryWorkspaceWire.decodeTitles(it, draft, if (sourceReview) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null)
         }
     }
 
@@ -120,20 +136,21 @@ class StoryWorkspaceRepository(
 
     fun freeze(
         draft: ProtectedStoryWorkspaceDraft, title: String, chapters: List<SavedMemoryStoryChapter>,
-        mutationId: String, reviewed: Boolean, editorCurrent: () -> Boolean,
+        mutationId: String, reviewed: Boolean, sourceReview: Boolean = false, editorCurrent: () -> Boolean,
     ): PendingGroupedStorySave {
         val bound = binding()
         current(bound, editorCurrent)
         if (!reviewed || draft.libraryId != bound.libraryId) throw ApiFailure(FailureKind.INVALID_INPUT)
         return PendingGroupedStorySave(bound,
-            ProtectedStoryWorkspaceCreateWire.encode(draft, title, chapters, mutationId),
-            draft.items.map { it.asset.id })
+            ProtectedStoryWorkspaceCreateWire.encode(draft, title, chapters, mutationId,
+                if (sourceReview) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null),
+            draft.items.map { it.asset.id }, sourceReview)
     }
 
     suspend fun save(pending: PendingGroupedStorySave, editorCurrent: () -> Boolean): SavedMemoryStory =
         scoped(pending.binding, editorCurrent) { bound ->
-            owned({ api.createGroupedStory(bound.token, bound.libraryId, pending.body) }) {
-                ProtectedMemoryStoriesWire.decode(it, bound.libraryId, pending.assetIds)
+            owned({ api.createGroupedStory(bound.token, bound.libraryId, pending.body, pending.sourceReview) }) {
+                ProtectedMemoryStoriesWire.decode(it, bound.libraryId, pending.assetIds, sourceReview = pending.sourceReview)
             }
         }
 }

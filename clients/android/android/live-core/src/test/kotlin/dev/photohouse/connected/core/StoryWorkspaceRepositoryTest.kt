@@ -22,6 +22,10 @@ class StoryWorkspaceRepositoryTest {
         }
         override suspend fun storyPreview(token: Bearer, library: String, json: String) = response("preview")
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) = response("title_capabilities_off")
+        override suspend fun storySourceCapabilities(token: Bearer, library: String): ByteArray {
+            after?.invoke(); error?.let { throw it }
+            return """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray().also { buffer = it }
+        }
         override suspend fun storyTitles(token: Bearer, library: String, json: String) = response("titles")
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
             sent += json; return response("created")
@@ -60,6 +64,20 @@ class StoryWorkspaceRepositoryTest {
         fake.after = null
         try { repo.titleCapabilities { true }; fail() } catch (_: ApiFailure) { }
         assertEquals(1, denied)
+    }
+    @Test fun unknownOptionalCapabilityIsUnavailableWithoutAuthDenial() = runBlocking {
+        val fake = Fake(); val binding = MemoryCommunityBinding(token(), "family-a", 1)
+        var denied = 0
+        val repo = StoryWorkspaceRepository(fake, { binding }, { denied++ })
+        fake.error = ApiFailure(FailureKind.HTTP, 404)
+        assertNull(repo.sourceCapabilities { true })
+        assertEquals(0, denied)
+        fake.error = ApiFailure(FailureKind.HTTP, 403)
+        try { repo.sourceCapabilities { true }; fail() } catch (_: ApiFailure) { }
+        assertEquals(1, denied)
+        fake.error = ApiFailure(FailureKind.HTTP, 401)
+        try { repo.sourceCapabilities { true }; fail() } catch (_: ApiFailure) { }
+        assertEquals(2, denied)
     }
     @Test fun pendingSaveCannotBeRetriedInAnotherLibraryOrGeneration() = runBlocking {
         val fake = Fake(); var binding: MemoryCommunityBinding? = MemoryCommunityBinding(token(), "family-a", 1)

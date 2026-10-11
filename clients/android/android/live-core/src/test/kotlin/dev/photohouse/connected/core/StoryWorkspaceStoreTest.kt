@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.TestScope
+import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.UUID
@@ -39,6 +40,8 @@ class StoryWorkspaceStoreTest {
         var saveFailure: ApiFailure? = null
         var saveResponse: ByteArray? = null
         val saveBodies = mutableListOf<String>()
+        val saveProfiles = mutableListOf<Boolean>()
+        var sourceCapabilityBody = """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray()
         var idsForPreview = listOf("1")
         val previewReplies = ArrayDeque<ByteArray>()
         val previewFailures = ArrayDeque<ApiFailure>()
@@ -49,6 +52,7 @@ class StoryWorkspaceStoreTest {
             return preview(idsForPreview)
         }
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) = capabilityBody
+        override suspend fun storySourceCapabilities(token: Bearer, library: String) = sourceCapabilityBody
         override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray =
             suggestionGates.removeFirst().await()
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
@@ -56,6 +60,10 @@ class StoryWorkspaceStoreTest {
             saveFailure?.let { throw it }
             saveResponse?.let { return it }
             throw ApiFailure(FailureKind.OFFLINE)
+        }
+        override suspend fun createGroupedStory(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray {
+            saveProfiles += sourceReview
+            return createGroupedStory(token, library, json)
         }
     }
 
@@ -82,6 +90,27 @@ class StoryWorkspaceStoreTest {
         (1..24).forEach { assertTrue(store.selectAsset(it.toString())) }
         assertFalse(store.selectAsset("25"))
         assertEquals((1..24).map(Int::toString), store.state.value.selectedAssetIds)
+    }
+
+    @Test fun optInEvidenceChoicesClearReviewAndFreezeProfileOnUncertainRetry() = runTest {
+        var current = binding(); val api = Fake()
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }) { mutation }
+        readyForEdit(store)
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.state.value.sourceReviewEnabled)
+        assertTrue(store.toggleChapterEvidence(0, "caption-101", false))
+        assertTrue(store.state.value.editableChapters.single().evidenceIds.isEmpty())
+        assertFalse(store.state.value.reviewed)
+        assertTrue(store.confirmReviewed(true)); assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
+        assertEquals(listOf(true), api.saveProfiles)
+        val body = Json.parseToJsonElement(api.saveBodies.single()).jsonObject
+        assertEquals("chapter_sources_v1", body["source_policy"]!!.jsonPrimitive.content)
+        val chapterJson = body.getValue("chapters").jsonPrimitive.content
+        assertTrue(chapterJson.contains("\"evidence_ids\":[]"))
+        assertTrue(store.retrySave()); runCurrent()
+        assertEquals(listOf(true, true), api.saveProfiles)
+        assertEquals(api.saveBodies.first(), api.saveBodies.last())
     }
 
     @Test fun changedBindingDiscardsLatePreviewAndClearsTheOldSelection() = runTest {

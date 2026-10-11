@@ -110,6 +110,9 @@ interface PhotoHouseApi {
         throw ApiFailure(FailureKind.INVALID_INPUT)
     }
     suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun sourceCapabilities(token: Bearer, library: String): ByteArray = throw ApiFailure(FailureKind.HTTP, 404)
+    suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long, sourceReview: Boolean): SavedMemoryStory =
+        if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403) else savedMemoryStory(token, library, storyId, revision)
     /** Additive, read-only chapter source links; unsupported adapters keep saved-story v1 intact. */
     suspend fun savedMemoryStoryContributionReferences(
         token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
@@ -117,6 +120,10 @@ interface PhotoHouseApi {
     suspend fun saveMemoryStoryContributionReferences(
         token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation,
     ): SavedMemoryStory = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun saveMemoryStoryContributionReferences(
+        token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation, sourceReview: Boolean,
+    ): SavedMemoryStory = if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403)
+        else saveMemoryStoryContributionReferences(token, library, mutation)
     /** Explicit source review uses the protected contribution detail route; audio has a separate operation. */
     suspend fun savedMemoryContributionDetail(
         token: Bearer, library: String, storyId: String, contributionId: String,
