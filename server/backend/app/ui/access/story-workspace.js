@@ -318,7 +318,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const refresh=button(text('sourceRefreshAction'),()=>{void refreshSources();},'quiet story-source-refresh');
     const label=node('label',undefined,'story-source-refresh-ack-label'),ack=node('input');label.style.display='flex';label.style.alignItems='center';label.style.gap='.5rem';label.style.minHeight='44px';label.style.margin='0';label.style.color='var(--ink)';label.style.fontWeight='400';label.style.lineHeight='1.45';ack.type='checkbox';ack.className='story-source-refresh-ack';ack.style.appearance='auto';ack.style.width='20px';ack.style.height='20px';ack.style.minWidth='20px';ack.style.minHeight='20px';ack.style.flex='0 0 20px';ack.style.margin='0';ack.style.padding='0';ack.style.border='0';ack.style.background='transparent';ack.style.accentColor='var(--accent)';
     ack.addEventListener('change',()=>{if(!wrap.isConnected||wrap.hidden||!label.isConnected||label.hidden||!sourceReviewOptedIn||!draft||draft.saved===true||!sourceRefreshNeedsAcknowledgement||sourceRefreshPending||sourceRefreshRequired){ack.checked=sourceRefreshAcknowledged;return;}sourceRefreshAcknowledged=ack.checked;setSelectionCount();});
-    label.append(ack,node('span',text('sourceRefreshAcknowledge')));wrap.append(refresh,label);host.insertBefore(wrap,$('story-export'));
+    label.append(ack,node('span',text('sourceRefreshAcknowledge')));wrap.append(refresh,label);const exportButton=$('story-export');if(exportButton?.parentNode===host)host.insertBefore(wrap,exportButton);else host.append(wrap);
     sourceRefreshUI={wrap,refresh,ack,label};return sourceRefreshUI;
   }
   function updateSourceRefreshUI(){
