@@ -10695,6 +10695,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Accessible Web memoir media and stale callback guards",
+      "source_commit": "210222b899ffa8b3ffb11d075b4a697928d33fe6",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "9813cd3c9507d63e3b190d9925d56d2f25cf89ac4b0deb9ef35595c8ac963e83",
+          "sha256": "c7fe58065b2627b6719d6e97b316174cb4025ecc7097d3d059833b523115ec6c"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "e21e53a9fed9f8975189ec78568d93f31fb341d01e0ebd03f5288a625d07fe16",
+          "sha256": "f0b798b92067ad545c83e317805ed2365a3865835f121f508e501112967b04b7"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "2f02a577f44bfb80ba6e337c0dbb170bae27566a65bcb8e9f5e1b64b494d771f",
+          "sha256": "40a2ce88dbd4c9db7679c2515e0c931a7fd233edb351a914140c6d12fe70c15c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
