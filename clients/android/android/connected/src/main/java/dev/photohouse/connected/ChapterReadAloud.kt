@@ -296,7 +296,7 @@ internal fun ChapterReadAloud(
     val lifecycleOwner = LocalLifecycleOwner.current
     // Include the full text and language so a reused row can never keep a controller
     // whose immutable utterance snapshot belongs to an earlier reply.
-    val snapshotKey = remember(scopeKey, text, language) { Any() }
+    val snapshotKey = remember(scopeKey, text, language, lifecycleOwner) { Any() }
     val controller = remember(snapshotKey) {
         ChapterReadAloudController(context, text, language, coordinator, adapterFactory, focusFactory)
     }
@@ -308,6 +308,7 @@ internal fun ChapterReadAloud(
     val latestLifecycleOwner by rememberUpdatedState(lifecycleOwner)
     val latestStartConsumed by rememberUpdatedState(onStartRequestConsumed)
     val latestCompletionChanged by rememberUpdatedState(onCompletionChanged)
+    val actionLifetime = remember(snapshotKey) { AtomicBoolean(true) }
     LaunchedEffect(startRequest, snapshotKey) {
         val request = startRequest ?: return@LaunchedEffect
         // Consume before any eligibility or scope checks so a denied request cannot replay
@@ -321,10 +322,14 @@ internal fun ChapterReadAloud(
     LaunchedEffect(snapshotKey, completed) {
         latestCompletionChanged?.invoke(completed)
     }
-    DisposableEffect(snapshotKey, controller, lifecycleOwner) {
+    DisposableEffect(snapshotKey, controller, lifecycleOwner, actionLifetime) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) controller.stop() }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer); controller.close() }
+        onDispose {
+            actionLifetime.set(false)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            controller.close()
+        }
     }
     val chunksPresent = remember(snapshotKey, text) { runCatching { narrationChunks(text).isNotEmpty() }.getOrDefault(false) }
     val tag = labels?.tagPrefix ?: if (scopeKey.toString().contains("memoir")) "memory-book-narration" else "saved-memory-narration"
@@ -332,11 +337,20 @@ internal fun ChapterReadAloud(
     val active = status == "speaking" || status == "loading"
     val paused = status == "paused" || status == "paused_busy"
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val toggle: () -> Unit = when (status) {
-            "speaking" -> controller::pause
-            "paused", "paused_busy" -> controller::resume
-            "loading" -> controller::stop
-            else -> ({ controller.start(); Unit })
+        fun currentAndAttached() = actionLifetime.get() && latestController === controller
+        fun mayStartNow() = currentAndAttached() && latestEnabled &&
+            latestLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        // A delayed Pause/Cancel must never become Start/Resume after the phase changes.
+        val renderedPhase = status
+        val toggle: () -> Unit = {
+            if (currentAndAttached() && controller.status.value == renderedPhase) {
+                when (controller.status.value) {
+                    "speaking" -> controller.pause()
+                    "loading" -> controller.stop()
+                    "paused", "paused_busy" -> if (mayStartNow()) controller.resume()
+                    else -> if (mayStartNow()) controller.start()
+                }
+            }
         }
         Button(onClick = toggle, enabled = chunksPresent && (active || enabled), modifier = Modifier.testTag("$tag-toggle")) {
             Text(when (status) {
@@ -346,7 +360,9 @@ internal fun ChapterReadAloud(
                 else -> labels?.read ?: t("Read aloud", "朗读本章")
             })
         }
-        if (status == "speaking" || paused) TextButton(onClick = controller::stop,
+        if (status == "speaking" || paused) TextButton(onClick = {
+            if (currentAndAttached()) controller.stop()
+        },
             modifier = Modifier.testTag("$tag-stop")) { Text(labels?.stop ?: t("Stop reading", "停止朗读")) }
         if (paused) Text(labels?.resumeChunkNotice ?: t(
             "Resume restarts the current short segment; part of it may repeat.",
