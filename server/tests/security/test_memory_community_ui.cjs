@@ -200,6 +200,14 @@ async function runMemoirIntroductionDictationJourney(){
   await flushUi();assert.equal(uncertainCapabilities,0,'an uncertain immutable save must be resolved before opening another dictation');
   assert.equal(uncertain.writes.length,1,'dictation controls cannot create an extra save during uncertain retry');
   uncertain.ui.clear();
+  const identity=memoirIntroductionHarness();await identity.open();const identityForm=identity.mount.querySelector('.memory-community-book-form');
+  const originalUuid=context.crypto.randomUUID;try{context.crypto.randomUUID=()=>null;await identityForm.dispatch('submit');await flushUi();
+    assert.equal(identity.writes.length,0,'missing retry identity must send no save');
+    assert.equal(identityForm.elements.title.disabled,false,'missing retry identity leaves the draft editable');
+    assert.match(identityForm.textContent,/草稿仍可编辑/,'safe-save failure is explained in the current form');
+    identityForm.elements.title.value='Edited after identity became unavailable';
+  }finally{context.crypto.randomUUID=originalUuid;}
+  await identityForm.dispatch('submit');await flushUi();assert.equal(identity.writes.length,1,'explicit save works after identity generation is restored');assert.equal(identity.writes[0].options.body.title,'Edited after identity became unavailable','a failed identity allocation never freezes stale text');identity.ui.clear();
   console.log('PASS memoir introduction dictation preserves typed words, requires reviewed explicit insertion/save, and fences overflow, denial, scope changes and cleanup');
 }
 
