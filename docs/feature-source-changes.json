@@ -10902,6 +10902,37 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Backward-compatible memory conversation full error code with idempotent boundary checks",
+      "source_commit": "e042544023878cda6492086caa451576378e6330",
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "efaf8d222eecf37230e5276a477b039cf3b7290e323602863fbdb82af35f6f6f",
+          "sha256": "8c7a48fa36a8c1d74c26ec454d3a44d3dd9e93cc29c7e02cfdfe65f8430c86f5"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "b175f2b2912664c97480467fa8bbfa01abb246c511c00cd88bfb0238d60a8be2",
+          "sha256": "c590e516471701230361ca74328632c531d76fcf853f92206504f5b0f80fc4d9"
+        },
+        {
+          "path": "server/tests/security/test_memory_editorial_context_http.py",
+          "before_sha256": "80e2093c70a5666ba75e45c79ef9d4b4abac197782e368682b31ccbec4f0ee39",
+          "sha256": "e0920d3adbf17c704be541b96fd14ddb784528fec8287107879ca83aaf3915ec"
+        },
+        {
+          "path": "server/tests/security/test_memory_jobs.py",
+          "before_sha256": "329630801ae77870398492d9a3b2b500927f65ae590902b5522f85bf7da83109",
+          "sha256": "6a3a485e546c5beec1d8a1c666f85d314087366d82e29fcdd800ef778ece384f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
