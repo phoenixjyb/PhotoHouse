@@ -10747,6 +10747,57 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Memoir reading contracts roadmap and local qualification evidence",
+      "source_commit": "6c3e2f0b87576f39cbc44ebad32329eb197e4a45",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "4c1b8e4d8b350b0935d6d3810098689528d3f85245b3cca4866dfc2b265857c8",
+          "sha256": "494a739df600dc6888fd8f5e76baa791035eea50e0924e714d277ad9e7e8756b"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "bd756d268ae74b98d245f5bf18558df52dc40d9f49414db252a1557c730451a9",
+          "sha256": "9636120d0481c014cbf8f9461341e2f019812058f5e7ad28d91d8ddfa116d7e1"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "df8872dcfc385188af9aeb480535c64bc28f5709e94ffb6076ab5a2070181384",
+          "sha256": "f0152afdf127960b99b2d9dff1adf31d57b75700a38be8f577f5f167294cd148"
+        },
+        {
+          "path": "docs/MEMOIR_NARRATION_CONTINUATION.md",
+          "before_sha256": null,
+          "sha256": "4ee8fc22aa2a45cddbc3d6ec849528314accb3a9349938cc5f54df09b9af7a9c"
+        },
+        {
+          "path": "docs/PHONE_ALBUM_TO_STORY.md",
+          "before_sha256": "07cb17057b45bab11202a2fbc831cbd1b172f60ae09e1f0b554718dce8dd98b2",
+          "sha256": "f13260c3475b2a507e79e3799d972086e9c5ce04408994eacecd800976f0706f"
+        },
+        {
+          "path": "docs/PHONE_MEMOIR_READING_CONTINUITY.md",
+          "before_sha256": null,
+          "sha256": "14add522c671c734925d371b459763efe2042fb586a5b310a2ce1e5897167da3"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "640825faeec913c0ec9fc5e86bffd47340bc9f7996e648363278a2bce3582078",
+          "sha256": "ee226ad10f704c6989035bf4ee93605f1f23e56cc355571ac6801052a17fcdff"
+        },
+        {
+          "path": "docs/STORY_READER_NAVIGATION.md",
+          "before_sha256": "f9e1ad194f0ca02aa43d1c275d460d4adeb2bb8fba08394972a0aa5066d77981",
+          "sha256": "aca76d1324d5881b366ab7a18d63e084f93406f8f64508b3d3f4af4da1c9572c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
