@@ -10197,6 +10197,22 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Exact browser source selection readiness",
+      "source_commit": "a01b4a0419facf01a242bbef304113aa73d554aa",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "18aa9a21e4ba7fc152c925b4d0b5912eff455bd266778db48ae77918e547dabf",
+          "sha256": "6e76ad6f8845cf0380557b5f4410a8199e2aac2a5038e668cfec60dec4441def"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
