@@ -1132,6 +1132,9 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await host.locator('.memory-book-introduction-stop').click();
     await page.waitForFunction(language=>window.__memoirIntroductionVoiceJourneys[language].transcriptionCalls===1,language);
     const intro=host.locator('textarea[name="introduction"]');await intro.fill(language==='zh'?'转写期间继续输入的开篇':'Latest typed while transcription was pending');
+    const state=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.resolveTranscription({version:1,text:language==='zh'?'合成口述原文':'Synthetic spoken words'});return {captureCalls:h.captureCalls,transcriptionCalls:h.transcriptionCalls,audioSize:h.audioSize};},language);
+    assert.equal(state.captureCalls,1,'one explicit record action captures the generated WAV');assert.equal(state.transcriptionCalls,1,'one explicit stop starts the synthetic transcription');assert(state.audioSize>44,'browser voice fixture transcribes generated WAV bytes');
+    const transcript=host.locator('.memory-book-introduction-transcript');await transcript.waitFor();
     const enlarged=await host.evaluate(root=>{
       const editor=root.querySelector('.memory-community-book-editor');
       const nodes=[...editor.querySelectorAll('*')].filter(node=>node.getClientRects().length);
@@ -1141,9 +1144,6 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
       rows.forEach(row=>{const node=nodes[row.index];node.dataset.introVoiceFont=String(row.index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.line))node.style.lineHeight=`${row.line*1.5}px`;});
       return rows;
     });
-    const state=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.resolveTranscription({version:1,text:language==='zh'?'合成口述原文':'Synthetic spoken words'});return {captureCalls:h.captureCalls,transcriptionCalls:h.transcriptionCalls,audioSize:h.audioSize};},language);
-    assert.equal(state.captureCalls,1,'one explicit record action captures the generated WAV');assert.equal(state.transcriptionCalls,1,'one explicit stop starts the synthetic transcription');assert(state.audioSize>44,'browser voice fixture transcribes generated WAV bytes');
-    const transcript=host.locator('.memory-book-introduction-transcript');await transcript.waitFor();
     assert.equal(await host.locator('button[type="submit"]').isDisabled(),true,'save remains blocked while transcript review is pending');
     assert.deepEqual(await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return [h.voiceCapabilityCalls,h.captureCalls,h.transcriptionCalls,h.writes.length];},language),[1,1,1,0],'opening and transcribing do not save');
     const rootOverflow=await form.evaluate(node=>[node,...node.querySelectorAll('section,fieldset,label,button')].filter(child=>child.scrollWidth>child.clientWidth+1).map(child=>({tag:child.tagName,className:String(child.className),scroll:child.scrollWidth,client:child.clientWidth})).slice(0,12));
