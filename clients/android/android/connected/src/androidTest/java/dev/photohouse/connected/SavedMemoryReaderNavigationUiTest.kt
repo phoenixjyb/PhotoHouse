@@ -42,6 +42,19 @@ class SavedMemoryReaderNavigationUiTest {
     private val selectedFrames = mutableListOf<String>()
     private val selectedChapters = mutableListOf<Int>()
     private val openedAssets = mutableListOf<String>()
+    private var readerPositions: ReaderPositions? = null
+
+    private class ReaderPositions : SavedStoryReaderPositionPersistence {
+        private var rows = emptyList<SavedStoryReaderPosition>()
+        override fun load(accountId: String) = rows.filter { it.accountId == accountId }
+        override fun save(accountId: String, position: SavedStoryReaderPosition) {
+            rows = rows.filterNot { it.accountId == accountId } + SavedStoryReaderPositions.upsert(accountId, load(accountId), position)
+        }
+        override fun remove(accountId: String, libraryId: String, storyId: String) {
+            rows = rows.filterNot { it.accountId == accountId } + SavedStoryReaderPositions.without(accountId, load(accountId), libraryId, storyId)
+        }
+        override fun clear(accountId: String) { rows = rows.filterNot { it.accountId == accountId } }
+    }
 
     @After fun close() { scope.cancel() }
 
@@ -112,11 +125,12 @@ class SavedMemoryReaderNavigationUiTest {
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray = error("not used in saved edit")
     }
 
-    private fun openReader(zh: Boolean, canEdit: Boolean = false) {
+    private fun openReader(zh: Boolean, canEdit: Boolean = false, resume: SavedStoryReaderPosition? = null) {
         api = ReaderApi()
         api.canEditStory = canEdit
         if (canEdit) api.firstChapterAssetIds = listOf("1")
-        store = ConnectedStore(api, scope)
+        readerPositions = resume?.let { position -> ReaderPositions().apply { save(position.accountId, position) } }
+        store = ConnectedStore(api, scope, savedStoryReaderPositionPersistence = readerPositions)
         rule.runOnUiThread { store.authenticate("+8612345678", "correct horse battery", remember = false) }
         rule.waitUntil(10_000) { store.state.value.library == "library-a" && !store.state.value.busy }
         rule.runOnUiThread { store.openSavedMemoryStories() }
@@ -137,7 +151,7 @@ class SavedMemoryReaderNavigationUiTest {
                         onOpenStory = store::openSavedMemoryStory, onRetryDetail = {},
                         onCloseDetail = { store.openSavedMemoryStories() },
                         onChapter = { index -> selectedChapters += index; store.loadSavedMemoryChapter(index) },
-                        onSelectFrame = { id -> selectedFrames += id; store.loadSavedMemoryHero(id) },
+                        onSelectFrame = { id -> selectedFrames += id; store.selectSavedMemoryFrame(id) },
                         onOpenAsset = { openedAssets += it },
                     )
                 }
@@ -150,6 +164,39 @@ class SavedMemoryReaderNavigationUiTest {
     @Test fun englishSavedStoryEditEntryKeepsOriginalGroupingAt150Percent() = savedStoryEditEntry(zh = false)
 
     @Test fun chineseSavedStoryEditEntryKeepsOriginalGroupingAt150Percent() = savedStoryEditEntry(zh = true)
+
+    @Test fun englishContinueReadingIsExplicitAndFitsAt150Percent() = continueReading(zh = false)
+
+    @Test fun chineseContinueReadingIsExplicitAndFitsAt150Percent() = continueReading(zh = true)
+
+    private fun continueReading(zh: Boolean) {
+        val position = SavedStoryReaderPosition("reader-account-a", "library-a", STORY_ID, 4, "chapter-3", "3")
+        openReader(zh = zh, resume = position)
+        assertEquals("a fresh read starts at the first chapter until Continue", 0,
+            store.state.value.savedMemoryStories!!.selectedChapter)
+        assertEquals(position, store.state.value.savedMemoryStories!!.resumePosition)
+        rule.onNodeWithTag("saved-memory-resume-card").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "第 3 篇 · 第 1 个瞬间" else "Chapter 3 · moment 1").assertIsDisplayed()
+        capture(if (zh) "saved-memory-resume-zh-150-window.png" else "saved-memory-resume-en-150-window.png")
+        rule.onNodeWithTag("saved-memory-resume").performClick()
+        rule.waitUntil(10_000) {
+            val reading = store.state.value.savedMemoryStories
+            reading?.selectedChapter == 2 && !reading.framesBusy && reading.selectedAssetId == "3"
+        }
+        rule.onNodeWithTag("saved-memory-resume-card").assertDoesNotExist()
+        scrollReaderUntilFrameVisible("3")
+        rule.onNodeWithTag("saved-memory-frame-3").assertIsSelected()
+        assertEquals("Continue does not open originals or video", 0, api.originalPhotoCalls + api.videoRangeCalls)
+        assertTrue(openedAssets.isEmpty())
+        assertTrue("Continue does not invoke detached chapter/frame callbacks", selectedFrames.isEmpty() && selectedChapters.isEmpty())
+
+        reopenStory()
+        rule.onNodeWithTag("saved-memory-start-over").performScrollTo().performClick()
+        rule.waitUntil(10_000) { store.state.value.savedMemoryStories?.resumePosition == null }
+        assertEquals(0, store.state.value.savedMemoryStories!!.selectedChapter)
+        assertTrue(readerPositions!!.load(position.accountId).isEmpty())
+        assertEquals(0, api.originalPhotoCalls + api.videoRangeCalls)
+    }
 
     private fun savedStoryEditEntry(zh: Boolean) {
         openReader(zh = zh, canEdit = true)

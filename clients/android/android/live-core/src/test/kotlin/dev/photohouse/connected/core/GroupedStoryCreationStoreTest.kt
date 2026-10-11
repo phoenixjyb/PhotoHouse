@@ -188,8 +188,18 @@ class GroupedStoryCreationStoreTest {
         )
     }
 
-    private fun TestScope.newStore(api: FakeApi, community: Boolean = false) = ConnectedStore(
+    private class ReaderPositions : SavedStoryReaderPositionPersistence {
+        val clearedAccounts = mutableListOf<String>()
+        override fun load(accountId: String) = emptyList<SavedStoryReaderPosition>()
+        override fun save(accountId: String, position: SavedStoryReaderPosition) = Unit
+        override fun remove(accountId: String, libraryId: String, storyId: String) = Unit
+        override fun clear(accountId: String) { clearedAccounts += accountId }
+    }
+
+    private fun TestScope.newStore(api: FakeApi, community: Boolean = false,
+        positions: SavedStoryReaderPositionPersistence? = null) = ConnectedStore(
         api, backgroundScope, memoryCommunityApi = api, memoryCommunityEnabled = community,
+        savedStoryReaderPositionPersistence = positions,
     ) { testScheduler.currentTime }
 
     private suspend fun TestScope.signIn(store: ConnectedStore) {
@@ -441,7 +451,8 @@ class GroupedStoryCreationStoreTest {
 
     @Test fun conflictReloadKeepsUnsavedWordsAcrossGatedLinkFailureAndReplacesOnlyAfterRetry() = runTest {
         val api = FakeApi().apply { groupedUpdateFailure = ApiFailure(FailureKind.HTTP, 409) }
-        val store = newStore(api)
+        val positions = ReaderPositions()
+        val store = newStore(api, positions = positions)
         createReceiptAndOpenReader(store)
         assertTrue(store.beginSavedGroupedStoryEdit())
         runCurrent()
@@ -490,11 +501,13 @@ class GroupedStoryCreationStoreTest {
         assertTrue(store.state.value.covered)
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
     }
 
     @Test fun staleSavedStoryEditDenialAfterCloseCannotClearTheReaderSession() = runTest {
         val api = FakeApi()
-        val store = newStore(api)
+        val positions = ReaderPositions()
+        val store = newStore(api, positions = positions)
         createReceiptAndOpenReader(store)
         val gate = CompletableDeferred<Unit>()
         api.contributionReferencesGate = gate
@@ -510,6 +523,7 @@ class GroupedStoryCreationStoreTest {
         assertEquals("family-a", store.state.value.library)
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
+        assertTrue("a stale denial must not erase current reading positions", positions.clearedAccounts.isEmpty())
     }
 
     @Test fun currentDictationDenialFromLoadedSavedStoryEditorCoversSession() = runTest {
@@ -517,7 +531,8 @@ class GroupedStoryCreationStoreTest {
             voiceEnabled = true
             assistantCapabilityFailure = ApiFailure(FailureKind.HTTP, 403)
         }
-        val store = newStore(api)
+        val positions = ReaderPositions()
+        val store = newStore(api, positions = positions)
         createReceiptAndOpenReader(store)
         assertTrue(store.beginSavedGroupedStoryEdit())
         runCurrent()
@@ -530,6 +545,7 @@ class GroupedStoryCreationStoreTest {
         assertTrue(store.state.value.covered)
         assertTrue(store.hasSession)
         assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
     }
 
     @Test fun conflictReloadCannotReplaceEditorWithStoryOlderThanItsBaseRevision() = runTest {

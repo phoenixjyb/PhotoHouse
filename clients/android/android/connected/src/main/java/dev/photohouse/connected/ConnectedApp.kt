@@ -382,7 +382,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 onRetryDetail = store::retrySavedMemoryStory,
                 onCloseDetail = store::closeSavedMemoryStoryDetail,
                 onChapter = store::loadSavedMemoryChapter,
-                onSelectFrame = store::loadSavedMemoryHero,
+                onSelectFrame = store::selectSavedMemoryFrame,
                 onOpenAsset = { id -> store.closeSavedMemoryStories(); store.openAssetById(id) },
             ) }
         }
