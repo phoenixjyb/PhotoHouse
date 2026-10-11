@@ -82,7 +82,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.zh,{titleAssist:'帮我起个标题',titleAssistHelp:'根据章节草稿与参考资料提出候选标题。选择后仍可修改，不会自动保存。',titleAssistWorking:'正在想几个标题…',titleAssistEmpty:'还没有合适的候选标题，可以补充回忆后再试。',titleAssistFailed:'标题建议暂不可用，你仍可修改标题并保存故事。',titleAssistReview:'AI 标题建议 · 请核对',titleAssistSources:'查看依据',titleAssistDraft:'章节草稿',titleAssistFrame:'画面'});
   Object.assign(labels.en,{titleAssist:'Suggest a title',titleAssistHelp:'Suggest titles from chapter drafts and references. Choose one, then edit it if needed. Nothing is saved automatically.',titleAssistWorking:'Thinking of a few titles…',titleAssistEmpty:'No suitable title yet. Add more context and try again.',titleAssistFailed:'Title suggestions are unavailable. You can still edit the title and save your story.',titleAssistReview:'AI title suggestions · review',titleAssistSources:'View references',titleAssistDraft:'Chapter draft',titleAssistFrame:'Frame'});
   function invalidateTitles(){titleEpoch++;if(titleView){titleView.busy=false;titleView.choices.replaceChildren();titleView.status.textContent='';titleView.action.disabled=frozen()||titleComposing;}}
-  function titleSnapshot(){return JSON.stringify([draft?.selection_revision,draft?.theme,draft?.language,draft?.items.map(i=>i.id),sourceReviewOptedIn,draft?.chapters.map(c=>({id:c.id,narration:c.narration,evidence_ids:c.evidence_ids})),$('story-workspace-title').value]);}
+  function titleSnapshot(){return JSON.stringify([draft?.selection_revision,draft?.theme,draft?.language,draft?.items.map(i=>i.id),sourceReviewOptedIn,draft?.chapters.map(c=>({id:c.id,...(sourceReviewOptedIn?{asset_ids:c.asset_ids}:{}),narration:c.narration,evidence_ids:c.evidence_ids})),$('story-workspace-title').value]);}
   function mountTitleAssistance(root){
     invalidateTitles();titleView=null;
     if(!titleRequest||!draft||readOnly())return;
@@ -104,7 +104,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     try{
       const titlePath='/story-workspace/title-suggestions'+(sourceReviewOptedIn?'?source_review=1':'');
       const titleCall=sourceReviewOptedIn?savedRequest:titleRequest;
-      const result=await titleCall(titlePath,{method:'POST',body:{...(sourceReviewOptedIn?{source_policy:SOURCE_POLICY}:{}),asset_ids:story.items.map(i=>i.id).join(','),theme:story.theme,language:story.language,selection_revision:story.selection_revision,chapters:JSON.stringify(story.chapters.map(c=>({id:c.id,narration:c.narration,...(sourceReviewOptedIn?{evidence_ids:[...c.evidence_ids]}:{})})))}});
+      const result=await titleCall(titlePath,{method:'POST',body:{...(sourceReviewOptedIn?{source_policy:SOURCE_POLICY}:{}),asset_ids:story.items.map(i=>i.id).join(','),theme:story.theme,language:story.language,selection_revision:story.selection_revision,chapters:JSON.stringify(story.chapters.map(c=>({id:c.id,narration:c.narration,...(sourceReviewOptedIn?{asset_ids:[...c.asset_ids],evidence_ids:[...c.evidence_ids]}:{})})))}});
       if(!valid())return;
       const selectedEvidence=sourceReviewOptedIn?new Set(story.chapters.flatMap(c=>c.evidence_ids)):null;
       const refs=new Set([...story.items.flatMap(i=>i.evidence.filter(e=>e.text.trim()&&(!selectedEvidence||selectedEvidence.has(e.id))).map(e=>e.id)),...story.chapters.filter(c=>c.narration.trim()).map(c=>'draft-'+c.id)]);
