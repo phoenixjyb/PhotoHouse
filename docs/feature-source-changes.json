@@ -11417,6 +11417,47 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Opening narration architecture, product status and release walkthrough",
+      "source_commit": "1b9d558b4fe8f58601885e54268de036f5578ccd",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "03037ae00a0246935db21cb266bc21727101f30bd154fee1adb29d4e16c1abe0",
+          "sha256": "d301e23b1c882a469fcff52ade7e088a95502eee89fd7d88cd5615501fcb8eba"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "db7848179fb781f38e5cadf0c6073e53c87032f542d36cdb7071cee297ed2ae7",
+          "sha256": "e8bdfc950c330da50eea6e2692c6b5bd72d464f55a7e74ca88e4535e22d4f00d"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "53bb7f55c40a3cb017babf3ba827b3ebd3bc88e03c4f71d109981b3956235209",
+          "sha256": "420b3d0286bf3be0e9f9cede14d0a22b03da5026bbce106859fc55f1f0724e9a"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b6dd04d96d814b6a9d07cca5d1f5eef3c34d501c011379c3df79573cd4fbd5da",
+          "sha256": "7a96f8a591c19f46fa2470b90e70548bedf6378dacdd128cd40693c9efa4c770"
+        },
+        {
+          "path": "docs/MEMOIR_INTRODUCTION_NARRATION.md",
+          "before_sha256": null,
+          "sha256": "8cd98a08ff634d394c5ca866898a9543826ca23db369ecc8361219942a7fb36a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "0281810bd8d22da4896f7bd803ec9942043c3740d795a266c2b00d0cfe67c886",
+          "sha256": "77e2e950abd3b097f4f815b0311afdbae30e3e3d77b26f56c2f9ba882a097f13"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
