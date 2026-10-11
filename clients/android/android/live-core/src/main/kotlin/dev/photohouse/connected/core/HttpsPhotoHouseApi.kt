@@ -794,6 +794,27 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         workspacePacket(token, library, "/memory-stories", json, 384 * 1024)
     override suspend fun createGroupedStory(token: Bearer, library: String, json: String, sourceReview: Boolean) =
         workspacePacket(token, library, "/memory-stories", json, 384 * 1024, sourceReview = sourceReview)
+    override suspend fun updateGroupedStory(
+        token: Bearer, library: String, storyId: String, json: String,
+        sourceReview: Boolean, contributionReferences: Boolean,
+    ): ByteArray {
+        require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library))
+        val canonicalId = storyId.also {
+            require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false))
+        }
+        val target = origin.url.newBuilder().addPathSegments("memory-stories").addPathSegment(canonicalId)
+            .addQueryParameter("library", library).apply {
+                if (contributionReferences) addQueryParameter("contribution_refs", "1")
+                if (sourceReview) addQueryParameter("source_review", "1")
+            }.build()
+        val result = packet(target, token, json, limit = MEMORY_STORIES_LIMIT,
+            requestLimit = 384 * 1024, method = "PUT")
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        }
+        return result.bytes
+    }
 
     override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int): SavedMemoryStoryPage {
         return savedMemoryStories(token, library, page, null)

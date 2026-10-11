@@ -20,9 +20,17 @@ class ProtectedStoryWorkspaceCreate private constructor(
     chapters: List<SavedMemoryStoryChapter>,
     val mutationId: UUID,
     val sourcePolicy: String? = null,
+    val revision: Long = 0,
+    contributionReferences: List<SavedMemoryChapterContributionReferences>? = null,
 ) {
     val chapters: List<SavedMemoryStoryChapter> = immutableChapters(chapters)
     val assetIds: List<String> = Collections.unmodifiableList(this.chapters.flatMap { it.assetIds })
+    private val contributionRefsJson: String? = contributionReferences?.let { groups ->
+        JsonArray(groups.map { group -> JsonObject(mapOf(
+            "chapter_id" to JsonPrimitive(group.chapterId),
+            "contribution_ids" to JsonArray(group.contributionIds.map(::JsonPrimitive)),
+        )) }).toString()
+    }
 
     /** Legacy requests retain eight fields; source-review requests add one policy field. */
     fun bodyJson(): String {
@@ -40,9 +48,12 @@ class ProtectedStoryWorkspaceCreate private constructor(
             "asset_ids" to JsonPrimitive(assetIds.joinToString(",")),
             "chapters" to JsonPrimitive(chapterJson),
             "selection_revision" to JsonPrimitive(selectionRevision),
-            "revision" to JsonPrimitive("0"),
+            "revision" to JsonPrimitive(revision.toString()),
             "mutation_id" to JsonPrimitive(mutationId.toString()),
-        ).apply { sourcePolicy?.let { put("source_policy", JsonPrimitive(it)) } }).toString()
+        ).apply {
+            sourcePolicy?.let { put("source_policy", JsonPrimitive(it)) }
+            contributionRefsJson?.let { put("contribution_refs", JsonPrimitive(it)) }
+        }).toString()
     }
 
     override fun toString(): String =
@@ -57,7 +68,10 @@ class ProtectedStoryWorkspaceCreate private constructor(
             chapters: List<SavedMemoryStoryChapter>,
             mutationId: UUID,
             sourcePolicy: String? = null,
-        ) = ProtectedStoryWorkspaceCreate(selectionRevision, title, theme, language, chapters, mutationId, sourcePolicy)
+            revision: Long = 0,
+            contributionReferences: List<SavedMemoryChapterContributionReferences>? = null,
+        ) = ProtectedStoryWorkspaceCreate(selectionRevision, title, theme, language, chapters, mutationId,
+            sourcePolicy, revision, contributionReferences?.map { it.copy(contributionIds = ArrayList(it.contributionIds)) })
 
         private fun immutableChapters(chapters: List<SavedMemoryStoryChapter>): List<SavedMemoryStoryChapter> =
             Collections.unmodifiableList(chapters.map { chapter ->
@@ -82,11 +96,16 @@ internal object ProtectedStoryWorkspaceCreateWire {
         chapters: List<SavedMemoryStoryChapter>,
         mutationId: String,
         sourcePolicy: String? = null,
+        revision: Long = 0,
+        contributionReferences: List<SavedMemoryChapterContributionReferences>? = null,
     ): String = guardedInput {
         input(PhoneDiscoveryWire.validLibrary(draft.libraryId))
         input(draft.selectionRevision.matches(Regex("[0-9a-f]{64}")))
         input(draft.theme in SAVED_MEMORY_STORY_THEMES && draft.language in setOf("zh", "en"))
         input(sourcePolicy == null || sourcePolicy == ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+        input(revision >= 0 && revision < Long.MAX_VALUE)
+        input((contributionReferences == null) == (revision == 0L))
+        val frozenReferences = contributionReferences?.map { it.copy(contributionIds = ArrayList(it.contributionIds)) }
         validateText(title, 160, 640, allowNewline = false, allowBlank = false)
         val uuid = runCatching { UUID.fromString(mutationId) }.getOrNull()
         input(uuid != null && uuid.toString() == mutationId)
@@ -95,11 +114,33 @@ internal object ProtectedStoryWorkspaceCreateWire {
         validateAssetIds(selectedIds)
         input(draft.items.map { it.asset.id }.distinct().size == draft.items.size)
         input(draft.chapters.isNotEmpty() && draft.chapters.size <= MAX_CHAPTERS)
-        input(draft.chapters.size == (selectedIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
         input(draft.chapters.map { it.id } == (1..draft.chapters.size).map { "chapter-$it" })
-        input(draft.chapters.map { it.assetIds } == selectedIds.chunked(MAX_ASSETS_PER_CHAPTER))
+        if (revision == 0L) {
+            // New drafts retain the deterministic preview grouping contract.
+            input(draft.chapters.size == (selectedIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
+            input(draft.chapters.map { it.assetIds } == selectedIds.chunked(MAX_ASSETS_PER_CHAPTER))
+        } else {
+            // Saved stories may have valid editorial groupings that differ from preview chunks.
+            input(draft.chapters.all { it.assetIds.size in 1..MAX_ASSETS_PER_CHAPTER })
+            input(draft.chapters.flatMap { it.assetIds } == selectedIds)
+        }
         input(chapters.size == draft.chapters.size)
         input(chapters.map { it.id } == draft.chapters.map { it.id })
+        frozenReferences?.let { groups ->
+            val expected = draft.chapters.map { it.id }
+            input(groups.size == expected.size && groups.map { it.chapterId } == expected)
+            groups.forEach { group ->
+                input(group.contributionIds.size <= 12 && group.contributionIds.distinct().size == group.contributionIds.size)
+                group.contributionIds.forEach { ref ->
+                    input(runCatching { UUID.fromString(ref).toString() == ref }.getOrDefault(false))
+                }
+            }
+            val encoded = JsonArray(groups.map { group -> JsonObject(mapOf(
+                "chapter_id" to JsonPrimitive(group.chapterId),
+                "contribution_ids" to JsonArray(group.contributionIds.map(::JsonPrimitive)),
+            )) }).toString()
+            input(encoded.toByteArray(Charsets.UTF_8).size <= 16 * 1024)
+        }
 
         val evidenceByAsset = draft.items.associate { item ->
             item.asset.id to item.evidence.map { it.id }.toSet()
@@ -124,7 +165,8 @@ internal object ProtectedStoryWorkspaceCreateWire {
             SavedMemoryStoryChapter(source.id, edited.title, edited.narration, source.assetIds.toList(), edited.evidenceIds.toList())
         }
         input(editedChapters.flatMap { it.assetIds } == selectedIds)
-        ProtectedStoryWorkspaceCreate.create(draft.selectionRevision, title, draft.theme, draft.language, editedChapters, uuid!!, sourcePolicy).bodyJson()
+        ProtectedStoryWorkspaceCreate.create(draft.selectionRevision, title, draft.theme, draft.language,
+            editedChapters, uuid!!, sourcePolicy, revision, frozenReferences).bodyJson()
     }
 
     private fun validateAssetIds(ids: List<String>) {
