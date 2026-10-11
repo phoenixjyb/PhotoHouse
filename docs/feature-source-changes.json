@@ -11344,6 +11344,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Explicit saved memoir opening narration in Web",
+      "source_commit": "a8e8b4796a6575cb9484f9f18a0aed22cb2e4cdb",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "c7fe58065b2627b6719d6e97b316174cb4025ecc7097d3d059833b523115ec6c",
+          "sha256": "5f339de0196208b2a0a37b37b60b72a0623a33592929c1aa95f461e08082b056"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "bf96cda19e2fd4aefc8efe09012f53279edaf5ab2f89f3f92fe546f2ebb201df",
+          "sha256": "47e14dcb1c31aa585903d62ce859773eb16a05f3f919b54e02744a1abfa47c78"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
