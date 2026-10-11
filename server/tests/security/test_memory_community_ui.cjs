@@ -48,6 +48,202 @@ const request=async(path,options={})=>{
 };
 const revokedAudioUrls=[];let generatedUuid=0,confirmCalls=0,audioStartEvents=0;const windowListeners={};const context={window:{confirm:()=>{confirmCalls++;return true;},matchMedia:()=>({matches:false}),CustomEvent:class{constructor(type){this.type=type;}},dispatchEvent(event){if(event.type==='photohouse-memory-audio-start')audioStartEvents++;for(const listener of windowListeners[event.type]||[])listener(event);return true;},addEventListener(type,listener){(windowListeners[type]??=[]).push(listener);},removeEventListener(type,listener){windowListeners[type]=(windowListeners[type]||[]).filter(item=>item!==listener);}},document,request,TextEncoder,AbortController,DOMException,URL:{revokeObjectURL(url){revokedAudioUrls.push(url);},createObjectURL(){createdAudioUrls++;return `blob:test-${createdAudioUrls}`;}},crypto:{randomUUID:()=>`eeeeeeee-eeee-4eee-8eee-${String(++generatedUuid).padStart(12,'0')}`},btoa:globalThis.btoa,setTimeout,clearTimeout,console};
 vm.runInNewContext(fs.readFileSync('backend/app/ui/access/memory-community.js','utf8'),context,{filename:'memory-community.js'});
+
+function deferredValue(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
+async function flushUi(){for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve));}
+function memoirIntroductionHarness({language='zh',voiceCapabilities=()=>({transcribe:true,max_audio_seconds:10}),capture,transcribe=async()=>({version:1,text:'口述开篇'}),failFirstUpdate=false,onError=()=>{}}={}){
+  const bookId='abababab-abab-4bab-8bab-abababababab',storyId='cdcdcdcd-cdcd-4cdc-8cdc-cdcdcdcdcdcd';
+  const scope={account:'intro-dictation-owner',library:`intro-dictation-${language}`,language,locked:false};
+  const detail={version:1,type:'memoir',id:bookId,revision:'4',title:'Family memoir',introduction:'Saved opening',language:'zh',can_edit:true,stories:[{id:storyId,revision:'2',title:'Lake day',item_count:1,cover_asset_id:null}]};
+  const calls=[];let failedUpdate=false;
+  const request=async(path,options={})=>{
+    calls.push({path,options});
+    if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:false};
+    if(path==='/memory-community/v1/books?page=1')return {version:1,library_id:scope.library,page:1,page_size:8,has_more:false,can_create:true,items:[{id:bookId,title:detail.title,introduction:detail.introduction,can_edit:true,stories:detail.stories}]};
+    if(path===`/memory-community/v1/books/${bookId}`&&(!options.method||options.method==='GET'))return {...detail};
+    if(path===`/memory-community/v1/books/${bookId}/editorial`)return {version:1,id:bookId,revision:detail.revision,state:'empty',children:[{story_id:storyId,revision:'2'}],introduction_source_refs:[],transitions:[]};
+    if(path===`/memory-stories/${storyId}/contribution-refs?revision=2`)return {version:1,id:storyId,revision:'2',chapters:[{id:'chapter-1',contribution_ids:[]}]};
+    if(path.startsWith('/memory-stories?page='))return {version:1,library_id:scope.library,page:1,page_size:8,has_more:false,items:[{id:storyId,title:'Lake day',theme:'everyday',language:'zh',revision:'2',cover_asset_id:null,item_count:1,chapter_count:1}]};
+    if(path===`/memory-community/v1/books/${bookId}`&&options.method==='PUT'){
+      if(failFirstUpdate&&!failedUpdate){failedUpdate=true;throw Object.assign(new Error('synthetic save uncertainty'),{status:503});}
+      return {version:1,id:bookId,revision:'5'};
+    }
+    throw new Error(`Unexpected memoir introduction voice request: ${path}`);
+  };
+  const ui=context.window.PhotoHouseMemoryCommunity({scope,request,voiceCapabilities,capture,transcribe,onError});
+  const mount=new Node('main');
+  return {bookId,storyId,scope,calls,detail,ui,mount,async open(){await ui.books(mount);await mount.querySelector('.memory-book-card').querySelector('.memory-book-edit').dispatch('click');await flushUi();},get writes(){return calls.filter(call=>call.options.method==='POST'||call.options.method==='PUT');}};
+}
+async function runMemoirIntroductionDictationJourney(){
+  const audio={size:32,type:'audio/wav'};let capabilityCalls=0,captureCalls=0;
+  const happyAsr=deferredValue();
+  const happy=memoirIntroductionHarness({
+    voiceCapabilities:async()=>{capabilityCalls++;return {transcribe:true,max_audio_seconds:10};},
+    capture:onReady=>{captureCalls++;return Promise.resolve({stop:async keep=>{if(!keep)return null;onReady(audio);return audio;}});},
+    transcribe:()=>happyAsr.promise,
+  });
+  await happy.open();
+  assert.equal(capabilityCalls,0,'opening the memoir editor does not request voice capability or start dictation');
+  const happyToggle=happy.mount.querySelector('.memory-book-introduction-voice-toggle');assert.ok(happyToggle,'the introduction offers a separate explicit dictation action');
+  assert.match(happyToggle.textContent,/口述开篇/,'Chinese introduction control is localized');
+  await happyToggle.dispatch('click');await flushUi();assert.equal(capabilityCalls,1,'voice capability is requested only after the author chooses dictation');
+  const intro=happy.mount.querySelector('textarea[name="introduction"]');assert.ok(intro);
+  const record=happy.mount.querySelector('.memory-book-introduction-record');assert.ok(record);await record.dispatch('click');await flushUi();assert.equal(captureCalls,1);
+  const stop=happy.mount.querySelector('.memory-book-introduction-stop');assert.ok(stop);await stop.dispatch('click');await flushUi();
+  assert.ok(happy.mount.querySelector('.memory-book-introduction-status'),'the ASR operation remains visibly in progress');
+  intro.value='Typed while transcription was pending.';await intro.dispatch('input');assert.equal(intro.disabled,false,'the introduction remains editable during ASR');
+  happyAsr.resolve({version:1,text:'Family opening.'});await flushUi();
+  const transcript=happy.mount.querySelector('.memory-book-introduction-transcript');assert.ok(transcript,'ASR output is reviewed in an editable field');
+  transcript.value='Corrected family opening.';await transcript.dispatch('input');
+  await happy.mount.querySelector('.memory-book-introduction-insert').dispatch('click');await flushUi();
+  assert.equal(happy.mount.querySelector('textarea[name="introduction"]').value,'Typed while transcription was pending.\nCorrected family opening.','Add appends the reviewed transcript to the latest typed introduction');
+  assert.equal(happy.writes.length,0,'inserting a transcript never saves the memoir automatically');
+  await happy.mount.querySelector('.memory-community-book-form').dispatch('submit');await flushUi();
+  assert.equal(happy.writes.length,1,'only the explicit form save writes');
+  assert.equal(happy.writes[0].options.body.introduction,'Typed while transcription was pending.\nCorrected family opening.');
+  happy.ui.clear();
+
+  let englishCapabilities=0;
+  const overflow=memoirIntroductionHarness({language:'en',voiceCapabilities:async()=>{englishCapabilities++;return {transcribe:true,max_audio_seconds:10};},capture:onReady=>Promise.resolve({stop:async keep=>{if(!keep)return null;onReady(audio);return audio;}}),transcribe:async()=>({version:1,text:'spoken'})});
+  await overflow.open();const englishToggle=overflow.mount.querySelector('.memory-book-introduction-voice-toggle');assert.ok(englishToggle);assert.match(englishToggle.textContent,/Dictate introduction/,'English introduction control is localized');
+  await englishToggle.dispatch('click');await flushUi();assert.equal(englishCapabilities,1);
+  await overflow.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();
+  await overflow.mount.querySelector('.memory-book-introduction-stop').dispatch('click');await flushUi();
+  const overflowIntro=overflow.mount.querySelector('textarea[name="introduction"]');overflowIntro.value='家'.repeat(2000);await overflowIntro.dispatch('input');
+  const overflowTranscript=overflow.mount.querySelector('.memory-book-introduction-transcript');assert.ok(overflowTranscript);
+  await overflow.mount.querySelector('.memory-book-introduction-insert').dispatch('click');await flushUi();
+  assert.equal(overflow.mount.querySelector('textarea[name="introduction"]').value,'家'.repeat(2000),'UTF-8 overflow preserves every existing introduction character');
+  assert.equal(overflow.mount.querySelector('.memory-book-introduction-transcript').value,'spoken','overflow keeps the complete editable transcript');
+  assert.ok(overflow.mount.querySelector('.memory-book-introduction-status')?.textContent,'overflow is explained inline');
+  await overflow.mount.querySelector('.memory-community-book-form').dispatch('submit');await flushUi();assert.equal(overflow.writes.length,0,'unresolved transcript review cannot save even if form submit is dispatched directly');
+  const badTranscript=overflow.mount.querySelector('.memory-book-introduction-transcript');badTranscript.value='bad\u0001text';await badTranscript.dispatch('input');
+  await overflow.mount.querySelector('.memory-book-introduction-insert').dispatch('click');await flushUi();
+  assert.equal(overflow.mount.querySelector('textarea[name="introduction"]').value,'家'.repeat(2000),'malformed transcript cannot replace the draft');
+  assert.equal(overflow.mount.querySelector('.memory-book-introduction-transcript').value,'bad\u0001text','malformed transcript remains available for correction or discard');
+  await overflow.mount.querySelector('.memory-book-introduction-discard').dispatch('click');await flushUi();
+  assert.equal(overflow.mount.querySelector('.memory-book-introduction-transcript'),null,'explicit discard clears the pending transcript');
+  assert.equal(overflow.mount.querySelector('textarea[name="introduction"]').value,'家'.repeat(2000),'discard does not clear typed introduction text');
+  overflow.ui.clear();
+
+  let staleCaptureResolve,staleAsrResolve,staleStops=[],staleTranscribes=0,staleDenials=0;
+  const caps=deferredValue(),stale=memoirIntroductionHarness({
+    voiceCapabilities:()=>caps.promise,
+    capture:(_onReady,_seconds,options)=>{const pending=deferredValue();staleCaptureResolve=()=>pending.resolve({stop:async keep=>{staleStops.push(keep);return keep?audio:null;}});return pending.promise;},
+    transcribe:()=>{staleTranscribes++;const pending=deferredValue();staleAsrResolve=()=>pending.reject(Object.assign(new Error('old member denial'),{status:401}));return pending.promise;},
+    onError:()=>{staleDenials++;},
+  });
+  await stale.open();const oldToggle=stale.mount.querySelector('.memory-book-introduction-voice-toggle');await oldToggle.dispatch('click');await flushUi();
+  await stale.mount.querySelector('.memory-book-compose-cta').dispatch('click');
+  caps.resolve({transcribe:true,max_audio_seconds:10});await flushUi();assert.equal(staleCaptureResolve,undefined,'a capability result cannot start capture after its editor collapses');
+  await stale.mount.querySelector('.memory-book-compose-cta').dispatch('click');await flushUi();
+  await stale.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  const oldRecord=stale.mount.querySelector('.memory-book-introduction-record');assert.ok(oldRecord);await oldRecord.dispatch('click');await flushUi();
+  staleCaptureResolve();await flushUi();const oldStop=stale.mount.querySelector('.memory-book-introduction-stop');assert.ok(oldStop);await oldStop.dispatch('click');await flushUi();assert.equal(staleTranscribes,1);
+  stale.scope.library='intro-dictation-replacement-library';await stale.ui.books(stale.mount);await flushUi();
+  staleAsrResolve();await flushUi();assert.equal(stale.mount.querySelector('.memory-book-introduction-transcript'),null,'late ASR denial from the old library cannot populate its replacement editor');
+  assert.equal(staleDenials,0,'stale 401 cannot report denial against the replacement membership');
+  assert.deepEqual(staleStops,[true],'the accepted capture is stopped for transcription exactly once');
+  stale.ui.clear();
+
+  let detachedCaptures=0;
+  const detached=memoirIntroductionHarness({capture:()=>{detachedCaptures++;return Promise.resolve({stop:async()=>audio});}});
+  await detached.open();await detached.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  const detachedRecord=detached.mount.querySelector('.memory-book-introduction-record');assert.ok(detachedRecord);
+  await detached.mount.querySelector('.memory-book-compose-cta').dispatch('click');await detachedRecord.dispatch('click');await flushUi();
+  assert.equal(detachedCaptures,0,'a retained record control cannot start capture after its editor is collapsed');detached.ui.clear();
+
+  const malformedAsr=memoirIntroductionHarness({capture:onReady=>Promise.resolve({stop:async keep=>{if(keep){onReady(audio);return audio;}return null;}}),transcribe:async()=>({version:1,text:'bad\u0001response'})});
+  await malformedAsr.open();await malformedAsr.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  await malformedAsr.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();
+  await malformedAsr.mount.querySelector('.memory-book-introduction-stop').dispatch('click');await flushUi();
+  assert.equal(malformedAsr.mount.querySelector('.memory-book-introduction-transcript'),null,'malformed ASR output is never exposed as an insertable transcript');
+  assert.ok(malformedAsr.mount.querySelector('.memory-book-introduction-status')?.textContent,'malformed ASR output produces a recoverable status');
+  assert.equal(malformedAsr.writes.length,0);malformedAsr.ui.clear();
+
+  let resolveOldCapture,lateCaptureCalls=0,lateCaptureStops=[],lateCaptureTranscribes=0;
+  const lateCapture=memoirIntroductionHarness({capture:onReady=>{lateCaptureCalls++;if(lateCaptureCalls===1)return new Promise(resolve=>{resolveOldCapture=()=>resolve({stop:async keep=>{lateCaptureStops.push(keep);return keep?audio:null;}});});return Promise.resolve({stop:async keep=>{lateCaptureStops.push(keep);if(keep)onReady(audio);return keep?audio:null;}});},transcribe:async()=>{lateCaptureTranscribes++;return {version:1,text:'current member words'};}});
+  await lateCapture.open();await lateCapture.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  await lateCapture.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();assert.equal(typeof resolveOldCapture,'function');
+  lateCapture.scope.membership_revision='replacement-membership-revision';await lateCapture.ui.books(lateCapture.mount);await flushUi();
+  await lateCapture.mount.querySelector('.memory-book-card').querySelector('.memory-book-edit').dispatch('click');await flushUi();
+  await lateCapture.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  await lateCapture.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();assert.equal(lateCaptureCalls,2,'the replacement membership can start its own capture');
+  resolveOldCapture();await flushUi();assert.deepEqual(lateCaptureStops,[false],'a capture handle returned for a replaced membership is discarded without keeping audio');
+  assert.equal(lateCapture.mount.querySelector('.memory-book-introduction-stop')?.disabled,false,'cleanup for the old capture cannot disable the replacement membership control');
+  await lateCapture.mount.querySelector('.memory-book-introduction-stop').dispatch('click');await flushUi();
+  assert.deepEqual(lateCaptureStops,[false,true],'the current capture remains owned and stoppable after old cleanup');
+  assert.equal(lateCaptureTranscribes,1,'only the current membership reaches ASR');lateCapture.ui.clear();
+
+  let currentDenials=0;
+  const currentDenial=memoirIntroductionHarness({capture:onReady=>Promise.resolve({stop:async keep=>{if(keep){onReady(audio);return audio;}return null;}}),transcribe:async()=>{throw Object.assign(new Error('current member revoked'),{status:401});},onError:()=>{currentDenials++;}});
+  await currentDenial.open();await currentDenial.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  await currentDenial.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();
+  await currentDenial.mount.querySelector('.memory-book-introduction-stop').dispatch('click');await flushUi();
+  assert.equal(currentDenials,1,'current 401 is surfaced through the owner denial callback');
+  assert.equal(currentDenial.mount.querySelector('.memory-book-introduction-transcript'),null,'current denial clears the private transcript helper');
+  assert.equal(currentDenial.mount.querySelector('textarea[name="introduction"]').value,'Saved opening','current denial preserves the independent typed book field');currentDenial.ui.clear();
+
+  let backgroundStops=[],backgroundTranscribes=0;
+  const background=memoirIntroductionHarness({capture:()=>Promise.resolve({stop:async keep=>{backgroundStops.push(keep);return keep?audio:null;}}),transcribe:async()=>{backgroundTranscribes++;return {version:1,text:'hidden'};}});
+  await background.open();await background.mount.querySelector('.memory-book-introduction-voice-toggle').dispatch('click');await flushUi();
+  await background.mount.querySelector('.memory-book-introduction-record').dispatch('click');await flushUi();
+  document.hidden=true;document.dispatch('visibilitychange');await flushUi();document.hidden=false;document.dispatch('visibilitychange');await flushUi();
+  assert.deepEqual(backgroundStops,[false],'backgrounding explicitly discards the in-progress capture');assert.equal(backgroundTranscribes,0,'backgrounded audio is never sent to ASR');
+  background.ui.clear();
+
+  let uncertainCapabilities=0;
+  const uncertain=memoirIntroductionHarness({failFirstUpdate:true,voiceCapabilities:async()=>{uncertainCapabilities++;return {transcribe:true,max_audio_seconds:10};}});
+  await uncertain.open();await uncertain.mount.querySelector('.memory-community-book-form').dispatch('submit');await flushUi();
+  assert.equal(uncertain.writes.length,1,'the first explicit update reaches the server once');
+  const uncertainToggle=uncertain.mount.querySelector('.memory-book-introduction-voice-toggle');
+  if(uncertainToggle&&!uncertainToggle.disabled)await uncertainToggle.dispatch('click');
+  await flushUi();assert.equal(uncertainCapabilities,0,'an uncertain immutable save must be resolved before opening another dictation');
+  assert.equal(uncertain.writes.length,1,'dictation controls cannot create an extra save during uncertain retry');
+  uncertain.ui.clear();
+  console.log('PASS memoir introduction dictation preserves typed words, requires reviewed explicit insertion/save, and fences overflow, denial, scope changes and cleanup');
+}
+
+async function runBookStorySelectionGuardJourney(){
+  const bookId='abababab-abab-4bab-8bab-abababababab',scope={account:'selection-owner',library:'selection-library',language:'zh',locked:false};
+  const storyId=index=>`cdcdcdcd-cdcd-4cdc-8cdc-${String(index).padStart(12,'0')}`;
+  const pageItems=(start,count)=>Array.from({length:count},(_,index)=>({id:storyId(start+index),title:`Saved story ${start+index}`}));
+  const longOpening='😀'.repeat(241);
+  const page2=deferredValue(),saveResult=deferredValue(),calls=[];let page2Requests=0,saveStarted=false;
+  const request=async(path,options={})=>{
+    calls.push({path,options});
+    if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:false};
+    if(path==='/memory-community/v1/books?page=1')return {version:1,library_id:scope.library,page:1,page_size:8,has_more:false,can_create:true,items:[{id:bookId,title:'Unicode opening',introduction:longOpening,can_edit:false,stories:[]}]};
+    if(path==='/memory-stories?page=1')return {version:1,library_id:scope.library,page:1,page_size:8,has_more:true,items:pageItems(1,8)};
+    if(path==='/memory-stories?page=2'){page2Requests++;return page2Requests===1?page2.promise:{version:1,library_id:scope.library,page:2,page_size:8,has_more:true,items:pageItems(9,1)};}
+    if(path==='/memory-stories?page=3')return {version:1,library_id:scope.library,page:3,page_size:8,has_more:false,items:pageItems(10,1)};
+    if(path==='/memory-community/v1/books'&&options.method==='POST'){saveStarted=true;return saveResult.promise;}
+    throw new Error(`Unexpected memoir selection request: ${path}`);
+  };
+  const ui=context.window.PhotoHouseMemoryCommunity({scope,request}),mount=new Node('main');
+  await ui.books(mount);const opening=mount.querySelector('.memory-book-opening').textContent;assert.equal(Array.from(opening).length,240,'memoir shelf excerpt truncates by Unicode codepoint');assert.equal(opening,'😀'.repeat(240),'the excerpt preserves complete supplementary characters at its boundary');await mount.querySelector('.memory-book-compose-cta').dispatch('click');await flushUi();
+  let form=mount.querySelector('.memory-community-book-form'),fieldset=form.querySelector('.memory-book-story-options'),checks=fieldset.querySelectorAll('input[name="story_ids"]');
+  assert.equal(checks.length,8,'initial story page mounts before the form guard is exercised');
+  checks[0].checked=true;await checks[0].dispatch('change');checks[1].checked=true;await checks[1].dispatch('change');
+  const staleCheckbox=checks[0],staleMove=form.querySelector('.memory-book-order-down'),staleMore=fieldset.querySelector('.memory-more-stories');
+  assert.ok(staleMove&&staleMore,'selected order and pagination expose the controls under test');
+  await staleMore.dispatch('click');await staleMore.dispatch('click');await flushUi();assert.equal(page2Requests,1,'repeated current More starts only one deferred protected page read');
+  await ui.books(mount);await flushUi();form=mount.querySelector('.memory-community-book-form');fieldset=form.querySelector('.memory-book-story-options');
+  const currentOrder=()=>fieldset.parentNode.querySelector('.memory-book-order').querySelector('ol').children.map(row=>row.textContent.split('Move')[0].trim());
+  const orderedBefore=[...currentOrder()];
+  staleCheckbox.checked=false;await staleCheckbox.dispatch('change');await staleMove.dispatch('click');await staleMore.dispatch('click');await flushUi();
+  assert.equal(staleCheckbox.checked,true,'a detached checkbox restores the current selected value');assert.deepEqual(currentOrder(),orderedBefore,'detached order controls cannot mutate the replacement selection');assert.equal(page2Requests,1,'detached More starts no second page request');
+  page2.resolve({version:1,library_id:scope.library,page:2,page_size:8,has_more:true,items:pageItems(9,1)});await flushUi();
+  assert.equal(fieldset.querySelectorAll('input[name="story_ids"]').length,8,'late page completion does not append into a replacement form');
+  await fieldset.querySelector('.memory-more-stories').dispatch('click');await flushUi();
+  assert.equal(page2Requests,2,'the replacement form still requests page two after the stale request completes');assert.equal(fieldset.querySelectorAll('input[name="story_ids"]').length,9,'the current page response appends its story');
+  const currentMore=fieldset.querySelector('.memory-more-stories'),currentCheckbox=fieldset.querySelector('input[name="story_ids"]'),currentMove=form.querySelector('.memory-book-order-down');
+  form.elements.title.value='A guarded selection';await form.dispatch('submit');await flushUi();assert.equal(saveStarted,true,'save enters its immutable pending state');
+  const pagesBeforePendingActions=page2Requests;currentCheckbox.checked=false;await currentCheckbox.dispatch('change');await currentMove.dispatch('click');await currentMore.dispatch('click');await flushUi();
+  assert.equal(currentCheckbox.checked,true,'pending save rejects a retained checkbox mutation');assert.deepEqual(currentOrder(),orderedBefore,'pending save rejects retained reorder actions');assert.equal(page2Requests,pagesBeforePendingActions,'pending save rejects retained More actions');assert.equal(calls.some(call=>call.path==='/memory-stories?page=3'),false,'pending save starts no next-page request');
+  saveResult.resolve({version:1,id:bookId});await flushUi();ui.clear();
+  console.log('PASS memoir story selection, ordering and pagination controls are fenced to the current form and immutable save state');
+}
+
 async function main(){
   let authErrors=0;
   const ui=context.window.PhotoHouseMemoryCommunity({scope,request,onError:()=>authErrors++});
@@ -603,6 +799,7 @@ async function main(){
   const chatAbortScope={...pendingOwner,library:'chat-capture-abort-old'};const chatAbortUi=context.window.PhotoHouseMemoryCommunity({scope:chatAbortScope,request:async(path,options={})=>{if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:true};if(path.includes('/conversations?'))return {version:1,items:[]};if(path.endsWith('/conversations')&&options.method==='POST')return {version:1,id:options.body.id,expires_at:2000000000};if(path.includes('/turns?page='))return {version:1,id:path.split('/conversations/')[1].split('/')[0],page:1,has_more:false,items:[]};throw new Error(`Unexpected chat capture abort request: ${path}`);},voiceCapabilities:()=>({transcribe:true,max_audio_seconds:10}),capture:(_ready,_seconds,options)=>{chatPending=deferredCapture();chatPending.signal=options.signal;return chatPending.promise;},transcribe:async()=>{chatTranscribes++;return {version:1,text:'stale'};}}),chatAbortMount=new Node('main');await chatAbortUi.attach(chatAbortMount,pendingTarget);await settlePoll();await chatAbortMount.querySelectorAll('button').find(button=>button.textContent==='新建讨论').dispatch('click');await settlePoll();await chatAbortMount.querySelectorAll('[role="tab"]').find(tab=>tab.textContent==='一起聊回忆').dispatch('click');await settlePoll();await chatAbortMount.querySelectorAll('button').find(button=>button.textContent==='录一段口述（不会保留录音）').dispatch('click');await settlePoll();assert.ok(chatPending);chatAbortScope.library='chat-capture-abort-new';await chatAbortUi.attach(chatAbortMount,pendingTarget);assert.equal(chatPending.signal.aborted,true,'library change aborts pending chat microphone setup');chatPending.resolve({stop:async keep=>stopModes.push(keep)});await settlePoll();assert.equal(stopModes.at(-1),false,'late chat capture is explicitly discarded');assert.equal(chatTranscribes,0,'late chat capture cannot reach transcription');chatAbortUi.clear();
   let ideaPending,ideaTranscribes=0;
   const ideaAbortUi=context.window.PhotoHouseMemoryCommunity({scope:pendingOwner,request:async path=>{if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:true};if(path.includes('/conversations?'))return {version:1,items:[]};throw new Error(`Unexpected idea capture abort request: ${path}`);},voiceCapabilities:()=>({transcribe:true,max_audio_seconds:10}),capture:(_ready,_seconds,options)=>{ideaPending=deferredCapture();ideaPending.signal=options.signal;return ideaPending.promise;},transcribe:async()=>{ideaTranscribes++;return {version:1,text:'stale'};}}),ideaAbortMount=new Node('main');await ideaAbortUi.attach(ideaAbortMount,pendingTarget);await settlePoll();await ideaAbortMount.querySelectorAll('[role="tab"]').find(tab=>tab.textContent==='整理建议').dispatch('click');await settlePoll();await ideaAbortMount.querySelectorAll('button').find(button=>button.textContent==='录一段说明').dispatch('click');await settlePoll();assert.ok(ideaPending);await ideaAbortMount.querySelectorAll('[role="tab"]').find(tab=>tab.textContent==='一起聊回忆').dispatch('click');await settlePoll();assert.equal(ideaPending.signal.aborted,true,'leaving ideas aborts pending microphone setup');ideaPending.resolve({stop:async keep=>stopModes.push(keep)});await settlePoll();assert.equal(stopModes.at(-1),false,'late ideas capture is explicitly discarded');assert.equal(ideaTranscribes,0,'late ideas capture cannot reach transcription');ideaAbortUi.clear();
+  await runMemoirIntroductionDictationJourney();
   console.log('PASS pending contribution, chat, and ideas microphone setup is aborted on owner clear and late handles are discarded');
   console.log('PASS memoir draft directory is ordered, collapsed, read-only, accessible, and fenced to its account/library/book revision/rendered job');
   console.log('PASS story chat user words open the existing contribution review form without saving; consent, drafts, target and capability fences hold');
@@ -610,4 +807,4 @@ async function main(){
   console.log('PASS automatic job polling preserves active voice UI, latest chat reply appears on return, and cancelled/replaced job responses are fenced');
   console.log('memory community UI contract checks passed');
 }
-main().catch(error=>{console.error(error);process.exitCode=1;});
+runBookStorySelectionGuardJourney().then(main).catch(error=>{console.error(error);process.exitCode=1;});

@@ -1086,6 +1086,105 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
   const stale429Outcome=await page.evaluate(()=>window.__memoryCommunityRaw429StaleOutcome);assert.equal(stale429Outcome.name,'AbortError','stale body reads abort');assert.notEqual(stale429Outcome.code,'memory_conversation_full','a stale epoch after the deferred body read never exposes the allowlisted recovery discriminator');
   pass('Stale epoch after deferred 429 body read discards the allowlisted code');
 
+  const runMemoirIntroductionVoiceJourney=async language=>{
+    await page.setViewportSize({width:390,height:844});
+    const audioBase64=wav().toString('base64');
+    await page.evaluate(async({language,audioBase64})=>{
+      const bookId='a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1',storyId='b2b2b2b2-b2b2-42b2-82b2-b2b2b2b2b2b2',library=`intro-voice-${language}`;
+      const story={id:storyId,revision:'2',title:'Saved family story',item_count:1,chapter_count:1,cover_asset_id:null};
+      const detail={version:1,type:'memoir',id:bookId,revision:'4',title:'Synthetic family memoir',introduction:'',language:'zh',can_edit:true,stories:[story]};
+      const summary={id:bookId,title:detail.title,introduction:detail.introduction,can_edit:true,stories:[story]};
+      const host=document.createElement('main');host.id=`memoir-introduction-voice-${language}`;host.className='memory-community';document.body.append(host);
+      const state={language,library,bookId,storyId,host,detail,calls:[],voiceCapabilityCalls:0,captureCalls:0,captureStops:[],transcriptionCalls:0,writes:[],resolveTranscription:null};
+      const request=async(path,options={})=>{
+        const savedOptions={...options,body:options.body?structuredClone(options.body):options.body};state.calls.push({path,options:savedOptions});
+        if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:false};
+        if(path===`/memory-community/v1/books?page=1`)return {version:1,library_id:library,page:1,page_size:8,has_more:false,can_create:true,items:[summary]};
+        if(path===`/memory-community/v1/books/${bookId}`&&(!options.method||options.method==='GET'))return structuredClone(detail);
+        if(path===`/memory-community/v1/books/${bookId}/editorial`)return {version:1,id:bookId,revision:detail.revision,state:'empty',children:[{story_id:storyId,revision:'2'}],introduction_source_refs:[],transitions:[]};
+        if(path===`/memory-stories/${storyId}/contribution-refs?revision=2`)return {version:1,id:storyId,revision:'2',chapters:[{id:'chapter-1',contribution_ids:[]}]};
+        if(path==='/memory-stories?page=1')return {version:1,library_id:library,page:1,page_size:8,has_more:false,items:[{id:storyId,title:story.title,theme:'everyday',language:'zh',revision:'2',cover_asset_id:null,item_count:1,chapter_count:1}]};
+        if(path===`/memory-community/v1/books/${bookId}`&&options.method==='PUT'){
+          state.writes.push({path,body:structuredClone(options.body)});detail.revision='5';detail.introduction=options.body.introduction;summary.introduction=options.body.introduction;
+          return {version:1,id:bookId,revision:'5'};
+        }
+        throw new Error(`Unexpected generated memoir voice request: ${path}`);
+      };
+      const audioBytes=Uint8Array.from(atob(audioBase64),char=>char.charCodeAt(0));
+      const generatedWav=new File([audioBytes],'synthetic-generated.wav',{type:'audio/wav'});
+      const ui=window.PhotoHouseMemoryCommunity({scope:{account:`synthetic-owner-${language}`,library,language,locked:false},request,
+        voiceCapabilities:async()=>{state.voiceCapabilityCalls++;return {transcribe:true,max_audio_seconds:10};},
+        capture:async()=>{state.captureCalls++;return {stop:async keep=>{state.captureStops.push(Boolean(keep));return keep?generatedWav:null;}};},
+        transcribe:async file=>{state.transcriptionCalls++;state.audioSize=file.size;return new Promise(resolve=>{state.resolveTranscription=resolve;});},
+      });
+      state.ui=ui;window.__memoirIntroductionVoiceJourneys??={};window.__memoirIntroductionVoiceJourneys[language]=state;
+      await ui.books(host);await host.querySelector('.memory-book-edit').click();
+    },{language,audioBase64});
+
+    const host=page.locator(`#memoir-introduction-voice-${language}`),form=host.locator('.memory-community-book-form');
+    await form.waitFor();
+    assert.equal(await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return [h.voiceCapabilityCalls,h.captureCalls,h.transcriptionCalls,h.writes.length];},language).then(values=>values.every(value=>value===0)),true,`${language} opening the editor starts no voice capability, capture, transcription, or write`);
+    const toggle=host.locator('.memory-book-introduction-voice-toggle');await toggle.waitFor();
+    assert.equal(await toggle.innerText(),language==='zh'?'口述开篇':'Dictate introduction',`${language} exposes the localized explicit dictation action`);
+    await toggle.click();await host.locator('.memory-book-introduction-record').waitFor();
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].voiceCapabilityCalls,language),1,'voice capability is requested only after explicit dictation');
+    await host.locator('.memory-book-introduction-record').click();await host.locator('.memory-book-introduction-stop').waitFor();
+    await host.locator('.memory-book-introduction-stop').click();
+    await page.waitForFunction(language=>window.__memoirIntroductionVoiceJourneys[language].transcriptionCalls===1,language);
+    const intro=host.locator('textarea[name="introduction"]');await intro.fill(language==='zh'?'转写期间继续输入的开篇':'Latest typed while transcription was pending');
+    const enlarged=await host.evaluate(root=>{
+      const editor=root.querySelector('.memory-community-book-editor');
+      const nodes=[...editor.querySelectorAll('*')].filter(node=>node.getClientRects().length);
+      // Snapshot inherited sizes before changing any ancestor: otherwise a 150%
+      // fixture compounds the scale at every nested element.
+      const rows=nodes.map((node,index)=>{const style=getComputedStyle(node);return {index,size:parseFloat(style.fontSize),line:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldLine:node.style.lineHeight};});
+      rows.forEach(row=>{const node=nodes[row.index];node.dataset.introVoiceFont=String(row.index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.line))node.style.lineHeight=`${row.line*1.5}px`;});
+      return rows;
+    });
+    const state=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.resolveTranscription({version:1,text:language==='zh'?'合成口述原文':'Synthetic spoken words'});return {captureCalls:h.captureCalls,transcriptionCalls:h.transcriptionCalls,audioSize:h.audioSize};},language);
+    assert.equal(state.captureCalls,1,'one explicit record action captures the generated WAV');assert.equal(state.transcriptionCalls,1,'one explicit stop starts the synthetic transcription');assert(state.audioSize>44,'browser voice fixture transcribes generated WAV bytes');
+    const transcript=host.locator('.memory-book-introduction-transcript');await transcript.waitFor();
+    assert.equal(await host.locator('button[type="submit"]').isDisabled(),true,'save remains blocked while transcript review is pending');
+    assert.deepEqual(await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return [h.voiceCapabilityCalls,h.captureCalls,h.transcriptionCalls,h.writes.length];},language),[1,1,1,0],'opening and transcribing do not save');
+    const rootOverflow=await form.evaluate(node=>[node,...node.querySelectorAll('section,fieldset,label,button')].filter(child=>child.scrollWidth>child.clientWidth+1).map(child=>({tag:child.tagName,className:String(child.className),scroll:child.scrollWidth,client:child.clientWidth})).slice(0,12));
+    assert.deepEqual(rootOverflow,[],`${language} introduction controls wrap without horizontal overflow at 390px and 150% text`);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=390),true,`${language} page stays within 390px at 150% text`);
+    const unclipped=await host.evaluate(root=>[...root.querySelectorAll('button,label,textarea,input')].filter(node=>node.getClientRects().length).every(node=>{const rect=node.getBoundingClientRect();return rect.left>=-1&&rect.right<=innerWidth+1&&rect.width>0&&rect.height>0;}));
+    assert.equal(unclipped,true,`${language} voice controls and form fields are visible and not clipped`);
+    await page.screenshot({path:path.join(artifacts,`memoir-introduction-voice-${language}-390px-150.png`),fullPage:true});
+    await host.evaluate((root,rows)=>rows.forEach(row=>{const editor=root.querySelector('.memory-community-book-editor'),node=editor?.querySelector(`[data-intro-voice-font="${row.index}"]`);if(node){node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldLine;delete node.dataset.introVoiceFont;}}),enlarged);
+
+    const longTyped='界'.repeat(2000);await intro.fill(longTyped);
+    const spoken=language==='zh'?'合成口述':'synthetic words';await transcript.fill(spoken);
+    await host.locator('.memory-book-introduction-insert').click();
+    assert.equal(await intro.inputValue(),longTyped,`${language} UTF-8 overflow retains all typed introduction text`);
+    assert.equal(await transcript.inputValue(),spoken,`${language} UTF-8 overflow retains the editable transcript`);
+    assert.notEqual(await host.locator('.memory-book-introduction-status').innerText(),'','UTF-8 overflow is explained inline');
+
+    const latest=language==='zh'?'最新补充的开篇':'A later typed opening';await intro.fill(latest);const corrected=language==='zh'?'核对后的口述文字':'Reviewed spoken words';await transcript.fill(corrected);
+    const staleInsert=await host.locator('.memory-book-introduction-insert').elementHandle();assert(staleInsert);
+    await host.locator('.memory-book-introduction-insert').click();
+    const combined=`${latest}\n${corrected}`;assert.equal(await intro.inputValue(),combined,`${language} Add appends the reviewed words to the latest typed introduction using one newline`);
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length,language),0,'adding transcript never writes the memoir');
+    await host.locator('.memory-book-compose-cta').click();assert.equal(await form.isVisible(),false,'editor can be collapsed after insertion');
+    await host.locator('.memory-book-compose-cta').click();await form.waitFor();
+    assert.equal(await form.locator('textarea[name="introduction"]').inputValue(),combined,'reopening the editor preserves its current introduction draft');
+    await staleInsert.evaluate(node=>node.click());
+    assert.equal(await form.locator('textarea[name="introduction"]').inputValue(),combined,'a detached Insert control cannot change the replacement editor draft');
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length,language),0,'the detached action cannot write');
+    await form.locator('button[type="submit"]').click();
+    await page.waitForFunction(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length===1,language);
+    const saved=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return {write:h.writes[0],stopCalls:h.captureStops,requests:h.calls.map(call=>`${call.options.method||'GET'} ${call.path}`)};},language);
+    assert.equal(saved.write.body.introduction,combined,`${language} only explicit Save persists the exact reviewed introduction`);
+    assert.deepEqual(saved.stopCalls,[true],'recorded fixture audio is explicitly stopped for transcription once');
+    assert(saved.requests.some(request=>request.startsWith('PUT /memory-community/v1/books/')),'explicit Save is the only memoir write request');
+    assert.equal(saved.requests.filter(request=>/\b(POST|PUT|DELETE)\b/.test(request)).length,1,'no automatic write occurs during capture, ASR, review, or Add');
+    await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.ui.clear();h.host.remove();delete window.__memoirIntroductionVoiceJourneys[language];},language);
+    pass(`${language.toUpperCase()} memoir introduction dictation is explicit, reviewable, retained, and readable at 390px/150%`);
+  };
+  await runMemoirIntroductionVoiceJourney('en');
+  await runMemoirIntroductionVoiceJourney('zh');
+
   assert.deepEqual(external,[]);
   assert.deepEqual(pageErrors,[],`browser uncaught errors; failing requests=${JSON.stringify(requests.filter(item=>item.status>=400))}`);
   const finalState=await rpc({command:'state'});

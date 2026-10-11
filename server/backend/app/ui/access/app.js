@@ -90,6 +90,45 @@
       return capture;
     }catch(error){if(capture)await capture.stop(false);else{signal?.removeEventListener('abort',cancelStartup);cleanup();clearChunks();}throw error;}
   }
+  async function memoryCommunityCapture(onReady,maxSeconds=60,options={}){
+    const signal=options.signal,isCurrent=typeof options.isCurrent==='function'?options.isCurrent:()=>true;
+    const current=()=>{try{return !signal?.aborted&&isCurrent()===true;}catch{return false;}};
+    if(!current())throw new DOMException('Capture cancelled','AbortError');
+    if(annotationState.capture||assistantState.captureAttempt||assistantState.captureStarting||assistantState.capture||
+      assistantState.transcribing||assistantState.transcriptionController||assistantState.transcriptReviewPending)throw new Error('Microphone already in use');
+    const controller=new AbortController();
+    const relayAbort=()=>{if(!controller.signal.aborted)controller.abort();};
+    const detach=()=>signal?.removeEventListener('abort',relayAbort);
+    signal?.addEventListener('abort',relayAbort,{once:true});
+    const reservation={memoryCommunityCapture:true,stopped:false,stop:async()=>{
+      if(reservation.stopped)return null;
+      reservation.stopped=true;detach();if(!controller.signal.aborted)controller.abort();
+      if(annotationState.capture===reservation)annotationState.capture=null;
+      return null;
+    }};
+    annotationState.capture=reservation;
+    try{
+      const handle=await annotationCapture(onReady,maxSeconds,{...options,signal:controller.signal,
+        isCurrent:()=>!reservation.stopped&&!controller.signal.aborted&&current()});
+      if(annotationState.capture!==reservation||reservation.stopped||!current()){
+        try{await handle?.stop(false);}finally{if(annotationState.capture===reservation)annotationState.capture=null;detach();}
+        throw new DOMException('Capture cancelled','AbortError');
+      }
+      if(!handle||typeof handle.stop!=='function')throw new Error('Capture unavailable');
+      if(handle.stopped){
+        if(annotationState.capture===reservation)annotationState.capture=null;
+        reservation.stopped=true;detach();throw new Error('Capture already stopped');
+      }
+      const rawStop=handle.stop;
+      handle.stop=async keep=>{detach();return rawStop.call(handle,keep);};
+      annotationState.capture=handle;
+      return handle;
+    }catch(error){
+      reservation.stopped=true;detach();if(!controller.signal.aborted)controller.abort();
+      if(annotationState.capture===reservation)annotationState.capture=null;
+      throw error;
+    }
+  }
   function clearMyUploads(){
     if(annotationState.capture)void annotationState.capture.stop(false);
     $('my-uploads-list').querySelector('.annotation-dialog[open]')?.close();
@@ -154,9 +193,9 @@
     const current=()=>box.isConnected&&host.contains(box)&&!stale(epoch)&&state.profile?.account_id===account&&state.library===item.library_id&&$('my-uploads-panel').open&&host.closest('dialog')?.open;
     const syncComposerControls=()=>{const saving=Boolean(noteSaveOwner),captured=Boolean(file.files?.length||capturedRecording),recording=captureStarting||Boolean(captureHandle);selector.disabled=saving;language.disabled=saving;consent.disabled=saving;textarea.disabled=saving;file.disabled=saving;save.disabled=saving||recording||!textarea.value.trim();audioSave.disabled=saving||recording||!captured;record.disabled=saving||recording||Boolean(annotationState.capture);stop.disabled=saving;stop.hidden=!captureHandle;};
     textarea.addEventListener('input',syncComposerControls);file.addEventListener('change',syncComposerControls);selector.addEventListener('change',syncComposerControls);language.addEventListener('change',syncComposerControls);consent.addEventListener('change',syncComposerControls);
-    record.addEventListener('click',async()=>{if(!current()||noteSaveOwner||captureStarting||captureHandle||annotationState.capture)return;const owner={controller:new AbortController()};captureOwner=owner;captureStarting=true;syncComposerControls();try{const capture=await annotationCapture((recording,finishedCapture)=>{if(!current()||captureOwner!==owner)return;capturedRecording=recording;file.value='';status.textContent=t('annotationReady');if(captureHandle===finishedCapture)captureHandle=null;captureStarting=false;captureOwner=null;syncComposerControls();},60,{isCurrent:current,signal:owner.controller.signal});if(captureOwner!==owner||!current()){void capture.stop(false);return;}if(capture.stopped){captureOwner=null;captureStarting=false;syncComposerControls();return;}captureHandle=capture;annotationState.capture=capture;stop.hidden=false;status.textContent=t('annotationRecording');}catch(error){if(current()&&captureOwner===owner&&error.name!=='AbortError')status.textContent=t('annotationCaptureError');}finally{if(captureOwner===owner){captureStarting=false;syncComposerControls();}}});
+    record.addEventListener('click',async()=>{if(!current()||noteSaveOwner||captureStarting||captureHandle||annotationState.capture||assistantState.captureAttempt||assistantState.captureStarting||assistantState.capture||assistantState.transcribing)return;const owner={controller:new AbortController(),stop:async()=>{owner.controller.abort();if(annotationState.capture===owner)annotationState.capture=null;return null;}};captureOwner=owner;captureStarting=true;annotationState.capture=owner;syncComposerControls();try{const capture=await annotationCapture((recording,finishedCapture)=>{if(!current()||captureOwner!==owner)return;capturedRecording=recording;file.value='';status.textContent=t('annotationReady');if(captureHandle===finishedCapture)captureHandle=null;captureStarting=false;captureOwner=null;syncComposerControls();},60,{isCurrent:current,signal:owner.controller.signal});if(captureOwner!==owner||annotationState.capture!==owner||!current()){void capture.stop(false);return;}if(capture.stopped){if(annotationState.capture===owner)annotationState.capture=null;captureOwner=null;captureStarting=false;syncComposerControls();return;}captureHandle=capture;annotationState.capture=capture;stop.hidden=false;status.textContent=t('annotationRecording');}catch(error){if(annotationState.capture===owner)annotationState.capture=null;if(current()&&captureOwner===owner&&error.name!=='AbortError')status.textContent=t('annotationCaptureError');}finally{if(annotationState.capture===owner)annotationState.capture=null;if(captureOwner===owner){captureStarting=false;syncComposerControls();}}});
     stop.addEventListener('click',()=>{if(!current()||noteSaveOwner||!captureHandle)return;const handle=captureHandle,owner=captureOwner;void handle.stop(true).finally(()=>{if(captureHandle===handle)captureHandle=null;if(captureOwner===owner)captureOwner=null;if(current())syncComposerControls();});});
-    let captureDisposed=false;const disposeCapture=()=>{if(captureDisposed)return;captureDisposed=true;const owner=captureOwner,handle=captureHandle;captureOwner=null;captureHandle=null;captureStarting=false;capturedRecording=null;file.value='';owner?.controller.abort();if(handle)void handle.stop(false);};
+    let captureDisposed=false;const disposeCapture=()=>{if(captureDisposed)return;captureDisposed=true;const owner=captureOwner,handle=captureHandle;captureOwner=null;captureHandle=null;captureStarting=false;capturedRecording=null;file.value='';if(annotationState.capture===owner||annotationState.capture===handle)annotationState.capture=null;owner?.controller.abort();if(handle)void handle.stop(false);};
     box._annotationCloseCleanup=disposeCapture;host.closest('dialog')?.addEventListener('close',disposeCapture,{once:true});
     const mutationFor=()=>{const target=selector.value,key=annotationMutationKey(batch,target),old=annotationState.pending.get(key);if(old&&old.text===textarea.value&&old.language===language.value&&old.consent===(consent.checked?'yes':'no'))return old;const next={id:crypto.randomUUID(),text:textarea.value,language:language.value,consent:consent.checked?'yes':'no'};annotationState.pending.set(key,next);return next;};
     save.addEventListener('click',async()=>{if(!current()||noteSaveOwner||captureStarting||captureHandle||annotationState.capture||!textarea.value.trim())return;if(new TextEncoder().encode(textarea.value).length>16384){status.textContent=t('annotationTextTooLarge');return;}const targetAsset=selector.value,pending=mutationFor(),owner={kind:'text',pending};noteSaveOwner=owner;syncComposerControls();status.textContent=t('annotationSaving');try{const result=await request(`/upload-annotations/text?library=${encodeURIComponent(item.library_id)}`,{method:'POST',body:{batch,asset_id:targetAsset,language:pending.language,consent:pending.consent,mutation_id:pending.id,text:pending.text},epoch});if(!current())return;if(!annotationNotesValid({library_id:item.library_id,asset_id:item.asset_id,batch,page:1,page_size:20,total:1,items:[result]},item)||result.kind!=='text'||result.original_text!==pending.text||result.asset_id!==(targetAsset||null))throw new Error('Invalid note receipt');const notes=host.querySelector('.annotation-notes');if(notes){notes.querySelector('.annotation-empty')?.remove();renderAnnotationNote(notes,result,item.asset_id);}const unchanged=textarea.value===pending.text&&selector.value===targetAsset&&language.value===pending.language&&consent.checked===(pending.consent==='yes');if(unchanged){textarea.value='';annotationState.pending.delete(annotationMutationKey(batch,targetAsset));}status.textContent=t('annotationSaved');}catch(error){if(!current()||error.name==='AbortError')return;status.textContent=t('annotationSaveUncertain');}finally{if(noteSaveOwner===owner)noteSaveOwner=null;if(current())syncComposerControls();}});
@@ -2568,9 +2607,9 @@
       {...options,extraHeaders:options.headers,epoch:state.generation});
   };
   memoryCommunity=window.PhotoHouseMemoryCommunity({scope:memoryScope,request:communityRequest,
-    mediaURL:id=>safeMediaURL(id,'thumbnail'),capture:annotationCapture,
+    mediaURL:id=>safeMediaURL(id,'thumbnail'),capture:memoryCommunityCapture,
     voiceCapabilities:()=>request(`/assistant/v1/capabilities?${new URLSearchParams({library_id:state.library||''})}`,{epoch:state.generation}),
-    transcribe:file=>request('/assistant/v1/transcribe',{method:'POST',rawBody:file,
+    transcribe:(file,{signal}={})=>request('/assistant/v1/transcribe',{method:'POST',rawBody:file,signal,
       extraHeaders:{'Content-Type':'audio/wav','X-PhotoHouse-Library-Id':state.library,'X-PhotoHouse-Request-Id':crypto.randomUUID()}}),
     onError:error=>{void failure(error,state.generation);},
     mountReplySpeech:(...args)=>storyWorkspace?.mountReplySpeech?.(...args)??(()=>{}),
