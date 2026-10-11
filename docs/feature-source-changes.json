@@ -9041,6 +9041,37 @@
       "provider_called": false,
       "windows_operation": false,
       "apk_changed": false
+    },
+    {
+      "feature": "native-generated-memory-group-upgrade-restore-evidence-v1",
+      "source_commit": "7352375d442935a2530eb1d13e704381c683365a",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "75db8ecd7ca98dc6c81b97850b3d210a29539541faa3c7bb91a365962ba04034",
+          "sha256": "62a113ef0816ef509c053a16d5683238e96bca8b47f1598304629558ad4c981f"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "c0cead8d108069e533292ee5d74c682c4d7b45005a0f943af917487e146d42bc",
+          "sha256": "995e17b10a8d3132ff54b004f752a68df1304c29af192bc8cdaf4e0c13ef1704"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "d05900c7288eb72f5581f8bb54519b9cffbea45d9dda86f81c2bf8c15897a080",
+          "sha256": "cae46b6f5611ad67a3d7c5ef3689c5cdaa80f3510e976b8f432546d68bee772a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "default_enabled": false,
+      "provider_called": false,
+      "windows_operation": true,
+      "apk_changed": false,
+      "native_qualification_source_commit": "665bed58650aafcd31ec8569976e0b2111da226c",
+      "qualification_report_sha256": "e2d9e71f950886c236c7939fd245e0f187846467abd17a52fea4bf3125f88c64",
+      "live_database_changed": false,
+      "services_changed": false
     }
   ]
 }
