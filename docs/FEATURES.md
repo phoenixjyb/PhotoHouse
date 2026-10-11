@@ -5,6 +5,11 @@ API, Android, Windows private-reader, Windows CPU and seventeen generated Web
 suites. Historical counts below retain their revision-specific meaning;
 household deployment and family acceptance remain separate gates.
 
+The October 12 local source run passed the complete 19-suite Web profile at
+`5991695` and the complete backend profile (1,208 tests and 687 subtests) at
+`d0d8a34`. New phone source qualification is in progress. These later local
+checks do not update the hosted or household release records above.
+
 This matrix records the source migration baseline. Live installations and physical devices have their own acceptance records.
 
 | Area | Implemented baseline | Remaining gate or next improvement |
@@ -25,7 +30,8 @@ This matrix records the source migration baseline. Live installations and physic
 | Worker terminal diagnostics | CPU, image/video embedding and face pipeline emit fixed failure identifiers while preserving terminal exit codes and approval/processing rules | 38 generated CPU-profile cases cover CLI reports, private-text refusal, SQLite/resource failures and child routing; installed failures and service recovery still need native operation evidence |
 | Shared memory groups | Default-off protected group editor and time/similarity proposals, ID-only membership and sticky exclusions; current original notes feed story/memoir evidence with canonical origin, byline and deduplication | Manual groups require e7 activation; automatic proposals separately require qualified immutable vector identity/coverage; phone release and family calibration remain gates. No anonymous TV source projection or model activation |
 | Chapter source choices | Explicit `chapter_sources_v1` policy selects up to 12 current picture-linked sources per chapter, including none; narrative, chat and title context honor the policy and preserve legacy stories; Web/phone controls pass focused browser/emulator checks | [Contract and local evidence](CHAPTER_SOURCE_CHOICES.md); final source qualification, live service and signed phone delivery remain separate |
-| Spoken chapter writing | Phone controls fence transient ASR to one editable chapter, preserve typed words and retain a rejected transcript for review | [Design and phone evidence](STORY_CHAPTER_DICTATION.md); Web controls and saved-story phone editing are in progress. No original audio is persisted by this writing shortcut |
+| Spoken chapter writing | Phone and Web controls fence transient ASR to one editable chapter, preserve typed words and retain a rejected transcript for review | [Design and local evidence](STORY_CHAPTER_DICTATION.md); served Web, signed phone and family voice acceptance remain separate. No original audio is persisted by this writing shortcut |
+| Saved phone story editing | Fresh same-revision family links, retained chapter arrangement, reviewed prose/source edits and chapter dictation; immutable uncertain retry and failed-reload draft preservation | [Editor contract and checks](PHONE_SAVED_STORY_EDITING.md); signed phone delivery and a family edit/reopen journey remain separate |
 | Story reader navigation | Protected Web thumbnail filmstrip and current-frame labels; phone selection bound to current scope, chapter revision and eligible media; explicit chapter/media actions | [Reader contract](STORY_READER_NAVIGATION.md); generated browser/emulator checks remain separate from served Web files, signing, OTA and family acceptance |
 | TV library recovery | Disabled stale library choices, explicit localized retry preserving page/filters, and remote focus restoration | [Recovery contract](TV_LIBRARY_RECOVERY.md); the generated large-text remote journey passes; TV v30 signing/publication and physical TV acceptance remain separate gates |
 | Windows CPU portability | Explicit generated database/runtime/source-package profile and a separate hosted Windows job | Repaired cohort passes 65 tests and 25 subtests on macOS and hosted Windows at `12c10e9`; the installed household runtime retains its own gate |

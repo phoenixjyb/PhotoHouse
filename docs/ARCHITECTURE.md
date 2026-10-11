@@ -150,6 +150,14 @@ retains both texts. A saved-story editor additionally binds the story revision.
 The transient recording is distinct from an original family audio contribution,
 which has its own retention, attribution and playback contract.
 
+The [saved phone story editor](PHONE_SAVED_STORY_EDITING.md) reads fresh detail
+and a complete same-revision contribution-reference map before seeding its
+draft. Updates freeze the story ID, base revision, wording and link profile.
+Conflict reload keeps the old draft until a valid replacement arrives; it cannot
+accept a revision below the edit base. Idempotent retries may return a later
+family revision, which is shown as the current saved version after strict
+identity and revision checks. This adds no new backend route or schema.
+
 Web recording startup is bound to the current account/library and view attempt.
 A delayed microphone permission result stops its tracks before creating an
 audio context when that scope has changed. Context startup and completion

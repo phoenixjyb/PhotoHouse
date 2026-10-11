@@ -31,11 +31,15 @@ The local source now implements [reviewed chapter source choices](CHAPTER_SOURCE
 authors can choose which notes and observations may inform each chapter,
 including none. Narrative, conversation and title context honor this explicit
 policy; legacy stories retain their existing behavior. Web and phone source controls
-have passed their focused browser/emulator checks; final source qualification
-and delivery remain outstanding. Current product work adds
-[spoken chapter writing](STORY_CHAPTER_DICTATION.md) with explicit transcript
-review, and completes revision-bound editing of saved stories on the phone while
-preserving accepted family-memory links. Family feedback on suggested group
+have passed their focused browser/emulator checks. The complete backend profile
+passed 1,208 tests and 687 subtests at `d0d8a34`; newer client qualification and
+delivery remain separate. [Spoken chapter writing](STORY_CHAPTER_DICTATION.md)
+is implemented locally in phone and Web with explicit transcript review; the
+full 19-suite Web profile passed at `5991695`.
+[Saved phone story editing](PHONE_SAVED_STORY_EDITING.md) is implemented at
+`6e3bfc8`, preserving accepted family-memory links and unsaved words through
+failed conflict reloads. The next reader slice adds explicit, private local
+continuity after a phone process restart. Family feedback on suggested group
 boundaries and longer-story composition remains a following product gate.
 Do not automatically publish private memories to Home TV.
 

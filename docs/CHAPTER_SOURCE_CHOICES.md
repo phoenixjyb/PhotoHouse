@@ -86,14 +86,24 @@ choosing no item evidence. These overlapping cohorts are not summed.
 A subsequent title-policy run passed 39 tests and 40 subtests, including a manual
 chapter partition and refusal of cross-chapter source references. The HTTP
 profile also exercises the explicit layout without changing legacy requests.
+The complete local API profile at `d0d8a34` passed 1,208 tests and 687 subtests,
+followed by the generated demo. It uses disposable fixtures and no installed
+model or household runtime.
+
+The phone title adapter at `23a09fe` and Web adapter at `db6eead` now supply the
+actual chapter media in opted-in title requests. The Web's 25-checkpoint journey
+includes a manual one-frame-per-chapter layout, per-chapter source choices and
+a delayed title result discarded after that layout is replaced.
 
 Phone controls at `8be679d` passed the preceding 659-test core run, followed by
 affected transport/repository/store tests after the membership recheck. Debug
 assembly, lint and one generated API 36 UI journey passed; Chinese and English
 150% renders were inspected. Web controls at `a1d3c8e` passed 15 generated browser
 checkpoint groups, including IME focus, keyboard use, 150% text, identical retry,
-reopen, exports, real revocation and a stale access check. The complete new source
-profile is still being qualified alongside the following dictation slice.
+reopen, exports, real revocation and a stale access check. The full 19-suite Web
+profile subsequently passed at `5991695`, including spoken chapters and canonical
+attributed shared-source fixtures. The complete Android profile remains a
+separate qualification gate.
 
 This is local development. It does not enable live groups, change Windows
 services, run an installed model, publish an APK or publish private stories to TV.

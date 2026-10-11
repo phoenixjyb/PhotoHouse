@@ -1,8 +1,9 @@
 # Speak a story chapter
 
-Status: the phone writing controls are implemented and locally checked at
-`5873b44`. Web integration and saved-story phone editing are in progress; live
-delivery is pending.
+Status: phone writing controls are implemented and locally checked at
+`5873b44`; Web controls are implemented at `d6a3f1a`. Live delivery is pending.
+The phone's saved-story editor is described in
+[saved-story editing](PHONE_SAVED_STORY_EDITING.md).
 
 ## Writing experience
 
@@ -57,6 +58,18 @@ story-review UI journeys and all six shared dictation UI tests on the reused API
 36 emulator. Chinese and English 150% renders were inspected. The shared tests
 include a rejected oversized edit that remains visible and cannot insert older
 recognized words. These overlapping checks are not summed into a full suite.
+
+The Web journey at `d6a3f1a` passed 24 generated checkpoint groups with no
+browser errors or external requests. It covers capture finishing before startup
+settles, stale Cancel callbacks, explicit transcript insertion, typed words,
+IME composition, overflow, uncertain saves and account/library changes.
+Chinese and English mobile layouts at 150% text size were inspected. A following
+title-layout check at `db6eead` passed 25 groups, including that same voice journey;
+these counts overlap.
+
+The complete 19-suite generated Web profile passed at `5991695`. Its memoir
+fixture was corrected to use canonical attributed shared notes and item-local
+AI evidence; the production source validation stayed strict.
 
 Final source qualification, serving Web files, signing/publishing the phone APK and a real family
 voice turn remain separate delivery gates. See [source choices](CHAPTER_SOURCE_CHOICES.md),
