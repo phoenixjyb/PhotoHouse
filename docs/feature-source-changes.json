@@ -9657,6 +9657,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Manual chapter layouts in reviewed title context",
+      "source_commit": "d0d8a343ae893281bc91844e2df1eb5a56ae6d01",
+      "files": [
+        {
+          "path": "docs/CHAPTER_SOURCE_CHOICES.md",
+          "before_sha256": "96efd65332e4d17184579e10cf435fb95a5eb5dc0130bd6e968a68a79e247a97",
+          "sha256": "10b5fed79b8eb6a79397d1175ddb4db898cb6d1602ac46e2bb8b08940eeffdad"
+        },
+        {
+          "path": "server/backend/app/access/story_workspace.py",
+          "before_sha256": "18142d9320b56220a20d5abf2a6cbe2374f881fbad84e90fcd77fe2ff2a2f066",
+          "sha256": "acf2099f56ca8509176f830727fa01c94a28d871764031705bb9333cf0c3db91"
+        },
+        {
+          "path": "server/tests/security/test_chapter_source_policy.py",
+          "before_sha256": "097b66c4472c337a664205b256a66c39c92aace83409cfa63a13f273897132a3",
+          "sha256": "cc24b140349ba0663731f9ffde4e2294c97c0805b56eac36e73f16c5a52d9342"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
