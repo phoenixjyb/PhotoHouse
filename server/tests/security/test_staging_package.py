@@ -96,6 +96,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/home_memory_envelope.py',
             'scripts/bounded_windows_job.py',
             'scripts/qualify_vector_erasure.py',
+            'scripts/qualify_memory_groups.py',
             'scripts/initialize_original_deletions.py',
             'scripts/prepare_access_discovery_index.py',
             'scripts/replay_original_deletions.py',

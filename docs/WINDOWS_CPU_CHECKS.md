@@ -53,6 +53,27 @@ checks and this smaller Windows-oriented cohort remain explicit choices.
 See [development checks](DEVELOPMENT.md) and
 [source packaging](SOURCE_PACKAGING.md).
 
+## Optional memory-group upgrade qualification
+
+The generated CPU cohort also checks the e7 qualification runner's refusal,
+backup and bounded-controller contracts. A Mac result is portable source
+evidence. The separately invoked API-package runner accepts no live database
+or media root:
+
+```sh
+python -I -B scripts/qualify_memory_groups.py --out <new-absolute-private-output>
+```
+
+After operation authority, use the pinned Windows interpreter and an extracted,
+manifest/hash-checked candidate package. Its existing output parent must have a
+private inheritable DACL. The native CLI supervises only generated fixtures,
+with 15 minutes, 2 GiB Job memory, four processes and an 8 GiB free-RAM floor.
+Review `qualification-report.json` and its retained generated databases; a fixed
+success report is required. Preserve failed candidates and their safe receipts.
+The [full contract](../server/docs/security/MEMORY_GROUPS_V1.md#generated-upgrade-qualification)
+lists the exact cases and intentionally damaged audit-only fixture. Upload
+workers, vectors, installed providers and live migration remain separate gates.
+
 ## Optional vector cleanup qualification
 
 The separate [generated vector qualification runner](VECTOR_ERASURE_LIFECYCLE.md)

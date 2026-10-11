@@ -189,6 +189,7 @@ FILES = (
     'scripts/prepare_access_discovery_index.py',
     'scripts/provision_access.py',
     'scripts/qualify_vector_erasure.py',
+    'scripts/qualify_memory_groups.py',
     'scripts/publish_android_update.py',
     'scripts/rehearse_fullsize_database.py',
     'scripts/replay_original_deletions.py',

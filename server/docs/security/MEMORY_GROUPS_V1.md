@@ -92,3 +92,36 @@ The phone now has a default-off source implementation of the same review/edit
 workflow; see [its contract](../../../docs/PHONE_MEMORY_GROUPS.md).
 Next: carry deduplicated group references into story/editorial evidence. Group membership does not yet
 generate an essay or rewrite notes automatically.
+
+## Generated upgrade qualification
+
+The pinned API package includes `scripts/qualify_memory_groups.py`. It accepts
+only `--out <new-absolute-directory>` beneath an existing private parent, with
+no database, media, model or service argument. It generates the actual d1 schema,
+synthetic accounts/session grants, photo/video metadata, caption, upload receipt,
+pending task and an original note. It checks an injected interruption between
+the two e7 table creations rolls back DDL and the revision; then verifies a
+successful additive upgrade preserves every existing generated table row and
+schema object. No authored text is backfilled into groups.
+
+Explicit group operations check original attribution/latest wording, viewer
+write denial, revoked read denial, manual exclusions and retry after a later
+edit. Separate copies restore both the pre-group d1 backup and the e7 backup
+containing original notes, group state and revision history. Both backup digests
+stay unchanged. Current-row and deliberately orphaned audit-only fixtures each
+refuse downgrade without losing their stored history. The audit-only fixture is
+intentionally foreign-key-invalid and is retained separately; it is not a
+restored healthy database or a supported application state.
+
+On Windows, the CLI starts an isolated child in a Job capped at 15 minutes,
+2 GiB memory and four processes, with an 8 GiB free-RAM admission floor. It
+requires inherited private Windows ACLs, checks UTF-16 path/sidecar budgets
+before creating files, and validates the complete bounded success report.
+Failures retain a sanitized phase/class/Windows-code receipt where possible.
+It changes no existing ACL or service and cannot target the live database.
+
+Portable source tests cover the generated cases and controller/refusal behavior;
+native Windows execution remains a delivery gate. This runner does not execute
+upload workers, qualify the installed vector producer or coverage, make a live
+backup, apply a live migration, or establish power-loss recovery. Use the
+separate companion worker canary and approved live cutover plan for those steps.

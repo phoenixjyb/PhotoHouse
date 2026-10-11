@@ -34,6 +34,19 @@ Account, library and background changes clear the editor and preview cache.
 The feature is absent from anonymous Home mode and TV. See the
 [phone contract](PHONE_MEMORY_GROUPS.md).
 
+### Delivery preparation
+
+A generated e7 upgrade/restore runner is included in the pinned API package.
+It rehearses additive row/schema preservation, injected DDL interruption,
+original note attribution and exact group retry, pre-/post-group backup restore,
+and nonempty downgrade refusal. It has no live database/media arguments and
+uses the existing bounded Windows Job controller. See the
+[qualification contract](../server/docs/security/MEMORY_GROUPS_V1.md#generated-upgrade-qualification).
+Portable results are separate from the pending native Windows run, installed
+worker/vector qualification and live activation. Phone version 46 is already
+published from older source; the next group-enabled release needs a new version
+and complete newly pinned private profile before signing or OTA publication.
+
 ## October 11 native qualification follow-up
 
 The corrected package at `b8f103b` passed all three bounded Windows synthetic
