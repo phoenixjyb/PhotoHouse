@@ -9,7 +9,7 @@ import uuid
 
 from .library import _integer
 from .memory_books import MemoryBooks, _stored as book_content
-from .memory_stories import MemoryStories, _json
+from .memory_stories import MemoryStories, _json, source_policy
 from .memory_narrative import MAX_OUTPUT_BYTES, validate_companion
 from .memory_source_refs import available as source_refs_available, current_groups
 from .service import AccessDenied, AccessService
@@ -105,6 +105,7 @@ def context(access, library, member, target_type, ident, instructions='', recent
                     'text': stored['introduction'], 'asset_id': None, 'author': None})
 
     for story in details:
+        reviewed_sources = source_policy(story) is not None
         linked_groups = current_groups(access.db, story['id'], int(story['revision']),
             [chapter['id'] for chapter in story['chapters']], library) if refs_ready else []
         linked_ids = list(dict.fromkeys(ident for _chapter, refs in linked_groups for ident in refs))
@@ -151,6 +152,8 @@ def context(access, library, member, target_type, ident, instructions='', recent
                 if item['id'] not in assets:
                     continue
                 for evidence in item['evidence']:
+                    if reviewed_sources and evidence['id'] not in chapter['evidence_ids']:
+                        continue
                     if evidence['id'] not in seen:
                         author = None
                         source_asset = evidence.get('origin_asset_id', item['id'])

@@ -285,7 +285,12 @@ def title_capabilities(runtime, token, library, enabled):
             'needs_review': True}
 
 
-def title_suggestions(runtime, token, library, body, adapter, lock):
+def title_suggestions(runtime, token, library, body, adapter, lock, source_review=False):
+    from .memory_stories import SOURCE_POLICY
+    if type(source_review) is not bool or ('source_policy' in body) != source_review:
+        raise TransportError(400, 'Invalid title source choice')
+    if source_review and body['source_policy'] != SOURCE_POLICY:
+        raise TransportError(400, 'Invalid title source choice')
     # Authorize every selected frame before passing any context to inference.
     outline_body = {key: body[key] for key in ('asset_ids', 'theme', 'language')} | {'title': ''}
     snapshot = preview(runtime, token, library, outline_body)
@@ -297,19 +302,29 @@ def title_suggestions(runtime, token, library, body, adapter, lock):
         if type(chapters) is not list or len(chapters) != len(snapshot['chapters']):
             raise ValueError()
         for expected, chapter in zip(snapshot['chapters'], chapters):
-            if (type(chapter) is not dict or set(chapter) != {'id', 'narration'} or
+            fields = {'id', 'narration'} | ({'evidence_ids'} if source_review else set())
+            if (type(chapter) is not dict or set(chapter) != fields or
                     chapter['id'] != expected['id'] or type(chapter['narration']) is not str or
                     len(chapter['narration'].encode('utf-8')) > 6000 or
                     any((ord(c) < 32 or 0x7f <= ord(c) <= 0x9f) and c not in '\n\t' for c in chapter['narration'])):
                 raise ValueError()
+            if source_review:
+                refs = chapter['evidence_ids']
+                available = {e['id'] for item in snapshot['items']
+                             if item['id'] in expected['asset_ids'] for e in item['evidence']}
+                if (type(refs) is not list or len(refs) > 12 or
+                        any(type(value) is not str or value not in available for value in refs)
+                        or len(set(refs)) != len(refs)):
+                    raise ValueError()
     except (ValueError, TypeError, UnicodeError, RecursionError):
         raise TransportError(400, 'Invalid title context') from None
     if adapter is None:
         raise TransportError(503, 'Title suggestions unavailable')
     from .story_titles import validate_bundle, validate_suggestions
+    chosen = {ref for chapter in chapters for ref in chapter.get('evidence_ids', [])}
     sources = list({e['id']: {'id': e['id'], 'source': e['source'], 'text': e['text']}
                     for item in snapshot['items'] for e in item['evidence']
-                    if e['text'].strip()}.values())
+                    if e['text'].strip() and (not source_review or e['id'] in chosen)}.values())
     sources.extend({'id': 'draft-' + chapter['id'], 'source': 'draft',
                     'text': _text(chapter['narration'], 1800)}
                    for chapter in chapters if chapter['narration'].strip())
@@ -344,11 +359,32 @@ async def story_title_capabilities(request: Request):
         request.app.state.story_title_suggester is not None))
 
 
-@router.post('/story-workspace/title-suggestions')
-async def story_title_suggestions(request: Request):
+def source_capabilities(runtime, token, library):
+    from .memory_stories import SOURCE_POLICY
+    with runtime.connection_factory() as db:
+        access = AccessService(db, clock=runtime.clock)
+        with access._transaction():
+            access._require(token, library, 'library.read')
+    return {'version': 1, 'source_policy': SOURCE_POLICY,
+            'max_sources_per_chapter': 12, 'needs_review': True}
+
+
+@router.get('/story-workspace/source-capabilities')
+async def story_source_capabilities(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
-    body = await _body(request, {'asset_ids', 'theme', 'language', 'selection_revision', 'chapters'}, max_body=65536)
+    return JSONResponse(await run_in_threadpool(source_capabilities,
+        _memory_runtime(request, allow_query=True), token, query['library']))
+
+
+@router.post('/story-workspace/title-suggestions')
+async def story_title_suggestions(request: Request):
+    from .memory_stories import _source_review
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library', 'source_review'})
+    review = _source_review(query)
+    fields = {'asset_ids', 'theme', 'language', 'selection_revision', 'chapters'} | ({'source_policy'} if review else set())
+    body = await _body(request, fields, max_body=65536)
     return JSONResponse(await run_in_threadpool(title_suggestions,
         _memory_runtime(request, allow_query=True), token, query['library'], body,
-        request.app.state.story_title_suggester, request.app.state.story_title_lock))
+        request.app.state.story_title_suggester, request.app.state.story_title_lock, review))

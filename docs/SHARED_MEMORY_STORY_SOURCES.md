@@ -72,3 +72,23 @@ origin and source byline.
 The [group review and activation gates](ROADMAP.md#october-11-adjustable-shared-memory-groups)
 still apply. This source change does not activate live groups, publish an APK,
 run a model, or expose private sources through anonymous Home TV.
+
+## Local qualification (October 11)
+
+Backend/Web source `710fdbb` passed the complete API profile: **1,193 tests and
+680 subtests**, followed by the generated no-listener demo. The profile includes
+the extracted staging-package checks. An initial run exposed a runtime-identity
+regression; the request-local memory flag adapter fixed it without changing the
+API's shared upload/discovery runtime identity. Six extracted-package tests also
+passed separately after pinning the new source adapter.
+
+The Web shared-source journey passed ten synthetic browser checkpoints. Its
+Chinese mobile view at 390px and 150% text was rendered and inspected; origin
+labels wrap and a byline containing HTML-like text remains literal text.
+
+Phone source `65edf99` passed 16 focused source-decoder JVM tests, the chapter
+reference JVM test, phone lint and unconfigured debug/test builds. One bilingual
+150% Compose journey passed on the existing API 36 phone emulator. The rendered
+source panel preserves origin and voluntary byline and displays a shared note
+once per chapter. The emulator was stopped after verification. No release
+version, signature, OTA feed or physical device was changed.

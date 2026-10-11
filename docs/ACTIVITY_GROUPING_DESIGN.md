@@ -1,7 +1,8 @@
 # Activity grouping from family stories and visual similarity
 
-**Status:** design proposal; no visual similarity route or provider activation is
-claimed here.
+**Status:** default-off source implementation and generated qualification;
+installed-vector qualification and live activation remain outstanding. The
+historical design discussion below does not describe a live deployment.
 
 ## Implemented shared-memory review slice (October 11)
 

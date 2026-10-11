@@ -27,9 +27,13 @@ reviewed group notes enter story and memoir evidence with their canonical origin
 and byline, deduplicated for generation and chapter references. Source changes
 invalidate stale saves/jobs; no note text is copied into saved source links.
 See [the shared-source contract](SHARED_MEMORY_STORY_SOURCES.md).
-Next product work: explicit family feedback on suggested group boundaries and
-clearer source review while composing a longer story. Do not automatically publish
-private memories to Home TV.
+The next local slice introduces [reviewed chapter source choices](CHAPTER_SOURCE_CHOICES.md):
+authors can choose which notes and observations may inform each chapter,
+including none. Narrative, conversation and title context honor this explicit
+policy; legacy stories retain their existing behavior. Web/phone integration
+and final qualification are in progress. Next product work: family feedback on
+suggested group boundaries and clearer chapter composition for longer stories.
+Do not automatically publish private memories to Home TV.
 
 ### Guarded activation preparation
 

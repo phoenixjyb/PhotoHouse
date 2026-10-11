@@ -25,6 +25,16 @@ router = APIRouter(route_class=LibraryRoute)
 FIELDS = {'title', 'theme', 'language', 'asset_ids', 'chapters',
           'selection_revision', 'revision', 'mutation_id'}
 PAGE_SIZE = 8
+SOURCE_POLICY = 'chapter_sources_v1'
+
+
+def source_policy(stored):
+    """Absence preserves legacy context; an unknown stored choice fails closed."""
+    if 'source_policy' not in stored:
+        return None
+    if type(stored['source_policy']) is not str or stored['source_policy'] != SOURCE_POLICY:
+        raise TransportError(503, 'Story source choices unavailable')
+    return SOURCE_POLICY
 
 
 def snapshot(library, items, group_dependencies=None):
@@ -87,8 +97,13 @@ def content(body):
             raise ValueError()
     except (ValueError, TypeError, UnicodeError, RecursionError):
         raise TransportError(422, 'Invalid story chapters; nothing was saved') from None
-    return {key: body[key] for key in ('title', 'theme', 'language')} | {
+    result = {key: body[key] for key in ('title', 'theme', 'language')} | {
         'asset_ids': [str(ident) for ident in ids], 'chapters': chapters}
+    if 'source_policy' in body:
+        if type(body['source_policy']) is not str or body['source_policy'] != SOURCE_POLICY:
+            raise TransportError(400, 'Invalid story source choice')
+        result['source_policy'] = SOURCE_POLICY
+    return result
 
 
 class MemoryStories:
@@ -112,6 +127,7 @@ class MemoryStories:
 
     def _read(self, row, library, member):
         stored = _json(row['content'])
+        source_policy(stored)
         groups = [] if self.access.memory_groups_enabled else None
         items = collect_items(self.db, library, [int(ident) for ident in stored['asset_ids']],
                               memory_groups_enabled=self.access.memory_groups_enabled,
@@ -131,10 +147,14 @@ class MemoryStories:
             'selection_revision': snapshot(library, items, groups), 'items': items,
             'chapters': chapters, 'questions': questions}  # asset_ids removed below
 
-    def _present(self, row, library, member):
+    def _present(self, row, library, member, source_review=False):
         result = self._read(row, library, member)
         result.pop('asset_ids')
         result.pop('evidence_versions', None)
+        if source_review:
+            result['source_policy'] = source_policy(result)
+        else:
+            result.pop('source_policy', None)
         if len(JSONResponse(result).body) > MAX_RESPONSE:
             raise TransportError(503, 'Story response unavailable')
         return result
@@ -168,11 +188,13 @@ class MemoryStories:
                 'has_more': len(rows) > PAGE_SIZE, 'can_create': member['role'] in {'owner', 'contributor'},
                 'items': summaries}
 
-    def get(self, token, library, ident):
+    def get(self, token, library, ident, source_review=False):
+        if type(source_review) is not bool:
+            raise TransportError(400, 'Invalid story source choice')
         with self.access._transaction():
             member = self.access._require(token, library, 'library.read')
             self._ready()
-            return self._present(self._row(ident, library), library, member)
+            return self._present(self._row(ident, library), library, member, source_review)
 
     def contribution_refs(self, token, library, ident, revision):
         with self.access._transaction():
@@ -194,7 +216,9 @@ class MemoryStories:
                     {'id': chapter, 'contribution_ids': groups.get(chapter, [])}
                     for chapter in chapter_ids]}
 
-    def save(self, token, library, body, ident=None, refs_enabled=False):
+    def save(self, token, library, body, ident=None, refs_enabled=False, source_review=False):
+        if type(source_review) is not bool or ('source_policy' in body) != source_review:
+            raise TransportError(400, 'Invalid story source choice')
         stored = content(body)
         supplied_groups = None
         if refs_enabled:
@@ -218,12 +242,18 @@ class MemoryStories:
                 refs_ready = source_refs_available(self.db)
             if row and not self._can_edit(member, row):
                 raise AccessDenied('Access denied')
+            old_content = _json(row['content']) if row else None
+            old_policy = source_policy(old_content) if row else None
+            if old_policy and not source_review:
+                # Narration-only edits from older clients must preserve the
+                # reviewed policy, never silently opt excluded sources back in.
+                stored['source_policy'] = old_policy
             actor = member['account_id']
             prior = self.access._one('SELECT * FROM access_memory_revisions WHERE editor_id=? AND mutation_id=?', (actor, mutation))
             if prior:
                 if prior['request_digest'] != digest:
                     raise TransportError(409, 'Save identifier already used; keep your draft')
-                return self._present(self._row(prior['story_id'], library), library, member)
+                return self._present(self._row(prior['story_id'], library), library, member, source_review)
             groups = [] if self.access.memory_groups_enabled else None
             items = collect_items(self.db, library, [int(value) for value in stored['asset_ids']],
                                   memory_groups_enabled=self.access.memory_groups_enabled,
@@ -234,6 +264,13 @@ class MemoryStories:
                 refs = {e['id'] for item in items if item['id'] in chapter['asset_ids'] for e in item['evidence']}
                 if any(ref not in refs for ref in chapter['evidence_ids']):
                     raise TransportError(422, 'Invalid source reference')
+            if old_policy and not source_review:
+                hydrated = self._read(row, library, member)
+                previous = {chapter['id']: (chapter['asset_ids'], chapter['evidence_ids'])
+                            for chapter in hydrated['chapters']}
+                if any(previous.get(chapter['id']) != (chapter['asset_ids'], chapter['evidence_ids'])
+                       for chapter in stored['chapters']) or len(previous) != len(stored['chapters']):
+                    raise TransportError(409, 'Review chapter source choices before changing them')
             if refs_enabled and row is not None:
                 validate_groups(self.db, supplied_groups, ident, library)
             elif refs_enabled and supplied_groups:
@@ -273,7 +310,7 @@ class MemoryStories:
             if refs_ready and groups_to_save:
                 replace_groups(self.db, ident, revision_new, groups_to_save)
             self.access._audit(actor, 'memory.create' if row is None else 'memory.edit', library)
-            return self._present(self._row(ident, library), library, member)
+            return self._present(self._row(ident, library), library, member, source_review)
 
 
 def call(runtime, action, *args):
@@ -294,8 +331,9 @@ async def list_memories(request: Request):
 @router.get('/memory-stories/{story_id}')
 async def get_memory(story_id: str, request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library'})
-    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id))
+    query = _query(request, {'library', 'source_review'})
+    review = _source_review(query)
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id), review)
     return JSONResponse(result)
 
 
@@ -321,12 +359,21 @@ async def edit_memory(story_id: str, request: Request):
 
 async def save_memory(request, ident=None):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library', 'contribution_refs'})
+    query = _query(request, {'library', 'contribution_refs', 'source_review'})
+    review = _source_review(query)
     refs_enabled = query.get('contribution_refs') == '1'
     if 'contribution_refs' in query and not refs_enabled:
         raise TransportError(400, 'Invalid request')
-    fields = FIELDS | ({'contribution_refs'} if refs_enabled else set())
+    fields = FIELDS | ({'contribution_refs'} if refs_enabled else set()) | ({'source_policy'} if review else set())
     body = await _body(request, fields, max_body=384*1024)
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'save', token,
-        query['library'], body, ident, refs_enabled)
+        query['library'], body, ident, refs_enabled, review)
     return JSONResponse(result)
+
+
+def _source_review(query):
+    if 'source_review' not in query:
+        return False
+    if query['source_review'] != '1':
+        raise TransportError(400, 'Invalid story source choice')
+    return True
