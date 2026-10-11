@@ -9631,6 +9631,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Chapter source client qualification and next editing roadmap",
+      "source_commit": "4a4cd09f5b04e5635524d0dc4476889f8f3bdacd",
+      "files": [
+        {
+          "path": "docs/CHAPTER_SOURCE_CHOICES.md",
+          "before_sha256": "08741951d95d374b4957e1f8acf28aa1b75001d6f3e9851c30a3c16ee0e48370",
+          "sha256": "96efd65332e4d17184579e10cf435fb95a5eb5dc0130bd6e968a68a79e247a97"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "95580ee7fb4c7faa9a8e3ec3855ef3aa88840e62f59a4791a04079ae34bb424e",
+          "sha256": "795cb3c62221bed3a8c30694731ae538e0489b2834f3a0f86f3d735ab222213a"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "907cd8730bfed7c37814b6cec566edc3be845afccb08dc39e0063985ba9fe5df",
+          "sha256": "8466a9e918c4acbfba2a8ab7115051c46eb4cf22587731e0b19493f8bca44303"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
