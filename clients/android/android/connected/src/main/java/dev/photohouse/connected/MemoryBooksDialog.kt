@@ -59,6 +59,10 @@ internal fun MemoryBooksDialog(
                 chapter?.id, reading.framePage, reading.selectedAssetId)
         }
     }
+    val introductionReaderIsCurrent = navigation?.let { rendered ->
+        liveState.session?.account_id == rendered.accountId && liveState.library == reading.library &&
+            store.isCurrentMemoryBookReaderNavigation(rendered)
+    } == true
     val guardedStory: (Int) -> Unit = { target ->
         navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onStory(target) }
     }
@@ -193,7 +197,36 @@ internal fun MemoryBooksDialog(
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(memoirReaderScroll)
                                     .testTag("memory-book-reader-scroll"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    if (book.introduction.isNotBlank()) Text(book.introduction, style = MaterialTheme.typography.bodyLarge)
+                                    if (book.introduction.isNotBlank()) {
+                                        Column(Modifier.fillMaxWidth().testTag("memory-book-introduction-section"),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text(book.introduction, style = MaterialTheme.typography.bodyLarge)
+                                            MemoryBookIntroductionNarration(
+                                                scope = MemoryBookIntroductionNarrationScope(
+                                                    accountId = liveState.session?.account_id.orEmpty(),
+                                                    generation = liveState.generation,
+                                                    libraryId = reading.library,
+                                                    readerScopeId = reading.readerScopeId,
+                                                    bookId = book.id,
+                                                    bookRevision = book.revision,
+                                                    orderedChildren = book.stories.map { it.id to it.revision },
+                                                    storyIndex = index,
+                                                    storyId = story?.id,
+                                                    storyRevision = story?.revision,
+                                                    chapterIndex = story?.let { reading.selectedChapter },
+                                                    chapterId = chapter?.id,
+                                                    framePage = reading.framePage,
+                                                    selectedAssetId = reading.selectedAssetId,
+                                                    introduction = book.introduction,
+                                                    language = book.language,
+                                                ),
+                                                zh = zh,
+                                                enabled = introductionReaderIsCurrent && !reading.readerBusy && !reading.framesBusy && !reading.readerUnavailable &&
+                                                    !ownVoiceUnfinished && !dictationState.loading && !dictationState.recording &&
+                                                    !dictationState.transcribing && dictationState.transcript == null,
+                                            )
+                                        }
+                                    }
                                     MemoryBookEditionShelfPanel(store, reading, zh,
                                         speechEnabled = !ownVoiceUnfinished && !dictationState.loading &&
                                             !dictationState.recording && !dictationState.transcribing)
