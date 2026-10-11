@@ -632,6 +632,30 @@ fixtures do not run or authorize a household migration. See
 
 ## Required local profiles
 
+### Optional local invocation receipt
+
+Use `tools/check.py PROFILE --receipt /absolute/new/check.json` to record a
+private local invocation without capturing raw test output or environment
+values. The parent directory must exist and the destination must be new;
+publication never overwrites an existing file. Without the option, the normal
+profile dispatch remains unchanged. `all` still expands to `api` and `android`.
+
+The JSON records start/end UTC times, HEAD, deterministic profile source
+digests and the command exit code. Digests include relevant tracked files and
+nonignored untracked source files, including dependency locks, paths, modes and
+bytes. Build/cache/runtime directories and the receipt itself are excluded.
+Missing Git, required source, unreadable files or symlinks make source identity
+unavailable and cannot produce an unchanged-source claim. A command failure's
+exit code is retained even if writing its receipt also fails.
+
+This compares start/end snapshots; it does not prove every intermediate read,
+identify installed toolchains or bind existing Gradle XML reports to this run.
+It records no test counts or qualification claim. A matching snapshot and zero
+exit code do not establish package, Windows, device or family acceptance. Keep
+receipts outside source exports. Source `ff7c0f1` passed the 29-test generated
+helper/CLI cohort and the complete 109-test tooling suite. Native Windows
+receipt publication remains unqualified.
+
 - API and security tests: Python 3.12, a small dependency profile, temporary SQLite and generated media.
 - Android: JDK 17, pinned Gradle Wrapper, Android SDK 34; JVM tests, lint and unconfigured debug assembly.
 - Web: synthetic authenticated API fixtures and responsive browser rendering.
@@ -1092,3 +1116,87 @@ The backend profile remains the earlier 1,208 tests and 687 subtests at
 `d0d8a34`; these client slices added no route or schema. No Windows service,
 household database, model provider, release signing, OTA feed or physical device
 was changed by these local checks.
+
+## October 12 memoir continuity and narration
+
+The compact phone album controls at `4ef7255` passed the same four generated
+creation journeys after the layout change. English/Chinese 150% captures were
+inspected; limits, larger albums, replacement confirmation and explicit outline
+creation retain their original checks.
+
+[Memoir continuity](PHONE_MEMOIR_READING_CONTINUITY.md) at `c3e2706` passed the
+extended 124-test core cohort after the final current-denial parity changes.
+The complete Android run before those last changes had a 934-test inventory;
+its first lint attempt found two direct StateFlow reads inside composition.
+Replacing them with collection fixed both errors, and phone/TV lint and debug
+assembly then passed. The final focused cohort checks the later denial changes.
+Six memoir encryption tests and six story encryption tests passed on the
+existing API 36 emulator. The story suite includes an independently built old
+envelope, preserving legacy alias, filename and authenticated context after the
+shared encryption helper refactor. Two English/Chinese 150% reader journeys
+verify fresh access, exact selected media, explicit Continue and Start over.
+Both final offer renders were inspected. Overlapping reruns are not new tests.
+
+[Explicit phone memoir narration](MEMOIR_NARRATION_CONTINUATION.md), source
+`92b1285`, passed a 90-test memoir-store cohort and the complete Android source
+profile. Its report inventory is 945 tests: core 24, live-core 745, home-core 131,
+playback-core 3, story-fixture-core 16, connected 17 and TV 9; protocol has no test
+source. All reports have zero failures, errors and skips. JVM tasks, phone/TV lint
+and debug builds passed, with unaffected tasks up to date. This is not 945 newly
+executed tests. Eighteen generic narration cases and three memoir narration
+journeys passed in direct emulator instrumentation, followed by the two existing
+continuity journeys. Both new English/Chinese 150% narration controls were
+visually inspected. Fake local speech adapters establish control flow, not
+audible quality or installed voice availability.
+
+Web narration continuation at `ce2467c` passed 24 focused memoir checkpoint
+groups and the complete 19-suite profile, with inspected English/Chinese
+390 px/150% controls. Later navigation changes have their own qualification;
+this result must not be attributed to an untested newer tree.
+
+Web manual navigation at `074d096` passed the focused 24-checkpoint memoir
+journey and a final complete 19-suite profile. The first full attempt timed out
+at the saved story's Edit/reopen step in the workspace suite. Two isolated runs
+and the final full profile passed without repository changes; instrumentation
+observed the expected workspace-open/reader-closed state. The initial cause
+remains unknown, and the isolated passes are not evidence of a particular fix.
+Both bilingual large-text story-boundary controls were inspected. Detached
+navigation cannot stop replacement narration or fetch another story.
+
+All these checks use generated content and local debug artifacts. Release
+signing, OTA, live Windows changes and family/device acceptance remain separate.
+
+## October 12 memoir contents and media accessibility
+
+Phone source `a0fdbca` adds a collapsed original-reader contents panel, exact
+rendered-state navigation guards and selected numbered media cards. The focused
+memoir-store cohort passed 94 tests. The complete supported Android source
+profile then passed JVM checks, phone/TV lint and both debug builds. Its report
+inventory contains 949 tests (live-core 749, other module counts as above), with
+zero failures, errors or skips; unchanged tasks were up to date.
+
+Nine direct API 36 emulator journeys passed: two detached-navigation cases, two
+bilingual contents cases, two extended continuity cases and three previously
+implemented narration cases. Contents opening performs no child prefetch;
+explicit child selection loads only that child, and chapter selection retains
+the bookmark. The first navigation test attempt used a still-attached Compose
+semantics dispatcher and incorrectly treated its updated callback as stale;
+the corrected test disposes the original controls before invoking them. This
+was a test-fixture correction, not a claimed product fix. The first media-card
+render also placed its current badge over failed-preview text; the final layout
+uses a separate label line. Final English/Chinese 150% contents and selected-card
+renders were inspected. Repeated continuity/narration cases are not new tests.
+
+Web source `210222b` passed 27 focused memoir browser checkpoint groups and the
+complete 19-suite profile. Final English/Chinese 390 px/150% captions were
+inspected after making a two-item mobile chapter full width. Detached media
+controls and delayed preview errors cannot affect replacement narration or
+start fallback requests. The optional invocation receipt records matching
+start/end HEAD but different source hashes because the receipt helper itself
+changed during that run; it correctly reports `source_unchanged=false`. The
+Web files were frozen, but this receipt must not be presented as an unchanged
+whole-invocation identity.
+
+All media, notes and speech adapters in these journeys are generated. These
+results do not qualify original-media quality, native speech, a signed release,
+served Windows files, a physical phone or a TV.

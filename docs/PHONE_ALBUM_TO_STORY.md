@@ -26,6 +26,13 @@ Returning to the library keeps the chosen order and allows further selection.
 If the album reports unavailable media, the picker asks the author to review
 the currently accessible cohort.
 
+After choosing an album, its directory folds away so the selected moments take
+the available space. **Choose another album / 换个相册** reopens it. Selection
+guidance is also folded by default, while the twenty-four-moment limit and any
+unavailable-media notice remain visible. Theme and language have one compact
+summary and an explicit **Change options / 更改选项** control; opening it retains
+the existing choices. Creating the outline stays visible as a separate action.
+
 Creating the outline is a separate button. Preview rechecks the actual selected
 media and establishes the story evidence snapshot; it does not save a story.
 Source review, chapter arrangement, wording and final save keep their existing
@@ -53,6 +60,12 @@ ordered selection passed 12 focused checks and the complete Android source
 profile. Bilingual 150% emulator journeys also check
 replacement confirmation, larger albums, paging, explicit outline creation and
 returning to the library. Their renders were visually inspected. The pinned results belong in
-[the development record](DEVELOPMENT.md). Source and generated emulator checks
-remain separate from a signed phone release, OTA, installed API availability
+[the development record](DEVELOPMENT.md).
+
+The compact controls at `4ef7255` passed four creation journeys on API 36,
+including both album flows, with inspected English/Chinese 150% renders.
+These are the same four journeys rerun after the layout change.
+
+Source and generated emulator checks remain separate from a signed phone release,
+OTA, installed API availability
 and family acceptance.

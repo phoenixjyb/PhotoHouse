@@ -38,6 +38,67 @@ after a process restart and a fresh authorized detail read. Its encrypted record
 contains only location identifiers and revision metadata. The matching location
 is an offer; restoring it and opening its original media remain separate actions.
 
+## Explicit memoir narration continuation
+
+After local Web speech finishes a chapter, a memoir reader can offer **Read next
+chapter aloud / 继续朗读下一章** when that same story has another chapter. The
+button advances and starts speech only on an explicit click. It does not cross
+to a different story, fetch source audio, invoke a provider or start recording.
+Manual navigation, replay, stopping, reader replacement and scope changes
+invalidate the old action. Active capture or an unfinished dictation helper
+refuses continuation. The current reader, book revision, ordered child list and
+exact story/chapter snapshot must still match.
+
+Source `ce2467c` passed 24 generated memoir browser checkpoint groups and the
+complete 19-suite Web profile. Chinese and English 390 px/150% renders were
+visually inspected. Browser speech uses an installed local voice; the synthetic
+speech adapter does not qualify a household device's voice or audio quality.
+
+The phone also has separate [memoir reading continuity](PHONE_MEMOIR_READING_CONTINUITY.md),
+with fresh parent/child authorization before a location is offered and explicit
+Continue or Start over. Story and memoir records have separate encryption domains.
+
+## Manual memoir story boundaries
+
+Web source `074d096` labels a cross-story step **Next story / 下一则故事** or
+**Previous story / 上一则故事**. Within a story, the chapter labels remain.
+Moving to another story freshly reauthorizes the book before the child; the
+new heading receives focus. Previous, Next and Contents callbacks check their
+attached controls and rendered account/library/book/ordered-child/story/chapter
+snapshot before stopping speech or changing the reading pane. An old close
+event cannot stop a replacement reader's narration.
+
+The 24-checkpoint memoir journey and final complete 19-suite profile passed.
+The first full profile timed out opening the workspace after a saved story's
+Edit action. Two isolated workspace runs and the final full run passed without
+source or test changes; that first failure's cause remains unknown. Both
+English/Chinese 390 px/150% story-boundary controls were inspected.
+
+## Original memoir contents and media cards
+
+The phone original reader has a collapsed **Contents / 目录** panel. Opening it
+uses the book's already loaded story summaries and the current story's chapters;
+it does not fetch every child or original media. An explicit story choice uses
+the normal fresh parent/child read. A chapter choice uses the loaded current
+story. Current rows are marked and disabled so tapping them does not reset the
+reading position. Previous/Next controls remain available.
+
+Manual phone controls retain the exact rendered account, generation, library,
+reader instance, book revision, ordered child revisions, chapter, page and
+selected moment. A detached control cannot move the replacement reader or write
+its bookmark. Opening media checks this scope both before and after the leave
+confirmation. Numbered media cards expose their selected state to accessibility
+services; a dedicated current-label line keeps failed-preview text readable at
+150% text size. Choosing a card changes only the preview selection.
+
+The Web original memoir reader numbers photos and videos within each chapter,
+using those positions in alternative text, open controls and visible captions.
+Date captions still identify the recorded capture-date source. Captions scale
+with text size; two-item mobile chapters give both captions a full-width row.
+Late preview errors and old open-media callbacks check their attached control
+and exact rendered story/chapter before fetching a fallback, changing the DOM,
+closing the reader or stopping replacement speech.
+
 ## Evidence and delivery
 
 Generated browser journeys cover keyboard navigation, narrow bilingual renders,

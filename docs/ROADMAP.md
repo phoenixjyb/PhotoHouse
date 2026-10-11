@@ -52,6 +52,20 @@ The phone source at `b3ddd57` completes [album-to-story selection](PHONE_ALBUM_T
 so an existing ordered album can prepare a story without selecting every moment
 again. The complete Android source profile and bilingual simulator journeys
 passed; release and family acceptance remain separate from these checks.
+The compact selection controls at `4ef7255` retain the visible selection limit
+and fold secondary album/theme/language controls. [Memoir reading continuity](PHONE_MEMOIR_READING_CONTINUITY.md)
+at `c3e2706` preserves an exact, encrypted location and offers it only after fresh
+parent/child checks. [Explicit next-chapter narration](MEMOIR_NARRATION_CONTINUATION.md)
+at phone `92b1285` and Web `ce2467c` extends listening within one story; finishing
+alone does not advance or start another chapter. The phone complete source
+profile passed with a 945-test report inventory, lint and debug builds.
+These slices still require served/signed delivery and a family walkthrough.
+Phone `a0fdbca` now adds collapsed original memoir contents and guarded direct
+story/chapter selection, with nine generated emulator journeys and a complete
+949-test Android report inventory. Web `210222b` adds scalable numbered media
+captions and fences old media actions, with 27 focused checkpoint groups and
+the complete 19-suite profile. The bilingual enlarged-text renders were
+inspected; none of these source checks publishes an update.
 Do not automatically publish private memories to Home TV.
 
 ### Guarded activation preparation

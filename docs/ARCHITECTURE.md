@@ -64,6 +64,19 @@ revision, chapter and asset before offering an explicit resume. Automatic previe
 loads do not create a pointer. Current denial and logout clear only the matching
 account; stale work cannot erase a replacement account's positions.
 
+[Memoir reading continuity](PHONE_MEMOIR_READING_CONTINUITY.md) extends the
+location contract to a book and its ordered child revisions. Metadata-only
+parent/child reads precede an offer; explicit Continue reauthorizes both again.
+Story and memoir records use fixed, separate encryption domains, with the
+existing story envelope retained for compatibility. Original media and speech
+remain independent user actions.
+
+[Next-chapter narration](MEMOIR_NARRATION_CONTINUATION.md) is a transient,
+single-use user intent rather than an automatic playlist. Source and destination
+snapshots bind exact adjacent chapters inside one story. Foreground, recording,
+wording and access checks precede the one start attempt; refusal never causes
+a later retry. Local speech completion alone does not navigate the reader.
+
 [Phone album-to-story selection](PHONE_ALBUM_TO_STORY.md) reads the existing
 protected album directory and rechecks a displayed album before atomically
 seeding an unsaved editor. It preserves the complete album cohort for bounded
@@ -276,6 +289,15 @@ titles. It adds no narration or original contribution to that preparation and
 keeps the conversation attached to the whole memoir. The user reviews and sends
 through existing controls; server source checks still run at submission and
 processing. A loaded chapter is a reading position, not a new permission scope.
+
+Original memoir navigation retains a separate rendered-state binding. The
+phone binding includes account/access generation, library, reader instance,
+book and ordered child revisions, chapter, frame page and selected media. It
+is checked before navigation and again after a deferred leave confirmation.
+The collapsed contents panel renders loaded summaries/current chapters only;
+an explicit child choice still uses the existing authorized metadata path.
+Web media controls additionally require their DOM attachment and rendered
+story/chapter to match before opening media or handling preview failures.
 
 The [conversation navigation hint](CONVERSATION_NAVIGATION.md) is client process
 state, separate from server conversation history and pending submission receipts.
