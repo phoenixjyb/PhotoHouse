@@ -11251,6 +11251,57 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "October 12 memoir composer, voice and conversation continuation documentation",
+      "source_commit": "61b3fc29634bd6bd59ce2aa05a814f0d7e144a14",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": null,
+          "sha256": "03037ae00a0246935db21cb266bc21727101f30bd154fee1adb29d4e16c1abe0"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "b461c653b7f485f1793a72d8005bab61b7ca108b88328da01b07d01757224715",
+          "sha256": "db7848179fb781f38e5cadf0c6073e53c87032f542d36cdb7071cee297ed2ae7"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "0fc010d625a9def4fa4dce95720865dc1f4f56fff622da239e5947e63869ca4d",
+          "sha256": "53bb7f55c40a3cb017babf3ba827b3ebd3bc88e03c4f71d109981b3956235209"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "5e43c65ef58bbe51446c321962d95e062cadc8f55045bc992c711c6f52ef5412",
+          "sha256": "b6dd04d96d814b6a9d07cca5d1f5eef3c34d501c011379c3df79573cd4fbd5da"
+        },
+        {
+          "path": "docs/MEMOIR_INTRODUCTION_DICTATION.md",
+          "before_sha256": null,
+          "sha256": "658276ac2edfaa39e2dd7197c982cc567400b37175c33ffeaba565a4750b72c9"
+        },
+        {
+          "path": "docs/MEMORY_CHAT_CONTINUATION.md",
+          "before_sha256": null,
+          "sha256": "d40e0e9b71c7f1ef8b86f6a4ff8979fe9e293a05954c5a0a350c90fe801512d5"
+        },
+        {
+          "path": "docs/PHONE_MEMOIR_COMPOSITION.md",
+          "before_sha256": null,
+          "sha256": "15a58842c8b831a7512b0681380c341c7bb094ecc8b3834220aef19795fa51f6"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "ee990323200cac43daed61a40d3f4fc4bd81501cb578beb399b02037d648e902",
+          "sha256": "0281810bd8d22da4896f7bd803ec9942043c3740d795a266c2b00d0cfe67c886"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
