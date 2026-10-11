@@ -10933,6 +10933,47 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Chat navigation and assistant response architecture, roadmap and local qualification record",
+      "source_commit": "62e01badf3b709a75241a1c93e62b6a15c0d0068",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "494a739df600dc6888fd8f5e76baa791035eea50e0924e714d277ad9e7e8756b",
+          "sha256": "b461c653b7f485f1793a72d8005bab61b7ca108b88328da01b07d01757224715"
+        },
+        {
+          "path": "docs/ASSISTANT_RESULT_COMPATIBILITY.md",
+          "before_sha256": null,
+          "sha256": "b78c5449825cc6c8bab65d3c14418c432774d08561f3bcc55bac21efb65afa12"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "9636120d0481c014cbf8f9461341e2f019812058f5e7ad28d91d8ddfa116d7e1",
+          "sha256": "0fc010d625a9def4fa4dce95720865dc1f4f56fff622da239e5947e63869ca4d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f0152afdf127960b99b2d9dff1adf31d57b75700a38be8f577f5f167294cd148",
+          "sha256": "5e43c65ef58bbe51446c321962d95e062cadc8f55045bc992c711c6f52ef5412"
+        },
+        {
+          "path": "docs/PHONE_MEMORY_CHAT_NAVIGATION.md",
+          "before_sha256": null,
+          "sha256": "c88851addf7fb94e7e36ef3eb6cce88ee7ea75495285a6b959eb5cea9fe746f5"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "ee226ad10f704c6989035bf4ee93605f1f23e56cc355571ac6801052a17fcdff",
+          "sha256": "ee990323200cac43daed61a40d3f4fc4bd81501cb578beb399b02037d648e902"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
