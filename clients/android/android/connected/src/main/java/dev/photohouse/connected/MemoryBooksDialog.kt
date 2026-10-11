@@ -126,8 +126,8 @@ internal fun MemoryBooksDialog(
         reading.selectedBook?.id, reading.selectedBook?.revision) { rememberScrollState() }
     val originalStart = remember(liveState.session?.account_id, liveState.generation,
         reading.library, book?.id, book?.revision) { BringIntoViewRequester() }
-    LaunchedEffect(reading.readerScopeId, story?.id, story?.revision) {
-        if (narrativeExpanded && story != null && !reading.readerBusy) {
+    LaunchedEffect(reading.readerScopeId, story?.id, story?.revision, chapter?.id) {
+        if (story != null && chapter != null && !reading.readerBusy) {
             withFrameNanos { }
             originalStart.bringIntoView()
         }

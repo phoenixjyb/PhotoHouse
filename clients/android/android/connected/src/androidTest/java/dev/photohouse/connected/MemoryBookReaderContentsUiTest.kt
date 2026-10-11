@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -81,6 +82,7 @@ class MemoryBookReaderContentsUiTest {
 
         rule.onNodeWithTag("memory-book-reader-contents-chapter-2").performScrollTo().performClick()
         awaitReader(store, storyIndex = 1, chapterIndex = 2)
+        rule.onNodeWithTag("memory-book-story-title").assertIsDisplayed()
         assertEquals("chapter navigation reuses the already loaded child", childReadsBeforeExpand, api.childReads)
         assertEquals("chapter navigation bookmarks the selected reading position", "chapter-3",
             positions.load(GeneratedMemoirReaderApi.ACCOUNT).single().chapterId)
@@ -95,6 +97,7 @@ class MemoryBookReaderContentsUiTest {
             childReadsBeforeExpand + 1, api.childReads)
         assertEquals("story-0 id is the fixture's first child", GeneratedMemoirReaderApi.FIRST,
             store.state.value.memoryBooks?.story?.id)
+        rule.onNodeWithTag("memory-book-story-title").assertIsDisplayed()
         assertEquals(0, api.originalCalls)
         assertEquals(0, api.videoCalls)
     }
