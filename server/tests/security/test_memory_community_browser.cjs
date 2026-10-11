@@ -68,9 +68,9 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
       if(index>=0){
         // Controlled response adapter adds an ephemeral family-source example
         // to exercise source-label rendering; nothing is written to SQLite.
-        const section=payload.chapters[0],source={id:`memoir-ui-source-${index+1}`,source:index===0?'family':'ai',title:index===0?'合成家人回忆':'',text:index===0?'<strong>家人原话</strong> · 仅作界面测试':`第 ${index+1} 篇的合成 AI 参考`};
+        const section=payload.chapters[0],source=index===0?{id:'family-00000000-0000-4000-8000-000000000001',source:'family',title:'合成家人回忆',text:'<strong>家人原话</strong> · 仅作界面测试',origin_asset_id:'101',byline:'合成家庭成员',revision:1}:{id:`memoir-ui-source-${index+1}`,source:'ai',title:'',text:`第 ${index+1} 篇的合成 AI 参考`};
         if(!section||payload.items.length!==2)throw new Error('Memoir reader fixture lacks two chapter assets');
-        for(const item of payload.items)item.evidence.push(source);
+        for(const item of (index===0?payload.items:payload.items.slice(0,1)))item.evidence.push(source);
         section.evidence_ids=[source.id];memoirEvidence.set(payload.id,source);responseBody=Buffer.from(JSON.stringify(payload));
       }
     }
@@ -197,7 +197,7 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     assert.equal(await firstSources.locator(`[data-evidence-id="${firstMemoirSource.id}"]`).count(),1,'a source shared by both chapter assets is displayed once');
     assert.match(await firstSources.textContent(),/不代表已核实事实/);
     assert.match(await firstSources.textContent(),firstMemoirSource.source==='ai'?/AI 观察 · 需核对/:/家人提供的文字/);
-    if(firstMemoirSource.source==='family'){assert.equal(await firstSources.locator('[data-evidence-id] p strong').count(),0,'family-source text remains literal');assert.equal(await firstSources.locator('[data-evidence-id] p').textContent(),'<strong>家人原话</strong> · 仅作界面测试');}
+    if(firstMemoirSource.source==='family'){assert.equal(await firstSources.locator('[data-evidence-id] p strong').count(),0,'family-source text remains literal');assert.equal(await firstSources.locator('[data-evidence-id] > p').first().textContent(),'<strong>家人原话</strong> · 仅作界面测试');assert.match(await firstSources.textContent(),/原记录署名: 合成家庭成员/,'canonical family fixture retains its required attribution');}
     await page.getByRole('tab',{name:'一起聊回忆',exact:true}).click();
     await page.locator('#memory-book-reader').getByRole('button',{name:'新建讨论',exact:true}).click();
     const memoirMessage=page.locator('#memory-book-reader textarea[name=message]');await memoirMessage.waitFor();
