@@ -10372,6 +10372,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Partial workspace source-refresh initialization",
+      "source_commit": "b5ebf2bd0f3688ea7064ff162ed2db39d87b9a10",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "83b8c19cb0121d6412b570ef16cc5247da1d7912719b84c352381981e0297689",
+          "sha256": "11f343ba47ba10730ac9616798878161df25029fbbff8646a41beffb55628ca3"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "7613dcb59647e5ff8542f6f2413315d412e2e619fff58d7e6e12e9646c799fe0",
+          "sha256": "ab3c0dd6aba25fec2f0fb3e06dc2c18e2d5c4274af7e5c6fd2df31d5e7bf8686"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
