@@ -9,6 +9,7 @@ import okhttp3.tls.*
 import org.junit.*
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.Proxy
 
 class BrowseTest {
     private fun examples() = Json.parseToJsonElement(javaClass.classLoader.getResourceAsStream("browse-v1.json")!!.use { it.readBytes().toString(Charsets.UTF_8) }).jsonArray
@@ -32,7 +33,7 @@ class BrowseTest {
         val server = MockWebServer(); server.useHttps(HandshakeCertificates.Builder().heldCertificate(certificate).build().sslSocketFactory(), false); server.start()
         try {
             val trust = HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
-            val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+            val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
                 .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
             val api = HttpsCatalogApi(HomeOrigin.parse("https://home.example:${server.port}"), client, 3, true)
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setHeader("Cache-Control", "no-store")
@@ -106,7 +107,7 @@ class BrowseTest {
         val server=MockWebServer();server.useHttps(HandshakeCertificates.Builder().heldCertificate(certificate).build().sslSocketFactory(),false);server.start()
         try {
             val trust=HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
-            val client=OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(),trust.trustManager)
+            val client=OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(),trust.trustManager)
                 .dns(object:Dns { override fun lookup(hostname:String)=listOf(InetAddress.getLoopbackAddress()) }).build()
             val api=HttpsCatalogApi(HomeOrigin.parse("https://home.example:${server.port}"),client,3,true)
             for (index in listOf(2,3)) {

@@ -9,6 +9,7 @@ import okio.Buffer
 import org.junit.Test
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.Proxy
 
 private fun demandResource(name: String) = requireNotNull(CatalogWire::class.java.classLoader.getResourceAsStream(name)).use { it.readBytes() }
 private fun demandFeed() = CatalogWire.feed(demandResource("catalog-v3.json"), 1, version = 3)
@@ -33,7 +34,7 @@ class OnDemandTest {
         server.useHttps(HandshakeCertificates.Builder().heldCertificate(certificate).build().sslSocketFactory(), false)
         server.start(InetAddress.getByName("127.0.0.1"), 0)
         val trust = HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
-        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getByName("127.0.0.1")) }).build()
         try {
             val api = HttpsCatalogApi(HomeOrigin.parse("https://home.photohouse.test:${server.port}"), client, 3)

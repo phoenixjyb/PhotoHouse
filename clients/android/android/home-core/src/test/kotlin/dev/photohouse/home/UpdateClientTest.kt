@@ -14,6 +14,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.net.InetAddress
+import java.net.Proxy
 import java.security.MessageDigest
 
 class UpdateClientTest {
@@ -28,7 +29,7 @@ class UpdateClientTest {
         val serverTls = HandshakeCertificates.Builder().heldCertificate(certificate).build()
         val clientTls = HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
         server = MockWebServer(); server.useHttps(serverTls.sslSocketFactory(), false); server.start(InetAddress.getLoopbackAddress(), 0)
-        val client = OkHttpClient.Builder().sslSocketFactory(clientTls.sslSocketFactory(), clientTls.trustManager)
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(clientTls.sslSocketFactory(), clientTls.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         api = HttpsUpdateClient(HomeOrigin.parse("https://updates.example:${server.port}"), client)
     }
