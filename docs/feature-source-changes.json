@@ -9956,6 +9956,22 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Canonical shared-source memoir browser fixture",
+      "source_commit": "5991695261d8ffa1770aaa6f086a5afc184b8b3b",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "2db7a4dec4246a49a285007e6f6a0d6c40c8caf26fcad3c7c4a79272c33f67ab",
+          "sha256": "bef1623b0d80feb1625b83adc632f014185b8ba60de866be4ef2315e5a3eb3b5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
