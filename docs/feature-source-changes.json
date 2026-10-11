@@ -10567,6 +10567,62 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Explicit phone memoir next-chapter narration and consumed local speech intents",
+      "source_commit": "92b128528ad83f2693a780f1de13e20544eccaac",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ChapterReadAloudUiTest.kt",
+          "before_sha256": "dcc575febc47df447d335a1eead622a3e48564a3ac90aa6f07609e370c6db07c",
+          "sha256": "37f825382e128318752f9bbb7719e7d79686be6e19a54a8c6b54854bbfc9aee2"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GeneratedMemoirReaderApi.kt",
+          "before_sha256": null,
+          "sha256": "1e2377a5a18842fadf84819748559ca236f11c13558ff260f27bf6539476ce63"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookNarrationContinuationUiTest.kt",
+          "before_sha256": null,
+          "sha256": "a102bb16b8d2371656da169b868e3398a0527a00b4affa289831a00e3056d914"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReadingContinuityUiTest.kt",
+          "before_sha256": "377f6e88dd8bbfa4d5302a5d93496c0be66b937bb8133c9bdfc6890123591099",
+          "sha256": "1fdfaed280751ab98e1b62f51e44162235b88439763410f37ce355f8236cb243"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ChapterReadAloud.kt",
+          "before_sha256": "a80317e7c4f3a112ffd64a282dc7119a032aa6aa155fe679cd774e2b2be21487",
+          "sha256": "9ea52fc3acb9c9666750a5826dfe3a642f088d178025dd9601d3e79405c99076"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookChapterNarration.kt",
+          "before_sha256": null,
+          "sha256": "60103f4328e1aeec7f83f9610c6c28cf2ac3f26c5dc8341739f1581473d3c8ad"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "0f1fd42287c92e4a723b3ac5fb95c62cd6dacd48c312ae032eff8503746c6f42",
+          "sha256": "3eb52dd7de0bf01f0d72b734ed0a907779bcf0ae69565a180c3e70d906e3dbbe"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "1603f53b828fb4f1dc4d4536fd18b20606209eba68b57a52492da21f424b2667",
+          "sha256": "d9038037382cfac1e6070c3ec3c28b6f679d37ece4f184ff1005ccb61f81f9b5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "7d01c3c25e03a100fd1998ecc5540f79ab23fac2bb969e46e163818578780d12",
+          "sha256": "860c1bce9c7fe185a52177e9a3a41689c412d0715301ca7ccade1d07ef55711c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
