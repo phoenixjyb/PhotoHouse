@@ -10028,6 +10028,47 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Chapter writing and saved story recovery documentation",
+      "source_commit": "d7691103dc84fafa5a8740912a8de49d696d82d5",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "9c0e23aad1fd47de376bd5a7fc716eb3bd06e927d5f311b98e2600b7cf143d0a",
+          "sha256": "1ff05feb01d90568703a4ad7dcb0afe8af332da2d6ff2d772edd427981c22cd8"
+        },
+        {
+          "path": "docs/CHAPTER_SOURCE_CHOICES.md",
+          "before_sha256": "10b5fed79b8eb6a79397d1175ddb4db898cb6d1602ac46e2bb8b08940eeffdad",
+          "sha256": "61d231062095f9f9bad281a39d809bb3bb614ba3709c8952a57fd02e3f7020c4"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "78582c49f913922e1434b447409794a4285e053f5aa2545819ad524b0161afae",
+          "sha256": "f887cb86f56e250d6f5b7ef178e93b0ca1ced10668564699151be7f79340e9ff"
+        },
+        {
+          "path": "docs/PHONE_SAVED_STORY_EDITING.md",
+          "before_sha256": null,
+          "sha256": "18f73f8f40e86598e07ad7553bb212dc21cfc168f1267f6b32562f1796e11952"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "8466a9e918c4acbfba2a8ab7115051c46eb4cf22587731e0b19493f8bca44303",
+          "sha256": "3fa57d1819c400c8bfe95f2bb8ea75e8edeebeb4426431728b67fcf1b5a3880f"
+        },
+        {
+          "path": "docs/STORY_CHAPTER_DICTATION.md",
+          "before_sha256": "cc8bc7ad5fda85230a3ec27fcdbc761eaa07abf2315eb1dd3161ca99cd22378d",
+          "sha256": "7aad65e2d8f24d30ecd82a63d562cef49ea7bc30f22e881956e6918a3f07869a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
