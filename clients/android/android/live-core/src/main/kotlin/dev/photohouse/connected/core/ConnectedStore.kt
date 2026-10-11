@@ -15,7 +15,7 @@ private const val MEMORY_BOOK_CHAPTER_ASSET_LIMIT = 8
 enum class GalleryMedia(val wire: String) { ALL("all"), PHOTOS("image"), VIDEOS("video"), PREPARED_VIDEOS("prepared_video");
     val assetKind get() = if (this == PREPARED_VIDEOS) "video" else wire
 }
-enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE }
+enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, MEMORY_CONVERSATION_FULL, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE }
 data class LiveProblem(val message: Message, val retryAtMillis: Long = 0, val playbackFailure: VideoPlaybackFailure? = null)
 /** Only the current page's IDs, never a persistent or cross-library history. */
 data class PhotoNavigation(val page: Int, val assetIds: List<String>, val index: Int, val discovery: PhoneDiscoveryState? = null, val media: GalleryMedia = GalleryMedia.ALL, val videoIds: Set<String> = emptySet())
@@ -57,6 +57,8 @@ data class MemoryBooksReading(
     val readerScopeId: Long = 0,
     val sourceInspection: MemoryBookEditorialSourceInspectionState = MemoryBookEditorialSourceInspectionState(),
     val companion: MemoryBookChatState? = null,
+    /** Identity of the freshly authorized shelf; independent of child reading navigation. */
+    val shelfScopeId: Long = 0,
 )
 data class MemoryBookEditorialSourceInspectionState(
     val source: EditorialSourceIdentity? = null,
@@ -73,6 +75,7 @@ data class MemoryBookChatState(
     val turns: MemoryTurnPage? = null, val job: MemoryJob? = null,
     val pendingConversation: MemoryConversationRequest? = null, val pendingTurn: MemoryTurnRequest? = null,
     val pendingTurnConversationId: String? = null,
+    val continuation: MemoryChatContinuation? = null,
     /** Composer text stays in memory and is partitioned by conversation ID. */
     val threadDrafts: Map<String, String> = emptyMap(),
     val chatDraftFocusRequestId: Int = 0,
@@ -128,6 +131,24 @@ data class MemoryBookReaderNavigationScope(
     val framePage: Int,
     val selectedAssetId: String?,
 )
+data class MemoryStoryChatContinuationScope(
+    val accountId: String, val generation: Long, val libraryId: String, val readerScopeId: Long,
+    val storyId: String, val storyRevision: Long, val sourceFingerprint: String,
+    val conversationId: String, val rejectedTurn: MemoryTurnRequest,
+)
+data class MemoryBookChatContinuationScope(
+    val accountId: String, val generation: Long, val libraryId: String, val readerScopeId: Long,
+    val bookId: String, val bookRevision: Long, val orderedChildren: List<MemoryBookReaderNavigationChild>,
+    val storyId: String, val storyRevision: Long, val sourceFingerprint: String,
+    val conversationId: String, val rejectedTurn: MemoryTurnRequest,
+)
+data class MemoryChatContinuation(
+    val sourceConversationId: String,
+    val rejectedTurn: MemoryTurnRequest,
+    val storyScope: MemoryStoryChatContinuationScope? = null,
+    val bookScope: MemoryBookChatContinuationScope? = null,
+)
+enum class MemoryConversationContinuationResult { STARTED, BLOCKED, STALE, LIMIT, ALREADY_PENDING }
 data class MemoryBookEditorialCatalogState(
     val busy: Boolean = false, val unavailable: Boolean = false,
     val sources: List<EditorialSourceIdentity> = emptyList(),
@@ -143,6 +164,7 @@ data class MemoryCommunityStoryState(
     val pendingText: MemoryContributionRequest? = null, val pendingAudio: MemoryContributionRequest? = null,
     val pendingConversation: MemoryConversationRequest? = null, val pendingTurn: MemoryTurnRequest? = null,
     val pendingNarrative: MemoryNarrativeRequest? = null,
+    val continuation: MemoryChatContinuation? = null,
     /** Composer text stays in memory and is partitioned by conversation ID. */
     val threadDrafts: Map<String, String> = emptyMap(),
     val contributionDraft: String = "", val contributionConsent: Boolean = false, val audioConsent: Boolean = false,
@@ -185,6 +207,16 @@ private suspend fun recoverPendingChatJob(
 
 private fun dictationHasUnfinishedInput(dictation: MemoryDictationStore?): Boolean =
     dictation?.state?.value?.let { it.loading || it.recording || it.transcribing || it.transcript != null } == true
+
+private fun continuationDraft(rejected: String, later: String): String? {
+    val combined = when {
+        rejected.isBlank() -> later
+        later.isBlank() || later == rejected -> rejected
+        later.startsWith("$rejected\n") -> later
+        else -> "$rejected\n$later"
+    }
+    return combined.takeIf { it.toByteArray(Charsets.UTF_8).size <= 4096 && it.none { ch -> ch == '\u0000' } }
+}
 
 private fun nextRequestId(current: Int): Int = if (current == Int.MAX_VALUE) 1 else current + 1
 
@@ -404,6 +436,72 @@ class ConnectedStore(
                 MemoryCommunityBinding(currentToken, currentLibrary, state.value.generation) else null
         }, onDenied = ::memoryCommunityDenied)
     }
+    private val bookCompositionDictation = MemoryBookCompositionDictationStore(
+        api, scope, ::currentMemoryBookCompositionDictationScope, ::memoryCommunityDenied)
+    val memoryBookCompositionDictationState get() = bookCompositionDictation.state
+    val memoryBookCompositionDictationCoordinator get() = bookCompositionDictation
+
+    private val bookCompositionStore = memoryCommunity?.let {
+        MemoryBookCompositionStore(api, it, scope, ::currentMemoryBookCompositionScope,
+            onDenied = ::memoryCommunityDenied, hasUnfinishedInput = { bookCompositionDictation.hasUnfinishedInput })
+    }
+    private val emptyBookCompositionState = MutableStateFlow(MemoryBookCompositionStoreState())
+    val memoryBookCompositionState get() = bookCompositionStore?.state ?: emptyBookCompositionState.asStateFlow()
+    val memoryBookCompositionCoordinator get() = bookCompositionStore
+
+    private fun currentMemoryBookCompositionScope(): MemoryBookCompositionScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library ||
+            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy || reading.selectedBook != null ||
+            reading.capabilities?.enabled != true || reading.result?.canCreate != true) return null
+        return MemoryBookCompositionScope(account, credential, state.value.generation, reading.library,
+            reading.shelfScopeId, ownerCanCreate = true)
+    }
+
+    private fun currentMemoryBookCompositionDictationScope(): MemoryBookCompositionDictationScope? {
+        val current = currentMemoryBookCompositionScope() ?: return null
+        val draft = memoryBookCompositionState.value
+        if (draft.accountId != current.accountId || draft.generation != current.generation ||
+            draft.library != current.library || draft.shelfScopeId != current.shelfScopeId ||
+            draft.status != MemoryBookCompositionStatus.READY || !draft.canCreate || draft.pendingRetry) return null
+        return MemoryBookCompositionDictationScope(current.accountId, current.credential, current.generation,
+            current.library, current.shelfScopeId, draft.actionEpoch, editable = true)
+    }
+
+    fun startMemoryBookComposition(account: String, generation: Long, library: String, shelfScopeId: Long,
+                                   defaultTitle: String, language: String): Boolean {
+        val current = currentMemoryBookCompositionScope() ?: return false
+        if (current.accountId != account || current.generation != generation || current.library != library ||
+            current.shelfScopeId != shelfScopeId || memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
+        bookCompositionDictation.clear()
+        return bookCompositionStore?.open(defaultTitle, language) == true
+    }
+
+    fun closeMemoryBookComposition(shelfScopeId: Long, actionEpoch: Long) {
+        val draft = memoryBookCompositionState.value
+        if (draft.shelfScopeId != shelfScopeId || draft.actionEpoch != actionEpoch) return
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close(shelfScopeId, actionEpoch)
+    }
+
+    /** Opens only a verified result of this exact local composer, through the existing protected reader. */
+    fun openComposedMemoryBook(account: String, generation: Long, library: String,
+                              shelfScopeId: Long, actionEpoch: Long, bookId: String): Boolean {
+        val current = currentMemoryBookCompositionScope() ?: return false
+        val composition = memoryBookCompositionState.value
+        val created = composition.createdBook ?: return false
+        if (current.accountId != account || current.generation != generation || current.library != library ||
+            current.shelfScopeId != shelfScopeId || composition.actionEpoch != actionEpoch ||
+            composition.status != MemoryBookCompositionStatus.CREATED || composition.busy || composition.pendingRetry ||
+            created.id != bookId) return false
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close(shelfScopeId, actionEpoch)
+        openMemoryBookSummary(created)
+        return true
+    }
+
     private val bookNarrativeStore = memoryCommunity?.let {
         MemoryBookNarrativeStore(it, scope, ::currentMemoryBookNarrativeScope)
     }
@@ -471,6 +569,8 @@ class ConnectedStore(
     private fun invalidate(keepIdentity: Boolean, cover: Boolean = false, preserveConversationNavigation: Boolean = false) {
         if (!keepIdentity || !preserveConversationNavigation) memoryConversationNavigation.clear()
         clearMemoryBookEditorial()
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         val previous = state.value
         groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
         groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
@@ -1826,6 +1926,8 @@ class ConnectedStore(
     fun openMemoryBooks(page: Int = 1) {
         if (!memoryCommunityAvailable || !allowed() || state.value.busy || coolingDown() || page !in 1..100000) return
         clearMemoryBookEditorial()
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         val library = state.value.library ?: return
         val previous = state.value.memoryBooks
         invalidateBookChatRequests()
@@ -1833,23 +1935,25 @@ class ConnectedStore(
         wipeMemoryBookMedia(state.value.memoryBooks)
         val request = ++memoryBooksRequest
         memoryBooksReaderRequest++
-        mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, busy = true))
+        mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, busy = true, shelfScopeId = request))
         launch { generation ->
             val credential = token ?: return@launch
+            fun currentShelf() = active(generation) && request == memoryBooksRequest &&
+                state.value.library == library && state.value.memoryBooks?.shelfScopeId == request
             try {
                 val repository = memoryCommunity ?: return@launch
-                val capabilities = repository.loadCapabilities()
+                val capabilities = repository.loadCapabilities(::currentShelf)
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 validResponse(capabilities.enabled)
-                val result = repository.books(page)
+                val result = repository.books(page, ::currentShelf)
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 validResponse(result.libraryId == library && result.page == page && result.items.size <= 8)
-                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, capabilities = capabilities, result = result))
+                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, capabilities = capabilities, result = result, shelfScopeId = request))
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 if (e is ApiFailure && e.status in listOf(401, 403)) readFailure(e, generation, credential) { closeMemoryBooks() }
-                else mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, problem = problem(e)))
+                else mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, problem = problem(e), shelfScopeId = request))
             }
         }
     }
@@ -1857,6 +1961,12 @@ class ConnectedStore(
     fun openMemoryBook(bookId: String) {
         val reading = state.value.memoryBooks ?: return
         val summary = reading.result?.items?.firstOrNull { it.id == bookId } ?: return
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
+        openMemoryBookSummary(summary)
+    }
+
+    private fun openMemoryBookSummary(summary: MemoryBook) {
+        val reading = state.value.memoryBooks ?: return
         if (reading.busy || reading.readerBusy || reading.library != state.value.library || !allowed()) return
         clearMemoryBookEditorial()
         val request = ++memoryBooksReaderRequest
@@ -1879,7 +1989,7 @@ class ConnectedStore(
                 token === credential && identity?.account_id == accountId && state.value.memoryBooks?.library == library && bookChatEpoch == epoch
             try {
                 val repository = memoryCommunity ?: return@launch
-                val book = repository.book(summary.id, summary.revision)
+                val book = repository.book(summary.id, summary.revision, ::current)
                 if (!current()) return@launch
                 validResponse(book.id == summary.id && book.revision == summary.revision && book.stories == summary.stories)
                 val conversations = if (reading.capabilities?.generationEnabled == true) try {
@@ -2015,7 +2125,7 @@ class ConnectedStore(
                 state.value.memoryBooks?.selectedBook?.revision == selected.revision
             try {
                 val repo = memoryCommunity ?: return@launch
-                val fresh = repo.book(selected.id, selected.revision)
+                val fresh = repo.book(selected.id, selected.revision, ::current)
                 if (!current()) return@launch
                 validResponse(fresh.id == selected.id && fresh.revision == selected.revision && fresh.stories == selected.stories &&
                     fresh.stories.getOrNull(index) == entry)
@@ -2063,6 +2173,7 @@ class ConnectedStore(
         memoryBooksReaderRequest++
         memoryBooksMediaRequest++
         val reading = state.value.memoryBooks ?: return
+        val createdOutsidePage = reading.selectedBook?.id?.let { id -> reading.result?.items?.none { it.id == id } } == true
         reading.companion?.dictation?.close()
         wipeMemoryBookMedia(reading)
         mutable.value = state.value.copy(memoryBooks = reading.copy(selectedBook = null, storyIndex = null,
@@ -2072,9 +2183,12 @@ class ConnectedStore(
             heroAssetId = null, hero = null, heroBusy = false, heroUnavailable = false,
             resumePosition = reading.selectedBook?.let { findMemoryBookResume(reading.library, it) },
             readerScopeId = memoryBooksReaderRequest, companion = null))
+        if (createdOutsidePage) openMemoryBooks(1)
     }
 
     fun closeMemoryBooks() {
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         clearMemoryBookEditorial()
         invalidateBookChatRequests()
         memoryBooksRequest++; memoryBooksReaderRequest++
@@ -2310,13 +2424,15 @@ class ConnectedStore(
         val request = ++memoryBookEditorialRequest
         memoryBookEditorialCatalog.value = MemoryBookEditorialCatalogState(busy = true)
         launch { generation ->
+            fun current() = active(generation) && request == memoryBookEditorialRequest && token === credential &&
+                state.value.library == reading.library && state.value.memoryBooks?.selectedBook?.id == oldBook.id
             try {
                 val repo = memoryCommunity ?: return@launch
-                val page = repo.books(reading.page)
-                if (!active(generation) || request != memoryBookEditorialRequest || token !== credential || state.value.library != reading.library) return@launch
+                val page = repo.books(reading.page, ::current)
+                if (!current()) return@launch
                 val summary = page.items.firstOrNull { it.id == oldBook.id } ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
-                val fresh = repo.book(summary.id, summary.revision)
-                if (!active(generation) || request != memoryBookEditorialRequest || token !== credential || state.value.library != reading.library) return@launch
+                val fresh = repo.book(summary.id, summary.revision, ::current)
+                if (!current()) return@launch
                 if (fresh.id != oldBook.id || fresh.revision != summary.revision || fresh.stories != summary.stories || !fresh.canEdit)
                     throw ApiFailure(FailureKind.INVALID_RESPONSE)
                 val latest = state.value.memoryBooks ?: return@launch
@@ -2612,7 +2728,15 @@ class ConnectedStore(
         val repository = memoryCommunity ?: return
         val expectedToken = token ?: return
         val library = beforeReading.library; val generation = state.value.generation; val epoch = bookChatEpoch
-        val valid = { bookChatCurrent(before.bookId, before.bookRevision, expectedToken, library, generation, epoch) }
+        val baseValid = { bookChatCurrent(before.bookId, before.bookRevision, expectedToken, library, generation, epoch) }
+        val continuation = before.continuation
+        val continuationRequest = before.pendingConversation
+        val valid = {
+            baseValid() && (continuation == null || state.value.memoryBooks?.companion?.let { live ->
+                live.continuation == continuation && live.pendingConversation == continuationRequest &&
+                    memoryBookContinuationScope(requireFullFailure = false) == continuation.bookScope
+            } == true)
+        }
         mutable.value = state.value.copy(memoryBooks = beforeReading.copy(companion = before.copy(busy = true, failure = null)))
         val job = scope.launch {
             try {
@@ -2621,10 +2745,11 @@ class ConnectedStore(
                 if (!valid()) return@launch
                 val live = state.value.memoryBooks?.companion ?: return@launch
                 val sameThread = result.conversationId == before.conversationId
-                val mergedDraft = if (sameThread && live.draft != before.draft) live.draft else result.draft
+                val mergedDraft = if (before.continuation != null || sameThread && live.draft != before.draft) live.draft else result.draft
                 val merged = result.copy(draft = mergedDraft,
                     threadDrafts = mergeThreadDraftChanges(result.threadDrafts, before.threadDrafts, live.threadDrafts,
-                        before.conversationId, before.draft, live.draft, result.conversationId, mergedDraft, result.conversations),
+                        before.conversationId.takeUnless { before.continuation != null }, before.draft, live.draft,
+                        result.conversationId, mergedDraft, result.conversations),
                     dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation)
                 mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(companion = merged.copy(busy = false, failure = null)))
                 rememberConversationNavigation()
@@ -2647,6 +2772,77 @@ class ConnectedStore(
         job.invokeOnCompletion { bookChatJobs.remove(job) }
     }
 
+    private fun memoryBookContinuationScope(requireFullFailure: Boolean): MemoryBookChatContinuationScope? {
+        val live = state.value
+        val reading = live.memoryBooks ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val chat = reading.companion ?: return null
+        val account = live.session?.account_id ?: return null
+        val conversation = chat.conversationId ?: return null
+        val rejected = chat.pendingTurn ?: return null
+        val child = book.stories.getOrNull(reading.storyIndex ?: return null) ?: return null
+        if (!memoryCommunityAvailable || memoryCommunity == null || token == null || !allowed() ||
+            live.library != reading.library || reading.readerScopeId != memoryBooksReaderRequest ||
+            reading.capabilities?.generationEnabled != true || reading.readerUnavailable ||
+            book.id != chat.bookId || book.revision != chat.bookRevision ||
+            child.id != story.id || child.revision != story.revision || story.libraryId != reading.library ||
+            chat.pendingTurnConversationId != conversation || chat.turns?.conversationId != conversation ||
+            rejected.revision != book.revision || (requireFullFailure && chat.failure?.message != Message.MEMORY_CONVERSATION_FULL)) return null
+        return MemoryBookChatContinuationScope(account, live.generation, reading.library, reading.readerScopeId,
+            book.id, book.revision, Collections.unmodifiableList(book.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) }),
+            story.id, story.revision, story.selectionRevision, conversation, rejected)
+    }
+
+    /** Scope presented to the explicit continue action after a full-conversation refusal. */
+    fun memoryBookChatContinuationScope(): MemoryBookChatContinuationScope? = memoryBookContinuationScope(requireFullFailure = true)
+
+    fun continueMemoryBookChatInNewConversation(expected: MemoryBookChatContinuationScope): MemoryConversationContinuationResult {
+        val reading = state.value.memoryBooks ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.companion ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != null || chat.continuation != null) return MemoryConversationContinuationResult.ALREADY_PENDING
+        if (memoryBookContinuationScope(requireFullFailure = true) != expected) return MemoryConversationContinuationResult.STALE
+        if (reading.selectedBook == null) return MemoryConversationContinuationResult.STALE
+        val narrative = memoryBookNarrativeState.value
+        if (state.value.busy || reading.busy || reading.readerBusy || chat.busy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || bookNarrativeDictation.hasUnfinishedInput ||
+            narrative.busy || narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running") ||
+            memoryBookEditionState.value.hasUnfinishedWork || editorialStore.state.value.status in
+            setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN))
+            return MemoryConversationContinuationResult.BLOCKED
+        val transfer = continuationDraft(expected.rejectedTurn.text, chat.draft)
+            ?: return MemoryConversationContinuationResult.LIMIT
+        val request = MemoryConversationRequest(targetType = "book", targetId = expected.bookId)
+        mutable.value = state.value.copy(memoryBooks = reading.copy(companion = chat.copy(
+            pendingConversation = request, continuation = MemoryChatContinuation(expected.conversationId, expected.rejectedTurn, bookScope = expected),
+            draft = transfer, failure = null, conversationRestored = false,
+            editorialContext = MemoryBookChatEditorialContext.BASIC)))
+        retryStartMemoryBookConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
+    fun retryMemoryBookChatContinuation(
+        expectedScope: MemoryBookChatContinuationScope,
+        expectedRequest: MemoryConversationRequest,
+    ): MemoryConversationContinuationResult {
+        val reading = state.value.memoryBooks ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.companion ?: return MemoryConversationContinuationResult.STALE
+        val continuation = chat.continuation ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != expectedRequest || continuation.bookScope != expectedScope ||
+            continuation.sourceConversationId != expectedScope.conversationId || continuation.rejectedTurn != expectedScope.rejectedTurn ||
+            chat.pendingTurn != expectedScope.rejectedTurn || expectedRequest.targetType != "book" || expectedRequest.targetId != expectedScope.bookId ||
+            memoryBookContinuationScope(requireFullFailure = false) != expectedScope) return MemoryConversationContinuationResult.STALE
+        val narrative = memoryBookNarrativeState.value
+        if (state.value.busy || reading.busy || reading.readerBusy || chat.busy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || bookNarrativeDictation.hasUnfinishedInput || narrative.busy ||
+            narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running") ||
+            memoryBookEditionState.value.hasUnfinishedWork || editorialStore.state.value.status in
+            setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN))
+            return MemoryConversationContinuationResult.BLOCKED
+        retryStartMemoryBookConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
     fun queueMemoryBookConversation() {
         val reading = state.value.memoryBooks ?: return
         val chat = reading.companion ?: return
@@ -2664,20 +2860,37 @@ class ConnectedStore(
     }
 
     fun retryStartMemoryBookConversation() = launchBookChat { repository, before, valid ->
-        if (before.pendingTurn != null) return@launchBookChat before
         val request = before.pendingConversation ?: return@launchBookChat before
-        val conversation = repository.startConversation(request)
-        if (!valid()) return@launchBookChat before
-        val conversations = repository.conversations("book", before.bookId, withPreview = true, currentRequest = valid)
-        if (!valid()) return@launchBookChat before
-        val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
-        if (!valid()) return@launchBookChat before
-        val job = recoverPendingChatJob(repository, turns, before.bookRevision, valid)
+        val continuation = before.continuation
+        val scope = continuation?.bookScope
+        if (continuation != null && (scope == null || memoryBookContinuationScope(requireFullFailure = false) != scope ||
+                scope.conversationId != continuation.sourceConversationId || scope.rejectedTurn != continuation.rejectedTurn || before.pendingTurn != continuation.rejectedTurn ||
+                request.targetType != "book" || request.targetId != before.bookId)) return@launchBookChat before
+        if (continuation == null && before.pendingTurn != null) return@launchBookChat before
+        val requestValid = {
+            valid() && (continuation == null || memoryBookContinuationScope(requireFullFailure = false) == continuation.bookScope &&
+                state.value.memoryBooks?.companion?.pendingConversation == request)
+        }
+        if (!requestValid()) return@launchBookChat before
+        val conversation = repository.startConversation(request, requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (conversation.id != request.id) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val conversations = repository.conversations("book", before.bookId, withPreview = true, currentRequest = requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (continuation != null && conversations.items.none { it.id == conversation.id }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (turns.conversationId != conversation.id || turns.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val job = recoverPendingChatJob(repository, turns, before.bookRevision, requestValid)
         val drafts = before.threadDrafts
-        val newDraft = if (before.conversationId == null) before.draft else drafts[conversation.id].orEmpty()
+        val newDraft = when {
+            continuation != null -> before.draft
+            before.conversationId == null -> before.draft
+            else -> drafts[conversation.id].orEmpty()
+        }
         val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
         before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
-            threadDrafts = boundedDrafts, draft = newDraft,
+            threadDrafts = boundedDrafts, draft = newDraft, continuation = null,
             pendingConversation = null, pendingTurn = null, pendingTurnConversationId = null, conversationRestored = false)
     }
 
@@ -2706,8 +2919,8 @@ class ConnectedStore(
         if (text.toByteArray(Charsets.UTF_8).size > 4096 || text.any { it == '\u0000' }) return false
         val reading = state.value.memoryBooks ?: return false
         val chat = reading.companion ?: return false
-        val drafts = chat.conversationId?.let { rememberThreadDraft(chat.threadDrafts, it, text, chat.conversations) }
-            ?: chat.threadDrafts
+        val drafts = if (chat.continuation != null) chat.threadDrafts else
+            (chat.conversationId?.let { rememberThreadDraft(chat.threadDrafts, it, text, chat.conversations) } ?: chat.threadDrafts)
         mutable.value = state.value.copy(memoryBooks = reading.copy(companion = chat.copy(draft = text, threadDrafts = drafts)))
         return true
     }
@@ -2850,6 +3063,7 @@ class ConnectedStore(
     }
 
     fun retryMemoryBookChatTurn() = launchBookChat { repository, before, valid ->
+        if (before.continuation != null || before.pendingConversation != null) return@launchBookChat before
         val id = before.pendingTurnConversationId ?: return@launchBookChat before
         val request = before.pendingTurn ?: return@launchBookChat before
         val job = repository.sendTurn(id, request)
@@ -3398,18 +3612,27 @@ class ConnectedStore(
         val library = reading.library
         val generation = state.value.generation
         val epoch = communityEpoch
+        val continuation = before.continuation
+        val continuationRequest = before.pendingConversation
+        val baseValid = { communityCurrent(storyId, expectedToken, library, generation, epoch) }
+        val valid = {
+            baseValid() && (continuation == null || state.value.savedMemoryStories?.community?.let { live ->
+                live.continuation == continuation && live.pendingConversation == continuationRequest &&
+                    memoryStoryContinuationScope(requireFullFailure = false) == continuation.storyScope
+            } == true)
+        }
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = before.copy(busy = busy, failure = null)))
         val job = scope.launch {
             try {
-                val result = action(repository, before, { communityCurrent(storyId, expectedToken, library, generation, epoch) })
-                if (communityCurrent(storyId, expectedToken, library, generation, epoch)) {
+                val result = action(repository, before, valid)
+                if (valid()) {
                     val currentReading = state.value.savedMemoryStories ?: return@launch
                     val live = currentReading.community ?: return@launch
                     // An in-flight read/write may complete after the user has edited a local
                     // field or switched tabs. Keep those newer local choices while applying
                     // the response-owned fields from the request snapshot.
                     val sameThread = result.conversationId == before.conversationId
-                    val mergedChatDraft = if (sameThread && live.chatDraft != before.chatDraft) live.chatDraft else result.chatDraft
+                    val mergedChatDraft = if (before.continuation != null || sameThread && live.chatDraft != before.chatDraft) live.chatDraft else result.chatDraft
                     val merged = result.copy(
                         tab = if (live.tab != before.tab) live.tab else result.tab,
                         contributionDraft = if (live.contributionDraft != before.contributionDraft) live.contributionDraft else result.contributionDraft,
@@ -3419,7 +3642,8 @@ class ConnectedStore(
                         contributionLanguage = if (live.contributionLanguage != before.contributionLanguage) live.contributionLanguage else result.contributionLanguage,
                         chatDraft = mergedChatDraft,
                         threadDrafts = mergeThreadDraftChanges(result.threadDrafts, before.threadDrafts, live.threadDrafts,
-                            before.conversationId, before.chatDraft, live.chatDraft, result.conversationId, mergedChatDraft, result.conversations),
+                            before.conversationId.takeUnless { before.continuation != null }, before.chatDraft, live.chatDraft,
+                            result.conversationId, mergedChatDraft, result.conversations),
                         dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation,
                     )
                     mutable.value = state.value.copy(savedMemoryStories = currentReading.copy(community = merged.copy(busy = false, failure = null)))
@@ -3427,7 +3651,7 @@ class ConnectedStore(
                 } else result.audio?.close()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (communityCurrent(storyId, expectedToken, library, generation, epoch)) {
+                if (valid()) {
                     if (e is ApiFailure && e.status in listOf(401, 403)) {
                         readFailure(e, generation, expectedToken) { closeSavedMemoryStories() }
                     } else {
@@ -3695,6 +3919,64 @@ class ConnectedStore(
         }
     }
 
+    private fun memoryStoryContinuationScope(requireFullFailure: Boolean): MemoryStoryChatContinuationScope? {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return null
+        val story = reading.detail ?: return null
+        val chat = reading.community ?: return null
+        val account = live.session?.account_id ?: return null
+        val conversation = chat.conversationId ?: return null
+        val rejected = chat.pendingTurn ?: return null
+        if (!memoryCommunityAvailable || memoryCommunity == null || token == null || !allowed() ||
+            live.library != reading.library || chat.storyId != story.id || chat.readerScopeId != communityEpoch ||
+            story.libraryId != reading.library || chat.capabilities?.generationEnabled != true ||
+            chat.turns?.conversationId != conversation || rejected.revision != story.revision ||
+            (requireFullFailure && chat.failure?.message != Message.MEMORY_CONVERSATION_FULL)) return null
+        return MemoryStoryChatContinuationScope(account, live.generation, reading.library, chat.readerScopeId,
+            story.id, story.revision, story.selectionRevision, conversation, rejected)
+    }
+
+    /** Scope presented to the explicit continue action after a full-conversation refusal. */
+    fun memoryStoryChatContinuationScope(): MemoryStoryChatContinuationScope? = memoryStoryContinuationScope(requireFullFailure = true)
+
+    fun continueMemoryStoryChatInNewConversation(expected: MemoryStoryChatContinuationScope): MemoryConversationContinuationResult {
+        val reading = state.value.savedMemoryStories ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.community ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != null || chat.continuation != null) return MemoryConversationContinuationResult.ALREADY_PENDING
+        if (memoryStoryContinuationScope(requireFullFailure = true) != expected) return MemoryConversationContinuationResult.STALE
+        if (state.value.busy || reading.busy || reading.detailBusy || chat.busy || chat.pendingText != null || chat.pendingAudio != null ||
+            chat.pendingNarrative != null || chat.contributionAudioBusy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || chat.contributionAudioActivityId != null)
+            return MemoryConversationContinuationResult.BLOCKED
+        val transfer = continuationDraft(expected.rejectedTurn.text, chat.chatDraft)
+            ?: return MemoryConversationContinuationResult.LIMIT
+        val request = MemoryConversationRequest(targetType = "story", targetId = expected.storyId)
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = chat.copy(
+            pendingConversation = request, continuation = MemoryChatContinuation(expected.conversationId, expected.rejectedTurn, storyScope = expected),
+            chatDraft = transfer, failure = null, conversationRestored = false)))
+        retryStartMemoryConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
+    fun retryMemoryStoryChatContinuation(
+        expectedScope: MemoryStoryChatContinuationScope,
+        expectedRequest: MemoryConversationRequest,
+    ): MemoryConversationContinuationResult {
+        val reading = state.value.savedMemoryStories ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.community ?: return MemoryConversationContinuationResult.STALE
+        val continuation = chat.continuation ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != expectedRequest || continuation.storyScope != expectedScope ||
+            continuation.sourceConversationId != expectedScope.conversationId || continuation.rejectedTurn != expectedScope.rejectedTurn ||
+            chat.pendingTurn != expectedScope.rejectedTurn || expectedRequest.targetType != "story" || expectedRequest.targetId != expectedScope.storyId ||
+            memoryStoryContinuationScope(requireFullFailure = false) != expectedScope) return MemoryConversationContinuationResult.STALE
+        if (state.value.busy || reading.busy || reading.detailBusy || chat.busy || chat.pendingText != null || chat.pendingAudio != null ||
+            chat.pendingNarrative != null || chat.contributionAudioBusy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || chat.contributionAudioActivityId != null)
+            return MemoryConversationContinuationResult.BLOCKED
+        retryStartMemoryConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
     fun startMemoryConversation() {
         val current = state.value.savedMemoryStories?.community ?: return
         if (!canChangeMemoryStoryThread(current)) return
@@ -3713,20 +3995,38 @@ class ConnectedStore(
     fun retryStartMemoryConversation() {
         val current = state.value.savedMemoryStories?.community ?: return
         val request = current.pendingConversation ?: return
+        val continuation = current.continuation
+        val scope = continuation?.storyScope
+        if (continuation != null && (scope == null || memoryStoryContinuationScope(requireFullFailure = false) != scope ||
+                scope.conversationId != continuation.sourceConversationId || scope.rejectedTurn != continuation.rejectedTurn || current.pendingTurn != continuation.rejectedTurn ||
+                request.targetType != "story" || request.targetId != current.storyId)) return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
-            val conversation = repository.startConversation(request)
-            if (!valid()) return@launchMemoryCommunity before
-            val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
-            if (!valid()) return@launchMemoryCommunity before
-            val conversations = repository.conversations("story", current.storyId, withPreview = true, currentRequest = valid)
-            if (!valid()) return@launchMemoryCommunity before
+            val requestValid = {
+                valid() && (continuation == null || memoryStoryContinuationScope(requireFullFailure = false) == continuation.storyScope &&
+                    state.value.savedMemoryStories?.community?.pendingConversation == request)
+            }
+            if (!requestValid()) return@launchMemoryCommunity before
+            val conversation = repository.startConversation(request, requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (conversation.id != request.id) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (turns.conversationId != conversation.id || turns.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            val conversations = repository.conversations("story", current.storyId, withPreview = true, currentRequest = requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (continuation != null && conversations.items.none { it.id == conversation.id }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
             val revision = state.value.savedMemoryStories?.detail?.revision ?: return@launchMemoryCommunity before
-            val job = recoverPendingChatJob(repository, turns, revision, valid)
+            val job = recoverPendingChatJob(repository, turns, revision, requestValid)
             val drafts = before.threadDrafts
-            val newDraft = if (before.conversationId == null) before.chatDraft else drafts[conversation.id].orEmpty()
+            val newDraft = when {
+                continuation != null -> before.chatDraft
+                before.conversationId == null -> before.chatDraft
+                else -> drafts[conversation.id].orEmpty()
+            }
             val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
             before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
-                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null, conversationRestored = false)
+                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null,
+                pendingTurn = null, continuation = null, conversationRestored = false)
         }
     }
 
@@ -3761,8 +4061,8 @@ class ConnectedStore(
         val reading = state.value.savedMemoryStories ?: return false
         val current = reading.community ?: return false
         if (text.toByteArray(Charsets.UTF_8).size > 4096 || text.any { it == '\u0000' }) return false
-        val drafts = current.conversationId?.let { rememberThreadDraft(current.threadDrafts, it, text, current.conversations) }
-            ?: current.threadDrafts
+        val drafts = if (current.continuation != null) current.threadDrafts else
+            (current.conversationId?.let { rememberThreadDraft(current.threadDrafts, it, text, current.conversations) } ?: current.threadDrafts)
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = current.copy(chatDraft = text, threadDrafts = drafts)))
         return true
     }
@@ -3818,6 +4118,7 @@ class ConnectedStore(
 
     fun retryMemoryChatTurn() {
         val current = state.value.savedMemoryStories?.community ?: return
+        if (current.continuation != null || current.pendingConversation != null) return
         val conversation = current.conversationId ?: return
         val request = current.pendingTurn ?: return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
@@ -5091,6 +5392,7 @@ class ConnectedStore(
             error.status in 500..599 -> Message.UNAVAILABLE
             error.status == 401 -> Message.ACCESS_DENIED
             error.status == 403 || error.status in 300..399 -> Message.CLOSED
+            error.status == 429 && error.kind == FailureKind.HTTP && error.errorCode == ApiErrorCode.MEMORY_CONVERSATION_FULL -> Message.MEMORY_CONVERSATION_FULL
             error.status == 429 -> Message.RATE_LIMITED
             error.kind == FailureKind.INVALID_INPUT || error.status == 400 || error.status == 409 -> Message.INVALID_INPUT
             else -> Message.INVALID_RESPONSE
@@ -5098,8 +5400,9 @@ class ConnectedStore(
         val wait = error.retryAfterMillis.coerceAtLeast(0)
         val at = if (Long.MAX_VALUE - now() < wait) Long.MAX_VALUE else now() + wait
         val retryAfterCooldown = error.status in 502..504 && wait > 0
-        if (message == Message.RATE_LIMITED || retryAfterCooldown) cooldownUntil = maxOf(cooldownUntil, at)
-        return LiveProblem(message, if (message == Message.RATE_LIMITED || retryAfterCooldown) cooldownUntil else 0)
+        val rateLimited = error.status == 429 || retryAfterCooldown
+        if (rateLimited) cooldownUntil = maxOf(cooldownUntil, at)
+        return LiveProblem(message, if (rateLimited) cooldownUntil else 0)
     }
     private fun validateSession(session: Session, account: String? = null) {
         validResponse(session.account_id.isNotBlank() && (account == null || session.account_id == account))

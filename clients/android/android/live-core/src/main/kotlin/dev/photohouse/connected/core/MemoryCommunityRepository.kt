@@ -124,11 +124,27 @@ class MemoryCommunityRepository(
         }
     }
 
-    suspend fun loadCapabilities(): MemoryCommunityCapabilities = withBinding { scope ->
-        val value = parseOwned({ api.capabilities(scope.token, scope.libraryId) }, ProtectedMemoryCommunityWire::capabilities)
-        current(scope)
-        capabilityCache = CapabilityCache(BindingKey(scope.token, scope.libraryId, scope.generation), value)
-        value
+    suspend fun loadCapabilities(currentRequest: (() -> Boolean)? = null): MemoryCommunityCapabilities =
+        withBinding(currentRequest) { scope ->
+            fun ensureRequestCurrent() {
+                if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false))
+                    throw CancellationException("Capability request changed")
+            }
+            ensureRequestCurrent()
+            val value = parseOwned({
+                ensureRequestCurrent()
+                api.capabilities(scope.token, scope.libraryId)
+            }, ProtectedMemoryCommunityWire::capabilities)
+            ensureRequestCurrent()
+            current(scope)
+            ensureRequestCurrent()
+            val updatedCache = CapabilityCache(BindingKey(scope.token, scope.libraryId, scope.generation), value)
+            capabilityCache = updatedCache
+            if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false)) {
+                if (capabilityCache === updatedCache) capabilityCache = null
+                throw CancellationException("Capability request changed")
+            }
+            value
     }
 
     fun clear() { capabilityCache = null }
@@ -212,31 +228,88 @@ class MemoryCommunityRepository(
         parseOwned({ api.deleteContribution(s.token, s.libraryId, storyId, contributionId) }) { ProtectedMemoryCommunityWire.deleted(it, contributionId) }
     }
 
-    suspend fun books(page: Int = 1): MemoryBookPage = withBinding { s ->
-        capabilities(s, Feature.COLLABORATION); require(page in 1..100000)
-        parseOwned({ api.listBooks(s.token, s.libraryId, page) }) { ProtectedMemoryCommunityWire.bookPage(it, s.libraryId, page) }
+    suspend fun books(page: Int = 1, currentRequest: (() -> Boolean)? = null): MemoryBookPage =
+        withBinding(currentRequest) { s ->
+            fun ensureRequestCurrent() {
+                if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false))
+                    throw CancellationException("Book shelf request changed")
+            }
+            ensureRequestCurrent()
+            capabilities(s, Feature.COLLABORATION)
+            ensureRequestCurrent()
+            require(page in 1..100000)
+            val result = parseOwned({
+                ensureRequestCurrent()
+                api.listBooks(s.token, s.libraryId, page)
+            }) { ProtectedMemoryCommunityWire.bookPage(it, s.libraryId, page) }
+            ensureRequestCurrent()
+            result
     }
 
-    suspend fun book(bookId: String, expectedRevision: Long = 1): MemoryBook = withBinding { s ->
-        capabilities(s, Feature.COLLABORATION); requireUuid(bookId); require(expectedRevision > 0)
-        parseOwned({ api.getBook(s.token, s.libraryId, bookId) }) { ProtectedMemoryCommunityWire.bookDetail(it, bookId, expectedRevision) }
+    suspend fun book(
+        bookId: String, expectedRevision: Long = 1, currentRequest: (() -> Boolean)? = null,
+    ): MemoryBook = withBinding(currentRequest) { s ->
+        fun ensureRequestCurrent() {
+            if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false))
+                throw CancellationException("Book reader request changed")
+        }
+        ensureRequestCurrent()
+        capabilities(s, Feature.COLLABORATION)
+        ensureRequestCurrent()
+        requireUuid(bookId); require(expectedRevision > 0)
+        parseOwned({
+            ensureRequestCurrent()
+            api.getBook(s.token, s.libraryId, bookId)
+        }) {
+            val value = ProtectedMemoryCommunityWire.bookDetail(it, bookId, expectedRevision)
+            ensureRequestCurrent()
+            value
+        }
     }
 
     /** Retries must pass the original mutation object unchanged; each revision is an explicit CAS. */
-    suspend fun saveBook(bookId: String?, mutation: MemoryBookMutation): MemoryBook = withBinding { s ->
+    suspend fun saveBook(
+        bookId: String?, mutation: MemoryBookMutation, currentRequest: (() -> Boolean)? = null,
+    ): MemoryBook = withBinding(currentRequest) { s ->
+        fun ensureRequestCurrent() {
+            if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false))
+                throw CancellationException("Book composition changed")
+        }
+        ensureRequestCurrent()
         capabilities(s, Feature.COLLABORATION)
+        ensureRequestCurrent()
         if (bookId != null) requireUuid(bookId)
         require((bookId == null) == (mutation.revision == 0L))
         val body = ProtectedMemoryCommunityWire.bookRequest(mutation)
-        parseOwned({ api.saveBook(s.token, s.libraryId, bookId, body) }) { ProtectedMemoryCommunityWire.bookDetail(it,
-            bookId, if (bookId == null) 1 else mutation.revision + 1) }
+        ensureRequestCurrent()
+        parseOwned({ api.saveBook(s.token, s.libraryId, bookId, body) }) {
+            ensureRequestCurrent()
+            ProtectedMemoryCommunityWire.bookDetail(it, bookId, if (bookId == null) 1 else mutation.revision + 1)
+        }.also { ensureRequestCurrent() }
     }
 
-    suspend fun startConversation(conversationRequest: MemoryConversationRequest): MemoryConversation = withBinding { s ->
+    suspend fun startConversation(
+        conversationRequest: MemoryConversationRequest,
+        currentRequest: (() -> Boolean)? = null,
+    ): MemoryConversation = withBinding(currentRequest) { s ->
+        fun ensureRequestCurrent() {
+            if (currentRequest != null && !runCatching(currentRequest).getOrDefault(false))
+                throw CancellationException("Conversation creation scope changed")
+        }
+        ensureRequestCurrent()
         capabilities(s, Feature.GENERATION)
+        ensureRequestCurrent()
         require(conversationRequest.targetType in setOf("story", "book")); requireUuid(conversationRequest.targetId); requireUuid(conversationRequest.id)
         val json = ProtectedMemoryCommunityWire.conversationRequest(conversationRequest)
-        parseOwned({ api.startConversation(s.token, s.libraryId, json) }) { ProtectedMemoryCommunityWire.conversation(it, conversationRequest) }
+        ensureRequestCurrent()
+        val result = parseOwned({
+            ensureRequestCurrent()
+            api.startConversation(s.token, s.libraryId, json)
+        }) {
+            ProtectedMemoryCommunityWire.conversation(it, conversationRequest).also { ensureRequestCurrent() }
+        }
+        ensureRequestCurrent()
+        result
     }
 
     suspend fun conversations(

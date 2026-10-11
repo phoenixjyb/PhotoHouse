@@ -2,6 +2,9 @@ package dev.photohouse.connected.core
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import java.io.IOException
@@ -88,7 +91,8 @@ class HttpsMemoryCommunityApi internal constructor(origin: TrustedOrigin, client
                         val result = response.use { r ->
                             if (r.code !in 200..299) {
                                 val delay = if (r.code == 429) retryAfter(r.header("Retry-After")) else 0L
-                                throw ApiFailure(FailureKind.HTTP, r.code, delay)
+                                val errorCode = if (r.code == 429) memoryConversationErrorCode(r, call) else null
+                                throw ApiFailure(FailureKind.HTTP, r.code, delay, errorCode)
                             }
                             val expectedType = if (wavResponse) "audio/wav" else "application/json"
                             if (r.headers.values("Content-Type").size != 1 ||
@@ -161,6 +165,40 @@ class HttpsMemoryCommunityApi internal constructor(origin: TrustedOrigin, client
     }
 
     private fun retryAfter(raw: String?): Long = raw?.toLongOrNull()?.coerceIn(0, 86400)?.times(1000) ?: 0L
+
+    /** The one user-actionable 429 discriminator is parsed from a tiny, closed JSON envelope. */
+    private fun memoryConversationErrorCode(response: Response, call: Call): ApiErrorCode? {
+        if (response.headers.values("Content-Type").size != 1 ||
+            response.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase() != "application/json") return null
+        val body = response.body ?: return null
+        val declaredLength = body.contentLength()
+        if (declaredLength > 1024) return null
+        val bytes = ByteArray(1024)
+        var size = 0
+        return try {
+            body.byteStream().use { input ->
+                while (size < bytes.size) {
+                    if (call.isCanceled()) return null
+                    val count = input.read(bytes, size, bytes.size - size)
+                    if (count < 0) break
+                    size += count
+                }
+            }
+            if (size !in 1..1024 || size == 1024 && declaredLength < 0) return null
+            val text = Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes, 0, size)).toString()
+            val envelope = Json.parseToJsonElement(text) as? JsonObject ?: return null
+            if (envelope.keys != setOf("detail", "code")) return null
+            val detail = envelope["detail"]?.jsonPrimitive ?: return null
+            val code = envelope["code"]?.jsonPrimitive ?: return null
+            if (!detail.isString || detail.content.isBlank() || !code.isString) return null
+            ApiErrorCode.values().singleOrNull { it.wireValue == code.content }
+        } catch (_: Exception) {
+            null
+        } finally {
+            bytes.fill(0)
+        }
+    }
+
     private fun Exception.toApiFailure(): ApiFailure = when (this) {
         is ApiFailure -> this
         is SSLException -> ApiFailure(FailureKind.TLS)

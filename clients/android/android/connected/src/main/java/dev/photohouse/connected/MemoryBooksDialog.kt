@@ -42,6 +42,8 @@ internal fun MemoryBooksDialog(
     val editorialCatalog by store.memoryBookEditorialCatalogState.collectAsState()
     val edition by store.memoryBookEditionState.collectAsState()
     val narrative by store.memoryBookNarrativeState.collectAsState()
+    val composition by store.memoryBookCompositionState.collectAsState()
+    val compositionDictationStore by store.memoryBookCompositionDictationState.collectAsState()
     val book = reading.selectedBook
     val index = reading.storyIndex
     val story = reading.story
@@ -90,7 +92,11 @@ internal fun MemoryBooksDialog(
     var deferredReaderExit by remember(book?.id, book?.revision) { mutableStateOf<(() -> Unit)?>(null) }
     var unresolvedEditionExit by remember(book?.id, book?.revision) { mutableStateOf(false) }
     var unresolvedEditorialExit by remember(book?.id, book?.revision) { mutableStateOf(false) }
+    var unresolvedCompositionExit by remember(reading.shelfScopeId, composition.actionEpoch) { mutableStateOf(false) }
     val emptyDictationState = remember { kotlinx.coroutines.flow.MutableStateFlow(MemoryDictationState()) }
+    val compositionDictation by (compositionDictationStore?.state ?: emptyDictationState).collectAsState()
+    val compositionVoiceUnfinished = compositionDictation.loading || compositionDictation.recording ||
+        compositionDictation.transcribing || compositionDictation.transcript != null
     val dictationFlow = reading.companion?.dictation?.state ?: emptyDictationState
     val dictationState by dictationFlow.collectAsState()
     val narrativeDictationStore by store.memoryBookNarrativeDictationState.collectAsState()
@@ -108,14 +114,22 @@ internal fun MemoryBooksDialog(
         )
     val frozenEditorialSave = editorial.status in setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN)
     val hasUnsentEditorialWork = editorial.dirty || frozenEditorialSave || editorial.status == MemoryBookEditorialStoreStatus.CONFLICT
+    val compositionActive = composition.status != MemoryBookCompositionStatus.CLOSED &&
+        composition.accountId == liveState.session?.account_id && composition.generation == liveState.generation &&
+        composition.library == reading.library && composition.shelfScopeId == reading.shelfScopeId
+    val hasUnsentCompositionWork = compositionActive && composition.status != MemoryBookCompositionStatus.CREATED &&
+        (composition.draftRevision > 0 || composition.selectedStories.isNotEmpty() || compositionVoiceUnfinished)
     fun exitReader(action: () -> Unit) {
-        if (edition.status == MemoryBookEditionStatus.SAVING ||
+        if (compositionActive && (composition.status == MemoryBookCompositionStatus.SAVING || composition.pendingRetry)) {
+            deferredReaderExit = action
+            unresolvedCompositionExit = true
+        } else if (edition.status == MemoryBookEditionStatus.SAVING ||
             (edition.hasPendingSave && edition.status != MemoryBookEditionStatus.CONFLICT)) {
             unresolvedEditionExit = true
         } else if (frozenEditorialSave) {
             deferredReaderExit = action
             unresolvedEditorialExit = true
-        } else if (hasUnsentCompanionWork || ownVoiceUnfinished || hasUnsentEditorialWork || edition.dirty || edition.composing || edition.busy ||
+        } else if (hasUnsentCompositionWork || hasUnsentCompanionWork || ownVoiceUnfinished || hasUnsentEditorialWork || edition.dirty || edition.composing || edition.busy ||
             edition.status == MemoryBookEditionStatus.CONFLICT || narrative.hasUnfinishedInput ||
             narrative.busy || narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running")) {
             deferredReaderExit = action
@@ -161,6 +175,15 @@ internal fun MemoryBooksDialog(
                             reading.problem != null -> Column {
                                 Text(t("Books are temporarily unavailable.", "暂时无法读取回忆册。"), color = MaterialTheme.colorScheme.error)
                                 OutlinedButton(onClick = { onPage(reading.page) }, modifier = Modifier.testTag("memory-books-retry")) { Text(t("Retry", "重试")) }
+                            }
+                            compositionActive && store.memoryBookCompositionCoordinator != null -> {
+                                Box(Modifier.weight(1f).fillMaxWidth()) {
+                                    MemoryBookComposerPanel(store.memoryBookCompositionCoordinator!!, zh,
+                                        onClose = { exitReader { store.closeMemoryBookComposition(reading.shelfScopeId, composition.actionEpoch) } },
+                                        onOpenSaved = { id -> store.openComposedMemoryBook(liveState.session?.account_id.orEmpty(),
+                                            liveState.generation, reading.library, reading.shelfScopeId, composition.actionEpoch, id) },
+                                        dictationCoordinator = store.memoryBookCompositionDictationCoordinator.takeIf { store.assistantEnabled })
+                                }
                             }
                             book != null -> {
                                 if (!keyboardVisible) TextButton(onClick = { exitReader(onBack) }, modifier = Modifier.testTag("memory-books-back")) { Text(t("‹ All books", "‹ 所有回忆册")) }
@@ -290,6 +313,14 @@ internal fun MemoryBooksDialog(
                                 if (!narrativeExpanded && !keyboardVisible) MemoryBookOriginalNavigation(reading, zh, guardedChapter, guardedStory)
                             }
                             else -> {
+                                if (reading.result?.canCreate == true && store.memoryBookCompositionCoordinator != null) {
+                                    Button(onClick = attachedMemoirShelfAction { store.startMemoryBookComposition(liveState.session?.account_id.orEmpty(),
+                                        liveState.generation, reading.library, reading.shelfScopeId,
+                                        t("Our family memories", "我们的家庭回忆"), if (zh) "zh" else "en") },
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-books-create")) {
+                                        Text(t("Create a memoir from saved stories", "将已保存的故事汇集成册"))
+                                    }
+                                }
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     val books = reading.result?.items.orEmpty()
                                     if (books.isEmpty()) Text(t("No books on this page.", "此页没有回忆册。"))
@@ -335,6 +366,28 @@ internal fun MemoryBooksDialog(
         },
         modifier = Modifier.testTag("memory-book-discard-dialog"),
     )
+    if (unresolvedCompositionExit) AlertDialog(
+        onDismissRequest = { unresolvedCompositionExit = false; deferredReaderExit = null },
+        title = { Text(t("Confirm the memoir save", "先确认回忆册保存")) },
+        text = { Text(t("The server may have accepted this save. Retry the exact request, or leave and check the shelf later. Leaving clears this local draft.",
+            "服务端可能已接受此次保存。可以重试同一请求，或先离开稍后核对书架。离开会清除本地草稿。")) },
+        confirmButton = {
+            Column {
+                TextButton(onClick = {
+                    unresolvedCompositionExit = false; deferredReaderExit = null
+                    store.memoryBookCompositionCoordinator?.retry(reading.shelfScopeId, composition.actionEpoch)
+                }, enabled = !composition.busy && composition.pendingRetry,
+                    modifier = Modifier.testTag("memory-book-compose-exit-retry")) { Text(t("Retry same save", "重试同一保存")) }
+                TextButton(onClick = {
+                    val action = deferredReaderExit; unresolvedCompositionExit = false; deferredReaderExit = null; action?.invoke()
+                }, enabled = !composition.busy, modifier = Modifier.testTag("memory-book-compose-exit-later")) {
+                    Text(t("Leave and check later", "先离开，稍后核对"))
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = { unresolvedCompositionExit = false; deferredReaderExit = null },
+            modifier = Modifier.testTag("memory-book-compose-exit-stay")) { Text(t("Stay here", "留在此处")) } },
+        modifier = Modifier.testTag("memory-book-compose-exit-dialog"))
     if (unresolvedEditionExit) AlertDialog(onDismissRequest = { unresolvedEditionExit = false },
         title = { Text(t("Confirm the edition save", "先确认版本保存")) },
         text = { Text(t("Keep this manuscript until the save result is confirmed. Retry sends the same request.",
@@ -730,6 +783,19 @@ private fun MemoirNavigation(
                 modifier = Modifier.weight(1f).testTag(nextTag)) { Text(next) }
         }
     }
+}
+
+private class MemoirShelfActionLease(var attached: Boolean = false)
+
+/** A former shelf button cannot reopen a composer after its rendered panel leaves. */
+@Composable
+private fun attachedMemoirShelfAction(action: () -> Unit): () -> Unit {
+    val lease = remember(action) { MemoirShelfActionLease() }
+    DisposableEffect(lease) {
+        lease.attached = true
+        onDispose { lease.attached = false }
+    }
+    return remember(lease, action) { { if (lease.attached) action() } }
 }
 
 /** Keep saved-story controls beside saved prose while the AI review panel is open. */

@@ -79,6 +79,7 @@ internal class Words(val zh: Boolean) {
         Message.NETWORK_UNAVAILABLE -> t("Cannot reach PhotoHouse. Check this device’s network and server connection. If registration may have completed, try Sign in.", "无法连接 PhotoHouse，请检查手机网络和服务器连接。如果注册可能已完成，请尝试登录。")
         Message.TLS_ERROR -> t("The server's secure connection could not be verified. Contact your administrator.", "无法验证服务器的安全连接，请联系管理员。")
         Message.CLOSED -> t("This request was blocked. Contact your administrator.", "请求已被阻止，请联系管理员。")
+        Message.MEMORY_CONVERSATION_FULL -> t("This conversation is full. Your unsent question is kept.", "这段对话已满。未发送的问题已保留。")
         Message.RATE_LIMITED -> t("Too many attempts. Wait before trying again.", "尝试过于频繁，请稍后重试。")
         Message.INVALID_INPUT -> t("Check your inputs and the password rules shown. Use an explicit country code. If already registered, sign in.", "请检查输入和显示的密码要求，手机号应包含国家码。已注册请登录。")
         Message.INVALID_RESPONSE -> t("The server response could not be displayed safely.", "无法安全显示服务器响应。")

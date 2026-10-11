@@ -43,7 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** Speech is reviewed separately; only the parent's explicit insert action changes the draft. */
-internal enum class MemoryDictationPurpose { MEMORY_EDITOR, CHAT_MESSAGE, MEMOIR_INSTRUCTIONS, CHAPTER_NARRATION }
+internal enum class MemoryDictationPurpose { MEMORY_EDITOR, CHAT_MESSAGE, MEMOIR_INSTRUCTIONS, MEMOIR_INTRODUCTION, CHAPTER_NARRATION }
 
 private fun memoryDictationFailureMessage(code: MemoryDictationFailure?, zh: Boolean): String = when (code) {
     MemoryDictationFailure.INVALID_RECORDING -> if (zh) "录音无效或过长。" else "The recording was invalid or too long."
@@ -121,7 +121,11 @@ internal fun MemoryDictationInput(
             onSessionEnded()
         }
     }
-    LaunchedEffect(store) { store.loadCapabilities() }
+    LaunchedEffect(store) {
+        // Owners may already have fetched fresh capabilities while opening this
+        // exact helper. Mounting its controls must not issue a duplicate request.
+        if (store.state.value.capabilities == null) store.loadCapabilities()
+    }
     LaunchedEffect(state.retryAtMillis) {
         clock = System.currentTimeMillis()
         while (clock < state.retryAtMillis) { delay(250); clock = System.currentTimeMillis() }
@@ -165,31 +169,43 @@ internal fun MemoryDictationInput(
     val title = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Voice input", "语音输入")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Memoir instructions", "口述整理要求")
+        MemoryDictationPurpose.MEMOIR_INTRODUCTION -> t("Memoir introduction", "回忆册简介")
         MemoryDictationPurpose.CHAPTER_NARRATION -> t("Dictate this chapter", "口述本篇内容")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Tell this memory", "说说这段回忆")
     }
-    val help = if (purpose == MemoryDictationPurpose.CHAT_MESSAGE) t(
-        "Record → review the words → add to your message draft → send it yourself. The recording is not kept; conversations and transcription records are kept for 30 days.",
-        "录音→核对文字→加入消息草稿→由你发送。录音不会保留；对话和转写记录保留30天。",
-    ) else if (purpose == MemoryDictationPurpose.MEMOIR_INSTRUCTIONS) t(
-        "Describe how to arrange the memoir. Review the transcript before inserting it. Audio is not saved; transcription records last 30 days.",
-        "说说希望怎样整理，核对转写后加入要求。录音不保存，转写记录保留 30 天。",
-    ) else if (purpose == MemoryDictationPurpose.CHAPTER_NARRATION) t(
-        "Record → review the words → add them to this chapter. Audio is transient and is not saved as a family recording. Transcription receipts keep recognized text and processing status for 30 days. Save the story yourself when ready.",
-        "录音 → 核对文字 → 加入本篇。录音仅用于转写，不会作为家庭录音保存。转写回执会保留识别文字和处理状态 30 天。准备好后请手动保存故事。",
-    ) else t(
-        "Record → review the words → add to your memory. Only text is saved with the memory; the recording is not kept. Transcription records are kept for 30 days.",
-        "录音 → 检查文字 → 加入回忆。回忆只保存文字，不保留录音；转写记录保留 30 天。",
-    )
+    val help = when (purpose) {
+        MemoryDictationPurpose.CHAT_MESSAGE -> t(
+            "Record → review the words → add to your message draft → send it yourself. The recording is not kept; conversations and transcription records are kept for 30 days.",
+            "录音→核对文字→加入消息草稿→由你发送。录音不会保留；对话和转写记录保留30天。",
+        )
+        MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t(
+            "Describe how to arrange the memoir. Review the transcript before inserting it. Audio is not saved; transcription records last 30 days.",
+            "说说希望怎样整理，核对转写后加入要求。录音不保存，转写记录保留 30 天。",
+        )
+        MemoryDictationPurpose.MEMOIR_INTRODUCTION -> t(
+            "Record → review the words → add them to the optional memoir introduction. Audio is transient and is not saved as a family recording. Transcription receipts keep recognized text and processing status for 30 days. Save the memoir yourself when ready.",
+            "录音 → 核对文字 → 加入可选的回忆册简介。录音仅用于转写，不会作为家庭录音保存。转写回执会保留识别文字和处理状态 30 天。准备好后请手动保存回忆册。",
+        )
+        MemoryDictationPurpose.CHAPTER_NARRATION -> t(
+            "Record → review the words → add them to this chapter. Audio is transient and is not saved as a family recording. Transcription receipts keep recognized text and processing status for 30 days. Save the story yourself when ready.",
+            "录音 → 核对文字 → 加入本篇。录音仅用于转写，不会作为家庭录音保存。转写回执会保留识别文字和处理状态 30 天。准备好后请手动保存故事。",
+        )
+        MemoryDictationPurpose.MEMORY_EDITOR -> t(
+            "Record → review the words → add to your memory. Only text is saved with the memory; the recording is not kept. Transcription records are kept for 30 days.",
+            "录音 → 检查文字 → 加入回忆。回忆只保存文字，不保留录音；转写记录保留 30 天。",
+        )
+    }
     val insertLabel = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Add to message draft", "加入消息草稿")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Insert instructions", "插入整理要求")
+        MemoryDictationPurpose.MEMOIR_INTRODUCTION -> t("Add to introduction", "加入简介")
         MemoryDictationPurpose.CHAPTER_NARRATION -> t("Add to chapter", "加入本篇")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Add to memory", "加入回忆")
     }
     val recordLabel = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Record a message", "录音说消息")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Dictate instructions", "开始口述")
+        MemoryDictationPurpose.MEMOIR_INTRODUCTION -> t("Record an introduction", "录音讲简介")
         MemoryDictationPurpose.CHAPTER_NARRATION -> t("Dictate chapter", "开始口述本篇")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Record a memory", "录音讲回忆")
     }
@@ -247,8 +263,12 @@ internal fun MemoryDictationInput(
                         }
                         TextButton(onClick = store::dismissTranscript) { Text(t("Discard words", "放弃文字")) }
                     }
-                    if (purpose == MemoryDictationPurpose.MEMOIR_INSTRUCTIONS && !insertEnabled) Text(
-                        t("The instruction editor contains unconfirmed wording. Keep this transcript until that wording is resolved.",
+                    if (purpose in setOf(MemoryDictationPurpose.MEMOIR_INSTRUCTIONS,
+                            MemoryDictationPurpose.MEMOIR_INTRODUCTION) && !insertEnabled) Text(
+                        if (purpose == MemoryDictationPurpose.MEMOIR_INTRODUCTION)
+                            t("Finish applying your current introduction edits before adding this transcript.",
+                                "请先完成当前简介编辑，再加入这段转写。")
+                        else t("The instruction editor contains unconfirmed wording. Keep this transcript until that wording is resolved.",
                             "整理要求中还有未确认的文字。请保留这段转写，先处理原有文字。"),
                         modifier = Modifier.testTag("memory-dictation-insert-blocked")
                             .semantics { liveRegion = LiveRegionMode.Polite },
@@ -261,11 +281,20 @@ internal fun MemoryDictationInput(
                             .semantics { liveRegion = LiveRegionMode.Polite },
                     )
                     if (insertRejected) Text(
-                        if (purpose == MemoryDictationPurpose.CHAPTER_NARRATION)
-                            t("This would exceed the 6,000-byte chapter limit. Both the current wording and full transcript are still here.",
-                                "加入后会超过本篇 6,000 字节上限。现有文字和完整转写都仍保留。")
-                        else t("These instructions exceed the editor limit. The complete transcript is still here; shorten it before inserting.",
-                            "整理要求超出编辑框限制。完整转写仍保留在这里，请缩短后再插入。"),
+                        when (purpose) {
+                            MemoryDictationPurpose.CHAPTER_NARRATION -> t(
+                                "This would exceed the 6,000-byte chapter limit. Both the current wording and full transcript are still here.",
+                                "加入后会超过本篇 6,000 字节上限。现有文字和完整转写都仍保留。",
+                            )
+                            MemoryDictationPurpose.MEMOIR_INTRODUCTION -> t(
+                                "This would exceed the 6,000-byte introduction limit. Both the current wording and full transcript are still here.",
+                                "加入后会超过简介 6,000 字节上限。现有文字和完整转写都仍保留。",
+                            )
+                            else -> t(
+                                "These instructions exceed the editor limit. The complete transcript is still here; shorten it before inserting.",
+                                "整理要求超出编辑框限制。完整转写仍保留在这里，请缩短后再插入。",
+                            )
+                        },
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.testTag("memory-dictation-insert-rejected")
                             .semantics { liveRegion = LiveRegionMode.Polite },

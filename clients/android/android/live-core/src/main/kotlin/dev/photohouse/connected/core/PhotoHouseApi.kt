@@ -20,7 +20,15 @@ class Bearer private constructor(private val value: String) {
 }
 
 enum class FailureKind { HTTP, OFFLINE, TLS, INVALID_RESPONSE, INVALID_INPUT, TOO_LARGE }
-class ApiFailure(val kind: FailureKind, val status: Int? = null, val retryAfterMillis: Long = 0) : Exception("PhotoHouse request failed")
+enum class ApiErrorCode(val wireValue: String) { MEMORY_CONVERSATION_FULL("memory_conversation_full") }
+class ApiFailure(
+    val kind: FailureKind,
+    val status: Int? = null,
+    val retryAfterMillis: Long = 0,
+    val errorCode: ApiErrorCode? = null,
+) : Exception("PhotoHouse request failed") {
+    init { require(errorCode == null || kind == FailureKind.HTTP && status == 429) }
+}
 
 interface PhotoHouseApi {
     /** Protected family stories are opt-in until the integration owner enables the route. */
