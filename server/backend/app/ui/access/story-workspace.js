@@ -224,6 +224,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     body.value=combined;body.dispatchEvent(new Event('input',{bubbles:true}));resetDictation(session,{statusKey:'dictationAdded'});body.focus();
   }
   const narrationCopy = (key,lang) => ({zh:{start:'朗读本章',continueNext:'继续朗读下一章',pause:'暂停朗读',resume:'继续朗读',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字阅读仍可继续。',recording:'请先结束录音，再朗读本章。',failed:'朗读暂时无法继续。',playing:'正在朗读本章。',complete:'本章朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read this chapter aloud',continueNext:'Read next chapter aloud',pause:'Pause narration',resume:'Resume narration',stop:'Stop narration',unsupported:'No suitable on-device Chinese or English voice is available. You can keep reading the text.',recording:'Finish recording before reading this chapter aloud.',failed:'Narration could not continue.',playing:'Reading this chapter aloud.',complete:'Chapter narration complete.',stopped:'Narration stopped.'}})[lang==='en'?'en':'zh'][key];
+  const memoirIntroductionNarrationCopy = (key,lang) => ({zh:{start:'朗读开篇',pause:'暂停朗读',resume:'继续朗读',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，仍可阅读简介。',recording:'请先结束录音，再朗读回忆录开篇。',failed:'开篇朗读暂时无法继续。',playing:'正在朗读回忆录开篇。',complete:'回忆录开篇朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read introduction aloud',pause:'Pause reading',resume:'Resume reading',stop:'Stop reading',unsupported:'No suitable on-device Chinese or English voice is available. You can still read the introduction.',recording:'Finish recording before reading the memoir introduction aloud.',failed:'Introduction audio could not continue.',playing:'Reading the memoir introduction aloud.',complete:'Memoir introduction reading complete.',stopped:'Reading stopped.'}})[lang==='en'?'en':'zh'][key];
   function stopNarration(keepProgress=false) {
     const retainProgress=keepProgress===true;
     narrationEpoch++;const active=narrationState;narrationState=retainProgress?active:null;if(active){active.active=false;try{active.onStop?.(active);}catch{}}
@@ -242,7 +243,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const replySpeechCopy = (key,lang) => ({zh:{start:'朗读回复',pause:'暂停朗读',resume:'继续朗读',paused:'朗读已暂停。',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字回复仍可阅读。',tooLong:'这条回复较长，暂时无法朗读；文字回复仍可阅读。',recording:'请先结束录音，再朗读回复。',failed:'回复朗读暂时无法继续。',playing:'正在朗读回复。',complete:'回复朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read reply aloud',pause:'Pause reading',resume:'Resume reading',paused:'Reading paused.',stop:'Stop reading',unsupported:'No suitable on-device Chinese or English voice is available. You can still read the reply.',tooLong:'This reply is too long to read aloud; the full text is still available.',recording:'Finish recording before reading the reply aloud.',failed:'Reply audio could not continue.',playing:'Reading the reply aloud.',complete:'Reply reading complete.',stopped:'Reading stopped.'}})[lang==='en'?'en':'zh'][key];
   function beginNarration({control,usableText,storyLanguage,authorized,lang,status,progress,startButton,pauseButton,stopButton,copy,onStart,onComplete,onStop}) {
     if(!control.isConnected||!authorized())return;
-    try{if(community?.isCapturing?.()){status.textContent=copy('recording',lang);return;}}catch{}
+    try{if(!canCapture()||community?.isCapturing?.()){status.textContent=copy('recording',lang);return;}}catch{status.textContent=copy('recording',lang);return;}
     try{community?.stopPlayback?.();}catch{}
     stopNarration();stopPlaying();const synth=window.speechSynthesis;
     if(!synth||typeof synth.getVoices!=='function'||typeof window.SpeechSynthesisUtterance!=='function'){status.textContent=copy('unsupported',lang);return;}
@@ -311,6 +312,29 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     startButton.addEventListener('click',start);
     pauseButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.startButton!==startButton||!state.valid())return;if(state.synth.paused){state.synth.resume();pauseButton.textContent=narrationCopy('pause',lang);}else{state.synth.pause();pauseButton.textContent=narrationCopy('resume',lang);}});
     stopButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.control!==wrap||!state.valid())return;stopNarration(true);status.textContent=narrationCopy('stopped',lang);});return {wrap,start};
+  }
+  function mountMemoirIntroductionNarration(container,reader,book,owner,context,readerCurrent){
+    const prose=book.introduction,bookLanguage=book.language,lang=owner.language==='en'?'en':'zh';
+    if(typeof prose!=='string'||!prose.trim())return null;
+    let run=null;
+    const selectedContext=()=>{const value=context(),section=value.story?.chapters[value.sectionIndex]??null;return {...value,section,frames:section?JSON.stringify(section.asset_ids):'[]'};};
+    const wrap=node('section',undefined,'memory-book-introduction-narration');wrap.setAttribute('aria-label',lang==='en'?'Memoir opening narration':'回忆录开篇朗读');
+    const status=node('p',undefined,'memory-book-introduction-narration-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.style.flexBasis='100%';status.style.overflowWrap='anywhere';
+    let startButton,pauseButton,stopButton;
+    const mountedCurrent=()=>{const current=context();return reader===bookReader&&readerCurrent(current.ticket)&&reader.contains(container)&&container.contains(wrap)&&wrap.contains(startButton)&&book.introduction===prose&&book.language===bookLanguage;};
+    const start=()=>{
+      if(!mountedCurrent())return;
+      const selected=selectedContext();run=selected;
+      const authorized=()=>{const current=selectedContext();return mountedCurrent()&&run===selected&&selected.ticket===current.ticket&&selected.story===current.story&&selected.storyIndex===current.storyIndex&&selected.sectionIndex===current.sectionIndex&&selected.section===current.section&&selected.frames===current.frames;};
+      beginNarration({control:wrap,usableText:prose,storyLanguage:bookLanguage,authorized,lang,status,progress:null,startButton,pauseButton,stopButton,copy:memoirIntroductionNarrationCopy});
+    };
+    startButton=button(memoirIntroductionNarrationCopy('start',lang),start);pauseButton=button(memoirIntroductionNarrationCopy('pause',lang));stopButton=button(memoirIntroductionNarrationCopy('stop',lang));
+    wrap.style.display='flex';wrap.style.flexWrap='wrap';wrap.style.gap='.5rem';wrap.style.minWidth='0';
+    for(const control of [startButton,pauseButton,stopButton]){control.style.flex='1 1 8rem';control.style.minWidth='0';control.style.minHeight='44px';control.style.whiteSpace='normal';}
+    pauseButton.disabled=true;pauseButton.hidden=true;stopButton.disabled=true;stopButton.hidden=true;wrap.append(startButton,pauseButton,stopButton,status);container.append(wrap);
+    pauseButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.control!==wrap||!state.valid())return;try{if(state.synth.paused){state.synth.resume();pauseButton.textContent=memoirIntroductionNarrationCopy('pause',lang);status.textContent=memoirIntroductionNarrationCopy('playing',lang);}else{state.synth.pause();pauseButton.textContent=memoirIntroductionNarrationCopy('resume',lang);status.textContent=lang==='en'?'Reading paused.':'朗读已暂停。';}}catch{stopNarration(true);status.textContent=memoirIntroductionNarrationCopy('failed',lang);}});
+    stopButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.control!==wrap||!state.valid())return;stopNarration(true);status.textContent=memoirIntroductionNarrationCopy('stopped',lang);});
+    return wrap;
   }
   const message = key => {$('story-workspace-status').textContent=key?text(key):'';};
   function ensureSourceRefreshUI(){
@@ -1127,8 +1151,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const mayLeave=()=>confirmReaderLeave(host,book);
     const header=node('header');header.append(node('span',scope().language==='en'?'FAMILY MEMOIR':'家庭回忆录','eyebrow'),button(text('close'),()=>{if(!readerCurrent(readingTicket)||!mayLeave())return;stopNarration();reader.close();}));
     const heading=node('h2',book.title);heading.id=titleId;
+    const introduction=node('p',book.introduction,'memory-book-introduction'),introductionNarration=node('div',undefined,'memory-book-introduction-narration-host');
     const introductionSources=node('div',undefined,'memory-book-introduction-sources');
-    bookReader.append(header,heading,node('p',book.introduction,'memory-book-introduction'),introductionSources);
+    bookReader.append(header,heading,introduction,introductionNarration,introductionSources);
     const reader=bookReader,owner={...scope()};reader.__photoHouseBookTarget=book;let readingTicket=0,storyIndex=0,sectionIndex=0,readingStory=null,readingRefs=null,bookRefsEpoch=0,sourceHost=null,sourceSection=null,planStoryOpening=false;
     const bookIdSnapshot=book.id,bookRevisionSnapshot=book.revision;
     const positionKey=JSON.stringify([owner.account,owner.library,book.id,book.revision]);
@@ -1154,6 +1179,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const editorialChildren=()=>book.stories.map(story=>({story_id:story.id,revision:String(story.revision)}));
     const orderedChildrenSnapshot=JSON.stringify(editorialChildren());
     const readerCurrent=ticket=>reader===bookReader&&reader.open&&reader.__photoHouseBookTarget===book&&book.id===bookIdSnapshot&&book.revision===bookRevisionSnapshot&&JSON.stringify(editorialChildren())===orderedChildrenSnapshot&&validReading(ticket);
+    const introductionContext=()=>({ticket:readingTicket,story:readingStory,storyIndex,sectionIndex});
     const validEditorial=value=>{
       const children=editorialChildren(),childMap=new Map(children.map(child=>[child.story_id,child.revision]));
       if(!value||Object.keys(value).sort().join(',')!=='children,id,introduction_source_refs,revision,state,transitions,version'||value.version!==1||value.id!==book.id||value.revision!==book.revision||!['empty','current','source_changed'].includes(value.state)||!Array.isArray(value.children)||!Array.isArray(value.introduction_source_refs)||!Array.isArray(value.transitions)||children.length>24||value.children.length!==children.length||value.children.some((child,index)=>!child||Object.keys(child).sort().join(',')!=='revision,story_id'||child.story_id!==children[index].story_id||child.revision!==children[index].revision))return false;
@@ -1309,6 +1335,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     for(const [index,story] of book.stories.entries()){const item=node('li');let open;open=button(story.title,()=>{const ticket=readingTicket,expected=()=>readerCurrent(ticket)&&toc.isConnected&&!toc.hidden&&reader.contains(toc)&&open.isConnected&&item.isConnected&&item.parentElement===toc;void readBookStory(index,false,null,expected);});
       if(idOK(story.cover_asset_id)){const img=node('img');img.src=mediaURL(story.cover_asset_id,'thumbnail');img.alt='';img.loading='lazy';open.prepend(img);}item.append(open);toc.append(item);}
     host=node('section',undefined,'memory-book-companion');reader.addEventListener('close',()=>{reader.__photoHouseOpenBookStory=null;reader.__photoHouseReadingContext=null;if(reader===bookReader)stopNarration();readingTicket++;bookRefsEpoch++;readingStory=null;readingRefs=null;sourceHost=null;sourceSection=null;pane.replaceChildren();community?.detach(host);});reader.addEventListener('cancel',event=>{if(reader!==bookReader||!readerCurrent(readingTicket))return;if(!mayLeave()){event.preventDefault();return;}stopNarration();});reader.append(resume,toc,pane,host);document.body.append(reader);readerMountEpoch++;reader.showModal();
+    mountMemoirIntroductionNarration(introductionNarration,reader,book,owner,introductionContext,readerCurrent);
     if(community)void community.attach(host,book);
     void loadEditorial(readingTicket).catch(onError);
   }
