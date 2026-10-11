@@ -10156,6 +10156,47 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed phone story chapter arrangement and voice cleanup",
+      "source_commit": "a5396a25bc1444107169c924a51e3c747ca8baea",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryReviewUiTest.kt",
+          "before_sha256": "9fb1185e103094d23694ba27356a0cc3da98609d14d298486243456cddb5d806",
+          "sha256": "aaff1162d7f27e71aca797e38182c93d580b98d4b8b71ef022115debb4ceb6ec"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "9e1521d8c0784853ef7fe5cd5a490c16db83de10a22632f0b0f01e576536fe69",
+          "sha256": "04c1e3e68fbf5beabce275cfe208bb98b9953c3932155b09ea1fbb908dbe7703"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedStoryWorkspaceCreate.kt",
+          "before_sha256": "46b3acc7bac8e99132b3af51bee47dccf3fac0351121d6365334a9b3000cb272",
+          "sha256": "13d834432861a7d17acd75d5faffff441097e4c1a9e16ffd50068b577b860d30"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "920adf6abf913b0d4b4fe20c631fcb43fa39aea4591502b63a58b904995b2b31",
+          "sha256": "788615c38b7d8a9a49268b58edf9fe1642cb10b50335a5f7de14c67914cfd5de"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedStoryWorkspaceCreateTest.kt",
+          "before_sha256": "9d761c3da1cc9ff9ca356350e6ee75f497defee43e17d816eb0262c6060755eb",
+          "sha256": "1715659a988219e918ab7b8a5f584651f04392653f4acf547a4a24d5adffc986"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "85bb04e25d1833cabd76896f57f2f3dc0ca0b676c7dc40c12fb55bf0a2746648",
+          "sha256": "7c9e6cf0927e1083ecffe845823161b7e036f19cbac5a2973ae2f9f539f1b546"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
