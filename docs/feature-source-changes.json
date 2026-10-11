@@ -9151,6 +9151,43 @@
       "apk_changed": false,
       "live_database_changed": false,
       "services_changed": false
+    },
+    {
+      "feature": "native-generated-full-memory-chain-and-companion-evidence-v1",
+      "source_commit": "eb1e2388d9ea2442ef8c85323bf30ef577f41bfb",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2102743a3121bd134fb964e3cb08ece98295a983aaba44e9ca4e75e45c9afe66",
+          "sha256": "f90668773045486127c7ea98bfe9fc5d2e6207f07cf7e5131bb3598a495179a1"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "80e0f2b091a5879ef6b4c7504082c175ec5467d63d93704460b3038cd9717b42",
+          "sha256": "32bb8ebee6f7aa157bca025e9c5cfe55a31fe514f329fb8513bc93d08d85d44e"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "f758255b1e56141874e460a9e1bd31d12410e3bac97911ae091ce0c76fa70cbb",
+          "sha256": "acb397bd473881636e3402b0ce358fc3007de6226a8740ffb6d15a558650453a"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md",
+          "before_sha256": "91b399261238a5804aaaa9133249ef1c057dc3d5e54c0eb107eafef4446a2d68",
+          "sha256": "a9b674979f86ed2ca04ccaeb3a1fb1932c37f8c6d333b55ab8a947dda496e549"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "default_enabled": false,
+      "provider_called": false,
+      "windows_operation": true,
+      "apk_changed": false,
+      "native_qualification_source_commit": "18eb1cc415771977c95dff8513cd176d07f6310d",
+      "qualification_report_sha256": "145316b26e4dc3fdb42686c52e10e4ebbb5c1ed75d63e32f8e4ec30c0faee09b",
+      "live_database_changed": false,
+      "services_changed": false,
+      "scheduled_tasks_changed": false
     }
   ]
 }
