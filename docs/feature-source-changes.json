@@ -10644,6 +10644,57 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Guarded phone memoir contents and accessible moments",
+      "source_commit": "a0fdbca0f369cd6d282b51c04863df12dc3b9500",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderContentsUiTest.kt",
+          "before_sha256": null,
+          "sha256": "25a844ee1bd263a2188c6be3dc6bfb86087e1ace9ccc84b4c9c8d1f8ed4fc808"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderNavigationUiTest.kt",
+          "before_sha256": null,
+          "sha256": "3bad3dfac77f990f091cf3749011f90cf58a2646296a3cc9e040edfaf13b5c37"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReadingContinuityUiTest.kt",
+          "before_sha256": "1fdfaed280751ab98e1b62f51e44162235b88439763410f37ce355f8236cb243",
+          "sha256": "e54b11b1a329b8339a39dadb14a80f8978cdff6b9cc67e86ea1b3b42efd5099d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoirMomentFrame.kt",
+          "before_sha256": null,
+          "sha256": "45f3841f42e8b103a15d8eba9b663620cd4d650d53bf87788d0eb055d652ceb3"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookReaderContents.kt",
+          "before_sha256": null,
+          "sha256": "2d5946dc646e72bf42080ae0847474215c0ff2ba9f7efcf3889cd7f117b481d2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "3eb52dd7de0bf01f0d72b734ed0a907779bcf0ae69565a180c3e70d906e3dbbe",
+          "sha256": "5088c306767b9754b80f8a4d9866e54a5822092d5436b4e317319693359e4726"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "d9038037382cfac1e6070c3ec3c28b6f679d37ece4f184ff1005ccb61f81f9b5",
+          "sha256": "36bd9365adf0c8b7c546cb752681f53fd7ce50417c36cdd6c86b06e2913c0a70"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "860c1bce9c7fe185a52177e9a3a41689c412d0715301ca7ccade1d07ef55711c",
+          "sha256": "073fcca6ccee801a9cdebd211e967d1a6de1b29630c1416e9e6bb5d7bfa19272"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
