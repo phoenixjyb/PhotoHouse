@@ -8989,6 +8989,58 @@
       "apk_changed": true,
       "apk_published": false,
       "release_signed": false
+    },
+    {
+      "feature": "generated-memory-group-upgrade-restore-qualification-v1",
+      "source_commit": "3b12deb4dc1b0a849e44bd8c7fdbd12702ffe62e",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "6b390b627f22437330aad29e909a06092a2baddd8f37184ba7c208fa32772cc8",
+          "sha256": "75db8ecd7ca98dc6c81b97850b3d210a29539541faa3c7bb91a365962ba04034"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "a9fcb64aeb25cf08af6f9a5a3e543f34abef7c73e5c06921798eeb62fb9a529b",
+          "sha256": "c0cead8d108069e533292ee5d74c682c4d7b45005a0f943af917487e146d42bc"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "c024790d3d75ce78ca96a762ffc513821778967e159cb7abc81a98d748f1da31",
+          "sha256": "d05900c7288eb72f5581f8bb54519b9cffbea45d9dda86f81c2bf8c15897a080"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "aeb0ba895e91243caad260b31a4240993beab0a85017bce0120e59eccf25f0b6",
+          "sha256": "0d6f0327696a71abeaedf0feb286efd5dda0ca5e5061d7169efa2fd84864f97f"
+        },
+        {
+          "path": "server/scripts/qualify_memory_groups.py",
+          "before_sha256": null,
+          "sha256": "0ef21d50a322863934a7d14a6776a0404d208e76fc60284e6f20726f6df170d7"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_qualification.py",
+          "before_sha256": null,
+          "sha256": "40a083c8a5256547e7696534d7336f3d2aaa9e644672e9da3007a67a7ac39184"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "0fb0969f66d6e92e5ef8e0b49c416dbd880038ce9cdc0a8cf16c72b64edabf06",
+          "sha256": "5e2b53e984a8282c997d85ce658947e420cf710c7698255f8a4460c3b549851c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "8d8018c90edb7ce6a4f669f6bf3668ea0b53296d5c85e661a17b883d878fb3b3",
+          "sha256": "d1b1a50cf3dde3a20845b29d2b8609cd5bfcc1913100e21faafdc76e7c2e68a1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "default_enabled": false,
+      "provider_called": false,
+      "windows_operation": false,
+      "apk_changed": false
     }
   ]
 }
