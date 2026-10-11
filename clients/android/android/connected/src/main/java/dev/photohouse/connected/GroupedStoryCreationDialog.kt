@@ -198,6 +198,7 @@ private fun SelectionScreen(
         !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
     var limitReached by remember(editor) { mutableStateOf(false) }
     var relatedExpanded by remember(editor) { mutableStateOf(false) }
+    var optionsExpanded by remember(editor) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Header(t("Choose moments", "选择瞬间"), t("Close", "关闭"), onClose)
@@ -338,28 +339,39 @@ private fun SelectionScreen(
                 )
             }
         }
-        Text(t("Story theme", "故事主题"), style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            groupedStoryThemes.forEach { (theme, en, cn) ->
-                FilterChip(
-                    selected = editorState.theme == theme,
-                    onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setTheme(theme) },
-                    enabled = canAct,
-                    label = { Text(t(en, cn)) },
-                    modifier = Modifier.testTag("grouped-story-theme-$theme"),
-                )
+        val selectedTheme = groupedStoryThemes.firstOrNull { it.first == editorState.theme }
+        val themeLabel = selectedTheme?.let { t(it.second, it.third) }.orEmpty()
+        val languageLabel = if (editorState.language == "en") t("English", "英文") else t("Chinese", "中文")
+        OutlinedButton(
+            onClick = { if (canAct && latestEditorSelection(store, editor)) optionsExpanded = !optionsExpanded },
+            enabled = canAct,
+            modifier = Modifier.fillMaxWidth().testTag("grouped-story-options-toggle"),
+        ) { Text(t("$themeLabel · $languageLabel · ${if (optionsExpanded) "Hide options" else "Change options"}",
+            "$themeLabel · $languageLabel · ${if (optionsExpanded) "收起设置" else "调整设置"}")) }
+        if (optionsExpanded) {
+            Text(t("Story theme", "故事主题"), style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                groupedStoryThemes.forEach { (theme, en, cn) ->
+                    FilterChip(
+                        selected = editorState.theme == theme,
+                        onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setTheme(theme) },
+                        enabled = canAct,
+                        label = { Text(t(en, cn)) },
+                        modifier = Modifier.testTag("grouped-story-theme-$theme"),
+                    )
+                }
             }
-        }
-        Text(t("Story language", "故事语言"), style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf("zh" to t("Chinese", "中文"), "en" to t("English", "英文")).forEach { (language, label) ->
-                FilterChip(
-                    selected = editorState.language == language,
-                    onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setLanguage(language) },
-                    enabled = canAct,
-                    label = { Text(label) },
-                    modifier = Modifier.testTag("grouped-story-language-$language"),
-                )
+            Text(t("Story language", "故事语言"), style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("zh" to t("Chinese", "中文"), "en" to t("English", "英文")).forEach { (language, label) ->
+                    FilterChip(
+                        selected = editorState.language == language,
+                        onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setLanguage(language) },
+                        enabled = canAct,
+                        label = { Text(label) },
+                        modifier = Modifier.testTag("grouped-story-language-$language"),
+                    )
+                }
             }
         }
         Button(

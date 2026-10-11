@@ -103,6 +103,11 @@ class GroupedStoryCreationUiTest {
         }
         rule.onNodeWithTag("grouped-story-album-current").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("grouped-story-album-overflow").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-theme-trip").assertDoesNotExist()
+        rule.onNodeWithTag("grouped-story-album-help-text").assertDoesNotExist()
+        rule.onNodeWithTag("grouped-story-album-help").performClick()
+        rule.onNodeWithTag("grouped-story-album-help-text").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-album-help").performScrollTo().performClick()
         rule.onNodeWithText(if (zh) "相册第 1 / 4 页" else "Album page 1 of 4").assertIsDisplayed()
 
         // Remove an album-seeded item, then page through the whole album and explicitly add a later one.
@@ -218,8 +223,10 @@ class GroupedStoryCreationUiTest {
             assertTrue("explicit inclusion clears candidate previews", store.state.value.groupedStoryCreation?.relatedPreviews?.isEmpty() == true)
             assertTrue("cleared preview buffer is zeroed", api.relatedThumbnailBuffer!!.all { it == 0.toByte() })
         }
+        rule.onNodeWithTag("grouped-story-options-toggle").performClick()
         rule.onNodeWithTag("grouped-story-theme-trip").performClick()
         rule.onNodeWithTag(if (zh) "grouped-story-language-zh" else "grouped-story-language-en").performClick()
+        rule.onNodeWithTag("grouped-story-options-toggle").performClick()
         rule.onNodeWithTag("grouped-story-select-102").performScrollTo()
         rule.onNodeWithText(if (zh) "选择顺序：1" else "Story order: 1").assertIsDisplayed()
         capture("grouped-story-creation", if (zh) "grouped-story-selection-zh-150.png" else "grouped-story-selection-en-150.png")

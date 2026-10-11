@@ -22,6 +22,8 @@ internal fun GroupedStoryAlbumPicker(
     var replacement by remember(editor) { mutableStateOf<Pair<ProtectedLibraryAlbum, List<String>>?>(null) }
     val selectedAlbum = creation.selectedAlbum
     val page = creation.albumsPage
+    var helpExpanded by remember(editor, selectedAlbum?.id, selectedAlbum?.revision) { mutableStateOf(false) }
+    LaunchedEffect(selectedAlbum) { if (selectedAlbum != null) expanded = false }
     fun currentSelection(): List<String>? {
         val live = store.state.value.groupedStoryCreation ?: return null
         if (live.editor !== editor || live.canCreate != true || live.pageBusy || live.albumBusy ||
@@ -44,12 +46,19 @@ internal fun GroupedStoryAlbumPicker(
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(if (zh && selectedAlbum.titleZh.isNotBlank()) selectedAlbum.titleZh else selectedAlbum.title,
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-album-current"))
-                    Text(t("Album order is your starting point. Review the selected moments before creating an outline.",
-                        "按相册顺序准备好了瞬间。创建提纲前，请核对所选内容。"))
                     if (selectedAlbum.assetIds.size > 24) Text(
-                        t("This album has ${selectedAlbum.assetIds.size} moments. The first 24 were selected; the rest are still available below. Remove one to add another.",
-                            "相册共有 ${selectedAlbum.assetIds.size} 个瞬间，已先选前 24 个；其余仍可在下方查看。移除一个后可加入其他瞬间。"),
+                        t("${selectedAlbum.assetIds.size} moments · first 24 selected to start",
+                            "${selectedAlbum.assetIds.size} 个瞬间 · 初始选前 24 个"),
                         modifier = Modifier.testTag("grouped-story-album-overflow"))
+                    TextButton(onClick = { helpExpanded = !helpExpanded },
+                        modifier = Modifier.testTag("grouped-story-album-help")) {
+                        Text(t(if (helpExpanded) "Hide selection guidance" else "Selection guidance",
+                            if (helpExpanded) "收起选择说明" else "选择说明"))
+                    }
+                    if (helpExpanded) Text(
+                        t("Album order is your starting point. Review the moments before creating an outline. Every album page remains available; remove a selected moment to add another when you reach 24. Returning to the library keeps your selection.",
+                            "先按相册顺序准备瞬间，请在创建提纲前核对。相册各页仍可查看；达到 24 个时，可移除一个再加入其他瞬间。返回资料库会保留现有选择。"),
+                        modifier = Modifier.testTag("grouped-story-album-help-text"))
                     if (selectedAlbum.needsReview) Text(
                         t("Some album media are no longer available. Only currently authorized moments are shown; review this selection.",
                             "相册中部分内容已不可用。这里只显示当前可访问的瞬间，请重新核对。"),
@@ -58,7 +67,7 @@ internal fun GroupedStoryAlbumPicker(
                         t("Some items on this page cannot be used in a photo/video story.", "此页有部分内容不适用于照片或视频故事。"))
                     OutlinedButton(onClick = { if (currentSelection() != null) store.returnToGroupedStoryLibrary() },
                         enabled = canAct, modifier = Modifier.fillMaxWidth().testTag("grouped-story-album-library")) {
-                        Text(t("Browse the library too", "继续浏览资料库"))
+                        Text(t("Back to library", "返回资料库"))
                     }
                     val total = ((selectedAlbum.assetIds.size + 7) / 8).coerceAtLeast(1)
                     Text(t("Album page ${creation.albumPage} of $total", "相册第 ${creation.albumPage} / $total 页"))
