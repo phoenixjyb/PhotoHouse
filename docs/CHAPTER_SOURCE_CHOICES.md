@@ -20,8 +20,16 @@ read membership and returns the exact version-1 policy, per-chapter limit and
 review requirement. An older server's unsupported response keeps the original
 writing experience available without claiming source-selection support.
 
-New clients explicitly opt into `chapter_sources_v1`. Protected story GET and
-save requests use `source_review=1`. A profile GET or save response has an extra
+The old closed route boundary uses 403 for an unknown route. Before treating
+that response as unsupported, the clients recheck the current session and the
+selected library's availability through the existing session endpoint. Confirmed
+revocation clears the protected editor; a late check cannot clear a newer account
+or library. An uncertain check disables the optional controls. A 401 remains an
+authentication failure.
+
+New clients explicitly opt into `chapter_sources_v1` for the whole story and
+review the checked sources in each chapter. Protected story GET and save requests
+use `source_review=1`. A profile GET or save response has an extra
 `source_policy` field: null for a legacy story, or `chapter_sources_v1`. A profile
 save requires that exact policy in the string-valued body. Its existing chapter
 `evidence_ids` arrays become the allowlists, with at most 12 unique current
@@ -57,6 +65,26 @@ when choices change and invalidate delayed title suggestions. Frozen uncertain
 saves keep the policy, sources and mutation ID together for retry. Switching
 account or library clears the volatile editor. An existing reviewed draft cannot
 silently fall back to a legacy save after a capability or network failure.
+Draft JSON exports retain the explicit policy and selected IDs after opt-in;
+legacy exports keep the original shape. Choosing sources preserves typed wording
+and does not ask to discard the draft.
+
+## Local qualification
+
+The backend policy and closed route inventory are committed locally. The 13
+policy tests and two subtests cover selected/empty/legacy contexts, source
+changes, scoped title requests, memoir children and delayed generation. The
+later combined contribution-reference and policy run passed 29 tests and seven
+subtests, including a prose update that preserves accepted family links while
+choosing no item evidence. These overlapping cohorts are not summed.
+
+Phone controls at `8be679d` passed the preceding 659-test core run, followed by
+affected transport/repository/store tests after the membership recheck. Debug
+assembly, lint and one generated API 36 UI journey passed; Chinese and English
+150% renders were inspected. Web controls at `a1d3c8e` passed 15 generated browser
+checkpoint groups, including IME focus, keyboard use, 150% text, identical retry,
+reopen, exports, real revocation and a stale access check. The complete new source
+profile is still being qualified alongside the following dictation slice.
 
 This is local development. It does not enable live groups, change Windows
 services, run an installed model, publish an APK or publish private stories to TV.
