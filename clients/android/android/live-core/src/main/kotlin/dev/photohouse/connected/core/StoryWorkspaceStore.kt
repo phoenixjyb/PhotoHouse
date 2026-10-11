@@ -283,6 +283,33 @@ class StoryWorkspaceStore(
         return true
     }
 
+    /** Atomically seeds an unsaved editor from one freshly revalidated album choice. */
+    fun seedSelectionFromAlbum(
+        assetIds: List<String>,
+        albumTheme: String,
+        expectedSelectedIds: List<String>,
+        confirmedReplace: Boolean,
+    ): Boolean {
+        if (!editable() || isSavedStoryEdit || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
+            state.value.draft != null || state.value.hasPendingSave || pending != null || state.value.composing ||
+            hasUnfinishedChapterDictation || chapterDictationBinding != null) return false
+        val currentIds = state.value.selectedAssetIds
+        if (currentIds != expectedSelectedIds || currentIds.isNotEmpty() && !confirmedReplace) return false
+        if (assetIds.isEmpty() || assetIds.size > 60 || assetIds.distinct().size != assetIds.size ||
+            assetIds.any { id -> id.toLongOrNull()?.let { it > 0 && it.toString() == id } != true }) return false
+        if (albumTheme !in ALBUM_THEMES) return false
+
+        val chosen = immutable(assetIds.take(MAX_ASSETS))
+        val theme = if (albumTheme in SAVED_MEMORY_STORY_THEMES && albumTheme != "custom") albumTheme else "everyday"
+        invalidatePreview()
+        mutable.value = state.value.copy(status = StoryWorkspaceStoreStatus.SELECTION,
+            selectedAssetIds = chosen, theme = theme, draft = null, editableChapters = emptyList(), title = "",
+            reviewed = false, sourcesReloaded = false, dirty = chosen.isNotEmpty(), titleCandidates = emptyList(),
+            relatedCandidates = emptyList(), relatedBusy = false, relatedHasMore = false, relatedFailure = false,
+            failureStatus = null, sourceReviewEnabled = false, sourceCapabilities = null, sourceCapabilitiesChecked = false)
+        return true
+    }
+
     fun setTheme(value: String, discardDraft: Boolean = false): Boolean {
         if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || value !in SAVED_MEMORY_STORY_THEMES) return false
         if (state.value.theme == value) return true
@@ -846,6 +873,7 @@ class StoryWorkspaceStore(
     } catch (_: Exception) { false }
 
     companion object {
+        private val ALBUM_THEMES = setOf("birthday", "trip", "growing_up", "grandparents", "year_in_review", "seasonal", "custom")
         private val NEXT_DICTATION_SCOPE = AtomicLong(0)
         private const val MAX_ASSETS = 24
         private const val MAX_CHAPTERS = 6

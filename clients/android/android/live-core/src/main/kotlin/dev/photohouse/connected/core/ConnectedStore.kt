@@ -221,6 +221,11 @@ data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
+    val albumsPage: ProtectedLibraryAlbumPage? = null, val albumsPageBusy: Boolean = false,
+    val albumsProblem: LiveProblem? = null, val selectedAlbum: ProtectedLibraryAlbum? = null,
+    val albumPage: Int = 1, val albumAssets: List<Asset> = emptyList(),
+    val albumPreviews: Map<String, ByteArray> = emptyMap(), val albumBusy: Boolean = false,
+    val albumUnsupportedCount: Int = 0, val albumChoiceFailure: Boolean = false,
     val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
     val isSavedEdit: Boolean = false, val savedEditStoryId: String? = null, val savedEditRequestId: Long = 0,
     val problem: LiveProblem? = null,
@@ -280,6 +285,9 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private var groupedStoryRequest = 0L
     private var savedGroupedStoryEditRequest = 0L
     private var groupedStoryPageRequest = 0L
+    private var groupedStoryAlbumsRequest = 0L
+    private var groupedStoryAlbumPageRequest = 0L
+    private var groupedStoryAlbumChoiceRequest = 0L
     private var groupedStoryRelatedPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
     private var savedMemoryDetailRequest = 0L
@@ -389,10 +397,12 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!keepIdentity || !preserveConversationNavigation) memoryConversationNavigation.clear()
         clearMemoryBookEditorial()
         val previous = state.value
-        groupedStoryRequest++; groupedStoryPageRequest++
+        groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
+        groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
         savedGroupedStoryEditRequest++
         previous.groupedStoryCreation?.editor?.clear()
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.albumPreviews?.values?.forEach { it.fill(0) }
         previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
         groupedStoryRelatedPreviewRequest++
         previous.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
@@ -837,12 +847,165 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
     }
 
+    /** Loads album pages only after the editor explicitly opens its album picker. */
+    fun loadGroupedStoryAlbums(page: Int): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        if (!api.protectedNativeV2Enabled || !allowed() || current.canCreate != true || current.albumsPageBusy ||
+            current.albumBusy || editor.isSavedStoryEdit || page !in 1..100000 ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val request = ++groupedStoryAlbumsRequest
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumsPageBusy = true, albumsProblem = null, albumChoiceFailure = false))
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumsRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION
+            try {
+                val result = api.libraryAlbums(credential, library, page)
+                if (!valid()) return@launch
+                validResponse(result.libraryId == library && result.page == page && result.pageSize == 10 &&
+                    result.items.size <= 10 && result.total >= 0)
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    albumsPage = result, albumsPageBusy = false, albumsProblem = null, albumChoiceFailure = false))
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { loadGroupedStoryAlbums(page) }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumsPageBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryAlbumsRequest && live?.editor === editor && live.albumsPageBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumsPageBusy = false))
+                }
+            }
+        }
+        return true
+    }
+
+    /** Revalidates an album and its selected media before atomically replacing editor choices. */
+    fun selectGroupedStoryAlbum(
+        album: ProtectedLibraryAlbum,
+        expectedSelectedAssetIds: List<String>,
+        confirmedReplace: Boolean,
+    ): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        val listed = current.albumsPage?.items?.any { it === album } == true
+        val expectedSelection = ArrayList(expectedSelectedAssetIds)
+        val selected = editor.state.value.selectedAssetIds
+        if (!api.protectedNativeV2Enabled || !allowed() || current.canCreate != true || current.albumBusy ||
+            current.albumsPageBusy || !listed || editor.isSavedStoryEdit ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || selected != expectedSelection ||
+            selected.isNotEmpty() && !confirmedReplace || album.assetIds.isEmpty() || album.assetIds.size > 60) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val albumPage = current.albumsPage?.page ?: return false
+        val request = ++groupedStoryAlbumChoiceRequest
+        groupedStoryPageRequest++
+        current.previews.values.forEach { it.fill(0) }
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumBusy = true, albumsProblem = null, albumChoiceFailure = false,
+            albumUnsupportedCount = 0, albumPreviews = emptyMap(), previews = emptyMap(), pageBusy = false))
+        launch { _ ->
+            var pageOwnsBusy = false
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumChoiceRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
+                editor.state.value.selectedAssetIds == expectedSelection
+            try {
+                val freshPage = api.libraryAlbums(credential, library, albumPage)
+                if (!valid()) return@launch
+                validResponse(freshPage.libraryId == library && freshPage.page == albumPage && freshPage.pageSize == 10)
+                val fresh = freshPage.items.firstOrNull { it.id == album.id }
+                if (fresh == null || fresh.revision != album.revision || fresh.assetIds != album.assetIds || fresh.theme != album.theme) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumsPage = freshPage, albumBusy = false, albumChoiceFailure = true))
+                    return@launch
+                }
+                var unsupported = 0
+                for (assetId in fresh.assetIds.take(24)) {
+                    if (!valid()) return@launch
+                    val detail = api.detail(credential, library, assetId)
+                    if (!valid()) return@launch
+                    validResponse(detail.library_id == library && detail.asset.id == assetId)
+                    if (detail.asset.kind !in setOf("image", "video")) unsupported++
+                }
+                if (!valid()) return@launch
+                if (unsupported > 0) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumBusy = false, albumUnsupportedCount = unsupported,
+                        albumsProblem = LiveProblem(Message.MEDIA_UNAVAILABLE)))
+                    return@launch
+                }
+                if (!editor.seedSelectionFromAlbum(fresh.assetIds, fresh.theme, expectedSelection, confirmedReplace)) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                    return@launch
+                }
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    selectedAlbum = fresh, albumPage = 1, albumAssets = emptyList(), albumPreviews = emptyMap(),
+                    albumBusy = false, albumUnsupportedCount = 0, albumChoiceFailure = false,
+                    albumsProblem = null, gallery = null, previews = emptyMap(), pageBusy = false))
+                pageOwnsBusy = loadGroupedStorySelectionPage(1)
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) {
+                        val latest = state.value.groupedStoryCreation?.albumsPage?.items?.firstOrNull { it.id == album.id }
+                        if (latest != null) selectGroupedStoryAlbum(latest, expectedSelection, confirmedReplace)
+                    }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (!pageOwnsBusy && request == groupedStoryAlbumChoiceRequest && live?.editor === editor && live.albumBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                }
+            }
+        }
+        return true
+    }
+
+    /** Returns to regular gallery browsing without changing the ordered selection. */
+    fun returnToGroupedStoryLibrary(): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        if (!allowed() || current.canCreate != true || current.albumBusy || current.pageBusy || current.albumsPageBusy ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        groupedStoryAlbumPageRequest++
+        groupedStoryAlbumChoiceRequest++
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            selectedAlbum = null, albumPage = 1, albumAssets = emptyList(), albumPreviews = emptyMap(),
+            albumBusy = false, albumUnsupportedCount = 0, albumsProblem = null, albumChoiceFailure = false))
+        return loadGroupedStorySelectionPage(current.gallery?.page ?: 1)
+    }
+
     /** Selection has its own protected pages; browsing never invalidates the editor's ordered choices. */
     fun loadGroupedStorySelectionPage(page: Int): Boolean {
         val current = state.value.groupedStoryCreation ?: return false
         val editor = current.editor ?: return false
-        if (!allowed() || current.pageBusy || current.canCreate != true || page !in 1..100000 ||
+        if (!allowed() || current.pageBusy || current.albumBusy || current.albumsPageBusy || current.canCreate != true || page !in 1..100000 ||
             editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        if (current.selectedAlbum != null) return loadGroupedStoryAlbumPage(current, editor, page)
         val credential = token ?: return false; val library = state.value.library ?: return false
         val request = ++groupedStoryPageRequest
         current.previews.values.forEach { it.fill(0) }
@@ -875,6 +1038,75 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 if (failure is ApiFailure && failure.status in setOf(401, 403))
                     readFailure(failure, generation, credential) { loadGroupedStorySelectionPage(page) }
                 else mutable.value = state.value.copy(groupedStoryCreation = state.value.groupedStoryCreation?.copy(pageBusy = false, problem = problem(failure)))
+            }
+        }
+        return true
+    }
+
+    private fun loadGroupedStoryAlbumPage(current: GroupedStoryCreationState, editor: StoryWorkspaceStore, page: Int): Boolean {
+        val album = current.selectedAlbum ?: return false
+        val totalPages = ((album.assetIds.size + 7) / 8).coerceAtLeast(1)
+        if (page !in 1..totalPages) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val request = ++groupedStoryAlbumPageRequest
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumPage = page, albumAssets = emptyList(), albumPreviews = emptyMap(), albumBusy = true,
+            albumUnsupportedCount = 0, albumsProblem = null))
+        launch { _ ->
+            val previews = LinkedHashMap<String, ByteArray>()
+            var transferred = false
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumPageRequest && state.value.groupedStoryCreation?.editor === editor &&
+                state.value.groupedStoryCreation?.selectedAlbum === album &&
+                state.value.groupedStoryCreation?.albumPage == page && editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION
+            try {
+                val ids = album.assetIds.drop((page - 1) * 8).take(8)
+                val assets = ArrayList<Asset>(ids.size)
+                var totalBytes = 0
+                var unsupported = 0
+                for (id in ids) {
+                    if (!valid()) return@launch
+                    val detail = api.detail(credential, library, id)
+                    if (!valid()) return@launch
+                    validResponse(detail.library_id == library && detail.asset.id == id)
+                    if (detail.asset.kind !in setOf("image", "video")) { unsupported++; continue }
+                    assets += detail.asset
+                    val bytes = try { api.thumbnail(credential, library, detail.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || totalBytes + bytes.size > CACHE_LIMIT) {
+                        bytes.fill(0); continue
+                    }
+                    totalBytes += bytes.size
+                    previews[id] = bytes
+                }
+                if (!valid()) return@launch
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    albumAssets = assets.toList(), albumPreviews = previews.toMap(),
+                    albumUnsupportedCount = unsupported, albumBusy = false))
+                transferred = true
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { loadGroupedStorySelectionPage(page) }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                if (!transferred) previews.values.forEach { it.fill(0) }
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryAlbumPageRequest && live?.editor === editor && live.selectedAlbum === album &&
+                    live.albumPage == page && live.albumBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                }
             }
         }
         return true
@@ -929,8 +1161,10 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
         savedGroupedStoryEditRequest++
-        groupedStoryRequest++; groupedStoryPageRequest++
+        groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
+        groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
         current.previews.values.forEach { it.fill(0) }
+        current.albumPreviews.values.forEach { it.fill(0) }
         current.relatedPreviews.values.forEach { it.fill(0) }
         groupedStoryRelatedPreviewRequest++
         mutable.value = state.value.copy(groupedStoryCreation = null)

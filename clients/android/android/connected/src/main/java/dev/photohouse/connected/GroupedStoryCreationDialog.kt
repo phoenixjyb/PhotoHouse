@@ -33,7 +33,8 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
     fun latestSelection(): GroupedStoryCreationState? {
         val live = store.state.value.groupedStoryCreation ?: return null
         if (editor == null || live.editor !== editor || live.canCreate != true) return null
-        if (editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || live.pageBusy) return null
+        if (editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || live.pageBusy ||
+            live.albumBusy || live.albumsPageBusy) return null
         return live
     }
     fun requestClose() {
@@ -188,10 +189,13 @@ private fun SelectionScreen(
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val gallery = creation.gallery
+    val album = creation.selectedAlbum
     val totalPages = gallery?.let { ((it.total + it.page_size - 1) / it.page_size).coerceAtLeast(1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() } ?: 1
-    val items = gallery?.items.orEmpty().filter { it.kind == "image" || it.kind == "video" }
+    val items = (if (album != null) creation.albumAssets else gallery?.items.orEmpty())
+        .filter { it.kind == "image" || it.kind == "video" }
     val selected = editorState.selectedAssetIds
-    val canAct = !creation.pageBusy && !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
+    val canAct = !creation.pageBusy && !creation.albumBusy && !creation.albumsPageBusy &&
+        !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
     var limitReached by remember(editor) { mutableStateOf(false) }
     var relatedExpanded by remember(editor) { mutableStateOf(false) }
 
@@ -207,8 +211,8 @@ private fun SelectionScreen(
             TextButton(
                 onClick = {
                     val live = store.state.value.groupedStoryCreation
-                    if (live?.editor === editor && live.canCreate == true && !live.pageBusy) {
-                        store.loadGroupedStorySelectionPage(gallery?.page ?: requestedPage)
+                    if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy) {
+                        store.loadGroupedStorySelectionPage(if (album != null) creation.albumPage else gallery?.page ?: requestedPage)
                     }
                 },
                 enabled = !creation.pageBusy,
@@ -220,7 +224,7 @@ private fun SelectionScreen(
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag("grouped-story-selection-limit"),
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (album == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { onRequestPage((gallery?.page ?: requestedPage) - 1) },
                 enabled = canAct && (gallery?.page ?: requestedPage) > 1,
@@ -237,7 +241,7 @@ private fun SelectionScreen(
                 modifier = Modifier.weight(1f).testTag("grouped-story-selection-next"),
             ) { Text(t("Next", "下一页")) }
         }
-        if (gallery == null && !creation.pageBusy && creation.problem == null) {
+        if (album == null && gallery == null && !creation.pageBusy && creation.problem == null) {
             Text(t("No moments are available on this page.", "此页没有可用的瞬间。"))
         }
         LazyColumn(
@@ -245,6 +249,9 @@ private fun SelectionScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
+            item(key = "album-story-picker") {
+                GroupedStoryAlbumPicker(store, creation, editor, zh, canAct)
+            }
             item(key = "same-day-related-picker") {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { relatedExpanded = !relatedExpanded }, modifier = Modifier.fillMaxWidth()
@@ -303,16 +310,20 @@ private fun SelectionScreen(
                 val position = selected.indexOf(asset.id)
                 SelectionAsset(
                     asset = asset,
-                    bytes = creation.previews[asset.id],
+                    bytes = (if (album != null) creation.albumPreviews else creation.previews)[asset.id],
                     words = words,
                     selected = position >= 0,
                     ordinal = position + 1,
-                    enabled = canAct && gallery != null,
+                    enabled = canAct && (album != null || gallery != null),
                     tag = "grouped-story-select-${asset.id}",
                     onToggle = {
                         val live = store.state.value.groupedStoryCreation
-                        if (live?.editor === editor && live.canCreate == true && !live.pageBusy &&
-                            live.gallery?.page == gallery?.page && live.gallery?.items?.any { it.id == asset.id && it.kind in setOf("image", "video") } == true &&
+                        val samePage = if (album != null) live?.selectedAlbum === album &&
+                            live.albumPage == creation.albumPage && live.albumAssets.any { it.id == asset.id && it.kind in setOf("image", "video") }
+                        else live?.selectedAlbum == null && live?.gallery?.page == gallery?.page &&
+                            live?.gallery?.items?.any { it.id == asset.id && it.kind in setOf("image", "video") } == true
+                        if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy &&
+                            !live.albumsPageBusy && samePage &&
                             editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION && !editor.state.value.busy) {
                             val currentlySelected = editor.state.value.selectedAssetIds
                             if (asset.id in currentlySelected) {
@@ -354,7 +365,7 @@ private fun SelectionScreen(
         Button(
             onClick = {
                 val live = store.state.value.groupedStoryCreation
-                if (live?.editor === editor && live.canCreate == true && !live.pageBusy &&
+                if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy && !live.albumsPageBusy &&
                     editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
                     editor.state.value.selectedAssetIds.isNotEmpty() && !editor.state.value.busy) editor.preview()
             },
@@ -398,7 +409,7 @@ private fun SelectionAsset(
 
 private fun latestEditorSelection(store: ConnectedStore, editor: StoryWorkspaceStore): Boolean {
     val live = store.state.value.groupedStoryCreation ?: return false
-    return live.editor === editor && live.canCreate == true && !live.pageBusy &&
+    return live.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy && !live.albumsPageBusy &&
         editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION && !editor.state.value.busy
 }
 

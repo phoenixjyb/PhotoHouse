@@ -81,6 +81,9 @@ interface PhotoHouseApi {
     /** Separate protected, family-authored note tag catalog and asset lookup. */
     suspend fun familyTags(token: Bearer, library: String, page: Int = 1, query: String = ""): FamilyTagsPage = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun familyTagAssets(token: Bearer, library: String, tag: String, page: Int = 1): Gallery = throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Optional protected album picker; legacy adapters keep manual gallery selection available. */
+    suspend fun libraryAlbums(token: Bearer, library: String, page: Int): ProtectedLibraryAlbumPage =
+        throw ApiFailure(FailureKind.HTTP, 404)
     suspend fun login(phone: String, password: String): SessionToken
     suspend fun register(phone: String, password: String, code: String): SessionToken
     suspend fun registerNamed(phone: String, password: String, code: String, name: String): SessionToken = throw ApiFailure(FailureKind.INVALID_INPUT)

@@ -38,6 +38,144 @@ class GroupedStoryCreationUiTest {
 
     @Test fun englishGroupedStorySelectionReviewSaveAndFreshReaderAt150Percent() = journey(zh = false)
 
+    @Test fun chineseAlbumToStoryReplacementAndPagingAt150Percent() = albumJourney(zh = true)
+
+    @Test fun englishAlbumToStoryReplacementAndPagingAt150Percent() = albumJourney(zh = false)
+
+    private fun albumJourney(zh: Boolean) {
+        val api = SyntheticGroupedStoryApi()
+        val store = ConnectedStore(api, scope)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = if (zh) "zh" else "en")
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { store.state.value.library == SyntheticGroupedStoryApi.LIBRARY }
+        rule.onNodeWithTag("open-grouped-story-creation").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.let { it.gallery != null && !it.pageBusy } == true
+        }
+        rule.runOnIdle { assertEquals("album metadata stays unopened until an explicit action", 0, api.albumReads) }
+
+        // Begin with an explicitly selected library item so replacement requires confirmation.
+        rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("101")
+        }
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(0)
+        rule.onNodeWithTag("grouped-story-albums-toggle").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.let { it.albumsPage != null && !it.albumsPageBusy } == true
+        }
+        rule.runOnIdle { assertEquals(1, api.albumReads) }
+        rule.onNodeWithTag("grouped-story-album-${SyntheticGroupedStoryApi.ALBUM_ID}")
+            .performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-album-replace-dialog").assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-album-replace-cancel").performClick()
+        rule.runOnIdle {
+            val creation = store.state.value.groupedStoryCreation!!
+            assertNull("cancel preserves library mode", creation.selectedAlbum)
+            assertEquals(listOf("101"), creation.editor!!.state.value.selectedAssetIds)
+        }
+
+        rule.onNodeWithTag("grouped-story-album-${SyntheticGroupedStoryApi.ALBUM_ID}")
+            .performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-album-replace-confirm").performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.let { creation ->
+                creation.selectedAlbum?.id == SyntheticGroupedStoryApi.ALBUM_ID &&
+                    creation.editor?.state?.value?.selectedAssetIds == SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.take(24) &&
+                    !creation.albumBusy && !creation.pageBusy
+            } == true
+        }
+        rule.runOnIdle {
+            val creation = store.state.value.groupedStoryCreation!!
+            val editor = creation.editor!!
+            assertTrue("replacement re-reads the album before applying it", api.albumReads >= 2)
+            assertEquals("album order seeds the selected moments", SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.take(24),
+                editor.state.value.selectedAssetIds)
+            assertEquals("album theme is applied", "trip", editor.state.value.theme)
+            assertFalse("the fixture album has no removed media", creation.selectedAlbum!!.needsReview)
+            assertEquals(0, api.storyPreviewRequests)
+            assertEquals(0, api.saveRequests)
+        }
+        rule.onNodeWithTag("grouped-story-album-current").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-album-overflow").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "相册第 1 / 4 页" else "Album page 1 of 4").assertIsDisplayed()
+
+        // Remove an album-seeded item, then page through the whole album and explicitly add a later one.
+        rule.runOnIdle {
+            assertEquals(SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.take(8),
+                store.state.value.groupedStoryCreation?.albumAssets?.map { it.id })
+        }
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(2)
+        rule.onNodeWithTag("grouped-story-select-${SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.first()}")
+            .performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds ==
+                SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.drop(1).take(23)
+        }
+        for (page in 2..4) {
+            rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(0)
+            rule.onNodeWithTag("grouped-story-album-next").performClick()
+            rule.waitUntil(5000) {
+                store.state.value.groupedStoryCreation?.let { it.albumPage == page && !it.albumBusy && !it.pageBusy } == true
+            }
+            rule.runOnIdle {
+                assertEquals(SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.drop((page - 1) * 8).take(8),
+                    store.state.value.groupedStoryCreation?.albumAssets?.map { it.id })
+            }
+        }
+        val finalPageIds = SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.takeLast(2)
+        rule.onNodeWithTag("grouped-story-album-current").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-album-overflow").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "相册第 4 / 4 页" else "Album page 4 of 4").assertIsDisplayed()
+        capture("grouped-story-creation", if (zh) "grouped-story-album-zh-150.png" else "grouped-story-album-en-150.png")
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(3)
+        rule.onNodeWithTag("grouped-story-select-${finalPageIds[0]}").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("grouped-story-select-${finalPageIds[1]}").performScrollTo().assertIsDisplayed()
+        rule.runOnIdle {
+            assertEquals(finalPageIds, store.state.value.groupedStoryCreation?.albumAssets?.map { it.id })
+        }
+        rule.onNodeWithTag("grouped-story-select-${finalPageIds[1]}").performScrollTo().performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds ==
+                SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.drop(1).take(23) + finalPageIds[1]
+        }
+        rule.runOnIdle {
+            assertEquals(24, store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds?.size)
+            assertEquals(0, api.storyPreviewRequests)
+            assertEquals(0, api.saveRequests)
+        }
+
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToIndex(0)
+        rule.onNodeWithTag("grouped-story-album-library").performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.let { it.selectedAlbum == null && !it.pageBusy } == true
+        }
+        rule.runOnIdle {
+            assertEquals("returning to the library preserves the edited album selection",
+                SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.drop(1).take(23) + finalPageIds[1],
+                store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds)
+            assertEquals(0, api.storyPreviewRequests)
+            assertEquals(0, api.saveRequests)
+        }
+
+        rule.onNodeWithTag("grouped-story-selection-preview").performClick()
+        rule.waitUntil(5000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.status == StoryWorkspaceStoreStatus.EDITING
+        }
+        rule.runOnIdle {
+            assertEquals("outline generation starts only after the explicit action", 1, api.storyPreviewRequests)
+            assertEquals(SyntheticGroupedStoryApi.ALBUM_ASSET_IDS.drop(1).take(23) + finalPageIds[1],
+                api.lastPreviewRequest!!.getValue("asset_ids").jsonPrimitive.content.split(','))
+            assertEquals("trip", api.lastPreviewRequest!!.getValue("theme").jsonPrimitive.content)
+            assertEquals(0, api.saveRequests)
+        }
+    }
+
     private fun journey(zh: Boolean) {
         val api = SyntheticGroupedStoryApi()
         val store = ConnectedStore(api, scope)
@@ -152,20 +290,33 @@ class GroupedStoryCreationUiTest {
     private class SyntheticGroupedStoryApi : PhotoHouseApi, StoryWorkspaceApi {
         override val protectedNativeV2Enabled = true
         var saveRequests = 0
+        var storyPreviewRequests = 0
+        var albumReads = 0
+        var lastPreviewRequest: JsonObject? = null
         var freshStoryReads = 0
         var relatedLookups = 0
         var relatedThumbnailBuffer: ByteArray? = null
         var savedStory: SavedMemoryStory? = null
         private var preview: JsonObject? = null
+        private val albumAssets = ALBUM_ASSET_IDS.associateWith { id ->
+            val offset = id.toInt() - ALBUM_ASSET_IDS.first().toInt()
+            Asset(id, if (offset % 2 == 0) "image" else "video", 640, 480,
+                if (offset % 2 == 0) null else 2.5, null, "/assets/$id/thumbnail?library=$LIBRARY")
+        }
         private val assets = linkedMapOf(
             "102" to Asset("102", "video", 640, 360, 3.5, null, "/assets/102/thumbnail?library=$LIBRARY"),
             "101" to Asset("101", "image", 800, 600, null, null, "/assets/101/thumbnail?library=$LIBRARY"),
             "103" to Asset("103", "video", 640, 360, 2.0, "2026-01-02T23:30:00-05:00", "/assets/103/thumbnail?library=$LIBRARY"),
-        )
+        ).apply { putAll(albumAssets) }
         private val evidence = mapOf(
             "102" to MemoryStoryEvidence("family-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "family", "Garden video", "We walked through the garden together.", 1),
             "101" to MemoryStoryEvidence("family-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "family", "Garden photo", "Grandma pointed out the flowers.", 1),
             "103" to MemoryStoryEvidence("family-cccccccc-cccc-4ccc-8ccc-cccccccccccc", "family", "Garden clip", "The family looked at flowers.", 1),
+        )
+
+        private fun evidenceFor(id: String): MemoryStoryEvidence = evidence[id] ?: MemoryStoryEvidence(
+            "family-${id.toInt().toString(16).padStart(8, '0')}-0000-4000-8000-000000000000",
+            "family", "Album note $id", "A family memory recorded for moment $id.", 1,
         )
 
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
@@ -176,6 +327,12 @@ class GroupedStoryCreationUiTest {
         override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
         override suspend fun gallery(token: Bearer, library: String, page: Int) =
             Gallery(library, page, 2, 2, false, listOf(assets.getValue("102"), assets.getValue("101")))
+        override suspend fun libraryAlbums(token: Bearer, library: String, page: Int) : ProtectedLibraryAlbumPage {
+            albumReads++
+            val album = ProtectedLibraryAlbum(ALBUM_ID, "Summer family days", "夏日家庭时光", "A set of family days.",
+                "trip", ALBUM_ASSET_IDS, ALBUM_ASSET_IDS.first(), ALBUM_REVISION, false)
+            return ProtectedLibraryAlbumPage(library, page, 1, 10, true, if (page == 1) listOf(album) else emptyList())
+        }
         override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, assets.getValue(assetId))
         override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
         override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray {
@@ -214,13 +371,19 @@ class GroupedStoryCreationUiTest {
             chapterIds.map { SavedMemoryChapterContributionReferences(it, emptyList()) })
 
         override suspend fun storyPreview(token: Bearer, library: String, json: String): ByteArray {
+            storyPreviewRequests++
             check(library == LIBRARY)
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("asset_ids").jsonPrimitive.content.split(',')
-            check(ids == listOf("102", "101", "103")) { "preview preserves the selected mixed-media order" }
+            lastPreviewRequest = request
+            check(ids == listOf("102", "101", "103") ||
+                ids == ALBUM_ASSET_IDS.drop(1).take(23) + ALBUM_ASSET_IDS.last()) {
+                "preview preserves the selected mixed-media or album-adjusted order"
+            }
+            if (ids.size == 24) check(request.getValue("theme").jsonPrimitive.content == "trip")
             val items = JsonArray(ids.map { id ->
                 val itemAsset = assets.getValue(id)
-                val itemEvidence = evidence.getValue(id)
+                val itemEvidence = evidenceFor(id)
                 buildJsonObject {
                     put("id", id); put("kind", itemAsset.kind); put("width", itemAsset.width!!); put("height", itemAsset.height!!)
                     put("duration_sec", itemAsset.duration_sec?.let(::JsonPrimitive) ?: JsonNull)
@@ -233,12 +396,15 @@ class GroupedStoryCreationUiTest {
                     })
                 }
             })
-            val chapter = buildJsonObject {
-                put("id", "chapter-1"); put("title", if (request.getValue("language").jsonPrimitive.content == "zh") "花园时光" else "Garden moments")
-                put("narration", "The family shared a walk among the flowers.")
-                put("asset_ids", JsonArray(ids.map(::JsonPrimitive)))
-                put("evidence_ids", JsonArray(ids.map { evidence.getValue(it).id }.map(::JsonPrimitive)))
-            }
+            val chapters = JsonArray(ids.chunked(4).mapIndexed { index, chapterIds ->
+                buildJsonObject {
+                    put("id", "chapter-${index + 1}")
+                    put("title", if (request.getValue("language").jsonPrimitive.content == "zh") "花园时光 ${index + 1}" else "Garden moments ${index + 1}")
+                    put("narration", "The family shared a walk among the flowers.")
+                    put("asset_ids", JsonArray(chapterIds.map(::JsonPrimitive)))
+                    put("evidence_ids", JsonArray(chapterIds.map { evidenceFor(it).id }.map(::JsonPrimitive)))
+                }
+            })
             val result = buildJsonObject {
                 put("version", 1); put("library_id", library); put("selection_revision", REVISION)
                 put("state", "draft"); put("saved", false)
@@ -246,7 +412,7 @@ class GroupedStoryCreationUiTest {
                 put("theme", request.getValue("theme").jsonPrimitive.content)
                 put("language", request.getValue("language").jsonPrimitive.content)
                 put("generator", "evidence_outline"); put("needs_review", true)
-                put("items", items); put("chapters", JsonArray(listOf(chapter)))
+                put("items", items); put("chapters", chapters)
                 put("questions", JsonArray(listOf(JsonPrimitive("What else do you remember?"))))
             }
             preview = result
@@ -314,6 +480,9 @@ class GroupedStoryCreationUiTest {
         companion object {
             const val LIBRARY = "family-synthetic"
             const val STORY_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+            const val ALBUM_ID = "77"
+            val ALBUM_ASSET_IDS = (201..226).map(Int::toString)
+            private const val ALBUM_REVISION = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
             private const val REVISION = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         }
     }

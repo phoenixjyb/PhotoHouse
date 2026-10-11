@@ -663,6 +663,18 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
         return FamilyTagsWire.assets(result.bytes, library, tag, page)
     }
+    override suspend fun libraryAlbums(token: Bearer, library: String, page: Int): ProtectedLibraryAlbumPage {
+        require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && page in 1..100000)
+        val target = origin.url.newBuilder().addPathSegment("library-albums")
+            .addQueryParameter("library", library).addQueryParameter("page", page.toString()).build()
+        val result = packet(target, token, limit = 256 * 1024, method = "GET")
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        }
+        return try { ProtectedLibraryAlbumsWire.decodePage(result.bytes, library, page) }
+        finally { result.bytes.fill(0) }
+    }
     override suspend fun login(phone: String, password: String): SessionToken {
         Admission.password(password, protectedNativeV2Enabled, registration = false)
         return json(url("/auth/login"), SessionToken.serializer(), body = Wire.json.encodeToString(LoginRequest.serializer(), LoginRequest(Admission.phone(phone), password)))
