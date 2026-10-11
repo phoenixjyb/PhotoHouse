@@ -29,6 +29,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
     var requestedPage by remember(editor) { mutableIntStateOf(creation.gallery?.page ?: 1) }
 
     fun t(en: String, cn: String) = if (zh) cn else en
+    val flowTitle = if (creation.isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Create a family story", "创建家庭故事")
     fun latestSelection(): GroupedStoryCreationState? {
         val live = store.state.value.groupedStoryCreation ?: return null
         if (editor == null || live.editor !== editor || live.canCreate != true) return null
@@ -57,12 +58,38 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                             zh,
                             onClose = { store.closeGroupedStoryCreation(discard = true) },
                             onReadSaved = { store.readCreatedGroupedStory() },
+                            isSavedEdit = creation.isSavedEdit,
+                            savedEditReloading = creation.isSavedEdit && creation.checking,
+                            savedEditReloadFailed = creation.isSavedEdit && creation.problem != null,
+                            onReloadSavedEdit = { store.reloadSavedGroupedStoryEdit(editor) },
                         )
+                    creation.isSavedEdit && creation.checking -> Column(
+                        Modifier.fillMaxSize().padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text(t("Reading the latest saved chapters and linked family memories…",
+                            "正在读取最新故事篇章和关联的家人回忆…"))
+                    }
+                    creation.isSavedEdit && editor == null -> Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
+                        Text(t("The saved story or its complete chapter memory links could not be verified. Retry before editing.",
+                            "无法核对已保存故事或完整的篇章回忆关联，请重试后再编辑。"), color = MaterialTheme.colorScheme.error)
+                        creation.problem?.let { Text(words.message(it.message), color = MaterialTheme.colorScheme.error) }
+                        Button(onClick = store::retrySavedGroupedStoryEdit,
+                            modifier = Modifier.fillMaxWidth().testTag("saved-grouped-story-edit-retry")) {
+                            Text(t("Retry", "重试"))
+                        }
+                    }
                     creation.checking -> Column(
                         Modifier.fillMaxSize().padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                         Text(t("Checking library access…", "正在检查资料库访问权限…"))
                     }
@@ -70,7 +97,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         Text(
                             t(
                                 "Only a library owner or contributor can create a grouped story. Ask the library owner to grant contributor access.",
@@ -83,7 +110,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         Text(creation.problem?.let { words.message(it.message) }
                             ?: t("Story creation is unavailable right now.", "暂时无法创建故事。"),
                             color = MaterialTheme.colorScheme.error)

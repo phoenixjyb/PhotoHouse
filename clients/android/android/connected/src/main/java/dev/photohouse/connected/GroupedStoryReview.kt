@@ -20,7 +20,9 @@ import dev.photohouse.connected.core.*
 /** Review surface for the optional grouped-story store. Gallery entry is integrated separately. */
 @Composable
 internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose: () -> Unit,
-    onReadSaved: (SavedMemoryStory) -> Unit) {
+    onReadSaved: (SavedMemoryStory) -> Unit, isSavedEdit: Boolean = store.isSavedStoryEdit,
+    savedEditReloading: Boolean = false, savedEditReloadFailed: Boolean = false,
+    onReloadSavedEdit: (() -> Unit)? = null) {
     val state by store.state.collectAsState()
     val dictationStore by store.chapterDictation.collectAsState()
     val dictationUnfinished by store.dictationUnfinished.collectAsState()
@@ -30,11 +32,14 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     fun finishTyping() { focus.clearFocus(); keyboard?.hide() }
     var discard by remember(store) { mutableStateOf(false) }
     var discardDictation by remember(store) { mutableStateOf(false) }
-    var chapterIndex by remember(state.draft?.selectionRevision) { mutableIntStateOf(0) }
-    val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
+    var confirmSavedEditReload by remember(store) { mutableStateOf(false) }
+    var chapterIndex by remember(store, store.savedEditStoryId, store.savedEditStoryRevision,
+        state.draft?.selectionRevision) { mutableIntStateOf(0) }
+    val reviewScrollState = rememberScrollState()
+    val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave && !savedEditReloading
+    Column(Modifier.fillMaxSize().verticalScroll(reviewScrollState).padding(20.dp)
         .testTag("grouped-story-review"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
+        Text(if (isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
             fontFamily = FontFamily.Serif)
         Text(t("${state.selectedAssetIds.size} selected · photos and videos in your chosen order",
             "${state.selectedAssetIds.size} 个瞬间 · 照片与视频按所选顺序排列"), style = MaterialTheme.typography.bodyMedium)
@@ -55,8 +60,10 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.testTag("grouped-story-sources-reloaded"))
             }
-            Text(t("This is an outline to review. Original family words and AI observations remain separate.",
-                "这是一份待核对的提纲。家人的原话与 AI 观察会分别保留。"), style = MaterialTheme.typography.bodySmall)
+            Text(if (isSavedEdit) t("You are editing the saved chapters. The existing photos, chapter grouping, theme and language stay attached to this story.",
+                "你正在编辑已保存的篇章。现有照片、篇章分组、主题和语言仍属于这份故事。")
+                else t("This is an outline to review. Original family words and AI observations remain separate.",
+                    "这是一份待核对的提纲。家人的原话与 AI 观察会分别保留。"), style = MaterialTheme.typography.bodySmall)
             var title by remember(draft.selectionRevision) { mutableStateOf(TextFieldValue(state.title)) }
             LaunchedEffect(state.title) {
                 if (title.composition == null && title.text != state.title) title = TextFieldValue(state.title)
@@ -104,8 +111,12 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             val index = chapterIndex.coerceIn(state.editableChapters.indices)
             val chapter = state.editableChapters[index]
+            LaunchedEffect(store, store.savedEditStoryId, store.savedEditStoryRevision,
+                draft.selectionRevision, chapter.id) {
+                reviewScrollState.scrollTo(0)
+            }
             Text(t("Chapter ${index + 1} / ${state.editableChapters.size}", "篇章 ${index + 1} / ${state.editableChapters.size}"),
-                style = MaterialTheme.typography.titleMedium)
+                style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-chapter-position"))
             key(chapter.id) {
                 var name by remember { mutableStateOf(TextFieldValue(chapter.title)) }
                 var words by remember { mutableStateOf(TextFieldValue(chapter.narration)) }
@@ -140,7 +151,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                         purpose = MemoryDictationPurpose.CHAPTER_NARRATION,
                         insertRejected = insertRejected,
                         insertEnabled = words.composition == null,
-                        onSessionEnded = store::closeChapterDictation,
+                        onSessionEnded = { store.closeChapterDictationIfCurrent(dictationStore!!) },
                     )
                     TextButton(onClick = {
                         if (dictationUnfinished) discardDictation = true else store.closeChapterDictation()
@@ -190,9 +201,11 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex-- }, enabled = editable && !state.composing && !dictationUnfinished && index > 0) {
+                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex-- }, enabled = editable && !state.composing && !dictationUnfinished && index > 0,
+                    modifier = Modifier.testTag("grouped-story-previous-chapter")) {
                     Text(t("Previous", "上一篇")) }
-                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex++ }, enabled = editable && !state.composing && !dictationUnfinished && index < state.editableChapters.lastIndex) {
+                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex++ }, enabled = editable && !state.composing && !dictationUnfinished && index < state.editableChapters.lastIndex,
+                    modifier = Modifier.testTag("grouped-story-next-chapter")) {
                     Text(t("Next", "下一篇")) }
             }
             draft.questions.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -219,10 +232,27 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 else t("The preview could not be loaded. Your selection remains here; retry when access is available.",
                     "暂时无法加载预览。所选内容仍保留；访问恢复后可以重试。"))
             if (draft != null && state.status in setOf(StoryWorkspaceStoreStatus.CONFLICT, StoryWorkspaceStoreStatus.UNAVAILABLE)) {
-                Button(onClick = { finishTyping(); store.reloadPreview() },
-                    enabled = !state.busy && !state.composing && !state.hasPendingSave,
+                if (savedEditReloading) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(t("Checking the latest saved story and linked family memories. Your conflicted words are being kept until the replacement is verified.",
+                        "正在核对最新已保存故事及关联的家人回忆。在替换内容通过核验前，会保留这次冲突中的文字。"),
+                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("saved-edit-reload-progress"))
+                }
+                if (savedEditReloadFailed) {
+                    Text(t("The latest story or complete chapter links could not be verified. Your conflicted words remain here; retry when ready.",
+                        "无法核对最新故事或完整篇章关联。冲突中的文字仍保留在此处，可以重试。"),
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag("saved-edit-reload-error"))
+                }
+                Button(onClick = {
+                    finishTyping()
+                    if (isSavedEdit) confirmSavedEditReload = true else store.reloadPreview()
+                },
+                    enabled = !savedEditReloading && !state.busy && !state.composing && !state.hasPendingSave,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-reload-sources")) {
-                    Text(t("Reload sources and review", "重新加载来源并核对"))
+                    Text(if (isSavedEdit && savedEditReloadFailed) t("Retry loading latest story", "重试加载最新故事")
+                        else if (isSavedEdit) t("Reload latest saved story", "重新加载最新已保存故事")
+                        else t("Reload sources and review", "重新加载来源并核对"))
                 }
             } else if (draft == null && state.status == StoryWorkspaceStoreStatus.UNAVAILABLE && state.selectedAssetIds.isNotEmpty()) {
                 Button(onClick = { store.retryPreview() },
@@ -234,8 +264,13 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         }
         state.savedStory?.let { saved ->
             Text(t("Story saved", "故事已保存"), style = MaterialTheme.typography.titleLarge)
+            if (isSavedEdit && state.savedStoryIsNewerThanEditBase) {
+                Text(t("The update was confirmed, and a newer family version is now available. Open the current story to review its latest saved chapters.",
+                    "修改已确认，现在已有更新的家庭版本。请打开当前故事，核对最新保存的篇章。"),
+                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("grouped-story-newer-version-notice"))
+            }
             Button(onClick = { onReadSaved(saved) }, modifier = Modifier.fillMaxWidth().testTag("grouped-story-read")) {
-                Text(t("Read the story", "阅读故事")) }
+                Text(if (isSavedEdit) t("Return to updated story", "返回更新后的故事") else t("Read the story", "阅读故事")) }
         }
         OutlinedButton(onClick = { finishTyping(); if (store.close()) onClose() else discard = true },
             modifier = Modifier.fillMaxWidth().testTag("grouped-story-close")) { Text(t("Close", "关闭")) }
@@ -254,4 +289,14 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         confirmButton = { TextButton(onClick = { store.closeChapterDictation(); discardDictation = false }) {
             Text(t("Discard and close", "丢弃并关闭")) } },
         dismissButton = { TextButton(onClick = { discardDictation = false }) { Text(t("Keep dictation", "保留口述")) } })
+    if (confirmSavedEditReload) AlertDialog(onDismissRequest = { confirmSavedEditReload = false },
+        title = { Text(t("Discard these edits and reload?", "丢弃这些修改并重新加载？")) },
+        text = { Text(t("Your unsaved words and source choices will be discarded. The latest saved chapters and family memory links will load for a fresh review.",
+            "未保存的文字和素材选择将被丢弃。系统会加载最新已保存篇章和家人回忆关联，供你重新核对。")) },
+        confirmButton = { TextButton(onClick = {
+            confirmSavedEditReload = false
+            onReloadSavedEdit?.invoke()
+        }, modifier = Modifier.testTag("grouped-story-saved-edit-reload-confirm")) {
+            Text(t("Discard and reload", "丢弃并重新加载")) } },
+        dismissButton = { TextButton(onClick = { confirmSavedEditReload = false }) { Text(t("Keep editing", "继续编辑")) } })
 }

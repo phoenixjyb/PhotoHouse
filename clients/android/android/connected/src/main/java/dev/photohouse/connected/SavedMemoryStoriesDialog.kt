@@ -224,6 +224,40 @@ internal fun SavedMemoryStoriesDialog(
                                 modifier = Modifier.testTag("saved-memory-draft-label"))
                             Text(story.title, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("saved-memory-title"))
+                            if (story.canEdit && store != null) {
+                                val referencesMatch = reading.contributionReferences?.let { refs ->
+                                    refs.id == story.id && refs.libraryId == reading.library && refs.revision == story.revision &&
+                                        refs.chapters.map { it.chapterId } == story.chapters.map { it.id }
+                                } == true
+                                val linkDraftChanged = reading.contributionReferenceDraft?.let { draft ->
+                                    draft != reading.contributionReferences?.chapters?.associate { it.chapterId to it.contributionIds }
+                                } == true
+                                val canStartEdit = referencesMatch && !reading.contributionReferencesBusy &&
+                                    !reading.contributionReferenceSaveBusy && !reading.contributionReferenceSaveError &&
+                                    !reading.contributionReferenceSaveConflict && reading.pendingContributionReferenceMutation == null &&
+                                    !linkDraftChanged
+                                OutlinedButton(onClick = { store.beginSavedGroupedStoryEdit() }, enabled = canStartEdit,
+                                    modifier = Modifier.fillMaxWidth().testTag("saved-memory-edit-story")) {
+                                    Text(t("Edit saved story", "编辑已保存故事"))
+                                }
+                                if (!referencesMatch && !reading.contributionReferencesBusy) {
+                                    Text(t("The complete chapter memory links must be checked before editing.",
+                                        "编辑前必须核对完整的篇章回忆关联。"), style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (reading.contributionReferencesUnavailable) {
+                                        TextButton(onClick = { store.retrySavedMemoryStoryContributionReferences() },
+                                            modifier = Modifier.testTag("saved-memory-edit-links-retry")) {
+                                            Text(t("Retry linked memories", "重试回忆关联"))
+                                        }
+                                    }
+                                } else if (linkDraftChanged || reading.contributionReferenceSaveBusy ||
+                                    reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+                                    reading.pendingContributionReferenceMutation != null) {
+                                    Text(t("Finish or discard the pending chapter-link changes before editing the story.",
+                                        "编辑故事前请先完成或放弃待处理的篇章关联修改。"), style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                             ChapterReadAloud("${story.title}. ${chapter.narration}", story.language,
                                 listOf("story", liveState.session?.account_id, reading.library, story.id, story.revision, chapter.id), zh,
                                 enabled = chapter.narration.isNotBlank(),)

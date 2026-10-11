@@ -45,11 +45,12 @@ class SavedMemoryReaderNavigationUiTest {
 
     @After fun close() { scope.cancel() }
 
-    private inner class ReaderApi : PhotoHouseApi {
+    private inner class ReaderApi : PhotoHouseApi, StoryWorkspaceApi {
         override val protectedNativeV2Enabled = true
         var accountId = "reader-account-a"
         var revision = 4L
         var firstChapterAssetIds = listOf("1", "2")
+        var canEditStory = false
         var videoRangeCalls = 0
         var originalPhotoCalls = 0
         var previewCalls = 0
@@ -60,7 +61,7 @@ class SavedMemoryReaderNavigationUiTest {
                 DateHint("2024-05-0$number", "filename"))
         }
         val summary: SavedMemoryStorySummary
-            get() = SavedMemoryStorySummary(STORY_ID, "Garden day", "everyday", "en", revision, "1", 4, 4, 1720000000, false)
+            get() = SavedMemoryStorySummary(STORY_ID, "Garden day", "everyday", "en", revision, "1", 4, 4, 1720000000, canEditStory)
 
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
@@ -96,7 +97,7 @@ class SavedMemoryReaderNavigationUiTest {
                 SavedMemoryStoryChapter("chapter-3", "Yellow flowers", "Yellow flowers lined the path.", listOf("3"), emptyList()),
                 SavedMemoryStoryChapter("chapter-4", "A quiet afternoon", "We sat together.", listOf("4"), emptyList()),
             )
-            return SavedMemoryStory(storyId, library, revision, 1710000000, 1720000000, false, "a".repeat(64),
+            return SavedMemoryStory(storyId, library, revision, 1710000000, 1720000000, canEditStory, "a".repeat(64),
                 "Garden day", "everyday", "en", assets.map { MemoryStoryAsset(it, emptyList()) }, chapters, emptyList())
         }
 
@@ -104,10 +105,17 @@ class SavedMemoryReaderNavigationUiTest {
             token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
         ) = SavedMemoryStoryContributionReferences(storyId, library, revision,
             chapterIds.map { SavedMemoryChapterContributionReferences(it, emptyList()) })
+
+        override suspend fun storyPreview(token: Bearer, library: String, json: String): ByteArray = error("not used in saved edit")
+        override suspend fun storyTitleCapabilities(token: Bearer, library: String): ByteArray = error("not used in saved edit")
+        override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray = error("not used in saved edit")
+        override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray = error("not used in saved edit")
     }
 
-    private fun openReader(zh: Boolean) {
+    private fun openReader(zh: Boolean, canEdit: Boolean = false) {
         api = ReaderApi()
+        api.canEditStory = canEdit
+        if (canEdit) api.firstChapterAssetIds = listOf("1")
         store = ConnectedStore(api, scope)
         rule.runOnUiThread { store.authenticate("+8612345678", "correct horse battery", remember = false) }
         rule.waitUntil(10_000) { store.state.value.library == "library-a" && !store.state.value.busy }
@@ -133,9 +141,34 @@ class SavedMemoryReaderNavigationUiTest {
                         onOpenAsset = { openedAssets += it },
                     )
                 }
+                live.groupedStoryCreation?.let { creation -> GroupedStoryCreationDialog(store, creation, zh) }
             }
         }
         rule.waitUntil(10_000) { rule.onAllNodesWithTag("saved-memory-frame-position").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test fun englishSavedStoryEditEntryKeepsOriginalGroupingAt150Percent() = savedStoryEditEntry(zh = false)
+
+    @Test fun chineseSavedStoryEditEntryKeepsOriginalGroupingAt150Percent() = savedStoryEditEntry(zh = true)
+
+    private fun savedStoryEditEntry(zh: Boolean) {
+        openReader(zh = zh, canEdit = true)
+        val editLabel = if (zh) "编辑已保存故事" else "Edit saved story"
+        rule.onNodeWithTag("saved-memory-edit-story").assertIsEnabled().performClick()
+        rule.waitUntil(10_000) {
+            store.state.value.groupedStoryCreation?.editor?.state?.value?.status == StoryWorkspaceStoreStatus.EDITING
+        }
+        rule.onNodeWithTag("grouped-story-review").assertIsDisplayed()
+        assertEquals(2, rule.onAllNodesWithText(editLabel).fetchSemanticsNodes().size)
+        rule.onNodeWithTag("grouped-story-title").assertTextContains("Garden day")
+        assertTrue("fresh saved edits require review before saving",
+            !store.state.value.groupedStoryCreation!!.editor!!.state.value.reviewed)
+        assertEquals(listOf("1", "2", "3", "4"),
+            store.state.value.groupedStoryCreation!!.editor!!.state.value.selectedAssetIds)
+        capture(if (zh) "saved-story-edit-zh-150-window.png" else "saved-story-edit-en-150-window.png")
+        rule.onNodeWithTag("grouped-story-next-chapter").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-chapter-position").assertTextEquals(if (zh) "篇章 2 / 4" else "Chapter 2 / 4")
+        rule.onNodeWithTag("grouped-story-chapter-position").assertIsDisplayed()
     }
 
     private fun scrollReaderUntilFrameVisible(assetId: String) {

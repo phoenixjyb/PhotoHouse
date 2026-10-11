@@ -220,6 +220,7 @@ data class GroupedStoryCreationState(
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
     val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
+    val isSavedEdit: Boolean = false, val savedEditStoryId: String? = null, val savedEditRequestId: Long = 0,
     val problem: LiveProblem? = null,
 )
 data class LiveState(
@@ -275,6 +276,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private var uploadAnnotationAudioRequest = 0L
     private var uploadAnnotationAudioJob: Job? = null
     private var groupedStoryRequest = 0L
+    private var savedGroupedStoryEditRequest = 0L
     private var groupedStoryPageRequest = 0L
     private var groupedStoryRelatedPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
@@ -386,6 +388,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         clearMemoryBookEditorial()
         val previous = state.value
         groupedStoryRequest++; groupedStoryPageRequest++
+        savedGroupedStoryEditRequest++
         previous.groupedStoryCreation?.editor?.clear()
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
         previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
@@ -593,6 +596,182 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         return true
     }
 
+    /** Freshly reads an editable saved story and its complete revision-bound family links before editing. */
+    fun beginSavedGroupedStoryEdit(): Boolean {
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        val references = reading.contributionReferences ?: return false
+        if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
+            reading.library != state.value.library || reading.detailBusy || !story.canEdit ||
+            !completeContributionReferences(story, references) || reading.contributionReferenceSaveBusy ||
+            reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+            reading.pendingContributionReferenceMutation != null ||
+            reading.contributionReferenceDraft?.let { draft -> draft != references.chapters.associate { it.chapterId to it.contributionIds } } == true ||
+            state.value.groupedStoryCreation != null ||
+            state.value.memoryBooks != null) return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = reading.library
+        val storyId = story.id
+        val expectedRevision = story.revision
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(
+            checking = true, isSavedEdit = true, savedEditStoryId = storyId, savedEditRequestId = request))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, storyId, expectedRevision, readerEpoch, request)
+        return true
+    }
+
+    /** Retries a fresh detail/link read after an edit entry failure. */
+    fun retrySavedGroupedStoryEdit(): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        if (!creation.isSavedEdit || creation.editor != null || creation.checking) return false
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        if (story.id != creation.savedEditStoryId || !story.canEdit) return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = reading.library
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(
+            checking = true, savedEditRequestId = request, problem = null))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, story.id, story.revision, readerEpoch, request)
+        return true
+    }
+
+    /** Keeps conflicted editor text until the newest story and complete family-link map seed successfully. */
+    fun reloadSavedGroupedStoryEdit(editor: StoryWorkspaceStore): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        if (creation.checking || !creation.isSavedEdit || creation.editor !== editor || editor.state.value.status !in
+            setOf(StoryWorkspaceStoreStatus.CONFLICT, StoryWorkspaceStoreStatus.UNAVAILABLE) ||
+            editor.hasUnfinishedChapterDictation || editor.state.value.hasPendingSave) return false
+        val editorBaseRevision = editor.savedEditStoryRevision ?: return false
+        val story = state.value.savedMemoryStories?.detail ?: return false
+        if (story.id != creation.savedEditStoryId || story.libraryId != state.value.library) return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = story.libraryId
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(
+            checking = true, savedEditRequestId = request, problem = null,
+            gallery = null, previews = emptyMap(), relatedPreviews = emptyMap()))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, story.id,
+            maxOf(story.revision, editorBaseRevision), readerEpoch, request)
+        return true
+    }
+
+    private fun completeContributionReferences(
+        story: SavedMemoryStory,
+        references: SavedMemoryStoryContributionReferences,
+    ): Boolean = references.id == story.id && references.libraryId == story.libraryId && references.revision == story.revision &&
+        references.chapters.map { it.chapterId } == story.chapters.map { it.id } &&
+        references.chapters.all { group -> group.contributionIds.size <= 12 &&
+            group.contributionIds.distinct().size == group.contributionIds.size && group.contributionIds.all {
+                runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)
+            } }
+
+    private fun loadSavedGroupedStoryEdit(
+        workspace: StoryWorkspaceApi,
+        accountId: String,
+        credential: Bearer,
+        library: String,
+        storyId: String,
+        expectedRevision: Long,
+        readerEpoch: Long,
+        request: Long,
+    ) {
+        val preservedEditor = state.value.groupedStoryCreation?.takeIf {
+            it.isSavedEdit && it.savedEditStoryId == storyId && it.savedEditRequestId == request
+        }?.editor
+        launch { generation ->
+            fun valid(expectedEditor: StoryWorkspaceStore? = preservedEditor): Boolean {
+                val live = state.value
+                val reading = live.savedMemoryStories ?: return false
+                val creation = live.groupedStoryCreation ?: return false
+                return active(generation) && token === credential && identity?.account_id == accountId &&
+                    live.session?.account_id == accountId && live.library == library && allowed() &&
+                    savedMemoryReaderEpoch == readerEpoch && reading.library == library &&
+                    reading.detail?.id == storyId && reading.selectedSummary?.id == storyId &&
+                    creation.isSavedEdit && creation.savedEditStoryId == storyId && creation.savedEditRequestId == request &&
+                    creation.editor === expectedEditor
+            }
+            try {
+                val sourceCapabilities = try {
+                    val bytes = api.sourceCapabilities(credential, library)
+                    try { ProtectedStoryWorkspaceWire.decodeSourceCapabilities(bytes) } finally { bytes.fill(0) }
+                } catch (failure: ApiFailure) {
+                    if (failure.status in setOf(400, 404, 503)) null else throw failure
+                }
+                if (!valid()) return@launch
+                val fresh = api.savedMemoryStory(credential, library, storyId, expectedRevision, sourceCapabilities != null)
+                if (!valid()) return@launch
+                validResponse(fresh.id == storyId && fresh.libraryId == library && fresh.revision >= expectedRevision &&
+                    fresh.canEdit && (fresh.sourcePolicy == null || sourceCapabilities?.sourcePolicy == fresh.sourcePolicy))
+                val references = api.savedMemoryStoryContributionReferences(
+                    credential, library, storyId, fresh.revision, fresh.chapters.map { it.id })
+                if (!valid()) return@launch
+                validResponse(completeContributionReferences(fresh, references))
+                lateinit var editor: StoryWorkspaceStore
+                val binding = {
+                    val live = state.value
+                    val creation = live.groupedStoryCreation
+                    val requestCurrent = creation?.isSavedEdit == true && creation.savedEditStoryId == storyId &&
+                        creation.savedEditRequestId == request &&
+                        (creation.editor === preservedEditor || creation.editor === editor)
+                    val currentToken = token
+                    val currentLibrary = live.library
+                    if (requestCurrent && active(generation) && currentToken === credential && identity?.account_id == accountId &&
+                        live.session?.account_id == accountId && currentLibrary == library &&
+                        savedMemoryReaderEpoch == readerEpoch && allowed())
+                        MemoryCommunityBinding(credential, library, generation) else null
+                }
+                val repository = StoryWorkspaceRepository(workspace, binding, onDenied = {
+                    if (valid(editor)) {
+                        invalidate(keepIdentity = true, cover = true)
+                        mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                        retry = { foreground() }
+                    }
+                })
+                editor = StoryWorkspaceStore(repository, scope, binding, dictationApi = api,
+                    currentAccount = { identity?.account_id }, onDictationDenied = {
+                        if (valid(editor)) {
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    })
+                if (!editor.seedSavedStoryForEdit(fresh, references) || !valid()) {
+                    editor.clear()
+                    if (valid()) {
+                        val currentCreation = state.value.groupedStoryCreation ?: return@launch
+                        mutable.value = state.value.copy(groupedStoryCreation = currentCreation.copy(
+                            checking = false, problem = LiveProblem(Message.INVALID_RESPONSE)))
+                    }
+                    return@launch
+                }
+                val currentCreation = state.value.groupedStoryCreation ?: return@launch
+                preservedEditor?.clear()
+                mutable.value = state.value.copy(groupedStoryCreation = currentCreation.copy(
+                    checking = false, canCreate = true, editor = editor, problem = null))
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { closeSavedMemoryStories() }
+                } else {
+                    val current = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = current.copy(checking = false,
+                        problem = problem(failure)))
+                }
+            }
+        }
+    }
+
     /** Selection has its own protected pages; browsing never invalidates the editor's ordered choices. */
     fun loadGroupedStorySelectionPage(page: Int): Boolean {
         val current = state.value.groupedStoryCreation ?: return false
@@ -684,6 +863,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
+        savedGroupedStoryEditRequest++
         groupedStoryRequest++; groupedStoryPageRequest++
         current.previews.values.forEach { it.fill(0) }
         current.relatedPreviews.values.forEach { it.fill(0) }
@@ -1177,6 +1357,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun closeSavedMemoryStories() {
+        savedGroupedStoryEditRequest++
         clearMemoryCommunity(clearState = true)
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
         savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++

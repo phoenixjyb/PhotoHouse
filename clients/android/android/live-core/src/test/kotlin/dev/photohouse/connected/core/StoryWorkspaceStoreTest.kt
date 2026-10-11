@@ -67,6 +67,11 @@ class StoryWorkspaceStoreTest {
         var saveResponse: ByteArray? = null
         val saveBodies = mutableListOf<String>()
         val saveProfiles = mutableListOf<Boolean>()
+        val updateBodies = mutableListOf<String>()
+        val updateTargets = mutableListOf<String>()
+        val updateProfiles = mutableListOf<Pair<Boolean, Boolean>>()
+        val updateFailures = ArrayDeque<ApiFailure>()
+        var updateResponse: ByteArray? = null
         var sourceCapabilityBody = """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray()
         var idsForPreview = listOf("1")
         val previewReplies = ArrayDeque<ByteArray>()
@@ -91,6 +96,12 @@ class StoryWorkspaceStoreTest {
             saveProfiles += sourceReview
             return createGroupedStory(token, library, json)
         }
+        override suspend fun updateGroupedStory(token: Bearer, library: String, storyId: String, json: String,
+            sourceReview: Boolean, contributionReferences: Boolean): ByteArray {
+            updateBodies += json; updateTargets += storyId; updateProfiles += sourceReview to contributionReferences
+            if (updateFailures.isNotEmpty()) throw updateFailures.removeFirst()
+            return updateResponse ?: throw ApiFailure(FailureKind.OFFLINE)
+        }
     }
 
     private fun repo(api: Fake, current: () -> MemoryCommunityBinding?) = StoryWorkspaceRepository(api, current)
@@ -102,6 +113,15 @@ class StoryWorkspaceStoreTest {
         .replace("\"id\":\"1\"", "\"id\":\"1\"")
         .replace("\"version\":1,", "\"version\":1,\"id\":\"66666666-6666-4666-8666-666666666666\",\"revision\":\"1\",")
         .toByteArray()
+
+    private fun savedEditStoryJson(revision: Long = 4, narration: String = "Original saved narration") =
+        savedReply(listOf("1")).decodeToString()
+            .replace("\"revision\":\"1\"", "\"revision\":\"$revision\"")
+            .replace("\"narration\":\"\"", "\"narration\":\"$narration\"")
+
+    private fun savedEditStory(revision: Long = 4, narration: String = "Original saved narration") =
+        ProtectedMemoryStoriesWire.detail(savedEditStoryJson(revision, narration).toByteArray(),
+            "family-a", "66666666-6666-4666-8666-666666666666", revision)
 
     private suspend fun TestScope.readyForEdit(store: StoryWorkspaceStore) {
         assertTrue(store.selectAsset("1"))
@@ -137,6 +157,87 @@ class StoryWorkspaceStoreTest {
         assertTrue(store.retrySave()); runCurrent()
         assertEquals(listOf(true, true), api.saveProfiles)
         assertEquals(api.saveBodies.first(), api.saveBodies.last())
+    }
+
+    @Test fun savedStoryEditKeepsSavedLayoutAndCompleteLinksAcrossIdenticalRetry() = runTest {
+        var current = binding()
+        val api = Fake().apply {
+            updateFailures += ApiFailure(FailureKind.OFFLINE)
+            updateResponse = savedEditStoryJson(revision = 5, narration = "Edited saved narration").toByteArray()
+        }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, uuidSupplier = { mutation })
+        val base = savedEditStory()
+        val contributionId = "77777777-7777-4777-8777-777777777777"
+        val references = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", listOf(contributionId))))
+        assertTrue(store.seedSavedStoryForEdit(base, references))
+        assertEquals(listOf("1"), store.state.value.selectedAssetIds)
+        assertEquals(listOf("1"), store.state.value.editableChapters.single().assetIds)
+        assertEquals("Original saved narration", store.state.value.editableChapters.single().narration)
+        assertFalse(store.preview())
+        assertFalse(store.selectAsset("2"))
+        assertFalse(store.setTheme("trip"))
+        assertFalse(store.setLanguage("en"))
+        assertTrue(store.editTitle("Edited saved title"))
+        assertTrue(store.editChapterNarration(0, "Edited saved narration"))
+        assertTrue(store.confirmReviewed(true))
+        assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
+        assertEquals(listOf(base.id), api.updateTargets)
+        assertEquals(listOf(false to true), api.updateProfiles)
+        val frozen = api.updateBodies.single()
+        val body = Json.parseToJsonElement(frozen).jsonObject
+        assertEquals("4", body.getValue("revision").jsonPrimitive.content)
+        assertEquals(mutation.toString(), body.getValue("mutation_id").jsonPrimitive.content)
+        val refs = Json.parseToJsonElement(body.getValue("contribution_refs").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(contributionId), refs.single().jsonObject.getValue("contribution_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(store.retrySave()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, store.state.value.status)
+        assertEquals(2, api.updateBodies.size)
+        assertEquals(listOf(frozen, frozen), api.updateBodies)
+        assertEquals(listOf(false to true, false to true), api.updateProfiles)
+        assertEquals(5L, store.state.value.savedStory?.revision)
+        assertEquals("Edited saved title", Json.parseToJsonElement(frozen).jsonObject.getValue("title").jsonPrimitive.content)
+    }
+
+    @Test fun savedStoryConflictRetainsUnsavedWordsUntilExplicitFreshReseed() = runTest {
+        var current = binding()
+        val api = Fake().apply { updateFailures += ApiFailure(FailureKind.HTTP, 409) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        val base = savedEditStory()
+        val refs = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        assertTrue(store.seedSavedStoryForEdit(base, refs))
+        assertTrue(store.editChapterNarration(0, "Unsaved words to keep"))
+        assertTrue(store.confirmReviewed(true)); assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.CONFLICT, store.state.value.status)
+        assertEquals("Unsaved words to keep", store.state.value.editableChapters.single().narration)
+        assertTrue(store.state.value.hasUnfinishedWork)
+        val latest = savedEditStory(revision = 5, narration = "Latest server words")
+        assertTrue(store.seedSavedStoryForEdit(latest, refs.copy(revision = 5)))
+        assertEquals("Latest server words", store.state.value.editableChapters.single().narration)
+        assertFalse(store.state.value.reviewed)
+        assertFalse(store.state.value.dirty)
+        assertEquals(5L, store.state.value.draft?.let { latest.revision })
+    }
+
+    @Test fun idempotentUpdateRetryCanReportAConfirmedButNowNewerFamilyVersion() = runTest {
+        var current = binding()
+        val api = Fake().apply {
+            updateResponse = savedEditStoryJson(revision = 6, narration = "Latest family revision").toByteArray()
+        }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, uuidSupplier = { mutation })
+        val base = savedEditStory(revision = 4)
+        val refs = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        assertTrue(store.seedSavedStoryForEdit(base, refs))
+        assertTrue(store.editChapterNarration(0, "My previously submitted edits"))
+        assertTrue(store.confirmReviewed(true))
+        assertTrue(store.save()); runCurrent()
+
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, store.state.value.status)
+        assertEquals(6L, store.state.value.savedStory?.revision)
+        assertTrue(store.state.value.savedStoryIsNewerThanEditBase)
     }
 
     @Test fun changedBindingDiscardsLatePreviewAndClearsTheOldSelection() = runTest {
@@ -457,6 +558,8 @@ class StoryWorkspaceStoreTest {
         assertTrue(store.openChapterDictation(1)); runCurrent()
         val second = store.chapterDictation.value!!
         assertNotSame(first, second)
+        assertFalse("an older pane disposal cannot close the current chapter helper", store.closeChapterDictationIfCurrent(first))
+        assertSame(second, store.chapterDictation.value)
         second.beginRecording(); second.stopRecording(wav(1)); runCurrent()
         assertFalse(store.insertChapterTranscript(0, composing = false))
         assertEquals("ASR words", second.state.value.transcript)
