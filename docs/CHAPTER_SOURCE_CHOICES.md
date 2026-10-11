@@ -46,7 +46,12 @@ behavior. Unknown stored policies fail closed instead of reverting to that
 behavior. The policy lives in existing story JSON and requires no migration.
 
 Opted-in title requests use `source_review=1`, include `source_policy`, and send
-each chapter as `{id, narration, evidence_ids}`. The title context uses only the
+each chapter as `{id, narration, evidence_ids}`. To retain manually arranged
+chapters, the profile may also include `asset_ids` on every chapter. There must
+be one to six chapters with one to four items each; flattening their item lists
+must exactly match the authorized, ordered media selection. Mixed, reordered,
+duplicate or foreign layouts are refused. Omitting these lists keeps the preview's
+original four-item grouping. The title context uses only the
 chosen current item sources and explicitly supplied chapter text. Legacy title
 requests keep the original shape and source behavior. Library, full media
 selection and source revision are checked before and after provider I/O.
@@ -77,6 +82,10 @@ changes, scoped title requests, memoir children and delayed generation. The
 later combined contribution-reference and policy run passed 29 tests and seven
 subtests, including a prose update that preserves accepted family links while
 choosing no item evidence. These overlapping cohorts are not summed.
+
+A subsequent title-policy run passed 39 tests and 40 subtests, including a manual
+chapter partition and refusal of cross-chapter source references. The HTTP
+profile also exercises the explicit layout without changing legacy requests.
 
 Phone controls at `8be679d` passed the preceding 659-test core run, followed by
 affected transport/repository/store tests after the membership recheck. Debug

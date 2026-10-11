@@ -215,6 +215,44 @@ class ChapterSourcePolicyTests(unittest.TestCase):
                 self.f.note, revision=1, title='Changed', text='Changed during provider'))
         self.assertEqual(stale.exception.status, 409)
 
+    def test_title_review_preserves_manual_chapter_layout_and_its_source_boundaries(self):
+        draft = self.f.preview('102,101').json()
+        ai = next(e['id'] for item in draft['items'] if item['id'] == '101'
+                  for e in item['evidence'] if e['source'] == 'ai')
+        chapters = [
+            {'id': 'chapter-1', 'asset_ids': ['102'], 'evidence_ids': [self.f.source_id],
+             'narration': 'The opening scene.'},
+            {'id': 'chapter-2', 'asset_ids': ['101'], 'evidence_ids': [ai],
+             'narration': 'A separate closing scene.'},
+        ]
+        body = {key: draft[key] for key in ('theme', 'language', 'selection_revision')} | {
+            'asset_ids': '102,101', 'source_policy': SOURCE_POLICY,
+            'chapters': json.dumps(chapters)}
+        calls = []
+        class Adapter:
+            def suggest(self, bundle):
+                calls.append(bundle)
+                return {'version': 1, 'selection_revision': bundle['selection_revision'],
+                        'titles': [], 'needs_review': True}
+        adapter = Adapter()
+        title_suggestions(self.f.runtime, self.f.owner, 'family-a', body, adapter, threading.Lock(), True)
+        self.assertEqual({source['id'] for source in calls[0]['sources']},
+                         {self.f.source_id, ai, 'draft-chapter-1', 'draft-chapter-2'})
+        invalid = [
+            [chapters[0], chapters[1] | {'asset_ids': ['102']}],
+            [chapters[0] | {'asset_ids': ['201']}, chapters[1]],
+            [chapters[0] | {'asset_ids': []}, chapters[1]],
+            [chapters[0] | {'evidence_ids': [ai]}, chapters[1]],
+            [chapters[0], {key: value for key, value in chapters[1].items() if key != 'asset_ids'}],
+        ]
+        for layout in invalid:
+            with self.subTest(layout=layout):
+                with self.assertRaises(TransportError) as refused:
+                    title_suggestions(self.f.runtime, self.f.owner, 'family-a',
+                        body | {'chapters': json.dumps(layout)}, adapter, threading.Lock(), True)
+                self.assertEqual(refused.exception.status, 400)
+        self.assertEqual(len(calls), 1, 'Invalid or foreign chapter layouts never reach the provider')
+
     def test_http_title_profile_is_closed_and_authorized_before_provider(self):
         from test_story_title_routes import StubSuggester
         adapter = StubSuggester(result=lambda bundle: {
@@ -236,6 +274,16 @@ class ChapterSourcePolicyTests(unittest.TestCase):
         self.assertEqual(self.client.post(path.replace('&source_review=1', ''), headers=self.headers, json=body).status_code, 400)
         self.assertEqual(self.client.post(path, headers=self.headers, json=body | {'source_policy': 'unknown'}).status_code, 400)
         self.assertEqual(len(adapter.calls), 1)
+        # The profile can preserve a saved author's manual partition instead of
+        # rebuilding the preview's default four-item chapters.
+        manual = [
+            {'id': 'chapter-1', 'asset_ids': ['102'], 'narration': '', 'evidence_ids': []},
+            {'id': 'chapter-2', 'asset_ids': ['101'], 'narration': '', 'evidence_ids': []},
+        ]
+        response = self.client.post(path, headers=self.headers,
+                                    json=body | {'chapters': json.dumps(manual)})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(len(adapter.calls), 2)
 
     def test_running_job_discards_output_after_source_choice_edit(self):
         from app.access.memory_jobs import MemoryJobs

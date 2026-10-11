@@ -299,19 +299,33 @@ def title_suggestions(runtime, token, library, body, adapter, lock, source_revie
     try:
         from .memory_narrative import _strict_loads, LocalMemoryNarrativeError
         chapters = _strict_loads(body['chapters'].encode('utf-8'))
-        if type(chapters) is not list or len(chapters) != len(snapshot['chapters']):
+        if type(chapters) is not list or not 1 <= len(chapters) <= 6:
             raise ValueError()
-        for expected, chapter in zip(snapshot['chapters'], chapters):
-            fields = {'id', 'narration'} | ({'evidence_ids'} if source_review else set())
+        explicit_layout = source_review and any(type(chapter) is dict and 'asset_ids' in chapter for chapter in chapters)
+        if not explicit_layout and len(chapters) != len(snapshot['chapters']):
+            raise ValueError()
+        if explicit_layout:
+            layout = []
+            for chapter in chapters:
+                if type(chapter) is not dict or type(chapter.get('asset_ids')) is not list or not 1 <= len(chapter['asset_ids']) <= 4:
+                    raise ValueError()
+                layout.extend(chapter['asset_ids'])
+            # A title request may preserve manually arranged chapters, but cannot
+            # duplicate, omit, reorder or add to the authorized media selection.
+            if layout != [item['id'] for item in snapshot['items']]:
+                raise ValueError()
+        for index, chapter in enumerate(chapters):
+            fields = {'id', 'narration'} | ({'evidence_ids'} if source_review else set()) | ({'asset_ids'} if explicit_layout else set())
             if (type(chapter) is not dict or set(chapter) != fields or
-                    chapter['id'] != expected['id'] or type(chapter['narration']) is not str or
+                    chapter['id'] != f'chapter-{index+1}' or type(chapter['narration']) is not str or
                     len(chapter['narration'].encode('utf-8')) > 6000 or
                     any((ord(c) < 32 or 0x7f <= ord(c) <= 0x9f) and c not in '\n\t' for c in chapter['narration'])):
                 raise ValueError()
             if source_review:
                 refs = chapter['evidence_ids']
+                chapter_assets = chapter['asset_ids'] if explicit_layout else snapshot['chapters'][index]['asset_ids']
                 available = {e['id'] for item in snapshot['items']
-                             if item['id'] in expected['asset_ids'] for e in item['evidence']}
+                             if item['id'] in chapter_assets for e in item['evidence']}
                 if (type(refs) is not list or len(refs) > 12 or
                         any(type(value) is not str or value not in available for value in refs)
                         or len(set(refs)) != len(refs)):
