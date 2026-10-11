@@ -1125,14 +1125,14 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const titleId='memory-book-reader-title';bookReader.setAttribute('aria-labelledby',titleId);
     let host=null;
     const mayLeave=()=>confirmReaderLeave(host,book);
-    const header=node('header');header.append(node('span',scope().language==='en'?'FAMILY MEMOIR':'家庭回忆录','eyebrow'),button(text('close'),()=>{if(!mayLeave())return;stopNarration();bookReader.close();}));
+    const header=node('header');header.append(node('span',scope().language==='en'?'FAMILY MEMOIR':'家庭回忆录','eyebrow'),button(text('close'),()=>{if(!readerCurrent(readingTicket)||!mayLeave())return;stopNarration();reader.close();}));
     const heading=node('h2',book.title);heading.id=titleId;
     const introductionSources=node('div',undefined,'memory-book-introduction-sources');
     bookReader.append(header,heading,node('p',book.introduction,'memory-book-introduction'),introductionSources);
     const reader=bookReader,owner={...scope()};reader.__photoHouseBookTarget=book;let readingTicket=0,storyIndex=0,sectionIndex=0,readingStory=null,readingRefs=null,bookRefsEpoch=0,sourceHost=null,sourceSection=null,planStoryOpening=false;
     const bookIdSnapshot=book.id,bookRevisionSnapshot=book.revision;
     const positionKey=JSON.stringify([owner.account,owner.library,book.id,book.revision]);
-    const resume=button(owner.language==='en'?'Continue where you left off':'继续上次阅读',()=>{const position=bookPositions.get(positionKey),index=position&&book.stories.findIndex(story=>story.id===position.storyId);if(Number.isInteger(index)&&index>=0)void readBookStory(index,false,position);},'memory-book-resume');
+    const resume=button(owner.language==='en'?'Continue where you left off':'继续上次阅读',()=>{const position=bookPositions.get(positionKey),index=position&&book.stories.findIndex(story=>story.id===position.storyId),ticket=readingTicket,expected=()=>readerCurrent(ticket)&&resume.isConnected&&!resume.hidden&&reader.contains(resume);if(Number.isInteger(index)&&index>=0)void readBookStory(index,false,position,expected);},'memory-book-resume');
     resume.hidden=!bookPositions.has(positionKey);
     const pane=node('section',undefined,'memory-book-reading');pane.hidden=true;pane.setAttribute('aria-live','polite');
     const validReading=ticket=>reader.open&&ticket===readingTicket&&!scope().locked&&scope().account===owner.account&&scope().library===owner.library;
@@ -1153,6 +1153,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     let editorial=null,sourceJump=null;
     const editorialChildren=()=>book.stories.map(story=>({story_id:story.id,revision:String(story.revision)}));
     const orderedChildrenSnapshot=JSON.stringify(editorialChildren());
+    const readerCurrent=ticket=>reader===bookReader&&reader.open&&reader.__photoHouseBookTarget===book&&book.id===bookIdSnapshot&&book.revision===bookRevisionSnapshot&&JSON.stringify(editorialChildren())===orderedChildrenSnapshot&&validReading(ticket);
     const validEditorial=value=>{
       const children=editorialChildren(),childMap=new Map(children.map(child=>[child.story_id,child.revision]));
       if(!value||Object.keys(value).sort().join(',')!=='children,id,introduction_source_refs,revision,state,transitions,version'||value.version!==1||value.id!==book.id||value.revision!==book.revision||!['empty','current','source_changed'].includes(value.state)||!Array.isArray(value.children)||!Array.isArray(value.introduction_source_refs)||!Array.isArray(value.transitions)||children.length>24||value.children.length!==children.length||value.children.some((child,index)=>!child||Object.keys(child).sort().join(',')!=='revision,story_id'||child.story_id!==children[index].story_id||child.revision!==children[index].revision))return false;
@@ -1171,7 +1172,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       sources.append(node('summary',owner.language==='en'?'Original memories behind this passage':'这段文字的回忆来源'));
       for(const ref of refs){const index=book.stories.findIndex(story=>story.id===ref.story_id),story=book.stories[index];if(!story)continue;
         const label=owner.language==='en'?`${story.title} · Chapter ${ref.chapter_id.slice(8)}`:`${story.title} · 第 ${ref.chapter_id.slice(8)} 章`;
-        sources.append(button(label,()=>{if(!validReading(ticket))return;void readBookStory(index,false,{storyRevision:ref.story_revision,chapterId:ref.chapter_id,contributionId:ref.contribution_id});},'memory-book-editorial-source-jump'));
+        let jump; jump=button(label,()=>{const expected=()=>readerCurrent(ticket)&&sources.isConnected&&container.contains(sources)&&jump.isConnected&&sources.contains(jump);if(!expected())return;void readBookStory(index,false,{storyRevision:ref.story_revision,chapterId:ref.chapter_id,contributionId:ref.contribution_id},expected);},'memory-book-editorial-source-jump');sources.append(jump);
       }
       container.append(sources);
     };
@@ -1261,16 +1262,18 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         finally{if(validReading(ticket))details.disabled=false;}
       },'memory-book-story-details');pane.append(details,detailsStatus);
       const controls=node('nav',undefined,'memory-book-reading-controls');controls.setAttribute('aria-label',owner.language==='en'?'Read across the collection':'连续阅读回忆集');
-      const previous=button(text('previous'),()=>{stopNarration();if(sectionIndex>0){sectionIndex--;displaySection();}else if(storyIndex>0)void readBookStory(storyIndex-1,true);});previous.disabled=sectionIndex===0&&storyIndex===0;
-      const next=button(text('next'),()=>{stopNarration();if(sectionIndex<readingStory.chapters.length-1){sectionIndex++;displaySection();}else if(storyIndex<book.stories.length-1)void readBookStory(storyIndex+1);});next.disabled=sectionIndex===readingStory.chapters.length-1&&storyIndex===book.stories.length-1;
-      controls.append(previous,next,button(owner.language==='en'?'Back to contents':'返回目录',backToContents));pane.append(controls);
+      const navigationCurrent=()=>Boolean(controls.isConnected&&controls.parentElement===pane&&!pane.hidden&&pane.contains(controls)&&readerCurrent(sectionTicket)&&readingTicket===sectionTicket&&readingStory===narrationStory&&storyIndex===narrationStoryIndex&&sectionIndex===narrationSectionIndex&&narrationStory.chapters[narrationSectionIndex]===section&&JSON.stringify(narrationStory.chapters.map(chapter=>[chapter.id,chapter.asset_ids,chapter.title,chapter.narration]))===chaptersSnapshot);
+      const previousCrossesStory=sectionIndex===0&&storyIndex>0,nextCrossesStory=sectionIndex===readingStory.chapters.length-1&&storyIndex<book.stories.length-1;
+      const previous=button(previousCrossesStory?(owner.language==='en'?'Previous story':'上一则故事'):text('previous'),()=>{if(!navigationCurrent())return;if(sectionIndex>0){stopNarration();sectionIndex--;displaySection();}else if(storyIndex>0)void readBookStory(storyIndex-1,true,null,navigationCurrent);});previous.disabled=sectionIndex===0&&storyIndex===0;
+      const next=button(nextCrossesStory?(owner.language==='en'?'Next story':'下一则故事'):text('next'),()=>{if(!navigationCurrent())return;if(sectionIndex<readingStory.chapters.length-1){stopNarration();sectionIndex++;displaySection();}else if(storyIndex<book.stories.length-1)void readBookStory(storyIndex+1,false,null,navigationCurrent);});next.disabled=sectionIndex===readingStory.chapters.length-1&&storyIndex===book.stories.length-1;
+      const back=button(owner.language==='en'?'Back to contents':'返回目录',()=>backToContents(navigationCurrent));controls.append(previous,next,back);pane.append(controls);
       // Explicit reading/navigation replaces its own controls. Move focus to
       // the newly loaded chapter instead of leaving it on a detached button.
       chapterHeading.focus({preventScroll:true});pane.style.scrollMarginTop=`${header.getBoundingClientRect().height+16}px`;pane.scrollIntoView({block:'start'});
       return narration;
     };
-    const readBookStory=async(index,last=false,position=null)=>{
-      if(index<0||index>=book.stories.length)return false;stopNarration();const ticket=++readingTicket;readingStory=null;pane.hidden=false;toc.hidden=true;resume.hidden=true;pane.replaceChildren(node('p',text('savedLoading'),'memory-book-reading-status'));
+    const readBookStory=async(index,last=false,position=null,expectedCurrent=null)=>{
+      if(index<0||index>=book.stories.length||!readerCurrent(readingTicket)||expectedCurrent&&!expectedCurrent())return false;stopNarration();const ticket=++readingTicket;readingStory=null;pane.hidden=false;toc.hidden=true;resume.hidden=true;pane.replaceChildren(node('p',text('savedLoading'),'memory-book-reading-status'));
       try{
         // Recheck the parent before every child read; a stale book may no longer
         // authorize that story or keep the same order. Never use cached prose.
@@ -1282,7 +1285,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const result=await savedRequest('/memory-stories/'+book.stories[index].id);if(!validReading(ticket))return false;
         const expected=result.items?.map(item=>item.id);if(!Array.isArray(expected)||result.id!==book.stories[index].id||result.revision!==book.stories[index].revision||!validDraft(result,expected,owner)||result.saved!==true)throw new Error('Invalid collection story');
         readingStory=result;storyIndex=index;bookRefsEpoch++;readingRefs={bookId:book.id,bookRevision:book.revision,storyId:result.id,storyRevision:result.revision,ticket,groups:null,available:false,loading:true};const resumed=position?.storyRevision===result.revision?result.chapters.findIndex(section=>section.id===position.chapterId):-1;sourceJump=resumed>=0&&uuidOK(position?.contributionId)?position:null;sectionIndex=resumed>=0?resumed:last?result.chapters.length-1:0;displaySection();void loadBookRefs(result,ticket);return true;
-      }catch(error){if(validReading(ticket)){editorial=null;introductionSources.replaceChildren();pane.replaceChildren(node('p',text('savedUnavailable'),'memory-book-reading-status'),button(owner.language==='en'?'Retry this story':'重试此故事',()=>void readBookStory(index,last,position)),button(owner.language==='en'?'Reopen this memoir':'重新打开回忆录',async()=>{if(!validReading(ticket))return;try{const fresh=await savedRequest('/memory-community/v1/books/'+book.id);if(validReading(ticket)&&mayLeave())openBook(fresh);}catch(next){if(validReading(ticket))onError(next);}},'memory-book-reopen'),button(owner.language==='en'?'Back to contents':'返回目录',backToContents));onError(error);}return false;}
+      }catch(error){if(validReading(ticket)){editorial=null;introductionSources.replaceChildren();pane.replaceChildren();const failure=node('div',undefined,'memory-book-reading-error'),retry=button(owner.language==='en'?'Retry this story':'重试此故事',()=>{},'memory-book-retry-story'),reopen=button(owner.language==='en'?'Reopen this memoir':'重新打开回忆录',async()=>{if(!errorCurrent())return;try{const fresh=await savedRequest('/memory-community/v1/books/'+book.id);if(errorCurrent()&&mayLeave())openBook(fresh);}catch(next){if(errorCurrent())onError(next);}},'memory-book-reopen'),back=button(owner.language==='en'?'Back to contents':'返回目录',()=>backToContents(errorCurrent));failure.append(node('p',text('savedUnavailable'),'memory-book-reading-status'),retry,reopen,back);pane.append(failure);const errorCurrent=()=>readerCurrent(ticket)&&readingTicket===ticket&&failure.isConnected&&pane.contains(failure);retry.addEventListener('click',()=>{if(errorCurrent())void readBookStory(index,last,position,errorCurrent);});onError(error);}return false;}
     };
     const openBookStoryFromPlan=async context=>{
       if(!context||Object.keys(context).sort().join(',')!=='book_id,book_revision,story_id,story_revision'||!uuidOK(context.book_id)||!uuidOK(context.story_id)||typeof context.book_revision!=='string'||typeof context.story_revision!=='string')return false;
@@ -1294,11 +1297,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       finally{if(reader===bookReader)planStoryOpening=false;}
     };
     reader.__photoHouseOpenBookStory=openBookStoryFromPlan;
-    function backToContents(){stopNarration();readingTicket++;bookRefsEpoch++;readingStory=null;readingRefs=null;sourceHost=null;sourceSection=null;sourceJump=null;pane.hidden=true;toc.hidden=false;resume.hidden=!bookPositions.has(positionKey);toc.querySelector('button')?.focus();void loadEditorial(readingTicket).catch(onError);}
+    function backToContents(expectedCurrent=null){if(!readerCurrent(readingTicket)||expectedCurrent&&!expectedCurrent())return;stopNarration();readingTicket++;bookRefsEpoch++;readingStory=null;readingRefs=null;sourceHost=null;sourceSection=null;sourceJump=null;pane.hidden=true;toc.hidden=false;resume.hidden=!bookPositions.has(positionKey);toc.querySelector('button')?.focus();void loadEditorial(readingTicket).catch(onError);}
     const toc=node('ol',undefined,'memory-book-toc');
-    for(const [index,story] of book.stories.entries()){const item=node('li');const open=button(story.title,()=>void readBookStory(index));
+    for(const [index,story] of book.stories.entries()){const item=node('li');let open;open=button(story.title,()=>{const ticket=readingTicket,expected=()=>readerCurrent(ticket)&&toc.isConnected&&!toc.hidden&&reader.contains(toc)&&open.isConnected&&item.isConnected&&item.parentElement===toc;void readBookStory(index,false,null,expected);});
       if(idOK(story.cover_asset_id)){const img=node('img');img.src=mediaURL(story.cover_asset_id,'thumbnail');img.alt='';img.loading='lazy';open.prepend(img);}item.append(open);toc.append(item);}
-    host=node('section',undefined,'memory-book-companion');reader.addEventListener('close',()=>{reader.__photoHouseOpenBookStory=null;reader.__photoHouseReadingContext=null;stopNarration();readingTicket++;bookRefsEpoch++;readingStory=null;readingRefs=null;sourceHost=null;sourceSection=null;pane.replaceChildren();community?.detach(host);});reader.addEventListener('cancel',event=>{if(!mayLeave()){event.preventDefault();return;}stopNarration();});reader.append(resume,toc,pane,host);document.body.append(reader);readerMountEpoch++;reader.showModal();
+    host=node('section',undefined,'memory-book-companion');reader.addEventListener('close',()=>{reader.__photoHouseOpenBookStory=null;reader.__photoHouseReadingContext=null;if(reader===bookReader)stopNarration();readingTicket++;bookRefsEpoch++;readingStory=null;readingRefs=null;sourceHost=null;sourceSection=null;pane.replaceChildren();community?.detach(host);});reader.addEventListener('cancel',event=>{if(reader!==bookReader||!readerCurrent(readingTicket))return;if(!mayLeave()){event.preventDefault();return;}stopNarration();});reader.append(resume,toc,pane,host);document.body.append(reader);readerMountEpoch++;reader.showModal();
     if(community)void community.attach(host,book);
     void loadEditorial(readingTicket).catch(onError);
   }
