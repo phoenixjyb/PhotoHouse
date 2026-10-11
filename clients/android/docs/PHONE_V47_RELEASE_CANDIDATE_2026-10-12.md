@@ -14,7 +14,9 @@ The installed/published v46 remains a separate release.
 - Browse a visual memoir shelf with bounded protected covers, a local fallback,
   opening excerpts and explicit reading controls.
 - Read a saved memoir opening with explicit local Read, Pause, Resume and Stop;
-  preserve the current chapter and reading position.
+  preserve the current chapter and reading position. Read/Resume require a current
+  foreground control; a delayed Pause cannot become Resume. Active Pause/Stop
+  remain usable while new playback is disabled.
 - Continue a full conversation without deleting the old history or automatically
   sending retained words into the new thread.
 - Preserve current chapter/reader and unsent drafts; ignore detached controls and
@@ -88,3 +90,27 @@ Generic release lint passed separately in 29s. Native `aapt2` package inspection
 also reports `dev.photohouse.connected` and version 47. These checks add no
 private build configuration or signing evidence. The prepared Web overlay and
 remaining cross-client operations are in the [local handoff](../../../docs/LOCAL_CANDIDATE_2026-10-12.md).
+
+
+## Final narration correction candidate
+
+The phone snapshot `0548d8c` supersedes the earlier package above. The complete
+Android JVM/lint/debug profile passed with unchanged source in 71s (175 tasks,
+20 executed and 155 up to date). Its receipt SHA-256 is
+`2c32629381c83611f2b6e3ca900e87896ca11bbbf7e7d44724c8fcdace34c63f`. The existing XML inventory has 1,014
+reported tests and no failures/errors/skips; inventory does not run cached tests.
+The final simulator cohort passed 28 cases in 145.835s, including foreground,
+disabled-state and stale phase actions. Its first run retained one failure in
+28 cases; phase-bound button identity fixed the captured Pause becoming Resume.
+The installed-engine case reads voice metadata only; it does not speak or install
+a provider. Other speech fixtures use generated local adapters.
+
+The rebuilt public unsigned APK is 10,058,501 bytes, SHA-256
+`b1a59040c5c439eaa6b0f0752652ea1097214864631903f70b70853edee22d5a`. Native metadata remains version 47; both origin fields
+are empty and all optional flags are disabled. Signature verification correctly
+refuses the unsigned artifact. It remains unsuitable for a configured household
+installation until the private build and delivery gates above pass.
+
+Final unsigned release compilation and generic release lint passed together in
+121s (99 tasks: 17 executed, 82 up to date), at the same phone source snapshot.
+No private configuration or signer was supplied.

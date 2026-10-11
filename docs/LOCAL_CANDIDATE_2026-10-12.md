@@ -1,9 +1,10 @@
 # October 12 local memoir experience candidate
 
-Development remains in the unified PhotoHouse repository. The accepted client
-snapshot is `263439ce34ebb894164923b674142a577b19fe68`; later documentation and
-test-log tooling do not change those client inputs. The final clean source
-archive records its own complete HEAD in its verification report.
+Development remains in the unified PhotoHouse repository. The accepted Web
+snapshot is `263439ce34ebb894164923b674142a577b19fe68`. Phone narration
+received a final correction qualified at `0548d8cbb04c02aa9ca960059a6b564358fc683f`.
+The final clean source archive records its own complete HEAD in its verification
+report; documentation and log-reader changes have separate source overlays.
 
 ## Implemented in this round
 
@@ -16,6 +17,7 @@ archive records its own complete HEAD in its verification report.
 | Memoir validation | `7d13745`, `65bf10c` | Failed UUID allocation retains editable draft; actionable inline validation without losing words |
 | Opening narration | Web `a8e8b47`, phone `6f140f8` | Saved words and book language; explicit local Read/Pause/Resume/Stop; no automatic chapter advance |
 | Recording correction | `cd87ab2` | Duration-complete note releases its reservation during delayed resume; valid mic start stops narration |
+| Manual narration correction | `a63a35a`, `466ada2` | Read/Resume require current enabled foreground scope; delayed Pause cannot become Resume; explicit Pause/Stop remain usable |
 | Phone release identity | `a4507e3` | v47 / `0.47-family-memoir-composer`; TV version unchanged |
 
 Full contracts and qualification details are in [Development](DEVELOPMENT.md),
@@ -23,13 +25,15 @@ Full contracts and qualification details are in [Development](DEVELOPMENT.md),
 
 ## Evidence and prepared artifacts
 
-- Complete client checks at the accepted snapshot: all 19 Web suites and the
-  Android JVM/lint/debug profile passed with unchanged source receipts.
-- Nine opening/chapter/contents simulator cases passed; the preceding corrected
-  failure log remains evidence. Earlier composition, dictation, continuation and
-  shelf checks retain their own pins. Enlarged bilingual renders were inspected.
-- The public phone v47 unsigned APK compiled at that snapshot. Package and native
-  manifest report version 47; origins are empty, optional capabilities off and
+- All 19 Web suites passed at the Web snapshot. The final Android JVM/lint/debug
+  profile passed at `0548d8c` with unchanged source (71s, 175 tasks).
+- The final 28-case narration/opening/chapter/contents simulator cohort passed
+  in 145.835s and the strict log reader accepted it. Its first run passed 27 and
+  caught one stale Pause/Resume action; the phase-bound correction fixed it.
+  Earlier nine-case opening qualification and corrected failure logs remain
+  evidence. Earlier composition, dictation, continuation and shelf checks retain their own pins. Enlarged bilingual renders were inspected.
+- The final public phone v47 unsigned APK and release lint passed together in
+  121s at the final Android snapshot. Package and native manifest report version 47; origins are empty, optional capabilities off and
   signature absent. The [phone candidate](../clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md)
   records its size/hash, test walkthrough and private delivery requirements.
 - A source-only five-asset Web overlay is prepared from the accepted snapshot:
@@ -42,7 +46,8 @@ Full contracts and qualification details are in [Development](DEVELOPMENT.md),
   See [Web delivery](WEB_DELIVERY.md).
 - Existing-log Android instrumentation analysis (`55b1a05`) qualifies output completeness
   only. Ten focused cases and the full 121-test tooling cohort passed; it accepted
-  the nine-case pass and rejected the retained two-failure log with safe counts. It does not establish test freshness, APK/source identity or a device.
+  both complete pass logs and rejected retained failures with safe counts. It does
+  not establish test freshness, APK/source identity or a device.
 
 ## Next delivery work
 

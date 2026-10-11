@@ -238,7 +238,10 @@ opening only after an explicit action. Its local voice uses the saved book
 language; the exact book revision, ordered children and reader location bind
 every control and completion. Navigation stops the old speech without moving
 the reading position. It shares audio ownership with chapter/companion speech
-and recording, and introduces no provider call, retained audio or route.
+and recording, and introduces no provider call, retained audio or route. Phone
+manual start/resume actions bind the current controller, enabled state, resumed
+lifecycle and rendered phase; phase changes replace the action node so a delayed
+Pause cannot start speech. Active cleanup controls remain available.
 
 [Chapter dictation](STORY_CHAPTER_DICTATION.md) uses the same protected ASR
 adapter with a different destination. Explicit Add appends reviewed words to the

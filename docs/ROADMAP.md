@@ -49,8 +49,10 @@ the next delivery gate is the complete release closure, then approved native
 qualification and publication. At `263439c`, all 19 Web suites and the complete Android JVM/lint/debug
 profile passed with unchanged source; nine opening/reader simulator cases and
 bilingual enlarged-text inspection also passed. The public v47 release compiled
-unsigned and unconfigured. Family story quality and time/similarity group
-boundaries still require real feedback.
+unsigned and unconfigured. The final phone narration correction at `466ada2`
+also passed 28 simulator cases and the complete unchanged Android profile at
+`0548d8c`; its rebuilt unsigned APK supersedes the earlier package. Family story
+quality and time/similarity group boundaries still require real feedback.
 
 ## October 11 adjustable shared-memory groups
 

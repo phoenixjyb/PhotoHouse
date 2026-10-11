@@ -27,7 +27,12 @@ The speech snapshot binds the account/session, library, reader instance, book
 ID/revision, ordered story revisions, exact opening and language, and current
 story/chapter/frame location. Navigation, replacement, close, backgrounding
 or logout invalidates the old control and stops its speech. A delayed old
-completion cannot restore controls or move the new reader.
+completion cannot restore controls or move the new reader. Android manual
+Read/Resume additionally require the current enabled control and a resumed
+foreground lifecycle. The button keeps its rendered action identity, so a delayed
+Pause cannot become Resume when the phase changes. Active Pause and Stop remain
+available when new playback is disabled. Returning to the foreground starts
+nothing automatically.
 
 Opening, chapter and companion narration share the existing audio coordinator.
 Starting one stops the previous speech. Recording reserves the microphone and

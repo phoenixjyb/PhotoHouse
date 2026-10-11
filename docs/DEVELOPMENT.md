@@ -1515,3 +1515,33 @@ Phone generic release lint also passed in 29s (74 tasks: 13 executed, 61 up to
 date). Native APK metadata independently reports `dev.photohouse.connected`,
 version 47 and `0.47-family-memoir-composer`. This remains an unsigned,
 unconfigured package, with no private delivery claim.
+
+
+## October 12 final foreground and phase narration correction
+
+Source `a63a35a` gates manual Read/Resume on the current enabled controller and
+resumed lifecycle, invalidates detached actions and keeps active Pause/Stop
+usable. Its first 28-case simulator run passed 27 and failed the captured Pause
+check: Compose updated the reused clickable node to Resume. Source `466ada2`
+keys the action node to its immutable snapshot and rendered phase; the corrected
+full 28-case cohort passed in 145.835s. The strict log reader accepted its complete
+terminal, zero failures/errors/skips. No failure log was removed. One existing
+case reads installed-engine voice metadata without speech/provider installation;
+the actual narration checks use generated adapters.
+
+At unchanged source `0548d8c`, the complete Android JVM/lint/debug profile passed
+in 71s (175 tasks, 20 executed and 155 up to date). Receipt SHA-256:
+`2c32629381c83611f2b6e3ca900e87896ca11bbbf7e7d44724c8fcdace34c63f`. The existing XML report inventory has
+1,014 tests with no failures/errors/skips; this count does not establish that
+cached tasks freshly executed. Web source remains unchanged from its qualified
+`263439c` snapshot, so its 19-suite receipt above remains the applicable result.
+
+The rebuilt public v47 unsigned APK is 10,058,501 bytes, SHA-256
+`b1a59040c5c439eaa6b0f0752652ea1097214864631903f70b70853edee22d5a`. Native package metadata confirms version 47; the
+two origins remain empty and optional flags off. Expected signature refusal
+confirms no release signer was used. This package supersedes the earlier public
+APK; it does not establish a private build, OTA, Windows or family acceptance.
+
+Final unsigned release compilation and generic release lint passed together in
+121s (99 tasks: 17 executed, 82 up to date), at the same phone source snapshot.
+No private configuration or signer was supplied.
