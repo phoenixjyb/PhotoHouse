@@ -2251,9 +2251,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(!bookCurrent(ticket,owner)||!isCurrentForm()||!bookEditorOpen||!container?.contains(form)||container.querySelector('.memory-community-book-form')!==form)return;
     if(bookIntroductionVoicePending()){bookIntroductionVoiceStatus(bookIntroductionVoice,'review');return;}
     if(bookSubmittingOwner===owner||editorialPending||editorialBusyOwner===owner)return;
+    form.querySelector('.memory-book-input-status')?.remove();
+    const inputError=message=>{const status=appendStatus(form,message);status.className+=' memory-book-input-status';};
     if(!pendingBook){const ids=[...bookStorySelection];
-      if(!safeText(form.elements.title.value,512)||!boundedText(form.elements.introduction.value,6000)||ids.length<1||ids.length>24||new Set(ids).size!==ids.length){showStatus(t('error'),'error');return;}
-      const mutationId=uuid();if(!uuidOK(mutationId)){appendStatus(form,lang()==='zh'?'此浏览器暂时无法安全保存。草稿仍可编辑，请刷新后再试。':'This browser cannot safely save right now. Your draft is still editable; refresh and try again.');return;}
+      if(!safeText(form.elements.title.value,512)){inputError(lang()==='zh'?'请填写回忆集名称，或缩短过长的名称。':'Add a memoir title, or shorten a title that is too long.');return;}
+      if(!boundedText(form.elements.introduction.value,6000)){inputError(lang()==='zh'?'请缩短开篇，或修改不支持的字符。完整草稿仍已保留。':'Shorten the introduction or remove unsupported characters. Your complete draft is retained.');return;}
+      if(ids.length<1||ids.length>24||new Set(ids).size!==ids.length){inputError(lang()==='zh'?'请先选择 1–24 个不同的故事。':'Choose 1–24 distinct saved stories first.');return;}
+      const mutationId=uuid();if(!uuidOK(mutationId)){inputError(lang()==='zh'?'此浏览器暂时无法安全保存。草稿仍可编辑，请刷新后再试。':'This browser cannot safely save right now. Your draft is still editable; refresh and try again.');return;}
       pendingBook={path:book?`${API}/books/${book.id}`:`${API}/books`,method:book?'PUT':'POST',body:{title:form.elements.title.value,language:book?.language??lang(),introduction:form.elements.introduction.value,story_ids:ids.join(','),revision:book?.revision||'0',mutation_id:mutationId}};}
     bookSubmittingOwner=owner;if(bookIntroductionVoice)renderBookIntroductionVoice(bookIntroductionVoice);const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;
     try{await bookApi(pendingBook.path,{method:pendingBook.method,body:pendingBook.body});if(!bookCurrent(ticket,owner))return;pendingBook=null;selectedBook=null;bookEditorOpen=false;bookStorySelection=new Set();bookTitleDraft='';bookIntroDraft='';showStatus(t('bookSaved'),'success');await books(bookContainerFor(form));}

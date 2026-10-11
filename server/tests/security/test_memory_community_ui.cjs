@@ -200,6 +200,10 @@ async function runMemoirIntroductionDictationJourney(){
   await flushUi();assert.equal(uncertainCapabilities,0,'an uncertain immutable save must be resolved before opening another dictation');
   assert.equal(uncertain.writes.length,1,'dictation controls cannot create an extra save during uncertain retry');
   uncertain.ui.clear();
+  const validation=memoirIntroductionHarness();await validation.open();const validationForm=validation.mount.querySelector('.memory-community-book-form');
+  validationForm.elements.title.value='';await validationForm.dispatch('submit');await flushUi();assert.equal(validation.writes.length,0);assert.match(validationForm.querySelector('.memory-book-input-status').textContent,/填写回忆集名称/,'invalid book title is explained beside the current form');
+  validationForm.elements.title.value='Reviewed title';validationForm.elements.introduction.value='界'.repeat(2001);await validationForm.dispatch('submit');await flushUi();assert.equal(validation.writes.length,0);assert.equal(validationForm.elements.introduction.value,'界'.repeat(2001),'overlong direct introduction remains complete');assert.match(validationForm.querySelector('.memory-book-input-status').textContent,/缩短开篇/);assert.equal(validationForm.querySelectorAll('.memory-book-input-status').length,1,'corrected validation replaces the old error rather than accumulating it');
+  validationForm.elements.introduction.value='Corrected opening';await validationForm.dispatch('submit');await flushUi();assert.equal(validation.writes.length,1,'validation never freezes an unsent invalid draft');assert.equal(validation.writes[0].options.body.introduction,'Corrected opening');validation.ui.clear();
   const identity=memoirIntroductionHarness();await identity.open();const identityForm=identity.mount.querySelector('.memory-community-book-form');
   const originalUuid=context.crypto.randomUUID;try{context.crypto.randomUUID=()=>null;await identityForm.dispatch('submit');await flushUi();
     assert.equal(identity.writes.length,0,'missing retry identity must send no save');
