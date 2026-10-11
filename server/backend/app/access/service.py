@@ -29,13 +29,17 @@ class Conflict(Exception):
 class AccessService:
     SESSION_SECONDS = 86400
 
-    def __init__(self, connection: sqlite3.Connection, *, clock=time.time):
+    def __init__(self, connection: sqlite3.Connection, *, clock=time.time,
+                 memory_groups_enabled=False):
+        if type(memory_groups_enabled) is not bool:
+            raise ValueError('Explicit memory group opt-in required')
         if connection.in_transaction:
             raise ValueError('AccessService requires a connection without a pending transaction')
         if connection.execute('PRAGMA foreign_keys').fetchone()[0] != 1:
             raise ValueError('SQLite foreign_keys must be enabled by the connection owner')
         self.db = connection
         self.clock = clock
+        self.memory_groups_enabled = memory_groups_enabled
         self.original_deletions = getattr(connection, 'original_deletions', None)
 
     def _now(self):

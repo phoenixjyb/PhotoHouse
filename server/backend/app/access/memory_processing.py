@@ -101,11 +101,14 @@ def job_context(access, row, *, editorial_enabled=False):
     return bundle
 
 
-def process_job(db, *, narrator, clock=time.time, editorial_enabled=False):
+def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
+                memory_groups_enabled=False):
     """Process one queued narrative or chat. Returns only job ID/state metadata."""
     if type(editorial_enabled) is not bool:
         raise ValueError('editorial_feature_flag_must_be_boolean')
-    access = AccessService(db, clock=clock)
+    if type(memory_groups_enabled) is not bool:
+        raise ValueError('memory_groups_feature_flag_must_be_boolean')
+    access = AccessService(db, clock=clock, memory_groups_enabled=memory_groups_enabled)
     with access._transaction(write=True):
         now = access._now()
         prune(db, now)

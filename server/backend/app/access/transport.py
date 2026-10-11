@@ -4,7 +4,7 @@ No settings/database factory, app construction, startup, providers or model impo
 Integration must explicitly supply app.state.access_runtime.
 This router alone provides no protection to routes outside it.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import hmac
 import json
@@ -39,8 +39,11 @@ class AccessRuntime:
     connection_factory: object
     web_origin: str
     clock: object = time.time
+    memory_groups_enabled: bool = False
 
     def __post_init__(self):
+        if type(self.memory_groups_enabled) is not bool:
+            raise ValueError('Explicit memory group opt-in required')
         parsed = urlsplit(self.web_origin)
         if (parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password
                 or parsed.path or parsed.query or parsed.fragment or not callable(self.connection_factory)):
@@ -49,7 +52,8 @@ class AccessRuntime:
     def call(self, action, *args, source=None, **kwargs):
         # Opening/closing the connection and all SQL/KDF work happen on one thread.
         with self.connection_factory() as connection:
-            service = AccessService(connection, clock=self.clock)
+            service = AccessService(connection, clock=self.clock,
+                                    memory_groups_enabled=self.memory_groups_enabled)
             if action in {'login', 'register'}:
                 with Admission(service).attempt(source, args[0]):
                     return getattr(service, action)(*args, **kwargs)
@@ -88,6 +92,12 @@ def _runtime(request, *, allow_query=False):
     # No query strings on account endpoints: no tokens, passwords or phone labels
     # in URLs, and no ignored credential/redirect parameters.
     return runtime
+
+
+def _memory_runtime(request, *, allow_query=False):
+    """Apply this app's memory-group opt-in to a request-local runtime copy."""
+    runtime = _runtime(request, allow_query=allow_query)
+    return replace(runtime, memory_groups_enabled=request.app.state.memory_groups_enabled)
 
 
 def _cookie(request):

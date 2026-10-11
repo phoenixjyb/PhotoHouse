@@ -10,7 +10,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       title:'故事标题',titlePlaceholder:'为这段回忆起个名字',theme:'故事主题',outline:'整理章节',working:'正在整理画面与参考资料…',readerFrameGroup:'本章画面',readerPhoto:'照片',readerVideo:'视频',readerFrameLabel:(kind,position,total)=>`${kind} ${position} / ${total}`,readerFrameStatus:(kind,position,total)=>`当前画面：${kind} ${position} / ${total}`,
       draft:'故事草稿',draftHelp:'这是可编辑的章节提纲，尚未保存。参考资料不会自动变成事实；请补充自己的回忆。刷新、切换相册库或退出后草稿会清除。',
       chapters:'章节',chapterTitle:'章节标题',narration:'这一章的故事',references:'参考这章的资料',family:'家人写下的话',ai:'AI 观察 · 待核实',
-      readerSources:'查看本章素材来源',sourceDisclaimer:'以下是本章引用的参考资料，不代表已核实事实。',sourceFamily:'家人提供的文字',sourceAI:'AI 观察 · 需核对',
+      readerSources:'查看本章素材来源',sourceDisclaimer:'以下是本章引用的参考资料，不代表已核实事实。',sourceFamily:'家人提供的文字',sourceAI:'AI 观察 · 需核对',sourceByline:'原记录署名',sharedMemoryFromPhoto:'来源素材',
       savedContributionRefs:'已保存的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
       bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',
@@ -25,7 +25,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       title:'Story title',titlePlaceholder:'Give this memory a name',theme:'Story theme',outline:'Arrange chapters',working:'Gathering frames and references…',readerFrameGroup:'Frames in this chapter',readerPhoto:'Photo',readerVideo:'Video',readerFrameLabel:(kind,position,total)=>`${kind} ${position} of ${total}`,readerFrameStatus:(kind,position,total)=>`Current frame: ${kind} ${position} of ${total}`,
       draft:'Story draft',draftHelp:'This is an editable outline, not a saved story. References are not automatically facts. Add what you remember. Refreshing, switching libraries or signing out clears this draft.',
       chapters:'Chapters',chapterTitle:'Chapter title',narration:'The story in this chapter',references:'References for this chapter',family:'Family words',ai:'AI observation · verify',
-      readerSources:'View sources for this chapter',sourceDisclaimer:'These are references cited for this chapter; they are not verified facts.',sourceFamily:'Family-provided wording',sourceAI:'AI observation · verify',
+      readerSources:'View sources for this chapter',sourceDisclaimer:'These are references cited for this chapter; they are not verified facts.',sourceFamily:'Family-provided wording',sourceAI:'AI observation · verify',sourceByline:'Original byline',sharedMemoryFromPhoto:'Source item',
       savedContributionRefs:'Saved family-memory sources',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
       bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',
@@ -315,16 +315,27 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
        !Array.isArray(value.items) || value.items.length<1 || value.items.length>24 || new Set(value.items.map(i=>i.id)).size!==value.items.length || JSON.stringify(value.items.map(i=>i.id))!==JSON.stringify(expected) ||
        !Array.isArray(value.chapters) || !value.chapters.length || value.chapters.length>6 || !themes.includes(value.theme) || !['zh','en'].includes(value.language) || !/^[0-9a-f]{64}$/.test(value.selection_revision) ||
        !Array.isArray(value.questions) || value.questions.length>3 || !value.questions.every(q=>validText(q,1000)))return false;
+    const evidenceById=new Map();
     for(const item of value.items) {
-      if(!idOK(item.id) || !['image','video'].includes(item.kind) || !Array.isArray(item.evidence) || item.evidence.length>3)return false;
+      if(!idOK(item.id) || !['image','video'].includes(item.kind) || !Array.isArray(item.evidence) || item.evidence.length>12)return false;
       if(item.date_hint && (!['filename','received'].includes(item.date_hint.source) || !validText(item.date_hint.value,128)))return false;
       if(item.taken_at!==null && !validText(item.taken_at,128))return false;
-      for(const e of item.evidence)if(!validText(e.id,160) || !['family','ai'].includes(e.source) || !validText(e.text,1800))return false;
+      const itemEvidenceIds=new Set();
+      for(const e of item.evidence){
+        if(!e||!validText(e.id,160)||!['family','ai'].includes(e.source)||!validText(e.text,1800)||itemEvidenceIds.has(e.id))return false;
+        itemEvidenceIds.add(e.id);
+        const hasOrigin='origin_asset_id' in e,hasByline='byline' in e;
+        if(hasOrigin!==hasByline)return false;
+        if(hasOrigin&&(!/^family-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(e.id)||e.source!=='family'||typeof e.origin_asset_id!=='string'||!/^([1-9][0-9]{0,18})$/.test(e.origin_asset_id)||BigInt(e.origin_asset_id)>9223372036854775807n||!validText(e.byline,256)||new TextEncoder().encode(e.byline).length>256||!validText(e.title,160)||!Number.isSafeInteger(e.revision)||e.revision<1))return false;
+        const canonical=JSON.stringify([e.id,e.source,e.title??null,e.text,e.revision??null,e.origin_asset_id??null,e.byline??null]);
+        if(evidenceById.has(e.id)&&evidenceById.get(e.id)!==canonical)return false;
+        evidenceById.set(e.id,canonical);
+      }
     }
     if(value.chapters.some(c=>!Array.isArray(c.asset_ids)||!c.asset_ids.length||c.asset_ids.length>4))return false;
     if(JSON.stringify(value.chapters.flatMap(c=>c.asset_ids))!==JSON.stringify(expected))return false;
     for(const c of value.chapters) {
-      if(!validText(c.id,32)||!validText(c.title,160)||!validText(c.narration,6000)||!Array.isArray(c.evidence_ids))return false;
+      if(!validText(c.id,32)||!validText(c.title,160)||!validText(c.narration,6000)||!Array.isArray(c.evidence_ids)||c.evidence_ids.length>12||new Set(c.evidence_ids).size!==c.evidence_ids.length)return false;
       const evidence=new Set(value.items.filter(i=>c.asset_ids.includes(i.id)).flatMap(i=>i.evidence.map(e=>e.id)));
       if(c.evidence_ids.some(e=>!evidence.has(e)))return false;
     }
@@ -405,7 +416,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const references=node('details',undefined,'story-reference-list');references.append(node('summary',text('references')));
       for(const item of draft.items.filter(i=>c.asset_ids.includes(i.id))) {
         references.append(node('p',`${item.id} · ${dateLabel(item)}`,'fine'));
-        for(const e of item.evidence){const article=node('article');article.append(node('small',text(e.source==='family'?'family':'ai')),node('p',e.text));references.append(article);}
+        for(const e of item.evidence){const article=node('article');article.append(node('small',text(e.source==='family'?'family':'ai')),node('p',e.text));appendEvidenceAttribution(article,e,item.id);references.append(article);}
       }
       section.append(references);root.append(section);
     }
@@ -423,11 +434,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     savedStoryPositions.delete(key);savedStoryPositions.set(key,{chapterId:section.id,frameAssetId:item.id});
     while(savedStoryPositions.size>12)savedStoryPositions.delete(savedStoryPositions.keys().next().value);
   }
+  function appendEvidenceAttribution(container,evidence,attachedAssetId){
+    if(evidence.origin_asset_id&&evidence.origin_asset_id!==attachedAssetId){const origin=node('p',text('sharedMemoryFromPhoto')+' '+evidence.origin_asset_id,'story-source-attribution');origin.dataset.storyWord='sharedMemoryFromPhoto';origin.dataset.storyAssetId=evidence.origin_asset_id;container.append(origin);}
+    if(evidence.byline){const byline=node('p',text('sourceByline')+': '+evidence.byline,'story-source-attribution');byline.dataset.storyWord='sourceByline';byline.dataset.storyByline=evidence.byline;container.append(byline);}
+  }
   function appendChapterSources(container,story,section,sourceContext=null) {
     const byId=new Map();
     for(const assetId of section.asset_ids){
       const item=story.items.find(value=>value.id===assetId);if(!item)continue;
-      for(const evidence of item.evidence)if(section.evidence_ids.includes(evidence.id)&&!byId.has(evidence.id))byId.set(evidence.id,evidence);
+      for(const evidence of item.evidence)if(section.evidence_ids.includes(evidence.id)&&!byId.has(evidence.id))byId.set(evidence.id,{evidence,itemId:item.id});
     }
     const memoir=sourceContext?.mode==='memoir',sources=section.evidence_ids.map(id=>byId.get(id)).filter(Boolean),refs=memoir?sourceContext.refs:refsFor(story),contributionIds=refs?.available?refs.groups.get(section.id)||[]:[],unknown=Boolean(refs&&(refs.loading||!refs.available||refs.refreshUnavailable));
     if(!sources.length&&!contributionIds.length&&!unknown)return;
@@ -443,11 +458,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     else if(refs?.refreshUnavailable){const note=node('p',text('refsRefreshUnavailable'),'story-reader-sources-note');note.setAttribute('role','status');details.append(note);}
     else if(!refs&&story.saved&&story.id){const note=node('p',text('refLoading'),'story-reader-sources-note');note.setAttribute('role','status');details.append(note);}
     const list=node('ul');
-    for(const evidence of sources){
-      const row=node('li');row.dataset.evidenceId=evidence.id;
+    for(const source of sources){
+      const {evidence,itemId}=source,row=node('li');row.dataset.evidenceId=evidence.id;
       const labelKey=evidence.source==='family'?'sourceFamily':'sourceAI',label=node('strong',text(labelKey));label.dataset.storyWord=labelKey;row.append(label);
       if(evidence.title)row.append(node('span',` · ${evidence.title}`));
-      row.append(node('p',evidence.text));list.append(row);
+      row.append(node('p',evidence.text));appendEvidenceAttribution(row,evidence,itemId);list.append(row);
     }
     for(const ref of contributionIds){
       const contributionId=ref.slice('contribution-'.length),row=node('li');row.dataset.contributionId=contributionId;row.style.display='flex';row.style.flexDirection='column';row.style.alignItems='flex-start';row.style.gap='.35rem';row.style.minWidth='0';
@@ -600,7 +615,12 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function translate() {
     stopNarration();
     void community?.translate();
-    for(const el of document.querySelectorAll('[data-story-word]'))el.textContent=text(el.dataset.storyWord);
+    for(const el of document.querySelectorAll('[data-story-word]')){
+      const key=el.dataset.storyWord;
+      if(key==='sharedMemoryFromPhoto')el.textContent=el.dataset.storyAssetId?text(key)+' '+el.dataset.storyAssetId:text(key);
+      else if(key==='sourceByline')el.textContent=el.dataset.storyByline?text(key)+': '+el.dataset.storyByline:text(key);
+      else el.textContent=text(key);
+    }
     if($('story-reader').open)$('story-reader-close').textContent=text(readerFromShelf?'backStories':'close');
     updateReaderFrameLabels();
     renderShelfFilters();

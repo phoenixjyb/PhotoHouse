@@ -3,13 +3,14 @@ from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 import test_memory_groups as fixture
 import test_visual_vector_loader as vectors
 from app.main import create_app
 from app.access.memory_group_transport import GroupVectorConfiguration
-from app.access.transport import COOKIE, csrf_token
+from app.access.transport import COOKIE, _memory_runtime, csrf_token
 from app.access.visual_vector_schema import create_visual_vector_schema
 
 
@@ -66,6 +67,25 @@ class MemoryGroupRouteTests(unittest.TestCase):
         manual = self.request('GET', '/memory-groups/capabilities', client=self.build()).json()
         self.assertTrue(manual['manual'])
         self.assertFalse(manual['suggestions'])
+
+    def test_group_opt_in_uses_request_local_runtime_copies(self):
+        enabled = create_app(access_runtime=self.runtime, memory_groups_enabled=True)
+        disabled = create_app(access_runtime=self.runtime, memory_groups_enabled=False)
+        self.assertIs(enabled.state.access_runtime, self.runtime)
+        self.assertIs(disabled.state.access_runtime, self.runtime)
+        self.assertFalse(self.runtime.memory_groups_enabled)
+
+        enabled_request = SimpleNamespace(app=SimpleNamespace(
+            state=SimpleNamespace(memory_groups_enabled=True)))
+        disabled_request = SimpleNamespace(app=SimpleNamespace(
+            state=SimpleNamespace(memory_groups_enabled=False)))
+        with patch('app.access.transport._runtime', return_value=self.runtime):
+            enabled_runtime = _memory_runtime(enabled_request)
+            disabled_runtime = _memory_runtime(disabled_request)
+        self.assertIsNot(enabled_runtime, disabled_runtime)
+        self.assertTrue(enabled_runtime.memory_groups_enabled)
+        self.assertFalse(disabled_runtime.memory_groups_enabled)
+        self.assertFalse(self.runtime.memory_groups_enabled)
 
     def test_real_loader_combines_time_and_similarity_and_exclusions(self):
         self.install_vectors()

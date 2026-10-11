@@ -64,7 +64,7 @@ def _validate_items(items):
     if not isinstance(items, list) or len(items) > 24:
         raise ValueError('items must be a list of at most 24 entries')
     seen_asset_ids = set()
-    seen_evidence_ids = set()
+    seen_evidence = {}
     cleaned = []
     for item in items:
         if not isinstance(item, dict) or set(item) != _ITEM_KEYS:
@@ -83,13 +83,19 @@ def _validate_items(items):
         if not isinstance(evidence, list) or len(evidence) > 12:
             raise ValueError('evidence must be a list of at most 12 entries')
         clean_evidence = []
+        local_ids = set()
         for entry in evidence:
             if not isinstance(entry, dict) or set(entry) != _EVIDENCE_KEYS:
                 raise ValueError('each evidence entry must have the supported fields')
             evidence_id = _identifier(entry['id'], 'evidence id')
-            if evidence_id in seen_evidence_ids:
-                raise ValueError('evidence ids must be unique')
-            seen_evidence_ids.add(evidence_id)
+            if evidence_id in local_ids:
+                raise ValueError('evidence ids must be unique within each item')
+            local_ids.add(evidence_id)
+            if evidence_id in seen_evidence:
+                if (seen_evidence[evidence_id] != entry or entry['source'] != 'family'
+                        or not evidence_id.startswith('family-')):
+                    raise ValueError('only consistent original family notes can be shared')
+            seen_evidence[evidence_id] = entry
             if not isinstance(entry['source'], str) or entry['source'] not in {'family', 'ai'}:
                 raise ValueError('evidence source must be family or ai')
             _text(entry['text'], limit=8192, field='evidence text')
@@ -159,6 +165,8 @@ def build_outline(items, *, theme, language, title=''):
                 if evidence_id not in seen_evidence:
                     evidence_ids.append(evidence_id)
                     seen_evidence.add(evidence_id)
+        if len(evidence_ids) > 12:
+            raise ValueError('choose fewer chapter sources')
         if language == 'zh':
             chapter_title = f'{theme_label} · {role_labels[role]}'
         else:

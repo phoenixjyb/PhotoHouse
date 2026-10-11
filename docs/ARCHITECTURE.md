@@ -50,6 +50,11 @@ The vector tables still have no migration or live activation. A separate e7
 migration adds ID-only memory groups; a default-off Web editor can link current
 family notes and review capture-time plus similarity suggestions. Qualified
 vector configuration is explicit, and manual groups work without vectors.
+The optional [shared-story evidence adapter](SHARED_MEMORY_STORY_SOURCES.md)
+rehydrates current group notes in the authorized story snapshot. Canonical note
+IDs can support multiple media and chapters while the prompt contains one copy;
+the source retains its original media and byline. Saved links contain IDs and
+digests, and provider jobs recheck current group/media/source dependencies.
 The phone uses the same protected contract behind its own default-off build
 choice. Its editor and bounded preview cache belong to the current account,
 library and visible-item generation; no private draft is persisted or sent to

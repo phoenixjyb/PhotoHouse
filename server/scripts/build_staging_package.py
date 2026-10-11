@@ -97,6 +97,7 @@ FILES = (
     'backend/app/access/story_schema.py',
     'backend/app/access/story_titles.py',
     'backend/app/access/story_workspace.py',
+    'backend/app/access/shared_memory_evidence.py',
     'backend/app/access/tags.py',
     'backend/app/access/task_recovery.py',
     'backend/app/access/transport.py',

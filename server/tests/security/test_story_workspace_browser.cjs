@@ -42,15 +42,16 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
       constrainPreviewEvidence=false;const payload=JSON.parse(body.toString()),section=payload.chapters[0];
       const [firstItem,secondItem]=payload.items;
       if(!section||payload.items.length!==2||!firstItem.evidence.length||!secondItem.evidence.length)throw new Error('Fixture needs two cited chapter assets with source text');
-      const family={id:'family-reader-fixture',source:'family',title:'合成家人回忆',text:'<em>家人原话</em> & 仅作界面测试'};
-      const sharedId='shared-reader-fixture',firstShared={id:sharedId,source:'ai',title:'',text:'第一张画面的合成参考'},secondShared={id:sharedId,source:'ai',title:'',text:'第二张画面的合成参考'};
+      const family={id:'family-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',source:'family',title:'合成家人回忆',text:'<em>家人原话</em> & 仅作界面测试'};
+      const sharedId='family-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',shared={id:sharedId,source:'family',title:'共同回忆',text:'两张照片共享的合成回忆',revision:3,origin_asset_id:'999',byline:'<em>Grandma</em> & family'};
+      const firstShared=shared,secondShared=shared;
       firstItem.evidence.push(family,firstShared);secondItem.evidence.push(secondShared);
       const firstAsset=firstItem.id,secondAsset=secondItem.id;
       payload.chapters=[
         {...section,id:'chapter-1',title:'第一章',asset_ids:[firstAsset],evidence_ids:[family.id,sharedId]},
         {...section,id:'chapter-2',title:'第二章',asset_ids:[secondAsset],evidence_ids:[sharedId]}
       ];
-      previewEvidence={family,sharedId,firstText:firstShared.text,secondText:secondShared.text,uncited:firstItem.evidence.find(item=>item.id!==family.id&&item.id!==sharedId)};
+      previewEvidence={family,sharedId,sharedText:shared.text,sharedByline:shared.byline,uncited:firstItem.evidence.find(item=>item.id!==family.id&&item.id!==sharedId)};
       body=Buffer.from(JSON.stringify(payload));
     } else if(req.method()==='POST'&&url.pathname==='/story-workspace/preview'&&result.status===200){
       // Later browser checkpoints retain one ephemeral family-source marker so
@@ -118,7 +119,12 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   assert.deepEqual(await chapterSources.locator('[data-evidence-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.evidenceId)),[previewEvidence.family.id,previewEvidence.sharedId],'reader includes only the cited evidence attached to this chapter');
   assert.equal(await chapterSources.locator(`[data-evidence-id="${previewEvidence.uncited.id}"]`).count(),0,'reader excludes evidence attached to this image when the chapter did not cite it');
   assert.match(await chapterSources.textContent(),/参考资料，不代表已核实事实/);
-  assert.match(await chapterSources.textContent(),/家人提供的文字/);assert.match(await chapterSources.textContent(),/AI 观察 · 需核对/);
+  assert.equal(await chapterSources.locator('[data-evidence-id] strong').count(),2,'each canonical source is rendered once in the chapter');
+  assert.equal(await chapterSources.locator('[data-evidence-id="' + previewEvidence.sharedId + '"]').count(),1);
+  const zhSourceText=await chapterSources.textContent();
+  assert.match(zhSourceText,/家人提供的文字/);
+  assert.match(zhSourceText,/来源素材 999/);
+  assert.ok(zhSourceText.includes(previewEvidence.sharedByline));
   assert.equal(await chapterSources.locator('em').count(),0,'family wording is rendered as literal text, never interpreted as markup');
   assert.match(await chapterSources.textContent(),/<em>家人原话<\/em> & 仅作界面测试/);
   await chapterSources.locator('summary').press('Enter');assert.equal(await chapterSources.evaluate(node=>node.open),true,'native disclosure opens from the keyboard');
@@ -129,6 +135,8 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   assert.equal(await chapterSources.locator('summary').textContent(),'View sources for this chapter');
   assert.equal(await chapterSources.locator('.story-reader-sources-note').textContent(),'These are references cited for this chapter; they are not verified facts.');
   assert.equal(await chapterSources.locator('[data-evidence-id] strong').first().textContent(),'Family-provided wording');
+  assert.match(await chapterSources.textContent(),/Source item 999/);
+  assert.ok((await chapterSources.textContent()).includes(previewEvidence.sharedByline));
   assert.equal(requests.filter(item=>item.method==='POST').length,postsBeforeTranslation,'source translation sends no request');
   await page.evaluate(()=>{window.__setStoryWorkspaceTestLanguage('zh');window.__setStoryWorkspaceTestLanguage(null);});
   const narration=page.locator('.story-narration-controls');
@@ -147,8 +155,8 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   assert.equal(await page.locator('#story-reader .story-reader-sources').evaluate(node=>node.open),false,'chapter change closes the source disclosure');
   assert.deepEqual(await page.locator('#story-reader .story-reader-sources [data-evidence-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.evidenceId)),[previewEvidence.sharedId]);
   assert.equal(await page.locator('#story-reader .story-reader-sources').locator(`[data-evidence-id="${previewEvidence.sharedId}"]`).count(),1,'shared citation ID does not expose a sibling asset’s second record');
-  assert.match(await page.locator('#story-reader .story-reader-sources').textContent(),new RegExp(previewEvidence.secondText));
-  assert.doesNotMatch(await page.locator('#story-reader .story-reader-sources').textContent(),new RegExp(previewEvidence.firstText));
+  assert.ok((await page.locator('#story-reader .story-reader-sources').textContent()).includes(previewEvidence.sharedText));
+  assert.ok((await page.locator('#story-reader .story-reader-sources').textContent()).includes(previewEvidence.sharedByline));
   await page.locator('#story-reader-previous').click();
   assert.equal(await page.evaluate(()=>window.__mockSpeech.synth.speaking),false,'navigation cancels narration');
   await page.evaluate(()=>{document.documentElement.style.zoom='150%';});

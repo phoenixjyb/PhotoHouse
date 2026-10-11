@@ -13,6 +13,12 @@ jointly; it does not change the older same-day route. Aware full timestamps may
 match across midnight; date-only metadata uses the written day. Unknown dates
 need manual grouping. Automatic visual proposals remain image-only.
 
+The [shared-source adapter](SHARED_MEMORY_STORY_SOURCES.md) now carries current
+reviewed notes into story and memoir drafts behind the same default-off setting.
+It preserves canonical source origin and byline, deduplicates prompt sources,
+and rechecks group members and note lifecycle in the caller's authorized snapshot.
+No shared text or author label is copied into saved source references.
+
 Schema e7 is prepared and tested locally; immutable vector schema migration,
 Windows vector coverage, exact installed producer qualification and live
 activation remain separate gates. The older design discussion below describes

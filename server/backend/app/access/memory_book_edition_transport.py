@@ -27,7 +27,8 @@ router = APIRouter(route_class=LibraryRoute)
 def call_edition(runtime, action, token, library, book_id, *args,
                  editorial_enabled=False):
     with runtime.connection_factory() as db:
-        access = AccessService(db, clock=runtime.clock)
+        access = AccessService(db, clock=runtime.clock,
+                               memory_groups_enabled=runtime.memory_groups_enabled)
         store = MemoryBookEditions(access, enabled=True,
                                    editorial_enabled=editorial_enabled)
         return getattr(store, action)(token, library, book_id, *args)
@@ -35,7 +36,8 @@ def call_edition(runtime, action, token, library, book_id, *args,
 
 def call_authorize_write(runtime, token, library, book_id, *, editorial_enabled=False):
     with runtime.connection_factory() as db:
-        access = AccessService(db, clock=runtime.clock)
+        access = AccessService(db, clock=runtime.clock,
+                               memory_groups_enabled=runtime.memory_groups_enabled)
         store = MemoryBookEditions(access, enabled=True,
                                    editorial_enabled=editorial_enabled)
         with access._transaction():
@@ -45,7 +47,8 @@ def call_authorize_write(runtime, token, library, book_id, *, editorial_enabled=
 def call_capabilities(runtime, token, library, book_id, *, enabled,
                       editorial_enabled=False):
     with runtime.connection_factory() as db:
-        access = AccessService(db, clock=runtime.clock)
+        access = AccessService(db, clock=runtime.clock,
+                               memory_groups_enabled=runtime.memory_groups_enabled)
         if enabled:
             store = MemoryBookEditions(access, enabled=True,
                                        editorial_enabled=editorial_enabled)
@@ -74,7 +77,8 @@ async def edition_scope(request, *, allowed=None, write_book_id=None):
 def call_edition_source(runtime, action, token, library, book_id, edition_id, *args,
                         editorial_enabled=False, originals_enabled=False):
     with runtime.connection_factory() as db:
-        access = AccessService(db, clock=runtime.clock)
+        access = AccessService(db, clock=runtime.clock,
+                               memory_groups_enabled=runtime.memory_groups_enabled)
         editions = MemoryBookEditions(access, enabled=True,
                                       editorial_enabled=editorial_enabled)
         sources = MemoryBookEditionSources(editions, originals_enabled=originals_enabled)

@@ -153,16 +153,19 @@ def context(access, library, member, target_type, ident, instructions='', recent
                 for evidence in item['evidence']:
                     if evidence['id'] not in seen:
                         author = None
+                        source_asset = evidence.get('origin_asset_id', item['id'])
                         if evidence['source'] == 'family' and evidence['id'].startswith('family-'):
                             # Authorship is a voluntary display label, never an account identity.
                             # Resolve the current note in this same authorization transaction;
                             # asset membership or an evidence ID alone is not authority.
-                            note = access.db.execute('''SELECT id,byline,revision
-                                FROM access_stories
-                                WHERE id=? AND library_id=? AND asset_id=?
-                                  AND revision=? AND deleted=0''',
-                                (evidence['id'][len('family-'):], library, item['id'],
-                                 evidence['revision'])).fetchone()
+                            note = access.db.execute('''SELECT s.id,s.byline,s.revision
+                                FROM access_stories s JOIN assets a ON a.id=s.asset_id
+                                JOIN access_asset_libraries l ON l.asset_id=a.id
+                                WHERE s.id=? AND s.library_id=? AND s.asset_id=?
+                                  AND s.revision=? AND s.deleted=0 AND l.library_id=?
+                                  AND (a.status IS NULL OR a.status='active')''',
+                                (evidence['id'][len('family-'):], library, source_asset,
+                                 evidence['revision'], library)).fetchone()
                             if note is None:
                                 raise TransportError(503, 'Family source unavailable')
                             byline = text(note[1], 256, blank=True)
@@ -170,9 +173,9 @@ def context(access, library, member, target_type, ident, instructions='', recent
                             # Include the full label in the dependency fingerprint. Old
                             # queued/ready outputs cannot silently acquire a different voice.
                             dependencies.append(['asset_family_note_authorship_v1',
-                                                 note[0], item['id'], note[2], byline])
+                                                 note[0], source_asset, note[2], byline])
                         add_source({'id': evidence['id'], 'kind': evidence['source'],
-                            'text': clipped(evidence['text'], 384), 'asset_id': item['id'], 'author': author})
+                            'text': clipped(evidence['text'], 384), 'asset_id': source_asset, 'author': author})
                         seen.add(evidence['id'])
                     refs.append(evidence['id'])
             refs += [cid for chapter_id, cid in contribution_sources

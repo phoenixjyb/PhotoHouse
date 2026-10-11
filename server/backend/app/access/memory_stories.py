@@ -15,9 +15,9 @@ from starlette.concurrency import run_in_threadpool
 from .library import LibraryRoute, _integer, _query
 from .service import AccessService, AccessDenied
 from .stories import _uuid
-from .story_workspace import collect_items, _selection, MAX_RESPONSE
+from .story_workspace import collect_items, _selection, selection_revision, MAX_RESPONSE
 from .story_outline import THEMES, build_outline
-from .transport import TransportError, _body, _runtime, credentials_from_request
+from .transport import TransportError, _body, _memory_runtime, credentials_from_request
 from .memory_source_refs import (current_groups, parse_groups, replace_groups,
     available as source_refs_available, validate_groups)
 
@@ -27,9 +27,8 @@ FIELDS = {'title', 'theme', 'language', 'asset_ids', 'chapters',
 PAGE_SIZE = 8
 
 
-def snapshot(library, items):
-    return hashlib.sha256(json.dumps([library, items], sort_keys=True,
-        ensure_ascii=True, allow_nan=False).encode()).hexdigest()
+def snapshot(library, items, group_dependencies=None):
+    return selection_revision(library, items, group_dependencies)
 
 
 def evidence_digest(evidence):
@@ -113,7 +112,10 @@ class MemoryStories:
 
     def _read(self, row, library, member):
         stored = _json(row['content'])
-        items = collect_items(self.db, library, [int(ident) for ident in stored['asset_ids']])
+        groups = [] if self.access.memory_groups_enabled else None
+        items = collect_items(self.db, library, [int(ident) for ident in stored['asset_ids']],
+                              memory_groups_enabled=self.access.memory_groups_enabled,
+                              group_dependencies=groups)
         # Only current evidence references are returned. Old copies of private
         # source words are never retained in a saved draft or revision payload.
         chapters = []
@@ -126,7 +128,7 @@ class MemoryStories:
             'revision': str(row['revision']), 'created_at': row['created_at'], 'updated_at': row['updated_at'],
             'can_edit': self._can_edit(member, row), 'saved': True, 'state': 'draft',
             'generator': 'family_edited_outline', 'needs_review': True,
-            'selection_revision': snapshot(library, items), 'items': items,
+            'selection_revision': snapshot(library, items, groups), 'items': items,
             'chapters': chapters, 'questions': questions}  # asset_ids removed below
 
     def _present(self, row, library, member):
@@ -222,8 +224,11 @@ class MemoryStories:
                 if prior['request_digest'] != digest:
                     raise TransportError(409, 'Save identifier already used; keep your draft')
                 return self._present(self._row(prior['story_id'], library), library, member)
-            items = collect_items(self.db, library, [int(value) for value in stored['asset_ids']])
-            if snapshot(library, items) != body['selection_revision'] or (row and row['revision'] != revision):
+            groups = [] if self.access.memory_groups_enabled else None
+            items = collect_items(self.db, library, [int(value) for value in stored['asset_ids']],
+                                  memory_groups_enabled=self.access.memory_groups_enabled,
+                                  group_dependencies=groups)
+            if snapshot(library, items, groups) != body['selection_revision'] or (row and row['revision'] != revision):
                 raise TransportError(409, 'Story or references changed; keep your draft and reload before saving')
             for chapter in stored['chapters']:
                 refs = {e['id'] for item in items if item['id'] in chapter['asset_ids'] for e in item['evidence']}
@@ -273,14 +278,15 @@ class MemoryStories:
 
 def call(runtime, action, *args):
     with runtime.connection_factory() as db:
-        return getattr(MemoryStories(AccessService(db, clock=runtime.clock)), action)(*args)
+        return getattr(MemoryStories(AccessService(db, clock=runtime.clock,
+            memory_groups_enabled=runtime.memory_groups_enabled)), action)(*args)
 
 
 @router.get('/memory-stories')
 async def list_memories(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library', 'page', 'theme'})
-    result = await run_in_threadpool(call, _runtime(request, allow_query=True), 'list', token,
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'list', token,
                                     query['library'], _integer(query.get('page', '1'), 100000), query.get('theme'))
     return JSONResponse(result)
 
@@ -289,7 +295,7 @@ async def list_memories(request: Request):
 async def get_memory(story_id: str, request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
-    result = await run_in_threadpool(call, _runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id))
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id))
     return JSONResponse(result)
 
 
@@ -298,7 +304,7 @@ async def get_contribution_refs(story_id: str, request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library', 'revision'})
     revision = _integer(query.get('revision', ''), 2**63-1)
-    result = await run_in_threadpool(call, _runtime(request, allow_query=True),
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True),
         'contribution_refs', token, query['library'], _uuid(story_id), revision)
     return JSONResponse(result)
 
@@ -321,6 +327,6 @@ async def save_memory(request, ident=None):
         raise TransportError(400, 'Invalid request')
     fields = FIELDS | ({'contribution_refs'} if refs_enabled else set())
     body = await _body(request, fields, max_body=384*1024)
-    result = await run_in_threadpool(call, _runtime(request, allow_query=True), 'save', token,
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'save', token,
         query['library'], body, ident, refs_enabled)
     return JSONResponse(result)

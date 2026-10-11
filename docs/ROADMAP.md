@@ -22,8 +22,13 @@ CPU/video companion canary also passed independent readback. Next delivery gates
 prepare the stopped-writer backup/restoration and compatible worker/API switch;
 approve live migration and activation. Automatic suggestions separately need exact
 prepared-vector profile/coverage and protected lookup qualification on Windows. The phone has a default-off group review/edit source implementation; its release and live API availability
-remain delivery gates. Next product work: deduplicated shared sources in essay/memoir evidence, and explicit
-family feedback on suggested group boundaries. Do not automatically publish
+remain delivery gates. Shared-source integration is now implemented locally:
+reviewed group notes enter story and memoir evidence with their canonical origin
+and byline, deduplicated for generation and chapter references. Source changes
+invalidate stale saves/jobs; no note text is copied into saved source links.
+See [the shared-source contract](SHARED_MEMORY_STORY_SOURCES.md).
+Next product work: explicit family feedback on suggested group boundaries and
+clearer source review while composing a longer story. Do not automatically publish
 private memories to Home TV.
 
 ### Guarded activation preparation
