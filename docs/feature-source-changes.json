@@ -10860,6 +10860,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Guarded phone story and memoir history navigation with direct latest messages",
+      "source_commit": "7d7b1efea89556bd42bebe07c4450587fbfec106",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryChatLatestUiTest.kt",
+          "before_sha256": null,
+          "sha256": "9d00e48e994bce0aeb19ec69d097e9dffd0795b9f6af2a4f8ae8b66015c6836e"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "6793f6f265eb7bc769cc735c16f2f62d65cfb07ba6ad39c71dda6a789e88e558",
+          "sha256": "c2eb8f126e7e57869a5f5915ccaf250797fdacb2dda1f9c23e4e3425b8f0cf6a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
