@@ -5,7 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -46,6 +46,28 @@ internal fun MemoryBooksDialog(
     val index = reading.storyIndex
     val story = reading.story
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
+    // Capture rendered values, not whichever reader happens to be current when a callback runs.
+    val navigation = book?.let { selectedBook ->
+        liveState.session?.account_id?.let { account ->
+            MemoryBookReaderNavigationScope(account, liveState.generation, reading.library,
+                reading.readerScopeId, selectedBook.id, selectedBook.revision,
+                selectedBook.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) },
+                reading.storyIndex, story?.id, story?.revision, story?.let { reading.selectedChapter },
+                chapter?.id, reading.framePage, reading.selectedAssetId)
+        }
+    }
+    val guardedStory: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onStory(target) }
+    }
+    val guardedChapter: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onChapter(target) }
+    }
+    val guardedFramePage: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onFramePage(target) }
+    }
+    val guardedFrame: (String) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onFrame(target) }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val readerAudio = remember(liveState.session?.account_id, reading.library, book?.id) { ReaderAudioCoordinator() }
     DisposableEffect(lifecycleOwner, store, reading.library, book?.id) {
@@ -177,6 +199,14 @@ internal fun MemoryBooksDialog(
                                         story != null && chapter != null && index != null -> {
                                             Text(story.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, modifier = Modifier.bringIntoViewRequester(originalStart).testTag("memory-book-story-title"))
                                             Text(t("Story ${index + 1} of ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"))
+                                            navigation?.let { rendered ->
+                                                MemoryBookReaderContents(
+                                                    reading, rendered,
+                                                    isCurrent = { store.isCurrentMemoryBookReaderNavigation(rendered) },
+                                                    enabled = !reading.readerBusy && !reading.framesBusy,
+                                                    zh = zh, onSelectStory = guardedStory, onSelectChapter = guardedChapter,
+                                                )
+                                            }
                                             MemoryBookChapterNarration(store, zh)
                                             Box(Modifier.fillMaxWidth().aspectRatio(1.6f).testTag("memory-book-hero"), contentAlignment = Alignment.Center) {
                                                 if (heroBitmap != null) Image(heroBitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -197,26 +227,21 @@ internal fun MemoryBooksDialog(
                                             if (companionExpanded) MemoryBookCompanionPanel(store, reading, zh)
                                             if (chapter.assetIds.isNotEmpty()) {
                                                 Text(t("Moments", "故事片段"), style = MaterialTheme.typography.labelLarge)
-                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("memory-book-frames")) {
+                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup().testTag("memory-book-frames")) {
                                                     val framePageIds = chapter.assetIds.drop(reading.framePage * 8).take(8)
                                                     items(framePageIds, key = { it }) { assetId ->
-                                                        val bytes = reading.frames[assetId]
-                                                        val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
-                                                        Card(Modifier.width(104.dp).clickable(enabled = !reading.framesBusy) { onFrame(assetId) }.testTag("memory-book-frame-$assetId")) {
-                                                            if (bitmap != null) Image(bitmap, null, Modifier.fillMaxWidth().height(68.dp), contentScale = ContentScale.Crop)
-                                                            else Box(Modifier.fillMaxWidth().height(68.dp), contentAlignment = Alignment.Center) {
-                                                                Text(when {
-                                                                    reading.framesBusy -> t("Loading", "加载中")
-                                                                    reading.framesUnavailable || assetId in reading.unavailableFrameIds -> t("Unavailable", "不可用")
-                                                                    else -> t("Not loaded", "尚未加载")
-                                                                })
-                                                            }
-                                                            Text(when (story.items.firstOrNull { it.asset.id == assetId }?.asset?.kind) {
-                                                                "video" -> t("Video", "视频")
-                                                                "image" -> t("Photo", "照片")
-                                                                else -> t("Media", "媒体")
-                                                            }, Modifier.padding(6.dp))
-                                                        }
+                                                        MemoirMomentFrame(
+                                                            position = chapter.assetIds.indexOf(assetId) + 1,
+                                                            count = chapter.assetIds.size,
+                                                            kind = story.items.firstOrNull { it.asset.id == assetId }?.asset?.kind.orEmpty(),
+                                                            bytes = reading.frames[assetId],
+                                                            selected = assetId == reading.selectedAssetId,
+                                                            busy = reading.framesBusy,
+                                                            unavailable = reading.framesUnavailable || assetId in reading.unavailableFrameIds,
+                                                            zh = zh,
+                                                            onSelect = { guardedFrame(assetId) },
+                                                            assetId = assetId,
+                                                        )
                                                     }
                                                 }
                                                 val pageCount = (chapter.assetIds.size + 7) / 8
@@ -225,14 +250,20 @@ internal fun MemoryBooksDialog(
                                                     t("Previous moments", "上一组片段"), t("Next moments", "下一组片段"),
                                                     !reading.framesBusy && reading.framePage > 0,
                                                     !reading.framesBusy && reading.framePage < pageCount - 1,
-                                                    { onFramePage(reading.framePage - 1) }, { onFramePage(reading.framePage + 1) },
+                                                    { guardedFramePage(reading.framePage - 1) }, { guardedFramePage(reading.framePage + 1) },
                                                     "memory-book-previous-frame-page", "memory-book-next-frame-page")
-                                                OutlinedButton(onClick = { exitReader { activeAsset?.id?.let(onOpenAsset) } }, enabled = activeAsset != null,
+                                                OutlinedButton(onClick = {
+                                                    navigation?.let { rendered ->
+                                                        if (store.isCurrentMemoryBookReaderNavigation(rendered)) exitReader {
+                                                            if (store.isCurrentMemoryBookReaderNavigation(rendered)) activeAsset?.id?.let(onOpenAsset)
+                                                        }
+                                                    }
+                                                }, enabled = activeAsset != null,
                                                     modifier = Modifier.fillMaxWidth().testTag("memory-book-open-media")) {
                                                     Text(if (activeAsset?.kind == "video") t("Open video", "打开视频") else t("Open photo", "打开照片"))
                                                 }
                                             }
-                                            if (narrativeExpanded) MemoryBookOriginalNavigation(reading, zh, onChapter, onStory)
+                                            if (narrativeExpanded) MemoryBookOriginalNavigation(reading, zh, guardedChapter, guardedStory)
                                         }
                                         else -> {
                                             reading.resumePosition?.let { position ->
@@ -246,7 +277,7 @@ internal fun MemoryBooksDialog(
                                                         reading.sourceInspection.audio == null)
                                             }
                                             book.stories.forEachIndexed { i, item ->
-                                                Card(onClick = { onStory(i) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-entry-$i")) {
+                                                Card(onClick = { guardedStory(i) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-entry-$i")) {
                                                     Column(Modifier.padding(16.dp)) {
                                                         Text(item.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
                                                         Text(t("${item.itemCount} moments", "${item.itemCount} 个片段"))
@@ -256,7 +287,7 @@ internal fun MemoryBooksDialog(
                                         }
                                     }
                                 }
-                                if (!narrativeExpanded && !keyboardVisible) MemoryBookOriginalNavigation(reading, zh, onChapter, onStory)
+                                if (!narrativeExpanded && !keyboardVisible) MemoryBookOriginalNavigation(reading, zh, guardedChapter, guardedStory)
                             }
                             else -> {
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -110,6 +110,24 @@ data class MemoryBookSpeechAdvanceScope(
     val fromChapterId: String,
     val nextChapterId: String,
 )
+data class MemoryBookReaderNavigationChild(val storyId: String, val revision: Long)
+/** Immutable binding for callbacks rendered by one exact memoir reader state. */
+data class MemoryBookReaderNavigationScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoryBookReaderNavigationChild>,
+    val storyIndex: Int?,
+    val storyId: String?,
+    val storyRevision: Long?,
+    val chapterIndex: Int?,
+    val chapterId: String?,
+    val framePage: Int,
+    val selectedAssetId: String?,
+)
 data class MemoryBookEditorialCatalogState(
     val busy: Boolean = false, val unavailable: Boolean = false,
     val sources: List<EditorialSourceIdentity> = emptyList(),
@@ -2994,6 +3012,102 @@ class ConnectedStore(
 
     fun loadMemoryBookChapter(index: Int, framePage: Int = 0) {
         loadMemoryBookChapterAt(index, framePage, assetId = null, explicitNavigation = true)
+    }
+
+    /** Captures the exact reader state represented by manual story/chapter/frame controls. */
+    fun captureMemoryBookReaderNavigation(): MemoryBookReaderNavigationScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        if (!allowed() || token == null || state.value.library != reading.library) return null
+        val story = reading.story
+        val storyIndex = reading.storyIndex
+        val chapterIndex = story?.let { reading.selectedChapter }
+        val chapter = if (story == null) null else story.chapters.getOrNull(chapterIndex ?: return null) ?: return null
+        if ((story == null) != (storyIndex == null) || (story == null) != (chapterIndex == null) ||
+            (story == null) != (chapter == null)) return null
+        if (story != null && book.stories.getOrNull(storyIndex!!)?.let { it.id == story.id && it.revision == story.revision } != true) return null
+        if (chapter != null) {
+            val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+            if (reading.framePage !in 0 until pageCount.coerceAtLeast(1) ||
+                reading.selectedAssetId?.let { selected ->
+                    selected !in chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+                        .take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+                } == true) return null
+        } else if (reading.framePage != 0 || reading.selectedAssetId != null) return null
+        return MemoryBookReaderNavigationScope(
+            accountId = accountId,
+            generation = state.value.generation,
+            libraryId = reading.library,
+            readerScopeId = reading.readerScopeId,
+            bookId = book.id,
+            bookRevision = book.revision,
+            orderedChildren = Collections.unmodifiableList(book.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) }),
+            storyIndex = storyIndex,
+            storyId = story?.id,
+            storyRevision = story?.revision,
+            chapterIndex = chapterIndex,
+            chapterId = chapter?.id,
+            framePage = reading.framePage,
+            selectedAssetId = reading.selectedAssetId,
+        )
+    }
+
+    /** The scope ticket is checked before any manual navigation can mutate reader state. */
+    fun isCurrentMemoryBookReaderNavigation(expected: MemoryBookReaderNavigationScope): Boolean =
+        captureMemoryBookReaderNavigation() == expected
+
+    /** Runs a rendered story action only against the book/story-list snapshot that created it. */
+    fun loadMemoryBookStory(expected: MemoryBookReaderNavigationScope, index: Int): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val book = reading.selectedBook ?: return false
+        if (reading.readerBusy || index !in book.stories.indices) return false
+        loadMemoryBookStory(index)
+        val after = state.value.memoryBooks ?: return false
+        val requested = book.stories[index]
+        return after.selectedBook?.id == expected.bookId && after.storyIndex == index &&
+            (after.readerBusy || after.story?.let { it.id == requested.id && it.revision == requested.revision } == true)
+    }
+
+    /** Runs a rendered chapter action only against the story/chapter snapshot that created it. */
+    fun loadMemoryBookChapter(expected: MemoryBookReaderNavigationScope, index: Int, framePage: Int = 0): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(index) ?: return false
+        val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+        if (reading.readerBusy || framePage !in 0 until pageCount.coerceAtLeast(1)) return false
+        loadMemoryBookChapter(index, framePage)
+        val after = state.value.memoryBooks ?: return false
+        return after.story?.id == expected.storyId && after.selectedChapter == index && after.framePage == framePage
+    }
+
+    /** Runs a rendered frame-page action only against the selected chapter snapshot that created it. */
+    fun loadMemoryBookFramePage(expected: MemoryBookReaderNavigationScope, page: Int): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
+        val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+        if (reading.readerBusy || page !in 0 until pageCount.coerceAtLeast(1)) return false
+        loadMemoryBookFramePage(page)
+        val after = state.value.memoryBooks ?: return false
+        return after.story?.id == expected.storyId && after.selectedChapter == expected.chapterIndex && after.framePage == page
+    }
+
+    /** Runs a rendered frame selection only against its exact visible-page snapshot. */
+    fun selectMemoryBookAsset(expected: MemoryBookReaderNavigationScope, assetId: String): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
+        val visible = chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+            .take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+        if (reading.readerBusy || reading.framesBusy || assetId !in visible) return false
+        selectMemoryBookAsset(assetId)
+        return state.value.memoryBooks?.let { it.story?.id == expected.storyId && it.selectedChapter == expected.chapterIndex &&
+            it.framePage == expected.framePage && it.selectedAssetId == assetId } == true
     }
 
     /** Captures only a next chapter in the same freshly selected child story. */

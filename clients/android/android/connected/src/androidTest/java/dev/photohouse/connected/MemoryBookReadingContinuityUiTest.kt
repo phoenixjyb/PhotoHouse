@@ -68,6 +68,9 @@ class MemoryBookReadingContinuityUiTest {
         rule.onNodeWithTag("memory-book-frames").performScrollTo()
         rule.onNodeWithTag("memory-book-frame-10").performClick()
         rule.waitUntil(5000) { active.state.value.memoryBooks?.selectedAssetId == "10" }
+        rule.onNodeWithTag("memory-book-frame-10").assertIsSelected()
+        rule.onNodeWithTag("memory-book-frame-9").assertIsNotSelected()
+        captureMomentRow(zh, "selected")
         rule.runOnIdle {
             val saved = positions.load(ACCOUNT).single()
             assertEquals(SECOND, saved.storyId); assertEquals("chapter-3", saved.chapterId); assertEquals("10", saved.assetId)
@@ -92,6 +95,10 @@ class MemoryBookReadingContinuityUiTest {
                 it.selectedAssetId == "10" && !it.readerBusy && !it.framesBusy } == true
         }
         rule.onNodeWithTag("memory-book-chapter-title").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("memory-book-frames").performScrollTo()
+        rule.onNodeWithTag("memory-book-frame-10").assertIsSelected()
+        rule.onNodeWithTag("memory-book-frame-9").assertIsNotSelected()
+        captureMomentRow(zh, "resumed")
         rule.runOnIdle { active.closeMemoryBook(); active.openMemoryBook(BOOK) }
         rule.waitUntil(5000) { active.state.value.memoryBooks?.resumePosition != null && active.state.value.memoryBooks?.readerBusy == false }
         rule.onNodeWithTag("memory-book-start-over").performScrollTo().performClick()
@@ -101,6 +108,14 @@ class MemoryBookReadingContinuityUiTest {
             assertTrue("Start over does not recreate the pointer through a preview load", positions.load(ACCOUNT).isEmpty())
             assertEquals(0, api.originalCalls); assertEquals(0, api.videoCalls)
         }
+    }
+
+    private fun captureMomentRow(zh: Boolean, state: String) {
+        val bitmap = rule.onNodeWithTag("memory-book-frames").captureToImage().asAndroidBitmap()
+        val locale = if (zh) "zh" else "en"
+        File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir,
+            "memoir-moments-$state-$locale-150.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
     }
 
     private class Positions : MemoryBookReaderPositionPersistence {

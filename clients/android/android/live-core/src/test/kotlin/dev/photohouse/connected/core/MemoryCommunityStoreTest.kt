@@ -2023,6 +2023,134 @@ class MemoryCommunityStoreTest {
         assertFalse(accountStore.advanceMemoryBookSpeech(accountScope))
     }
 
+    @Test fun memoirRenderedStoryCallbackIsRejectedAfterReaderStoryScopeChanges() = runTest {
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val community = CommunityApi()
+        val positions = ReaderPositionMemoryStore()
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        openBookReader(store)
+        val rendered = store.captureMemoryBookReaderNavigation()!!
+        assertEquals(storyId, rendered.storyId)
+
+        store.loadMemoryBookStory(1); runCurrent()
+        assertEquals(secondStoryId, store.state.value.memoryBooks?.story?.id)
+        val childReads = api.childReads.toList()
+        val thumbnailReads = api.thumbnailReads.toList()
+        val heroReads = api.heroReads.toList()
+        val savedPositions = positions.load("account")
+
+        assertFalse(store.isCurrentMemoryBookReaderNavigation(rendered))
+        assertFalse(store.loadMemoryBookStory(rendered, 0))
+        assertEquals(secondStoryId, store.state.value.memoryBooks?.story?.id)
+        assertEquals(childReads, api.childReads)
+        assertEquals(thumbnailReads, api.thumbnailReads)
+        assertEquals(heroReads, api.heroReads)
+        assertEquals(savedPositions, positions.load("account"))
+    }
+
+    @Test fun memoirGuardedStoryChapterPageAndFrameActionsAcceptCurrentScopeAndSaveMoment() = runTest {
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2"); tenFrameStory = true }
+        val community = CommunityApi().apply { bookItemCount = 10 }
+        val positions = ReaderPositionMemoryStore()
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+
+        val tocScope = store.captureMemoryBookReaderNavigation()!!
+        assertNull(tocScope.storyId)
+        assertTrue(store.loadMemoryBookStory(tocScope, 0))
+        runCurrent()
+        assertEquals(storyId, store.state.value.memoryBooks?.story?.id)
+
+        val chapterScope = store.captureMemoryBookReaderNavigation()!!
+        assertTrue(store.loadMemoryBookChapter(chapterScope, 1))
+        runCurrent()
+        assertEquals(1, store.state.value.memoryBooks?.selectedChapter)
+        assertEquals("chapter-2", positions.load("account").single().chapterId)
+
+        val pageScope = store.captureMemoryBookReaderNavigation()!!
+        assertTrue(store.loadMemoryBookFramePage(pageScope, 1))
+        runCurrent()
+        assertEquals(1, store.state.value.memoryBooks?.framePage)
+        assertEquals("9", store.state.value.memoryBooks?.selectedAssetId)
+
+        val frameScope = store.captureMemoryBookReaderNavigation()!!
+        assertTrue(store.selectMemoryBookAsset(frameScope, "10"))
+        runCurrent()
+        assertEquals("10", store.state.value.memoryBooks?.selectedAssetId)
+        assertEquals("10", positions.load("account").single().assetId)
+        assertEquals("10", api.heroReads.last())
+    }
+
+    @Test fun memoirRenderedChapterAndFrameCallbacksAreRejectedAfterChapterOrPageChanges() = runTest {
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2"); tenFrameStory = true }
+        val community = CommunityApi().apply { bookItemCount = 10 }
+        val positions = ReaderPositionMemoryStore()
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        openBookReader(store)
+        val beforeChapter = store.captureMemoryBookReaderNavigation()!!
+        store.loadMemoryBookChapter(1); runCurrent()
+        assertEquals(1, store.state.value.memoryBooks?.selectedChapter)
+        val chapterReads = api.thumbnailReads.toList()
+        val chapterHeroes = api.heroReads.toList()
+        val chapterPosition = positions.load("account")
+        assertFalse(store.loadMemoryBookChapter(beforeChapter, 0))
+        assertEquals(1, store.state.value.memoryBooks?.selectedChapter)
+        assertEquals(chapterReads, api.thumbnailReads)
+        assertEquals(chapterHeroes, api.heroReads)
+        assertEquals(chapterPosition, positions.load("account"))
+
+        store.loadMemoryBookFramePage(1); runCurrent()
+        assertEquals(1, store.state.value.memoryBooks?.framePage)
+        val beforePage = store.captureMemoryBookReaderNavigation()!!
+        store.loadMemoryBookFramePage(0); runCurrent()
+        val pageReads = api.thumbnailReads.toList()
+        val pageHeroes = api.heroReads.toList()
+        val pagePosition = positions.load("account")
+        assertFalse(store.loadMemoryBookFramePage(beforePage, 1))
+        assertFalse(store.selectMemoryBookAsset(beforePage, "10"))
+        assertEquals(0, store.state.value.memoryBooks?.framePage)
+        assertEquals(pageReads, api.thumbnailReads)
+        assertEquals(pageHeroes, api.heroReads)
+        assertEquals(pagePosition, positions.load("account"))
+    }
+
+    @Test fun memoirNavigationScopeRejectsReplacementAccountAndReaderBeforeAnyRead() = runTest {
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val community = CommunityApi()
+        val store = newStore(api, community)
+        openBookReader(store)
+        val oldAccountScope = store.captureMemoryBookReaderNavigation()!!
+        val oldChildReads = api.childReads.toList()
+
+        store.closeMemoryBook()
+        runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        store.loadMemoryBookStory(1); runCurrent()
+        val replacementChildReads = api.childReads.toList()
+        val replacementBookReads = community.bookReads
+        val replacementStory = store.state.value.memoryBooks?.story?.id
+        assertFalse(store.loadMemoryBookStory(oldAccountScope, 0))
+        assertEquals(replacementStory, store.state.value.memoryBooks?.story?.id)
+        assertEquals(replacementChildReads, api.childReads)
+        assertEquals(replacementBookReads, community.bookReads)
+        assertTrue(replacementChildReads.size > oldChildReads.size)
+
+        val oldReaderScope = store.captureMemoryBookReaderNavigation()!!
+        store.logout(); runCurrent()
+        api.accountId = "replacement-account"
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        store.loadMemoryBookStory(0); runCurrent()
+        val currentChildReads = api.childReads.toList()
+        val currentReaderStory = store.state.value.memoryBooks?.story?.id
+        assertFalse(store.loadMemoryBookChapter(oldReaderScope, 1))
+        assertEquals(currentReaderStory, store.state.value.memoryBooks?.story?.id)
+        assertEquals(currentChildReads, api.childReads)
+    }
+
     @Test fun speechAdvanceWaitsForMetadataAndRejectsUnavailableReader() = runTest {
         val community = CommunityApi()
         val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
