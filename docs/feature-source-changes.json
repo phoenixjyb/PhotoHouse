@@ -10623,6 +10623,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Scoped Web memoir navigation and explicit story boundary labels",
+      "source_commit": "074d096325018ac5631b20a47b9fc6e89d244f7b",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "536efcd69ed7854a9cc47e32bb48ef876f753630c9b6efc81c37e8a0cd4514f8",
+          "sha256": "9813cd3c9507d63e3b190d9925d56d2f25cf89ac4b0deb9ef35595c8ac963e83"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "eb639f240a5c1663ec75bb95b477b9085efb50ea214aa3d171e30d15ac25c3d6",
+          "sha256": "2f02a577f44bfb80ba6e337c0dbb170bae27566a65bcb8e9f5e1b64b494d771f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
