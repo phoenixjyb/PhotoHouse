@@ -110,6 +110,47 @@ named process-crash, file binding, private-directory and catalog restore cases
 for that package/filesystem. It does not establish power-loss durability,
 installed producer/model qualification, task reconciliation or live cleanup.
 
+## October 11 memory-group native result
+
+The approved generated e7 qualification passed on Windows:
+
+| Binding | Value |
+|---|---|
+| Source commit | `665bed58650aafcd31ec8569976e0b2111da226c` |
+| API ZIP SHA-256 | `3740c5121a9027b44b690678480dc653327802516638e90f1e99621839f10e45` |
+| Report SHA-256 | `e2d9e71f950886c236c7939fd245e0f187846467abd17a52fea4bf3125f88c64` |
+| Source files verified | 180 before execution and during independent readback |
+| Generated upgrade | `d1f6a8c3e920` → `e7c1a9d5b304` |
+| Bounded child profile | 15 minutes, 2 GiB Job memory, four processes, 8 GiB free-RAM floor |
+
+All five named cases passed: injected DDL-interruption rollback, additive
+preservation, original-note attribution and group retry, pre-/post-group backup
+restoration, and nonempty downgrade refusal. The Windows interpreter/package
+identities and absent destinations were checked before staging; the existing
+interpreter was retained. Only new private candidate/transfer directories and
+generated fixtures were written.
+
+Independent read-only inspection checked the complete report and six generated
+databases. The five healthy files pass integrity and foreign-key checks. The
+restored d1 backup matches its 56-table schema and rows; the restored e7 backup
+matches its 58-table schema and rows, including one group, two group revisions,
+the edited original note and original attribution. Upload receipts, pending
+task and caption remain intact. Both restored backup files also match their
+respective saved file digests.
+
+The sixth file deliberately removes the current group while retaining two
+orphaned history rows. It has exactly the two expected foreign-key violations;
+the downgrade still refuses and retains those rows. It is an intentionally
+damaged refusal fixture, not a healthy restore result.
+
+The first independent readback launcher exceeded Windows' command-line length
+limit. Its failed receipt remains retained. A hash-checked readback script and
+short launcher completed the same read-only verification; the qualification
+was not rerun. No production database, family media, installed worker/model,
+service, task or APK feed was changed. Native companion-worker execution,
+installed vector provenance/coverage, guarded live migration/backup planning,
+activation, phone release and family acceptance remain delivery gates.
+
 ## October 11 vector catalog native result
 
 The explicitly approved corrected synthetic run passed on Windows:

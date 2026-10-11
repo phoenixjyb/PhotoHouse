@@ -14,9 +14,11 @@ are prepared locally. The six-hour/0.9 similarity rule is a heuristic awaiting
 family calibration. See [the contract](../server/docs/security/MEMORY_GROUPS_V1.md).
 This is source and synthetic evidence, with no Windows operation in this chunk.
 
-Next delivery gates: qualify e7 upgrade and stopped-writer backup restoration,
-worker companion package, exact prepared-vector profile/coverage and protected
-lookup on Windows; then approve activation. The phone now has a default-off
+Generated e7 upgrade and pre-/post-group backup restoration passed on Windows
+at source `665bed5`, with independent source/database readback. This did not
+make or restore a live backup. Next delivery gates: qualify the worker companion
+package, exact prepared-vector profile/coverage and protected lookup on Windows;
+prepare the guarded live migration and approve activation. The phone has a default-off
 group review/edit source implementation; its release and live API availability
 remain delivery gates. Next product work: deduplicated shared sources in essay/memoir evidence, and explicit
 family feedback on suggested group boundaries. Do not automatically publish
@@ -42,8 +44,11 @@ original note attribution and exact group retry, pre-/post-group backup restore,
 and nonempty downgrade refusal. It has no live database/media arguments and
 uses the existing bounded Windows Job controller. See the
 [qualification contract](../server/docs/security/MEMORY_GROUPS_V1.md#generated-upgrade-qualification).
-Portable results are separate from the pending native Windows run, installed
-worker/vector qualification and live activation. Phone version 46 is already
+The generated runner passed its approved native Windows run at `665bed5`;
+independent readback verified 180 source files, six generated databases and both
+backup restores. See [the native result](WINDOWS_CPU_CHECKS.md#october-11-memory-group-native-result).
+Installed worker/vector qualification and live activation remain separate.
+Phone version 46 is already
 published from older source; the next group-enabled release needs a new version
 and complete newly pinned private profile before signing or OTA publication.
 

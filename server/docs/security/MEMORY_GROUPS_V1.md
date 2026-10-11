@@ -120,8 +120,11 @@ before creating files, and validates the complete bounded success report.
 Failures retain a sanitized phase/class/Windows-code receipt where possible.
 It changes no existing ACL or service and cannot target the live database.
 
-Portable source tests cover the generated cases and controller/refusal behavior;
-native Windows execution remains a delivery gate. This runner does not execute
+Portable source tests cover the generated cases and controller/refusal behavior.
+The approved native Windows run passed at source `665bed5`; independent readback
+verified the manifest, report and generated databases. See
+[the exact native result](../../../docs/WINDOWS_CPU_CHECKS.md#october-11-memory-group-native-result).
+This runner does not execute
 upload workers, qualify the installed vector producer or coverage, make a live
 backup, apply a live migration, or establish power-loss recovery. Use the
 separate companion worker canary and approved live cutover plan for those steps.
