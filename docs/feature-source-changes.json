@@ -9972,6 +9972,62 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Direct loopback Home HTTPS qualification fixtures",
+      "source_commit": "30d26d08dc2b00767bd3bf136bf6413950292184",
+      "files": [
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/BrowseTest.kt",
+          "before_sha256": "e6eeec7874dcdc5ab07eb64c9b858a3c630fa3a683c32c5d46aa645d99c96223",
+          "sha256": "2a2495cf6719ca920a02bb2c3c4093ff773da12d3ab55c38aa15cb099e68799f"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/CalendarGatewayTest.kt",
+          "before_sha256": "db6c4a5ac2867bcb50b581d42ed1617b348b92a4806b61ce0173c29a00a3b4e4",
+          "sha256": "b98a163c79bab6cfbb68c0604d3963b276bf1fc43916ed01ed69adf1cf44f9fb"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/CatalogTest.kt",
+          "before_sha256": "fc0939f67193a72a844a1fff28bc4a0f9d23bba73240eb964fbc2318fb03a7c6",
+          "sha256": "5626863030fed9ef4f753eb5b4e51f148f1819fb66f056ed5ac3c9c95310df5b"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryDeliveryTest.kt",
+          "before_sha256": "591951dca3645f73a1b38e5a7fada2ff70ceb7919c096f65ea3e25a3d55ae1ad",
+          "sha256": "c2a0a4d257a29681f3be46a445626188db744a5c72894d7527ba33bdf3b56d15"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/DiscoveryHttpTest.kt",
+          "before_sha256": "6dc6c5322b725b796a85e1e0b338b1e37c921d677cdcd645bce0eb2f498fbada",
+          "sha256": "ebe370169ed3848416c535dea9b850d89a3c1192246227845a1504a4ec4ff5cd"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/HomeTest.kt",
+          "before_sha256": "4d177275ac401c6e8a0a5c46e15a6818f5f6dac37642a34b3ff8fa23a726f5fc",
+          "sha256": "41f2491ccbe9a70a58ec58a6c55f5bb385de2403bc6d401b51b13107bf8895c2"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/OnDemandTest.kt",
+          "before_sha256": "fdaa3a131559171091e3a1f45f8988bf10b87af104727dc8439aba156bc1ca8a",
+          "sha256": "6772b64c9c8e1404913d43320b06d5642a27c661d44413d01ba333594c5bc4b7"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/TagDiscoveryTest.kt",
+          "before_sha256": "92a380a579fa25e20a69c5b63b58ea2bfb373ac5908544e4edbe2360ca0cd242",
+          "sha256": "8493c398ecbbeecc9ad9bc6c6521ef070671799455bdd2e1f5b234fd8ecef40b"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/UpdateClientTest.kt",
+          "before_sha256": "c1b2dba89342ad090e2f70b07872c073443dfcb4c05a5412d0fa1e4043a352ba",
+          "sha256": "9a8a46208bde14023cec06841bf3a15a311a19022a5a7dd3e9f5815e51d7a74e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
