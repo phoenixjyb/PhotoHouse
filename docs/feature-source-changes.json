@@ -11391,6 +11391,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Explicit offline memoir opening narration on phone",
+      "source_commit": "6f140f873f8c0ef798f8cf47a4a9fe18243af623",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookIntroductionNarrationUiTest.kt",
+          "before_sha256": null,
+          "sha256": "fa140eea064db4a61a6b60ebc00a6651da967e01f1aed7d2c9a71611dcecd806"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookIntroductionNarration.kt",
+          "before_sha256": null,
+          "sha256": "70cb56c5a6ab817d8ed7d585a4c6ce0aeb3655ddbb4d4b6ae9ce672a3656d1b4"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "c5145ed0a1c4aa367d041c3e2a4a686525675a682dd70a5907968e54139626ba",
+          "sha256": "6b8e268bd5f0354da493c132facb9341f00d9d1f112e40ec744bf4bded786aa4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
