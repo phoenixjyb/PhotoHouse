@@ -161,7 +161,8 @@ object AssistantWire {
 
     private fun parseAsset(value: JsonElement, library: String): Asset {
         val o = value as? JsonObject ?: bad()
-        check(o.keys == setOf("id", "kind", "width", "height", "duration_sec", "taken_at", "thumbnail_url", "date_hint"))
+        val legacyKeys = setOf("id", "kind", "width", "height", "duration_sec", "taken_at", "thumbnail_url")
+        check(o.keys == legacyKeys || o.keys == legacyKeys + "date_hint")
         val id = o.getValue("id").str(19).also { check(PhoneDiscoveryWire.validId(it)) }
         val kind = o.getValue("kind").str(8).also { check(it in setOf("image", "video", "other")) }
         fun dimension(key: String): Int? = o.getValue(key).let { if (it == JsonNull) null else it.int(1_000_000).also { n -> check(n > 0) } }
@@ -175,9 +176,11 @@ object AssistantWire {
         val expected = base.newBuilder().addPathSegment("assets").addPathSegment(id).addPathSegment("thumbnail")
             .addQueryParameter("library", library).build()
         check(thumbnail.startsWith('/') && !thumbnail.startsWith("//") && '\\' !in thumbnail && base.resolve(thumbnail) == expected)
-        val hint = o.getValue("date_hint").let { if (it == JsonNull) null else {
+        val hint = o["date_hint"]?.let { if (it == JsonNull) null else {
             val h = it.obj("value", "source")
-            DateHint(h.getValue("value").str(64), h.getValue("source").str(16))
+            val source = h.getValue("source").str(16)
+            check(source in setOf("filename", "received"))
+            DateHint(h.getValue("value").str(64), source)
         } }
         return Asset(id, kind, dimension("width"), dimension("height"), duration, taken, thumbnail, hint)
     }

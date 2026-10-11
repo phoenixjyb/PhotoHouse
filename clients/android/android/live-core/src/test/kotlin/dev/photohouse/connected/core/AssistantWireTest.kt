@@ -74,4 +74,32 @@ class AssistantWireTest {
         assertTrue(runCatching { AssistantWire.response(body, "family-b") }.isFailure)
         assertTrue(runCatching { AssistantWire.response(body.toString(Charsets.UTF_8).replace("\"101\"", "\"01\"", true).toByteArray(), "family-a") }.isFailure)
     }
+
+    @Test fun legacySevenKeyAssetsAreAcceptedForResultsAndOpenWithUnknownDateProvenance() {
+        val item = """{"id":"101","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":"2024-05-01","thumbnail_url":"/assets/101/thumbnail?library=family-a"}"""
+        val results = """{"version":1,"kind":"results","reply":"Found one.","context":null,"filters":null,"items":[$item],"total":1,"has_more":false,"effect":null}""".toByteArray()
+        val parsedResults = AssistantWire.response(results, "family-a")
+        assertEquals("101", parsedResults.items.single().id)
+        assertNull(parsedResults.items.single().date_hint)
+
+        val opened = """{"version":1,"kind":"open","reply":"Opening.","context":{"visible_ids":["101"]},"filters":null,"items":[$item],"total":1,"has_more":false,"effect":{"type":"open_asset","asset_id":"101"}}""".toByteArray()
+        val parsedOpen = AssistantWire.response(opened, "family-a")
+        assertEquals("101", parsedOpen.effect?.assetId)
+        assertNull(parsedOpen.items.single().date_hint)
+    }
+
+    @Test fun assistantHintsPreserveFilenameAndReceivedSourcesAndRejectMalformedAssetKeys() {
+        val filename = """{"id":"101","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/101/thumbnail?library=family-a","date_hint":{"value":"2024-05-01","source":"filename"}}"""
+        val received = """{"id":"102","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/102/thumbnail?library=family-a","date_hint":{"value":"2024-05-02","source":"received"}}"""
+        val body = """{"version":1,"kind":"results","reply":"Found two.","context":null,"filters":null,"items":[$filename,$received],"total":2,"has_more":false,"effect":null}""".toByteArray()
+        val parsed = AssistantWire.response(body, "family-a")
+        assertEquals("filename", parsed.items[0].date_hint?.source)
+        assertEquals("received", parsed.items[1].date_hint?.source)
+
+        val extraKey = body.toString(Charsets.UTF_8).replace("\"kind\":\"image\"", "\"kind\":\"image\",\"unexpected\":true")
+        assertTrue(runCatching { AssistantWire.response(extraKey.toByteArray(), "family-a") }.isFailure)
+        val invalidSource = body.toString(Charsets.UTF_8).replace("\"source\":\"filename\"", "\"source\":\"capture\"")
+        assertTrue(runCatching { AssistantWire.response(invalidSource.toByteArray(), "family-a") }.isFailure)
+        assertTrue(runCatching { AssistantWire.response(body, "family-b") }.isFailure)
+    }
 }

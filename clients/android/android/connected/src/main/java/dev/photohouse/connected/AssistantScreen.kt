@@ -317,7 +317,7 @@ internal fun AssistantScreen(
                                             Preview(asset, previews[asset.id], Words(zh), modifier = Modifier.width(76.dp).height(56.dp))
                                             Column(Modifier.weight(1f)) {
                                                 Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}", "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"), style = MaterialTheme.typography.titleSmall)
-                                                Text(asset.taken_at ?: asset.date_hint?.value ?: t("Date unknown", "日期未知"), style = MaterialTheme.typography.bodySmall)
+                                                Text(Words(zh).date(asset), style = MaterialTheme.typography.bodySmall)
                                             }
                                             TextButton(onClick = { onOpen(asset.id, exchange.turn.receipt?.requestId) }, modifier = Modifier.testTag("assistant-open-${asset.id}")) {
                                                 Text(t("Open", "打开"))

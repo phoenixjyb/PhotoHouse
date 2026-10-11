@@ -60,6 +60,27 @@ class AssistantTransportTest {
         }
     }
 
+    @Test fun legacyAssistantResultAssetWithoutDateHintParsesWithinProtectedRequestScope() = runBlocking {
+        Fixture().use { f ->
+            f.enqueue("""{"version":1,"kind":"results","reply":"Found one memory.","context":{"visible_ids":["101"]},"filters":{"media":["image"]},"items":[{"id":"101","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":"2024-05-01","thumbnail_url":"/assets/101/thumbnail?library=family-a"}],"total":1,"has_more":false,"effect":null}""")
+
+            val result = f.api.assistantTurn(token, "family-a", "Find the garden photo", null)
+            assertEquals("results", result.kind)
+            assertEquals("101", result.items.single().id)
+            assertNull(result.items.single().date_hint)
+
+            val request = f.server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/assistant/v1/turns", request.path)
+            assertNull(request.requestUrl?.query)
+            assertEquals(token.header(), request.getHeader("Authorization"))
+            assertEquals("no-store", request.getHeader("Cache-Control"))
+            val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+            assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
+            assertEquals("Find the garden photo", body.getValue("text").jsonPrimitive.content)
+        }
+    }
+
     @Test fun trackedTurnSendsParentAndValidatesReceiptHeaders() = runBlocking {
         Fixture().use { f ->
             val id = "123e4567-e89b-42d3-a456-426614174000"

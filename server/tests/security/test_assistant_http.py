@@ -86,6 +86,11 @@ class AssistantHttpTests(unittest.TestCase):
         body = first.json()
         self.assertEqual(body['kind'], 'results')
         self.assertEqual([item['id'] for item in body['items']], ['103', '101'])
+        # Native assistant decoding must retain this capture-only discovery shape.
+        # Unlike an opted-in gallery read, it does not promise date_hint.
+        asset_fields = {'id', 'kind', 'width', 'height', 'duration_sec', 'taken_at', 'thumbnail_url'}
+        for item in body['items']:
+            self.assertEqual(set(item), asset_fields)
         self.assertEqual(body['filters']['people']['ids'], ['301'])
         self.assertEqual(body['filters']['media'], ['image'])
         refined = self.turn('只看公园', body['context'])
@@ -94,6 +99,7 @@ class AssistantHttpTests(unittest.TestCase):
         opened = self.turn('打开第一个', refined.json()['context'])
         self.assertEqual(opened.status_code, 200, opened.text)
         self.assertEqual(opened.json()['effect'], {'type': 'open_asset', 'asset_id': '103'})
+        self.assertEqual(set(opened.json()['items'][0]), asset_fields)
         self.assertNotIn('not-a-real-path', opened.text)
 
     def test_english_mixed_date_and_missing_context(self):
