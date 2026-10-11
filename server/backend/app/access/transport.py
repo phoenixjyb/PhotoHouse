@@ -62,9 +62,15 @@ class AccessRuntime:
             return getattr(service, action)(*args, **kwargs)
 
 
+TRANSPORT_ERROR_CODES = {'memory_conversation_full': 429}
+
+
 class TransportError(Exception):
-    def __init__(self, status, message):
-        self.status, self.message = status, message
+    def __init__(self, status, message, *, code=None):
+        if code is not None and (type(status) is not int or type(code) is not str or
+                                 TRANSPORT_ERROR_CODES.get(code) != status):
+            raise ValueError('invalid_transport_error_code')
+        self.status, self.message, self.code = status, message, code
 
 
 def _single(request, name):
@@ -195,7 +201,10 @@ class AccessRoute(APIRoute):
                 _runtime(request, allow_query=self.allow_query)
                 response = await handler(request)
             except TransportError as exc:
-                response = JSONResponse({'detail': exc.message}, status_code=exc.status)
+                body = {'detail': exc.message}
+                if exc.code is not None:
+                    body['code'] = exc.code
+                response = JSONResponse(body, status_code=exc.status)
             except AdmissionDenied:
                 response = JSONResponse({'detail': 'Try again later'}, status_code=429,
                                         headers={'Retry-After': str(Admission.WINDOW_SECONDS)})

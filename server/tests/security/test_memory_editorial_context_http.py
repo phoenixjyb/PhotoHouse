@@ -45,6 +45,13 @@ class EditorialContextHttpTests(unittest.TestCase):
             'revision': self.revision if target_type == 'book' else '1',
             'mutation_id': str(uuid.uuid4()), 'instructions': 'Synthetic direction'}
 
+    def conversation(self, client):
+        response = client.post('/memory-community/v1/conversations?library=family-a',
+            headers=self.headers, json={'id': str(uuid.uuid4()), 'target_type': 'book',
+                                        'target_id': self.seed.book_id})
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()['id']
+
     def test_choice_is_authenticated_default_off_and_strict(self):
         endpoint = '/memory-community/v1/jobs?library=family-a&editorial_context=1'
         disabled = self.client()
@@ -94,6 +101,46 @@ class EditorialContextHttpTests(unittest.TestCase):
                 (accepted.json()['id'],)).fetchone()[0])
         self.assertEqual(set(controls), {'turn_id', 'context_profile'})
         self.assertEqual(controls['context_profile'], 'memoir_editorial_v1')
+
+    def test_only_full_conversation_http_429_has_machine_code(self):
+        client = self.client(editorial=True)
+        full_thread = self.conversation(client)
+        with self.f.connection() as db:
+            for sequence in range(1, 129):
+                db.execute('''INSERT INTO access_memory_turns
+                    (id,conversation_id,sequence,mutation_id,request_digest,input_text,created_at)
+                    VALUES (?,?,?,?,?,?,?)''',
+                    (str(uuid.uuid4()), full_thread, sequence, str(uuid.uuid4()),
+                     'a' * 64, f'Synthetic prior turn {sequence}', self.f.now))
+            db.commit()
+        refused = client.post(f'/memory-community/v1/conversations/{full_thread}/turns?library=family-a',
+            headers=self.headers, json={'revision': self.revision, 'mutation_id': str(uuid.uuid4()),
+                                        'text': 'Must remain unsent'})
+        self.assertEqual(refused.status_code, 429)
+        self.assertEqual(refused.json(), {'detail': 'Start a new conversation',
+                                          'code': 'memory_conversation_full'})
+
+        # The unrelated account-wide pending-job limit remains an ordinary 429.
+        for _ in range(5):
+            conversation_id = self.conversation(client)
+            pending = client.post(f'/memory-community/v1/conversations/{conversation_id}/turns?library=family-a',
+                headers=self.headers, json={'revision': self.revision,
+                    'mutation_id': str(uuid.uuid4()), 'text': 'Pending synthetic thought'})
+            if pending.status_code == 429:
+                break
+            self.assertEqual(pending.status_code, 200, pending.text)
+        self.assertEqual(pending.status_code, 429)
+        self.assertEqual(pending.json(), {'detail': 'Wait for your current memory tasks'})
+
+        # Conversation creation has its own cap and must remain an ordinary 429.
+        for _ in range(26):
+            self.conversation(client)
+        too_many = client.post('/memory-community/v1/conversations?library=family-a',
+            headers=self.headers, json={'id': str(uuid.uuid4()), 'target_type': 'book',
+                                        'target_id': self.seed.book_id})
+        self.assertEqual(too_many.status_code, 429)
+        self.assertEqual(too_many.json(), {
+            'detail': 'Close an older conversation before starting another'})
 
     def test_readonly_plan_counts_selected_context_without_provider_or_queue(self):
         path = '/memory-community/v1/books/' + self.seed.book_id + '/plan?library=family-a'

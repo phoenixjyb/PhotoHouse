@@ -64,6 +64,16 @@ class MemoryJobTests(unittest.TestCase):
                 FROM access_memory_turns WHERE conversation_id=? ORDER BY sequence''',
                 (conversation,)).fetchall()
 
+    def seed_empty_turn_rows(self, conversation, first, last):
+        with self.library.connection() as db:
+            for sequence in range(first, last + 1):
+                db.execute('''INSERT INTO access_memory_turns
+                    (id,conversation_id,sequence,mutation_id,request_digest,input_text,created_at)
+                    VALUES (?,?,?,?,?,?,?)''',
+                    (str(uuid.uuid4()), conversation, sequence, str(uuid.uuid4()),
+                     'a' * 64, f'Synthetic prior turn {sequence}', self.library.now))
+            db.commit()
+
     def test_conversation_is_private_actor_scoped_and_viewer_chat_is_allowed(self):
         conversation = self.start()
         self.assertEqual(conversation['target_type'], 'story')
@@ -155,6 +165,22 @@ class MemoryJobTests(unittest.TestCase):
         owner_job = self.narrative()
         self.assertEqual((owner_job['kind'], owner_job['state']), ('narrative', 'queued'))
 
+    def test_transport_error_machine_code_allowlist_requires_matching_integer_status(self):
+        ordinary = TransportError(429, 'Wait for your current memory tasks')
+        self.assertEqual((ordinary.status, ordinary.message, ordinary.code),
+                         (429, 'Wait for your current memory tasks', None))
+        for status, code in (
+                (429, 'unknown_code'),
+                (400, 'memory_conversation_full'),
+                (429.0, 'memory_conversation_full'),
+                ('429', 'memory_conversation_full'),
+                (429, [])):
+            with self.subTest(status=status, code=code), self.assertRaises(ValueError):
+                TransportError(status, 'Invalid coded error', code=code)
+        coded = TransportError(429, 'Start a new conversation',
+                              code='memory_conversation_full')
+        self.assertEqual((coded.status, coded.code), (429, 'memory_conversation_full'))
+
     def test_turns_are_ordered_pending_turn_serializes_and_retry_does_not_append(self):
         conversation = self.start()
         mutation = str(uuid.uuid4())
@@ -177,6 +203,36 @@ class MemoryJobTests(unittest.TestCase):
         self.assertEqual([turn['sequence'] for turn in turns], [1, 2])
         self.assertEqual([turn['input_text'] for turn in turns], ['First thought', 'Second thought'])
         self.assertEqual([turn['job_id'] for turn in turns], [first['id'], second['id']])
+
+    def test_128th_turn_is_allowed_and_129th_refusal_is_machine_coded_without_mutation(self):
+        conversation = self.start()
+        first = self.send(conversation['id'], 'First retained thought')
+        self.mark_ready(first['id'])
+        self.seed_empty_turn_rows(conversation['id'], 2, 127)
+
+        final_mutation = str(uuid.uuid4())
+        final = self.send(conversation['id'], 'The 128th retained thought', mutation=final_mutation)
+        self.assertEqual(final['state'], 'queued')
+        self.mark_ready(final['id'])
+        self.assertEqual(len(self.turn_rows(conversation['id'])), 128)
+
+        # The mutation lookup remains before the limit check, so a lost response
+        # can still be retried exactly after the conversation fills.
+        retry = self.send(conversation['id'], 'The 128th retained thought', mutation=final_mutation)
+        self.assertEqual(retry['id'], final['id'])
+        self.assertEqual(len(self.turn_rows(conversation['id'])), 128)
+
+        with self.library.connection() as db:
+            jobs_before = db.execute('SELECT count(*) FROM access_memory_jobs').fetchone()[0]
+        with self.assertRaises(TransportError) as refused:
+            self.send(conversation['id'], 'A new thought after the limit')
+        self.assertEqual((refused.exception.status, refused.exception.message,
+                          refused.exception.code),
+                         (429, 'Start a new conversation', 'memory_conversation_full'))
+        self.assertEqual(len(self.turn_rows(conversation['id'])), 128)
+        with self.library.connection() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM access_memory_jobs').fetchone()[0],
+                             jobs_before)
 
     def test_recent_history_pages_resume_latest_turn_and_preserve_legacy_order(self):
         conversation = self.start()

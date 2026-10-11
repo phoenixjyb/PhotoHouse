@@ -484,7 +484,8 @@ class MemoryJobs:
             count = self.db.execute('SELECT count(*) FROM access_memory_turns WHERE conversation_id=?',
                                     (conversation_id,)).fetchone()[0]
             if count >= MAX_TURNS:
-                raise TransportError(429, 'Start a new conversation')
+                raise TransportError(429, 'Start a new conversation',
+                                     code='memory_conversation_full')
             turn_id = str(uuid.uuid4())
             job = self._queue(member, library, target_type, target_id, revision, mutation,
                               {**controls, 'turn_id': turn_id}, conversation_id, message)
