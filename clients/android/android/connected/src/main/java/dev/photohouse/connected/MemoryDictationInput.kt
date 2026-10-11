@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import dev.photohouse.connected.core.MemoryDictationFailure
 import dev.photohouse.connected.core.MemoryDictationStore
 import kotlinx.coroutines.CancellationException
@@ -42,7 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** Speech is reviewed separately; only the parent's explicit insert action changes the draft. */
-internal enum class MemoryDictationPurpose { MEMORY_EDITOR, CHAT_MESSAGE, MEMOIR_INSTRUCTIONS }
+internal enum class MemoryDictationPurpose { MEMORY_EDITOR, CHAT_MESSAGE, MEMOIR_INSTRUCTIONS, CHAPTER_NARRATION }
 
 private fun memoryDictationFailureMessage(code: MemoryDictationFailure?, zh: Boolean): String = when (code) {
     MemoryDictationFailure.INVALID_RECORDING -> if (zh) "录音无效或过长。" else "The recording was invalid or too long."
@@ -61,6 +62,7 @@ internal fun MemoryDictationInput(
     purpose: MemoryDictationPurpose = MemoryDictationPurpose.MEMORY_EDITOR,
     insertRejected: Boolean = false,
     insertEnabled: Boolean = true,
+    onSessionEnded: () -> Unit = {},
 ) {
     val state by store.state.collectAsState()
     val context = LocalContext.current
@@ -74,6 +76,7 @@ internal fun MemoryDictationInput(
     var permissionWanted by remember(store) { mutableStateOf(false) }
     var audioBusy by remember(store) { mutableStateOf(false) }
     var permissionDenied by remember(store) { mutableStateOf(false) }
+    var transcriptInput by remember(store) { mutableStateOf(TextFieldValue(store.state.value.transcript.orEmpty())) }
     var elapsed by remember(store) { mutableIntStateOf(0) }
     var clock by remember(store) { mutableLongStateOf(System.currentTimeMillis()) }
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -104,6 +107,7 @@ internal fun MemoryDictationInput(
                 capture?.discard(); capture = null
                 recorder.stop(); store.cancel()
                 audioCoordinator?.release(audioLease); audioLease = null
+                onSessionEnded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -114,6 +118,7 @@ internal fun MemoryDictationInput(
             store.cancel()
             audioCoordinator?.release(audioLease)
             audioLease = null
+            onSessionEnded()
         }
     }
     LaunchedEffect(store) { store.loadCapabilities() }
@@ -121,6 +126,12 @@ internal fun MemoryDictationInput(
         clock = System.currentTimeMillis()
         while (clock < state.retryAtMillis) { delay(250); clock = System.currentTimeMillis() }
     }
+    LaunchedEffect(state.transcript) {
+        if (transcriptInput.composition == null && transcriptInput.text != state.transcript.orEmpty())
+            transcriptInput = TextFieldValue(state.transcript.orEmpty())
+    }
+    val transcriptEditRejected = transcriptInput.composition == null &&
+        state.transcript != null && transcriptInput.text != state.transcript
     LaunchedEffect(capture) {
         val current = capture ?: return@LaunchedEffect
         val currentLease = audioLease
@@ -154,6 +165,7 @@ internal fun MemoryDictationInput(
     val title = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Voice input", "语音输入")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Memoir instructions", "口述整理要求")
+        MemoryDictationPurpose.CHAPTER_NARRATION -> t("Dictate this chapter", "口述本篇内容")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Tell this memory", "说说这段回忆")
     }
     val help = if (purpose == MemoryDictationPurpose.CHAT_MESSAGE) t(
@@ -162,6 +174,9 @@ internal fun MemoryDictationInput(
     ) else if (purpose == MemoryDictationPurpose.MEMOIR_INSTRUCTIONS) t(
         "Describe how to arrange the memoir. Review the transcript before inserting it. Audio is not saved; transcription records last 30 days.",
         "说说希望怎样整理，核对转写后加入要求。录音不保存，转写记录保留 30 天。",
+    ) else if (purpose == MemoryDictationPurpose.CHAPTER_NARRATION) t(
+        "Record → review the words → add them to this chapter. Audio is transient and is not saved as a family recording. Transcription receipts keep recognized text and processing status for 30 days. Save the story yourself when ready.",
+        "录音 → 核对文字 → 加入本篇。录音仅用于转写，不会作为家庭录音保存。转写回执会保留识别文字和处理状态 30 天。准备好后请手动保存故事。",
     ) else t(
         "Record → review the words → add to your memory. Only text is saved with the memory; the recording is not kept. Transcription records are kept for 30 days.",
         "录音 → 检查文字 → 加入回忆。回忆只保存文字，不保留录音；转写记录保留 30 天。",
@@ -169,11 +184,13 @@ internal fun MemoryDictationInput(
     val insertLabel = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Add to message draft", "加入消息草稿")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Insert instructions", "插入整理要求")
+        MemoryDictationPurpose.CHAPTER_NARRATION -> t("Add to chapter", "加入本篇")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Add to memory", "加入回忆")
     }
     val recordLabel = when (purpose) {
         MemoryDictationPurpose.CHAT_MESSAGE -> t("Record a message", "录音说消息")
         MemoryDictationPurpose.MEMOIR_INSTRUCTIONS -> t("Dictate instructions", "开始口述")
+        MemoryDictationPurpose.CHAPTER_NARRATION -> t("Dictate chapter", "开始口述本篇")
         MemoryDictationPurpose.MEMORY_EDITOR -> t("Record a memory", "录音讲回忆")
     }
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.large,
@@ -215,13 +232,17 @@ internal fun MemoryDictationInput(
                     Text(t("Transcript ready. Review the words before adding.", "转写已完成，请先核对文字再加入。"),
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                             .testTag("memory-dictation-transcript-ready"))
-                    OutlinedTextField(value = state.transcript.orEmpty(), onValueChange = store::updateTranscript,
+                    OutlinedTextField(value = transcriptInput, onValueChange = { value ->
+                        transcriptInput = value
+                        store.updateTranscript(value.text)
+                    },
                         label = { Text(t("Check the recognized words", "检查识别的文字")) }, minLines = 3, maxLines = 5,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focus.clearFocus(); keyboard?.hide() }),
                         modifier = Modifier.fillMaxWidth().testTag("memory-dictation-transcript"))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onInsert, enabled = insertEnabled && !state.transcript.isNullOrBlank(), modifier = Modifier.testTag("memory-dictation-insert")) {
+                        Button(onClick = onInsert, enabled = insertEnabled && transcriptInput.composition == null &&
+                            !transcriptEditRejected && !state.transcript.isNullOrBlank(), modifier = Modifier.testTag("memory-dictation-insert")) {
                             Text(insertLabel)
                         }
                         TextButton(onClick = store::dismissTranscript) { Text(t("Discard words", "放弃文字")) }
@@ -232,8 +253,18 @@ internal fun MemoryDictationInput(
                         modifier = Modifier.testTag("memory-dictation-insert-blocked")
                             .semantics { liveRegion = LiveRegionMode.Polite },
                     )
+                    if (transcriptEditRejected) Text(
+                        t("This edit is too long or contains unsupported characters. It stays visible here; fix it before adding.",
+                            "这次修改过长或含有不支持的字符。文字仍保留在这里，请修正后再加入。"),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("memory-dictation-transcript-edit-rejected")
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
                     if (insertRejected) Text(
-                        t("These instructions exceed the editor limit. The complete transcript is still here; shorten it before inserting.",
+                        if (purpose == MemoryDictationPurpose.CHAPTER_NARRATION)
+                            t("This would exceed the 6,000-byte chapter limit. Both the current wording and full transcript are still here.",
+                                "加入后会超过本篇 6,000 字节上限。现有文字和完整转写都仍保留。")
+                        else t("These instructions exceed the editor limit. The complete transcript is still here; shorten it before inserting.",
                             "整理要求超出编辑框限制。完整转写仍保留在这里，请缩短后再插入。"),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.testTag("memory-dictation-insert-rejected")

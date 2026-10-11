@@ -1,6 +1,6 @@
 package dev.photohouse.connected.core
 
-import dev.photohouse.protocol.SessionToken
+import dev.photohouse.protocol.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -18,6 +18,32 @@ class StoryWorkspaceStoreTest {
     private val mutation = UUID.fromString("55555555-5555-4555-8555-555555555555")
     private fun binding(generation: Long = 1) = MemoryCommunityBinding(
         Bearer.from(SessionToken(86400, "a".repeat(43), "Bearer")), "family-a", generation)
+
+    private class DictationApi : PhotoHouseApi {
+        override val assistantEnabled = true
+        var transcriptText = "ASR words"
+        var transcriptions = 0
+        var capabilityGate: CompletableDeferred<Unit>? = null
+        override suspend fun assistantCapabilities(token: Bearer, library: String): AssistantCapabilities {
+            capabilityGate?.let { gate -> withContext(NonCancellable) { gate.await() }; capabilityGate = null }
+            return AssistantCapabilities(true, true, true, false, 5)
+        }
+        override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
+            transcriptions++
+            return AssistantTranscript(transcriptText, "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+        }
+        override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
+        override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
+        override suspend fun session(token: Bearer) = Session("member", "+12025550123", emptyList())
+        override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
+        override suspend fun logout(token: Bearer) = Unit
+        override suspend fun gallery(token: Bearer, library: String, page: Int) = Gallery(library, page, 0, 0, false, emptyList())
+        override suspend fun detail(token: Bearer, library: String, assetId: String): Detail = error("unused")
+        override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
+        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = null
+        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk = error("unused")
+        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray = error("unused")
+    }
 
     private fun preview(ids: List<String>, revision: String = "a".repeat(64), evidenceId: String = "caption-101",
                         chunkSize: Int = 4) : ByteArray {
@@ -352,5 +378,146 @@ class StoryWorkspaceStoreTest {
         assertFalse(store.reloadPreview())
         assertFalse(store.retryPreview())
         assertEquals(1, api.saveBodies.size)
+    }
+
+    @Test fun chapterDictationReviewsTranscriptPreservesLatestTypedTextAndKeepsOverflow() = runTest {
+        var current = binding()
+        val voice = DictationApi()
+        val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" })
+        readyForEdit(store)
+        assertTrue(store.editChapterNarration(0, "先写下的内容"))
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val session = store.chapterDictation.value!!
+        assertEquals(5, session.beginRecording())
+        session.stopRecording(wav(1)); runCurrent()
+        assertEquals("ASR words", session.state.value.transcript)
+        assertTrue(store.editChapterNarration(0, "核对时补充的内容"))
+        assertFalse(store.editTitle("Blocked while reviewing"))
+        assertFalse(store.confirmReviewed(true))
+        assertFalse(store.save())
+        assertFalse(store.insertChapterTranscript(0, composing = true))
+        assertEquals("ASR words", session.state.value.transcript)
+        assertTrue(store.insertChapterTranscript(0, composing = false))
+        assertEquals("核对时补充的内容\n\nASR words", store.state.value.editableChapters.single().narration)
+        assertNull(session.state.value.transcript)
+
+        store.closeChapterDictation()
+        assertTrue(store.editChapterNarration(0, "字".repeat(2000))) // 6,000 UTF-8 bytes.
+        voice.transcriptText = "A"
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val overflowSession = store.chapterDictation.value!!
+        overflowSession.beginRecording(); overflowSession.stopRecording(wav(1)); runCurrent()
+        assertFalse(store.insertChapterTranscript(0, composing = false))
+        assertEquals("字".repeat(2000), store.state.value.editableChapters.single().narration)
+        assertEquals("A", overflowSession.state.value.transcript)
+        assertTrue(store.hasUnfinishedChapterDictation)
+        assertFalse(store.confirmReviewed(true))
+        assertFalse(store.save())
+        store.closeChapterDictation()
+        assertFalse(store.hasUnfinishedChapterDictation)
+        assertEquals(2, voice.transcriptions)
+    }
+
+    @Test fun chapterDictationCannotOpenDuringUncertainSave() = runTest {
+        var current = binding()
+        val voice = DictationApi()
+        val api = Fake().apply { saveFailure = ApiFailure(FailureKind.OFFLINE) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" }, uuidSupplier = { mutation })
+        readyForEdit(store)
+        assertTrue(store.editTitle("Uncertain save")); assertTrue(store.confirmReviewed(true))
+        assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
+        assertFalse(store.openChapterDictation(0))
+        assertEquals(0, voice.transcriptions)
+    }
+
+    @Test fun chapterDictationCannotInsertIntoAnotherChapterAndIdleSwitchRebinds() = runTest {
+        var current = binding()
+        val voice = DictationApi()
+        val api = Fake().apply { idsForPreview = (1..5).map(Int::toString) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" })
+        (1..5).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertTrue(store.preview()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
+        assertEquals(2, store.state.value.editableChapters.size)
+
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val first = store.chapterDictation.value!!
+        first.beginRecording(); first.stopRecording(wav(1)); runCurrent()
+        assertEquals("ASR words", first.state.value.transcript)
+        assertFalse(store.openChapterDictation(1))
+        assertFalse(store.insertChapterTranscript(1, composing = false))
+        assertEquals("ASR words", first.state.value.transcript)
+        assertEquals("", store.state.value.editableChapters[1].narration)
+
+        store.closeChapterDictation()
+        assertTrue(store.openChapterDictation(1)); runCurrent()
+        val second = store.chapterDictation.value!!
+        assertNotSame(first, second)
+        second.beginRecording(); second.stopRecording(wav(1)); runCurrent()
+        assertFalse(store.insertChapterTranscript(0, composing = false))
+        assertEquals("ASR words", second.state.value.transcript)
+        assertTrue(store.insertChapterTranscript(1, composing = false))
+        assertEquals("ASR words", store.state.value.editableChapters[1].narration)
+        assertEquals("", store.state.value.editableChapters[0].narration)
+        store.closeChapterDictation()
+    }
+
+    @Test fun changedEditorGenerationDropsLateDictationCapabilityResponse() = runTest {
+        var current = binding()
+        val gate = CompletableDeferred<Unit>()
+        val voice = DictationApi().apply { capabilityGate = gate }
+        var denied = 0
+        val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" }, onDictationDenied = { denied++ })
+        readyForEdit(store)
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val oldSession = store.chapterDictation.value!!
+        assertTrue(oldSession.state.value.loading)
+        current = binding(2)
+        assertFalse(store.editChapterNarration(0, "Must be cleared with the old editor"))
+        gate.complete(Unit); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SELECTION, store.state.value.status)
+        assertNull(store.chapterDictation.value)
+        assertEquals(MemoryDictationState(), oldSession.state.value)
+        assertEquals(0, denied)
+    }
+
+    @Test fun dictatedWordsAreOnlyPersistedByTheSeparateExplicitStorySave() = runTest {
+        var current = binding()
+        val api = Fake().apply { saveResponse = savedReply(listOf("1")) }
+        val voice = DictationApi()
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" }, uuidSupplier = { mutation })
+        readyForEdit(store)
+        assertTrue(store.editChapterNarration(0, "Typed first"))
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val session = store.chapterDictation.value!!
+        session.beginRecording(); session.stopRecording(wav(1)); runCurrent()
+        assertTrue(store.insertChapterTranscript(0, composing = false))
+        runCurrent()
+        assertTrue(api.saveBodies.isEmpty())
+        assertEquals("Typed first\n\nASR words", store.state.value.editableChapters.single().narration)
+        assertTrue(store.confirmReviewed(true))
+        assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, store.state.value.status)
+        val savedBody = Json.parseToJsonElement(api.saveBodies.single()).jsonObject
+        val chapters = Json.parseToJsonElement(savedBody.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals("Typed first\n\nASR words", chapters.single().jsonObject.getValue("narration").jsonPrimitive.content)
+    }
+
+    private fun wav(seconds: Int): ByteArray {
+        val pcmSize = 32_000 * seconds
+        return ByteArray(44 + pcmSize).also { out ->
+            fun tag(at: Int, text: String) = text.toByteArray(Charsets.US_ASCII).copyInto(out, at)
+            fun u16(at: Int, value: Int) { out[at] = value.toByte(); out[at + 1] = (value shr 8).toByte() }
+            fun u32(at: Int, value: Int) { repeat(4) { out[at + it] = (value shr (it * 8)).toByte() } }
+            tag(0, "RIFF"); u32(4, out.size - 8); tag(8, "WAVE"); tag(12, "fmt ")
+            u32(16, 16); u16(20, 1); u16(22, 1); u32(24, 16_000); u32(28, 32_000)
+            u16(32, 2); u16(34, 16); tag(36, "data"); u32(40, pcmSize)
+        }
     }
 }

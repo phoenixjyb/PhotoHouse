@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
+import java.util.UUID
 
 private const val MEMORY_BOOK_CHAPTER_ASSET_LIMIT = 8
 
@@ -564,7 +565,17 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         retry = { foreground() }
                     }
                 })
-                val editor = StoryWorkspaceStore(repository, scope, binding).also { created ->
+                val editorAccount = identity?.account_id.orEmpty()
+                val editor = StoryWorkspaceStore(repository, scope, binding, dictationApi = api,
+                    currentAccount = { identity?.account_id },
+                    onDictationDenied = {
+                        if (active(generation) && token === credential && identity?.account_id == editorAccount &&
+                            state.value.library == library) {
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    }).also { created ->
                     created.observeRelatedCandidates { candidates ->
                         updateGroupedStoryRelatedPreviews(created, candidates)
                     }

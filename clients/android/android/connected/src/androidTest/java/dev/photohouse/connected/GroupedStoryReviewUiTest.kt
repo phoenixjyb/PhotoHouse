@@ -1,6 +1,7 @@
 package dev.photohouse.connected
 
 import android.graphics.Bitmap
+import dev.photohouse.protocol.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -12,9 +13,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.connected.core.*
 import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.*
+import org.junit.Assert.*
 import org.junit.*
 import org.junit.runner.RunWith
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 @RunWith(AndroidJUnit4::class)
 class GroupedStoryReviewUiTest {
@@ -88,6 +92,93 @@ class GroupedStoryReviewUiTest {
         rule.onNodeWithText("Leave this draft?").assertIsDisplayed()
         rule.onNodeWithText("Keep editing").performClick()
         Assert.assertTrue(store.state.value.hasPendingSave)
+    }
+
+    @Test fun chapterNarrationDictationReviewChineseAt150Percent() = chapterDictationJourney("zh")
+    @Test fun chapterNarrationDictationReviewEnglishAt150Percent() = chapterDictationJourney("en")
+
+    private fun chapterDictationJourney(language: String) {
+        val bound = MemoryCommunityBinding(Bearer.from(SessionToken(86400, "R".repeat(43), "Bearer")), "family-a", 5)
+        val storyApi = object : StoryWorkspaceApi {
+            override suspend fun storyPreview(token: Bearer, library: String, json: String) =
+                """{"version":1,"library_id":"family-a","selection_revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","state":"draft","saved":false,"title":"Draft","theme":"everyday","language":"$language","generator":"evidence_outline","needs_review":true,"items":[{"id":"1","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family-a","date_hint":null,"evidence":[]}],"chapters":[{"id":"chapter-1","title":"A day","narration":"Typed before dictation","asset_ids":["1"],"evidence_ids":[]}],"questions":[]}""".toByteArray()
+            override suspend fun storyTitleCapabilities(token: Bearer, library: String) =
+                """{"version":1,"enabled":false,"max_suggestions":3,"needs_review":true}""".toByteArray()
+            override suspend fun storyTitles(token: Bearer, library: String, json: String) = error("unused")
+            override suspend fun createGroupedStory(token: Bearer, library: String, json: String) = error("unused")
+        }
+        val voiceApi = object : PhotoHouseApi {
+            override val assistantEnabled = true
+            var capabilityRequests = 0
+            override suspend fun assistantCapabilities(token: Bearer, library: String): AssistantCapabilities {
+                capabilityRequests++
+                return AssistantCapabilities(true, true, true, false, 5)
+            }
+            override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String) =
+                AssistantTranscript(if (language == "zh") "口述补充" else "Spoken addition", language,
+                    AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+            override suspend fun login(phone: String, password: String) = SessionToken(86400, "R".repeat(43), "Bearer")
+            override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
+            override suspend fun session(token: Bearer) = Session("member", "+12025550123", emptyList())
+            override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
+            override suspend fun logout(token: Bearer) = Unit
+            override suspend fun gallery(token: Bearer, library: String, page: Int) = Gallery(library, page, 0, 0, false, emptyList())
+            override suspend fun detail(token: Bearer, library: String, assetId: String): Detail = error("unused")
+            override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
+            override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = null
+            override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk = error("unused")
+            override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray = error("unused")
+        }
+        val store = StoryWorkspaceStore(StoryWorkspaceRepository(storyApi, { bound }), scope, { bound },
+            dictationApi = voiceApi, currentAccount = { "member" })
+        assertTrue(store.selectAsset("1"))
+        assertTrue(store.setLanguage(language))
+        val zh = language == "zh"
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                PhotoHouseTheme { GroupedStoryReview(store, zh, {}, {}) }
+            }
+        }
+        rule.onNodeWithTag("grouped-story-preview").performClick()
+        rule.waitUntil(5000) { store.state.value.status == StoryWorkspaceStoreStatus.EDITING }
+        assertEquals(0, voiceApi.capabilityRequests)
+        rule.onNodeWithTag("grouped-story-dictate").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.chapterDictation.value?.state?.value?.capabilities?.transcribe == true }
+        assertEquals(1, voiceApi.capabilityRequests)
+        val session = store.chapterDictation.value!!
+        rule.runOnIdle { assertNotNull(session.beginRecording()); session.stopRecording(uiSyntheticWav()) }
+        rule.waitUntil(5000) { session.state.value.transcript != null }
+        rule.onNodeWithTag("memory-dictation-transcript-ready").performScrollTo().assertExists()
+        rule.onNodeWithTag("memory-dictation-insert").assertTextEquals(if (zh) "加入本篇" else "Add to chapter")
+        rule.onNodeWithTag("grouped-story-dictation-close").performScrollTo().performClick()
+        rule.onNodeWithText(if (zh) "丢弃这段口述？" else "Discard this dictation?").assertExists()
+        rule.onNodeWithText(if (zh) "保留口述" else "Keep dictation").performClick()
+        rule.onNodeWithTag("memory-dictation-transcript-ready").performScrollTo().assertExists()
+        val help = if (zh) "转写回执会保留识别文字和处理状态 30 天" else "Transcription receipts keep recognized text and processing status for 30 days"
+        rule.onNodeWithText(help, substring = true).performScrollTo().assertExists()
+        val saveCopy = if (zh) "准备好后请手动保存故事" else "Save the story yourself when ready"
+        rule.onNodeWithText(saveCopy, substring = true).performScrollTo().assertExists()
+        rule.onNodeWithTag("grouped-story-save").performScrollTo().assertIsNotEnabled()
+        capture("grouped-story-dictation-${language}-150.png")
+        rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement(if (zh) "核对时补写" else "Typed during review")
+        rule.onNodeWithTag("memory-dictation-insert").performScrollTo().performClick()
+        val addition = if (zh) "口述补充" else "Spoken addition"
+        val typed = if (zh) "核对时补写" else "Typed during review"
+        rule.waitUntil(5000) { store.state.value.editableChapters.singleOrNull()?.narration == "$typed\n\n$addition" }
+        assertEquals("$typed\n\n$addition", store.state.value.editableChapters.single().narration)
+        rule.onNodeWithTag("grouped-story-reviewed").performScrollTo().assertIsEnabled()
+    }
+
+    private fun uiSyntheticWav(): ByteArray {
+        val pcm = ByteArray(16_000 * 2)
+        return ByteArray(44 + pcm.size).also { wav ->
+            val out = ByteBuffer.wrap(wav).order(ByteOrder.LITTLE_ENDIAN)
+            out.put("RIFF".toByteArray()); out.putInt(wav.size - 8)
+            out.put("WAVEfmt ".toByteArray()); out.putInt(16); out.putShort(1); out.putShort(1)
+            out.putInt(16_000); out.putInt(32_000); out.putShort(2); out.putShort(16)
+            out.put("data".toByteArray()); out.putInt(pcm.size); out.put(pcm)
+            pcm.fill(0)
+        }
     }
     private fun capture(name: String) {
         val image = rule.onNodeWithTag("grouped-story-review").captureToImage().asAndroidBitmap()

@@ -22,11 +22,14 @@ import dev.photohouse.connected.core.*
 internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose: () -> Unit,
     onReadSaved: (SavedMemoryStory) -> Unit) {
     val state by store.state.collectAsState()
+    val dictationStore by store.chapterDictation.collectAsState()
+    val dictationUnfinished by store.dictationUnfinished.collectAsState()
     fun t(en: String, cn: String) = if (zh) cn else en
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     fun finishTyping() { focus.clearFocus(); keyboard?.hide() }
     var discard by remember(store) { mutableStateOf(false) }
+    var discardDictation by remember(store) { mutableStateOf(false) }
     var chapterIndex by remember(state.draft?.selectionRevision) { mutableIntStateOf(0) }
     val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
@@ -60,19 +63,19 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             OutlinedTextField(title, { value -> title = value; store.editTitle(value.text)
                 store.composition(value.composition != null) }, label = { Text(t("Story title", "故事标题")) },
-                enabled = editable, isError = state.invalidInput, maxLines = 3,
+                enabled = editable && !dictationUnfinished, isError = state.invalidInput, maxLines = 3,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-title"))
-            OutlinedButton(onClick = { finishTyping(); store.loadTitleCapabilities() }, enabled = editable && !state.composing,
+            OutlinedButton(onClick = { finishTyping(); store.loadTitleCapabilities() }, enabled = editable && !state.composing && !dictationUnfinished,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-title-check")) {
                 Text(t("Title suggestions", "查看标题建议"))
             }
             if (state.titleCapabilities?.enabled == true) {
-                OutlinedButton(onClick = { finishTyping(); store.suggestTitles() }, enabled = editable && !state.composing,
+                OutlinedButton(onClick = { finishTyping(); store.suggestTitles() }, enabled = editable && !state.composing && !dictationUnfinished,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-suggest")) { Text(t("Suggest titles", "建议故事标题")) }
             } else if (state.titleCapabilities != null) Text(t("Title assistance is unavailable. You can keep editing.",
                 "标题建议暂不可用，可以继续手动修改。"), style = MaterialTheme.typography.bodySmall)
             if (!state.sourceReviewEnabled && !state.sourceCapabilitiesChecked) {
-                OutlinedButton(onClick = { finishTyping(); store.enableSourceReview() }, enabled = editable && !state.composing,
+                OutlinedButton(onClick = { finishTyping(); store.enableSourceReview() }, enabled = editable && !state.composing && !dictationUnfinished,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-source-review-enable")) {
                     Text(t("Choose evidence for each chapter", "选择每篇使用的素材证据"))
                 }
@@ -85,7 +88,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("grouped-story-source-review-unavailable"))
             }
             state.titleCandidates.forEachIndexed { index, candidate ->
-                OutlinedButton(onClick = { store.adoptTitleCandidate(index) }, enabled = editable && !state.composing,
+                OutlinedButton(onClick = { store.adoptTitleCandidate(index) }, enabled = editable && !state.composing && !dictationUnfinished,
                     modifier = Modifier.fillMaxWidth()) { Text(candidate.text) }
                 candidate.sourceIds.forEach { id ->
                     val evidence = draft.items.flatMap { it.evidence }.find { it.id == id }
@@ -106,14 +109,44 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             key(chapter.id) {
                 var name by remember { mutableStateOf(TextFieldValue(chapter.title)) }
                 var words by remember { mutableStateOf(TextFieldValue(chapter.narration)) }
+                var insertRejected by remember(dictationStore) { mutableStateOf(false) }
+                LaunchedEffect(chapter.title) {
+                    if (name.composition == null && name.text != chapter.title) name = TextFieldValue(chapter.title)
+                }
+                LaunchedEffect(chapter.narration) {
+                    if (words.composition == null && words.text != chapter.narration) words = TextFieldValue(chapter.narration)
+                }
                 OutlinedTextField(name, { value -> name = value; store.editChapterTitle(index, value.text)
-                    store.composition(value.composition != null) }, enabled = editable,
+                    store.composition(value.composition != null) }, enabled = editable && !dictationUnfinished,
                     label = { Text(t("Chapter title", "篇章标题")) }, maxLines = 3,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-chapter-title"))
                 OutlinedTextField(words, { value -> words = value; store.editChapterNarration(index, value.text)
                     store.composition(value.composition != null) }, enabled = editable,
                     label = { Text(t("Tell this part in your own words", "用自己的话讲述这一段")) }, minLines = 4, maxLines = 9,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-chapter-words"))
+                if (dictationStore == null && store.chapterDictationAvailable) {
+                    OutlinedButton(onClick = { finishTyping(); store.openChapterDictation(index) },
+                        enabled = editable && !state.composing && !dictationUnfinished,
+                        modifier = Modifier.fillMaxWidth().testTag("grouped-story-dictate")) {
+                        Text(t("Dictate this chapter", "口述本篇内容"))
+                    }
+                } else if (dictationStore == null) {
+                    Text(t("Chapter dictation is unavailable here. You can keep writing.",
+                        "此处暂不能口述本篇内容，可以继续手动填写。"), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    MemoryDictationInput(
+                        store = dictationStore!!, zh = zh,
+                        onInsert = { insertRejected = !store.insertChapterTranscript(index, words.composition != null) },
+                        purpose = MemoryDictationPurpose.CHAPTER_NARRATION,
+                        insertRejected = insertRejected,
+                        insertEnabled = words.composition == null,
+                        onSessionEnded = store::closeChapterDictation,
+                    )
+                    TextButton(onClick = {
+                        if (dictationUnfinished) discardDictation = true else store.closeChapterDictation()
+                    }, modifier = Modifier.fillMaxWidth()
+                        .testTag("grouped-story-dictation-close")) { Text(t("Close dictation", "关闭口述")) }
+                }
             }
             if (state.sourceReviewEnabled) {
                 Text(t("Evidence used for this chapter", "本篇使用的素材证据"), style = MaterialTheme.typography.titleSmall)
@@ -124,7 +157,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 options.forEach { (assetId, evidence) ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                         value = evidence.id in chapter.evidenceIds,
-                        enabled = editable && !state.composing,
+                        enabled = editable && !state.composing && !dictationUnfinished,
                         role = Role.Checkbox,
                         onValueChange = { checked -> finishTyping(); store.toggleChapterEvidence(index, evidence.id, checked) }
                     ).testTag("grouped-story-evidence-${chapter.id}-${evidence.id}"), verticalAlignment = Alignment.CenterVertically) {
@@ -157,21 +190,21 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedButton(onClick = { finishTyping(); chapterIndex-- }, enabled = editable && !state.composing && index > 0) {
+                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex-- }, enabled = editable && !state.composing && !dictationUnfinished && index > 0) {
                     Text(t("Previous", "上一篇")) }
-                OutlinedButton(onClick = { finishTyping(); chapterIndex++ }, enabled = editable && !state.composing && index < state.editableChapters.lastIndex) {
+                OutlinedButton(onClick = { finishTyping(); store.closeChapterDictation(); chapterIndex++ }, enabled = editable && !state.composing && !dictationUnfinished && index < state.editableChapters.lastIndex) {
                     Text(t("Next", "下一篇")) }
             }
             draft.questions.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
             if (state.invalidInput) Text(t("Check the title and shorten any oversized text before saving.",
                 "请核对标题并缩短超长文字，再保存。"), color = MaterialTheme.colorScheme.error)
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(state.reviewed,
-                enabled = editable && !state.composing && !state.invalidInput, role = Role.Checkbox,
+                enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
                 onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(state.reviewed, onCheckedChange = null)
                 Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
             }
-            Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput,
+            Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-save")) { Text(t("Save story", "保存故事")) }
         }
         if (state.status == StoryWorkspaceStoreStatus.SAVE_UNCERTAIN) {
@@ -214,4 +247,11 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         confirmButton = { TextButton(onClick = { store.close(discard = true); discard = false; onClose() }) {
             Text(t("Discard and close", "丢弃并关闭")) } },
         dismissButton = { TextButton(onClick = { discard = false }) { Text(t("Keep editing", "继续编辑")) } })
+    if (discardDictation) AlertDialog(onDismissRequest = { discardDictation = false },
+        title = { Text(t("Discard this dictation?", "丢弃这段口述？")) },
+        text = { Text(t("Unadded recording or transcript will be cleared. Your chapter text stays unchanged.",
+            "尚未加入的录音或转写将被清除，篇章文字保持不变。")) },
+        confirmButton = { TextButton(onClick = { store.closeChapterDictation(); discardDictation = false }) {
+            Text(t("Discard and close", "丢弃并关闭")) } },
+        dismissButton = { TextButton(onClick = { discardDictation = false }) { Text(t("Keep dictation", "保留口述")) } })
 }

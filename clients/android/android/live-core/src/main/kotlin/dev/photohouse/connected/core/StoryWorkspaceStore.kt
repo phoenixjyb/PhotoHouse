@@ -4,11 +4,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicLong
 import java.util.UUID
 
 enum class StoryWorkspaceStoreStatus {
@@ -51,8 +54,19 @@ class StoryWorkspaceStore(
     private val repository: StoryWorkspaceRepository,
     private val scope: CoroutineScope,
     private val currentBinding: () -> MemoryCommunityBinding?,
+    private val dictationApi: PhotoHouseApi?,
+    private val currentAccount: () -> String? = { null },
+    private val onDictationDenied: () -> Unit = {},
     private val uuidSupplier: () -> UUID = UUID::randomUUID,
 ) {
+    /** Preserves the historical trailing/positional UUID supplier constructor. */
+    constructor(
+        repository: StoryWorkspaceRepository,
+        scope: CoroutineScope,
+        currentBinding: () -> MemoryCommunityBinding?,
+        uuidSupplier: () -> UUID = UUID::randomUUID,
+    ) : this(repository, scope, currentBinding, dictationApi = null, uuidSupplier = uuidSupplier)
+
     private val mutable = MutableStateFlow(StoryWorkspaceStoreState())
     val state = mutable.asStateFlow()
 
@@ -66,6 +80,94 @@ class StoryWorkspaceStore(
     private var relatedCursor: String? = null
     private var relatedSeedIds: List<String> = emptyList()
     private var relatedCandidatesChanged: (List<StoryRelatedMediaCandidate>) -> Unit = {}
+    private val dictationScopeId = NEXT_DICTATION_SCOPE.incrementAndGet()
+    private val mutableChapterDictation = MutableStateFlow<MemoryDictationStore?>(null)
+    val chapterDictation: StateFlow<MemoryDictationStore?> = mutableChapterDictation.asStateFlow()
+    private val mutableDictationUnfinished = MutableStateFlow(false)
+    val dictationUnfinished: StateFlow<Boolean> = mutableDictationUnfinished.asStateFlow()
+    private var chapterDictationBinding: StoryChapterDictationStore? = null
+    private var chapterDictationObserver: Job? = null
+    private var activeDictationChapterId: String? = null
+    private var activeDictationChapterIndex: Int? = null
+
+    val hasUnfinishedChapterDictation: Boolean
+        get() = mutableDictationUnfinished.value || chapterDictationBinding?.hasUnfinishedInput == true
+    val chapterDictationAvailable: Boolean
+        get() = dictationApi?.assistantEnabled == true && currentAccount()?.isNotBlank() == true
+
+    /** Explicitly opens voice input for one editable, currently bound chapter. */
+    fun openChapterDictation(index: Int): Boolean {
+        val api = dictationApi ?: return false
+        if (!editorReady() || state.value.composing || state.value.hasPendingSave || pending != null) return false
+        val chapter = state.value.editableChapters.getOrNull(index)
+        if (state.value.draft == null || chapter == null || bound == null ||
+            currentAccount()?.isNotBlank() != true) return false
+        if (chapterDictationBinding != null && (activeDictationChapterIndex != index || activeDictationChapterId != chapter.id)) {
+            if (hasUnfinishedChapterDictation) return false
+            closeChapterDictation()
+        }
+        val chapterId = chapter.id
+        val chapterIndex = index
+        val helper = chapterDictationBinding ?: StoryChapterDictationStore(api, scope, {
+            val liveDraft = state.value.draft
+            val liveChapter = state.value.editableChapters.getOrNull(chapterIndex)
+            val liveBinding = bound
+            val liveAccount = currentAccount()
+            if (liveDraft == null || liveChapter == null || liveBinding == null || liveAccount == null ||
+                liveChapter.id != chapterId ||
+                !sameBinding(snapshotBinding(), liveBinding) ||
+                state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy ||
+                state.value.hasPendingSave || pending != null) null
+            else StoryChapterDictationScope(
+                accountId = liveAccount, credential = liveBinding.token, library = liveBinding.libraryId,
+                generation = liveBinding.generation, scopeId = dictationScopeId,
+                selectionRevision = liveDraft.selectionRevision,
+                savedStoryId = null, savedStoryRevision = null,
+                chapterId = liveChapter.id, chapterAssetIds = liveChapter.assetIds.toList(), editable = true,
+            )
+        }, onDenied = onDictationDenied).also {
+            chapterDictationBinding = it
+            activeDictationChapterId = chapterId
+            activeDictationChapterIndex = chapterIndex
+        }
+        val opened = helper.open() ?: return false
+        if (mutableChapterDictation.value !== opened) {
+            chapterDictationObserver?.cancel()
+            mutableChapterDictation.value = opened
+            chapterDictationObserver = scope.launch {
+                opened.state.collect { value ->
+                    mutableDictationUnfinished.value = value.loading || value.recording || value.transcribing || value.transcript != null
+                }
+            }
+        }
+        return true
+    }
+
+    /** Closes capture/review and wipes any unconsumed transient transcript. */
+    fun closeChapterDictation() {
+        chapterDictationObserver?.cancel(); chapterDictationObserver = null
+        chapterDictationBinding?.clear(); chapterDictationBinding = null
+        activeDictationChapterId = null
+        activeDictationChapterIndex = null
+        mutableChapterDictation.value = null
+        mutableDictationUnfinished.value = false
+    }
+
+    /** Adds the currently reviewed words to the latest chapter text, or keeps the transcript on rejection. */
+    fun insertChapterTranscript(index: Int, composing: Boolean): Boolean {
+        if (composing || !editorReady()) return false
+        if (index != activeDictationChapterIndex) return false
+        val target = state.value.editableChapters.getOrNull(index) ?: return false
+        if (target.id != activeDictationChapterId) return false
+        val helper = chapterDictationBinding ?: return false
+        return helper.insertTranscript { transcript ->
+            val chapter = state.value.editableChapters.getOrNull(index)?.takeIf { it.id == activeDictationChapterId }
+                ?: return@insertTranscript false
+            val joined = if (chapter.narration.isEmpty()) transcript else chapter.narration + "\n\n" + transcript
+            if (!validText(joined, 6000, allowNewline = true)) return@insertTranscript false
+            editChapterNarration(index, joined)
+        }
+    }
 
     /** Set by the owning connected editor without changing its UUID supplier API. */
     internal fun observeRelatedCandidates(listener: (List<StoryRelatedMediaCandidate>) -> Unit) {
@@ -96,7 +198,7 @@ class StoryWorkspaceStore(
 
     /** Selection order is preserved. A 25th item is rejected without dropping an existing choice. */
     fun selectAsset(assetId: String, selected: Boolean = true, discardDraft: Boolean = false): Boolean {
-        if (!editable()) return false
+        if (!editable() || hasUnfinishedChapterDictation) return false
         val numericId = assetId.toLongOrNull() ?: return false
         if (numericId.toString() != assetId || numericId <= 0) return false
         val ids = state.value.selectedAssetIds
@@ -112,7 +214,7 @@ class StoryWorkspaceStore(
     }
 
     fun setTheme(value: String, discardDraft: Boolean = false): Boolean {
-        if (!editable() || value !in SAVED_MEMORY_STORY_THEMES) return false
+        if (!editable() || hasUnfinishedChapterDictation || value !in SAVED_MEMORY_STORY_THEMES) return false
         if (state.value.theme == value) return true
         if (state.value.draft != null && !discardDraft) return false
         invalidatePreview()
@@ -123,7 +225,7 @@ class StoryWorkspaceStore(
     }
 
     fun setLanguage(value: String, discardDraft: Boolean = false): Boolean {
-        if (!editable() || value !in setOf("zh", "en")) return false
+        if (!editable() || hasUnfinishedChapterDictation || value !in setOf("zh", "en")) return false
         if (state.value.language == value) return true
         if (state.value.draft != null && !discardDraft) return false
         invalidatePreview()
@@ -134,6 +236,7 @@ class StoryWorkspaceStore(
     }
 
     private fun invalidatePreview() {
+        closeChapterDictation()
         epoch++
         operation?.cancel(); operation = null
         bound = null
@@ -200,7 +303,7 @@ class StoryWorkspaceStore(
 
     /** Makes one explicit protected preview request for the current ordered selection. */
     fun preview(): Boolean {
-        if (!editable() || state.value.selectedAssetIds.isEmpty() || state.value.selectedAssetIds.size > MAX_ASSETS) return false
+        if (!editable() || hasUnfinishedChapterDictation || state.value.selectedAssetIds.isEmpty() || state.value.selectedAssetIds.size > MAX_ASSETS) return false
         return startPreview(reloadSources = false)
     }
 
@@ -208,7 +311,7 @@ class StoryWorkspaceStore(
     fun retryPreview(): Boolean {
         if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.UNAVAILABLE || state.value.draft != null ||
             state.value.selectedAssetIds.isEmpty() || state.value.busy || state.value.composing ||
-            state.value.hasPendingSave || pending != null) return false
+            state.value.hasPendingSave || pending != null || hasUnfinishedChapterDictation) return false
         return startPreview(reloadSources = false)
     }
 
@@ -216,11 +319,13 @@ class StoryWorkspaceStore(
     fun reloadPreview(): Boolean {
         if (!ensureCurrent() || state.value.status !in setOf(StoryWorkspaceStoreStatus.CONFLICT, StoryWorkspaceStoreStatus.UNAVAILABLE) ||
             state.value.draft == null || state.value.selectedAssetIds.isEmpty() || state.value.busy ||
-            state.value.composing || state.value.hasPendingSave || pending != null) return false
+            state.value.composing || state.value.hasPendingSave || pending != null || hasUnfinishedChapterDictation) return false
         return startPreview(reloadSources = true)
     }
 
     private fun startPreview(reloadSources: Boolean): Boolean {
+        if (hasUnfinishedChapterDictation) return false
+        closeChapterDictation()
         val previous = state.value
         val expected = snapshotBinding() ?: return false
         val ids = previous.selectedAssetIds.toList()
@@ -288,7 +393,7 @@ class StoryWorkspaceStore(
 
     /** Optional capability probe; it is always initiated by the caller. */
     fun loadTitleCapabilities(): Boolean {
-        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy) return false
+        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy || hasUnfinishedChapterDictation) return false
         val expected = bound ?: return false
         clearOperationOnly()
         val ticket = epoch
@@ -307,8 +412,9 @@ class StoryWorkspaceStore(
 
     /** Explicit opt-in. Unsupported closed-boundary APIs leave source selection unavailable. */
     fun enableSourceReview(): Boolean {
-        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy || state.value.sourceReviewEnabled) return false
+        if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy || state.value.sourceReviewEnabled || hasUnfinishedChapterDictation) return false
         val expected = bound ?: return false
+        closeChapterDictation()
         clearOperationOnly()
         val ticket = epoch
         mutable.value = state.value.copy(busy = true, sourceCapabilities = null, sourceCapabilitiesChecked = false)
@@ -328,7 +434,7 @@ class StoryWorkspaceStore(
 
     /** Checked source IDs apply only to asset evidence; chapter prose and accepted contributions remain separate. */
     fun toggleChapterEvidence(index: Int, evidenceId: String, checked: Boolean): Boolean {
-        if (!editorReady() || !state.value.sourceReviewEnabled || state.value.composing) return false
+        if (!editorReady() || !state.value.sourceReviewEnabled || state.value.composing || hasUnfinishedChapterDictation) return false
         val chapter = state.value.editableChapters.getOrNull(index) ?: return false
         val eligible = chapter.assetIds.flatMap { assetId ->
             state.value.draft?.items?.find { it.asset.id == assetId }?.evidence.orEmpty().map { it.id }
@@ -337,6 +443,7 @@ class StoryWorkspaceStore(
         val currentIds = chapter.evidenceIds
         if ((evidenceId in currentIds) == checked) return true
         if (checked && currentIds.size >= 12) return false
+        closeChapterDictation()
         invalidateTitleWork()
         titleRevision++
         val revised = if (checked) currentIds + evidenceId else currentIds - evidenceId
@@ -351,7 +458,7 @@ class StoryWorkspaceStore(
     /** Optional suggestion request. Results are discarded after any manual title edit or IME composition. */
     fun suggestTitles(): Boolean {
         if (!ensureCurrent() || state.value.status != StoryWorkspaceStoreStatus.EDITING || state.value.busy ||
-            state.value.composing || state.value.titleCapabilities?.enabled != true) return false
+            state.value.composing || state.value.titleCapabilities?.enabled != true || hasUnfinishedChapterDictation) return false
         val expected = bound ?: return false
         val draft = state.value.draft ?: return false
         val editedDraft = detachDraft(draft).copy(title = state.value.title,
@@ -373,7 +480,7 @@ class StoryWorkspaceStore(
     }
 
     fun editTitle(value: String): Boolean {
-        if (!editorReady()) return false
+        if (!editorReady() || hasUnfinishedChapterDictation) return false
         invalidateTitleWork()
         titleRevision++
         val valid = validText(value, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false)
@@ -383,7 +490,7 @@ class StoryWorkspaceStore(
     }
 
     fun editChapterTitle(index: Int, value: String): Boolean {
-        if (!editorReady()) return false
+        if (!editorReady() || hasUnfinishedChapterDictation) return false
         val chapters = state.value.editableChapters
         if (index !in chapters.indices) return false
         invalidateTitleWork()
@@ -438,13 +545,14 @@ class StoryWorkspaceStore(
     }
 
     fun confirmReviewed(value: Boolean): Boolean {
-        if (!editorReady() || state.value.composing || state.value.invalidInput) return false
+        if (!editorReady() || state.value.composing || state.value.invalidInput || hasUnfinishedChapterDictation) return false
         mutable.value = state.value.copy(reviewed = value)
         return true
     }
 
     fun save(): Boolean {
-        if (!editorReady() || state.value.composing || state.value.invalidInput || !state.value.reviewed) return false
+        if (!editorReady() || state.value.composing || state.value.invalidInput || !state.value.reviewed || hasUnfinishedChapterDictation) return false
+        closeChapterDictation()
         val expected = bound ?: return false
         val draft = state.value.draft ?: return false
         pending = try { repository.freeze(detachDraft(draft), state.value.title,
@@ -509,12 +617,14 @@ class StoryWorkspaceStore(
 
     /** Dirty or pending work needs an explicit discard decision. Pending writes may already exist. */
     fun close(discard: Boolean = false): Boolean {
+        if (hasUnfinishedChapterDictation && !discard) return false
         if (state.value.busy && !discard || state.value.hasUnfinishedWork && !discard) return false
         clear()
         return true
     }
 
     fun clear() {
+        closeChapterDictation()
         epoch++
         operation?.cancel(); operation = null
         bound = null
@@ -541,6 +651,11 @@ class StoryWorkspaceStore(
             value.none { it == '\u0000' || it.isISOControl() && !(allowNewline && it in "\n\t") }
     } catch (_: Exception) { false }
 
+    companion object {
+        private val NEXT_DICTATION_SCOPE = AtomicLong(0)
+        private const val MAX_ASSETS = 24
+    }
+
     private fun detachDraft(value: ProtectedStoryWorkspaceDraft) = value.copy(
         items = immutable(value.items.map { item -> item.copy(asset = item.asset.copy(date_hint = item.asset.date_hint?.copy()),
             evidence = immutable(item.evidence.map { it.copy() })) }),
@@ -563,5 +678,4 @@ class StoryWorkspaceStore(
 
     private fun <T> immutable(values: List<T>): List<T> = Collections.unmodifiableList(ArrayList(values))
 
-    companion object { private const val MAX_ASSETS = 24 }
 }
