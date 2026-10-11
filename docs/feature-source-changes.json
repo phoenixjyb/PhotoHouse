@@ -11199,6 +11199,22 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone v47 version identity for reviewed memoir composition candidate",
+      "source_commit": "a4507e30ec47f0e50689331bb315598e677cd1b9",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "04e45881faaf2601d0e6f1374828d60e937996fab1da4c9e80668c606bba5672",
+          "sha256": "b8a6c55b77599a5259771e3cf10b6e6017423e70bd686febc6624bfb95cb3ba3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
