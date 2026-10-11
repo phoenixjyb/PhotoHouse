@@ -8870,6 +8870,125 @@
       "provider_called": false,
       "windows_operation": false,
       "apk_changed": false
+    },
+    {
+      "feature": "phone-shared-memory-group-review-v1",
+      "source_commit": "1f7fbe2fe8d4118db13ac4b4d648b9dbfdcc66e6",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "12646ad56278f16ad10c8daac2d58ae467a748fa29c220d3da311b9cab2ae53a",
+          "sha256": "04e45881faaf2601d0e6f1374828d60e937996fab1da4c9e80668c606bba5672"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryGroupsUiTest.kt",
+          "before_sha256": null,
+          "sha256": "036380c88e22c136bc547486e243887f4d3f1f510e52a67aa3cca6bc9493c014"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "23a51ca54a5937a7486695f2affbf55a2c199c004aeb885435d5d109d3db2e35",
+          "sha256": "ee577e178d03413ebef76e8365f615605463961538741920dead0c197e49cafe"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "before_sha256": "1e35ce05aabf58f610277f01b010535e95d3bd8dd9fc4664ee9e59b7d61e49b9",
+          "sha256": "275093de1fc775564e41905ff02962d1672f3f1606fffdfa1465baf3054057cd"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryGroupDates.kt",
+          "before_sha256": null,
+          "sha256": "553957835270ddb9435931634b32572b98438c68a6e89e6ed66ee0eb7af81041"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryGroupsPanel.kt",
+          "before_sha256": null,
+          "sha256": "bf314cfa70d346a5d67bae1f606fc1d9e7d66ecab1b9faab314ecbab39ad32fc"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/MemoryGroupDatesTest.kt",
+          "before_sha256": null,
+          "sha256": "384c8f6e921f96c729333250711027fe98907113e142d5bd71bb91f004af96e6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "cd650909de5effe751277e3a6d35618e987e1169797f12ee286d1ca89c0feb19",
+          "sha256": "dab6dbff445584f819d0217ae71b2f4bc96514272da47040a2d3f6c3e3895a45"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsMemoryGroupsApi.kt",
+          "before_sha256": null,
+          "sha256": "98ad86e769ef6829bab12339771308f44581875155dfc0a7792133828986c079"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryGroups.kt",
+          "before_sha256": null,
+          "sha256": "9fd33ea3cc41fc9f7e1f961b74ade027d632029e691d6a5d6fe9a5c3930567ed"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryGroupsStore.kt",
+          "before_sha256": null,
+          "sha256": "157ef1f8dc297a6def613eb2b4701c2cd3b14abd724111b42043c0ab63534927"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsMemoryGroupsApiTest.kt",
+          "before_sha256": null,
+          "sha256": "e727def263e19d5cd84b7261322090d1ed5b0440aaa0ab96e215af493198dc85"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryGroupsConnectedStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "bc67f665096bedf741d87481e75cfe76773d6820be33ae04de04b98f66c42b88"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryGroupsStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "1bd7a90abfabb13e0e51d56e06c526a019169f4bacc7021bc084499f0a1a7c87"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryGroupsWireTest.kt",
+          "before_sha256": null,
+          "sha256": "ced5690351110d40876797648df7922d0111d17fc4b17208ff8d8010398b55d8"
+        },
+        {
+          "path": "docs/ANDROID_RELEASE_PREPARATION.md",
+          "before_sha256": "671890c2eb585dd20b8d07503b55c1359ca80b43a2e9eb9aa5eb13b37883dc43",
+          "sha256": "dd3de2c649a743207522951032e7ff1b2b240596ad9ac38224b91e168c5ff9a4"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "57a09dc6b1c232e0fd0d9ddedcfe322b6ed883d5d37b6a85df818ab4ae267244",
+          "sha256": "a7001d8f9fc915a811e3958e25d035977c414f04f8b4f9736cd7f0408efb46be"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "d62d33ba832d72deadb9266a97d2d7bf3f764a8c2e047df30b00228a6a1abffe",
+          "sha256": "fd0209491167abc2ee312bbbb3a332e069ea83f1074afa2e2170441b2a2b0aa4"
+        },
+        {
+          "path": "docs/PHONE_MEMORY_GROUPS.md",
+          "before_sha256": null,
+          "sha256": "63e902ddf34077da8006753b0ef387ec2a1a79304733822a39f0bb08106f919e"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2f090b9986436373b9a91ebde3d62d9ea593a6a6884f7bf5bb0e3940ac0b3d74",
+          "sha256": "6b390b627f22437330aad29e909a06092a2baddd8f37184ba7c208fa32772cc8"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "e8a0396ddf7a061ed5a840c53030dadfd6f9fd3ad0b31197f41cff00313b9b49",
+          "sha256": "c024790d3d75ce78ca96a762ffc513821778967e159cb7abc81a98d748f1da31"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "default_enabled": false,
+      "provider_called": false,
+      "windows_operation": false,
+      "apk_changed": true,
+      "apk_published": false,
+      "release_signed": false
     }
   ]
 }
