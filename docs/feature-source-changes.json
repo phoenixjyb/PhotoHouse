@@ -10819,6 +10819,47 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone assistant legacy-result decoding and date provenance labels",
+      "source_commit": "c566ded7c104aa2dd1e606bf92aa7b280a6d2126",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantResultDatesUiTest.kt",
+          "before_sha256": null,
+          "sha256": "405eaa8bc374ffac5db1e2a0667506d19f9f37fc25e13614237f7748951441b9"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "e72e596bbdbd9465c4f7aa37bab1d6500af091a3bf9e5c320d8b2fc8c198e351",
+          "sha256": "bc0d19c2018a61b3320a0b3ad4bb56889f90f8a006e57e9e9a184948e8c8908f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWire.kt",
+          "before_sha256": "67b1c164bde1ff6074c4b9fca761786bf092d39c9fe7e9f2c115747f8d037bb2",
+          "sha256": "ae3c187a0ef917b6c845007c85d626d7a9c82c0ab6e27e861483eb2a96ef66c7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantTransportTest.kt",
+          "before_sha256": "75259601002f7d83addd694e65825a56a8f8593f2fdff7d9f4fc571427d49955",
+          "sha256": "9781f59ae85a718c2bff3129abd34e45c502fc9ebbf9af45dd13abaf552304c4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWireTest.kt",
+          "before_sha256": "592799b623311cc52a06175e32058494208206d20bff6baa4b09031b5fb63cab",
+          "sha256": "fab164f2c9aaaa95ca306c26d80c8f3a74749def4799113568859bff9758fece"
+        },
+        {
+          "path": "server/tests/security/test_assistant_http.py",
+          "before_sha256": "d3a7cc1e0abcf0085b6943a6d81ce8a838f3309d6cdaee1feea5d1bfdcd17b5f",
+          "sha256": "763a7b23823643172e62bf475cfad3d5f255b8b98e26494779fa2cedbbcad884"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
