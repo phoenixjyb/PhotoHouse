@@ -9436,6 +9436,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Closed route inventory and reviewed evidence architecture",
+      "source_commit": "4a23cd7e5b7cc521be11f2074437c5ffa0f10413",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "b31b767ae5056b4f2a77ac72f9ad6c59477fcedde557c55fe852deb91032ea36",
+          "sha256": "6d43a5ae7310483389ba00f2f621372fcf97a9fb17aff54c99b313cca835e2c7"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "d8498485672a2e1f6ac13a085bc1c874acc16e306f1f26471df01815f583181c",
+          "sha256": "a72b8a3efbd50ad12a339a01aeed28a6fe4320b8366380d8446507366f2af33f"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "d52a1e9b7682c32f6e96211a7790bfe8cf81e4507fb34c28023dd3737ce8b49b",
+          "sha256": "89a92e9562fd92be78a74ac11a4a32c81a7f0f866db9ad8a632db4a485f5b43b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
