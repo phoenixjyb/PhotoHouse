@@ -10798,6 +10798,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Android check identity includes shared contract resources",
+      "source_commit": "127ca8037c4f7e6f16998003d8f278b5840cc2a5",
+      "files": [
+        {
+          "path": "tools/check_receipt.py",
+          "before_sha256": "871fabc6ebb20877812340dbbe87440a2f091bd9538bca51d91f546749072710",
+          "sha256": "8089f5757eeb21d77647139b2330cbc0a33203d147c3cff30093a329773f620d"
+        },
+        {
+          "path": "tools/tests/test_check_receipt.py",
+          "before_sha256": "1aa584bef5528fc4ca5a6bece21fab79d427ceb2b81a016ae672028fa932676b",
+          "sha256": "db0218b396532a6db4af06a690be36f27ef6571e5cead4299c403bf28a276976"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
