@@ -33,7 +33,9 @@ Opening, chapter and companion narration share the existing audio coordinator.
 Starting one stops the previous speech. Recording reserves the microphone and
 stops playback before capture; speech cannot start while that microphone is
 owned. Releasing a recording does not automatically retry a blocked read action.
-The user chooses Read again.
+The user chooses Read again. A valid microphone attempt stops speech before
+permission, so a denied attempt also leaves it stopped. A request already
+invalid or aborted at preflight has no playback side effect.
 
 This audio is synthesized speech, not a family's preserved original voice.
 Original contribution playback keeps its separate identity, authorization and

@@ -1432,3 +1432,35 @@ cohort; a separate opening-specific recording fixture was not added.
 These are synthetic local-adapter results. They do not qualify installed voice
 availability, pronunciation, private endpoints, Windows services, signed APKs,
 OTA or family acceptance. The final frozen complete client profiles follow.
+
+
+## October 12 frozen client release qualification
+
+At `263439c`, all 19 Web suites passed (22:25:09–22:28:05 UTC) with unchanged
+HEAD and Web source snapshot. Its receipt SHA-256 is
+`ad5c197267a72deb005f62857b4d676b0dcb88be2dbadbfecbb7000a602df2a3`.
+The community journey passed 34 groups and the story workspace 30; both had
+zero page errors/external requests. The corrected English/Chinese introduction
+review renders were inspected with the transcript controls actually enlarged.
+This completes the retry after the earlier `d3a9a93` Web failure.
+
+The Android JVM/lint/debug source profile passed at the same unchanged HEAD and
+Android snapshot in 40s (175 tasks: 21 executed, 154 up to date). Its receipt
+SHA-256 is `ca576983b6956210902a6626a781974e195cf417e40ed7846eb20da79a59c7f7`.
+The existing XML inventory remains 1,014 tests with zero failures/errors/skips;
+this reader does not run tests or establish freshness of cached reports. The
+nine actual simulator opening/reader cases are recorded separately above.
+
+The frozen unconfigured v47 release compilation passed in 30s (75 tasks:
+11 executed, 64 up to date). The single unsigned APK is 10,058,085 bytes,
+SHA-256 `5e38f059d25bed72edc53a46f487e3aa0a31f169cae7589b594a12f7d84202e8`.
+Metadata is version 47 / `0.47-family-memoir-composer`; generated origins are
+empty and optional capabilities are disabled. Signature verification reports
+`DOES NOT VERIFY` / missing manifest, as expected for this unsigned artifact.
+It is not a configured family-installable or published release.
+
+Python API behavior has not changed since the complete `a1c6e94` backend
+qualification above. Later server edits are Web source; the earlier API receipt
+is retained under its own pin rather than represented as a new backend run.
+No Windows runtime, database, media, task, model, signing key, OTA feed or physical
+device was contacted or changed during this local development round.

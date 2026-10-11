@@ -46,7 +46,10 @@ opening/reader emulator cases passing. Enlarged bilingual renders were inspected
 Phone `a4507e3` reserves v47 for a new signed release after its private profile
 and served capabilities are qualified. Following source qualification,
 the next delivery gate is the complete release closure, then approved native
-qualification and publication. Family story quality and time/similarity group
+qualification and publication. At `263439c`, all 19 Web suites and the complete Android JVM/lint/debug
+profile passed with unchanged source; nine opening/reader simulator cases and
+bilingual enlarged-text inspection also passed. The public v47 release compiled
+unsigned and unconfigured. Family story quality and time/similarity group
 boundaries still require real feedback.
 
 ## October 11 adjustable shared-memory groups

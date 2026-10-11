@@ -69,3 +69,16 @@ Record installed version, served source, feature capabilities, interface/book
 language, installed local voice and the step that failed. Family content should
 remain private; use asset IDs and status rather than copying narration into
 public issues. Listening quality is a human check separate from fake-voice tests.
+
+
+## Frozen local package evidence
+
+Client source qualification at `263439c` passed all 19 Web suites and the
+complete Android JVM/lint/debug profile with unchanged snapshots. Nine generated
+phone opening/reader instrumentation cases passed, with both enlarged language
+renders inspected. The frozen public v47 unsigned release build passed in 30s:
+10,058,085 bytes, SHA-256
+`5e38f059d25bed72edc53a46f487e3aa0a31f169cae7589b594a12f7d84202e8`.
+It has empty origins, all optional capabilities disabled and no signature.
+This artifact qualifies compilation and version identity only; private release
+configuration and publication remain the delivery gates listed above.
