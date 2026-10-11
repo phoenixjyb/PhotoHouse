@@ -223,10 +223,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(new TextEncoder().encode(combined).length>6000){session.status.textContent=text('dictationOverflow');return;}
     body.value=combined;body.dispatchEvent(new Event('input',{bubbles:true}));resetDictation(session,{statusKey:'dictationAdded'});body.focus();
   }
-  const narrationCopy = (key,lang) => ({zh:{start:'朗读本章',pause:'暂停朗读',resume:'继续朗读',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字阅读仍可继续。',recording:'请先结束录音，再朗读本章。',failed:'朗读暂时无法继续。',playing:'正在朗读本章。',complete:'本章朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read this chapter aloud',pause:'Pause narration',resume:'Resume narration',stop:'Stop narration',unsupported:'No suitable on-device Chinese or English voice is available. You can keep reading the text.',recording:'Finish recording before reading this chapter aloud.',failed:'Narration could not continue.',playing:'Reading this chapter aloud.',complete:'Chapter narration complete.',stopped:'Narration stopped.'}})[lang==='en'?'en':'zh'][key];
+  const narrationCopy = (key,lang) => ({zh:{start:'朗读本章',continueNext:'继续朗读下一章',pause:'暂停朗读',resume:'继续朗读',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字阅读仍可继续。',recording:'请先结束录音，再朗读本章。',failed:'朗读暂时无法继续。',playing:'正在朗读本章。',complete:'本章朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read this chapter aloud',continueNext:'Read next chapter aloud',pause:'Pause narration',resume:'Resume narration',stop:'Stop narration',unsupported:'No suitable on-device Chinese or English voice is available. You can keep reading the text.',recording:'Finish recording before reading this chapter aloud.',failed:'Narration could not continue.',playing:'Reading this chapter aloud.',complete:'Chapter narration complete.',stopped:'Narration stopped.'}})[lang==='en'?'en':'zh'][key];
   function stopNarration(keepProgress=false) {
     const retainProgress=keepProgress===true;
-    narrationEpoch++;const active=narrationState;narrationState=retainProgress?active:null;if(active)active.active=false;
+    narrationEpoch++;const active=narrationState;narrationState=retainProgress?active:null;if(active){active.active=false;try{active.onStop?.(active);}catch{}}
     try{if(active)active.synth.cancel();}catch{}
     if(active?.status?.isConnected)active.status.textContent='';
     if(!retainProgress&&active?.progress?.isConnected)active.progress.textContent='';
@@ -240,7 +240,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return chunks;
   }
   const replySpeechCopy = (key,lang) => ({zh:{start:'朗读回复',pause:'暂停朗读',resume:'继续朗读',paused:'朗读已暂停。',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字回复仍可阅读。',tooLong:'这条回复较长，暂时无法朗读；文字回复仍可阅读。',recording:'请先结束录音，再朗读回复。',failed:'回复朗读暂时无法继续。',playing:'正在朗读回复。',complete:'回复朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read reply aloud',pause:'Pause reading',resume:'Resume reading',paused:'Reading paused.',stop:'Stop reading',unsupported:'No suitable on-device Chinese or English voice is available. You can still read the reply.',tooLong:'This reply is too long to read aloud; the full text is still available.',recording:'Finish recording before reading the reply aloud.',failed:'Reply audio could not continue.',playing:'Reading the reply aloud.',complete:'Reply reading complete.',stopped:'Reading stopped.'}})[lang==='en'?'en':'zh'][key];
-  function beginNarration({control,usableText,storyLanguage,authorized,lang,status,progress,startButton,pauseButton,stopButton,copy}) {
+  function beginNarration({control,usableText,storyLanguage,authorized,lang,status,progress,startButton,pauseButton,stopButton,copy,onStart,onComplete,onStop}) {
     if(!control.isConnected||!authorized())return;
     try{if(community?.isCapturing?.()){status.textContent=copy('recording',lang);return;}}catch{}
     try{community?.stopPlayback?.();}catch{}
@@ -253,8 +253,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(!usableText.replace(/[.\s]/gu,'')){status.textContent=copy('unsupported',lang);return;}
     if(synth.paused)try{synth.resume();}catch{}
     const epoch=++narrationEpoch,chunks=narrationChunks(usableText);let index=0;
-    const state={control,synth,status,progress,startButton,pauseButton,stopButton,epoch,valid:authorized,lang,currentUtterance:null,active:true};narrationState=state;startButton.disabled=true;if(pauseButton){pauseButton.disabled=false;pauseButton.hidden=false;pauseButton.textContent=copy('pause',lang);}stopButton.disabled=false;stopButton.hidden=false;status.textContent=copy('playing',lang);
-    const speakNext=()=>{if(narrationState!==state||!state.active||epoch!==narrationEpoch||!state.valid())return;if(index>=chunks.length){state.active=false;startButton.disabled=false;if(pauseButton){pauseButton.disabled=true;pauseButton.hidden=true;}stopButton.disabled=true;stopButton.hidden=true;status.textContent=copy('complete',lang);return;}
+    const state={control,synth,status,progress,startButton,pauseButton,stopButton,epoch,valid:authorized,lang,currentUtterance:null,active:true,onStop};narrationState=state;startButton.disabled=true;if(pauseButton){pauseButton.disabled=false;pauseButton.hidden=false;pauseButton.textContent=copy('pause',lang);}stopButton.disabled=false;stopButton.hidden=false;status.textContent=copy('playing',lang);try{onStart?.(state);}catch{}
+    const speakNext=()=>{if(narrationState!==state||!state.active||epoch!==narrationEpoch||!state.valid())return;if(index>=chunks.length){state.active=false;startButton.disabled=false;if(pauseButton){pauseButton.disabled=true;pauseButton.hidden=true;}stopButton.disabled=true;stopButton.hidden=true;status.textContent=copy('complete',lang);try{onComplete?.(state);}catch{}return;}
       const utterance=new window.SpeechSynthesisUtterance(chunks[index]);utterance.voice=voice;utterance.lang=voice.lang;state.currentUtterance=utterance;let handled=false;
       if(progress)progress.textContent=`${lang==='en'?'Chunk':'片段'} ${index+1} / ${chunks.length}`;
       utterance.onend=()=>{if(handled||state.currentUtterance!==utterance||narrationState!==state||!state.active||epoch!==narrationEpoch||!state.valid())return;handled=true;state.currentUtterance=null;index++;speakNext();};
@@ -299,7 +299,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     container.append(wrap);let disposed=false;
     return ()=>{if(disposed)return;disposed=true;if(narrationState?.control===wrap)stopNarration();wrap.remove();};
   }
-  function mountNarration(container,title,prose,storyLanguage,authorized) {
+  function mountNarration(container,title,prose,storyLanguage,authorized,lifecycle={}) {
     stopNarration();container.querySelector?.('.story-narration-controls')?.remove();const lang=scope().language==='en'?'en':'zh',wrap=node('section',undefined,'story-narration-controls');wrap.setAttribute('aria-label',lang==='en'?'Chapter narration':'章节朗读');
     const startButton=button(narrationCopy('start',lang)),pauseButton=button(narrationCopy('pause',lang)),stopButton=button(narrationCopy('stop',lang));
     wrap.style.display='flex';wrap.style.flexWrap='wrap';wrap.style.gap='.5rem';wrap.style.width='100%';wrap.style.minWidth='0';
@@ -307,9 +307,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const progress=node('p',undefined,'story-narration-progress');progress.setAttribute('aria-live','off');progress.style.flexBasis='100%';progress.style.margin='.1rem 0';progress.style.opacity='.75';progress.style.overflowWrap='anywhere';
     const status=node('p',undefined,'story-narration-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.style.flexBasis='100%';status.style.overflowWrap='anywhere';pauseButton.disabled=true;pauseButton.hidden=true;stopButton.disabled=true;stopButton.hidden=true;wrap.append(startButton,pauseButton,stopButton,progress,status);container.append(wrap);
     const usableText=`${Array.from(String(title||'')).slice(0,160).join('')}. ${Array.from(String(prose||'')).slice(0,6000).join('')}`.trim();
-    startButton.addEventListener('click',()=>beginNarration({control:wrap,usableText,storyLanguage,authorized,lang,status,progress,startButton,pauseButton,stopButton,copy:narrationCopy}));
+    const start=()=>beginNarration({control:wrap,usableText,storyLanguage,authorized,lang,status,progress,startButton,pauseButton,stopButton,copy:narrationCopy,onStart:lifecycle.onStart,onComplete:lifecycle.onComplete,onStop:lifecycle.onStop});
+    startButton.addEventListener('click',start);
     pauseButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.startButton!==startButton||!state.valid())return;if(state.synth.paused){state.synth.resume();pauseButton.textContent=narrationCopy('pause',lang);}else{state.synth.pause();pauseButton.textContent=narrationCopy('resume',lang);}});
-    stopButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.control!==wrap||!state.valid())return;stopNarration(true);status.textContent=narrationCopy('stopped',lang);});return wrap;
+    stopButton.addEventListener('click',()=>{const state=narrationState;if(!wrap.isConnected||!state||!state.active||state.control!==wrap||!state.valid())return;stopNarration(true);status.textContent=narrationCopy('stopped',lang);});return {wrap,start};
   }
   const message = key => {$('story-workspace-status').textContent=key?text(key):'';};
   function ensureSourceRefreshUI(){
@@ -1129,6 +1130,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const introductionSources=node('div',undefined,'memory-book-introduction-sources');
     bookReader.append(header,heading,node('p',book.introduction,'memory-book-introduction'),introductionSources);
     const reader=bookReader,owner={...scope()};reader.__photoHouseBookTarget=book;let readingTicket=0,storyIndex=0,sectionIndex=0,readingStory=null,readingRefs=null,bookRefsEpoch=0,sourceHost=null,sourceSection=null,planStoryOpening=false;
+    const bookIdSnapshot=book.id,bookRevisionSnapshot=book.revision;
     const positionKey=JSON.stringify([owner.account,owner.library,book.id,book.revision]);
     const resume=button(owner.language==='en'?'Continue where you left off':'继续上次阅读',()=>{const position=bookPositions.get(positionKey),index=position&&book.stories.findIndex(story=>story.id===position.storyId);if(Number.isInteger(index)&&index>=0)void readBookStory(index,false,position);},'memory-book-resume');
     resume.hidden=!bookPositions.has(positionKey);
@@ -1150,6 +1152,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     };
     let editorial=null,sourceJump=null;
     const editorialChildren=()=>book.stories.map(story=>({story_id:story.id,revision:String(story.revision)}));
+    const orderedChildrenSnapshot=JSON.stringify(editorialChildren());
     const validEditorial=value=>{
       const children=editorialChildren(),childMap=new Map(children.map(child=>[child.story_id,child.revision]));
       if(!value||Object.keys(value).sort().join(',')!=='children,id,introduction_source_refs,revision,state,transitions,version'||value.version!==1||value.id!==book.id||value.revision!==book.revision||!['empty','current','source_changed'].includes(value.state)||!Array.isArray(value.children)||!Array.isArray(value.introduction_source_refs)||!Array.isArray(value.transitions)||children.length>24||value.children.length!==children.length||value.children.some((child,index)=>!child||Object.keys(child).sort().join(',')!=='revision,story_id'||child.story_id!==children[index].story_id||child.revision!==children[index].revision))return false;
@@ -1231,7 +1234,24 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const item=node('figure');item.append(open,node('figcaption',dateLabel(media)));frames.append(item);}
       pane.append(frames,node('p',section.narration,'memory-book-reading-prose'));
       sourceHost=node('div',undefined,'memory-book-source-host');sourceSection=section;pane.append(sourceHost);renderBookSources();
-      mountNarration(pane,section.title,section.narration,readingStory.language,()=>validReading(sectionTicket)&&readingStory?.id===book.stories[storyIndex]?.id&&readingStory?.chapters[sectionIndex]===section);
+      const narrationStory=readingStory,narrationStoryIndex=storyIndex,narrationSectionIndex=sectionIndex;
+      const chaptersSnapshot=JSON.stringify(narrationStory.chapters.map(chapter=>[chapter.id,chapter.asset_ids,chapter.title,chapter.narration]));
+      const hasFollowingChapter=Boolean(narrationStory.chapters[narrationSectionIndex+1]);
+      const continuation=hasFollowingChapter?button(narrationCopy('continueNext',owner.language),()=>{},'quiet memory-book-continue-narration'):null;
+      if(continuation){continuation.style.minHeight='44px';continuation.style.maxWidth='100%';continuation.style.whiteSpace='normal';continuation.style.overflowWrap='anywhere';continuation.hidden=true;}
+      let completedNarration=null,narration=null;
+      const continuationCurrent=()=>Boolean(continuation?.isConnected&&!continuation.hidden&&bookReader===reader&&reader.open&&reader.__photoHouseBookTarget===book&&book.id===bookIdSnapshot&&book.revision===bookRevisionSnapshot&&validReading(sectionTicket)&&JSON.stringify(editorialChildren())===orderedChildrenSnapshot&&storyIndex===narrationStoryIndex&&sectionIndex===narrationSectionIndex&&readingStory===narrationStory&&narrationStory.id===book.stories[narrationStoryIndex]?.id&&narrationStory.revision===book.stories[narrationStoryIndex]?.revision&&narrationStory.chapters[narrationSectionIndex]===section&&JSON.stringify(narrationStory.chapters.map(chapter=>[chapter.id,chapter.asset_ids,chapter.title,chapter.narration]))===chaptersSnapshot&&narrationStory.chapters[narrationSectionIndex+1]&&completedNarration===narrationState&&completedNarration?.active===false&&completedNarration?.control===narration?.wrap&&completedNarration?.valid());
+      narration=mountNarration(pane,section.title,section.narration,readingStory.language,()=>validReading(sectionTicket)&&readingStory?.id===book.stories[storyIndex]?.id&&readingStory?.chapters[sectionIndex]===section,{
+        onStart:()=>{completedNarration=null;if(continuation)continuation.hidden=true;},
+        onComplete:state=>{if(continuation?.isConnected&&state===narrationState&&state.valid()&&book.id===bookIdSnapshot&&book.revision===bookRevisionSnapshot&&storyIndex===narrationStoryIndex&&sectionIndex===narrationSectionIndex&&readingStory===narrationStory&&narrationStory.chapters[narrationSectionIndex]===section&&narrationStory.chapters[narrationSectionIndex+1]&&JSON.stringify(editorialChildren())===orderedChildrenSnapshot&&JSON.stringify(narrationStory.chapters.map(chapter=>[chapter.id,chapter.asset_ids,chapter.title,chapter.narration]))===chaptersSnapshot){completedNarration=state;continuation.hidden=false;}},
+        onStop:state=>{if(completedNarration===state)completedNarration=null;if(continuation)continuation.hidden=true;}
+      });
+      continuation?.addEventListener('click',()=>{
+        if(!continuationCurrent())return;
+        try{if(dictation||community?.isCapturing?.()){const status=narration.wrap.querySelector('.story-narration-status');if(status)status.textContent=narrationCopy('recording',scope().language);return;}}catch{return;}
+        continuation.hidden=true;completedNarration=null;sectionIndex=narrationSectionIndex+1;const nextNarration=displaySection();nextNarration?.start();
+      });
+      if(continuation)pane.append(continuation);
       const detailsStatus=node('p',undefined,'memory-book-story-status');detailsStatus.setAttribute('role','status');
       const details=button(owner.language==='en'?'Open this story and family memories':'打开故事与家人回忆',async()=>{
         if(!readingStory||busy||!validReading(readingTicket))return;
@@ -1247,6 +1267,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       // Explicit reading/navigation replaces its own controls. Move focus to
       // the newly loaded chapter instead of leaving it on a detached button.
       chapterHeading.focus({preventScroll:true});pane.style.scrollMarginTop=`${header.getBoundingClientRect().height+16}px`;pane.scrollIntoView({block:'start'});
+      return narration;
     };
     const readBookStory=async(index,last=false,position=null)=>{
       if(index<0||index>=book.stories.length)return false;stopNarration();const ticket=++readingTicket;readingStory=null;pane.hidden=false;toc.hidden=true;resume.hidden=true;pane.replaceChildren(node('p',text('savedLoading'),'memory-book-reading-status'));
