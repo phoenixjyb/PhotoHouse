@@ -82,3 +82,9 @@ renders inspected. The frozen public v47 unsigned release build passed in 30s:
 It has empty origins, all optional capabilities disabled and no signature.
 This artifact qualifies compilation and version identity only; private release
 configuration and publication remain the delivery gates listed above.
+
+
+Generic release lint passed separately in 29s. Native `aapt2` package inspection
+also reports `dev.photohouse.connected` and version 47. These checks add no
+private build configuration or signing evidence. The prepared Web overlay and
+remaining cross-client operations are in the [local handoff](../../../docs/LOCAL_CANDIDATE_2026-10-12.md).

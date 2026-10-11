@@ -579,6 +579,36 @@ inventory may contain failures or skips; its exit code describes readability
 and completeness, not test success. Existing reports can be cached or filtered
 and do not establish a fresh run, revision, APK or device acceptance.
 
+## Read an existing Android instrumentation log
+
+ADB's process exit status does not establish test success. AndroidJUnitRunner
+can print `FAILURES!!!` and still leave `adb shell am instrument` with exit zero.
+After saving its complete `-w -r` output, check it independently:
+
+```sh
+.venv/bin/python tools/android_instrumentation_report.py /absolute/path/emulator.log
+```
+
+On Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe tools\android_instrumentation_report.py C:\Path\To\emulator.log
+```
+
+This reader invokes no ADB/process/provider and writes no file. Input
+is capped at 8 MiB and must be a regular non-symlink UTF-8 log. JSON reports
+counts and fixed refusal codes without paths, test names, stack traces or raw
+input. Exit zero and `complete: true` mean the supported runner protocol proves
+one complete positive passing run: consistent runner/test fields, ordered
+start/completion pairs, sequential indices, all pass statuses, matching final
+summary and terminal code. Failure/error, skip/assumption, conflicting or
+malformed fields, unknown statuses and truncated output remain nonzero.
+
+The tool qualifies the bytes of an existing log only. It establishes no new
+execution, freshness, source revision, APK identity, device, voice quality or
+family acceptance. Keep build/source receipts and installation evidence separate.
+
+
 The wrapper verifies its pinned Gradle distribution. The check runs six shared
 Kotlin module test suites, phone/TV unit tests, lint and debug assembly. Without
 explicit origin settings, these builds are unconfigured development artifacts.
@@ -1464,3 +1494,24 @@ qualification above. Later server edits are Web source; the earlier API receipt
 is retained under its own pin rather than represented as a new backend run.
 No Windows runtime, database, media, task, model, signing key, OTA feed or physical
 device was contacted or changed during this local development round.
+
+
+## October 12 maintainer and delivery preparation
+
+Instrumentation reader source `55b1a05` passed ten focused synthetic cases and
+recognized the retained real nine-case pass. The earlier eight-case log with two
+failures returned nonzero and only safe counts; an initial eight-case tooling
+run had one incorrect fixture expectation for a missing terminal and was fixed.
+The complete tooling cohort passed 121 tests in 4.817s after this accepted
+source. It used generated fixtures; no Android, provider or Windows process was
+started by the log reader.
+
+The pinned five-asset Web overlay at `263439c` passed nine builder/binding tests
+and a temporary extracted-router smoke. All five responses matched their
+manifest hashes, with the icon path retained and no listening server. The
+[local candidate handoff](LOCAL_CANDIDATE_2026-10-12.md) records archive/manifest
+identities and the remaining actual-runtime, rollback and authority gates.
+Phone generic release lint also passed in 29s (74 tasks: 13 executed, 61 up to
+date). Native APK metadata independently reports `dev.photohouse.connected`,
+version 47 and `0.47-family-memoir-composer`. This remains an unsigned,
+unconfigured package, with no private delivery claim.
