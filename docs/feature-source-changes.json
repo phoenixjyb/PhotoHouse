@@ -11489,6 +11489,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Privacy-safe strict Android instrumentation log qualification",
+      "source_commit": "55b1a05b0e669b86b7079a18446dc2f35acf41da",
+      "files": [
+        {
+          "path": "tools/android_instrumentation_report.py",
+          "before_sha256": null,
+          "sha256": "358245b4319643b8118984a622471bddb0c337211077a319a870584541290d36"
+        },
+        {
+          "path": "tools/tests/test_android_instrumentation_report.py",
+          "before_sha256": null,
+          "sha256": "c65f0eccb3f3cb06618e827ffd648f00acbacb0063c396be444ba437df6b06d8"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
