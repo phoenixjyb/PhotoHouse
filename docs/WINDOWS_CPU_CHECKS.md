@@ -207,3 +207,38 @@ Portable worker tests mock native worker subprocesses, so a passing local suite
 is not a native worker result. The earlier native d1 qualification above does
 not qualify this new full-chain guard or companion execution. See the
 [guard contract](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).
+
+## October 11 full-chain and companion native result
+
+The approved candidate at `18eb1cc415771977c95dff8513cd176d07f6310d`
+passed one Windows generated qualification and a separate read-only verification.
+The qualification was not rerun.
+
+| Binding | Value |
+|---|---|
+| API source ZIP SHA-256 | `ddb7b46afbb0a4e74ebbc88006577ca023016cfd7067b83171f036766380a650` |
+| Companion source ZIP SHA-256 | `7f500f99b3cc5262bd924dc0792ac78106dedc8662053b6f0306f116c2a61f32` |
+| Report SHA-256 | `145316b26e4dc3fdb42686c52e10e4ebbb5c1ed75d63e32f8e4ec30c0faee09b` |
+| Source readback | 185 API files and 33 companion files; 17 shared paths have identical bytes |
+| Native limits | 900 seconds, 2 GiB Job memory, eight processes, 8 GiB free-RAM floor |
+
+The actual guarded a0→e7 upgrade preserved all old rows and objects and added
+nine empty tables. An injected interruption during d1 rolled back the complete
+chain, including earlier editorial/edition DDL. The separate backup retained
+its bytes; independent readback compared the backup schema and rows
+against the upgraded generated primary.
+
+A separate d1→e7 generated image/video fixture ran the actual thumbnail,
+perceptual-hash, video-probe and keyframe worker CLIs. Both JPEG thumbnail sizes
+and four JPEG keyframes decoded. Readback confirmed six exact task rows: four
+finished preparation tasks and two pending inference tasks, with correct asset
+bindings. Both original files retained their database hashes, the original note
+retained its wording and author, and one group with two revision rows remained.
+All three generated databases passed integrity and foreign-key checks.
+
+The result reports no family media or production database access, model loading,
+GPU work, service change or APK publication. Injected DDL interruption does not qualify process death or
+power loss. This closes the named synthetic guard and CPU/video
+worker cases. It does not qualify installed model workers, automatic vector
+coverage, a live backup/restoration, live schema/worker/API activation or family
+and device use. See the [maintenance sequence](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).

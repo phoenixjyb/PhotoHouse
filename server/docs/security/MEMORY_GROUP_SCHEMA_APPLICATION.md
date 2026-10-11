@@ -88,3 +88,22 @@ The generated qualifier and local tests do not authorize any live operation.
 Phone signing/publication and family acceptance are later delivery gates. See
 [shared groups](MEMORY_GROUPS_V1.md) and
 [Windows qualification](../../../docs/WINDOWS_CPU_CHECKS.md).
+
+## Bound native evidence
+
+The generated full-chain and CPU/video companion cases passed once on Windows
+at `18eb1cc`, followed by independent source/database/file readback. Exact
+artifacts, digests, checks and unclosed gates are recorded in
+[the native result](../../../docs/WINDOWS_CPU_CHECKS.md#october-11-full-chain-and-companion-native-result).
+The live maintenance sequence above remains a separately prepared operation.
+
+A subsequent read-only live observation confirmed a0, the API and all five
+approved-upload tasks running, no pending/running database tasks, and group
+activation off. The two independent journals passed their private-file check;
+the primary did not. An activation controller must include a reviewed primary
+permissions plan, preserving its current owner/DACL before any explicitly
+approved change, and verify actual SYSTEM worker/API access. The guard will
+refuse this current primary. No live permissions were changed by qualification.
+The primary is approximately 0.89 GiB: retain separate full-size backup/restore
+and migration-rehearsal budgets instead of extrapolating timing from tiny fixtures.
+All observations must be refreshed immediately before maintenance.

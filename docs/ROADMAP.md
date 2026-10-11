@@ -12,14 +12,16 @@ and unavailable vectors retain manual selection; video grouping is manual.
 Additive `e7c1a9d5b304` migration and companion approved-upload worker compatibility
 are prepared locally. The six-hour/0.9 similarity rule is a heuristic awaiting
 family calibration. See [the contract](../server/docs/security/MEMORY_GROUPS_V1.md).
-This is source and synthetic evidence, with no Windows operation in this chunk.
+The original implementation was checked locally; the later native qualification
+evidence is listed below. The live feature is not activated.
 
 Generated e7 upgrade and pre-/post-group backup restoration passed on Windows
 at source `665bed5`, with independent source/database readback. This did not
-make or restore a live backup. Next delivery gates: qualify the worker companion
-package, exact prepared-vector profile/coverage and protected lookup on Windows;
-prepare the guarded live migration and approve activation. The phone has a default-off
-group review/edit source implementation; its release and live API availability
+make or restore a live backup. The subsequent `18eb1cc` native full-chain and
+CPU/video companion canary also passed independent readback. Next delivery gates:
+prepare the stopped-writer backup/restoration and compatible worker/API switch;
+approve live migration and activation. Automatic suggestions separately need exact
+prepared-vector profile/coverage and protected lookup qualification on Windows. The phone has a default-off group review/edit source implementation; its release and live API availability
 remain delivery gates. Next product work: deduplicated shared sources in essay/memoir evidence, and explicit
 family feedback on suggested group boundaries. Do not automatically publish
 private memories to Home TV.
@@ -33,9 +35,11 @@ row and object while adding nine empty tables. Its generated interruption rolls
 back the earlier editorial/edition steps as well as the partial identity step.
 The companion canary exercises actual CPU and video worker CLIs on generated
 media; portable tests mock native worker execution. The pinned API qualification
-package contains the required worker closure. Native Windows qualification of
-this new canary, live stopped-writer backup/restoration, compatible worker/API
-switch and feature activation remain outstanding. See the
+package contains the required worker closure. The new canary passed its approved
+Windows run at `18eb1cc`; independent
+readback verified all source hashes, the nine empty added tables, unchanged old
+rows, exact queues and decoded previews. Live stopped-writer backup/restoration,
+compatible worker/API switch and feature activation remain outstanding. See the
 [guard and maintenance sequence](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).
 
 ### Phone shared-memory review
@@ -61,7 +65,9 @@ uses the existing bounded Windows Job controller. See the
 The generated runner passed its approved native Windows run at `665bed5`;
 independent readback verified 180 source files, six generated databases and both
 backup restores. See [the native result](WINDOWS_CPU_CHECKS.md#october-11-memory-group-native-result).
-Installed worker/vector qualification and live activation remain separate.
+The subsequent native full-chain and CPU/video companion result at `18eb1cc`
+is recorded in [the new native result](WINDOWS_CPU_CHECKS.md#october-11-full-chain-and-companion-native-result).
+Installed model/vector qualification and live activation remain separate.
 Phone version 46 is already
 published from older source; the next group-enabled release needs a new version
 and complete newly pinned private profile before signing or OTA publication.

@@ -139,3 +139,9 @@ nine empty tables through e7 with no historical backfill; from d1 it adds two.
 Its generated full-chain interruption and actual guarded apply are included in
 the new companion-worker canary. Local tests and the earlier native d1 result do
 not establish native acceptance of this guard, live maintenance or activation.
+
+The new `18eb1cc` generated full-chain guard and actual CPU/video worker run
+passed on Windows, followed by independent readback of both source packages,
+all three databases, exact queues and decoded previews. See the
+[bound native result](../../../docs/WINDOWS_CPU_CHECKS.md#october-11-full-chain-and-companion-native-result).
+This does not activate the live schema, group routes, models or phone release.
