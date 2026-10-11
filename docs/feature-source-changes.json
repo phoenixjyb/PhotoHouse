@@ -10069,6 +10069,72 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Encrypted phone saved-story reading continuity",
+      "source_commit": "7b3e68d5a52c79d599845117a5ba4c5ace502557",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedMemoryReaderNavigationUiTest.kt",
+          "before_sha256": "43c52fe387e7ce84865ae5dbaa69ab0785a95186f702d316591c5547d6365cac",
+          "sha256": "e7c04e5024fe47a7b5a3b380449676870d910e1b5b63bda24f34f04b23c5c9d2"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedStoryReaderPositionPersistenceTest.kt",
+          "before_sha256": null,
+          "sha256": "8b0e09dc432d9d600a445947cdce25d1633d69b60ef0068cc15b61a9289a5567"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "ee577e178d03413ebef76e8365f615605463961538741920dead0c197e49cafe",
+          "sha256": "2a29c2c1c9e0e8b398ed77b2c78fc763e1a5ab5e277f2f76aa85300ec8c4572f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreSavedStoryReaderPositionPersistence.kt",
+          "before_sha256": null,
+          "sha256": "d614823a228f710f98250d74227e799dff960713ff85668984fbbe5c8c0785e0"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "before_sha256": "275093de1fc775564e41905ff02962d1672f3f1606fffdfa1465baf3054057cd",
+          "sha256": "91c2ac05623e89d9d307deec4b276808b9f44ed52e4ec87b4afb2fbdfc1b354a"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/SavedMemoryStoriesDialog.kt",
+          "before_sha256": "2b20e6994a634e15ebf70da0071f32ef97293c6cf8556c4b427d2fe6ecb21c6a",
+          "sha256": "2aa1dd0b59ea9512c249100f3e68e6f8fb81d4d6da6274740d9cadd017b22d7c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "b5ff88e9e4aad2b7f02c76f1bf68a919f5f1a912d4c5f2d4ab6996964b7f7e30",
+          "sha256": "f7ad317be796b9aa4a02a27d6156da5805489a1564edf215c7ae070a48cab206"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/SavedStoryReaderPosition.kt",
+          "before_sha256": null,
+          "sha256": "52c38f01133913221f4bb534c81cfcd54aee92ee5c72b6486557cd46cbf0b183"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryCreationStoreTest.kt",
+          "before_sha256": "4a359a7c9257f1161d3491b8985f802426856c7642faec8d922012b8ba2edfb7",
+          "sha256": "873bec2d598f4dd6f2b37b167ef0dcc958ca66f6a51df2e2e256be4365fba6c1"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/SavedMemoryStoriesStoreTest.kt",
+          "before_sha256": "3cd2e0fd36b9fcefaab7318df4040cc383cc548de84982c65d9dfa75a60a78d6",
+          "sha256": "e11d9201f623df9419ebf04e84a64cde074adf0bf260a431a00ab8897976c717"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/SavedStoryReaderPositionTest.kt",
+          "before_sha256": null,
+          "sha256": "b25664bfe6c333971ba3cabf6d6eb235ce24ebc4c3a4939452f7a41092ec806b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
