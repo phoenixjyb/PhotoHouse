@@ -12,14 +12,38 @@ at `c566ded` repairs seven-field server result decoding and labels optional
 filename/received dates, with parser, protected transport and bilingual emulator
 checks. Signed phone and served delivery remain separate.
 
-The next local conversation slice is recovering a full 128-turn story/memoir
-thread without deleting its history or losing rejected words. The backend now
-has an allowlisted `memory_conversation_full` error discriminator (`e042544`),
-with idempotent boundary, no-mutation and authenticated HTTP tests. Other 429s
-remain distinct. Web and phone continuation controls are under development;
-they must create a new thread only after an explicit action and leave its words
-editable until the user sends. This source milestone does not enable a provider
-or alter the household runtime.
+The [full-conversation continuation](MEMORY_CHAT_CONTINUATION.md) slice now has
+backend, Web and phone source implementations. The allowlisted
+`memory_conversation_full` discriminator (`e042544`) keeps other 429s distinct.
+Web `54f323b` and phone generated checks preserve old history and rejected words,
+reuse one uncertain creation request, verify fresh history and leave the new
+draft editable until Send. The complete backend profile passed 1,210 tests and
+692 subtests, and all 19 Web suites passed with unchanged source snapshots at
+`a1c6e94`. Four bilingual phone continuation journeys passed at 150% text size;
+served Web, signed phone and family conversation quality remain delivery gates.
+
+[Creating a phone memoir](PHONE_MEMOIR_COMPOSITION.md) from existing saved
+stories is accepted at `e157679`. It supports readable-story selection, ordering,
+an optional reviewed voice introduction, exact uncertain-save retry and explicit
+opening of the fresh protected result. The 161-case core cohort and four
+bilingual enlarged-text composer journeys passed; six shared dictation journeys
+also passed. Opening the composer starts no model work or narration.
+
+The visual phone shelf is accepted at `61847c7`, with protected covers, opening
+excerpts and accessible reading actions. Its 125-case core cohort, two bilingual
+150% shelf journeys and nine affected reader/composer journeys passed. Web
+`a6bae31` guards obsolete shelf cards and delayed detail/denial responses;
+30 focused browser checkpoints passed, including conversation-hint retention.
+
+[Reviewed Web memoir introduction dictation](MEMOIR_INTRODUCTION_DICTATION.md)
+is integrated at `bd8f6b6`, including shared microphone ownership, current-form
+story ordering and bounded introduction review. Generated Node UI and adapter
+checks passed; final browser rendering and complete client profiles follow.
+Phone `a4507e3` reserves v47 for a new signed release after its private profile
+and served capabilities are qualified. Following source qualification,
+the next delivery gate is the complete release closure, then approved native
+qualification and publication. Family story quality and time/similarity group
+boundaries still require real feedback.
 
 ## October 11 adjustable shared-memory groups
 

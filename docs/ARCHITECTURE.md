@@ -84,6 +84,11 @@ media browsing, while an outline uses only the user's reviewed selection.
 Albums do not supply copied source choices, descriptions or prose. The preview
 and final story save reauthorize their own actual media and evidence snapshots.
 
+Web shelf actions also bind their rendered card/list/book identity. That guard
+is passed through protected detail reads, including authorization-failure
+cleanup, so a same-library refresh cannot let an obsolete response erase the
+replacement reader's conversation-selection hint.
+
 ## Ownership
 
 | Module | Responsibility |
@@ -185,6 +190,48 @@ validation stay strict. See [result compatibility](ASSISTANT_RESULT_COMPATIBILIT
 Phone story/memoir [history navigation](PHONE_MEMORY_CHAT_NAVIGATION.md) binds the
 rendered reader/thread/page and the visible control's lifetime. History reads
 preserve the composer and never start another voice or submitted turn.
+
+[Full-conversation continuation](MEMORY_CHAT_CONTINUATION.md) treats the
+128-turn refusal separately from temporary rate limiting. An explicit action
+creates a new conversation using one retained request identity. The clients
+verify its directory and initial history before replacing the active thread,
+then place retained words in the editable composer. Old history remains
+available, and a separate Send is still required. Failed creation or readback
+keeps the same retry identity and the old thread.
+
+The [phone memoir composer](PHONE_MEMOIR_COMPOSITION.md) collects authorized
+saved stories in a user-reviewed order. Opening requires fresh collection
+permission; selecting and saving reauthorize each story and preserve its exact
+revision, selection fingerprint and source policy. An uncertain save freezes
+one immutable mutation. Its process-only draft is cleared on scope changes or
+explicit departure. Optional introduction voice input has an independent transient
+helper, created only by the explicit dictation action. Its account/library/shelf/
+composer-epoch fence also applies before microphone capture and after ASR.
+Reviewed words append to the latest accepted introduction only on Add; unresolved
+voice input blocks Save. The helper is never a retained family-audio attachment.
+A verified new book is opened through a fresh protected
+parent read; child content loads only after explicit selection.
+
+The phone memoir shelf displays opening excerpts and protected cover thumbnails
+for at most eight books on the current page. Sequential cover reads use the
+existing library-scoped thumbnail route, never original media or child-story
+bodies. Each response is bounded to 512 KiB; decoded decorative images also have
+pixel and dimension limits. Cover bytes are process-local and wiped on reader
+entry, composition, departure, session/library replacement and backgrounding.
+Only an explicit retry reloads missing covers; ready covers remain retained for
+that same shelf scope. Card actions bind both the current shelf and their
+rendered lifetime. These discovery previews neither create a reading position
+nor start speech or model work.
+
+[Web memoir introduction dictation](MEMOIR_INTRODUCTION_DICTATION.md) keeps its
+textarea mounted while recognition runs. Availability, capture, stop, review,
+insert and save remain distinct actions. Its helper binds the exact editable
+form, current book revision and membership; abort/late-result fences discard
+obsolete audio and text without touching a replacement helper. Typed words
+survive recognition, overflow and discard. A shared microphone reservation prevents
+chapter, assistant, original-note and memoir capture from opening overlapping
+streams; obsolete reservations release only their own handle. This saves
+introduction text only.
 
 [Chapter dictation](STORY_CHAPTER_DICTATION.md) uses the same protected ASR
 adapter with a different destination. Explicit Add appends reviewed words to the

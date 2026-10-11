@@ -5,9 +5,10 @@ API, Android, Windows private-reader, Windows CPU and seventeen generated Web
 suites. Historical counts below retain their revision-specific meaning;
 household deployment and family acceptance remain separate gates.
 
-The October 12 local source run passed the complete 19-suite Web profile at
-`5991695` and the complete backend profile (1,208 tests and 687 subtests) at
-`d0d8a34`. The phone/TV source profile subsequently passed JVM tests, lint and
+The latest October 12 local source run passed the complete 19-suite Web profile
+and the complete backend profile (1,210 tests and 692 subtests) with unchanged
+profile source snapshots at `a1c6e94`. Earlier results retain their own pins.
+The phone/TV source profile subsequently passed JVM tests, lint and
 debug builds; newer chapter/reader/session checks are detailed in
 [the development record](DEVELOPMENT.md#october-12-story-composition-and-reading).
 These later local
@@ -27,6 +28,10 @@ This matrix records the source migration baseline. Live installations and physic
 | Voice assistant | ASR input, explicit submission, receipts/context, pending-turn recovery, optional TTS, scoped story/memoir conversation navigation and current-reply clarification cues in Web and phone | Served Web and signed phone delivery; provider and family conversation quality qualification |
 | Conversation reading | Bounded Web and phone exchange lists preserve older reading positions and offer a localized jump to the latest activity | [Trail contract](ASSISTANT_TURN_TRAIL.md); generated phone scroll/keyboard journeys pass; exact installed delivery remains separate |
 | Story/memoir chat history | Phone direct latest-page action and scope/lifetime guards on all history controls preserve unsent text | [Navigation contract](PHONE_MEMORY_CHAT_NAVIGATION.md); four bilingual 150% simulator journeys pass at `7d7b1ef`; signed delivery remains separate |
+| Full conversation continuation | Backend distinguishes the 128-turn cap; Web and phone keep old history and transfer retained words into a reviewed new conversation using one retry identity | [Continuation contract](MEMORY_CHAT_CONTINUATION.md); generated browser and bilingual 150% simulator checks pass; served Web, signed phone and family conversation acceptance remain separate |
+| Phone memoir composition | Collect readable saved stories, review their order and optional introduction, save with exact retry, and explicitly open the fresh book | [Composer contract](PHONE_MEMOIR_COMPOSITION.md); source `e157679` passed 161 focused core cases and four bilingual enlarged-text composer journeys, including reviewed voice introduction; six shared dictation journeys also passed; no APK publication or live activation |
+| Visual phone memoir shelf | Protected cover thumbnails or themed fallback, opening excerpts, honest media-entry totals and explicit reading actions | Source `61847c7`: 125 scoped core cases, two bilingual 150% shelf journeys and nine affected reader/composer journeys passed; release delivery remains separate |
+| Reviewed memoir introduction voice | Phone composer and Web editor preserve the latest typed opening, review dictation before insertion and block save during unresolved voice input | [Introduction contract](MEMOIR_INTRODUCTION_DICTATION.md); phone accepted locally; Web source `bd8f6b6` passed Node contract checks, final browser/source-profile qualification follows; served/signed and family voice quality remain separate |
 | Assistant result compatibility | Phone accepts protected seven-field result assets and optional validated hints; result cards label filename/received dates | [Response contract](ASSISTANT_RESULT_COMPATIBILITY.md); parser, protected transport and bilingual emulator checks pass at `c566ded`; served/device evidence remains separate |
 | Memoir editing | Citation choices refresh independently of the title, opening note and story-order form; stale revisions and detached editors reject delayed results | Generated browser focus/composition checks; served UI and family editing acceptance remain separate |
 | Approved face queue | Stdlib SQLite approval and claim helper; bounded detection and shadow-embedding pipeline source; portable Windows Job Object helper is included | Eight additional fake-child pipeline checks use generated data; native Windows Job Object, CUDA/model/device and live-service qualification remain separate gates |

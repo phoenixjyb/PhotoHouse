@@ -1243,6 +1243,128 @@ journey passed 39 tests and 33 subtests. The existing Starlette/httpx deprecatio
 warning remains. Client continuation controls and complete final source profiles
 are following checks, not established by this backend result.
 
+### Full-conversation continuation qualification
+
+Web `54f323b` passed 30 focused generated checkpoint groups, including exact
+429 parsing, same-UUID retries after uncertain creation or failed initial
+history, retained edits, and detached controls. The complete Web profile then
+passed all 19 suites at `a1c6e94`. Its optional receipt recorded exit zero and
+matching source snapshots (`f68df337d7f935a54620f700e952ef2d07987d227f63286bcbdc8be43f4c4731`).
+The complete backend profile passed 1,210 tests and 692 subtests at the same
+HEAD, with matching API source snapshots
+(`bf938d234b493db0ffd550a8dea97189b0a29d212129fee6d5b9d30b3c6b2f22`).
+These receipts bind source paths and bytes at invocation boundaries; they do
+not bind the installed toolchain or prove the freshness of cached Gradle reports.
+
+The phone continuation's scoped store and transport cohort passed 115 JVM
+tests, with debug assembly and lint. The complete Android source profile
+before memoir-composer integration passed and its XML report inventory was
+963 tests, with no failures, errors or skips; unchanged tasks were up to date.
+Its receipt recorded matching Android source snapshots
+(`ffc8a7aac68182b1c614f14d2d1cad25d34b3c8e2cee595f22b0efb14af435d4`)
+and unchanged HEAD `04f5317`.
+
+The first combined simulator run passed the four existing latest-page journeys
+and two assistant-date journeys, but failed four new continuation assertions:
+the fixture expected a rejected question in the next editable draft, although
+the store correctly held it separately until Continue. After correcting the
+fixture and checking the retained-question review, all four continuation
+journeys passed in 90.928 seconds. They cover English/Chinese story/memoir
+views at 150% text, an uncertain create and exact retry, edits during creation,
+retained old history, explicit unsent transfer, and detached callbacks. The
+four refusal renders and two continued renders were inspected. See the
+[contract](MEMORY_CHAT_CONTINUATION.md).
+
+The maintenance-tool suite passed 111 tests and 38 subtests after the optional
+receipt-source closure changes. This is local tooling evidence, not native
+Windows or installed application evidence.
+
 All data is generated and all speech interactions retain explicit start/send/play
 boundaries. No signed APK, household service switch, migration, model execution
 or family-device acceptance is established by these local results.
+
+
+## October 12 phone memoir composition and reviewed introduction
+
+Accepted source `e157679` passed a 161-case focused core cohort: composition
+14, introduction dictation 5, shared dictation 10, repository 22 and community
+store 110. The corrected source/debug/instrumentation build passed; a stale
+summary in the late conversation-denial fixture was replaced with the current
+protected shelf summary before reopening. This was a fixture correction.
+
+Four generated English/Chinese composer journeys at 150% text and six shared
+dictation journeys passed on the existing API 36 emulator in 157.889 seconds.
+They cover explicit selection/order/save, identical uncertain retries, current
+parent reopening, reviewed voice insertion into the latest typed introduction,
+over-limit retention and detached helper controls. The first voice run had two
+fixture failures because it counted an existing app-wide capability request as
+composer work; the corrected fixture measures its baseline. Source inspection
+also removed a duplicate capability query on dictation-input mount. Visible
+order controls were shortened to Move up / Move down / Remove, and all four
+composer renders were inspected after rebuilding. The generated-WAV composer
+fixture does not use a microphone; one shared dictation case uses the emulator
+microphone with a synthetic ASR adapter. No real provider quality, family data
+or physical-device result is claimed.
+
+Web source `903a7f9` preserves an existing memoir's language when its editor has
+no language selector. Editing a Chinese memoir in the English UI and retrying
+the same uncertain mutation passed the 30-checkpoint generated community
+journey. This does not change the locale default for a new memoir.
+
+
+## October 12 protected visual memoir shelf
+
+Phone source `61847c7` passed 12 cover-store cases and 113 community-store cases.
+Covers are bounded, sequential protected thumbnails; ready and staged bytes are
+wiped when the shelf leaves its scope, including uncooperative late responses.
+A compile failure in a nested test helper was corrected before this passing run.
+Two new bilingual 150% shelf journeys passed in 14.644 seconds after fixing
+merged-tree/decorative-tag fixture selectors and a real lazy-list event reuse
+issue. Render identity now recreates event nodes while preserving scroll state;
+captured old read/retry actions are inert after replacement or unmount. Both
+renders were inspected. The preceding combined emulator run passed all nine
+affected contents/narration/composer cases but failed the two new selectors;
+those failures were retained before the focused correction. The source/debug
+and instrumentation build passed after the final event-lifetime correction.
+
+Web source `a6bae31` passed 30 generated community browser checkpoints. The
+exact shelf card/list/book predicate now travels into the API helper before
+sending, after response and before denial cleanup. A delayed same-library 403
+cannot erase the selected old-conversation hint; reopening restored the selected
+conversation in the generated fixture. No new routes or media requests were
+introduced by this guard.
+
+
+## October 12 Web memoir introduction dictation
+
+The generated Node UI journey covers explicit capability/record/stop/review/Add/
+Save actions, edits during deferred recognition, full-text UTF-8 overflow
+retention, malformed output, uncertain-save freezing, obsolete/current denials,
+membership replacement and background cleanup. Browser qualification includes
+English and Chinese at 390px and 150% text, synthetic WAV/capture/transcription,
+and exact introduction persistence only after explicit Save.
+
+The first introduction render fixture multiplied inherited font sizes while
+walking descendants, compounding its 150% scale. The fixture now snapshots all
+computed sizes before applying the scale. Its initial 34-check result remains
+historical; final render evidence is recorded after the corrected run. Source
+review also found memoir capture could overlap a chapter's shared microphone
+reservation; the adapter correction and targeted qualification are recorded
+with the accepted pin below.
+
+Web source `bd8f6b6` passed the ten Node UI journeys, WAV encoding and shared
+microphone adapter checks, JavaScript syntax and whitespace checks. A root
+invocation of the UI test from the repository directory first failed because
+its relative source path requires the documented `server/` working directory;
+the corrected invocation passed. The final generated browser profile follows
+this source pin and includes corrected enlarged-text rendering. Selection,
+ordering and More controls bind the exact mounted form and membership; repeated
+More actions share one in-flight page read. Old and pending-save actions cannot
+mutate the current selection. Excerpts retain 240 complete Unicode codepoints.
+Voice review also disables both book Save and editorial Save until resolved.
+
+Phone version source `a4507e3` reserves v47 (`0.47-family-memoir-composer`).
+The [release candidate](../clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md)
+records its user-facing changes and remaining private-profile, signing, OTA and
+family gates. This task has not contacted Windows, changed a runtime task,
+published source/APKs or installed a physical device.
