@@ -9375,6 +9375,67 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed chapter source policy with compatible protected reads and saves",
+      "source_commit": "0f3c7583505ec2d753f411a7d0ba242692d76831",
+      "files": [
+        {
+          "path": "docs/ACTIVITY_GROUPING_DESIGN.md",
+          "before_sha256": "b4e0fdf84ae9c950f60a31744d9924a83aae9e17b51e9a30a52d1e6d9edb35d2",
+          "sha256": "22eead25781825c36bc021752577a1ff6d19c010f379981ea8a3ef512bf45f0a"
+        },
+        {
+          "path": "docs/CHAPTER_SOURCE_CHOICES.md",
+          "before_sha256": null,
+          "sha256": "08741951d95d374b4957e1f8acf28aa1b75001d6f3e9851c30a3c16ee0e48370"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "d599106d707c571086ba0a7a2a8eb7e243341a5238503ce139670f6aca35dd50",
+          "sha256": "907cd8730bfed7c37814b6cec566edc3be845afccb08dc39e0063985ba9fe5df"
+        },
+        {
+          "path": "docs/SHARED_MEMORY_STORY_SOURCES.md",
+          "before_sha256": "f18dd06a95d03de29a3699d1c036b2befc47567d34171f8f57d6dc13b439a8c3",
+          "sha256": "1d939a4b43966c69c6cdbd3a563b5285afc657228e5639d8f1756c78ecf52500"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "db7313631bf9eab80a3ef0851a3fdfd5e8bf4d32d25132dcfb7c9545818dd18c",
+          "sha256": "6b76f36805fbd361dd8cccb76e00d16e222270d04ad59b6949494bcefef52b0e"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "518ddd041598efee12a1d4c0d1385359c84a9748c2a99c15ee5f79ee9f65baed",
+          "sha256": "efaf8d222eecf37230e5276a477b039cf3b7290e323602863fbdb82af35f6f6f"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "d298547c85163d649d5904bb69d3fa98520f3cbedc2d064c3fdee47b6fa3c447",
+          "sha256": "b95f602299a67a138268a649baab188263e6d3d7a3569e5b5a53c68c0aadc1d2"
+        },
+        {
+          "path": "server/backend/app/access/story_workspace.py",
+          "before_sha256": "8ad7477d315a8f0cd6b0be4c1054f15c304d8000b07531965db9c0e92b7889f5",
+          "sha256": "18142d9320b56220a20d5abf2a6cbe2374f881fbad84e90fcd77fe2ff2a2f066"
+        },
+        {
+          "path": "server/tests/security/test_chapter_source_policy.py",
+          "before_sha256": null,
+          "sha256": "097b66c4472c337a664205b256a66c39c92aace83409cfa63a13f273897132a3"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "afcfb3ecd9fae9a8ab9632a801b6ddb8e2615921230b8d4eb7b2a01542395f04",
+          "sha256": "5cdedfed489de70f38a53cfc30e1aa140d3dd086143a15a59f08b1fe155efbcf"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
