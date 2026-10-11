@@ -11510,6 +11510,37 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Local memoir delivery handoff, Web overlay and strict instrumentation documentation",
+      "source_commit": "b623b20a6bee119b80129abc1f07c46751ac17ba",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "c090ecd750cb0b0db6b3e9883be19fa0c07154d0c91f790d4356fd36796e6c95",
+          "sha256": "50d1dd5592137cb6c11f88ed07cfda582d5c5c21034fd7fa089411722fc4b5c4"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "c09b218bd7114583fc8109b39c36fc456c2b41c321b150bc96a180ee4000727e",
+          "sha256": "e8c039b7d669c4ca994a0a010abca1598e2497d25d46c894178ecac3aa4dfb64"
+        },
+        {
+          "path": "docs/LOCAL_CANDIDATE_2026-10-12.md",
+          "before_sha256": null,
+          "sha256": "85cd4ca3b270bd776ea34c616c7dca126ca42a113a1346253ee94bbb076fdb28"
+        },
+        {
+          "path": "docs/WEB_DELIVERY.md",
+          "before_sha256": "5a49c23304924d3dd99b45bbd5005d69d6da7254c9002955e951a5d6fddd94b8",
+          "sha256": "6113dde4b3865dd9ea9ad027cb86d7cde1828c9eb1600d413c1ac0ffb50ee858"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
