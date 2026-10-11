@@ -10460,6 +10460,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Compact phone album and story selection controls",
+      "source_commit": "4ef7255284dc28f7626b9a02ad269d38eb19621e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "8b536acf9ce0076657f4ebd48018407819c01c1984644f003a3071b152da23c7",
+          "sha256": "afc4ee0b8736fe40195ea21fdc457bcb461c8e6e59cfde039b16a54996249a77"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryAlbumPicker.kt",
+          "before_sha256": "421e610224a010328e7d4aa363f107b2eafb74fa60ba921e9cb21db88d3c1dd1",
+          "sha256": "b6d49441fb8f564e16f7f4ef2fc35c514e842a60a05b62b54816523a524edc6f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "26df948a853ac05894a7c8ec4b87c3d4170b6e952ae140586b1d1f686f12a6a3",
+          "sha256": "30ded374f0c366c166707e3fc05d57ed87eb2c5376187c89e9031ce87d867ad8"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
