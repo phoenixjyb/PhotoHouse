@@ -28,7 +28,8 @@ API_TESTS = (
     "test_memory_book_edition_deletions.py", "test_memory_book_edition_erasure.py",
     "test_memory_book_edition_http.py", "test_memory_book_edition_migration.py",
     "test_memory_book_edition_sources.py", "test_memory_book_edition_sources_http.py",
-    "test_orm_migrations.py", "test_memory_groups_qualification.py", "test_runtime_adapter.py", "test_windows_tts.py",
+    "test_orm_migrations.py", "test_memory_groups_qualification.py",
+    "test_apply_memory_group_schema.py", "test_memory_group_workers_qualification.py", "test_runtime_adapter.py", "test_windows_tts.py",
     "test_memory_worker_launcher.py",
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
     "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
@@ -67,6 +68,7 @@ WINDOWS_CPU_TESTS = (
     "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_runtime_adapter.py", "test_staging_package.py",
     "test_approved_worker_package.py", "test_memory_groups_qualification.py",
+    "test_apply_memory_group_schema.py", "test_memory_group_workers_qualification.py",
 )
 ANDROID_TASKS = (
     ":core:test", ":protocol:test", ":live-core:test", ":home-core:test",

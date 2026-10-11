@@ -24,6 +24,20 @@ remain delivery gates. Next product work: deduplicated shared sources in essay/m
 family feedback on suggested group boundaries. Do not automatically publish
 private memories to Home TV.
 
+### Guarded activation preparation
+
+An October 11 read-only runtime query found the primary still at a0, despite
+newer deployed source. The new guard therefore requires an explicit starting
+revision and rehearses the complete additive a0→e7 chain, preserving every old
+row and object while adding nine empty tables. Its generated interruption rolls
+back the earlier editorial/edition steps as well as the partial identity step.
+The companion canary exercises actual CPU and video worker CLIs on generated
+media; portable tests mock native worker execution. The pinned API qualification
+package contains the required worker closure. Native Windows qualification of
+this new canary, live stopped-writer backup/restoration, compatible worker/API
+switch and feature activation remain outstanding. See the
+[guard and maintenance sequence](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).
+
 ### Phone shared-memory review
 
 The protected phone detail view has an explicit shared-memory entry. Users can

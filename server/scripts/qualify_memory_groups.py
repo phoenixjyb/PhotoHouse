@@ -134,9 +134,9 @@ def _backup(source, target):
     return hashlib.sha256(target.read_bytes()).hexdigest()
 
 
-def _seed(path):
+def _seed(path, *, revision=FROM):
     _create_file(path)
-    _migrate(path, FROM)
+    _migrate(path, revision)
     with closing(_db(path)) as db:
         for actor, phone, token, role in ((OWNER, "+12025550177", TOKEN, "owner"),
                                          (VIEWER, "+12025550178", VIEWER_TOKEN, "viewer")):

@@ -128,3 +128,14 @@ This runner does not execute
 upload workers, qualify the installed vector producer or coverage, make a live
 backup, apply a live migration, or establish power-loss recovery. Use the
 separate companion worker canary and approved live cutover plan for those steps.
+
+## Full-chain maintenance preparation
+
+The live source and schema are separate facts: an October 11 read-only query
+found the primary at a0, with no optional b1/c2/d1/e7 tables. The
+[guarded application tool](MEMORY_GROUP_SCHEMA_APPLICATION.md) requires the exact
+reviewed starting revision and matching private offline backup. From a0 it adds
+nine empty tables through e7 with no historical backfill; from d1 it adds two.
+Its generated full-chain interruption and actual guarded apply are included in
+the new companion-worker canary. Local tests and the earlier native d1 result do
+not establish native acceptance of this guard, live maintenance or activation.

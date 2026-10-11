@@ -27,6 +27,18 @@ Originals, transcripts, polished text, tags and chapter links remain distinct. L
 | Workers | Bounded derived media and model processing; explicit queue state and resource limits |
 | Operator tools | Backups, migration, qualification, release and recovery; separate from product flows |
 
+## Schema and release boundaries
+
+An installed source head does not establish the live Alembic revision. Optional
+features check their actual schema and remain off until separately activated.
+The [memory schema guard](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md)
+requires an explicit reviewed a0/b1/c2/d1 starting revision, a separate matching
+private offline backup and independently stopped writers. It adds only the
+pending tables/indexes/triggers through e7, preserving all old rows and schema
+objects under one exclusive transaction. API and companion workers must be
+qualified and switched together before writers resume. Generated qualification
+is separate from a live stopped-writer backup and from phone/device acceptance.
+
 ## Visual discovery provenance
 
 Image similarity has an optional immutable vector-record contract and a

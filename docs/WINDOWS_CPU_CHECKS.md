@@ -185,3 +185,25 @@ The result reports `models_loaded=false`, `services_changed=false` and
 cases. Additive schema/restore compatibility, independent catalog backups,
 installed producer/model qualification, interrupted task reconciliation and any
 real cleanup still require their own evidence and authority.
+
+## Guarded full-chain and companion worker candidate
+
+The API package now includes `scripts/qualify_memory_group_workers.py` and the
+CPU/video worker closure. Its only inputs are a new private output directory and
+explicit existing ffmpeg/ffprobe binaries:
+
+```sh
+python -I -B scripts/qualify_memory_group_workers.py \
+  --out <new-private-directory> --ffmpeg <direct-ffmpeg> --ffprobe <direct-ffprobe>
+```
+
+The mandatory Windows supervisor caps the entire process tree at 900 seconds,
+2 GiB and eight processes, with an 8 GiB free-RAM admission floor. It generates
+all media and databases. It checks the guarded a0→e7 chain, interrupted full-chain
+rollback and immutable backup, then d1→e7 approved CPU/video preparation,
+decoded JPEGs, exact task counts/asset bindings, pending inference queues, source
+and approval preservation, SQLite integrity and foreign keys. No model runs.
+Portable worker tests mock native worker subprocesses, so a passing local suite
+is not a native worker result. The earlier native d1 qualification above does
+not qualify this new full-chain guard or companion execution. See the
+[guard contract](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).
