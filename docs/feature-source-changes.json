@@ -11458,6 +11458,37 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Frozen client qualification and unsigned release evidence",
+      "source_commit": "a647fb4044718a663ba8f600ac26c1f7cdc5af30",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "d301e23b1c882a469fcff52ade7e088a95502eee89fd7d88cd5615501fcb8eba",
+          "sha256": "c090ecd750cb0b0db6b3e9883be19fa0c07154d0c91f790d4356fd36796e6c95"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "420b3d0286bf3be0e9f9cede14d0a22b03da5026bbce106859fc55f1f0724e9a",
+          "sha256": "c09b218bd7114583fc8109b39c36fc456c2b41c321b150bc96a180ee4000727e"
+        },
+        {
+          "path": "docs/MEMOIR_INTRODUCTION_NARRATION.md",
+          "before_sha256": "8cd98a08ff634d394c5ca866898a9543826ca23db369ecc8361219942a7fb36a",
+          "sha256": "48259f8f5c31545ad7d6958b68b6af0b769895553f6ab254cf9faf0b89685558"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "77e2e950abd3b097f4f815b0311afdbae30e3e3d77b26f56c2f9ba882a097f13",
+          "sha256": "3b9ee86e9963791df46a8dcce692047649bb2e12a35285eed5e8c6122c138324"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
