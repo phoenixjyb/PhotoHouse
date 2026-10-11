@@ -11541,6 +11541,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Foreground and phase bound manual narration actions",
+      "source_commit": "a63a35a33d767270a3009a20d2feaa1f0f228e35",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ChapterReadAloudActionLifetimeUiTest.kt",
+          "before_sha256": null,
+          "sha256": "883782293977a07b74e913a0d0afdbee340d3fe8acee16b89b6f9367d147ca5c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ChapterReadAloud.kt",
+          "before_sha256": "9ea52fc3acb9c9666750a5826dfe3a642f088d178025dd9601d3e79405c99076",
+          "sha256": "cccd2da58c9b7f40a97fc8d764bfd7f61c9bda18dd95b84899d5b27a161577c3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
