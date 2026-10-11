@@ -11215,6 +11215,42 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed Web memoir introduction voice, shared microphone reservations and current-form ordering",
+      "source_commit": "bd8f6b6f6824e6de9932f2407f0577d6e2f8e820",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f55b2a067ec4d2a722f92282685269d7a7544508c6aba57d6737a399ae250b1a",
+          "sha256": "82adcb30d8805cb353ea13768b4f1c826f7cbd864a7ffb1b702f175adb40e10a"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "ce23de07523ea6bb60c17cc4ebd97d9cbeda735dc0f9f51de52e641a0de09182",
+          "sha256": "2192da851e80264986af88b554c113f46c5eddc4fed5c65179852b505fa500de"
+        },
+        {
+          "path": "server/tests/security/test_annotation_web_wav.cjs",
+          "before_sha256": "ce2d07c3d7c0d4f79ff67ff53da3c1d9c0ce8584576e536be0eed7bc23e28c8b",
+          "sha256": "f6ae066c4e48603db453191edf0005c550496fbd63e8a33db08047d9d2e0e7b8"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "53c1da514cf866effde10b83736678d12c78f1fc17c73cc43fe2b3c8bfcef53c",
+          "sha256": "facbff7e47d590b14c20dae759822ff5d61a96d6e442cd53b8a199945b1daebd"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "a3d9f3822f51b8fe481a4ddf6d0212d4a5d7e14b1f66b6c5ba4375c8d9563065",
+          "sha256": "fedcccd043755e386ca77268d2dcef47fc75796d4f82e870a40b4a258490977e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
