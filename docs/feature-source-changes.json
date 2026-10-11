@@ -11323,6 +11323,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Memoir inline validation preserves complete unsent drafts",
+      "source_commit": "65bf10c59caa651c490b9baa44e8dc1b1fc81b78",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "e3fc697a34c59b7bfd76a3e24382ae0af811312e1a9cb2fc6f78edbeb5e252f8",
+          "sha256": "c84429d1b9dd235a3a984a78317a8e89ff8d6aaef82f170f2991065f2497a7a7"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "81a4a31eff151ca581fb499c739288e98d5d3455fb0459d74ddcbd12e0cd6232",
+          "sha256": "ba463fade99e6ba48e0bb8711cabe123cd611421e658e8d35b00f83bced06905"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
