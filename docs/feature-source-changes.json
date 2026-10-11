@@ -10881,6 +10881,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone memoir heading scroll after explicit chapter or story navigation",
+      "source_commit": "1094890314a340749bfaf06fa2a5afb5ed8f439d",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderContentsUiTest.kt",
+          "before_sha256": "25a844ee1bd263a2188c6be3dc6bfb86087e1ace9ccc84b4c9c8d1f8ed4fc808",
+          "sha256": "feccddcc2bce297882816058efbb6cd12b5d40c6132bb544b9b279d1115982ef"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "5088c306767b9754b80f8a4d9866e54a5822092d5436b4e317319693359e4726",
+          "sha256": "29b76389906948129ee3a1d68749fede5b2dd59da2d8ca3b575955abc817f964"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
