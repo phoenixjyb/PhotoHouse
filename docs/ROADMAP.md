@@ -1,5 +1,26 @@
 # Product roadmap
 
+## October 12 conversation and reading follow-up
+
+The phone [story/memoir history](PHONE_MEMORY_CHAT_NAVIGATION.md) now has a direct
+latest-message action and guards detached page controls (`7d7b1ef`). Four
+bilingual large-text simulator journeys passed, preserving unsent words and
+explicit voice/submission boundaries. Explicit original memoir chapter/story
+selection now brings its heading into view (`1094890`); the two contents and
+three affected narration journeys passed. [Assistant result compatibility](ASSISTANT_RESULT_COMPATIBILITY.md)
+at `c566ded` repairs seven-field server result decoding and labels optional
+filename/received dates, with parser, protected transport and bilingual emulator
+checks. Signed phone and served delivery remain separate.
+
+The next local conversation slice is recovering a full 128-turn story/memoir
+thread without deleting its history or losing rejected words. The backend now
+has an allowlisted `memory_conversation_full` error discriminator (`e042544`),
+with idempotent boundary, no-mutation and authenticated HTTP tests. Other 429s
+remain distinct. Web and phone continuation controls are under development;
+they must create a new thread only after an explicit action and leave its words
+editable until the user sends. This source milestone does not enable a provider
+or alter the household runtime.
+
 ## October 11 adjustable shared-memory groups
 
 Capture-time and qualified image-similarity proposals now have a default-off

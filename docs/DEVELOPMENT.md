@@ -653,7 +653,11 @@ identify installed toolchains or bind existing Gradle XML reports to this run.
 It records no test counts or qualification claim. A matching snapshot and zero
 exit code do not establish package, Windows, device or family acceptance. Keep
 receipts outside source exports. Source `ff7c0f1` passed the 29-test generated
-helper/CLI cohort and the complete 109-test tooling suite. Native Windows
+helper/CLI cohort and the complete 109-test tooling suite. Follow-up source
+`127ca80` includes Android's shared `clients/android/contracts` resources in the
+Android source digest; its focused helper/CLI cohort passed 31 tests. A real
+Android profile subsequently produced matching start/end source hashes and a
+zero exit code. These observations retain the limits above. Native Windows
 receipt publication remains unqualified.
 
 - API and security tests: Python 3.12, a small dependency profile, temporary SQLite and generated media.
@@ -1200,3 +1204,45 @@ whole-invocation identity.
 All media, notes and speech adapters in these journeys are generated. These
 results do not qualify original-media quality, native speech, a signed release,
 served Windows files, a physical phone or a TV.
+
+
+## October 12 chat navigation and assistant result compatibility
+
+Phone source `c566ded` accepts the server's seven-field assistant result/open
+assets and the validated date-hint extension. Two generated 150% Compose date
+journeys passed; they check capture metadata precedence and localized
+filename/received/unknown labels. The focused AssistantWire/AssistantTransport
+JVM checks and phone debug/AndroidTest assembly/lint passed. The earlier complete
+Android profile reported 951 tests, no failures, and matching optional receipt
+source hashes; unchanged tasks were up to date. The added protected transport
+case is later evidence, not part of that historical count.
+
+At `7d7b1ef`, four generated story/memoir × English/Chinese latest-page journeys
+passed. They verify exactly one direct page-one read, unchanged composer, no
+submission/creation/transcription and no request from hidden or detached page
+controls. Final bilingual 150% reader captures were inspected. A preliminary
+screenshot-root selection failure was corrected. The hidden-memoir action then
+reproduced an extra request before composition-lifetime guarding; after the fix,
+both latest and existing newer/older controls are guarded. An initial combined
+11-case run passed nine cases but failed both story cases because the delegated
+fixture omitted the theme-capable story-list overload. The corrected four-case
+chat run passed; this is not represented as an initial 11-case pass.
+
+Memoir source `1094890` brings the heading into view after an explicit chapter or
+story change. The two enlarged-text contents journeys assert the visible heading;
+they and three affected narration cases passed in the combined run above.
+Preview completion and frame selection do not trigger this scroll.
+
+Backend source `e042544` distinguishes only the permanent 128-turn refusal with
+allowlisted JSON `code: memory_conversation_full`. The 128th submission and exact
+mutation retry at the cap remain accepted; the next new mutation adds neither a
+turn nor a job. Authenticated HTTP checks keep global pending-work and 32-thread
+creation refusals untagged. The focused jobs/editorial HTTP cohort passed 28
+tests and 28 subtests. Root's combined rerun with the existing assistant HTTP
+journey passed 39 tests and 33 subtests. The existing Starlette/httpx deprecation
+warning remains. Client continuation controls and complete final source profiles
+are following checks, not established by this backend result.
+
+All data is generated and all speech interactions retain explicit start/send/play
+boundaries. No signed APK, household service switch, migration, model execution
+or family-device acceptance is established by these local results.

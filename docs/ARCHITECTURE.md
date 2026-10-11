@@ -177,6 +177,15 @@ current reviewed transcript and its successful receipt into the editable command
 Discard clears that link. Recording, recognition and review block Send until
 the user resolves the pending input; overflow preserves both texts.
 
+Assistant result decoding accepts the server's capture-only seven-field asset
+form and the optional date-hint extension. Filename and received-date labels
+remain distinct from capture metadata; library-scoped thumbnail and open-effect
+validation stay strict. See [result compatibility](ASSISTANT_RESULT_COMPATIBILITY.md).
+
+Phone story/memoir [history navigation](PHONE_MEMORY_CHAT_NAVIGATION.md) binds the
+rendered reader/thread/page and the visible control's lifetime. History reads
+preserve the composer and never start another voice or submitted turn.
+
 [Chapter dictation](STORY_CHAPTER_DICTATION.md) uses the same protected ASR
 adapter with a different destination. Explicit Add appends reviewed words to the
 current chapter draft; it neither submits an assistant command nor saves the
