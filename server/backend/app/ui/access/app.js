@@ -2568,6 +2568,7 @@
     api:async(path,options={})=>{try{return await request(libraryPath(path),options);}
       catch(error){if(error.status===401||error.status===403)await failure(error,options.epoch);throw error;}}});
   storyWorkspace=window.PhotoHouseStoryWorkspace({scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,locked:state.locked}),
+    sourceAccessCheck:async owner=>{const epoch=state.generation;try{const profile=await request('/auth/session',{epoch});if(stale(epoch)||state.profile?.account_id!==owner.account||state.library!==owner.library)return null;if(typeof profile?.account_id!=='string'||!Array.isArray(profile.memberships))return null;return profile.account_id===owner.account&&profile.memberships.some(member=>member.library_id===owner.library&&member.available===true);}catch(error){if(error.status===401)throw error;return null;}},
     community:memoryCommunity,
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
     relatedRequest:body=>request(libraryPath('/story-workspace/related-media'),{method:'POST',body,epoch:state.generation}),

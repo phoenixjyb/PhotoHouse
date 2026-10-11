@@ -316,6 +316,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-chapter-strip{display:flex;gap:.5rem;margin-top:1rem;overflow:auto}
 .story-chapter-strip img{width:70px;height:70px;object-fit:cover;border-radius:8px}
 .story-chapter-card textarea{width:100%;font:inherit;line-height:1.8;padding:.9rem;border:1px solid var(--line);border-radius:8px;resize:vertical}
+.story-source-selection{min-width:0;margin:1rem 0;padding:.85rem 1rem;border:1px solid var(--line);border-radius:12px;background:#fffdf9}
+.story-source-selection>.fine{margin:.15rem 0 .65rem;line-height:1.55;overflow-wrap:anywhere}
+.story-source-checklist{min-width:0}
+.story-source-checklist>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--ink);font-weight:650;overflow-wrap:anywhere}
+.story-source-choice-list{display:grid;gap:.45rem;margin-top:.5rem;min-width:0}
+.story-source-choice{display:grid;grid-template-columns:1.25rem minmax(0,1fr);align-items:start;gap:.65rem;min-width:0;min-height:44px;padding:.6rem .7rem;border:1px solid var(--line);border-radius:9px;background:#fff;overflow-wrap:anywhere;cursor:pointer}
+.story-source-choice:has(input:checked){border-color:var(--accent);background:#f5f4eb}
+.story-source-choice input{box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;margin:1px 0 0;padding:0;accent-color:var(--accent)}
+.story-source-choice input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.story-source-choice-copy{display:block;min-width:0;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.story-source-choice-copy p{margin:.15rem 0 0;line-height:1.55;overflow-wrap:anywhere;white-space:pre-wrap}
+.story-source-choice-copy .story-source-attribution{margin:.15rem 0 0;font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.story-source-limit-status{min-height:1.3em;margin:.2rem 0;color:#82442f;font-size:.82rem;line-height:1.45;overflow-wrap:anywhere}
 .story-reference-list{font-size:.85rem;margin-top:1rem;color:var(--muted)}
 .story-reference-list article{border-left:2px solid var(--line);padding-left:.75rem;margin:.75rem 0}
 .story-reference-list p{white-space:pre-wrap;overflow-wrap:anywhere}.story-reference-list small{color:var(--accent)}
