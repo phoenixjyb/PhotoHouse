@@ -10721,6 +10721,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Optional local source-check invocation receipts",
+      "source_commit": "ff7c0f174afa1cf7cc3d3bc73497e1c61297b479",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "5cdedfed489de70f38a53cfc30e1aa140d3dd086143a15a59f08b1fe155efbcf",
+          "sha256": "279ded4065614b6d93dee5eef6de0c4ad6f53558d527171ae49ac1f2373085cd"
+        },
+        {
+          "path": "tools/check_receipt.py",
+          "before_sha256": null,
+          "sha256": "871fabc6ebb20877812340dbbe87440a2f091bd9538bca51d91f546749072710"
+        },
+        {
+          "path": "tools/tests/test_check_receipt.py",
+          "before_sha256": null,
+          "sha256": "1aa584bef5528fc4ca5a6bece21fab79d427ceb2b81a016ae672028fa932676b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
