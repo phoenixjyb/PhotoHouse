@@ -9884,6 +9884,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed Web title chapter layouts",
+      "source_commit": "db6eead3fe2cce65392f5e61e5574532c430bae4",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "6042e4d6bc0a50ccb58a3e13c7b4e2c83f55982aea0e647c512f2a9c94c33c55",
+          "sha256": "2dc646737c21036abd35af9751e3b82768f4cf88db9735183d320ddb1688a919"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "94926e65fcf479688a111b79e64d580e62f1384a62febdb18cb771e651c61b66",
+          "sha256": "488e1dddce9aa242d34b1e6b1bb0302c1ebf29f1c58958c38c35a4fbe07dab83"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
