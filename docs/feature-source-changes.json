@@ -10306,6 +10306,72 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed phone album-to-story selection",
+      "source_commit": "b3ddd57ac06a5109f4aeccdad1543d8393876e46",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "45ccf3dea912c6819d8b4eecd46eeb402278f763447d6998e2ba097d9629de77",
+          "sha256": "8b536acf9ce0076657f4ebd48018407819c01c1984644f003a3071b152da23c7"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryAlbumPicker.kt",
+          "before_sha256": null,
+          "sha256": "421e610224a010328e7d4aa363f107b2eafb74fa60ba921e9cb21db88d3c1dd1"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "024bf12da5ffb6e9f1e5016d74bc69be42a6eadbbcac73382498edbd3704f46a",
+          "sha256": "26df948a853ac05894a7c8ec4b87c3d4170b6e952ae140586b1d1f686f12a6a3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "07c8802cb4c63e8814c703138332c1fe91b0bb7d1a2017649da63b05af840ce0",
+          "sha256": "c414e758294ac6c19340728d8e8cfcdfc2919c4609fcc2f1962a20776c9208e2"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "ce9fc94fb4608c73265ccb7112fd50af1383d78999f21c8928ff48d435118c4e",
+          "sha256": "bca4bf41a902a59ec3319ee0335c3029deb144d55bb9587e36d77c3bf9649199"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "before_sha256": "9aef0ec40f7f19b2d4f2783683b3723e533d7d0ff7a5b68f84af4adbe47fb933",
+          "sha256": "7ab2962dbdb3b848537b4768188df331d3c0c867205b635d87af508413c534f7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedLibraryAlbums.kt",
+          "before_sha256": null,
+          "sha256": "42f88972888404ab330691e8beb5c89ecc927c88aab13598513889a57343ca5d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "788615c38b7d8a9a49268b58edf9fe1642cb10b50335a5f7de14c67914cfd5de",
+          "sha256": "b94cec0d73ac74ce8c588b6ab68ab435a1d23633243398a7d02349cae8ca4fbf"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryAlbumSelectionTest.kt",
+          "before_sha256": null,
+          "sha256": "ca297751692316a62c3f8963b626189116bca6c5adda586ddcd6784a3f293341"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsLibraryAlbumsTest.kt",
+          "before_sha256": null,
+          "sha256": "01bb0c4c4a94d4501e1a49b021936b800b48f7af64b7e6d0b185a0e09b4667d7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ProtectedLibraryAlbumsTest.kt",
+          "before_sha256": null,
+          "sha256": "09ec5b32dea64dce7e103b9489180011d5ef17c60ba7cd901e024a4b2323515a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
