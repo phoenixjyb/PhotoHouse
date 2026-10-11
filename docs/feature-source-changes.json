@@ -11365,6 +11365,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Original-note auto-stop ownership and recording audio isolation",
+      "source_commit": "cd87ab25c19ea6d97a69d7363b25f0dc87ea27bb",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "82adcb30d8805cb353ea13768b4f1c826f7cbd864a7ffb1b702f175adb40e10a",
+          "sha256": "2a2ebca22e9fd26f5cf43cfd5e053f03df6168c060a79e54877468da44e4a3f4"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "facbff7e47d590b14c20dae759822ff5d61a96d6e442cd53b8a199945b1daebd",
+          "sha256": "6814d94384c74e1c438c95d458d9f07eeb087f6af19773d0fd6e4df8808c87c2"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "0152adf6aa803cf3b956e24194aa89797be78105f5af3f12307ee4db706ca8e8",
+          "sha256": "0e8987a17be4da902070b437f1ae8342af81b92a020e2dbcef3e48b332edfed4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
