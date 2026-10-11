@@ -14,6 +14,7 @@ class StoryWorkspaceRepositoryTest {
     private fun token() = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
     private inner class Fake : StoryWorkspaceApi {
         val sent = mutableListOf<String>()
+        val titleRequests = mutableListOf<String>()
         val updates = mutableListOf<UpdateCall>()
         var error: ApiFailure? = null
         var after: (() -> Unit)? = null
@@ -28,7 +29,12 @@ class StoryWorkspaceRepositoryTest {
             after?.invoke(); error?.let { throw it }
             return """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray().also { buffer = it }
         }
-        override suspend fun storyTitles(token: Bearer, library: String, json: String) = response("titles")
+        override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray {
+            titleRequests += json
+            return response("titles")
+        }
+        override suspend fun storyTitles(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
+            storyTitles(token, library, json)
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
             sent += json; return response("created")
         }
@@ -159,5 +165,33 @@ class StoryWorkspaceRepositoryTest {
         catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
         try { freeze(story = initial.copy(canEdit = false)); fail() } catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
         try { freeze(reviewed = false); fail() } catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
+    }
+
+    @Test fun titleProfileUsesSavedLayoutAndRefusesEvidenceFromAnotherChapter() = runBlocking {
+        val fake = Fake(); val binding = MemoryCommunityBinding(token(), "family-a", 1)
+        val repo = StoryWorkspaceRepository(fake, { binding })
+        val original = repo.preview(listOf("102", "101"), "trip", "zh", "") { true }
+        assertEquals(listOf("102", "101"), original.items.map { it.asset.id })
+        assertEquals(listOf("caption-102"), original.items.first().evidence.map { it.id })
+        assertEquals(setOf("family-11111111-1111-4111-8111-111111111111", "caption-101"),
+            original.items.last().evidence.map { it.id }.toSet())
+        val first = original.chapters.single().copy(assetIds = listOf("102"), evidenceIds = listOf("caption-102"))
+        val second = original.chapters.single().copy(id = "chapter-2", assetIds = listOf("101"),
+            evidenceIds = listOf("family-11111111-1111-4111-8111-111111111111", "caption-101"))
+        val manual = original.copy(chapters = listOf(first, second))
+
+        repo.suggestTitles(manual, sourceReview = true) { true }
+        val body = Json.parseToJsonElement(fake.titleRequests.single()).jsonObject
+        val sentChapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("102"), listOf("101")), sentChapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+
+        val crossChapter = manual.copy(chapters = listOf(
+            first.copy(evidenceIds = listOf("caption-101")), second,
+        ))
+        try { repo.suggestTitles(crossChapter, sourceReview = true) { true }; fail("cross-chapter evidence was sent") }
+        catch (failure: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, failure.kind) }
+        assertEquals(1, fake.titleRequests.size)
     }
 }

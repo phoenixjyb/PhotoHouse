@@ -31,6 +31,7 @@ data class ProtectedStoryWorkspaceChapterInput(
     val id: String,
     val narration: String,
     val evidenceIds: List<String>? = null,
+    val assetIds: List<String>? = null,
 )
 data class ProtectedStoryWorkspaceTitle(val text: String, val sourceIds: List<String>)
 
@@ -202,9 +203,18 @@ internal object ProtectedStoryWorkspaceWire {
         validateSelection(assetIds)
         input(theme in SAVED_MEMORY_STORY_THEMES && language in setOf("zh", "en"))
         input(validSelectionRevision(selectionRevision))
-        input(chapters.size == (assetIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
         input(chapters.size in 1..MAX_CHAPTERS && chapters.map { it.id } == (1..chapters.size).map { "chapter-$it" })
         input(sourcePolicy == null || sourcePolicy == CHAPTER_SOURCES_V1)
+        val explicitLayoutCount = chapters.count { it.assetIds != null }
+        input(explicitLayoutCount == 0 || sourcePolicy != null && explicitLayoutCount == chapters.size)
+        if (explicitLayoutCount == 0) {
+            input(chapters.size == (assetIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
+        } else {
+            val layout = chapters.map { requireNotNull(it.assetIds) }
+            input(layout.all { it.size in 1..MAX_ASSETS_PER_CHAPTER })
+            layout.flatten().forEach { id -> input(id.matches(Regex("[1-9][0-9]{0,18}")) && id.toLongOrNull()?.toString() == id) }
+            input(layout.flatten() == assetIds)
+        }
         chapters.forEach { chapter ->
             inputText(chapter.narration, Int.MAX_VALUE, MAX_NARRATION_BYTES, allowNewline = true, blank = true)
             if (sourcePolicy != null) {
@@ -215,6 +225,7 @@ internal object ProtectedStoryWorkspaceWire {
         }
         val chapterJson = JsonArray(chapters.map { chapter -> buildJsonObject {
             put("id", chapter.id); put("narration", chapter.narration)
+            chapter.assetIds?.let { put("asset_ids", JsonArray(it.map(::JsonPrimitive))) }
             if (sourcePolicy != null) put("evidence_ids", JsonArray(requireNotNull(chapter.evidenceIds).map(::JsonPrimitive)))
         } }).toString()
         buildJsonObject {

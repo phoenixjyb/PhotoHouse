@@ -120,9 +120,26 @@ class StoryWorkspaceRepository(
         draft: ProtectedStoryWorkspaceDraft, sourceReview: Boolean = false, editorCurrent: () -> Boolean,
     ): List<ProtectedStoryWorkspaceTitle> = scoped(editorCurrent = editorCurrent) { bound ->
         if (draft.libraryId != bound.libraryId) throw ApiFailure(FailureKind.INVALID_INPUT)
-        val body = ProtectedStoryWorkspaceWire.encodeTitleRequest(draft.items.map { it.asset.id },
-            draft.theme, draft.language, draft.selectionRevision,
-            draft.chapters.map { ProtectedStoryWorkspaceChapterInput(it.id, it.narration, if (sourceReview) it.evidenceIds else null) },
+        val assetIds = draft.items.map { it.asset.id }
+        val evidenceByAsset = draft.items.associate { item -> item.asset.id to item.evidence.map { it.id }.toSet() }
+        val chapterInputs = draft.chapters.map { chapter ->
+            ProtectedStoryWorkspaceChapterInput(chapter.id, chapter.narration,
+                if (sourceReview) chapter.evidenceIds else null,
+                if (sourceReview) chapter.assetIds else null)
+        }
+        if (sourceReview) {
+            val fallbackLayout = assetIds.chunked(4)
+            if (chapterInputs.any { it.assetIds == null } && chapterInputs.size != fallbackLayout.size)
+                throw ApiFailure(FailureKind.INVALID_INPUT)
+            chapterInputs.forEachIndexed { index, chapter ->
+                val chapterAssets = chapter.assetIds ?: fallbackLayout[index]
+                val eligibleEvidence = chapterAssets.flatMap { evidenceByAsset[it].orEmpty() }.toSet()
+                if (chapter.evidenceIds.orEmpty().any { it !in eligibleEvidence })
+                    throw ApiFailure(FailureKind.INVALID_INPUT)
+            }
+        }
+        val body = ProtectedStoryWorkspaceWire.encodeTitleRequest(assetIds,
+            draft.theme, draft.language, draft.selectionRevision, chapterInputs,
             if (sourceReview) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null)
         owned({ api.storyTitles(bound.token, bound.libraryId, body, sourceReview) }) {
             ProtectedStoryWorkspaceWire.decodeTitles(it, draft, if (sourceReview) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null)

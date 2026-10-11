@@ -213,4 +213,36 @@ class ProtectedStoryWorkspaceTest {
         badResponse { ProtectedStoryWorkspaceWire.decodeSourceCapabilities("""{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":11,"needs_review":true}""".toByteArray()) }
         badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1"), "everyday", "zh", "bad", emptyList()) }
     }
+
+    @Test fun reviewedTitleRequestCanCarryStrictExplicitManualChapterLayout() {
+        val request = ProtectedStoryWorkspaceWire.encodeTitleRequest(
+            listOf("1", "2", "3", "4", "5"), "everyday", "zh", selectionRevision,
+            listOf(
+                ProtectedStoryWorkspaceChapterInput("chapter-1", "First", listOf("caption-101"), listOf("1", "2", "3")),
+                ProtectedStoryWorkspaceChapterInput("chapter-2", "Second", emptyList(), listOf("4", "5")),
+            ), "chapter_sources_v1",
+        )
+        val body = Json.parseToJsonElement(request).jsonObject
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")), chapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+        assertEquals("1,2,3,4,5", body.getValue("asset_ids").jsonPrimitive.content)
+
+        val first = ProtectedStoryWorkspaceChapterInput("chapter-1", "First", emptyList(), listOf("1", "2", "3"))
+        val second = ProtectedStoryWorkspaceChapterInput("chapter-2", "Second", emptyList(), listOf("4", "5"))
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision, listOf(first, second.copy(assetIds = null)), "chapter_sources_v1") }
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision, listOf(first, second), null) }
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision, listOf(first, second.copy(assetIds = listOf("5", "4"))), "chapter_sources_v1") }
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision, listOf(first, second.copy(assetIds = listOf("4", "4", "5"))), "chapter_sources_v1") }
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision, listOf(first, second.copy(assetIds = listOf("4", "5", "6"))), "chapter_sources_v1") }
+        badInput { ProtectedStoryWorkspaceWire.encodeTitleRequest(listOf("1", "2", "3", "4", "5"),
+            "everyday", "zh", selectionRevision,
+            listOf(first.copy(evidenceIds = null), second), "chapter_sources_v1") }
+    }
 }
