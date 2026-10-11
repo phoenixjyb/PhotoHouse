@@ -35,10 +35,12 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND',
       '--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+fakeAudio]});
   context=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block',permissions:['microphone']});
-  await context.addInitScript(()=>{const utterances=[];class MockUtterance{constructor(text){this.text=text;}}const voices=[{lang:'zh-CN',localService:true},{lang:'en-US',localService:true}];const synth={speaking:false,pending:false,paused:false,cancelCount:0,resumeCount:0,getVoices:()=>voices,speak(value){utterances.push(value);this.speaking=true;},pause(){this.paused=true;},resume(){this.resumeCount++;this.paused=false;},cancel(){this.cancelCount++;this.speaking=false;this.pending=false;}};Object.defineProperty(window,'speechSynthesis',{configurable:true,value:synth});window.SpeechSynthesisUtterance=MockUtterance;window.__mockNarration={utterances,synth};let Wrapped;Object.defineProperty(window,'PhotoHouseMemoryCommunity',{configurable:true,get:()=>Wrapped,set:value=>{Wrapped=config=>{if(typeof config.mountReplySpeech==='function'&&!window.__mountMemorySpeechForTest)window.__mountMemorySpeechForTest=config.mountReplySpeech;let language=null;const originalScope=config.scope,originalRequest=config.request;const instance=value({...config,scope:()=>({...((typeof originalScope==='function'?originalScope():originalScope)||{}),...(language?{language}:{})}),request:(path,options)=>{const gate=window.__memoryPreviewStaleGate;if(gate&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewStaleHit=true;return gate.promise;}if(window.__memoryPreviewRejectOnce&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewRejectOnce=false;window.__memoryPreviewRejectCount=(window.__memoryPreviewRejectCount||0)+1;const error=new Error('Synthetic old-server query rejection');error.status=400;return Promise.reject(error);}return originalRequest(path,options);}});window.__memoryCommunityForTest=instance;window.__translateCommunityForTest=next=>{language=next;return instance.translate();};return instance;};}});});
+  await context.addInitScript(()=>{const utterances=[];class MockUtterance{constructor(text){this.text=text;}}const voices=[{lang:'zh-CN',localService:true},{lang:'en-US',localService:true}];const synth={speaking:false,pending:false,paused:false,cancelCount:0,resumeCount:0,getVoices:()=>voices,speak(value){utterances.push(value);this.speaking=true;},pause(){this.paused=true;},resume(){this.resumeCount++;this.paused=false;},cancel(){this.cancelCount++;this.speaking=false;this.pending=false;}};Object.defineProperty(window,'speechSynthesis',{configurable:true,value:synth});window.SpeechSynthesisUtterance=MockUtterance;window.__mockNarration={utterances,synth};let Wrapped;Object.defineProperty(window,'PhotoHouseMemoryCommunity',{configurable:true,get:()=>Wrapped,set:value=>{Wrapped=config=>{if(typeof config.mountReplySpeech==='function'&&!window.__mountMemorySpeechForTest)window.__mountMemorySpeechForTest=config.mountReplySpeech;let language=null;const originalScope=config.scope,originalRequest=config.request;const instance=value({...config,scope:()=>({...((typeof originalScope==='function'?originalScope():originalScope)||{}),...(language?{language}:{})}),request:(path,options)=>{const gate=window.__memoryPreviewStaleGate;if(gate&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewStaleHit=true;return gate.promise;}if(window.__memoryPreviewRejectOnce&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewRejectOnce=false;window.__memoryPreviewRejectCount=(window.__memoryPreviewRejectCount||0)+1;const error=new Error('Synthetic old-server query rejection');error.status=400;return Promise.reject(error);}return originalRequest(path,options);}});window.__memoryCommunityForTest=instance;if(!window.__memoryCommunityRawRequestForTest)window.__memoryCommunityRawRequestForTest=originalRequest;window.__translateCommunityForTest=next=>{language=next;return instance.translate();};return instance;};}});});
+  await context.addInitScript(()=>{const nativeFetch=window.fetch.bind(window);window.fetch=(input,init)=>{let url;try{url=new URL(input instanceof Request?input.url:input,location.href);}catch(_){return nativeFetch(input,init);}if(url.pathname==='/memory-community/v1/__test429/stale'){const body=new ReadableStream({start(controller){window.__stale429Controller=controller;window.__stale429ReadStarted=true;}});return Promise.resolve(new Response(body,{status:429,headers:{'Content-Type':'application/json'}}));}return nativeFetch(input,init);};});
   await context.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
+    if(url.pathname.startsWith('/memory-community/v1/__test429/')){const mode=url.pathname.split('/').at(-1),body=mode==='exact'||mode==='non-json'?JSON.stringify({detail:'synthetic private error detail',code:'memory_conversation_full'}):mode==='extra-key'?JSON.stringify({detail:'synthetic private error detail',code:'memory_conversation_full',request_id:'private'}):mode==='blank-detail'?JSON.stringify({detail:'  ',code:'memory_conversation_full'}):mode==='unrelated'?JSON.stringify({detail:'synthetic rate limit',code:'provider_rate_limited'}):mode==='malformed'?'{' : JSON.stringify({detail:'synthetic oversized error',code:'memory_conversation_full',padding:'x'.repeat(5000)});await route.fulfill({status:429,contentType:mode==='non-json'?'text/plain':'application/json',body});return;}
     const headers=await request.allHeaders();delete headers['content-length'];
     if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
     const entry={method:request.method(),path:url.pathname+url.search};requests.push(entry);
@@ -923,6 +925,123 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.evaluate(type=>{const item=window.__clarificationHarnesses[type];item.ui.clear();item.host.remove();delete window.__clarificationHarnesses[type];},targetType);
   }
   pass('Story and memoir clarification cues are metadata-gated, localized, draft-only, explicitly sent, and readable at 390px/150%');
+
+  // Earlier journeys leave the story-workspace dialog open. The standalone
+  // synthetic community fixtures below share this document, so dismiss modal
+  // overlays before exercising their rendered controls.
+  await page.evaluate(()=>{for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();});
+  const latestContinuationHarness=async(type,language)=>{
+    const key=`${type}-${language}`;
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(async({type,language,key})=>{
+      const storyId=`aaaaaaaa-aaaa-4aaa-8aaa-${(type==='story'?'aaaaaaaaaaa': 'bbbbbbbbbbb')}${language==='en'?'1':'2'}`;
+      const bookId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+      const conversationId=`cccccccc-cccc-4ccc-8ccc-${language==='en'?'ccccccccccc1':'ccccccccccc2'}`;
+      const target=type==='story'?{type:'story',id:storyId,revision:'1',selection_revision:'a'.repeat(64),title:'Synthetic story',language:'zh',can_edit:false,chapters:[{id:'chapter-1',title:'Memory',asset_ids:['101'],evidence_ids:[]}]}:{type:'memoir',id:bookId,revision:'1',title:'Synthetic memoir',language:'zh',can_edit:false,stories:[{id:storyId,revision:'1',title:'Synthetic story',chapters:[{id:`${storyId}-chapter-1`,title:'Memory',asset_ids:['101'],evidence_ids:[]}]}]};
+      const replacement=type==='story'?{...target,id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa9',revision:'2'}:{...target,id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb9',revision:'2'};
+      const scope={account:`synthetic-latest-${key}`,library:`synthetic-latest-library-${key}`,language,locked:false};
+      const calls=[],threads=[{id:conversationId,created_at:1780000000,expires_at:2000000000}],turnHistory=new Map(),h={type,language,target,replacement,scope,calls,mode:'full',failCreateOnce:false,failHistoryOnce:false,turnPosts:0,createPosts:0,historyReads:0,recordings:0,transcriptions:0};
+      const failure=(status,code)=>{const error=new Error('Synthetic request failure');error.status=status;if(code)error.code=code;return error;};
+      const request=async(path,options={})=>{
+        calls.push({path,method:options.method||'GET',body:options.body});
+        if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:true,conversation_retention_days:30};
+        if(path.includes('/conversations?'))return {version:1,items:threads.map(item=>({...item}))};
+        if(path.includes('/turns?page=')){const id=path.match(/\/conversations\/([^/]+)\/turns/)?.[1];h.historyReads++;if(h.failHistoryOnce){h.failHistoryOnce=false;throw failure(503,null);}return {version:1,id,expires_at:2000000000,page:1,has_more:false,items:turnHistory.get(id)||[]};}
+        if(path.endsWith('/turns')&&options.method==='POST'){
+          h.turnPosts++;
+          if(h.mode==='full')throw failure(429,'memory_conversation_full');
+          if(h.mode==='malformed')throw failure(429,null);
+          if(h.mode==='unrelated')throw failure(429,'provider_rate_limited');
+          return {version:1,id:'dddddddd-dddd-4ddd-8ddd-ddddddddddd1',kind:'chat',state:'ready',result:{kind:'answer',reply:'Synthetic reply',questions:[],source_ids:[]}};
+        }
+        if(path.endsWith('/conversations')&&options.method==='POST'){
+          h.createPosts++;let item=threads.find(thread=>thread.id===options.body.id);if(!item){item={id:options.body.id,created_at:1780000001,expires_at:2000000000};threads.unshift(item);turnHistory.set(item.id,[{id:`${item.id}-turn-1`,sequence:1,input_text:'Recovered history for this conversation',reply_text:'Existing reply from the earlier create',state:'ready'}]);}
+          if(h.failCreateOnce){h.failCreateOnce=false;throw failure(503,null);}
+          return {version:1,...item,target_type:options.body.target_type,target_id:options.body.target_id};
+        }
+        throw new Error(`Unexpected continuation fixture request: ${path}`);
+      };
+      const host=document.createElement('div');host.id=`latest-continuation-${key}`;host.className='memory-community';document.body.append(host);
+      const ui=window.PhotoHouseMemoryCommunity({scope,request,voiceCapabilities:()=>({transcribe:false})});h.host=host;h.ui=ui;h.initialConversation=conversationId;
+      window.__latestContinuationHarnesses??={};window.__latestContinuationHarnesses[key]=h;await ui.attach(host,target);
+    },{type,language,key});
+    const host=page.locator(`#latest-continuation-${key}`);
+    await host.getByRole('tab',{name:language==='zh'?'一起聊回忆':'Talk about memories',exact:true}).click();
+    const composer=host.locator('textarea[name="message"]'),draft=language==='zh'?'把这条消息留在新对话':'Keep this draft in the new conversation';
+    await composer.fill(draft);await host.getByRole('button',{name:language==='zh'?'发送这条消息':'Send this message',exact:true}).click();
+    const continueLabel=language==='zh'?'在新对话中继续':'Continue in a new conversation',fullNotice=language==='zh'?'这段对话已满。原消息仍保留，可以在新对话中继续。':'This conversation is full. Your message is kept; you can continue in a new conversation.';
+    await host.getByRole('button',{name:continueLabel,exact:true}).waitFor();assert.equal(await host.locator('.memory-chat-conversation-full').innerText(),fullNotice,`${key} exact full-thread response has localized copy`);
+    const conversationControlsText=await host.locator('.memory-chat-conversations').innerText();assert.equal(conversationControlsText.includes(language==='zh'?'待重试消息':'retry message'),false,`${key} ready continuation does not show the generic retry-blocked notice`);
+    assert.equal(await composer.inputValue(),draft,`${key} retains the rejected wording in the current editor`);
+    const editedDraft=`${draft} — edited before continuing`;await composer.fill(editedDraft);await host.getByRole('button',{name:continueLabel,exact:true}).waitFor();
+    const repaintDetached=await host.locator('.memory-chat-continue-new').elementHandle();await page.evaluate(async key=>window.__latestContinuationHarnesses[key].ui.translate(),key);await repaintDetached.evaluate(node=>node.click());assert.equal(await page.evaluate(key=>window.__latestContinuationHarnesses[key].createPosts,key),0,`${key} detached same-scope continuation control cannot post after panel repaint`);await host.locator('.memory-chat-continue-new').waitFor();
+    const oldConversation=await host.locator('.memory-chat-conversation-select').inputValue();
+    await host.locator('.memory-chat-conversations').evaluate(root=>{for(const node of root.querySelectorAll('*'))if([...node.childNodes].some(child=>child.nodeType===Node.TEXT_NODE&&child.textContent.trim())){const style=getComputedStyle(node);node.style.fontSize=`${parseFloat(style.fontSize)*1.5}px`;if(Number.isFinite(parseFloat(style.lineHeight)))node.style.lineHeight=`${parseFloat(style.lineHeight)*1.5}px`;}});
+    await host.locator('.memory-chat-conversations').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,`memory-chat-continuation-${key}-390px-text150.png`)});
+
+    await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];h.failCreateOnce=true;h.failHistoryOnce=true;},key);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    const failedText=language==='zh'?'新对话尚未创建，原消息仍保留；可以重试。':'The new conversation was not created. Your message is still here; you can retry.';
+    await host.getByText(failedText,{exact:true}).waitFor();assert.equal(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} failed creation keeps the old thread selected`);assert.equal(await composer.inputValue(),editedDraft,`${key} failed creation keeps the latest composer edit`);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    await page.waitForFunction(key=>{const h=window.__latestContinuationHarnesses[key],button=document.querySelector(`#latest-continuation-${key} .memory-chat-continue-new`);return h.createPosts===2&&h.historyReads===2&&button&&!button.disabled;},key);
+    assert.equal(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} failed history readback keeps the old thread selected`);assert.equal(await composer.inputValue(),editedDraft,`${key} failed history readback keeps the latest composer edit`);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    await page.waitForFunction(key=>{const h=window.__latestContinuationHarnesses[key];return h.createPosts===3&&h.historyReads===3&&document.querySelector(`#latest-continuation-${key} .memory-chat-conversation-select option:nth-child(2)`);},key);
+    assert.notEqual(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} explicit success selects a new conversation`);assert.equal(await host.locator('.memory-chat-conversation-select option').count(),2,`${key} keeps the old conversation in the list`);assert.equal(await composer.inputValue(),editedDraft,`${key} transfers the latest composer edit only after the confirmed create`);assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} does not offer continuation after success`);assert.equal(await host.locator('.memory-chat-history').innerText().then(text=>text.includes('Recovered history for this conversation')&&text.includes('Existing reply from the earlier create')),true,`${key} loads the idempotently reused conversation history before replacing the old thread`);
+    const createIds=await page.evaluate(key=>window.__latestContinuationHarnesses[key].calls.filter(call=>call.method==='POST'&&call.path.endsWith('/conversations')).map(call=>call.body.id),key);assert.equal(createIds.length,3,`${key} retries one ambiguous conversation create and one failed readback`);assert.equal(new Set(createIds).size,1,`${key} every ambiguous create retry reuses one conversation id`);
+    let counts=await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];return {turns:h.turnPosts,creates:h.createPosts,historyReads:h.historyReads,transcriptions:h.transcriptions,recordings:h.recordings};},key);assert.deepEqual(counts,{turns:1,creates:3,historyReads:3,transcriptions:0,recordings:0},`${key} continuation verifies history but never sends, records, or transcribes`);
+
+    await host.getByRole('button',{name:language==='zh'?'新建讨论':'New conversation',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].createPosts===4&&document.querySelector(`#latest-continuation-${key} .memory-chat-conversation-select option:nth-child(3)`),key);
+    assert.equal(await composer.inputValue(),'',`${key} ordinary new conversation starts with an empty composer`);
+    await host.locator('.memory-chat-conversation-select').selectOption(createIds[0]);await page.waitForFunction(key=>document.querySelector(`#latest-continuation-${key} .memory-chat-history`)?.innerText.includes('Recovered history for this conversation'),key);assert.equal(await composer.inputValue(),editedDraft,`${key} ordinary new conversation keeps the prior thread's draft partitioned`);
+
+    await page.evaluate(({key,mode})=>{window.__latestContinuationHarnesses[key].mode=mode;}, {key,mode:'unrelated'});
+    await host.getByRole('button',{name:language==='zh'?'发送这条消息':'Send this message',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].turnPosts===2,key);
+    assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} unrelated 429 does not offer continuation`);
+    await page.evaluate(key=>{window.__latestContinuationHarnesses[key].mode='malformed';},key);
+    await host.getByRole('button',{name:language==='zh'?'重试同一条消息':'Retry the same message',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].turnPosts===3,key);
+    assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} malformed 429 does not offer continuation`);
+    await page.evaluate(key=>{window.__latestContinuationHarnesses[key].mode='full';},key);
+    await host.getByRole('button',{name:language==='zh'?'重试同一条消息':'Retry the same message',exact:true}).click();await host.locator('.memory-chat-continue-new').waitFor();
+    const detached=await host.locator('.memory-chat-continue-new').elementHandle();
+    await page.evaluate(async key=>{const h=window.__latestContinuationHarnesses[key];await h.ui.attach(h.host,h.replacement);},key);
+    await detached.evaluate(node=>node.click());
+    counts=await page.evaluate(key=>({turns:window.__latestContinuationHarnesses[key].turnPosts,creates:window.__latestContinuationHarnesses[key].createPosts}),key);
+    assert.deepEqual(counts,{turns:4,creates:4},`${key} detached continuation action cannot create a thread for the replacement reader`);
+    await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];h.ui.clear();h.host.remove();delete window.__latestContinuationHarnesses[key];},key);
+  };
+  for(const type of ['story','memoir'])for(const language of ['zh','en'])await latestContinuationHarness(type,language);
+  pass('Story and memoir conversation-cap recovery preserves rejected drafts, creates only on explicit choice, refuses unrelated 429s, and fences detached actions in Chinese and English at 150%');
+
+  const raw429=page.evaluate(async()=>{
+    const modes=['exact','extra-key','blank-detail','non-json','unrelated','malformed','oversized'],results=[];
+    for(const mode of modes){try{await window.__memoryCommunityRawRequestForTest(`/memory-community/v1/__test429/${mode}`);results.push({mode,unexpected:true});}catch(error){results.push({mode,status:error.status,code:error.code,hasDetail:Object.hasOwn(error,'detail'),message:error.message});}}
+    return results;
+  });
+  const raw429Results=await raw429;
+  assert.deepEqual(raw429Results.map(({mode,status,code,hasDetail})=>({mode,status,code,hasDetail})),[
+    {mode:'exact',status:429,code:'memory_conversation_full',hasDetail:false},
+    {mode:'extra-key',status:429,code:undefined,hasDetail:false},
+    {mode:'blank-detail',status:429,code:undefined,hasDetail:false},
+    {mode:'non-json',status:429,code:undefined,hasDetail:false},
+    {mode:'unrelated',status:429,code:undefined,hasDetail:false},
+    {mode:'malformed',status:429,code:undefined,hasDetail:false},
+    {mode:'oversized',status:429,code:undefined,hasDetail:false},
+  ],'the app request helper extracts only the exact allowlisted code from bounded JSON error bodies');
+  pass('429 transport parser retains only the allowlisted recovery code and rejects malformed, oversized and unrelated bodies');
+
+  await page.evaluate(()=>{window.__memoryCommunityRaw429StaleOutcome=window.__memoryCommunityRawRequestForTest('/memory-community/v1/__test429/stale').then(()=>({ok:true}),error=>({name:error.name,code:error.code}));});
+  await page.waitForFunction(()=>window.__stale429ReadStarted===true);
+  await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});
+  await page.evaluate(()=>{window.__stale429Controller.enqueue(new TextEncoder().encode('{"code":"memory_conversation_full"}'));window.__stale429Controller.close();});
+  await page.waitForFunction(()=>window.__memoryCommunityRaw429StaleOutcome!==undefined);
+  const stale429Outcome=await page.evaluate(()=>window.__memoryCommunityRaw429StaleOutcome);assert.equal(stale429Outcome.name,'AbortError','stale body reads abort');assert.notEqual(stale429Outcome.code,'memory_conversation_full','a stale epoch after the deferred body read never exposes the allowlisted recovery discriminator');
+  pass('Stale epoch after deferred 429 body read discards the allowlisted code');
+
   assert.deepEqual(external,[]);
   assert.deepEqual(pageErrors,[],`browser uncaught errors; failing requests=${JSON.stringify(requests.filter(item=>item.status>=400))}`);
   const finalState=await rpc({command:'state'});

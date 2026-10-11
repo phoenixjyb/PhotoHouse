@@ -55,7 +55,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       conversationHelp:'对话会在 30 天后清除。每条消息都由你明确发送；助手不会替你修改故事。', conversationContextHelp:'回复会结合当前材料、当前问题和最多 7 轮之前的对话。更早的消息仍可查看，但不会自动带入这次回复；重要背景可以补充在新问题中。', returnToChapter:'回到正在阅读的章节',
       chatRecovering:'正在核对这段对话中尚未完成的回复…',chatRecoveryFailed:'暂时无法确认这条待处理回复。对话记录已保留；请重试检查后再发送或取消。',chatRecoveryRetry:'重试检查待处理回复',chatPendingSendBlocked:'这段对话已有一条待处理回复。请刷新状态或取消该任务后再发送。',
       chatFollowups:'继续聊聊',chatFollowupHelp:'选择一个问题填入空白消息草稿。检查后，再决定是否发送。',chatFollowupReview:'问题已填入消息草稿。请检查内容，再由你选择发送。',chatFollowupDraftBlocked:'请先发送或清空现有消息草稿，再使用这个问题。',chatFollowupDictationBlocked:'请先结束录音，并加入或丢弃待处理的识别结果。',chatFollowupSendBlocked:'请先完成或重试当前发送。',chatFollowupJobBlocked:'请等待或取消当前回复任务。',chatFollowupImeBlocked:'请先完成正在输入的文字。',chatFollowupSourcesNote:'这些来源说明回复引用了哪些材料，并不能证明其中内容属实。',chatClarificationCue:'AI 想再了解一点',chatClarificationHelp:'可以用自己的话补充；如有建议问题，它只会填入草稿。',chatLatest:'查看最新消息',chatWriteNext:'写下一条',sourceViewTranscript:'查看转写原话',sourceHideTranscript:'收起转写原话',sourceTranscriptAI:'AI 转写 · ',sourceTranscriptPending:'这段录音的转写尚未准备好。',sourceTranscriptMissing:'这段录音目前没有可用转写。',sourceTranscriptRetry:'转写暂时无法载入，请重试。',
-      startChat:'新建讨论', closeChat:'结束并删除这段对话', confirmClose:'删除这段对话和其中的问答？', message:'想和家人一起回想什么？', send:'发送这条消息', retrySend:'重试同一条消息',
+      startChat:'新建讨论', chatFull:'这段对话已满。原消息仍保留，可以在新对话中继续。',chatContinueNew:'在新对话中继续',chatContinueFailed:'新对话尚未创建，原消息仍保留；可以重试。', closeChat:'结束并删除这段对话', confirmClose:'删除这段对话和其中的问答？', message:'想和家人一起回想什么？', send:'发送这条消息', retrySend:'重试同一条消息',
       conversationSelect:'选择一段对话',conversationNumber:n=>`第 ${n} 段对话`,conversationCreated:'刚创建',conversationRestored:'已回到上次选择的对话。',conversationListHelp:'显示最近 8 段对话。',threadBusy:'当前对话仍有任务处理中，完成或取消后再切换或新建。',threadDraftBlocked:'请先结束录音、核对并加入或丢弃识别结果，或处理待重试消息，再切换对话。',threadLoading:'正在载入这段对话…',
       chatStarters:'可以从这里聊起', chatStarterHelp:'选择后可继续修改，确认后再发送。', starterDetails:'补全回忆', starterDetailsText:'这段回忆有哪些细节还需要问问家人？请先说说已有资料，再提出一个值得追问的问题。', starterSequence:'梳理时间线', starterSequenceText:'请梳理这段回忆的已知顺序，标出日期或先后关系还不确定的地方。', starterChapters:'连接章节', starterChaptersText:'请参考家人的原话，建议如何连接已有章节。保留不同人的说法，不要补造经历。',
       memoirStarterDetails:'找出共同线索', memoirStarterDetailsText:'这些已保存的故事有哪些共同线索？请根据现有资料概括，并提出一个值得问问家人的问题。', memoirStarterSequence:'梳理故事顺序', memoirStarterSequenceText:'请梳理这些故事中已知的先后顺序，并明确标出不确定的日期或顺序。', memoirStarterChapters:'连接不同故事', memoirStarterChaptersText:'请建议如何连接这些已保存的故事，保留不同家人的说法，不要补造经历或事实。',
@@ -105,7 +105,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       conversationHelp:'Conversations are removed after 30 days. You send each message yourself; the assistant never changes the story for you.', conversationContextHelp:'Replies use current material, your current question and up to 7 preceding exchanges. Earlier messages remain readable but are not automatically included in this reply; add important context to your new question.', returnToChapter:'Return to current chapter',
       chatRecovering:'Checking the unfinished reply in this conversation…',chatRecoveryFailed:'This pending reply could not be confirmed. Conversation history is preserved; retry the check before sending or cancelling.',chatRecoveryRetry:'Retry checking pending reply',chatPendingSendBlocked:'This conversation already has a pending reply. Refresh its status or cancel the task before sending.',
       chatFollowups:'Keep chatting',chatFollowupHelp:'Choose a question to place it in an empty message draft. Review it before deciding whether to send.',chatFollowupReview:'The question is in your message draft. Review it, then choose Send if you want.',chatFollowupDraftBlocked:'Send or clear your existing message draft before using this question.',chatFollowupDictationBlocked:'Finish recording and add or discard the pending transcript first.',chatFollowupSendBlocked:'Finish or retry the current send first.',chatFollowupJobBlocked:'Wait for or cancel the current reply task first.',chatFollowupImeBlocked:'Finish composing your message first.',chatFollowupSourcesNote:'These references show which material informed the reply; they do not verify that it is true.',chatClarificationCue:'AI would like to know more',chatClarificationHelp:'Add detail in your own words; any suggested question goes into a draft only.',chatLatest:'Latest message',chatWriteNext:'Write next message',sourceViewTranscript:'View transcript',sourceHideTranscript:'Hide transcript',sourceTranscriptAI:'AI transcript · ',sourceTranscriptPending:'The transcript is not ready yet.',sourceTranscriptMissing:'No transcript is available for this recording.',sourceTranscriptRetry:'Transcript could not be loaded. Try again.',
-      startChat:'New conversation', closeChat:'End and delete this conversation', confirmClose:'Delete this conversation and its messages?', message:'What would you like to remember together?', send:'Send this message', retrySend:'Retry the same message',
+      startChat:'New conversation', chatFull:'This conversation is full. Your message is kept; you can continue in a new conversation.',chatContinueNew:'Continue in a new conversation',chatContinueFailed:'The new conversation was not created. Your message is still here; you can retry.', closeChat:'End and delete this conversation', confirmClose:'Delete this conversation and its messages?', message:'What would you like to remember together?', send:'Send this message', retrySend:'Retry the same message',
       conversationSelect:'Choose a conversation',conversationNumber:n=>`Conversation ${n}`,conversationCreated:'Just created',conversationRestored:'Returned to the conversation you last selected.',conversationListHelp:'Showing the 8 most recent conversations.',threadBusy:'This conversation still has a task in progress. Finish or cancel it before switching or starting another.',threadDraftBlocked:'Finish recording, review and add or discard the transcript, or resolve the retry message before switching conversations.',threadLoading:'Loading this conversation…',
       chatStarters:'A place to begin', chatStarterHelp:'Choose a prompt, edit it, then send when ready.', starterDetails:'Fill in a memory', starterDetailsText:'Which details in this memory could we ask the family about? Summarize what the sources say, then suggest one useful follow-up question.', starterSequence:'Arrange the timeline', starterSequenceText:'Arrange the known sequence of this memory and point out any uncertain dates or ordering.', starterChapters:'Connect the chapters', starterChaptersText:'Suggest connections between the existing chapters using family words. Keep different perspectives and do not invent experiences.',
       memoirStarterDetails:'Find shared threads', memoirStarterDetailsText:'What threads connect these saved stories? Summarize only what the sources say, then suggest one useful question for the family.', memoirStarterSequence:'Arrange the stories', memoirStarterSequenceText:'Arrange the known order across these stories and clearly mark any dates or ordering that remain uncertain.', memoirStarterChapters:'Connect the stories', memoirStarterChaptersText:'Suggest a transition between these saved stories. Preserve different family accounts and do not invent experiences or facts.',
@@ -139,7 +139,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   };
   let epoch=0, panelRenderEpoch=0, chatAnnouncementKey='', chatComposition=null, chatRenderDeferred=null, bookEpoch=0, currentScope=null, target=null, targetFingerprint='', activeTab='voice';
   let caps=null, capsIdentity='', contributionList=[], contributionDetails=new Map(), canReview=false, canDelete=false, contributionPage=1, contributionsHasMore=false, contributionsBusy=false;
-  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, chatTextDraft='', activeJob=null, pendingJob=null;
+  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, conversationFullRetry=null, chatTextDraft='', activeJob=null, pendingJob=null;
   const conversationHints=new Map(),conversationHintLimit=16;
   let editorialContextChoice=null,editorialContextPreflight=null,editorialContextGeneration=0,editorialContextNeedsDecisionKey='',editorialContextBasicConfirmedKey='',editorialContextDecisionStatusKey='';
   let chatRecoveryGeneration=0,pendingChatRecovery=null,activeChatJobFence=null,jobVisibilityEpoch=0;
@@ -316,7 +316,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     clearReplySpeech();clearChatComposition();clearIdeaComposition();epoch++;stopFamilyListening();stopRequests();stopPoll();void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';conversationRestorationNotice=false;forgetUrls();
     targetFingerprint=fingerprint;currentScope={account:s.account,library:s.library,membership_revision:membershipRevision(s)};target={...nextTarget};conversationRestorationNotice=false;memoirFormChoice='existing';
     planData=null;planPanelNode=null;planButton=null;
-    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
+    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
     renderShell(container);
     if(priorJob&&['queued','running'].includes(priorJobState)&&priorScope&&accountKey(s)===JSON.stringify([priorScope.account,priorScope.library]))void request(`${API}/jobs/${priorJob}`,{method:'DELETE'}).catch(()=>{});
     const ticket=epoch,owner=accountKey(s);
@@ -845,7 +845,9 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     const writeNext=btn(t('chatWriteNext'),()=>{if(!editorCurrent(writeNext))return;navigateTo(input,writeNext);},'memory-community-button memory-chat-navigation-compose');navigation.append(writeNext);
     input.addEventListener('input',()=>{
       if(!editorCurrent(input))return;
-      chatTextDraft=input.value;if(conversation)conversationDrafts.set(conversation.id,chatTextDraft);const state=chatComposition;if(state?.input===input&&state.endSeen){state.finalInput=true;if(state.timer)clearTimeout(state.timer);state.timer=setTimeout(()=>flushDeferredChatRender(state),0);}
+      chatTextDraft=input.value;if(conversation)conversationDrafts.set(conversation.id,chatTextDraft);
+      const fullRetry=conversationFullRetry;if(fullRetry?.continueButton?.isConnected)fullRetry.continueButton.disabled=!safeText(input.value,4096)||conversationCreating||Boolean(assistantInflightToken);
+      const state=chatComposition;if(state?.input===input&&state.endSeen){state.finalInput=true;if(state.timer)clearTimeout(state.timer);state.timer=setTimeout(()=>flushDeferredChatRender(state),0);}
     });
     input.addEventListener('compositionstart',()=>{
       if(!editorCurrent(input))return;
@@ -933,6 +935,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(chatRecordingBusy||chatCaptureHandle||chatTranscript||messageDraft)return t('threadDraftBlocked');
     return '';
   }
+  function continuationScopeMatches(fullRetry,ticket=fullRetry?.ticket,owner=fullRetry?.owner){
+    return Boolean(fullRetry&&conversationFullRetry===fullRetry&&current(ticket,owner)&&activeTab==='chat'&&target===fullRetry.target&&targetFingerprint===fullRetry.fingerprint&&conversation===fullRetry.conversation&&conversationSelectionEpoch===fullRetry.selection&&messageDraft===fullRetry.draft&&messageDraft?.id===fullRetry.mutationId&&messageDraft?.text===fullRetry.text);
+  }
+  function continuationReady(fullRetry,ticket=fullRetry?.ticket,owner=fullRetry?.owner){
+    if(!continuationScopeMatches(fullRetry,ticket,owner)||!safeText(chatTextDraft,4096)||editorialContextPreflight||assistantInflightToken||conversationLoading||conversationCreating||conversationDeleting||activeJob?.id&&['queued','running'].includes(activeJob.state)||pendingChatTurns().length||chatRecordingBusy||chatCaptureStarting||chatCaptureHandle||chatTranscribing||chatTranscript||chatComposition?.composing)return false;
+    return true;
+  }
   function renderConversationControls(root,ticket,owner){
     const controls=el('div','','memory-chat-conversations');
     const label=el('label',t('conversationSelect'),'memory-chat-conversation-label');
@@ -944,9 +953,15 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     select.disabled=!canSwitch||conversationList.length<2;
     select.addEventListener('change',()=>{if(!current(ticket,owner))return;void switchConversation(select.value,ticket,owner);});label.append(select);controls.append(label);
     const start=btn(t('startChat'),()=>void startChat(ticket,owner),'memory-community-primary');start.disabled=!canSwitch;controls.append(start);
+    const fullRetry=conversationFullRetry,canContinue=Boolean(fullRetry&&continuationReady(fullRetry,ticket,owner));
+    if(canContinue){
+      const notice=el('p',t(fullRetry.createError?'chatContinueFailed':'chatFull'),'memory-chat-conversation-full');notice.setAttribute('role','status');controls.append(notice);
+      const continueButton=btn(t('chatContinueNew'),()=>{const input=panelNode?.querySelector('.memory-community-form textarea[name="message"]');if(fullRetry.continueButton!==continueButton||!continueButton.isConnected||!panelNode?.contains(continueButton)||!root.contains(continueButton)||!continuationReady(fullRetry,ticket,owner)||!input||!input.isConnected||!safeText(input.value,4096)||input.value!==chatTextDraft)return;void startChat(ticket,owner,fullRetry,input.value);},'memory-community-primary memory-chat-continue-new');
+      continueButton.disabled=conversationCreating||assistantInflightToken!==null;fullRetry.continueButton=continueButton;controls.append(continueButton);
+    }else if(fullRetry)fullRetry.continueButton=null;
     controls.append(el('p',t('conversationListHelp'),'memory-community-help'));
     if(conversationLoading)controls.append(el('p',t('threadLoading'),'memory-community-help'));
-    const blocked=conversationBusyReason();if(blocked){const note=el('p',blocked,'memory-community-help');note.setAttribute('role','status');controls.append(note);}
+    const blocked=conversationBusyReason();if(blocked&&!(canContinue&&blocked===t('threadDraftBlocked'))){const note=el('p',blocked,'memory-community-help');note.setAttribute('role','status');controls.append(note);}
     root.append(controls);
   }
   function conversationPreview(value){
@@ -978,25 +993,41 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       chatTranscript=result.text;chatVoiceError='';showStatus('');await renderPanel();
     }catch(error){if(current(ticket,owner)&&voiceTicket===chatVoiceEpoch){const wasTranscribing=chatTranscribing;chatRecordingBusy=false;chatCaptureStarting=false;chatTranscribing=false;chatVoiceError=error?.name==='AbortError'?'':wasTranscribing?'voiceAsrFailed':'voiceCaptureFailed';if(error?.name!=='AbortError')notifyError(error);await renderPanel();}}
   }
-  async function startChat(ticket,owner){
-    if(!current(ticket,owner)||conversationBusyReason())return;
+  async function startChat(ticket,owner,fullRetry=null,initialContinuationText=null){
+    if(!current(ticket,owner)||(fullRetry?!continuationReady(fullRetry,ticket,owner):conversationBusyReason()))return;
+    if(fullRetry){const input=panelNode?.querySelector('.memory-community-form textarea[name="message"]');if(!input||!safeText(input.value,4096)||input.value!==chatTextDraft)return;initialContinuationText=input.value;}
     if(chatComposition?.composing)return;
-    const id=uuid(),selectedTarget={...target},selectedType=target?.type==='memoir'?'book':'story',selectedFingerprint=targetFingerprint,selection=++conversationSelectionEpoch,operation={ticket,owner,selection};if(!id){showStatus(t('error'),'error');return;}
+    const previousConversation=conversation;
+    const id=fullRetry?(fullRetry.createId||(fullRetry.createId=uuid())):uuid(),selectedTarget={...target},selectedType=target?.type==='memoir'?'book':'story',selectedFingerprint=targetFingerprint,selection=fullRetry?conversationSelectionEpoch:conversationSelectionEpoch+1;
+    if(!fullRetry)conversationSelectionEpoch=selection;
+    const operation={ticket,owner,selection,fullRetry};if(!id){showStatus(t('error'),'error');return;}
     conversationCreating=true;conversationCreateToken=operation;await renderPanel();
     try{
-      if(!current(ticket,owner)||conversationSelectionEpoch!==selection||targetFingerprint!==selectedFingerprint)return;
+      const stillCurrent=()=>current(ticket,owner)&&conversationSelectionEpoch===selection&&targetFingerprint===selectedFingerprint&&(!fullRetry||target===fullRetry.target);
+      const stillContinuation=()=>!fullRetry||conversationFullRetry===fullRetry&&conversation===fullRetry.conversation&&messageDraft===fullRetry.draft&&messageDraft?.id===fullRetry.mutationId&&messageDraft?.text===fullRetry.text;
+      if(!stillCurrent()||!stillContinuation())return;
       const result=await api(`${API}/conversations`,{method:'POST',body:{id,target_type:selectedType,target_id:selectedTarget.id}});
-      if(!current(ticket,owner)||conversationSelectionEpoch!==selection||targetFingerprint!==selectedFingerprint)return;
+      if(!stillCurrent()||!stillContinuation())return;
       if(!result||result.version!==1||result.id!==id||!Number.isInteger(result.expires_at)||(result.target_type!==undefined&&result.target_type!==selectedType)||(result.target_id!==undefined&&result.target_id!==selectedTarget.id))throw new Error('Invalid conversation response');
       const createdAt=Number.isInteger(result.created_at)?result.created_at:null;
       const item={id,created_at:createdAt,expires_at:result.expires_at,target_type:selectedType,target_id:selectedTarget.id};
+      let verifiedHistory=null;
+      if(fullRetry){
+        const history=await api(`${API}/conversations/${id}/turns?page=1&order=recent&reply_context=1`);
+        if(!stillCurrent()||!stillContinuation())return;
+        if(!history||history.version!==1||history.id!==id||history.page!==1||!Array.isArray(history.items)||history.items.length>16||typeof history.has_more!=='boolean'||!validTurnPage(history.items))throw new Error('Invalid continued conversation history');
+        verifiedHistory=history;
+      }
       resetEditorialContextChoice();
       const nextList=[item,...conversationList.filter(entry=>entry.id!==id)].slice(0,8),kept=new Set(nextList.map(entry=>entry.id));for(const previous of conversationList)if(!kept.has(previous.id))conversationDrafts.delete(previous.id);conversationList=nextList;
-      stopPoll();invalidateChatRecovery();conversation=item;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;messageDraft=null;chatTextDraft='';chatTranscript='';chatVoiceError='';activeJob=null;pollCount=0;
-      conversationDrafts.set(id,'');conversationCreating=false;conversationSelectionEpoch++;
+      const liveComposer=panelNode?.querySelector('.memory-community-form textarea[name="message"]');const carriedText=fullRetry?(liveComposer?.isConnected&&safeText(liveComposer.value,4096)?liveComposer.value:safeText(chatTextDraft,4096)?chatTextDraft:initialContinuationText||''):previousConversation?'':safeText(chatTextDraft,4096)?chatTextDraft:'';
+      if(fullRetry)conversationDrafts.set(previousConversation.id,'');
+      stopPoll();invalidateChatRecovery();clearChatComposition();conversation=item;turns=verifiedHistory?.items||[];turnPage=1;turnsHasMore=verifiedHistory?.has_more||false;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft=carriedText;chatTranscript='';chatVoiceError='';activeJob=null;pollCount=0;
+      conversationDrafts.set(id,carriedText);conversationCreating=false;conversationSelectionEpoch++;
       rememberConversation(id);
-      renderTabs();await renderPanel();
-    }catch(error){if(conversationSelectionEpoch===selection)report(error,owner,ticket);}
+      const createdSelection=conversationSelectionEpoch;renderTabs();await renderPanel();
+      if(fullRetry&&current(ticket,owner)&&conversation===item&&conversationSelectionEpoch===createdSelection){await recoverPendingChatJob(ticket,owner,item,createdSelection);if(current(ticket,owner)&&conversation===item&&conversationSelectionEpoch===createdSelection)await renderPanel();}
+    }catch(error){if(conversationSelectionEpoch===selection&&current(ticket,owner)){if(fullRetry&&conversationFullRetry===fullRetry)fullRetry.createError=true;report(error,owner,ticket);await renderPanel();}}
     finally{if(conversationCreateToken===operation){conversationCreateToken=null;conversationCreating=false;if(current(ticket,owner))await renderPanel();}}
   }
   async function resumeConversation(ticket,owner){
@@ -1047,7 +1078,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       if(!current(ticket,owner)||conversationSelectionEpoch!==selection||conversation!==prior||target!==selectedTarget||targetFingerprint!==selectedFingerprint)return;
       const result=await api(`${API}/conversations/${prior.id}`,{method:'DELETE'});if(!current(ticket,owner)||conversationSelectionEpoch!==selection||conversation!==prior||target!==selectedTarget||targetFingerprint!==selectedFingerprint)return;
       if(!result||result.version!==1||result.deleted!==true)throw new Error('Invalid conversation delete response');
-      resetEditorialContextChoice();stopPoll();invalidateChatRecovery();conversationDeleting=false;conversationDeleteToken=null;conversationList=conversationList.filter(item=>item.id!==prior.id);conversationDrafts.delete(prior.id);forgetConversation(prior.id);conversation=null;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;activeJob=null;messageDraft=null;chatTextDraft='';
+      resetEditorialContextChoice();stopPoll();invalidateChatRecovery();conversationDeleting=false;conversationDeleteToken=null;conversationList=conversationList.filter(item=>item.id!==prior.id);conversationDrafts.delete(prior.id);forgetConversation(prior.id);conversation=null;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;activeJob=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';
       const next=conversationList[0];if(next){conversation=next;chatTextDraft=conversationDrafts.get(next.id)||'';const nextSelection=++conversationSelectionEpoch,nextOperation={ticket,owner,selection:nextSelection};conversationLoading=true;conversationLoadToken=nextOperation;turns=[];turnPage=1;turnsHasMore=false;await renderPanel();
         try{const history=await loadTurns(ticket,owner,next,nextSelection);if(!current(ticket,owner)||conversationSelectionEpoch!==nextSelection||conversation!==next)return;if(history&&Array.isArray(history.items))rememberConversation(next.id);await recoverPendingChatJob(ticket,owner,next,nextSelection);}
         catch(error){if(error?.name!=='AbortError'&&current(ticket,owner)&&conversationSelectionEpoch===nextSelection&&conversation===next)report(error,owner,ticket);}
@@ -1118,10 +1149,10 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(editorialContextNeedsDecision()){showStatus(t('editorialContextChoose'),'pending');return;}
     if(!messageDraft&&hasPendingChatWork()){showStatus(t('chatPendingSendBlocked'),'pending');await renderPanel();return;}
     if(!messageDraft){const text=input.value;if(!safeText(text,4096)){showStatus(t('textRequired'),'error');return;}messageDraft={id:uuid(),text,editorialContext:editorialContextSelected()};if(!messageDraft.id)return;}
-    const selected=conversation,selection=conversationSelectionEpoch,draft=messageDraft,form=input.parentNode?.parentNode,submit=form?.querySelector('button[type="submit"]'),inflightToken={ticket,owner};assistantInflightToken=inflightToken;if(submit)submit.disabled=true;const contextToggle=form?.querySelector('.memory-editorial-context-toggle');if(contextToggle)contextToggle.disabled=true;
+    const selected=conversation,selectedTarget=target,selectedFingerprint=targetFingerprint,selection=conversationSelectionEpoch,draft=messageDraft,form=input.parentNode?.parentNode,submit=form?.querySelector('button[type="submit"]'),inflightToken={ticket,owner};conversationFullRetry=null;assistantInflightToken=inflightToken;if(submit)submit.disabled=true;const contextToggle=form?.querySelector('.memory-editorial-context-toggle');if(contextToggle)contextToggle.disabled=true;
     try{const job=await api(`${API}/conversations/${selected.id}/turns${draft.editorialContext?'?editorial_context=1':''}`,{method:'POST',body:{revision:String(target.revision),mutation_id:draft.id,text:draft.text}});if(!current(ticket,owner)||conversation!==selected||conversationSelectionEpoch!==selection)return;
       messageDraft=null;if(chatTextDraft===draft.text){chatTextDraft='';conversationDrafts.set(selected.id,'');}activeJob=job;activeChatJobFence={ticket,owner,target,fingerprint:targetFingerprint,conversation:selected,selection,generation:++chatRecoveryGeneration};recentTurn={job_id:job.id,input_text:draft.text,reply_text:job.result?.reply||null,reply_kind:job.result?.kind||null,state:job.state};pollCount=0;if(assistantInflightToken===inflightToken)assistantInflightToken=null;await loadTurns(ticket,owner,selected,selection);if(!current(ticket,owner)||conversation!==selected||conversationSelectionEpoch!==selection)return;await renderPanel();if(['queued','running'].includes(job.state))schedulePoll(ticket,owner);
-    }catch(error){if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(current(ticket,owner)&&conversation===selected&&conversationSelectionEpoch===selection){if(error?.status===409){messageDraft=null;if(draft.editorialContext){if(!chatTextDraft)chatTextDraft=draft.text;requireEditorialContextDecision('editorialContextChanged');}}await renderPanel();report(error,owner,ticket);}}
+    }catch(error){if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(current(ticket,owner)&&target===selectedTarget&&targetFingerprint===selectedFingerprint&&conversation===selected&&conversationSelectionEpoch===selection){if(error?.status===409){messageDraft=null;if(draft.editorialContext){if(!chatTextDraft)chatTextDraft=draft.text;requireEditorialContextDecision('editorialContextChanged');}}else if(error?.status===429&&error?.code==='memory_conversation_full'){conversationFullRetry={ticket,owner,target:selectedTarget,fingerprint:selectedFingerprint,conversation:selected,selection,draft,mutationId:draft.id,text:draft.text,createError:false,continueButton:null};}await renderPanel();report(error,owner,ticket);}}
     finally{if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(submit)submit.disabled=false;}
   }
   function schedulePoll(ticket,owner){
@@ -2093,7 +2124,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(planPanelNode){planPanelNode.replaceChildren();planPanelNode.hidden=true;}planData=null;planPanelNode=null;planButton=null;
     mount=null;panelNode=null;statusNode=null;target=null;targetFingerprint='';currentScope=oldScope;
     contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;contributionsBusy=false;
-    conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;chatTextDraft='';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
+    conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
     contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeTab='voice';
   }
   function clear({cancelJobs=true}={}){

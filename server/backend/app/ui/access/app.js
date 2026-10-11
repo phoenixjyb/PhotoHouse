@@ -414,7 +414,22 @@
         credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal});
       if(onResponse)onResponse(response);
       if(stale(epoch)) throw new DOMException('Stale request','AbortError');
-      if(!response.ok) {const error=new Error('Request failed');error.status=response.status;throw error;}
+      if(!response.ok) {
+        const error=new Error('Request failed');error.status=response.status;
+        // Keep only the one public recovery discriminator needed by the chat
+        // UI. Error bodies may contain private details, so never expose them.
+        if(response.status===429&&response.body){
+          const contentType=response.headers.get('content-type')||'';
+          const reader=response.body.getReader(),parts=[];let size=0;
+          try{
+            while(true){const part=await reader.read();if(stale(epoch)){part.value?.fill?.(0);throw new DOMException('Stale request','AbortError');}if(part.done)break;size+=part.value.byteLength;if(size>4096){part.value.fill(0);for(const chunk of parts)chunk.fill(0);parts.length=0;break;}parts.push(part.value);}
+            if(size<=4096&&/^application\/json(?:\s*;|$)/i.test(contentType)){const bytes=new Uint8Array(size);try{let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}const payload=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));const exactEnvelope=payload&&typeof payload==='object'&&!Array.isArray(payload)&&Object.keys(payload).sort().join(',')==='code,detail';if(exactEnvelope&&payload.code==='memory_conversation_full'&&typeof payload.detail==='string'&&payload.detail.trim())error.code='memory_conversation_full';}finally{bytes.fill(0);}}
+          }catch(parseError){if(parseError?.name==='AbortError')throw parseError;}
+          finally{for(const part of parts)part.fill(0);try{await reader.cancel();}catch(_){}}
+          if(stale(epoch))throw new DOMException('Stale request','AbortError');
+        }
+        throw error;
+      }
       let result;
       if(responseType==='blob'){
         const reader=response.body.getReader(),parts=[];let size=0;
