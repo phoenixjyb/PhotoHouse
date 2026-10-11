@@ -106,7 +106,32 @@ class ProtectedStoryWorkspaceCreateTest {
             contributionReferences = listOf(groups.first().copy(contributionIds = listOf("bad")), groups.last())) }
     }
 
-    @Test fun savedStoryUpdatePreservesIrregularChapterGroupingButCreateStillRequiresPreviewChunks() {
+    @Test fun newReviewedStoryAllowsManualThreePlusTwoGroupsAndLegacyCreateKeepsPreviewChunks() {
+        val current = draft()
+        val grouped = current.copy(chapters = listOf(
+            current.chapters.first().copy(assetIds = listOf("1", "2", "3")),
+            current.chapters.last().copy(id = "chapter-2", assetIds = listOf("4", "5")),
+        ))
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(grouped,
+            "Reviewed title", edits(grouped), "22222222-2222-4222-8222-222222222222",
+            sourcePolicy = "chapter_sources_v1")).jsonObject
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")), chapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+        assertEquals(listOf("chapter-1", "chapter-2"), chapters.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+        assertEquals("chapter_sources_v1", body.getValue("source_policy").jsonPrimitive.content)
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(grouped, "Legacy title", edits(grouped),
+            "22222222-2222-4222-8222-222222222222") }
+
+        val crossChapter = edits(grouped).mapIndexed { index, chapter ->
+            if (index == 0) chapter.copy(evidenceIds = listOf("caption-5")) else chapter
+        }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(grouped, "Reviewed title", crossChapter,
+            "22222222-2222-4222-8222-222222222222", sourcePolicy = "chapter_sources_v1") }
+    }
+
+    @Test fun savedStoryUpdatePreservesIrregularChapterGrouping() {
         val current = draft()
         val grouped = current.copy(chapters = listOf(
             current.chapters.first().copy(assetIds = listOf("1", "2", "3")),

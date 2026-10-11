@@ -422,19 +422,35 @@ class StoryWorkspaceStore(
                     val detached = detachDraft(result)
                     if (reloadSources) {
                         val before = requireNotNull(oldDraft)
-                        if (before.chapters.map { it.id to it.assetIds } != detached.chapters.map { it.id to it.assetIds } ||
-                            oldChapters.map { it.id to it.assetIds } != detached.chapters.map { it.id to it.assetIds })
-                            throw ApiFailure(FailureKind.INVALID_RESPONSE)
-                        val prose = oldChapters.associateBy { it.id }
-                        val carried = detached.copy(title = previous.title,
-                            chapters = immutable(detached.chapters.map { fresh ->
+                        val carryManualSourceLayout = previous.sourceReviewEnabled && savedEditStory == null
+                        val carriedChapters = if (carryManualSourceLayout) {
+                            val layout = oldChapters.map { it.id to it.assetIds }
+                            if (before.chapters.map { it.id to it.assetIds } != layout ||
+                                oldChapters.isEmpty() || oldChapters.size > MAX_CHAPTERS ||
+                                oldChapters.map { it.id } != (1..oldChapters.size).map { "chapter-$it" } ||
+                                oldChapters.any { it.assetIds.isEmpty() || it.assetIds.size > MAX_ASSETS_PER_CHAPTER } ||
+                                oldChapters.flatMap { it.assetIds } != ids || detached.items.map { it.asset.id } != ids)
+                                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            oldChapters.map { old ->
+                                val available = old.assetIds.flatMap { id -> detached.items.find { it.asset.id == id }
+                                    ?.evidence.orEmpty().map { it.id } }.toSet()
+                                old.copy(evidenceIds = immutable(old.evidenceIds.filter { it in available }))
+                            }
+                        } else {
+                            if (before.chapters.map { it.id to it.assetIds } != detached.chapters.map { it.id to it.assetIds } ||
+                                oldChapters.map { it.id to it.assetIds } != detached.chapters.map { it.id to it.assetIds })
+                                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            val prose = oldChapters.associateBy { it.id }
+                            detached.chapters.map { fresh ->
                                 val old = prose[fresh.id] ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
                                 val available = fresh.assetIds.flatMap { id -> detached.items.find { it.asset.id == id }
                                     ?.evidence.orEmpty().map { it.id } }.toSet()
                                 val checked = old.evidenceIds.filter { it in available }
                                 fresh.copy(title = old.title, narration = old.narration,
                                     evidenceIds = if (previous.sourceReviewEnabled) checked else fresh.evidenceIds)
-                            }))
+                            }
+                        }
+                        val carried = detached.copy(title = previous.title, chapters = immutable(carriedChapters))
                         mutable.value = previous.copy(status = StoryWorkspaceStoreStatus.EDITING, busy = false,
                             draft = carried, editableChapters = immutable(carried.chapters.map(::detachChapter)),
                             reviewed = false, sourcesReloaded = true, titleCandidates = emptyList(), failureStatus = null)
@@ -523,6 +539,102 @@ class StoryWorkspaceStore(
         })
         mutable.value = state.value.copy(editableChapters = updated, reviewed = false, dirty = true,
             titleCandidates = emptyList())
+        return true
+    }
+
+    /** Splits one unsaved reviewed-source chapter after the requested number of leading assets. */
+    fun splitChapter(index: Int, firstPartAssetCount: Int, expectedAssetIds: List<String>): Boolean {
+        if (!canRegroupNewReviewedDraft()) return false
+        val current = state.value
+        val draft = current.draft ?: return false
+        val chapters = current.editableChapters
+        val source = chapters.getOrNull(index) ?: return false
+        val expected = expectedAssetIds.toList()
+        if (expected != source.assetIds || chapters.size >= MAX_CHAPTERS || source.assetIds.size < 2 ||
+            firstPartAssetCount !in 1 until source.assetIds.size) return false
+
+        val firstAssets = source.assetIds.take(firstPartAssetCount)
+        val secondAssets = source.assetIds.drop(firstPartAssetCount)
+        val evidenceByAsset = draft.items.associate { it.asset.id to it.evidence.map { evidence -> evidence.id }.toSet() }
+        val firstEligible = firstAssets.flatMap { evidenceByAsset[it].orEmpty() }.toSet()
+        val secondEligible = secondAssets.flatMap { evidenceByAsset[it].orEmpty() }.toSet()
+        val firstEvidence = source.evidenceIds.filter { it in firstEligible }
+        val secondEvidence = source.evidenceIds.filter { it !in firstEligible && it in secondEligible }
+        if (firstEvidence.size + secondEvidence.size != source.evidenceIds.size) return false
+
+        val split = listOf(
+            source.copy(assetIds = firstAssets, evidenceIds = firstEvidence),
+            source.copy(assetIds = secondAssets, narration = "", evidenceIds = secondEvidence),
+        )
+        val updated = chapters.toMutableList().apply { removeAt(index); addAll(index, split) }
+            .mapIndexed { chapterIndex, chapter -> chapter.copy(id = "chapter-" + (chapterIndex + 1)) }
+        return commitRegroupedChapters(draft, updated, current.selectedAssetIds)
+    }
+
+    /** Merges one chapter with its next neighbor without discarding authored text or evidence. */
+    fun mergeChapterWithNext(
+        index: Int,
+        expectedChapterAssetIds: List<String>,
+        expectedNextAssetIds: List<String>,
+    ): Boolean {
+        if (!canRegroupNewReviewedDraft()) return false
+        val current = state.value
+        val draft = current.draft ?: return false
+        val chapters = current.editableChapters
+        if (index !in 0 until chapters.lastIndex) return false
+        val first = chapters[index]
+        val second = chapters[index + 1]
+        if (expectedChapterAssetIds.toList() != first.assetIds ||
+            expectedNextAssetIds.toList() != second.assetIds ||
+            first.assetIds.size + second.assetIds.size !in 1..MAX_ASSETS_PER_CHAPTER) return false
+
+        val title = if (first.title == second.title) first.title else first.title + " / " + second.title
+        val narration = when {
+            first.narration.isEmpty() -> second.narration
+            second.narration.isEmpty() -> first.narration
+            else -> first.narration + "\n\n" + second.narration
+        }
+        val evidence = (first.evidenceIds + second.evidenceIds).distinct()
+        if (!validText(title, 640, maxCodePoints = 160, allowBlank = false) ||
+            !validText(narration, 6000, allowNewline = true) || evidence.size > MAX_EVIDENCE_PER_CHAPTER) return false
+        val mergedAssets = first.assetIds + second.assetIds
+        val eligibleEvidence = mergedAssets.flatMap { assetId ->
+            draft.items.find { it.asset.id == assetId }?.evidence.orEmpty().map { it.id }
+        }.toSet()
+        if (evidence.any { it !in eligibleEvidence }) return false
+
+        val merged = first.copy(title = title, narration = narration, assetIds = mergedAssets, evidenceIds = evidence)
+        val updated = chapters.toMutableList().apply { removeAt(index + 1); set(index, merged) }
+            .mapIndexed { chapterIndex, chapter -> chapter.copy(id = "chapter-" + (chapterIndex + 1)) }
+        return commitRegroupedChapters(draft, updated, current.selectedAssetIds)
+    }
+
+    private fun canRegroupNewReviewedDraft(): Boolean =
+        editorReady() && state.value.sourceReviewEnabled && savedEditStory == null && !state.value.composing &&
+            !state.value.invalidInput && !state.value.hasPendingSave && pending == null && !hasUnfinishedChapterDictation &&
+            chapterDictationBinding == null
+
+    private fun commitRegroupedChapters(
+        originalDraft: ProtectedStoryWorkspaceDraft,
+        chapters: List<SavedMemoryStoryChapter>,
+        selectedAssetIds: List<String>,
+    ): Boolean {
+        if (chapters.isEmpty() || chapters.size > MAX_CHAPTERS ||
+            chapters.map { it.id } != (1..chapters.size).map { "chapter-$it" } ||
+            chapters.any { it.assetIds.isEmpty() || it.assetIds.size > MAX_ASSETS_PER_CHAPTER } ||
+            chapters.flatMap { it.assetIds } != selectedAssetIds ||
+            selectedAssetIds != originalDraft.items.map { it.asset.id } ||
+            chapters.any { !validText(it.title, 640, maxCodePoints = 160, allowBlank = false) ||
+                !validText(it.narration, 6000, allowNewline = true) ||
+                it.evidenceIds.size > MAX_EVIDENCE_PER_CHAPTER || it.evidenceIds.distinct().size != it.evidenceIds.size }) return false
+
+        closeChapterDictation()
+        invalidateTitleWork()
+        titleRevision++
+        val frozen = immutable(chapters.map(::detachChapter))
+        val updatedDraft = detachDraft(originalDraft).copy(chapters = frozen)
+        mutable.value = state.value.copy(draft = updatedDraft, editableChapters = frozen,
+            reviewed = false, dirty = true, titleCandidates = emptyList(), invalidInput = false)
         return true
     }
 
@@ -736,6 +848,9 @@ class StoryWorkspaceStore(
     companion object {
         private val NEXT_DICTATION_SCOPE = AtomicLong(0)
         private const val MAX_ASSETS = 24
+        private const val MAX_CHAPTERS = 6
+        private const val MAX_ASSETS_PER_CHAPTER = 4
+        private const val MAX_EVIDENCE_PER_CHAPTER = 12
     }
 
     private fun detachDraft(value: ProtectedStoryWorkspaceDraft) = value.copy(

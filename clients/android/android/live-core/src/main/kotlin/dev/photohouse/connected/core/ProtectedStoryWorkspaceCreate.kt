@@ -116,9 +116,15 @@ internal object ProtectedStoryWorkspaceCreateWire {
         input(draft.chapters.isNotEmpty() && draft.chapters.size <= MAX_CHAPTERS)
         input(draft.chapters.map { it.id } == (1..draft.chapters.size).map { "chapter-$it" })
         if (revision == 0L) {
-            // New drafts retain the deterministic preview grouping contract.
-            input(draft.chapters.size == (selectedIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
-            input(draft.chapters.map { it.assetIds } == selectedIds.chunked(MAX_ASSETS_PER_CHAPTER))
+            if (sourcePolicy == null) {
+                // Legacy creates retain the deterministic preview grouping contract.
+                input(draft.chapters.size == (selectedIds.size + MAX_ASSETS_PER_CHAPTER - 1) / MAX_ASSETS_PER_CHAPTER)
+                input(draft.chapters.map { it.assetIds } == selectedIds.chunked(MAX_ASSETS_PER_CHAPTER))
+            } else {
+                // Explicitly reviewed new drafts may carry a user-arranged layout.
+                input(draft.chapters.all { it.assetIds.size in 1..MAX_ASSETS_PER_CHAPTER })
+                input(draft.chapters.flatMap { it.assetIds } == selectedIds)
+            }
         } else {
             // Saved stories may have valid editorial groupings that differ from preview chunks.
             input(draft.chapters.all { it.assetIds.size in 1..MAX_ASSETS_PER_CHAPTER })

@@ -117,6 +117,53 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             Text(t("Chapter ${index + 1} / ${state.editableChapters.size}", "篇章 ${index + 1} / ${state.editableChapters.size}"),
                 style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-chapter-position"))
+            if (state.sourceReviewEnabled && !isSavedEdit) {
+                var arrangeExpanded by remember(store, draft.selectionRevision, chapter.id, chapter.assetIds) { mutableStateOf(false) }
+                var arrangeRejected by remember(store, draft.selectionRevision, chapter.id, chapter.assetIds) { mutableStateOf(false) }
+                TextButton(onClick = { arrangeExpanded = !arrangeExpanded }, modifier = Modifier.fillMaxWidth()
+                    .testTag("grouped-story-arrange-toggle")) {
+                    Text(if (arrangeExpanded) t("Hide chapter arrangement", "收起篇章整理") else t("Arrange chapters", "整理篇章"))
+                }
+                if (arrangeExpanded) OutlinedCard(Modifier.fillMaxWidth().testTag("grouped-story-arrange")) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(t("${chapter.assetIds.size} moments in this chapter", "本篇包含 ${chapter.assetIds.size} 个瞬间"),
+                            style = MaterialTheme.typography.titleSmall)
+                        Text(t("Split or combine neighboring moments to match your activity. Their order stays the same; review the words and sources afterward.",
+                            "按活动拆分或合并相邻瞬间。素材顺序不变；整理后请重新核对文字与来源。"), style = MaterialTheme.typography.bodySmall)
+                        val canArrange = editable && !state.composing && !state.invalidInput && dictationStore == null && !dictationUnfinished
+                        if (chapter.assetIds.size > 1 && state.editableChapters.size < 6) {
+                            (1 until chapter.assetIds.size).forEach { firstPartCount ->
+                                OutlinedButton(onClick = {
+                                    finishTyping()
+                                    arrangeRejected = !store.splitChapter(index, firstPartCount, chapter.assetIds.toList())
+                                }, enabled = canArrange, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                    .testTag("grouped-story-split-$firstPartCount")) {
+                                    Text(t("Split after moment $firstPartCount", "从第 $firstPartCount 个瞬间后拆分"))
+                                }
+                            }
+                        } else Text(if (state.editableChapters.size >= 6) t("This outline already has six chapters.", "这份提纲已包含六篇。")
+                            else t("One moment stays in one chapter.", "单个瞬间保留为一篇。"), style = MaterialTheme.typography.bodySmall)
+                        val nextChapter = state.editableChapters.getOrNull(index + 1)
+                        if (nextChapter != null) {
+                            OutlinedButton(onClick = {
+                                finishTyping()
+                                arrangeRejected = !store.mergeChapterWithNext(index, chapter.assetIds.toList(), nextChapter.assetIds.toList())
+                            }, enabled = canArrange && chapter.assetIds.size + nextChapter.assetIds.size <= 4,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("grouped-story-merge-next")) {
+                                Text(t("Merge with next chapter", "与下一篇合并"))
+                            }
+                            if (chapter.assetIds.size + nextChapter.assetIds.size > 4) Text(t("A chapter can contain up to four moments.",
+                                "每篇最多包含四个瞬间。"), style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (arrangeRejected) Text(t("This arrangement could not be applied. Finish any pending input and check the combined title, text and sources before retrying.",
+                            "暂不能应用这次整理。请先完成待处理的输入，并检查合并后的标题、文字和来源，再重试。"),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("grouped-story-arrange-rejected"))
+                        if (dictationStore != null) Text(t("Close chapter dictation before arranging these moments.",
+                            "整理这些瞬间前，请先关闭本篇口述。"), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
             key(chapter.id) {
                 var name by remember { mutableStateOf(TextFieldValue(chapter.title)) }
                 var words by remember { mutableStateOf(TextFieldValue(chapter.narration)) }
@@ -135,23 +182,24 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     store.composition(value.composition != null) }, enabled = editable,
                     label = { Text(t("Tell this part in your own words", "用自己的话讲述这一段")) }, minLines = 4, maxLines = 9,
                     modifier = Modifier.fillMaxWidth().testTag("grouped-story-chapter-words"))
-                if (dictationStore == null && store.chapterDictationAvailable) {
+                val renderedDictation = dictationStore
+                if (renderedDictation == null && store.chapterDictationAvailable) {
                     OutlinedButton(onClick = { finishTyping(); store.openChapterDictation(index) },
                         enabled = editable && !state.composing && !dictationUnfinished,
                         modifier = Modifier.fillMaxWidth().testTag("grouped-story-dictate")) {
                         Text(t("Dictate this chapter", "口述本篇内容"))
                     }
-                } else if (dictationStore == null) {
+                } else if (renderedDictation == null) {
                     Text(t("Chapter dictation is unavailable here. You can keep writing.",
                         "此处暂不能口述本篇内容，可以继续手动填写。"), style = MaterialTheme.typography.bodySmall)
                 } else {
                     MemoryDictationInput(
-                        store = dictationStore!!, zh = zh,
+                        store = renderedDictation, zh = zh,
                         onInsert = { insertRejected = !store.insertChapterTranscript(index, words.composition != null) },
                         purpose = MemoryDictationPurpose.CHAPTER_NARRATION,
                         insertRejected = insertRejected,
                         insertEnabled = words.composition == null,
-                        onSessionEnded = { store.closeChapterDictationIfCurrent(dictationStore!!) },
+                        onSessionEnded = { store.closeChapterDictationIfCurrent(renderedDictation) },
                     )
                     TextButton(onClick = {
                         if (dictationUnfinished) discardDictation = true else store.closeChapterDictation()

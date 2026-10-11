@@ -48,12 +48,16 @@ class StoryWorkspaceStoreTest {
     private fun preview(ids: List<String>, revision: String = "a".repeat(64), evidenceId: String = "caption-101",
                         chunkSize: Int = 4) : ByteArray {
         val items = ids.mapIndexed { index, id ->
-            val evidence = if (index == 0) "[{\"id\":\"$evidenceId\",\"source\":\"ai\",\"title\":\"\",\"text\":\"A family day.\"}]" else "[]"
+            val sourceId = if (index == 0) evidenceId else "caption-$id"
+            val evidence = "[{\"id\":\"$sourceId\",\"source\":\"ai\",\"title\":\"\",\"text\":\"A family day.\"}]"
             """{"id":"$id","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/$id/thumbnail?library=family-a","date_hint":null,"evidence":$evidence}"""
         }.joinToString(",")
         val chapters = ids.chunked(chunkSize).mapIndexed { index, group ->
             val assets = group.joinToString(",") { "\"$it\"" }
-            val evidence = if (index == 0 && ids.first() == "1") "[\"$evidenceId\"]" else "[]"
+            val groupEvidence = if (ids.first() == "1") {
+                if (index == 0) evidenceId else "caption-${group.first()}"
+            } else null
+            val evidence = groupEvidence?.let { "[\"$it\"]" } ?: "[]"
             """{"id":"chapter-${index + 1}","title":"Chapter ${index + 1}","narration":"","asset_ids":[$assets],"evidence_ids":$evidence}"""
         }.joinToString(",")
         return """{"version":1,"library_id":"family-a","selection_revision":"$revision","state":"draft","saved":false,"title":"Draft title","theme":"everyday","language":"zh","generator":"evidence_outline","needs_review":true,"items":[$items],"chapters":[$chapters],"questions":[]}""".toByteArray()
@@ -86,6 +90,8 @@ class StoryWorkspaceStoreTest {
         override suspend fun storySourceCapabilities(token: Bearer, library: String) = sourceCapabilityBody
         override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray =
             suggestionGates.removeFirst().await()
+        override suspend fun storyTitles(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
+            storyTitles(token, library, json)
         override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
             saveBodies += json
             saveFailure?.let { throw it }
@@ -157,6 +163,111 @@ class StoryWorkspaceStoreTest {
         assertTrue(store.retrySave()); runCurrent()
         assertEquals(listOf(true, true), api.saveProfiles)
         assertEquals(api.saveBodies.first(), api.saveBodies.last())
+    }
+
+    @Test fun reviewedNewDraftCanSplitMergeAndRetryManualThreePlusTwoWithoutLosingTextOrSources() = runTest {
+        var current = binding(); val titleGate = CompletableDeferred<ByteArray>()
+        val api = Fake().apply { idsForPreview = (1..5).map(Int::toString); suggestionGates.add(titleGate) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }) { mutation }
+        (1..5).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertTrue(store.preview()); runCurrent()
+        val selectionRevision = store.state.value.draft!!.selectionRevision
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.state.value.sourceReviewEnabled)
+        assertTrue(store.editChapterTitle(0, "Park walk"))
+        assertTrue(store.editChapterNarration(0, "First part family words"))
+        assertTrue(store.editChapterTitle(1, "Picnic"))
+        assertTrue(store.editChapterNarration(1, "Second part family words"))
+        assertTrue(store.loadTitleCapabilities()); runCurrent()
+        assertTrue(store.suggestTitles()); runCurrent()
+
+        val originalFirstAssets = listOf("1", "2", "3", "4")
+        assertFalse(store.splitChapter(0, 2, listOf("wrong")))
+        assertTrue(store.splitChapter(0, 3, originalFirstAssets))
+        assertEquals(listOf("1", "2", "3", "4", "5"), store.state.value.selectedAssetIds)
+        assertEquals(selectionRevision, store.state.value.draft!!.selectionRevision)
+        assertEquals(listOf("chapter-1", "chapter-2", "chapter-3"), store.state.value.editableChapters.map { it.id })
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4"), listOf("5")),
+            store.state.value.editableChapters.map { it.assetIds })
+        assertEquals("Park walk", store.state.value.editableChapters[1].title)
+        assertEquals("", store.state.value.editableChapters[1].narration)
+        assertEquals("First part family words", store.state.value.editableChapters[0].narration)
+        assertEquals("Second part family words", store.state.value.editableChapters[2].narration)
+        assertEquals(listOf("caption-101"), store.state.value.editableChapters[0].evidenceIds)
+        assertTrue(store.state.value.editableChapters[1].evidenceIds.isEmpty())
+        assertTrue(store.state.value.titleCandidates.isEmpty())
+        assertFalse(store.state.value.reviewed)
+        assertTrue(store.state.value.dirty)
+
+        titleGate.complete(titleReply("Late pre-split title")); runCurrent()
+        assertTrue(store.state.value.titleCandidates.isEmpty())
+        assertTrue(store.mergeChapterWithNext(0, listOf("1", "2", "3"), listOf("4")))
+        assertEquals("Park walk", store.state.value.editableChapters[0].title)
+        assertTrue(store.splitChapter(0, 3, listOf("1", "2", "3", "4")))
+        assertTrue(store.mergeChapterWithNext(1, listOf("4"), listOf("5")))
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")),
+            store.state.value.editableChapters.map { it.assetIds })
+        assertEquals(listOf("chapter-1", "chapter-2"), store.state.value.draft!!.chapters.map { it.id })
+        assertEquals("Park walk / Picnic", store.state.value.editableChapters[1].title)
+        assertEquals("Second part family words", store.state.value.editableChapters[1].narration)
+        assertEquals(listOf("caption-5"), store.state.value.editableChapters[1].evidenceIds)
+        assertEquals(store.state.value.editableChapters, store.state.value.draft!!.chapters)
+
+        assertTrue(store.confirmReviewed(true)); assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
+        val body = Json.parseToJsonElement(api.saveBodies.single()).jsonObject
+        val frozenChapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")), frozenChapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+        assertEquals("chapter_sources_v1", body.getValue("source_policy").jsonPrimitive.content)
+        assertFalse(store.splitChapter(0, 1, listOf("1", "2", "3")))
+        assertTrue(store.retrySave()); runCurrent()
+        assertEquals(api.saveBodies.first(), api.saveBodies.last())
+    }
+
+    @Test fun regroupRejectsLegacySavedStaleAndOverflowCasesWithoutPartialMutation() = runTest {
+        var current = binding()
+        val legacy = StoryWorkspaceStore(repo(Fake(), { current }), this, { current })
+        (1..4).forEach { assertTrue(legacy.selectAsset(it.toString())) }
+        assertTrue(legacy.preview()); runCurrent()
+        assertFalse(legacy.splitChapter(0, 2, listOf("1", "2", "3", "4")))
+
+        val api = Fake().apply { idsForPreview = (1..4).map(Int::toString) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        (1..4).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertTrue(store.preview()); runCurrent()
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.splitChapter(0, 2, listOf("1", "2", "3", "4")))
+        val before = store.state.value.editableChapters
+        assertFalse(store.mergeChapterWithNext(0, listOf("1"), listOf("3", "4")))
+        assertEquals(before, store.state.value.editableChapters)
+
+        assertTrue(store.editChapterTitle(0, "A".repeat(80)))
+        assertTrue(store.editChapterTitle(1, "B".repeat(80)))
+        val beforeTitleOverflow = store.state.value.editableChapters
+        assertFalse(store.mergeChapterWithNext(0, listOf("1", "2"), listOf("3", "4")))
+        assertEquals(beforeTitleOverflow, store.state.value.editableChapters)
+
+        assertTrue(store.editChapterTitle(0, "First"))
+        assertTrue(store.editChapterTitle(1, "Second"))
+        assertTrue(store.editChapterNarration(0, "x".repeat(3001)))
+        assertTrue(store.editChapterNarration(1, "y".repeat(3001)))
+        val beforeNarrationOverflow = store.state.value.editableChapters
+        assertFalse(store.mergeChapterWithNext(0, listOf("1", "2"), listOf("3", "4")))
+        assertEquals(beforeNarrationOverflow, store.state.value.editableChapters)
+
+        val savedJson = savedReply(listOf("1", "2")).decodeToString()
+            .replace("\"revision\":\"1\"", "\"revision\":\"4\"")
+            .replace("\"version\":1,", "\"version\":1,\"source_policy\":\"chapter_sources_v1\",")
+        val saved = ProtectedMemoryStoriesWire.detail(savedJson.toByteArray(), "family-a",
+            "66666666-6666-4666-8666-666666666666", 4, sourceReview = true)
+        val refs = SavedMemoryStoryContributionReferences(saved.id, saved.libraryId, saved.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        val savedStore = StoryWorkspaceStore(repo(Fake(), { current }), this, { current })
+        assertTrue(savedStore.seedSavedStoryForEdit(saved, refs))
+        assertTrue(savedStore.state.value.sourceReviewEnabled)
+        assertFalse(savedStore.splitChapter(0, 1, listOf("1", "2")))
     }
 
     @Test fun savedStoryEditKeepsSavedLayoutAndCompleteLinksAcrossIdenticalRetry() = runTest {
@@ -419,6 +530,46 @@ class StoryWorkspaceStoreTest {
         assertEquals(1, api.saveBodies.size)
     }
 
+    @Test fun reviewedManualGroupingSurvivesConflictSourceReloadAndFiltersEvidenceByActualAssets() = runTest {
+        var current = binding()
+        val api = Fake().apply { idsForPreview = (1..5).map(Int::toString); saveFailure = ApiFailure(FailureKind.HTTP, 409) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }) { mutation }
+        (1..5).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertTrue(store.preview()); runCurrent()
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.splitChapter(0, 3, listOf("1", "2", "3", "4")))
+        assertTrue(store.editTitle("Together again"))
+        assertTrue(store.editChapterTitle(0, "Morning walk"))
+        assertTrue(store.editChapterNarration(0, "We started together."))
+        assertTrue(store.editChapterTitle(1, "At the gate"))
+        assertTrue(store.editChapterNarration(1, "We paused there."))
+        assertTrue(store.editChapterTitle(2, "Picnic"))
+        assertTrue(store.editChapterNarration(2, "We shared lunch."))
+        assertTrue(store.confirmReviewed(true)); assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.CONFLICT, store.state.value.status)
+
+        api.saveFailure = null
+        api.previewReplies.add(preview((1..5).map(Int::toString), "b".repeat(64), "caption-303"))
+        assertTrue(store.reloadPreview()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
+        assertEquals("b".repeat(64), store.state.value.draft?.selectionRevision)
+        assertEquals("Together again", store.state.value.draft?.title)
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4"), listOf("5")),
+            store.state.value.editableChapters.map { it.assetIds })
+        assertEquals(listOf("Morning walk", "At the gate", "Picnic"),
+            store.state.value.editableChapters.map { it.title })
+        assertEquals(listOf("We started together.", "We paused there.", "We shared lunch."),
+            store.state.value.editableChapters.map { it.narration })
+        assertEquals(emptyList<String>(), store.state.value.editableChapters[0].evidenceIds)
+        assertEquals(listOf("caption-5"), store.state.value.editableChapters[2].evidenceIds)
+        assertEquals("caption-303", store.state.value.draft?.items?.first()?.evidence?.single()?.id)
+        assertEquals(store.state.value.editableChapters, store.state.value.draft?.chapters)
+        assertTrue(store.state.value.sourceReviewEnabled)
+        assertTrue(store.state.value.sourcesReloaded)
+        assertFalse(store.state.value.reviewed)
+        assertEquals(1, api.saveBodies.size)
+    }
+
     @Test fun lateReloadAfterScopeClearCannotRestoreOldDraft() = runTest {
         var current = binding()
         val gate = CompletableDeferred<Unit>()
@@ -532,6 +683,30 @@ class StoryWorkspaceStoreTest {
         assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
         assertFalse(store.openChapterDictation(0))
         assertEquals(0, voice.transcriptions)
+    }
+
+    @Test fun openIdleChapterDictationBlocksRegroupAndRemainsOpen() = runTest {
+        var current = binding()
+        val voice = DictationApi()
+        val api = Fake().apply { idsForPreview = (1..5).map(Int::toString) }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current },
+            dictationApi = voice, currentAccount = { "member" })
+        (1..5).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertTrue(store.preview()); runCurrent()
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.state.value.sourceReviewEnabled)
+        val originalChapters = store.state.value.editableChapters
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val idleSession = store.chapterDictation.value!!
+        assertFalse(store.hasUnfinishedChapterDictation)
+
+        assertFalse(store.splitChapter(0, 2, listOf("1", "2", "3", "4")))
+        assertFalse(store.mergeChapterWithNext(0, listOf("1", "2", "3", "4"), listOf("5")))
+        assertSame(idleSession, store.chapterDictation.value)
+        assertEquals(originalChapters, store.state.value.editableChapters)
+        assertEquals(0, voice.transcriptions)
+        store.closeChapterDictation()
+        assertNull(store.chapterDictation.value)
     }
 
     @Test fun chapterDictationCannotInsertIntoAnotherChapterAndIdleSwitchRebinds() = runTest {

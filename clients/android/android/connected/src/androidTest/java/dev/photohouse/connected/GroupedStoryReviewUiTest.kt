@@ -97,6 +97,65 @@ class GroupedStoryReviewUiTest {
     @Test fun chapterNarrationDictationReviewChineseAt150Percent() = chapterDictationJourney("zh")
     @Test fun chapterNarrationDictationReviewEnglishAt150Percent() = chapterDictationJourney("en")
 
+    @Test fun chapterArrangementChineseAt150Percent() = chapterArrangementJourney("zh")
+    @Test fun chapterArrangementEnglishAt150Percent() = chapterArrangementJourney("en")
+
+    private fun chapterArrangementJourney(language: String) {
+        val bound = MemoryCommunityBinding(Bearer.from(SessionToken(86400, "A".repeat(43), "Bearer")), "family-a", 8)
+        val sharedId = "family-33333333-3333-4333-8333-333333333333"
+        val evidence = """{"id":"$sharedId","source":"family","title":"Activity","text":"Shared original words","revision":1,"origin_asset_id":"1","byline":"Synthetic author"}"""
+        val items = (1..2).joinToString(",") { id ->
+            """{"id":"$id","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/$id/thumbnail?library=family-a","date_hint":null,"evidence":[$evidence]}"""
+        }
+        val fake = object : StoryWorkspaceApi {
+            override suspend fun storyPreview(token: Bearer, library: String, json: String) =
+                """{"version":1,"library_id":"family-a","selection_revision":"${"c".repeat(64)}","state":"draft","saved":false,"title":"Garden day","theme":"everyday","language":"$language","generator":"evidence_outline","needs_review":true,"items":[$items],"chapters":[{"id":"chapter-1","title":"Together","narration":"Original chapter words","asset_ids":["1","2"],"evidence_ids":["$sharedId"]}],"questions":[]}""".toByteArray()
+            override suspend fun storySourceCapabilities(token: Bearer, library: String) =
+                """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray()
+            override suspend fun storyTitleCapabilities(token: Bearer, library: String) =
+                """{"version":1,"enabled":false,"max_suggestions":3,"needs_review":true}""".toByteArray()
+            override suspend fun storyTitles(token: Bearer, library: String, json: String) = error("unused")
+            override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray = error("legacy unused")
+            override suspend fun createGroupedStory(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
+                throw ApiFailure(FailureKind.OFFLINE)
+        }
+        val store = StoryWorkspaceStore(StoryWorkspaceRepository(fake, { bound }), scope, { bound })
+        assertTrue(store.selectAsset("1")); assertTrue(store.selectAsset("2")); assertTrue(store.setLanguage(language))
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                PhotoHouseTheme { GroupedStoryReview(store, language == "zh", {}, {}) }
+            }
+        }
+        rule.onNodeWithTag("grouped-story-preview").performClick()
+        rule.waitUntil(5000) { store.state.value.status == StoryWorkspaceStoreStatus.EDITING }
+        rule.onNodeWithTag("grouped-story-arrange-toggle").assertDoesNotExist()
+        rule.onNodeWithTag("grouped-story-source-review-enable").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.sourceReviewEnabled }
+        rule.onNodeWithTag("grouped-story-reviewed").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-arrange-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-split-1").performScrollTo().assertIsEnabled()
+        capture("grouped-story-arrange-$language-150.png")
+        rule.onNodeWithTag("grouped-story-split-1").performClick()
+        rule.waitUntil(5000) { store.state.value.editableChapters.size == 2 }
+        assertFalse(store.state.value.reviewed)
+        assertEquals(listOf(listOf("1"), listOf("2")), store.state.value.editableChapters.map { it.assetIds })
+        assertEquals("Original chapter words", store.state.value.editableChapters[0].narration)
+        assertEquals("", store.state.value.editableChapters[1].narration)
+        assertEquals(listOf(sharedId), store.state.value.editableChapters[0].evidenceIds)
+        assertTrue(store.state.value.editableChapters[1].evidenceIds.isEmpty())
+        rule.onNodeWithTag("grouped-story-arrange-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-merge-next").performScrollTo().assertIsEnabled().performClick()
+        rule.waitUntil(5000) { store.state.value.editableChapters.size == 1 }
+        assertEquals(listOf("1", "2"), store.state.value.editableChapters.single().assetIds)
+        assertEquals("Original chapter words", store.state.value.editableChapters.single().narration)
+        assertEquals(listOf(sharedId), store.state.value.editableChapters.single().evidenceIds)
+        rule.onNodeWithTag("grouped-story-reviewed").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-save").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.hasPendingSave }
+        rule.onNodeWithTag("grouped-story-arrange-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-split-1").performScrollTo().assertIsNotEnabled()
+    }
+
     private fun chapterDictationJourney(language: String) {
         val bound = MemoryCommunityBinding(Bearer.from(SessionToken(86400, "R".repeat(43), "Bearer")), "family-a", 5)
         val storyApi = object : StoryWorkspaceApi {
