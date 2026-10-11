@@ -12,6 +12,33 @@ class StoryWorkspaceRepositoryTest {
         Json.parseToJsonElement(it.readBytes().toString(Charsets.UTF_8)).jsonObject
     }
     private fun token() = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+    private fun updateReply(
+        revision: String = "5", id: String = "33333333-3333-4333-8333-333333333333",
+        library: String = "family-a", assetIds: List<String> = listOf("102", "101"),
+        sourcePolicy: String? = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1,
+    ): ByteArray {
+        val root = example.getValue("created").jsonObject.toMutableMap()
+        root["id"] = JsonPrimitive(id)
+        root["library_id"] = JsonPrimitive(library)
+        root["revision"] = JsonPrimitive(revision)
+        root["source_policy"] = sourcePolicy?.let(::JsonPrimitive) ?: JsonNull
+        val oldItems = root.getValue("items").jsonArray
+        root["items"] = JsonArray(oldItems.mapIndexed { index, raw ->
+            val item = raw.jsonObject.toMutableMap()
+            val assetId = assetIds[index]
+            item["id"] = JsonPrimitive(assetId)
+            item["thumbnail_url"] = JsonPrimitive("/assets/$assetId/thumbnail?library=$library")
+            JsonObject(item)
+        })
+        val chapters = root.getValue("chapters").jsonArray
+        root["chapters"] = JsonArray(chapters.map { raw ->
+            JsonObject(raw.jsonObject.toMutableMap().apply {
+                put("asset_ids", JsonArray(assetIds.map(::JsonPrimitive)))
+                put("evidence_ids", JsonArray(emptyList()))
+            })
+        })
+        return JsonObject(root).toString().toByteArray()
+    }
     private inner class Fake : StoryWorkspaceApi {
         val sent = mutableListOf<String>()
         val titleRequests = mutableListOf<String>()
@@ -19,6 +46,8 @@ class StoryWorkspaceRepositoryTest {
         var error: ApiFailure? = null
         var after: (() -> Unit)? = null
         var buffer: ByteArray? = null
+        var updateResponse: ByteArray? = null
+        var updateFailure: ApiFailure? = null
         private fun response(key: String): ByteArray {
             after?.invoke(); error?.let { throw it }
             return example.getValue(key).toString().toByteArray().also { buffer = it }
@@ -43,11 +72,8 @@ class StoryWorkspaceRepositoryTest {
             sourceReview: Boolean, contributionReferences: Boolean,
         ): ByteArray {
             updates += UpdateCall(storyId, json, sourceReview, contributionReferences)
-            after?.invoke(); error?.let { throw it }
-            val result = example.getValue("created").jsonObject.toMutableMap()
-            result["revision"] = JsonPrimitive("5")
-            if (sourceReview) result["source_policy"] = JsonPrimitive(ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
-            return JsonObject(result).toString().toByteArray().also { buffer = it }
+            after?.invoke(); error?.let { throw it }; updateFailure?.let { throw it }
+            return (updateResponse ?: updateReply()).also { buffer = it }
         }
     }
     @Test fun responseBuffersAreWipedAndExplicitReviewFreezesExactRetryBody() = runBlocking {
@@ -145,6 +171,61 @@ class StoryWorkspaceRepositoryTest {
         assertEquals(fake.updates.first(), fake.updates.last())
         assertEquals(initial.id, fake.updates.first().id)
         assertTrue(fake.buffer!!.all { it == 0.toByte() })
+    }
+
+    @Test fun idempotentUpdateRetryReturnsLaterCurrentRevisionWithChangedAuthorizedMedia() = runBlocking {
+        val fake = Fake(); val binding = MemoryCommunityBinding(token(), "family-a", 1)
+        val repo = StoryWorkspaceRepository(fake, { binding })
+        val initial = ProtectedMemoryStoriesWire.decode(example.getValue("created").toString().toByteArray(),
+            "family-a", listOf("102", "101")).copy(revision = 4,
+            sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+        val references = SavedMemoryStoryContributionReferences(initial.id, initial.libraryId, initial.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        val pending = repo.freezeUpdate(initial, references, "Edited title", initial.chapters,
+            "22222222-2222-4222-8222-222222222222", reviewed = true, sourceReview = true,
+            sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1) { true }
+
+        // The first PUT committed revision 5 but its response was lost. Another
+        // family edit then advanced the same story and changed its selected media.
+        fake.updateFailure = ApiFailure(FailureKind.OFFLINE)
+        try { repo.save(pending) { true }; fail("lost reply should remain retryable") }
+        catch (failure: ApiFailure) { assertEquals(FailureKind.OFFLINE, failure.kind) }
+        fake.updateFailure = null
+        fake.updateResponse = updateReply(revision = "6", assetIds = listOf("201", "202"))
+
+        val current = repo.save(pending) { true }
+        assertEquals(initial.id, current.id)
+        assertEquals(6L, current.revision)
+        assertEquals(listOf("201", "202"), current.items.map { it.asset.id })
+        assertEquals(2, fake.updates.size)
+        assertEquals(fake.updates.first(), fake.updates.last())
+        assertTrue(fake.buffer!!.all { it == 0.toByte() })
+    }
+
+    @Test fun updateResponseMustMatchTargetLibraryMinimumRevisionAndFirstSuccessorSelection() = runBlocking {
+        val initial = ProtectedMemoryStoriesWire.decode(example.getValue("created").toString().toByteArray(),
+            "family-a", listOf("102", "101")).copy(revision = 4,
+            sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+        val references = SavedMemoryStoryContributionReferences(initial.id, initial.libraryId, initial.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        val invalidReplies = listOf(
+            updateReply(id = "44444444-4444-4444-8444-444444444444"),
+            updateReply(library = "family-b"),
+            updateReply(revision = "4"),
+            updateReply(revision = "5", assetIds = listOf("201", "202")),
+            updateReply(revision = "5", sourcePolicy = null),
+        )
+        invalidReplies.forEach { reply ->
+            val fake = Fake().apply { updateResponse = reply }
+            val binding = MemoryCommunityBinding(token(), "family-a", 1)
+            val repo = StoryWorkspaceRepository(fake, { binding })
+            val pending = repo.freezeUpdate(initial, references, "Edited title", initial.chapters,
+                "22222222-2222-4222-8222-222222222222", reviewed = true, sourceReview = true,
+                sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1) { true }
+            try { repo.save(pending) { true }; fail("invalid update response was accepted") }
+            catch (failure: ApiFailure) { assertEquals(FailureKind.INVALID_RESPONSE, failure.kind) }
+            assertTrue(fake.buffer!!.all { it == 0.toByte() })
+        }
     }
 
     @Test fun updateFreezeRejectsWrongStoryRevisionLinksOrUnreviewedInput() {

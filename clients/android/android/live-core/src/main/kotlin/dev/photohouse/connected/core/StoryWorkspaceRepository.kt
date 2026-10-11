@@ -215,16 +215,31 @@ class StoryWorkspaceRepository(
 
     suspend fun save(pending: PendingGroupedStorySave, editorCurrent: () -> Boolean): SavedMemoryStory =
         scoped(pending.binding, editorCurrent) { bound ->
+            val expectedId = pending.targetStoryId
+            val minimumUpdateRevision = if (expectedId != null) {
+                if (pending.baseRevision !in 1 until Long.MAX_VALUE ||
+                    expectedId != runCatching { java.util.UUID.fromString(expectedId).toString() }.getOrNull())
+                    throw ApiFailure(FailureKind.INVALID_INPUT)
+                pending.baseRevision + 1
+            } else null
             val saved = owned({
-                if (pending.targetStoryId == null) api.createGroupedStory(bound.token, bound.libraryId, pending.body, pending.sourceReview)
-                else api.updateGroupedStory(bound.token, bound.libraryId, pending.targetStoryId, pending.body,
+                if (expectedId == null) api.createGroupedStory(bound.token, bound.libraryId, pending.body, pending.sourceReview)
+                else api.updateGroupedStory(bound.token, bound.libraryId, expectedId, pending.body,
                     pending.sourceReview, pending.contributionReferences)
             }) {
-                ProtectedMemoryStoriesWire.decode(it, bound.libraryId, pending.assetIds, sourceReview = pending.sourceReview)
+                if (expectedId == null) {
+                    ProtectedMemoryStoriesWire.decode(it, bound.libraryId, pending.assetIds,
+                        sourceReview = pending.sourceReview)
+                } else {
+                    val current = ProtectedMemoryStoriesWire.detail(it, bound.libraryId, expectedId,
+                        minimumUpdateRevision!!, sourceReview = pending.sourceReview)
+                    if (!current.canEdit || pending.sourceReview &&
+                        current.sourcePolicy != ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 ||
+                        current.revision == minimumUpdateRevision && current.items.map { item -> item.asset.id } != pending.assetIds)
+                        throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                    current
+                }
             }
-            val expectedId = pending.targetStoryId
-            if (expectedId != null && (saved.id != expectedId || saved.revision < pending.baseRevision + 1))
-                throw ApiFailure(FailureKind.INVALID_RESPONSE)
             saved
         }
 }
