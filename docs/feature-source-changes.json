@@ -9072,6 +9072,85 @@
       "qualification_report_sha256": "e2d9e71f950886c236c7939fd245e0f187846467abd17a52fea4bf3125f88c64",
       "live_database_changed": false,
       "services_changed": false
+    },
+    {
+      "feature": "guarded-memory-schema-chain-and-generated-companion-qualification-v1",
+      "source_commit": "18eb1cc415771977c95dff8513cd176d07f6310d",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "a7001d8f9fc915a811e3958e25d035977c414f04f8b4f9736cd7f0408efb46be",
+          "sha256": "5d4fd4133e0096428f1beec7112080503e0202de3b35ec587f4122bfa2050020"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "62a113ef0816ef509c053a16d5683238e96bca8b47f1598304629558ad4c981f",
+          "sha256": "2102743a3121bd134fb964e3cb08ece98295a983aaba44e9ca4e75e45c9afe66"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "995e17b10a8d3132ff54b004f752a68df1304c29af192bc8cdaf4e0c13ef1704",
+          "sha256": "80e0f2b091a5879ef6b4c7504082c175ec5467d63d93704460b3038cd9717b42"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "cae46b6f5611ad67a3d7c5ef3689c5cdaa80f3510e976b8f432546d68bee772a",
+          "sha256": "f758255b1e56141874e460a9e1bd31d12410e3bac97911ae091ce0c76fa70cbb"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md",
+          "before_sha256": null,
+          "sha256": "91b399261238a5804aaaa9133249ef1c057dc3d5e54c0eb107eafef4446a2d68"
+        },
+        {
+          "path": "server/scripts/apply_memory_group_schema.py",
+          "before_sha256": null,
+          "sha256": "5d9b310e69dc231714b0aa127533c42e42388dac4b05c24ce53ec91493521000"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "0d6f0327696a71abeaedf0feb286efd5dda0ca5e5061d7169efa2fd84864f97f",
+          "sha256": "ecd10295564c8863aa4ab6b77d311534857211b0fa0a67f762cd468334feb287"
+        },
+        {
+          "path": "server/scripts/qualify_memory_group_workers.py",
+          "before_sha256": null,
+          "sha256": "f2877f3165f3d52cc39c8a128f0988927fb671dc0c0de96d0154cc121f6303a2"
+        },
+        {
+          "path": "server/scripts/qualify_memory_groups.py",
+          "before_sha256": "0ef21d50a322863934a7d14a6776a0404d208e76fc60284e6f20726f6df170d7",
+          "sha256": "c8581c33c4160cee599ab2048f8074eff3c6298a968e7abece86b219e068c28a"
+        },
+        {
+          "path": "server/tests/security/test_apply_memory_group_schema.py",
+          "before_sha256": null,
+          "sha256": "bd8e42b077e147516d9c3b1aa77bae5d46e82a4865e8ac547a4b477c8fb017f8"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_workers_qualification.py",
+          "before_sha256": null,
+          "sha256": "bd67eb20d4e897dd8fa14a8a7d041dcb26c9f844a8d252d5350087831a17fe67"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "5e2b53e984a8282c997d85ce658947e420cf710c7698255f8a4460c3b549851c",
+          "sha256": "a18206073f384eb503898efb38506b8c2aeb65dd930dab937eac3b7a732bcbfc"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d1b1a50cf3dde3a20845b29d2b8609cd5bfcc1913100e21faafdc76e7c2e68a1",
+          "sha256": "a6d7640700bef8af909ac23fdc48cea90aaad6a79ff65ed66e0fd82a78104f99"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "default_enabled": false,
+      "provider_called": false,
+      "windows_operation": false,
+      "apk_changed": false,
+      "live_database_changed": false,
+      "services_changed": false
     }
   ]
 }
