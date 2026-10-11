@@ -9863,6 +9863,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone story retry current-revision response handling",
+      "source_commit": "adbffddd40ab5a5a9a912c93d11cb676724f590e",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepository.kt",
+          "before_sha256": "aeca1f70423a8fd58942ff1a9f744ecd6583d2a9d8fedc4988a2a274c7057b6e",
+          "sha256": "7c0ffa873cd30b3108f461fb065cac11e1e136bb348cb334369b3134be9c0393"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceRepositoryTest.kt",
+          "before_sha256": "6cf8d0c5612556543537ecafae65d4bd508d34b7ba4b31f7ad739711125734e5",
+          "sha256": "4e442f3b13b17471011d237f52ec15309089dc5a09bbc61b009495ddf88bc34e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
