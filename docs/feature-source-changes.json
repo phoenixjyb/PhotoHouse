@@ -11578,6 +11578,52 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Final narration qualification architecture roadmap and package handoff",
+      "source_commit": "b048b2e8179d901ad2167801e82db68413554434",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "50d1dd5592137cb6c11f88ed07cfda582d5c5c21034fd7fa089411722fc4b5c4",
+          "sha256": "d23e9e0320c9eef558b47851851dae2fb598472e7f4ac060dba944d865bb5dcd"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "e8bdfc950c330da50eea6e2692c6b5bd72d464f55a7e74ca88e4535e22d4f00d",
+          "sha256": "4e172d4fc2a85deb652c4f626436715fe710d49211c6e07f02fb6f9006b8cef1"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "e8c039b7d669c4ca994a0a010abca1598e2497d25d46c894178ecac3aa4dfb64",
+          "sha256": "ddc888502f2ecf7369bfdefe8a80fad7eaf2c5f812db93dfce6d6a082ad4ef11"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7a96f8a591c19f46fa2470b90e70548bedf6378dacdd128cd40693c9efa4c770",
+          "sha256": "ffd125ad422ac22a03854264814f6a41b11ddbc49a699b3d88a2cb287a99799d"
+        },
+        {
+          "path": "docs/LOCAL_CANDIDATE_2026-10-12.md",
+          "before_sha256": "85cd4ca3b270bd776ea34c616c7dca126ca42a113a1346253ee94bbb076fdb28",
+          "sha256": "d4a777e406411b44e76ff4be4747365c0c8e95516119c0bcc622cfd31d8b2ba2"
+        },
+        {
+          "path": "docs/MEMOIR_INTRODUCTION_NARRATION.md",
+          "before_sha256": "48259f8f5c31545ad7d6958b68b6af0b769895553f6ab254cf9faf0b89685558",
+          "sha256": "7f8b66814f7730863d4fb12ceb982e1be0f3744e5b2fead072ad53ee74d3d295"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "3b9ee86e9963791df46a8dcce692047649bb2e12a35285eed5e8c6122c138324",
+          "sha256": "2b94c8b3b3b9ce6e9525fb8789c9198d9ef47aa45db31593b06d921cccbb6b38"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
