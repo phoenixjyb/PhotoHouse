@@ -9724,6 +9724,52 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone explicit chapter dictation and transcript edit guards",
+      "source_commit": "5873b441721e9932f06ad7fde553623e0db5fb51",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryReviewUiTest.kt",
+          "before_sha256": "bda7a96316685a2fcf4448195b676e4fd4a6fe3daf3308e9a972656a5240e617",
+          "sha256": "9fb1185e103094d23694ba27356a0cc3da98609d14d298486243456cddb5d806"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryDictationUiTest.kt",
+          "before_sha256": "f9da70cbc13e3cfb6ba229576c3c45ada5d6b5d952ad1773fc3ac9c38015447d",
+          "sha256": "ae650d4a640413f517b2aefa63473084eedc95d64d78132f3cc24e4c864303e6"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "c063ad38add7d6938a0151c7650e1749c94439f78e900c5cc5f73c9b398a43cc",
+          "sha256": "5d43187d890183300180d3fce259a02126a0b48285d1b65459e3f0fadd8bc4e5"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryDictationInput.kt",
+          "before_sha256": "f57781aa996574df7b90e3cb9d921cca1fd733ce1f8e542cc5ee83c597e05b9e",
+          "sha256": "c2ae08d71f20412371ff5934902a6801bc5b4aa65deec53fb40adc355a3fdae4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "aa5f9babfd79f2706187b9df210d6c2798dedd872739336aedf1ffea8f9e217a",
+          "sha256": "7d5b33a8ed19c882a2e01d1c0236d11de4c4c0d62e2fbf1f324360a1cfa90c1c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "9f97a8bcbca154f830bd610907bb6398d736d87fbc53a0cb9fb4a1e76d0759ee",
+          "sha256": "bc92abf60864e0996cb317e4262ace7d5f60d0182a505beeb09ff9011c80e981"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "b1d059b47c13ab2a5a18115b1bfafed9662045e0e589cf16fb473c7976c5f408",
+          "sha256": "dc6ab5916791cc5af75fc143f114c3b189ca742ab09e9c0b4aa9839a8213808f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
