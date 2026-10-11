@@ -47,6 +47,8 @@ class MemoryCommunityStoreTest {
         var denyChildInsideReadGate = false
         var childReadFailure: ApiFailure? = null
         var childReadException: Exception? = null
+        var contributionDetailGate: CompletableDeferred<Unit>? = null
+        var contributionDetailGateEntered = CompletableDeferred<Unit>()
         val thumbnailReads = mutableListOf<String>()
         val heroReads = mutableListOf<String>()
         var originalReads = 0
@@ -108,9 +110,20 @@ class MemoryCommunityStoreTest {
             return withChapters.copy(items = ids.map { MemoryStoryAsset(photoAsset(it), emptyList()) },
                 chapters = withChapters.chapters.map { it.copy(assetIds = ids) })
         }
+        override suspend fun savedMemoryContributionDetail(
+            token: Bearer, library: String, storyId: String, contributionId: String,
+        ): MemoryContributionDetail {
+            contributionDetailGateEntered.complete(Unit)
+            contributionDetailGate?.let { withContext(NonCancellable) { it.await() } }
+            return MemoryContributionDetail(
+                MemoryContributionReceipt(MemoryContribution(contributionId, storyId, "member", "text", "en", "Member",
+                    "a".repeat(64), null, "chapter-1", storyRevision, "accepted", 1, "Family words", true), false, false),
+                null,
+            )
+        }
     }
 
-    private inner class CommunityApi : MemoryCommunityApi {
+    private inner class CommunityApi : MemoryCommunityApi, MemoryBookEditorialApi {
         var capFailure: ApiFailure? = null
         var capabilitiesEnabled = true
         var contributionsEnabled = true
@@ -189,6 +202,22 @@ class MemoryCommunityStoreTest {
             bookReads++
             return bookJson().toByteArray()
         }
+        override suspend fun getBookEditorial(token: Bearer, library: String, bookId: String): ByteArray {
+            val children = bookOrder.joinToString(prefix = "[", postfix = "]") { id ->
+                "{\"story_id\":\"$id\",\"revision\":\"${bookChildRevisions[id] ?: "3"}\"}"
+            }
+            val transitions = bookOrder.zipWithNext().joinToString(prefix = "[", postfix = "]") { (left, right) ->
+                "{\"left_story_id\":\"$left\",\"right_story_id\":\"$right\",\"text\":\"\",\"source_refs\":[]}"
+            }
+            return ("{\"version\":1,\"id\":\"$bookId\",\"revision\":\"$bookRevision\",\"children\":$children," +
+                "\"state\":\"current\",\"introduction_source_refs\":[],\"transitions\":$transitions}").toByteArray()
+        }
+        override suspend fun saveBookEditorial(token: Bearer, library: String, bookId: String, json: String): ByteArray =
+            getBookEditorial(token, library, bookId)
+        override suspend fun getBookEditorialSourceReferences(
+            token: Bearer, library: String, storyId: String, revision: Long,
+        ): SavedMemoryStoryContributionReferences = SavedMemoryStoryContributionReferences(
+            storyId, library, revision, listOf(SavedMemoryChapterContributionReferences("chapter-1", listOf(contributionId))))
         override suspend fun bookPlan(token: Bearer, library: String, bookId: String, editorialContext: Boolean): ByteArray {
             planReads++
             planGate?.let { withContext(NonCancellable) { it.await() } }
@@ -1886,6 +1915,200 @@ class MemoryCommunityStoreTest {
         assertEquals(children, api.childReads.size)
         assertEquals(expected, store.state.value.memoryBooks?.resumePosition)
         assertEquals("Unsent family question", store.state.value.memoryBooks?.companion?.draft)
+    }
+
+    @Test fun speechAdvanceMovesWithinSameStoryValidatesDestinationAndBookmarksChapter() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val positions = ReaderPositionMemoryStore()
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        openBookReader(store)
+
+        val scope = store.captureMemoryBookSpeechAdvance() ?: error("first chapter should have a next chapter")
+        assertEquals("account", scope.accountId)
+        assertEquals("family", scope.libraryId)
+        assertEquals(bookId, scope.bookId)
+        assertEquals(listOf(MemoryBookSpeechChildRevision(storyId, 3), MemoryBookSpeechChildRevision(secondStoryId, 3)),
+            scope.orderedChildren)
+        assertTrue(store.isCurrentMemoryBookSpeechAdvance(scope))
+        assertTrue(store.advanceMemoryBookSpeech(scope))
+        runCurrent()
+
+        val reading = store.state.value.memoryBooks!!
+        assertEquals(storyId, reading.story?.id)
+        assertEquals(1, reading.selectedChapter)
+        assertEquals("chapter-2", reading.story?.chapters?.get(reading.selectedChapter)?.id)
+        assertFalse("the source-phase one-shot is stale after advancing", store.isCurrentMemoryBookSpeechAdvance(scope))
+        assertTrue("the same frozen scope authorizes the expected destination render", store.isCurrentMemoryBookSpeechDestination(scope))
+        assertEquals("chapter-2", positions.load("account").single().chapterId)
+        assertEquals(0, api.originalReads)
+    }
+
+    @Test fun speechAdvanceIsUnavailableForLastChapterAndNeverCrossesToNextStory() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, community)
+        openBookReader(store)
+        val first = store.captureMemoryBookSpeechAdvance()!!
+        store.loadMemoryBookChapter(1); runCurrent()
+        assertNull("last chapter has no same-story destination", store.captureMemoryBookSpeechAdvance())
+        assertTrue("the target remains the captured chapter when the reader navigates there manually", store.isCurrentMemoryBookSpeechDestination(first))
+        assertFalse(store.advanceMemoryBookSpeech(first))
+        assertEquals(storyId, store.state.value.memoryBooks?.story?.id)
+
+        store.loadMemoryBookStory(1); runCurrent()
+        assertEquals(secondStoryId, store.state.value.memoryBooks?.story?.id)
+        assertFalse("a captured target can never follow into the next child story", store.isCurrentMemoryBookSpeechDestination(first))
+    }
+
+    @Test fun speechAdvanceRejectsTamperedAdjacentChapterIdsBeforeMutationInBothPhases() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2", "chapter-3") }
+        val positions = ReaderPositionMemoryStore()
+        val store = newStore(api, community, readerPositionPersistence = positions)
+        openBookReader(store)
+        val scope = store.captureMemoryBookSpeechAdvance()!!
+        val wrongFrom = scope.copy(fromChapterId = "chapter-9")
+        val wrongNext = scope.copy(nextChapterId = "chapter-3")
+        val thumbnailsBefore = api.thumbnailReads.toList()
+        val heroesBefore = api.heroReads.toList()
+        val positionBefore = positions.load("account").single()
+
+        assertFalse(store.isCurrentMemoryBookSpeechAdvance(wrongFrom))
+        assertFalse(store.isCurrentMemoryBookSpeechAdvance(wrongNext))
+        assertFalse(store.advanceMemoryBookSpeech(wrongFrom))
+        assertFalse(store.advanceMemoryBookSpeech(wrongNext))
+        assertEquals(0, store.state.value.memoryBooks?.selectedChapter)
+        assertEquals(thumbnailsBefore, api.thumbnailReads)
+        assertEquals(heroesBefore, api.heroReads)
+        assertEquals(positionBefore, positions.load("account").single())
+
+        assertTrue(store.advanceMemoryBookSpeech(scope))
+        runCurrent()
+        val thumbnailsAfterAdvance = api.thumbnailReads.toList()
+        val heroesAfterAdvance = api.heroReads.toList()
+        val positionAfterAdvance = positions.load("account").single()
+        assertEquals("chapter-2", positionAfterAdvance.chapterId)
+        assertFalse(store.isCurrentMemoryBookSpeechDestination(wrongFrom))
+        assertFalse(store.isCurrentMemoryBookSpeechDestination(wrongNext))
+        assertEquals(1, store.state.value.memoryBooks?.selectedChapter)
+        assertEquals(thumbnailsAfterAdvance, api.thumbnailReads)
+        assertEquals(heroesAfterAdvance, api.heroReads)
+        assertEquals(positionAfterAdvance, positions.load("account").single())
+    }
+
+    @Test fun speechAdvanceCaptureAndUseRejectLateAccountReaderStoryAndChapterScopes() = runTest {
+        val chapterApi = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val chapterStore = newStore(chapterApi, CommunityApi())
+        openBookReader(chapterStore)
+        val chapterScope = chapterStore.captureMemoryBookSpeechAdvance()!!
+        chapterStore.loadMemoryBookChapter(1); runCurrent()
+        assertFalse(chapterStore.isCurrentMemoryBookSpeechAdvance(chapterScope))
+        assertFalse(chapterStore.advanceMemoryBookSpeech(chapterScope))
+
+        val storyApi = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val storyStore = newStore(storyApi, CommunityApi())
+        openBookReader(storyStore)
+        val storyScope = storyStore.captureMemoryBookSpeechAdvance()!!
+        storyStore.loadMemoryBookStory(1); runCurrent()
+        assertFalse(storyStore.isCurrentMemoryBookSpeechAdvance(storyScope))
+        assertFalse(storyStore.isCurrentMemoryBookSpeechDestination(storyScope))
+
+        val accountApi = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val accountStore = newStore(accountApi, CommunityApi())
+        openBookReader(accountStore)
+        val accountScope = accountStore.captureMemoryBookSpeechAdvance()!!
+        accountStore.logout(); runCurrent()
+        assertFalse(accountStore.isCurrentMemoryBookSpeechAdvance(accountScope))
+        assertFalse(accountStore.advanceMemoryBookSpeech(accountScope))
+    }
+
+    @Test fun speechAdvanceWaitsForMetadataAndRejectsUnavailableReader() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, community)
+        openBookReader(store)
+        val scope = store.captureMemoryBookSpeechAdvance()!!
+        val gate = CompletableDeferred<Unit>()
+        api.childReadGateId = secondStoryId
+        api.childReadGate = gate
+        api.childReadGateEntered = CompletableDeferred()
+        store.loadMemoryBookStory(1)
+        runCurrent()
+        assertTrue(api.childReadGateEntered.isCompleted)
+        assertTrue(store.state.value.memoryBooks!!.readerBusy)
+        assertFalse(store.isCurrentMemoryBookSpeechAdvance(scope))
+        assertFalse(store.advanceMemoryBookSpeech(scope))
+        gate.complete(Unit); runCurrent()
+        assertEquals(secondStoryId, store.state.value.memoryBooks?.story?.id)
+    }
+
+    @Test fun speechAdvanceIsBlockedByPendingSourceInspection() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, community)
+        openBookReader(store)
+        store.openMemoryBookEditorial(); runCurrent()
+        val source = store.memoryBookEditorialCatalogState.value.sources.first()
+        val gate = CompletableDeferred<Unit>()
+        api.contributionDetailGate = gate
+        api.contributionDetailGateEntered = CompletableDeferred()
+        store.inspectMemoryBookEditorialSource(source)
+        runCurrent()
+        assertTrue(api.contributionDetailGateEntered.isCompleted)
+        assertTrue(store.state.value.memoryBooks!!.sourceInspection.busy)
+        assertNull(store.captureMemoryBookSpeechAdvance())
+        gate.complete(Unit); runCurrent()
+        store.editMemoryBookEditorial(listOf(source), emptyList())
+        assertTrue(store.memoryBookEditorialState.value.dirty)
+        assertNull("a private editorial draft also blocks speech navigation", store.captureMemoryBookSpeechAdvance())
+    }
+
+    @Test fun speechAdvanceIsBlockedByCompanionDraftAndMemoirEditorInput() = runTest {
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, CommunityApi())
+        openBookReader(store)
+        assertNotNull(store.captureMemoryBookSpeechAdvance())
+        assertTrue(store.updateMemoryBookChatDraft("A family question still being composed"))
+        assertNull(store.captureMemoryBookSpeechAdvance())
+        assertTrue(store.updateMemoryBookChatDraft(""))
+        assertTrue(store.updateMemoryBookNarrativeInstructions("Keep this private outline in progress"))
+        assertNull(store.captureMemoryBookSpeechAdvance())
+    }
+
+    @Test fun speechAdvanceIsBlockedDuringActiveVoiceCaptureAndUnreviewedTranscript() = runTest {
+        val api = StoryApi().apply { voiceEnabled = true; storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, CommunityApi())
+        openBookReader(store)
+        assertTrue(store.openMemoryBookNarrativeDictation())
+        val dictation = store.memoryBookNarrativeDictationState.value ?: error("dictation should open explicitly")
+        dictation.loadCapabilities(); runCurrent()
+        assertNotNull(dictation.beginRecording())
+        assertNull(store.captureMemoryBookSpeechAdvance())
+        dictation.stopRecording(instructionWav()); runCurrent()
+        assertNotNull(dictation.state.value.transcript)
+        assertNull("an unreviewed voice transcript remains private work", store.captureMemoryBookSpeechAdvance())
+        dictation.cancel()
+    }
+
+    @Test fun speechAdvanceValidationAllowsPreviewFetchAndUsesNoMetadataOrOriginalReads() = runTest {
+        val community = CommunityApi()
+        val api = StoryApi().apply { storyChapterIds = listOf("chapter-1", "chapter-2") }
+        val store = newStore(api, community)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent()
+        store.openMemoryBook(bookId); runCurrent()
+        val gate = CompletableDeferred<Unit>()
+        api.mediaGate = gate
+        store.loadMemoryBookStory(0); runCurrent()
+        assertTrue(store.state.value.memoryBooks!!.framesBusy)
+        val scope = store.captureMemoryBookSpeechAdvance() ?: error("preview work should not block target validation")
+        assertTrue(store.isCurrentMemoryBookSpeechAdvance(scope))
+        assertTrue(store.advanceMemoryBookSpeech(scope))
+        assertTrue(store.isCurrentMemoryBookSpeechDestination(scope))
+        gate.complete(Unit); runCurrent()
+        assertEquals(0, api.originalReads)
+        assertEquals(listOf(storyId), api.childReads)
     }
 
     @Test fun currentDenialClearsMatchingAccountPositionsAndStorageFailureDoesNotBlockReading() = runTest {

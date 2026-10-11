@@ -22,8 +22,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 internal enum class ReaderAudioKind { RECORDING, SPEECH, PLAYBACK }
@@ -52,6 +56,14 @@ internal class ReaderAudioCoordinator {
 }
 
 internal val LocalReaderAudioCoordinator = staticCompositionLocalOf<ReaderAudioCoordinator?> { null }
+
+/** A local, non-serializable request for one start attempt in one immutable reader scope. */
+internal class ChapterReadAloudStartRequest(val scopeKey: Any) {
+    val uniqueId: String = UUID.randomUUID().toString()
+    private val attempted = AtomicBoolean(false)
+
+    internal fun consumeAttempt(): Boolean = attempted.compareAndSet(false, true)
+}
 
 internal fun narrationChunks(text: String, maxCodePoints: Int = 180, maxChunkBytes: Int = 720, maxTotalCodePoints: Int = 6400): List<String> {
     require(maxCodePoints > 0 && maxChunkBytes > 0 && maxTotalCodePoints > 0)
@@ -161,6 +173,7 @@ internal class ChapterReadAloudController(
     private val adapterFactory: ChapterSpeechAdapterFactory, private val focusFactory: ChapterAudioFocusFactory,
 ) {
     val status = mutableStateOf("idle")
+    val completed = mutableStateOf(false)
     private val main = Handler(Looper.getMainLooper())
     private val chunks = runCatching { narrationChunks(text) }.getOrDefault(emptyList())
     private var generation = 0L
@@ -170,11 +183,12 @@ internal class ChapterReadAloudController(
     private var chunkIndex = 0
     private var activeUtterance: String? = null
     private var closed = false
-    fun start() {
+    fun start(): Boolean {
         check(Looper.myLooper() == Looper.getMainLooper())
-        if (closed || chunks.isEmpty() || status.value == "loading" || status.value == "speaking") return
+        if (closed || chunks.isEmpty() || status.value in setOf("loading", "speaking", "paused", "paused_busy")) return false
+        completed.value = false
         chunkIndex = 0
-        begin(preserveChunk = false)
+        return begin(preserveChunk = false)
     }
     fun pause() {
         check(Looper.myLooper() == Looper.getMainLooper())
@@ -185,21 +199,23 @@ internal class ChapterReadAloudController(
     fun resume() {
         check(Looper.myLooper() == Looper.getMainLooper())
         if (closed || chunks.isEmpty() || status.value !in setOf("paused", "paused_busy")) return
+        completed.value = false
         begin(preserveChunk = true)
     }
-    private fun begin(preserveChunk: Boolean) {
+    private fun begin(preserveChunk: Boolean): Boolean {
         val run = ++generation
         val speechLease = coordinator.acquire(ReaderAudioKind.SPEECH) { stop() }
         if (speechLease == null) {
             status.value = if (preserveChunk) "paused_busy" else "busy"
-            return
+            completed.value = false
+            return false
         }
         lease = speechLease
-        val audioFocus = runCatching { focusFactory.create(context) }.getOrElse { stopWith("failed"); return }
+        val audioFocus = runCatching { focusFactory.create(context) }.getOrElse { stopWith("failed"); return false }
         focus = audioFocus
         val focusGranted = runCatching { audioFocus.request { main.post { if (isCurrent(run)) stopWith("focus") } } }.getOrDefault(false)
-        if (!focusGranted) { stopWith("focus"); return }
-        val player = runCatching { adapterFactory.create(context) }.getOrElse { stopWith("failed"); return }
+        if (!focusGranted) { stopWith("focus"); return false }
+        val player = runCatching { adapterFactory.create(context) }.getOrElse { stopWith("failed"); return false }
         adapter = player
         if (!preserveChunk) chunkIndex = 0
         activeUtterance = null; status.value = "loading"
@@ -212,6 +228,7 @@ internal class ChapterReadAloudController(
             } }
         }.isSuccess
         if (!initialized) stopWith("failed")
+        return initialized
     }
     private fun speakNext(run: Long, player: ChapterSpeechAdapter) {
         if (!isCurrent(run, player)) return
@@ -240,6 +257,7 @@ internal class ChapterReadAloudController(
         runCatching { focus?.abandon() }; focus = null
         coordinator.release(lease); lease = null
         if (!preserveChunk) chunkIndex = 0
+        completed.value = nextStatus == "done"
         status.value = nextStatus
     }
     fun close() {
@@ -267,6 +285,9 @@ internal data class ChapterReadAloudLabels(
 internal fun ChapterReadAloud(
     text: String, language: String, scopeKey: Any, zh: Boolean, enabled: Boolean = true,
     labels: ChapterReadAloudLabels? = null,
+    startRequest: ChapterReadAloudStartRequest? = null,
+    onStartRequestConsumed: ((requestId: String, started: Boolean) -> Unit)? = null,
+    onCompletionChanged: ((completed: Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val coordinator = checkNotNull(LocalReaderAudioCoordinator.current)
@@ -276,8 +297,30 @@ internal fun ChapterReadAloud(
     // Include the full text and language so a reused row can never keep a controller
     // whose immutable utterance snapshot belongs to an earlier reply.
     val snapshotKey = remember(scopeKey, text, language) { Any() }
-    val controller = remember(snapshotKey) { ChapterReadAloudController(context, text, language, coordinator, adapterFactory, focusFactory) }
+    val controller = remember(snapshotKey) {
+        ChapterReadAloudController(context, text, language, coordinator, adapterFactory, focusFactory)
+    }
     val status by controller.status
+    val completed by controller.completed
+    val latestScopeKey by rememberUpdatedState(scopeKey)
+    val latestEnabled by rememberUpdatedState(enabled)
+    val latestController by rememberUpdatedState(controller)
+    val latestLifecycleOwner by rememberUpdatedState(lifecycleOwner)
+    val latestStartConsumed by rememberUpdatedState(onStartRequestConsumed)
+    val latestCompletionChanged by rememberUpdatedState(onCompletionChanged)
+    LaunchedEffect(startRequest, snapshotKey) {
+        val request = startRequest ?: return@LaunchedEffect
+        // Consume before any eligibility or scope checks so a denied request cannot replay
+        // when the reader later becomes enabled, foregrounded, or free of recording.
+        if (!request.consumeAttempt()) return@LaunchedEffect
+        val started = request.scopeKey == latestScopeKey && latestEnabled &&
+            latestLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+            latestController.start()
+        latestStartConsumed?.invoke(request.uniqueId, started)
+    }
+    LaunchedEffect(snapshotKey, completed) {
+        latestCompletionChanged?.invoke(completed)
+    }
     DisposableEffect(snapshotKey, controller, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) controller.stop() }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -289,12 +332,13 @@ internal fun ChapterReadAloud(
     val active = status == "speaking" || status == "loading"
     val paused = status == "paused" || status == "paused_busy"
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Button(onClick = when (status) {
+        val toggle: () -> Unit = when (status) {
             "speaking" -> controller::pause
             "paused", "paused_busy" -> controller::resume
             "loading" -> controller::stop
-            else -> controller::start
-        }, enabled = chunksPresent && (active || enabled), modifier = Modifier.testTag("$tag-toggle")) {
+            else -> ({ controller.start(); Unit })
+        }
+        Button(onClick = toggle, enabled = chunksPresent && (active || enabled), modifier = Modifier.testTag("$tag-toggle")) {
             Text(when (status) {
                 "speaking" -> labels?.pause ?: t("Pause reading", "暂停朗读")
                 "paused", "paused_busy" -> labels?.resume ?: t("Resume reading", "继续朗读")

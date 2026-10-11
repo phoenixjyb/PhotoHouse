@@ -30,7 +30,7 @@ class MemoryBookReadingContinuityUiTest {
     @Test fun englishMemoirResumesExactMomentAfterRecreationAt150Percent() = journey(false)
 
     private fun journey(zh: Boolean) {
-        val api = FixtureApi()
+        val api = GeneratedMemoirReaderApi()
         val positions = Positions()
         fun newStore() = ConnectedStore(api, scope, memoryCommunityApi = api,
             memoryCommunityEnabled = true, memoryBookReaderPositionPersistence = positions)
@@ -113,43 +113,6 @@ class MemoryBookReadingContinuityUiTest {
             rows = rows.filterNot { it.accountId == accountId } + MemoryBookReaderPositions.without(accountId, load(accountId), libraryId, bookId)
         }
         override fun clear(accountId: String) { rows = rows.filterNot { it.accountId == accountId } }
-    }
-
-    private class FixtureApi : PhotoHouseApi, MemoryCommunityApi {
-        override val protectedNativeV2Enabled = true
-        var childReads = 0
-        var originalCalls = 0
-        var videoCalls = 0
-        private val assets = (1..12).map { Asset(it.toString(), "image", 800, 600, null, null, "/synthetic-thumbnail") }
-        override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
-        override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
-        override suspend fun session(token: Bearer) = Session(ACCOUNT, "+12025550123",
-            listOf(Membership(LIBRARY, "approved", "viewer", 1, null, 0, true)))
-        override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
-        override suspend fun logout(token: Bearer) = Unit
-        override suspend fun gallery(token: Bearer, library: String, page: Int) = Gallery(library, page, 50, 0, false, emptyList())
-        override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, assets.first { it.id == assetId })
-        override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
-        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = null
-        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk {
-            videoCalls++; error("Original playback is outside this reader fixture")
-        }
-        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray {
-            originalCalls++; error("Original photos are outside this reader fixture")
-        }
-        override suspend fun capabilities(token: Bearer, library: String) =
-            """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
-        private fun book() = """{"version":1,"type":"memoir","id":"$BOOK","revision":"2","can_edit":false,"title":"Garden memoir / 花园回忆册","introduction":"A generated reading fixture.","language":"zh","stories":[{"id":"$FIRST","title":"A garden day / 花园的一天","revision":"3","item_count":12,"cover_asset_id":"1"},{"id":"$SECOND","title":"The way home / 回家的路","revision":"5","item_count":12,"cover_asset_id":"1"}]}"""
-        override suspend fun listBooks(token: Bearer, library: String, page: Int) =
-            """{"version":1,"library_id":"$library","page":$page,"page_size":8,"has_more":false,"can_create":false,"items":[${book()}]}""".toByteArray()
-        override suspend fun getBook(token: Bearer, library: String, bookId: String) = book().toByteArray()
-        override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory {
-            childReads++
-            return SavedMemoryStory(storyId, library, revision, 1710000000, 1720000000, false, "a".repeat(64),
-                "Generated story / 合成故事", "everyday", "zh", assets.map { MemoryStoryAsset(it, emptyList()) },
-                (1..3).map { chapter -> SavedMemoryStoryChapter("chapter-$chapter", "Chapter $chapter / 第 $chapter 章",
-                    "A generated family walk.", assets.drop((chapter - 1) * 4).take(4).map { it.id }, emptyList()) }, emptyList())
-        }
     }
 
     private companion object {

@@ -177,9 +177,7 @@ internal fun MemoryBooksDialog(
                                         story != null && chapter != null && index != null -> {
                                             Text(story.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, modifier = Modifier.bringIntoViewRequester(originalStart).testTag("memory-book-story-title"))
                                             Text(t("Story ${index + 1} of ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"))
-                                            ChapterReadAloud("${story.title}. ${chapter.title}. ${chapter.narration}", story.language,
-                                                listOf("memoir", liveState.session?.account_id, reading.library, book.id, book.revision, story.id, story.revision, chapter.id), zh,
-                                                enabled = chapter.narration.isNotBlank())
+                                            MemoryBookChapterNarration(store, zh)
                                             Box(Modifier.fillMaxWidth().aspectRatio(1.6f).testTag("memory-book-hero"), contentAlignment = Alignment.Center) {
                                                 if (heroBitmap != null) Image(heroBitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                                 else if (reading.heroBusy || reading.framesBusy) CircularProgressIndicator()

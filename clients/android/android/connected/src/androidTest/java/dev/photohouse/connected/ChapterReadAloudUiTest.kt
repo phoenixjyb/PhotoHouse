@@ -82,16 +82,231 @@ class ChapterReadAloudUiTest {
         }
     }
 
+    @Test fun oneShotRequestReportsOnlyFinalChunkCompletionAndDoesNotReplayOnRecomposition() {
+        val engines = FakeFactory()
+        val coordinator = ReaderAudioCoordinator()
+        val focus = FakeFocusFactory()
+        val scopeKey = listOf("story", "revision-4", "chapter-2")
+        val text = "First short segment. ${"More chapter words. ".repeat(30)}"
+        val request = ChapterReadAloudStartRequest(scopeKey)
+        val attempts = mutableStateListOf<Pair<String, Boolean>>()
+        val completions = mutableStateListOf<Boolean>()
+        rule.setContent {
+            var enabled by remember { mutableStateOf(true) }
+            var activeScope by remember { mutableStateOf<Any>(scopeKey) }
+            CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
+                LocalChapterSpeechAdapterFactory provides engines,
+                LocalChapterAudioFocusFactory provides focus) {
+                Column {
+                    ChapterReadAloud(text, "en", activeScope, false, enabled = enabled,
+                        startRequest = request,
+                        onStartRequestConsumed = { id, started -> attempts += id to started },
+                        onCompletionChanged = { completions += it })
+                    Button(onClick = { enabled = !enabled }, modifier = Modifier.testTag("one-shot-toggle-enabled")) {
+                        Text("Toggle enabled")
+                    }
+                    Button(onClick = { activeScope = listOf("story", "revision-4", "chapter-3") },
+                        modifier = Modifier.testTag("one-shot-change-scope")) { Text("Change chapter") }
+                }
+            }
+        }
+        rule.waitUntil(5_000) { engines.engines.size == 1 && attempts.size == 1 }
+        assertEquals(listOf(request.uniqueId to true), attempts.toList())
+        val engine = engines.engines.single()
+        engine.init?.invoke(true, setOf(offlineVoice("en")))
+        rule.waitForIdle()
+        val chunks = narrationChunks(text)
+        assertTrue("test text should exercise multiple bounded utterances", chunks.size > 1)
+        assertEquals(1, engine.spoken.size)
+        assertEquals(chunks.first(), engine.spoken.first().text)
+        assertTrue("a partial read is not chapter completion", completions.none { it })
+
+        rule.onNodeWithTag("one-shot-toggle-enabled").performClick()
+        rule.onNodeWithTag("one-shot-toggle-enabled").performClick()
+        rule.waitForIdle()
+        assertEquals("same request object cannot restart after recomposition", 1, engines.engines.size)
+        assertEquals(1, attempts.size)
+
+        chunks.indices.forEach { index ->
+            val utterance = engine.spoken[index]
+            assertEquals(chunks[index], utterance.text)
+            utterance.done(utterance.id)
+            rule.waitForIdle()
+            val completedSignals = completions.count { it }
+            assertEquals("only the final bounded chunk reports completion", if (index == chunks.lastIndex) 1 else 0,
+                completedSignals)
+        }
+        val last = engine.spoken.last()
+        last.done(last.id)
+        rule.waitForIdle()
+        assertEquals(listOf(false, true), completions.toList())
+        rule.onNodeWithTag("one-shot-change-scope").performClick()
+        rule.waitForIdle()
+        assertEquals("a new reader scope clears completed state", listOf(false, true, false), completions.toList())
+    }
+
+    @Test fun disabledAndRecordingDeniedRequestsAreConsumedWithoutAutomaticRetry() {
+        val engines = FakeFactory()
+        val coordinator = ReaderAudioCoordinator()
+        val focus = FakeFocusFactory()
+        val scopeKey = listOf("story", "chapter-1")
+        val attempts = mutableStateListOf<Pair<String, Boolean>>()
+        val disabledRequest = ChapterReadAloudStartRequest(scopeKey)
+        val recordingRequest = ChapterReadAloudStartRequest(scopeKey)
+        lateinit var activeRecording: ReaderAudioCoordinator.Lease
+        activeRecording = coordinator.acquire(ReaderAudioKind.RECORDING) {}!!
+        rule.setContent {
+            var enabled by remember { mutableStateOf(false) }
+            var request by remember { mutableStateOf<ChapterReadAloudStartRequest?>(null) }
+            CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
+                LocalChapterSpeechAdapterFactory provides engines,
+                LocalChapterAudioFocusFactory provides focus) {
+                Column {
+                    ChapterReadAloud("A chapter.", "en", scopeKey, false, enabled = enabled,
+                        startRequest = request,
+                        onStartRequestConsumed = { id, started -> attempts += id to started })
+                    Button(onClick = { request = disabledRequest },
+                        modifier = Modifier.testTag("request-while-disabled")) { Text("Request disabled") }
+                    Button(onClick = { enabled = true }, modifier = Modifier.testTag("enable-reader")) { Text("Enable") }
+                    Button(onClick = { request = recordingRequest },
+                        modifier = Modifier.testTag("request-while-recording")) { Text("Request recording") }
+                }
+            }
+        }
+        rule.onNodeWithTag("request-while-disabled").performClick()
+        rule.waitUntil(5_000) { attempts.size == 1 }
+        assertEquals(disabledRequest.uniqueId to false, attempts.single())
+        rule.onNodeWithTag("enable-reader").performClick()
+        coordinator.release(activeRecording)
+        rule.waitForIdle()
+        assertTrue("enabling later does not replay a consumed request", engines.engines.isEmpty())
+        assertEquals(1, attempts.size)
+
+        activeRecording = coordinator.acquire(ReaderAudioKind.RECORDING) {}!!
+        rule.onNodeWithTag("request-while-recording").performClick()
+        rule.waitUntil(5_000) { attempts.size == 2 }
+        assertEquals(recordingRequest.uniqueId to false, attempts.last())
+        coordinator.release(activeRecording)
+        rule.waitForIdle()
+        assertTrue("ending recording does not replay a consumed request", engines.engines.isEmpty())
+        assertEquals(2, attempts.size)
+    }
+
+    @Test fun oneShotRequestWhilePausedIsConsumedAndExplicitResumeKeepsChunkCursor() {
+        val engines = FakeFactory()
+        val coordinator = ReaderAudioCoordinator()
+        val scopeKey = listOf("story", "chapter-paused")
+        val text = "First segment. ${"Second segment words. ".repeat(30)}"
+        val chunks = narrationChunks(text)
+        val request = ChapterReadAloudStartRequest(scopeKey)
+        val attempts = mutableStateListOf<Pair<String, Boolean>>()
+        rule.setContent {
+            var startRequest by remember { mutableStateOf<ChapterReadAloudStartRequest?>(null) }
+            CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
+                LocalChapterSpeechAdapterFactory provides engines,
+                LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
+                Column {
+                    ChapterReadAloud(text, "en", scopeKey, false, startRequest = startRequest,
+                        onStartRequestConsumed = { id, started -> attempts += id to started })
+                    Button(onClick = { startRequest = request }, modifier = Modifier.testTag("request-while-paused")) {
+                        Text("Request read")
+                    }
+                }
+            }
+        }
+
+        rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
+        val firstEngine = engines.engines.single()
+        firstEngine.init?.invoke(true, setOf(offlineVoice("en")))
+        rule.waitForIdle()
+        assertEquals(chunks.first(), firstEngine.spoken.single().text)
+        firstEngine.spoken.first().done(firstEngine.spoken.first().id)
+        rule.waitForIdle()
+        assertEquals(chunks[1], firstEngine.spoken.last().text)
+
+        rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
+        rule.onNodeWithTag("saved-memory-narration-paused-notice").assertExists()
+        rule.onNodeWithTag("request-while-paused").performClick()
+        rule.waitUntil(5_000) { attempts.size == 1 }
+        assertEquals(request.uniqueId to false, attempts.single())
+        assertEquals("a paused request does not allocate another engine", 1, engines.engines.size)
+        assertEquals("paused chunk remains available for explicit resume", 2, firstEngine.spoken.size)
+
+        rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
+        val resumedEngine = engines.engines.last()
+        resumedEngine.init?.invoke(true, setOf(offlineVoice("en")))
+        rule.waitForIdle()
+        assertEquals("explicit resume continues at the paused chunk", chunks[1], resumedEngine.spoken.single().text)
+        assertEquals("the consumed request does not restart the chapter", 2, engines.engines.size)
+    }
+
+    @Test fun mismatchedScopeRequestIsConsumedAndCannotStartAfterScopeChanges() {
+        val engines = FakeFactory()
+        val coordinator = ReaderAudioCoordinator()
+        val attempts = mutableStateListOf<Pair<String, Boolean>>()
+        val request = ChapterReadAloudStartRequest("chapter-b")
+        rule.setContent {
+            var scope by remember { mutableStateOf("chapter-a") }
+            CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
+                LocalChapterSpeechAdapterFactory provides engines,
+                LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
+                Column {
+                    ChapterReadAloud("A chapter.", "en", scope, false, startRequest = request,
+                        onStartRequestConsumed = { id, started -> attempts += id to started })
+                    Button(onClick = { scope = "chapter-b" }, modifier = Modifier.testTag("change-to-request-scope")) {
+                        Text("Change chapter")
+                    }
+                }
+            }
+        }
+        rule.waitUntil(5_000) { attempts.size == 1 }
+        assertEquals(request.uniqueId to false, attempts.single())
+        rule.onNodeWithTag("change-to-request-scope").performClick()
+        rule.waitForIdle()
+        assertTrue("matching the scope later does not retry the consumed request", engines.engines.isEmpty())
+        assertEquals(1, attempts.size)
+    }
+
+    @Test fun lifecyclePausedRequestIsConsumedAndDoesNotStartOnResume() {
+        val engines = FakeFactory()
+        val coordinator = ReaderAudioCoordinator()
+        val lifecycleOwner = object : LifecycleOwner { override val lifecycle = LifecycleRegistry(this) }
+        val attempts = mutableStateListOf<Pair<String, Boolean>>()
+        val scopeKey = listOf("memoir", "book-revision-2", "chapter-3")
+        val request = ChapterReadAloudStartRequest(scopeKey)
+        val completions = mutableStateListOf<Boolean>()
+        rule.runOnIdle { lifecycleOwner.lifecycle.currentState = Lifecycle.State.STARTED }
+        rule.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides lifecycleOwner,
+                LocalReaderAudioCoordinator provides coordinator,
+                LocalChapterSpeechAdapterFactory provides engines,
+                LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
+                ChapterReadAloud("Chapter text.", "en", scopeKey, false, startRequest = request,
+                    onStartRequestConsumed = { id, started -> attempts += id to started },
+                    onCompletionChanged = { completions += it })
+            }
+        }
+        rule.waitUntil(5_000) { attempts.size == 1 }
+        assertEquals(request.uniqueId to false, attempts.single())
+        rule.runOnIdle { lifecycleOwner.lifecycle.currentState = Lifecycle.State.RESUMED }
+        rule.waitForIdle()
+        assertTrue("foregrounding does not automatically retry", engines.engines.isEmpty())
+        assertEquals(1, attempts.size)
+        assertTrue("backgrounding cannot mark an incomplete chapter complete", completions.none { it })
+    }
+
     @Test fun stopAndScopeChangeIgnoreLateInitializationAndUtteranceCallbacks() {
         val engines = FakeFactory()
         val coordinator = ReaderAudioCoordinator()
+        val completions = mutableStateListOf<Boolean>()
         rule.setContent {
             var scope by remember { mutableStateOf<Any>(listOf("story", "one")) }
             CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
                 LocalChapterSpeechAdapterFactory provides engines,
                 LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
                 Column {
-                    ChapterReadAloud("A short chapter. ${"More words. ".repeat(30)}", "en", scope, false)
+                    ChapterReadAloud("A short chapter. ${"More words. ".repeat(30)}", "en", scope, false,
+                        onCompletionChanged = { completions += it })
                     Button(onClick = { scope = listOf("story", "two") }, modifier = Modifier.testTag("scope-change")) { Text("Next") }
                 }
             }
@@ -124,6 +339,8 @@ class ChapterReadAloudUiTest {
         rule.waitForIdle()
         third.init?.invoke(true, setOf(offlineVoice("en")))
         rule.runOnIdle { assertTrue(third.spoken.isEmpty()); assertTrue(third.shutdowns > 0) }
+        assertEquals("stopping and replacing an unfinished scope never reports completion",
+            listOf(false, false), completions.toList())
     }
 
     @Test fun refusesNetworkOrNotInstalledVoices() {
@@ -399,6 +616,7 @@ class ChapterReadAloudUiTest {
 
     @Test fun lifecyclePauseStopsAndInvalidatesPendingChunkCallback() {
         val engines = FakeFactory()
+        val completions = mutableStateListOf<Boolean>()
         val lifecycleOwner = object : LifecycleOwner { override val lifecycle = LifecycleRegistry(this) }
         rule.runOnIdle { lifecycleOwner.lifecycle.currentState = Lifecycle.State.RESUMED }
         rule.setContent {
@@ -406,7 +624,8 @@ class ChapterReadAloudUiTest {
                 LocalReaderAudioCoordinator provides ReaderAudioCoordinator(),
                 LocalChapterSpeechAdapterFactory provides engines,
                 LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
-                ChapterReadAloud("${"Many words. ".repeat(40)}", "en", "story-background", false)
+                ChapterReadAloud("${"Many words. ".repeat(40)}", "en", "story-background", false,
+                    onCompletionChanged = { completions += it })
             }
         }
         rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
@@ -424,6 +643,7 @@ class ChapterReadAloudUiTest {
         rule.waitForIdle()
         assertEquals("returning to foreground never auto-resumes narration", 1, engine.spoken.size)
         rule.onNodeWithTag("saved-memory-narration-toggle").assertTextEquals("Read aloud")
+        assertTrue("background stop cannot report an incomplete chapter as complete", completions.none { it })
     }
 
     @Test fun focusFailureReleasesSpeechLeaseAndDoesNotAllocateTts() {
@@ -451,6 +671,7 @@ class ChapterReadAloudUiTest {
         val factory = FakeFactory(throwOnCreate = true)
         val secondCoordinator = ReaderAudioCoordinator()
         val speakingFactory = FakeFactory(throwOnSpeak = true, throwOnStop = true)
+        val completions = mutableStateListOf<Boolean>()
         rule.setContent {
             var switch by remember { mutableStateOf(false) }
             val activeCoordinator = if (switch) secondCoordinator else coordinator
@@ -459,7 +680,8 @@ class ChapterReadAloudUiTest {
                 LocalChapterSpeechAdapterFactory provides activeFactory,
                 LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
                 Column {
-                    ChapterReadAloud("Text", "en", if (switch) "story-throws-speak" else "story-throws-create", false)
+                    ChapterReadAloud("Text", "en", if (switch) "story-throws-speak" else "story-throws-create", false,
+                        onCompletionChanged = { completions += it })
                     Button(onClick = { switch = true }, modifier = Modifier.testTag("throwing-switch")) { Text("Next") }
                 }
             }
@@ -477,6 +699,7 @@ class ChapterReadAloudUiTest {
         rule.onNodeWithText("Reading stopped after an audio error.").assertExists()
         assertTrue(engine.shutdowns > 0)
         assertTrue(secondCoordinator.acquire(ReaderAudioKind.RECORDING) { } != null)
+        assertTrue("provider and utterance failures cannot mark a chapter complete", completions.none { it })
     }
 
     @Test fun installedEngineVoiceInventoryIsMetadataOnly() {

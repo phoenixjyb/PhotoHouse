@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
+import java.util.Collections
 import java.util.UUID
 
 private const val MEMORY_BOOK_CHAPTER_ASSET_LIMIT = 8
@@ -92,6 +93,22 @@ data class MemoryBookResumePosition(
     val libraryId: String? = null,
     val bookId: String? = null,
     val bookRevision: Long? = null,
+)
+data class MemoryBookSpeechChildRevision(val storyId: String, val revision: Long)
+/** Immutable same-story transition binding captured for one explicit TTS run. */
+data class MemoryBookSpeechAdvanceScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoryBookSpeechChildRevision>,
+    val storyId: String,
+    val storyRevision: Long,
+    val fromChapterIndex: Int,
+    val fromChapterId: String,
+    val nextChapterId: String,
 )
 data class MemoryBookEditorialCatalogState(
     val busy: Boolean = false, val unavailable: Boolean = false,
@@ -2959,8 +2976,9 @@ class ConnectedStore(
     private fun isDefinitiveMemoryBookPositionFailure(failure: ApiFailure): Boolean =
         failure.kind == FailureKind.INVALID_RESPONSE || failure.status in setOf(404, 409)
 
-    private fun canSwitchMemoryBookReading(reading: MemoryBooksReading): Boolean {
-        if (!allowed() || token == null || state.value.busy || reading.busy || reading.readerBusy || reading.framesBusy ||
+    private fun canSwitchMemoryBookReading(reading: MemoryBooksReading, allowPreviewLoading: Boolean = false): Boolean {
+        if (!allowed() || token == null || state.value.busy || reading.busy || reading.readerBusy ||
+            (reading.framesBusy && !allowPreviewLoading) ||
             reading.library != state.value.library || bookChatOperationActive() ||
             reading.companion?.let { chat -> chat.draft.isNotBlank() || chat.threadDrafts.values.any(String::isNotBlank) ||
                 dictationHasUnfinishedInput(chat.dictation) } == true ||
@@ -2976,6 +2994,80 @@ class ConnectedStore(
 
     fun loadMemoryBookChapter(index: Int, framePage: Int = 0) {
         loadMemoryBookChapterAt(index, framePage, assetId = null, explicitNavigation = true)
+    }
+
+    /** Captures only a next chapter in the same freshly selected child story. */
+    fun captureMemoryBookSpeechAdvance(): MemoryBookSpeechAdvanceScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val storyIndex = reading.storyIndex ?: return null
+        if (reading.readerUnavailable || !canSwitchMemoryBookReading(reading, allowPreviewLoading = true) ||
+            book.stories.getOrNull(storyIndex)?.let { it.id == story.id && it.revision == story.revision } != true) return null
+        val fromChapter = story.chapters.getOrNull(reading.selectedChapter) ?: return null
+        val nextChapter = story.chapters.getOrNull(reading.selectedChapter + 1) ?: return null
+        return MemoryBookSpeechAdvanceScope(
+            accountId = accountId,
+            generation = state.value.generation,
+            libraryId = reading.library,
+            readerScopeId = reading.readerScopeId,
+            bookId = book.id,
+            bookRevision = book.revision,
+            orderedChildren = Collections.unmodifiableList(book.stories.map { MemoryBookSpeechChildRevision(it.id, it.revision) }),
+            storyId = story.id,
+            storyRevision = story.revision,
+            fromChapterIndex = reading.selectedChapter,
+            fromChapterId = fromChapter.id,
+            nextChapterId = nextChapter.id,
+        )
+    }
+
+    /** Source phase is checked before consuming the matching one-shot TTS advance request. */
+    fun isCurrentMemoryBookSpeechAdvance(expected: MemoryBookSpeechAdvanceScope): Boolean =
+        memoryBookSpeechAdvanceMatches(expected, destination = false) != null
+
+    /** Destination phase is checked before the new chapter's generic TTS control can start. */
+    fun isCurrentMemoryBookSpeechDestination(expected: MemoryBookSpeechAdvanceScope): Boolean =
+        memoryBookSpeechAdvanceMatches(expected, destination = true) != null
+
+    /** Moves one chapter within the same story and uses ordinary explicit navigation/bookmarking. */
+    fun advanceMemoryBookSpeech(expected: MemoryBookSpeechAdvanceScope): Boolean {
+        if (memoryBookSpeechAdvanceMatches(expected, destination = false) == null) return false
+        val nextIndex = expected.fromChapterIndex + 1
+        loadMemoryBookChapterAt(nextIndex, framePage = 0, assetId = null, explicitNavigation = true)
+        val after = state.value.memoryBooks ?: return false
+        val afterBook = after.selectedBook ?: return false
+        val afterStory = after.story ?: return false
+        return afterBook.id == expected.bookId && afterBook.revision == expected.bookRevision &&
+            afterStory.id == expected.storyId && afterStory.revision == expected.storyRevision &&
+            after.selectedChapter == nextIndex && afterStory.chapters.getOrNull(nextIndex)?.id == expected.nextChapterId
+    }
+
+    private fun memoryBookSpeechAdvanceMatches(
+        expected: MemoryBookSpeechAdvanceScope,
+        destination: Boolean,
+    ): MemoryBooksReading? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val chapterIndex = if (destination) expected.fromChapterIndex + 1 else expected.fromChapterIndex
+        val chapterId = if (destination) expected.nextChapterId else expected.fromChapterId
+        val storyIndex = book.stories.indexOfFirst { it.id == expected.storyId && it.revision == expected.storyRevision }
+        val sourceChapter = story.chapters.getOrNull(expected.fromChapterIndex) ?: return null
+        val nextChapter = story.chapters.getOrNull(expected.fromChapterIndex + 1) ?: return null
+        val chapter = story.chapters.getOrNull(chapterIndex) ?: return null
+        val orderedChildren = book.stories.map { MemoryBookSpeechChildRevision(it.id, it.revision) }
+        if (accountId != expected.accountId || state.value.generation != expected.generation ||
+            state.value.library != expected.libraryId || reading.library != expected.libraryId ||
+            reading.readerScopeId != expected.readerScopeId || book.id != expected.bookId ||
+            book.revision != expected.bookRevision || orderedChildren != expected.orderedChildren ||
+            reading.storyIndex != storyIndex || story.id != expected.storyId || story.revision != expected.storyRevision ||
+            sourceChapter.id != expected.fromChapterId || nextChapter.id != expected.nextChapterId ||
+            reading.selectedChapter != chapterIndex || chapter.id != chapterId || reading.readerUnavailable ||
+            !canSwitchMemoryBookReading(reading, allowPreviewLoading = true)) return null
+        return reading
     }
 
     private fun loadMemoryBookChapterAt(index: Int, framePage: Int, assetId: String?, explicitNavigation: Boolean) {
