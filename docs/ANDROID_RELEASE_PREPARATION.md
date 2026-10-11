@@ -21,6 +21,11 @@ cannot establish the historical value of every build-only property. Record
 inferred values and newly selected choices separately. Release preparation
 keeps `photohouseStoryFixtureEnabled=false`; the phone's
 `photohousePhoneUiQa=false` selects the household package.
+The new `photohouseMemoryGroupsEnabled` property defaults to false and requires
+`photohouseProtectedNativeV2Enabled=true`. Enabling the phone control does not
+enable server storage or similarity lookup. Record it explicitly in a future
+phone release profile, and qualify the e7 API and private vector profile before
+claiming the shared-memory journey works live.
 
 Build the modules in separate serial invocations. Shared property names such
 as `photohouseHomeCalendarEnabled` can legitimately have different phone and

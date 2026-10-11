@@ -37,7 +37,11 @@ inside the same authorization snapshot. It never invokes a model or global index
 The vector tables still have no migration or live activation. A separate e7
 migration adds ID-only memory groups; a default-off Web editor can link current
 family notes and review capture-time plus similarity suggestions. Qualified
-vector configuration is explicit, and manual groups work without vectors. See
+vector configuration is explicit, and manual groups work without vectors.
+The phone uses the same protected contract behind its own default-off build
+choice. Its editor and bounded preview cache belong to the current account,
+library and visible-item generation; no private draft is persisted or sent to
+anonymous Home/TV. See [phone groups](PHONE_MEMORY_GROUPS.md). See
 [the group contract](../server/docs/security/MEMORY_GROUPS_V1.md). An internal image-worker producer now binds the publication journal to
 the exact approved task and verified profile. Ready record, task completion and
 committed intent are atomic; restart can recover a verified file before loading

@@ -85,9 +85,10 @@ Local synthetic tests cover the pure rules, protected loader/routes, source
 revision/deletion behavior, ownership, CSRF, idempotency, scope withdrawal and
 migration preservation. Windows qualification must check the migration and
 backup restore, the companion upload-worker package, current image-vector
-coverage and producer provenance. Live activation, phone integration and family
+coverage and producer provenance. Live activation, phone release and family
 acceptance remain separate. The existing capture-day picker stays available.
 
-Next: carry deduplicated group references into story/editorial evidence, then
-add the same review/edit workflow to the phone. Group membership does not yet
+The phone now has a default-off source implementation of the same review/edit
+workflow; see [its contract](../../../docs/PHONE_MEMORY_GROUPS.md).
+Next: carry deduplicated group references into story/editorial evidence. Group membership does not yet
 generate an essay or rewrite notes automatically.

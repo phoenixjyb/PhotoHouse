@@ -13,10 +13,12 @@ import android.net.Uri
 import dev.photohouse.connected.core.*
 
 class ConnectedViewModel(api: PhotoHouseApi?, persistence: SessionPersistence? = null, uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN }, batchPersistence: UploadQueuePersistence? = null, batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null,
-                         memoryCommunityApi: MemoryCommunityApi? = null, memoryCommunityEnabled: Boolean = false) : ViewModel() {
+                         memoryCommunityApi: MemoryCommunityApi? = null, memoryCommunityEnabled: Boolean = false,
+                         memoryGroupsApi: MemoryGroupsApi? = null, memoryGroupsEnabled: Boolean = false) : ViewModel() {
     val store = api?.let { ConnectedStore(it, viewModelScope, persistence, uploadNetwork = uploadNetwork,
         batchPersistence = batchPersistence, batchSource = batchSource, memoryCommunityApi = memoryCommunityApi,
-        memoryCommunityEnabled = memoryCommunityEnabled).also { store -> store.restoreSession() } }
+        memoryCommunityEnabled = memoryCommunityEnabled, memoryGroupsApi = memoryGroupsApi,
+        memoryGroupsEnabled = memoryGroupsEnabled).also { store -> store.restoreSession() } }
 }
 class MainActivity : ComponentActivity() {
     private val model by viewModels<ConnectedViewModel> {
@@ -41,7 +43,10 @@ class MainActivity : ComponentActivity() {
                     batchPersistence = origin?.let { KeystoreUploadQueuePersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN) },
                     batchSource = { record -> record.locator?.let { batchUploadSource(applicationContext, Uri.parse(it)) } },
                     memoryCommunityApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED }?.let(::HttpsMemoryCommunityApi),
-                    memoryCommunityEnabled = BuildConfig.PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED) as T
+                    memoryCommunityEnabled = BuildConfig.PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED,
+                    memoryGroupsApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_MEMORY_GROUPS_ENABLED }?.let {
+                        HttpsMemoryGroupsApi(it, memoryGroupsEnabled = true)
+                    }, memoryGroupsEnabled = BuildConfig.PHOTOHOUSE_MEMORY_GROUPS_ENABLED) as T
             }
         }
     }

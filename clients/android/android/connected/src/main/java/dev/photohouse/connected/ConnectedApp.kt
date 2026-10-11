@@ -368,6 +368,9 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (!state.covered && store != null) state.storyEditor?.let { editor ->
             ProtectedStoryEditorDialog(editor, onDismiss = store::closeStoryEditor, zh = words.zh)
         }
+        if (!state.covered && store != null) state.memoryGroups?.let { groups ->
+            MemoryGroupsDialog(groups, words.zh, onClose = store::closeMemoryGroups)
+        }
         if (!state.covered && store != null && state.session != null && state.library != null && store.protectedNativeV2Enabled) {
             state.savedMemoryStories?.let { reading -> SavedMemoryStoriesDialog(
                 store = store,
@@ -986,6 +989,12 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     if (store.protectedNativeV2Enabled) item {
                                         ProtectedStoriesPanel(state.stories, state.busy, words,
                                             load = store::loadStories, edit = store::editStory)
+                                    }
+                                    if (store.memoryGroupsAvailable) item {
+                                        OutlinedButton(onClick = { store.openMemoryGroups() }, enabled = !state.busy,
+                                            modifier = Modifier.fillMaxWidth().testTag("open-memory-groups")) {
+                                            Text(t("Share memories across related moments", "把回忆分享给相关照片"))
+                                        }
                                     }
                                     item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         HorizontalDivider(Modifier.padding(vertical = 12.dp))

@@ -16,10 +16,23 @@ This is source and synthetic evidence, with no Windows operation in this chunk.
 
 Next delivery gates: qualify e7 upgrade and stopped-writer backup restoration,
 worker companion package, exact prepared-vector profile/coverage and protected
-lookup on Windows; then approve activation. Next product work: phone group
-review/edit, deduplicated shared sources in essay/memoir evidence, and explicit
+lookup on Windows; then approve activation. The phone now has a default-off
+group review/edit source implementation; its release and live API availability
+remain delivery gates. Next product work: deduplicated shared sources in essay/memoir evidence, and explicit
 family feedback on suggested group boundaries. Do not automatically publish
 private memories to Home TV.
+
+### Phone shared-memory review
+
+The protected phone detail view has an explicit shared-memory entry. Users can
+link current original notes, select related images, manually include videos,
+change the theme, exclude suggestions and adjust existing groups. Suggestions
+stay anchored to the original image; removing that anchor from an existing
+group disables further suggestions until it is restored. Saves require a
+review and confirmation; uncertain responses retain the same mutation for retry.
+Account, library and background changes clear the editor and preview cache.
+The feature is absent from anonymous Home mode and TV. See the
+[phone contract](PHONE_MEMORY_GROUPS.md).
 
 ## October 11 native qualification follow-up
 

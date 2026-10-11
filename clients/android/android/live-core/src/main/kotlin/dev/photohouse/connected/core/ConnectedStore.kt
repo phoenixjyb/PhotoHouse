@@ -240,6 +240,9 @@ data class LiveState(
     val familyTags: FamilyTagsBrowsing? = null,
     val media: GalleryMedia = GalleryMedia.ALL,
     val storyEditor: ProtectedStoryEditorStore? = null,
+    val memoryGroups: MemoryGroupsStore? = null,
+    /** Current detail's originating page only; cleared with account/library/private state. */
+    val memoryGroupGallery: List<Asset> = emptyList(),
     val upload: UploadStore? = null,
     val uploadHistory: UploadHistoryState? = null,
     val uploadAnnotationWrite: UploadAnnotationWriteState? = null,
@@ -250,7 +253,7 @@ data class LiveState(
 )
 
 /** UI-dispatcher-confined; only the wire DTO module is shared with fixture code. */
-class ConnectedStore(private val api: PhotoHouseApi, private val scope: CoroutineScope, private val persistence: SessionPersistence? = null, private val uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN }, batchPersistence: UploadQueuePersistence? = null, batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null, memoryCommunityApi: MemoryCommunityApi? = null, private val memoryCommunityEnabled: Boolean = false, private val now: () -> Long = System::currentTimeMillis) {
+class ConnectedStore(private val api: PhotoHouseApi, private val scope: CoroutineScope, private val persistence: SessionPersistence? = null, private val uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN }, batchPersistence: UploadQueuePersistence? = null, batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null, memoryCommunityApi: MemoryCommunityApi? = null, private val memoryCommunityEnabled: Boolean = false, private val memoryGroupsApi: MemoryGroupsApi? = null, private val memoryGroupsEnabled: Boolean = false, private val now: () -> Long = System::currentTimeMillis) {
     private var assistantSpeechRequest = 0L
     private var assistantTurnRequest = 0L
     private var assistantTranscriptRequest = 0L
@@ -363,6 +366,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     val batchUploads get() = batchQueue
     val groupedStoryCreationAvailable get() = api.protectedNativeV2Enabled && api is StoryWorkspaceApi
     val protectedNativeV2Enabled get() = api.protectedNativeV2Enabled
+    val memoryGroupsAvailable get() = memoryGroupsEnabled && api.protectedNativeV2Enabled && memoryGroupsApi?.memoryGroupsEnabled == true
     val mediaFilterEnabled get() = api.mediaFilterEnabled
     val preparedBrowseEnabled get() = api.preparedBrowseEnabled
     val canRememberSession get() = persistence != null
@@ -406,6 +410,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         state.value.videoBookmark?.close()
         state.value.video?.close()
         state.value.storyEditor?.close()
+        state.value.memoryGroups?.close()
         state.value.upload?.close()
         state.value.uploadAnnotationAudio?.audio?.close()
         state.value.assistant?.speechAudio?.close()
@@ -2959,6 +2964,62 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         mutable.value = state.value.copy(storyEditor = null)
         loadStories(1)
     }
+    /** Explicit protected entry. The first page of original notes is refreshed before linking. */
+    fun openMemoryGroups(): Boolean {
+        val groupsApi = memoryGroupsApi ?: return false
+        if (!memoryGroupsAvailable || !allowed() || state.value.busy || coolingDown() ||
+            state.value.storyEditor != null || state.value.memoryGroups != null ||
+            state.value.viewingOriginal || state.value.video != null) return false
+        val anchor = state.value.detail?.asset ?: return false
+        val library = state.value.library!!; val credential = token!!
+        val account = identity!!.account_id
+        mutable.value = state.value.copy(busy = true)
+        launch { generation ->
+            try {
+                val notes = api.stories(credential, library, anchor.id, 1)
+                if (!active(generation) || !allowed() || token !== credential ||
+                    identity?.account_id != account || state.value.library != library ||
+                    state.value.detail?.asset?.id != anchor.id) return@launch
+                validResponse(notes.libraryId == library && notes.assetId == anchor.id && notes.page == 1 &&
+                    notes.items.size <= 5 && notes.items.all { it.assetId == anchor.id } &&
+                    notes.items.map { it.id }.distinct().size == notes.items.size)
+                lateinit var groups: MemoryGroupsStore
+                groups = MemoryGroupsStore(groupsApi, scope, credential, library, anchor,
+                    state.value.memoryGroupGallery, notes.items,
+                    valid = { active(generation) && allowed() && token === credential &&
+                        identity?.account_id == account && state.value.library == library &&
+                        state.value.detail?.asset?.id == anchor.id && state.value.memoryGroups === groups },
+                    onDenied = {
+                        if (active(generation) && token === credential && state.value.library == library) {
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    }, now = now,
+                    preview = { asset -> api.thumbnail(credential, library, asset) })
+                mutable.value = state.value.copy(memoryGroups = groups, busy = false,
+                    photoSlideshow = false, stories = StoryReading(1, notes))
+                groups.load()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                if (!active(generation)) return@launch
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    invalidate(keepIdentity = true, cover = true)
+                    mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                    retry = { foreground() }
+                } else readFailure(e, generation, credential) { openMemoryGroups() }
+            }
+        }
+        return true
+    }
+    fun closeMemoryGroups(discard: Boolean = false): Boolean {
+        val groups = state.value.memoryGroups ?: return true
+        if (groups.state.value.phase == MemoryGroupsStorePhase.SAVING) return false
+        if (!discard && !groups.canClose()) return false
+        groups.close()
+        mutable.value = state.value.copy(memoryGroups = null)
+        return true
+    }
     /** Incoming contribution is account scoped and never grants library visibility. */
     fun openUpload(): UploadStore? {
         if (!api.uploadEnabled || !api.protectedNativeV2Enabled || !usable() || state.value.busy ||
@@ -3839,9 +3900,12 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!allowed() || coolingDown()) return
         val library = state.value.library!!; val credential = token!!
         val familyTags = state.value.familyTags
+        val groupGallery = if (memoryGroupsAvailable)
+            (state.value.gallery?.items ?: state.value.memoryGroupGallery).take(100) else emptyList()
         invalidate(keepIdentity = true)
         mutable.value = state.value.copy(library = library, busy = true, photoNavigation = navigation,
-            familyTags = familyTags, viewingOriginal = originalAfterLoad, photoSlideshow = slideshow, media = navigation?.media ?: GalleryMedia.ALL)
+            familyTags = familyTags, memoryGroupGallery = groupGallery,
+            viewingOriginal = originalAfterLoad, photoSlideshow = slideshow, media = navigation?.media ?: GalleryMedia.ALL)
         launch { generation ->
             try {
                 val detail = api.detail(credential, library, assetId)
@@ -3910,7 +3974,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         state.value.savedMemoryStories?.covers?.values?.forEach { it.fill(0) }
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
         state.value.video?.close()
-        mutable.value = state.value.copy(video = null, gallery = null, detail = null, captions = null, previews = emptyMap(), photoNavigation = null, originalPhoto = null, viewingOriginal = false, photoSlideshow = false, photoPreviewOnly = false, photoOriginalQuality = false, discovery = null, stories = null, savedMemoryStories = null, familyTags = null, busy = false, problem = problem(error))
+        state.value.memoryGroups?.close()
+        mutable.value = state.value.copy(video = null, gallery = null, detail = null, captions = null, previews = emptyMap(), photoNavigation = null, originalPhoto = null, viewingOriginal = false, photoSlideshow = false, photoPreviewOnly = false, photoOriginalQuality = false, discovery = null, stories = null, savedMemoryStories = null, familyTags = null, memoryGroups = null, memoryGroupGallery = emptyList(), busy = false, problem = problem(error))
         if (error is ApiFailure && error.status == 401) {
             mutable.value = state.value.copy(busy = true)
             try {

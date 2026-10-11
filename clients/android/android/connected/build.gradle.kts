@@ -41,6 +41,9 @@ require(assistantEnabled in listOf("true", "false"))
 val memoryCommunityEnabled = providers.gradleProperty("photohouseMemoryCommunityEnabled").orElse("false").get()
 require(memoryCommunityEnabled in listOf("true", "false"))
 require(memoryCommunityEnabled != "true" || protectedNativeV2Enabled == "true")
+val memoryGroupsEnabled = providers.gradleProperty("photohouseMemoryGroupsEnabled").orElse("false").get()
+require(memoryGroupsEnabled in listOf("true", "false"))
+require(memoryGroupsEnabled != "true" || protectedNativeV2Enabled == "true")
 val calendarEnabled = providers.gradleProperty("photohouseHomeCalendarEnabled").orElse("false").get()
 require(calendarEnabled in listOf("true", "false"))
 require(calendarEnabled != "true" || tagLookupEnabled == "true")
@@ -67,6 +70,7 @@ android {
         buildConfigField("boolean", "PHOTOHOUSE_HOME_TAG_LOOKUP_ENABLED", tagLookupEnabled)
         buildConfigField("boolean", "PHOTOHOUSE_ASSISTANT_ENABLED", assistantEnabled)
         buildConfigField("boolean", "PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED", memoryCommunityEnabled)
+        buildConfigField("boolean", "PHOTOHOUSE_MEMORY_GROUPS_ENABLED", memoryGroupsEnabled)
         applicationId = if (uiQa == "true") "dev.photohouse.connected.qa" else "dev.photohouse.connected"
         minSdk = 26
         targetSdk = 34

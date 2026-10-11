@@ -1,5 +1,16 @@
 # Development and public release qualification
 
+## Phone memory group checks (October 11)
+
+The shared-memory phone editor passed 652 live-core and 17 phone JVM tests,
+unconfigured debug/test assembly and debug lint with no errors (six existing
+warnings). Its two generated API 36 simulator journeys cover reviewed selection,
+original attribution across group members, manual adjustment, exact save retry,
+native keyboard focus and Chinese/English at 150% text. Final renders were
+inspected; fixtures use generated thumbnails and notes. This does not establish
+a signed release, Samsung installation, provider quality or live e7 activation.
+See [the feature contract](PHONE_MEMORY_GROUPS.md).
+
 ## Visual-vector publication and lifecycle checks
 
 The ordinary `api` profile includes the optional vector publication journal,
