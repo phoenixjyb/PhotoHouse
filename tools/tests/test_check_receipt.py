@@ -23,6 +23,9 @@ class CheckReceiptTests(unittest.TestCase):
         self._write("server/tests/security/browser-tooling/package-lock.json", b"{\"lockfileVersion\": 3}\n")
         self._write("config/pytest.ini", b"[pytest]\n")
         self._write("examples/generated-demo/check_demo.py", b"demo\n")
+        self._write("clients/android/android/settings.gradle", b"rootProject.name = 'fixture'\n")
+        self._write("clients/android/contracts/v1/manifest.json", b"{\"version\": 1}\n")
+        self._write("docs/ROADMAP.md", b"fixture roadmap\n")
         self._git("init", "-q")
         self._git("add", "--all")
         self._git("-c", "user.name=Receipt Test", "-c", "user.email=receipt@example.invalid",
@@ -141,6 +144,33 @@ class CheckReceiptTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertNotEqual(receipt["source_sha256_start"], receipt["source_sha256_end"])
         self.assertFalse(receipt["source_unchanged"])
+
+    def test_android_profile_covers_shared_contract_resources(self):
+        destination = self.root / "android-contract.json"
+        contract = self.root / "clients/android/contracts/v1/manifest.json"
+
+        def update_contract():
+            contract.write_bytes(b"{\"version\": 1, \"fixture\": \"changed\"}\n")
+
+        with mock.patch.object(check, "android", side_effect=update_contract):
+            status = self._main(["android", "--receipt", str(destination)])
+        receipt = json.loads(destination.read_text(encoding="utf-8"))
+        self.assertEqual(status, 0)
+        self.assertNotEqual(receipt["source_sha256_start"], receipt["source_sha256_end"])
+        self.assertFalse(receipt["source_unchanged"])
+
+    def test_android_profile_excludes_unrelated_documentation(self):
+        destination = self.root / "android-docs.json"
+
+        def update_unrelated_docs():
+            (self.root / "docs/ROADMAP.md").write_bytes(b"unrelated documentation changed\n")
+
+        with mock.patch.object(check, "android", side_effect=update_unrelated_docs):
+            status = self._main(["android", "--receipt", str(destination)])
+        receipt = json.loads(destination.read_text(encoding="utf-8"))
+        self.assertEqual(status, 0)
+        self.assertEqual(receipt["source_sha256_start"], receipt["source_sha256_end"])
+        self.assertTrue(receipt["source_unchanged"])
 
     def test_head_change_during_run_is_detected_even_if_profile_is_recorded(self):
         destination = self.root / "head-change.json"

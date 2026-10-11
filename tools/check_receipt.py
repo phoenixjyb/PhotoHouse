@@ -19,7 +19,7 @@ PROFILE_INPUTS = {
     "memory": ("server/backend", "server/tests", "config"),
     "windows-cpu": ("server/backend", "server/tests", "config"),
     "web": ("server/backend", "server/tests/security"),
-    "android": ("clients/android/android",),
+    "android": ("clients/android/android", "clients/android/contracts"),
 }
 COMMON_INPUTS = ("tools/check.py", "tools/check_receipt.py")
 EXPANSION = {"api": ("api",), "memory": ("memory",), "windows-cpu": ("windows-cpu",),
