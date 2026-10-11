@@ -104,17 +104,20 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             key(chapter.id) {
                 var showSources by remember { mutableStateOf(false) }
-                val sources = draft.items.filter { it.asset.id in chapter.assetIds }.flatMap { it.evidence }
-                    .filter { it.id in chapter.evidenceIds }
+                val sources = chapterSourceReferences(chapter.assetIds, chapter.evidenceIds, draft.items)
                 if (sources.isNotEmpty()) {
                     TextButton(onClick = { showSources = !showSources }, modifier = Modifier.fillMaxWidth()) {
                         Text(t("Review sources (${sources.size})", "核对来源（${sources.size}）"))
                     }
                     if (showSources) sources.forEach { source ->
-                        Text(if (source.source == "family") t("Family account", "家人讲述") else t("AI observation", "AI 观察"),
-                            style = MaterialTheme.typography.labelLarge)
-                        if (source.title.isNotBlank()) Text(source.title, style = MaterialTheme.typography.titleSmall)
-                        Text(source.text, style = MaterialTheme.typography.bodySmall)
+                        val evidence = source.evidence
+                        Column(Modifier.fillMaxWidth().testTag("grouped-story-source-${evidence.id}")) {
+                            Text(if (evidence.source == "family") t("Family account", "家人讲述") else t("AI observation", "AI 观察"),
+                                style = MaterialTheme.typography.labelLarge)
+                            if (evidence.title.isNotBlank()) Text(evidence.title, style = MaterialTheme.typography.titleSmall)
+                            Text(evidence.text, style = MaterialTheme.typography.bodySmall)
+                            ChapterSourceAttribution(evidence, source.originOutsideChapter, zh, "grouped-story-source")
+                        }
                     }
                 }
             }

@@ -33,8 +33,9 @@ internal object ProtectedStoryWorkspaceWire {
     private const val MAX_ASSETS = 24
     private const val MAX_CHAPTERS = 6
     private const val MAX_ASSETS_PER_CHAPTER = 4
-    private const val MAX_EVIDENCE_PER_ASSET = 3
+    private const val MAX_EVIDENCE_PER_ASSET = 12
     private const val MAX_EVIDENCE_PER_CHAPTER = 12
+    private const val MAX_TITLE_SOURCE_IDS = 79
     private const val MAX_TITLE_CODE_POINTS = 160
     private const val MAX_TITLE_BYTES = 640
     private const val MAX_NARRATION_BYTES = 6000
@@ -142,7 +143,15 @@ internal object ProtectedStoryWorkspaceWire {
         check(string(root["generator"], 32, 32) == "evidence_outline" && bool(root["needs_review"]))
         val items = array(root["items"], MAX_ASSETS).map { parseItem(obj(it), expectedLibrary) }
         check(items.isNotEmpty() && items.map { it.asset.id } == expectedAssetIds)
-        check(items.flatMap { it.evidence }.map { it.id }.distinct().size == items.sumOf { it.evidence.size })
+        val canonicalEvidence = mutableMapOf<String, MemoryStoryEvidence>()
+        items.forEach { item ->
+            check(item.evidence.map { it.id }.distinct().size == item.evidence.size)
+            item.evidence.forEach { evidence ->
+                val previous = canonicalEvidence.putIfAbsent(evidence.id, evidence)
+                check(previous == null || previous == evidence && evidence.id.startsWith("family-") &&
+                    evidence.originAssetId != null && evidence.byline != null)
+            }
+        }
         val chapters = array(root["chapters"], MAX_CHAPTERS).mapIndexed { index, raw -> parseChapter(obj(raw), index + 1) }
         check(chapters.isNotEmpty() && chapters.map { it.id }.distinct().size == chapters.size)
         check(chapters.map { it.assetIds } == expectedAssetIds.chunked(MAX_ASSETS_PER_CHAPTER))
@@ -199,7 +208,7 @@ internal object ProtectedStoryWorkspaceWire {
             val text = string(title["text"], MAX_TITLE_CODE_POINTS, MAX_TITLE_BYTES).also { value ->
                 check(value.isNotBlank() && value.none { it == '\n' || it == '\r' || it == '\u2028' || it == '\u2029' })
             }
-            val sourceIds = array(title["source_ids"], MAX_ASSETS * MAX_EVIDENCE_PER_ASSET + MAX_CHAPTERS).map { string(it, 64, 64) }
+            val sourceIds = array(title["source_ids"], MAX_TITLE_SOURCE_IDS).map { string(it, 64, 64) }
             check(sourceIds.isNotEmpty() && sourceIds.distinct().size == sourceIds.size && sourceIds.all { it in known })
             ProtectedStoryWorkspaceTitle(text, sourceIds)
         }
@@ -237,12 +246,18 @@ internal object ProtectedStoryWorkspaceWire {
         val id = string(o["id"], 64, 64)
         return when {
             id.startsWith("family-") && source == "family" -> {
-                exact(o, "id", "source", "title", "text", "revision")
+                val hasOrigin = "origin_asset_id" in o
+                val hasByline = "byline" in o
+                check(hasOrigin == hasByline)
+                if (hasOrigin) exact(o, "id", "source", "title", "text", "revision", "origin_asset_id", "byline")
+                else exact(o, "id", "source", "title", "text", "revision")
                 check(id.matches(Regex("family-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
                 val title = rawText(o["title"], 160, 512)
                 val text = rawText(o["text"], 1800, 1800)
                 val revision = integer(o["revision"], 1)
-                MemoryStoryEvidence(id, source, title, text, revision)
+                val originAssetId = if (hasOrigin) string(o["origin_asset_id"], 19, 19).also(::assetId) else null
+                val byline = if (hasByline) string(o["byline"], 256, 256, blank = true) else null
+                MemoryStoryEvidence(id, source, title, text, revision, originAssetId, byline)
             }
             id.startsWith("caption-") && source in setOf("family", "ai") -> {
                 exact(o, "id", "source", "title", "text")

@@ -11,6 +11,7 @@ internal val SAVED_MEMORY_STORY_THEMES = setOf("everyday", "trip", "growing_up",
 
 data class MemoryStoryEvidence(
     val id: String, val source: String, val title: String, val text: String, val revision: Int? = null,
+    val originAssetId: String? = null, val byline: String? = null,
 )
 data class MemoryStoryAsset(val asset: Asset, val evidence: List<MemoryStoryEvidence>)
 data class SavedMemoryStorySummary(
@@ -107,7 +108,15 @@ internal object ProtectedMemoryStoriesWire {
         val language = field(root, "language", 2); check(language in setOf("zh", "en"))
         val items = array(root, "items", 24).map { parseItem(obj(it), library) }
         check(items.isNotEmpty() && items.map { it.asset.id }.distinct().size == items.size)
-        check(items.flatMap { it.evidence }.map { it.id }.distinct().size == items.sumOf { it.evidence.size })
+        val canonicalEvidence = mutableMapOf<String, MemoryStoryEvidence>()
+        items.forEach { item ->
+            check(item.evidence.map { it.id }.distinct().size == item.evidence.size)
+            item.evidence.forEach { evidence ->
+                val previous = canonicalEvidence.putIfAbsent(evidence.id, evidence)
+                check(previous == null || previous == evidence && evidence.id.startsWith("family-") &&
+                    evidence.originAssetId != null && evidence.byline != null)
+            }
+        }
         val chapters = array(root, "chapters", 6).mapIndexed { index, value -> parseChapter(obj(value), index + 1) }
         check(chapters.isNotEmpty() && chapters.map { it.id }.distinct().size == chapters.size)
         val ordered = chapters.flatMap { it.assetIds }
@@ -216,7 +225,7 @@ internal object ProtectedMemoryStoriesWire {
             val h = obj(it ?: bad()); exact(h, "value", "source")
             DateHint(field(h, "value", 64), field(h, "source", 16))
         } }
-        val evidence = array(o, "evidence", 3).map { parseEvidence(obj(it)) }
+        val evidence = array(o, "evidence", 12).map { parseEvidence(obj(it)) }
         check(evidence.map { it.id }.distinct().size == evidence.size)
         return MemoryStoryAsset(Asset(id, kind, width, height, duration, taken, thumbnail, hint), evidence)
     }
@@ -226,11 +235,19 @@ internal object ProtectedMemoryStoriesWire {
         val evidenceId = field(o, "id", 64)
         return when {
             evidenceId.startsWith("family-") && source == "family" -> {
-                exact(o, "id", "source", "title", "text", "revision")
+                val hasOrigin = "origin_asset_id" in o
+                val hasByline = "byline" in o
+                check(hasOrigin == hasByline)
+                if (hasOrigin) exact(o, "id", "source", "title", "text", "revision", "origin_asset_id", "byline")
+                else exact(o, "id", "source", "title", "text", "revision")
                 val id = evidenceId; check(id.matches(Regex("family-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
                 val title = rawField(o, "title", 160, 512); val text = rawField(o, "text", 1800, 1800)
                 val revision = integer(o["revision"]); check(revision > 0)
-                MemoryStoryEvidence(id, source, title, text, revision)
+                val originAssetId = if (hasOrigin) field(o, "origin_asset_id", 19).also {
+                    check(it.matches(Regex("[1-9][0-9]{0,18}") ) && it.toLongOrNull()?.toString() == it)
+                } else null
+                val byline = if (hasByline) rawField(o, "byline", 256, 256) else null
+                MemoryStoryEvidence(id, source, title, text, revision, originAssetId, byline)
             }
             evidenceId.startsWith("caption-") && source in setOf("family", "ai") -> {
                 exact(o, "id", "source", "title", "text")
