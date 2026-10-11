@@ -11302,6 +11302,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Memoir save identity preflight preserves editable draft on unavailable UUID",
+      "source_commit": "7d13745d17a3a8dfedb1857a7f432aceb73dcaf3",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "2192da851e80264986af88b554c113f46c5eddc4fed5c65179852b505fa500de",
+          "sha256": "e3fc697a34c59b7bfd76a3e24382ae0af811312e1a9cb2fc6f78edbeb5e252f8"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "fedcccd043755e386ca77268d2dcef47fc75796d4f82e870a40b4a258490977e",
+          "sha256": "81a4a31eff151ca581fb499c739288e98d5d3455fb0459d74ddcbd12e0cd6232"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
