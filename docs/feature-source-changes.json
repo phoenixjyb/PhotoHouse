@@ -9770,6 +9770,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Chapter voice architecture and phone qualification",
+      "source_commit": "2ddcbec8bf6ec2557d3bfa2ca17514a617187497",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "6d43a5ae7310483389ba00f2f621372fcf97a9fb17aff54c99b313cca835e2c7",
+          "sha256": "9c0e23aad1fd47de376bd5a7fc716eb3bd06e927d5f311b98e2600b7cf143d0a"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "795cb3c62221bed3a8c30694731ae538e0489b2834f3a0f86f3d735ab222213a",
+          "sha256": "78582c49f913922e1434b447409794a4285e053f5aa2545819ad524b0161afae"
+        },
+        {
+          "path": "docs/STORY_CHAPTER_DICTATION.md",
+          "before_sha256": "6e3205d8fecee6a93212851aeff2a9e1ddd18cefa6eb1efea6d87f50f6b628b1",
+          "sha256": "cc8bc7ad5fda85230a3ec27fcdbc761eaa07abf2315eb1dd3161ca99cd22378d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
