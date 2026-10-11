@@ -59,6 +59,89 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+internal data class StoryChatHistoryPageScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val storyId: String,
+    val storyRevision: Long,
+    val conversationId: String,
+    val displayedPage: Int,
+)
+
+internal data class MemoirChatHistoryPageChild(val storyId: String, val revision: Long)
+
+internal data class MemoirChatHistoryPageScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoirChatHistoryPageChild>,
+    val storyId: String?,
+    val storyRevision: Long?,
+    val conversationId: String,
+    val displayedPage: Int,
+)
+
+private class ChatHistoryActionLifetime(var attached: Boolean = false)
+
+@Composable
+private fun attachedChatHistoryAction(action: () -> Unit): () -> Unit {
+    val lifetime = remember(action) { ChatHistoryActionLifetime() }
+    DisposableEffect(lifetime) {
+        lifetime.attached = true
+        onDispose { lifetime.attached = false }
+    }
+    return remember(lifetime, action) { { if (lifetime.attached) action() } }
+}
+
+internal fun storyChatHistoryPageAction(
+    store: ConnectedStore, captured: StoryChatHistoryPageScope, requestedPage: Int,
+): () -> Unit = action@ {
+    val current = store.state.value
+    val reading = current.savedMemoryStories ?: return@action
+    val detail = reading.detail ?: return@action
+    val chat = reading.community ?: return@action
+    val page = chat.turns ?: return@action
+    if (requestedPage !in 1..8 || requestedPage == captured.displayedPage ||
+        (requestedPage > captured.displayedPage && !page.hasMore)) return@action
+    if (current.session?.account_id == captured.accountId &&
+        current.generation == captured.generation && current.library == captured.libraryId &&
+        reading.library == captured.libraryId && detail.id == captured.storyId &&
+        detail.revision == captured.storyRevision && chat.storyId == captured.storyId &&
+        chat.readerScopeId == captured.readerScopeId && chat.conversationId == captured.conversationId &&
+        page.conversationId == captured.conversationId && page.page == captured.displayedPage && !chat.busy) {
+        store.loadMemoryTurnsPage(requestedPage)
+    }
+}
+
+internal fun memoirChatHistoryPageAction(
+    store: ConnectedStore, captured: MemoirChatHistoryPageScope, requestedPage: Int,
+): () -> Unit = action@ {
+    val current = store.state.value
+    val reading = current.memoryBooks ?: return@action
+    val book = reading.selectedBook ?: return@action
+    val chat = reading.companion ?: return@action
+    val page = chat.turns ?: return@action
+    val orderedChildren = book.stories.map { MemoirChatHistoryPageChild(it.id, it.revision) }
+    val story = reading.story
+    if (requestedPage !in 1..8 || requestedPage == captured.displayedPage ||
+        (requestedPage > captured.displayedPage && !page.hasMore)) return@action
+    if (current.session?.account_id == captured.accountId &&
+        current.generation == captured.generation && current.library == captured.libraryId &&
+        reading.library == captured.libraryId && reading.readerScopeId == captured.readerScopeId &&
+        book.id == captured.bookId && book.revision == captured.bookRevision &&
+        orderedChildren == captured.orderedChildren && story?.id == captured.storyId &&
+        story?.revision == captured.storyRevision && chat.bookId == captured.bookId &&
+        chat.bookRevision == captured.bookRevision && chat.conversationId == captured.conversationId &&
+        page.conversationId == captured.conversationId && page.page == captured.displayedPage && !chat.busy) {
+        store.loadMemoryBookTurnsPage(requestedPage)
+    }
+}
+
 internal fun memoryAudioDurationText(durationMs: Long?, zh: Boolean): String? {
     if (durationMs == null || durationMs <= 0) return null
     val number = NumberFormat.getNumberInstance(if (zh) Locale.SIMPLIFIED_CHINESE else Locale.ENGLISH).apply {
@@ -773,14 +856,33 @@ private fun StoryChatPanel(
             }
         }
     }
+    val storyHistoryPageScope = community.turns?.let { page ->
+        StoryChatHistoryPageScope(accountId, generation, library, readerScopeId, community.storyId, revision,
+            community.conversationId ?: return@let null, page.page)
+    }
+    val storyLatestPageAction = remember(store, storyHistoryPageScope) {
+        storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, 1) }
+    }
     community.turns?.let { page ->
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(if (page.page == 1) t("Latest messages", "最新消息") else t("Earlier messages · page ${page.page}", "更早的消息 · 第 ${page.page} 页"),
                 modifier = Modifier.align(Alignment.CenterHorizontally).testTag("memory-chat-page"))
+            if (page.page > 1) storyLatestPageAction?.let { latest ->
+                TextButton(onClick = attachedChatHistoryAction(latest), enabled = !community.busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-chat-latest")) {
+                    Text(t("Jump to latest messages", "跳到最新消息"))
+                }
+            }
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                TextButton(onClick = { store.loadMemoryTurnsPage(page.page - 1) }, enabled = !community.busy && page.page > 1,
+                val newer = remember(store, storyHistoryPageScope) {
+                    storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, page.page - 1) } ?: {}
+                }
+                val older = remember(store, storyHistoryPageScope) {
+                    storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, page.page + 1) } ?: {}
+                }
+                TextButton(onClick = attachedChatHistoryAction(newer), enabled = !community.busy && page.page > 1,
                     modifier = Modifier.testTag("memory-chat-previous")) { Text(t("Newer messages", "较新的消息")) }
-                TextButton(onClick = { store.loadMemoryTurnsPage(page.page + 1) }, enabled = !community.busy && page.hasMore && page.page < 8,
+                TextButton(onClick = attachedChatHistoryAction(older), enabled = !community.busy && page.hasMore && page.page < 8,
                     modifier = Modifier.testTag("memory-chat-next")) { Text(t("Older messages", "更早的消息")) }
             }
         }
@@ -1009,14 +1111,46 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
                     }
                 }
             }
+            val memoirHistoryPageScope = chat.turns?.let { page ->
+                val book = reading.selectedBook ?: return@let null
+                val conversationId = chat.conversationId ?: return@let null
+                MemoirChatHistoryPageScope(
+                    accountId = accountId,
+                    generation = live.generation,
+                    libraryId = reading.library,
+                    readerScopeId = reading.readerScopeId,
+                    bookId = chat.bookId,
+                    bookRevision = chat.bookRevision,
+                    orderedChildren = book.stories.map { MemoirChatHistoryPageChild(it.id, it.revision) },
+                    storyId = reading.story?.id,
+                    storyRevision = reading.story?.revision,
+                    conversationId = conversationId,
+                    displayedPage = page.page,
+                )
+            }
+            val memoirLatestPageAction = remember(store, memoirHistoryPageScope) {
+                memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, 1) }
+            }
             chat.turns?.let { page ->
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(if (page.page == 1) t("Latest messages", "最新消息") else t("Earlier messages · page ${page.page}", "更早的消息 · 第 ${page.page} 页"),
                         modifier = Modifier.align(Alignment.CenterHorizontally).testTag("memory-book-chat-page"))
+                    if (page.page > 1) memoirLatestPageAction?.let { latest ->
+                        TextButton(onClick = attachedChatHistoryAction(latest), enabled = !chat.busy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-chat-latest")) {
+                            Text(t("Jump to latest messages", "跳到最新消息"))
+                        }
+                    }
                     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        TextButton(onClick = { store.loadMemoryBookTurnsPage(page.page - 1) }, enabled = !chat.busy && page.page > 1,
+                        val newer = remember(store, memoirHistoryPageScope) {
+                            memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, page.page - 1) } ?: {}
+                        }
+                        val older = remember(store, memoirHistoryPageScope) {
+                            memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, page.page + 1) } ?: {}
+                        }
+                        TextButton(onClick = attachedChatHistoryAction(newer), enabled = !chat.busy && page.page > 1,
                             modifier = Modifier.testTag("memory-book-chat-previous")) { Text(t("Newer messages", "较新的消息")) }
-                        TextButton(onClick = { store.loadMemoryBookTurnsPage(page.page + 1) }, enabled = !chat.busy && page.hasMore && page.page < 8,
+                        TextButton(onClick = attachedChatHistoryAction(older), enabled = !chat.busy && page.hasMore && page.page < 8,
                             modifier = Modifier.testTag("memory-book-chat-next")) { Text(t("Older messages", "更早的消息")) }
                     }
                 }
