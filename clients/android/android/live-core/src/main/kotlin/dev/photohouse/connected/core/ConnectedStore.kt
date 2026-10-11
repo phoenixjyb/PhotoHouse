@@ -2061,7 +2061,24 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
     }
 
+    /** Inserts only the transcript owned by the exact helper rendered by the caller. */
+    fun insertMemoryBookNarrativeDictation(expected: MemoryDictationStore): Boolean =
+        synchronized(bookNarrativeDictation) {
+            if (bookNarrativeDictation.state.value !== expected) false
+            else insertMemoryBookNarrativeDictation()
+        }
+
     fun clearMemoryBookNarrativeDictation() = bookNarrativeDictation.clear()
+
+    /** A delayed panel disposal must not clear a replacement helper opened in the meantime. */
+    fun clearMemoryBookNarrativeDictation(expected: MemoryDictationStore): Boolean =
+        synchronized(bookNarrativeDictation) {
+            if (bookNarrativeDictation.state.value !== expected) false
+            else {
+                bookNarrativeDictation.clear()
+                true
+            }
+        }
 
     fun updateMemoryBookNarrativeInstructions(text: String): Boolean =
         canOperateMemoryBookNarrative() && bookNarrativeStore?.updateInstructions(text) == true

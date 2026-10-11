@@ -330,6 +330,39 @@ class MemoryCommunityStoreTest {
         assertEquals("按时间顺序。\n请保留不同家人的讲述。", community.narrativeRequest!!["instructions"]!!.jsonPrimitive.content)
     }
 
+    @Test fun staleMemoirDictationCallbacksCannotCloseOrInsertIntoReplacementHelper() = runTest {
+        val api = StoryApi().apply { voiceEnabled = true }
+        val store = newStore(api, CommunityApi())
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent(); store.openMemoryBook(bookId); runCurrent()
+        assertTrue(store.updateMemoryBookNarrativeInstructions("Keep family voices distinct."))
+
+        assertTrue(store.openMemoryBookNarrativeDictation()); runCurrent()
+        val helperA = store.memoryBookNarrativeDictationState.value!!
+        helperA.beginRecording(); helperA.stopRecording(instructionWav()); runCurrent()
+        helperA.updateTranscript("An earlier reviewed transcript.")
+        assertEquals("An earlier reviewed transcript.", helperA.state.value.transcript)
+
+        assertTrue(store.clearMemoryBookNarrativeDictation(helperA))
+        api.instructionTranscript = "The current transcript belongs to the replacement helper."
+        assertTrue(store.openMemoryBookNarrativeDictation()); runCurrent()
+        val helperB = store.memoryBookNarrativeDictationState.value!!
+        assertNotSame(helperA, helperB)
+        helperB.beginRecording(); helperB.stopRecording(instructionWav()); runCurrent()
+        helperB.updateTranscript("The current transcript belongs to the replacement helper.")
+
+        assertFalse(store.clearMemoryBookNarrativeDictation(helperA))
+        assertFalse(store.insertMemoryBookNarrativeDictation(helperA))
+        assertSame(helperB, store.memoryBookNarrativeDictationState.value)
+        assertEquals("The current transcript belongs to the replacement helper.", helperB.state.value.transcript)
+        assertEquals("Keep family voices distinct.", store.memoryBookNarrativeState.value.instructions)
+
+        assertTrue(store.insertMemoryBookNarrativeDictation(helperB))
+        assertEquals("Keep family voices distinct.\nThe current transcript belongs to the replacement helper.",
+            store.memoryBookNarrativeState.value.instructions)
+        assertNull(helperB.state.value.transcript)
+    }
+
     @Test fun oversizedInstructionInsertionKeepsTranscriptAndReaderCloseClearsIt() = runTest {
         val api = StoryApi().apply { voiceEnabled = true }
         val community = CommunityApi().apply { planCanDraft = true }

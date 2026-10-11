@@ -35,8 +35,11 @@ internal fun MemoryBookNarrativePanel(
     val edition by store.memoryBookEditionState.collectAsState()
     val editorial by store.memoryBookEditorialState.collectAsState()
     val dictationStore by store.memoryBookNarrativeDictationState.collectAsState()
+    // Keep callbacks bound to the helper this composition rendered. A delayed click or disposal
+    // from an older panel must not consume or clear a newer memoir dictation session.
+    val renderedDictation = dictationStore
     val emptyDictationState = remember { kotlinx.coroutines.flow.MutableStateFlow(MemoryDictationState()) }
-    val dictationFlow = dictationStore?.state ?: emptyDictationState
+    val dictationFlow = renderedDictation?.state ?: emptyDictationState
     val dictationState by dictationFlow.collectAsState()
     val companionDictationFlow = reading.companion?.dictation?.state ?: emptyDictationState
     val companionDictationState by companionDictationFlow.collectAsState()
@@ -105,7 +108,7 @@ internal fun MemoryBookNarrativePanel(
                 "完整文字已保留在这里，请缩短后再生成建议。"), modifier = Modifier.testTag("memory-book-narrative-input-error")
                 .semantics { liveRegion = LiveRegionMode.Polite }) }) else null,
             modifier = Modifier.fillMaxWidth().testTag("memory-book-narrative-instructions"))
-        if (dictationStore == null && store.assistantEnabled) {
+        if (renderedDictation == null && store.assistantEnabled) {
             OutlinedButton(onClick = {
                 finishTyping()
                 dictationOpenRejected = !store.openMemoryBookNarrativeDictation()
@@ -120,9 +123,9 @@ internal fun MemoryBookNarrativePanel(
                 modifier = Modifier.testTag("memory-book-narrative-dictation-open-error")
                     .semantics { liveRegion = LiveRegionMode.Polite },
             )
-        } else if (dictationStore != null) {
+        } else if (renderedDictation != null) {
             TextButton(onClick = {
-                store.clearMemoryBookNarrativeDictation()
+                store.clearMemoryBookNarrativeDictation(renderedDictation)
                 dictationInsertRejected = false
                 dictationOpenRejected = false
             }, modifier = Modifier.testTag("memory-book-narrative-voice-close")) {
@@ -130,15 +133,15 @@ internal fun MemoryBookNarrativePanel(
                     else t("Close voice instructions", "关闭语音整理要求"))
             }
             MemoryDictationInput(
-                store = dictationStore!!,
+                store = renderedDictation,
                 zh = zh,
                 onInsert = {
                     val inserted = !rejected && wording == draft.instructions &&
-                        store.insertMemoryBookNarrativeDictation()
+                        store.insertMemoryBookNarrativeDictation(renderedDictation)
                     dictationInsertRejected = !inserted
                     if (inserted) {
                         rejected = false
-                        store.clearMemoryBookNarrativeDictation()
+                        store.clearMemoryBookNarrativeDictation(renderedDictation)
                         finishTyping()
                     }
                 },
