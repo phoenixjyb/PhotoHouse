@@ -34,6 +34,8 @@ class MemoryCommunityStoreTest {
         val childReads = mutableListOf<String>()
         var mediaGate: CompletableDeferred<Unit>? = null
         var lateMediaBytes: ByteArray? = null
+        var thumbnailFixture: ByteArray? = null
+        var thumbnailFailure: ApiFailure? = null
         var tenFrameStory = false
         var availableLibraries = listOf("family")
         var membershipRevision = 1L
@@ -76,8 +78,10 @@ class MemoryCommunityStoreTest {
         override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
         override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray {
             thumbnailReads += asset.id
-            mediaGate?.let { withContext(NonCancellable) { it.await() } }
-            return byteArrayOf(9, 8, 7).also { lateMediaBytes = it }
+            val failure = thumbnailFailure
+            mediaGate?.let { withContext(NonCancellable) { it.await(); failure?.let { throw it } } }
+            failure?.let { throw it }
+            return (thumbnailFixture?.copyOf() ?: byteArrayOf(9, 8, 7)).also { lateMediaBytes = it }
         }
         override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray? {
             heroReads += asset.id
@@ -3227,4 +3231,69 @@ class MemoryCommunityStoreTest {
             newShelf.shelfScopeId, oldEpoch, bookId))
         assertEquals(0, community.bookSaveCalls)
     }
+    @Test fun memoirShelfLoadsOnlyCoverAndWipesItForComposerReaderAndBackground() = runTest {
+        val api = StoryApi().apply { thumbnailFixture = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 1) }
+        val store = newStore(api, CommunityApi())
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        api.thumbnailReads.clear()
+        store.openMemoryBooks(); runCurrent()
+        val shelf = store.state.value.memoryBooks!!
+        val generation = store.state.value.generation
+        assertEquals(listOf("1"), api.thumbnailReads)
+        assertTrue(api.childReads.isEmpty())
+        assertEquals(0, api.originalReads)
+        val cover = store.memoryBookShelfCoverState.value.images.getValue(bookId)
+        assertFalse(cover.all { it == 0.toByte() })
+        assertTrue(store.startMemoryBookComposition("account", generation, "family", shelf.shelfScopeId, "Memoir", "en"))
+        assertTrue(cover.all { it == 0.toByte() })
+        assertEquals(MemoryBookShelfCoverState(), store.memoryBookShelfCoverState.value)
+        runCurrent()
+        val epoch = store.memoryBookCompositionState.value.actionEpoch
+        store.closeMemoryBookComposition(shelf.shelfScopeId, epoch); runCurrent()
+        val replacement = store.memoryBookShelfCoverState.value.images.getValue(bookId)
+        assertNotSame(cover, replacement)
+        store.openMemoryBook(bookId); runCurrent()
+        assertTrue(replacement.all { it == 0.toByte() })
+        assertTrue(api.childReads.isEmpty())
+        store.closeMemoryBook(); runCurrent()
+        val returned = store.memoryBookShelfCoverState.value.images.getValue(bookId)
+        store.background()
+        assertTrue(returned.all { it == 0.toByte() })
+        assertEquals(MemoryBookShelfCoverState(), store.memoryBookShelfCoverState.value)
+        assertFalse(store.retryMemoryBookShelfCovers("account", generation, "family", shelf.shelfScopeId))
+    }
+
+    @Test fun lateShelfCoverAndDenialCannotRestoreClosedShelfOrInvalidateNewReader() = runTest {
+        for (denied in listOf(false, true)) {
+            val api = StoryApi().apply { thumbnailFixture = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 1) }
+            val store = newStore(api, CommunityApi())
+            store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+            api.mediaGate = CompletableDeferred()
+            api.thumbnailFailure = if (denied) ApiFailure(FailureKind.HTTP, 403) else null
+            store.openMemoryBooks(); runCurrent()
+            assertTrue(store.memoryBookShelfCoverState.value.busy)
+            val oldShelf = store.state.value.memoryBooks!!
+            store.openMemoryBook(bookId); runCurrent()
+            assertEquals(bookId, store.state.value.memoryBooks?.selectedBook?.id)
+            api.mediaGate!!.complete(Unit); runCurrent()
+            assertEquals(bookId, store.state.value.memoryBooks?.selectedBook?.id)
+            assertEquals(MemoryBookShelfCoverState(), store.memoryBookShelfCoverState.value)
+            assertFalse(store.isCurrentMemoryBookShelf("account", store.state.value.generation, "family", oldShelf.shelfScopeId))
+            if (!denied) assertTrue(api.lateMediaBytes!!.all { it == 0.toByte() })
+            assertNull(store.state.value.problem)
+            store.background()
+        }
+    }
+
+    @Test fun currentShelfCoverDenialCoversPrivateSessionAndClearsShelf() = runTest {
+        val api = StoryApi()
+        val store = newStore(api, CommunityApi())
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        api.thumbnailFailure = ApiFailure(FailureKind.HTTP, 403)
+        store.openMemoryBooks(); runCurrent()
+        assertEquals(MemoryBookShelfCoverState(), store.memoryBookShelfCoverState.value)
+        assertNull(store.state.value.memoryBooks)
+        assertEquals(Message.ACCESS_DENIED, store.state.value.problem?.message)
+    }
+
 }

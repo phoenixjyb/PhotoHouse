@@ -436,6 +436,36 @@ class ConnectedStore(
                 MemoryCommunityBinding(currentToken, currentLibrary, state.value.generation) else null
         }, onDenied = ::memoryCommunityDenied)
     }
+    private val bookShelfCovers = MemoryBookShelfCoverStore(api, scope,
+        ::currentMemoryBookShelfCoverScope, ::memoryCommunityDenied)
+    val memoryBookShelfCoverState get() = bookShelfCovers.state
+
+    private fun currentMemoryBookShelfCoverScope(): MemoryBookShelfCoverScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val page = reading.result ?: return null
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        if (!api.protectedNativeV2Enabled || !memoryCommunityAvailable || !allowed() ||
+            reading.library != state.value.library || page.libraryId != reading.library ||
+            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy ||
+            reading.selectedBook != null || reading.capabilities?.enabled != true ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
+        return MemoryBookShelfCoverScope(account, credential, state.value.generation, reading.library,
+            reading.shelfScopeId, page.items.mapNotNull { book ->
+                book.stories.firstOrNull()?.let { MemoryBookShelfCoverEntry(book.id, it.coverAssetId) }
+            })
+    }
+
+    fun isCurrentMemoryBookShelf(account: String, generation: Long, library: String, shelfScopeId: Long): Boolean =
+        currentMemoryBookShelfCoverScope()?.let {
+            it.accountId == account && it.generation == generation && it.library == library && it.shelfScopeId == shelfScopeId
+        } == true
+
+    fun retryMemoryBookShelfCovers(account: String, generation: Long, library: String, shelfScopeId: Long): Boolean {
+        if (!isCurrentMemoryBookShelf(account, generation, library, shelfScopeId)) return false
+        return bookShelfCovers.retryUnavailable()
+    }
+
     private val bookCompositionDictation = MemoryBookCompositionDictationStore(
         api, scope, ::currentMemoryBookCompositionDictationScope, ::memoryCommunityDenied)
     val memoryBookCompositionDictationState get() = bookCompositionDictation.state
@@ -476,7 +506,9 @@ class ConnectedStore(
         if (current.accountId != account || current.generation != generation || current.library != library ||
             current.shelfScopeId != shelfScopeId || memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
         bookCompositionDictation.clear()
-        return bookCompositionStore?.open(defaultTitle, language) == true
+        val started = bookCompositionStore?.open(defaultTitle, language) == true
+        if (started) bookShelfCovers.close()
+        return started
     }
 
     fun closeMemoryBookComposition(shelfScopeId: Long, actionEpoch: Long) {
@@ -484,6 +516,7 @@ class ConnectedStore(
         if (draft.shelfScopeId != shelfScopeId || draft.actionEpoch != actionEpoch) return
         bookCompositionDictation.clear()
         bookCompositionStore?.close(shelfScopeId, actionEpoch)
+        bookShelfCovers.load()
     }
 
     /** Opens only a verified result of this exact local composer, through the existing protected reader. */
@@ -569,6 +602,7 @@ class ConnectedStore(
     private fun invalidate(keepIdentity: Boolean, cover: Boolean = false, preserveConversationNavigation: Boolean = false) {
         if (!keepIdentity || !preserveConversationNavigation) memoryConversationNavigation.clear()
         clearMemoryBookEditorial()
+        bookShelfCovers.close()
         bookCompositionDictation.clear()
         bookCompositionStore?.close()
         val previous = state.value
@@ -1925,6 +1959,7 @@ class ConnectedStore(
     /** Protected read-only book shelf. Capability negotiation precedes every list request. */
     fun openMemoryBooks(page: Int = 1) {
         if (!memoryCommunityAvailable || !allowed() || state.value.busy || coolingDown() || page !in 1..100000) return
+        bookShelfCovers.close()
         clearMemoryBookEditorial()
         bookCompositionDictation.clear()
         bookCompositionStore?.close()
@@ -1949,6 +1984,7 @@ class ConnectedStore(
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 validResponse(result.libraryId == library && result.page == page && result.items.size <= 8)
                 mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, capabilities = capabilities, result = result, shelfScopeId = request))
+                bookShelfCovers.load()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
@@ -1968,6 +2004,7 @@ class ConnectedStore(
     private fun openMemoryBookSummary(summary: MemoryBook) {
         val reading = state.value.memoryBooks ?: return
         if (reading.busy || reading.readerBusy || reading.library != state.value.library || !allowed()) return
+        bookShelfCovers.close()
         clearMemoryBookEditorial()
         val request = ++memoryBooksReaderRequest
         invalidateBookChatRequests()
@@ -2183,10 +2220,11 @@ class ConnectedStore(
             heroAssetId = null, hero = null, heroBusy = false, heroUnavailable = false,
             resumePosition = reading.selectedBook?.let { findMemoryBookResume(reading.library, it) },
             readerScopeId = memoryBooksReaderRequest, companion = null))
-        if (createdOutsidePage) openMemoryBooks(1)
+        if (createdOutsidePage) openMemoryBooks(1) else bookShelfCovers.load()
     }
 
     fun closeMemoryBooks() {
+        bookShelfCovers.close()
         bookCompositionDictation.clear()
         bookCompositionStore?.close()
         clearMemoryBookEditorial()

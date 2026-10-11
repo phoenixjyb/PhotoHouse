@@ -44,6 +44,7 @@ internal fun MemoryBooksDialog(
     val narrative by store.memoryBookNarrativeState.collectAsState()
     val composition by store.memoryBookCompositionState.collectAsState()
     val compositionDictationStore by store.memoryBookCompositionDictationState.collectAsState()
+    val shelfCovers by store.memoryBookShelfCoverState.collectAsState()
     val book = reading.selectedBook
     val index = reading.storyIndex
     val story = reading.story
@@ -321,24 +322,47 @@ internal fun MemoryBooksDialog(
                                         Text(t("Create a memoir from saved stories", "将已保存的故事汇集成册"))
                                     }
                                 }
-                                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    val books = reading.result?.items.orEmpty()
-                                    if (books.isEmpty()) Text(t("No books on this page.", "此页没有回忆册。"))
-                                    books.forEach { item ->
-                                        Card(onClick = { onBook(item.id) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-${item.id}")) {
-                                            Column(Modifier.padding(16.dp)) {
-                                                Text(item.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
-                                                Text(t("${item.stories.size} stories", "${item.stories.size} 则故事"))
-                                            }
+                                val shelfAccount = liveState.session?.account_id.orEmpty()
+                                val shelfGeneration = liveState.generation
+                                val shelfLibrary = reading.library
+                                val shelfScopeId = reading.shelfScopeId
+                                val currentShelf = {
+                                    store.isCurrentMemoryBookShelf(shelfAccount, shelfGeneration, shelfLibrary, shelfScopeId)
+                                }
+                                val coversCurrent = shelfCovers.accountId == shelfAccount && shelfCovers.generation == shelfGeneration &&
+                                    shelfCovers.library == shelfLibrary && shelfCovers.shelfScopeId == shelfScopeId
+                                MemoryBookShelfCards(
+                                    books = reading.result?.items.orEmpty(),
+                                    covers = if (coversCurrent) shelfCovers.images else emptyMap(),
+                                    unavailableBookIds = if (coversCurrent) shelfCovers.unavailableBookIds else emptySet(),
+                                    loadingCovers = coversCurrent && shelfCovers.busy,
+                                    zh = zh,
+                                    onOpen = { item ->
+                                        if (currentShelf() && store.state.value.memoryBooks?.result?.items?.contains(item) == true)
+                                            onBook(item.id)
+                                    },
+                                    onRetryCovers = {
+                                        if (currentShelf()) store.retryMemoryBookShelfCovers(shelfAccount, shelfGeneration, shelfLibrary, shelfScopeId)
+                                    },
+                                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                                )
+                                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(t("Page ${reading.page}", "第 ${reading.page} 页"))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = attachedMemoirShelfAction {
+                                            if (currentShelf()) onPage(reading.page - 1)
+                                        }, enabled = reading.page > 1,
+                                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-books-previous-page")) {
+                                            Text(t("Previous", "上一页"))
+                                        }
+                                        Button(onClick = attachedMemoirShelfAction {
+                                            if (currentShelf()) onPage(reading.page + 1)
+                                        }, enabled = reading.result?.hasMore == true,
+                                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-books-next-page")) {
+                                            Text(t("Next", "下一页"))
                                         }
                                     }
-                                }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    OutlinedButton(onClick = { onPage(reading.page - 1) }, enabled = reading.page > 1,
-                                        modifier = Modifier.testTag("memory-books-previous-page")) { Text(t("Previous", "上一页")) }
-                                    Text(t("Page ${reading.page}", "第 ${reading.page} 页"))
-                                    Button(onClick = { onPage(reading.page + 1) }, enabled = reading.result?.hasMore == true,
-                                        modifier = Modifier.testTag("memory-books-next-page")) { Text(t("Next", "下一页")) }
                                 }
                             }
                         }
