@@ -9188,6 +9188,142 @@
       "live_database_changed": false,
       "services_changed": false,
       "scheduled_tasks_changed": false
+    },
+    {
+      "feature": "shared-memory-story-source-evidence",
+      "source_commit": "710fdbb2077742f1d5eda963950cfe9a874b3577",
+      "files": [
+        {
+          "path": "docs/ACTIVITY_GROUPING_DESIGN.md",
+          "before_sha256": "cdcf2bcbed7d85640ac889b8e935375992499b6eab09ca6b96cbe4c2def6ad90",
+          "sha256": "b4e0fdf84ae9c950f60a31744d9924a83aae9e17b51e9a30a52d1e6d9edb35d2"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "5d4fd4133e0096428f1beec7112080503e0202de3b35ec587f4122bfa2050020",
+          "sha256": "b31b767ae5056b4f2a77ac72f9ad6c59477fcedde557c55fe852deb91032ea36"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ed877b2e24a7a691d78093af6b3e15fc1235929a9e0c26d3fd3518292390da6f",
+          "sha256": "dc0fa4ec494c4b49313ac30d029b2afa9aafb2a7642e419b6705be8c30be77c6"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "f90668773045486127c7ea98bfe9fc5d2e6207f07cf7e5131bb3598a495179a1",
+          "sha256": "d599106d707c571086ba0a7a2a8eb7e243341a5238503ce139670f6aca35dd50"
+        },
+        {
+          "path": "docs/SHARED_MEMORY_STORY_SOURCES.md",
+          "before_sha256": null,
+          "sha256": "f18dd06a95d03de29a3699d1c036b2befc47567d34171f8f57d6dc13b439a8c3"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_edition_transport.py",
+          "before_sha256": "35c3e4573dbb44dc5f4ef4b28ad10846e52af34175b15255933c1669b9d5cb56",
+          "sha256": "97b7fa3cd95398e25ac33bad7f4f88cbd0fc7f0af27dce3509ecfee2aea2d1f2"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "06a4401a2fc6a4412268697cc5238c9ebcc3cf9156fdc2a40b56ab5e8ca284a3",
+          "sha256": "518ddd041598efee12a1d4c0d1385359c84a9748c2a99c15ee5f79ee9f65baed"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "7eca9e4d17574c4353eeba95cfd3f40defd999063833175abd1b89fa790e3765",
+          "sha256": "a8c58a935e9a84e6a11c8341975ebd29001bacde3d59de16e16308b7ed345c72"
+        },
+        {
+          "path": "server/backend/app/access/memory_processing.py",
+          "before_sha256": "bf16981565bf5e85e6f416aa695c5d29ba46e029b7f9fe3833878c03e8b9ef7e",
+          "sha256": "f9a440e69041a142f4a32abb62df84469ebb5d76e58b12396e2e34564167b02e"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "e833b99d3669ea58ad2c6b605ba069eb73e4e62215773e6d8be755eceddb882e",
+          "sha256": "d298547c85163d649d5904bb69d3fa98520f3cbedc2d064c3fdee47b6fa3c447"
+        },
+        {
+          "path": "server/backend/app/access/memory_transport.py",
+          "before_sha256": "a7b676c09482e26ca6681a65ba24e8d40c51d94ab083ceae7fb9d10b59c2ee46",
+          "sha256": "eb042c540fbe14cdc0c69018583809ce3fd0c998a21ef147388c38d2ca9ab627"
+        },
+        {
+          "path": "server/backend/app/access/service.py",
+          "before_sha256": "ed29a7a1205ad97e333425505fd55fd806882da46d39e63d56d60992c5f96a91",
+          "sha256": "b547d4ee675ae203362291e79b3dfebb0555f28858975b460441334cfbe5d2b4"
+        },
+        {
+          "path": "server/backend/app/access/shared_memory_evidence.py",
+          "before_sha256": null,
+          "sha256": "322f4eedfa028b0a7133f712d7f7a37099889adab308ba514892f6fe2a047ada"
+        },
+        {
+          "path": "server/backend/app/access/story_outline.py",
+          "before_sha256": "404d99d8edbeb7766c324c13691e073fc824f015004ec5701efd7298fcaa5a4f",
+          "sha256": "ef8e5f8138d1a4ba6827bf4834e0f3a4f50fd37a68d11387e7fd1a4bc1034efd"
+        },
+        {
+          "path": "server/backend/app/access/story_workspace.py",
+          "before_sha256": "d989451453bc8969f0ec7855ed3565b21f5addd0e9e811975df5adb96b5b858d",
+          "sha256": "8ad7477d315a8f0cd6b0be4c1054f15c304d8000b07531965db9c0e92b7889f5"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "d19b0f23ed69acc7b7843f773e8e5d24af8366bf8dfc497bc88e50b6c9e1a384",
+          "sha256": "b175f2b2912664c97480467fa8bbfa01abb246c511c00cd88bfb0238d60a8be2"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "080ef0ceea088d744261beadc0ec0421dfe881a034055fd7af4dfd9bd23d2f9e",
+          "sha256": "92ced31cd1f1e8feebfee5bbbf4e736d5219523b4bf3ef09f8f5af54a22cca0b"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "ecd10295564c8863aa4ab6b77d311534857211b0fa0a67f762cd468334feb287",
+          "sha256": "9acc500a4b77e60667f2c5357f7fd87eeecfb1af4e96ce7e17204d12685b2ee2"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "before_sha256": "3108f360279d82fd5f78c2dfa9bc54175d384f9e784c518b5d9ecc90b8baafd7",
+          "sha256": "24757f40787cb94e09b6221fb1081d4c5c6fcf22a0fc266ed9ab7078894d3c0d"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "f76831bee3cbccfc044beea4d3fb6894af59c4fe7eb010847c78c6ece5b6f245",
+          "sha256": "f9826e15339ccf70c3c779185f9344581d0ad0ff25635a355e7b12736d6693bf"
+        },
+        {
+          "path": "server/tests/security/test_memory_worker_launcher.py",
+          "before_sha256": "83fc82a99fad9f66760c133943fc09d994cf8695ae3668bd8d587f21097d9365",
+          "sha256": "469e383d41745d0dc545f366f8280be2acde273eb0b2847d8c0d82a0cb8cbd03"
+        },
+        {
+          "path": "server/tests/security/test_shared_memory_evidence.py",
+          "before_sha256": null,
+          "sha256": "61d42af9c80f6264d7c78671163b2e1091a6fbd5d5e50c9eca986673d14a1cbe"
+        },
+        {
+          "path": "server/tests/security/test_story_outline.py",
+          "before_sha256": "66e7755530caf1307ea009dc4e2bec9bc7c274f163dd02cd1e64bfb44262d444",
+          "sha256": "76b9e05a7620703ce6d9cad54a8502d7d7a0c0a13a7610bf1ad296624a0d0dfa"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "e73715701ce8eb7832e49af8c6b1769585401408c7594eb5b3c4732a734c22b2",
+          "sha256": "7cf1c52153d053c8c4b807d5300d27c31a1ee835606c8d9f72b9182512bdf055"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a6d7640700bef8af909ac23fdc48cea90aaad6a79ff65ed66e0fd82a78104f99",
+          "sha256": "afcfb3ecd9fae9a8ab9632a801b6ddb8e2615921230b8d4eb7b2a01542395f04"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
