@@ -11132,6 +11132,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Memoir shelf rendered ownership and stale denial guards",
+      "source_commit": "a6bae31f8dc28e51446475693a925bab5d8f56dd",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "2b10512eacd1c875096e890ff5b53f310f9b86b8193fc8d4cbc737f0e55da2a1",
+          "sha256": "ce23de07523ea6bb60c17cc4ebd97d9cbeda735dc0f9f51de52e641a0de09182"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "5da629552119cb85dd7d0de22e6e827a668d36f502cc50c955264810035a1162",
+          "sha256": "53c1da514cf866effde10b83736678d12c78f1fc17c73cc43fe2b3c8bfcef53c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
