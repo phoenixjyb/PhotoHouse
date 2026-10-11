@@ -11562,6 +11562,22 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Keep delayed narration button callbacks on their original phase",
+      "source_commit": "466ada28031e6aeb40935502bc9f71d8673b98ef",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ChapterReadAloud.kt",
+          "before_sha256": "cccd2da58c9b7f40a97fc8d764bfd7f61c9bda18dd95b84899d5b27a161577c3",
+          "sha256": "0e2a617d9486bd792d3aca0e8fb318cb4a89e101071f90deabb0f943da9f9584"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
