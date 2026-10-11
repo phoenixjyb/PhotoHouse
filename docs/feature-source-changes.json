@@ -10486,6 +10486,87 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Encrypted phone memoir reading continuity and denial isolation",
+      "source_commit": "c3e27069a98338a52b5ac360cf07b67f11bb5331",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderPositionPersistenceTest.kt",
+          "before_sha256": null,
+          "sha256": "a208b2ad3185397ef4ce1b4262c33fd8f1f479579f320758c220352491e8aca2"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReadingContinuityUiTest.kt",
+          "before_sha256": null,
+          "sha256": "377f6e88dd8bbfa4d5302a5d93496c0be66b937bb8133c9bdfc6890123591099"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedStoryReaderPositionPersistenceTest.kt",
+          "before_sha256": "8b0e09dc432d9d600a445947cdce25d1633d69b60ef0068cc15b61a9289a5567",
+          "sha256": "589fe5efb0606db9ec5212ffe77a7b22710a243efc34103111d55b904628a1c2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/EncryptedPositionRecordStore.kt",
+          "before_sha256": null,
+          "sha256": "4709ce0c8951c83a6e91e609de89f8bc3f1785ea9f84ec992173ac7e3f1a89c6"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreMemoryBookReaderPositionPersistence.kt",
+          "before_sha256": null,
+          "sha256": "e7c6f0f18b9d4f828842da1be421abc68cf2597cbe1d55ac5a64c0aef1e5e478"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreSavedStoryReaderPositionPersistence.kt",
+          "before_sha256": "d614823a228f710f98250d74227e799dff960713ff85668984fbbe5c8c0785e0",
+          "sha256": "601d3370f4b934725c61cee405842734c00c8fde3b2858de1dfed8e6b932431d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "before_sha256": "91c2ac05623e89d9d307deec4b276808b9f44ed52e4ec87b4afb2fbdfc1b354a",
+          "sha256": "40564c87359d31c4cedbb943c551f030634fda91214ce3f1984e56a3b4b43d1f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookReadingOffer.kt",
+          "before_sha256": null,
+          "sha256": "9d3a11fd4298c3933d1635bb62ce90b433ce6ed5ca886ab98ba585f245536795"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "020fa6e48fdc76d800a09c871df7792d37ec1eb95c6ec7488f87554d771b319b",
+          "sha256": "0f1fd42287c92e4a723b3ac5fb95c62cd6dacd48c312ae032eff8503746c6f42"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "c414e758294ac6c19340728d8e8cfcdfc2919c4609fcc2f1962a20776c9208e2",
+          "sha256": "1603f53b828fb4f1dc4d4536fd18b20606209eba68b57a52492da21f424b2667"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryBookReaderPosition.kt",
+          "before_sha256": null,
+          "sha256": "8db91adc9787a3011eb8baa10d0b64286e44833d833dbdd260e0ffdf5924386e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryCreationStoreTest.kt",
+          "before_sha256": "873bec2d598f4dd6f2b37b167ef0dcc958ca66f6a51df2e2e256be4365fba6c1",
+          "sha256": "8fe4d22d7758be1cd0d308d574357a1c73eae1c354c299d60c40857df1a3006c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryBookReaderPositionTest.kt",
+          "before_sha256": null,
+          "sha256": "4a1b142729ecf3691a07c52ba163f6c767368dd6e7c6178d0b72809848c988e6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "28e839e493064218d919f5ccc332fd2da6b92ae5c22f860ad837796faf8f316f",
+          "sha256": "7d01c3c25e03a100fd1998ecc5540f79ab23fac2bb969e46e163818578780d12"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
