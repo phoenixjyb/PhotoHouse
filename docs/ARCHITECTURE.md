@@ -16,6 +16,38 @@ A **library** is an access boundary. An **album** is a deliberate collection of 
 
 Originals, transcripts, polished text, tags and chapter links remain distinct. Linking a memory into a chapter does not delete or rewrite the contribution. Removing the link preserves its original.
 
+## Reviewed story evidence
+
+```mermaid
+flowchart LR
+    N[Current original notes] --> G[Explicit shared-memory groups]
+    N --> E[Authorized item evidence]
+    G --> E
+    C[Current machine captions] --> E
+    E --> R[Reviewed chapter source IDs]
+    R --> P[Current model context]
+    T[Chapter wording] --> P
+    F[Consented accepted contributions] --> P
+    P --> D[Unadopted proposal]
+    D --> S[Family review and explicit save]
+```
+
+[Chapter source choices](CHAPTER_SOURCE_CHOICES.md) are an explicit stored
+policy in existing story content, independent of memory-group activation. A
+policy-marked story uses only current, digest-matching IDs selected for each
+chapter; a legacy story keeps its original context behavior until reviewed.
+Original shared notes keep one canonical ID and byline, even when used by
+several frames. Editorial wording and accepted contributions retain their own
+labels and consent rules. A source choice does not verify a factual claim.
+
+Default HTTP response shapes stay compatible with strict older clients. New
+clients probe protected source capabilities and use an explicit query profile
+for policy reads/saves/title suggestions. Current membership, every selected
+asset, original note identity and source revisions are rechecked in one snapshot.
+Model I/O holds no database transaction; changed dependencies discard its
+output before adoption. This adds no schema, automatic listening, background
+source copying or anonymous TV access.
+
 ## Ownership
 
 | Module | Responsibility |

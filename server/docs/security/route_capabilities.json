@@ -3914,6 +3914,20 @@
   {
    "source": "backend/app/access/story_workspace.py",
    "owner": "router",
+   "method": "GET",
+   "path": "/story-workspace/source-capabilities",
+   "handler": "story_source_capabilities",
+   "surface": "photohouse",
+   "scope": "Selected active library membership only; reports the explicit reviewed chapter source policy and limit",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Current membership, exact route/query, origin and credentials; no source text, inference, writes or automatic opt-in",
+   "gap": "Source review requires an explicit profile save; capability reporting does not activate shared-memory groups or generation"
+  },
+  {
+   "source": "backend/app/access/story_workspace.py",
+   "owner": "router",
    "method": "POST",
    "path": "/story-workspace/title-suggestions",
    "handler": "story_title_suggestions",
