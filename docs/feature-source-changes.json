@@ -10285,6 +10285,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Explicit Web story source-conflict refresh",
+      "source_commit": "acb90368820cf8f6e9627fb4c4d723a89aaf4acf",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "5121b2fd0e0a4f90f5c0c11da920e6b943eaf4b0520840afc5596029998f5f97",
+          "sha256": "83b8c19cb0121d6412b570ef16cc5247da1d7912719b84c352381981e0297689"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "6e76ad6f8845cf0380557b5f4410a8199e2aac2a5038e668cfec60dec4441def",
+          "sha256": "bf96cda19e2fd4aefc8efe09012f53279edaf5ab2f89f3f92fe546f2ebb201df"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
