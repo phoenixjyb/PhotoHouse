@@ -11000,6 +11000,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Preserve saved memoir language across Web locale changes and uncertain update retries",
+      "source_commit": "903a7f9e1ffd0842ecce3478967153b942218a96",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "a6f867f8502ca2bf91a795576e3d2c6ff896d14f9fe25ec5fde780337e4a1563",
+          "sha256": "2b10512eacd1c875096e890ff5b53f310f9b86b8193fc8d4cbc737f0e55da2a1"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_ui.cjs",
+          "before_sha256": "5d890d9ea8105081f7c7acad9c552352f693a6b93b765165e6a83847510a0225",
+          "sha256": "a3d9f3822f51b8fe481a4ddf6d0212d4a5d7e14b1f66b6c5ba4375c8d9563065"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
