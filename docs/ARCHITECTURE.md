@@ -141,6 +141,15 @@ current reviewed transcript and its successful receipt into the editable command
 Discard clears that link. Recording, recognition and review block Send until
 the user resolves the pending input; overflow preserves both texts.
 
+[Chapter dictation](STORY_CHAPTER_DICTATION.md) uses the same protected ASR
+adapter with a different destination. Explicit Add appends reviewed words to the
+current chapter draft; it neither submits an assistant command nor saves the
+story. The session binds the editor, chapter, ordered media and current account.
+It preserves text typed while recognition completes, and an over-limit Add
+retains both texts. A saved-story editor additionally binds the story revision.
+The transient recording is distinct from an original family audio contribution,
+which has its own retention, attribution and playback contract.
+
 Web recording startup is bound to the current account/library and view attempt.
 A delayed microphone permission result stops its tracks before creating an
 audio context when that scope has changed. Context startup and completion

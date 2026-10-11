@@ -1,7 +1,8 @@
 # Speak a story chapter
 
-Status: the scoped phone helper is implemented and locally checked. The client
-writing controls described below are being integrated; live delivery is pending.
+Status: the phone writing controls are implemented and locally checked at
+`5873b44`. Web integration and saved-story phone editing are in progress; live
+delivery is pending.
 
 ## Writing experience
 
@@ -51,7 +52,12 @@ upload route. The maximum recording duration is the smaller of the admitted
 assistant capability and the existing 30-second client capture bound.
 
 The phone core helper is independently tested with generated audio and fake
-responses. Client integration, rendered UI and final qualification have their
-own checks. Serving Web files, signing/publishing the phone APK and a real family
+responses. The integrated phone run passed 34 focused JVM tests, three generated
+story-review UI journeys and all six shared dictation UI tests on the reused API
+36 emulator. Chinese and English 150% renders were inspected. The shared tests
+include a rejected oversized edit that remains visible and cannot insert older
+recognized words. These overlapping checks are not summed into a full suite.
+
+Final source qualification, serving Web files, signing/publishing the phone APK and a real family
 voice turn remain separate delivery gates. See [source choices](CHAPTER_SOURCE_CHOICES.md),
 [transcript review](ASSISTANT_TRANSCRIPT_REVIEW.md) and [the roadmap](ROADMAP.md).
