@@ -10439,6 +10439,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Explicit memoir chapter narration continuation",
+      "source_commit": "ce2467c0d38c69dd1600e9fa8eda1e64f95233f3",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "11f343ba47ba10730ac9616798878161df25029fbbff8646a41beffb55628ca3",
+          "sha256": "536efcd69ed7854a9cc47e32bb48ef876f753630c9b6efc81c37e8a0cd4514f8"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "bef1623b0d80feb1625b83adc632f014185b8ba60de866be4ef2315e5a3eb3b5",
+          "sha256": "eb639f240a5c1663ec75bb95b477b9085efb50ea214aa3d171e30d15ac25c3d6"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
