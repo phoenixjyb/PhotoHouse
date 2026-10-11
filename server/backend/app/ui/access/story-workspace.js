@@ -1,6 +1,6 @@
 'use strict';
 /* Library-private editorial workspace; saved drafts use protected APIs only. */
-window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, savedRequest, community, titleRequest, relatedRequest, sourceAccessCheck}) => {
+window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, savedRequest, community, titleRequest, relatedRequest, sourceAccessCheck, capture, voiceCapabilities, transcribe, canCapture=()=>true, reserveCapture=()=>null, claimCapture=()=>false, releaseCapture=()=>{}, stopAudioForCapture=()=>{}}) => {
   const $ = id => document.getElementById(id);
   const themes = ['everyday','trip','growing_up','birthday','grandparents','year_in_review'];
   const labels = {
@@ -37,6 +37,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   };
   Object.assign(labels.zh,{savedEyebrow:'家人共同留下的时光',savedHeading:'我们的故事',refresh:'刷新',moreStories:'更多故事',savedEmpty:'还没有保存的故事。选几个画面，写下你们的回忆。',savedThemeFilter:'按主题浏览已保存故事',savedThemeAll:'全部主题',savedThemeEmpty:'这个主题下还没有保存的故事。',savedThemeViewAll:'查看全部故事',savedThemeCreate:'编排一个故事',savedLoading:'正在打开故事…',savedUnavailable:'已保存故事暂不可用，请稍后重试。',saveMemory:'保存到相册库',savingMemory:'正在保存…',savedMemory:'已保存到这个相册库，可以随时回来继续。',saveFailed:'保存结果尚未确认。请重试相同保存；也可先下载保留草稿。',saveConflict:'故事或参考资料已有变化。你的文字已保留，请下载草稿或重新打开已保存版本。',reloadMemory:'重新打开已保存版本',playStory:'慢慢播放',pauseStory:'暂停播放',contribute:'补充这张照片的回忆',related:'和助手找更多片段',savedDraft:'已保存故事 · 待核实',privateHelp:'与这个相册库的家人分享，不会自动发布到电视。',savedHelp:'已保存到这个相册库。修改章节后请再次保存；家人的话和 AI 观察仍作为独立参考。',readOnly:'你可以阅读这个故事。只有作者或相册库主人可以修改。',savedMeta:'个画面',chaptersMeta:'章',retrySave:'重试相同保存',needsTitle:'请先为这段回忆起一个标题。',textTooLong:'这一章的文字超过 6000 字节，请缩短后再保存；原稿未改动。',readStory:'阅读故事',backStories:'返回故事列表',editStory:'编辑故事'});
   Object.assign(labels.en,{savedEyebrow:'MOMENTS YOUR FAMILY KEEPS',savedHeading:'Our stories',refresh:'Refresh',moreStories:'More stories',savedEmpty:'No saved stories yet. Choose a few frames and add what you remember.',savedThemeFilter:'Browse saved stories by theme',savedThemeAll:'All themes',savedThemeEmpty:'No saved stories under this theme yet.',savedThemeViewAll:'View all stories',savedThemeCreate:'Create a story',savedLoading:'Opening stories…',savedUnavailable:'Saved stories are unavailable. Please try again.',saveMemory:'Save to library',savingMemory:'Saving…',savedMemory:'Saved in this library. Come back whenever you like.',saveFailed:'The save is not confirmed. Retry the same save, or download a copy of your draft.',saveConflict:'The story or its references changed. Your words are kept; download your draft or reopen the saved version.',reloadMemory:'Reopen saved version',playStory:'Play slowly',pauseStory:'Pause',contribute:'Add a memory to this photo',related:'Find more moments with the assistant',savedDraft:'Saved story · review',privateHelp:'Shared with this library; not automatically published to TV.',savedHelp:'Saved in this library. Save again after changing chapters. Family words and AI observations remain separate references.',readOnly:'You can read this story. Only its author or a library owner can edit it.',savedMeta:'frames',chaptersMeta:'chapters',retrySave:'Retry same save',needsTitle:'Give this memory a title before saving.',textTooLong:'A chapter exceeds 6000 UTF-8 bytes. Shorten it before saving; your draft is kept.',readStory:'Read story',backStories:'Back to stories',editStory:'Edit story'});
+  Object.assign(labels.zh,{dictateChapter:'录音讲这一章',dictationStop:'结束录音并转写',dictationCancel:'取消录音',dictationWait:'正在检查语音服务…',dictationStarting:'正在等待麦克风权限…',dictationRecording:'正在录音。结束后会先显示可编辑的转写。',dictationTranscribing:'正在转写录音…',dictationTranscript:'转写内容（可编辑）',dictationHelp:'录音仅用于本次转写，不会作为原始家庭录音保存；语音服务会保留 30 天的识别文字和状态记录。请核对并明确添加转写，再检查并另行保存故事。',dictationAdd:'添加到本章',dictationDiscard:'丢弃转写',dictationCancelSession:'取消并丢弃',dictationAdded:'已添加到本章文字；请检查并另行保存故事。',dictationNeedResolve:'请先添加或丢弃待处理的转写，再继续此操作。',dictationOverflow:'文字超过 6000 UTF-8 字节。原章节文字和完整转写都已保留，请缩短后再添加。',dictationInvalidTranscript:'转写内容含无效字符或超过 64 KiB，请修改后重试。',dictationUnavailable:'语音转写暂不可用。章节文字仍保留。',dictationDenied:'语音权限或服务访问被拒绝。',dictationPermission:'麦克风权限不可用。请检查浏览器权限后重试。',dictationCaptureError:'录音未能开始或完成；章节文字仍保留。',dictationAsrError:'转写未能完成；章节文字仍保留。',dictationBusy:'请先结束其他录音或语音任务。',dictationEmpty:'没有可供核对的转写内容。'});
+  Object.assign(labels.en,{dictateChapter:'Dictate this chapter',dictationStop:'Stop and transcribe',dictationCancel:'Cancel recording',dictationWait:'Checking voice availability…',dictationStarting:'Waiting for microphone permission…',dictationRecording:'Recording. Stop to review an editable transcript.',dictationTranscribing:'Transcribing the recording…',dictationTranscript:'Transcript (editable)',dictationHelp:'Audio is used only for this transcription and is not saved as an original family recording. The voice service keeps recognized text and status receipts for 30 days. Review and explicitly add the transcript, then review and save the story separately.',dictationAdd:'Add to chapter',dictationDiscard:'Discard transcript',dictationCancelSession:'Cancel and discard',dictationAdded:'Added to chapter wording. Review it and save the story separately.',dictationNeedResolve:'Add or discard the pending transcript before continuing.',dictationOverflow:'The text exceeds 6,000 UTF-8 bytes. Both the chapter wording and full transcript are kept; shorten it before adding.',dictationInvalidTranscript:'The transcript contains invalid characters or exceeds 64 KiB. Edit it and try again.',dictationUnavailable:'Voice transcription is unavailable. Your chapter wording is kept.',dictationDenied:'Microphone permission or voice-service access was denied.',dictationPermission:'Microphone permission is unavailable. Check browser permission and try again.',dictationCaptureError:'Recording did not start or finish. Your chapter wording is kept.',dictationAsrError:'Transcription did not finish. Your chapter wording is kept.',dictationBusy:'Finish the other recording or voice task first.',dictationEmpty:'There is no transcript to review.'});
   labels.zh.savedNewer='已保存到这个相册库。家人随后修改了故事，现已打开最新版本。';
   labels.en.savedNewer='Saved in this library. Your family changed the story afterward; the latest version is now open.';
   let shelf=[], shelfPage=1, shelfLoad=0, shelfBinding=null, shelfTheme=null, canCreate=false, pendingSave=null, playTimer=null, playing=false, bookReader=null, narrationEpoch=0, narrationState=null;
@@ -51,6 +53,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   let titleView=null,titleEpoch=0,titleComposing=false;
   const SOURCE_POLICY='chapter_sources_v1';
   let sourceCapabilities=null,sourceCapabilityEpoch=0,sourceReviewOptedIn=false,sourceProfileLoaded=false;
+  let dictation=null,dictationEpoch=0;
   const sourceReviewAvailable=()=>sourceCapabilities?.source_policy===SOURCE_POLICY;
   function loadSourceCapabilities(owner,ticket){
     if(!savedRequest)return Promise.resolve(null);
@@ -94,7 +97,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }).catch(()=>{}); // An unavailable optional feature must not block writing.
   }
   async function suggestTitles(){
-    const view=titleView;if(!view||view.section.hidden||view.busy||frozen()||titleComposing||scope().locked||!draft)return;
+    const view=titleView;if(!view||view.section.hidden||view.busy||frozen()||titleComposing||scope().locked||!draft||!dictationGuard())return;
     const owner={...scope()},ticket=generation,story=draft,epoch=++titleEpoch,snapshot=titleSnapshot();
     const valid=()=>current(ticket,owner)&&draft===story&&titleView===view&&titleEpoch===epoch&&!frozen()&&!titleComposing&&titleSnapshot()===snapshot&&$('story-workspace').open;
     view.busy=true;view.action.disabled=true;view.choices.replaceChildren();view.status.textContent=text('titleAssistWorking');
@@ -117,12 +120,106 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   // v1 story draft payload returned by the existing saved-story endpoint.
   let contributionRefs=null,refsLoadEpoch=0;
   const text = key => labels[scope().language==='en'?'en':'zh'][key] || key;
-  const canDiscard = () => (!dirty&&!pendingSave) || downloaded || window.confirm(text(pendingSave?'saveFailed':'leave'));
+  const canDiscardDraft = () => (!dirty&&!pendingSave) || downloaded || window.confirm(text(pendingSave?'saveFailed':'leave'));
+  const canDiscard = () => {if(dictation){dictation.status.textContent=text('dictationNeedResolve');return false;}return canDiscardDraft();};
   const readOnly = () => Boolean(draft?.saved && !draft.can_edit);
   const frozen = () => busy || Boolean(pendingSave) || readOnly();
   const node = (tag, value, cls) => {const el=document.createElement(tag);if(value!==undefined)el.textContent=value;if(cls)el.className=cls;return el;};
   const button = (label, action, cls='quiet') => {const el=node('button',label,cls);el.type='button';el.addEventListener('click',action);return el;};
   const current = (ticket, owner) => ticket===generation && scope().account===owner.account && scope().library===owner.library && !scope().locked;
+  const dictationPending=()=>Boolean(dictation);
+  function dictationBound(session){
+    return Boolean(session&&current(session.ticket,session.owner)&&draft===session.story&&
+      session.story?.selection_revision===session.selectionRevision&&session.story?.id===session.savedId&&session.story?.revision===session.savedRevision&&
+      session.story.chapters.includes(session.section)&&session.section.id===session.chapterId&&
+      JSON.stringify(session.section.asset_ids)===session.assetsKey&&session.panel?.isConnected&&
+      $('story-workspace').open&&$('story-chapter-editor').contains(session.panel));
+  }
+  function dictationCurrent(session){return Boolean(session&&dictation===session&&dictationBound(session));}
+  function syncDictationAvailability(){for(const record of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))record.disabled=frozen()||Boolean(dictation);}
+  function paintDictation(session){
+    if(!dictationCurrent(session))return;
+    session.record.hidden=session.phase!=='idle';session.stop.hidden=session.phase!=='recording';
+    session.cancel.hidden=session.phase==='idle';session.review.hidden=session.phase!=='review';
+    session.record.disabled=frozen()||!capture||!voiceCapabilities||!transcribe;
+    session.cancel.disabled=false;session.stop.disabled=session.phase!=='recording';
+    session.add.disabled=session.phase!=='review'||session.composing||!session.transcript.value.trim();
+    syncDictationAvailability();
+  }
+  function resetDictation(session,{statusKey=null}={}){
+    if(!session)return;
+    if(dictation===session){dictation=null;dictationEpoch++;}
+    try{session.controller?.abort();}catch{}
+    if(session.handle){const handle=session.handle;session.handle=null;void handle.stop(false);}
+    if(session.reservation){releaseCapture(session.reservation);session.reservation=null;}
+    session.transcript.value='';session.review.hidden=true;session.stop.hidden=true;session.cancel.hidden=true;
+    session.record.hidden=false;session.record.disabled=frozen()||!capture||!voiceCapabilities||!transcribe;
+    session.status.textContent=statusKey?text(statusKey):'';
+    syncDictationAvailability();
+  }
+  function cancelDictation(){if(dictation)resetDictation(dictation);}
+  function dictationGuard(){
+    if(!dictation)return true;
+    dictation.status.textContent=text('dictationNeedResolve');return false;
+  }
+  function mountChapterDictation(section,story,owner,ticket,body){
+    const panel=node('section',undefined,'story-chapter-dictation'),status=node('p','','story-dictation-status'),record=button(text('dictateChapter'),null,'quiet story-dictation-record'),stop=button(text('dictationStop'),null,'quiet story-dictation-stop'),cancel=button(text('dictationCancelSession'),null,'quiet story-dictation-cancel'),help=node('p',text('dictationHelp'),'fine story-dictation-help'),review=node('section',undefined,'story-dictation-review'),label=node('label',text('dictationTranscript')),transcript=node('textarea'),actions=node('div',undefined,'story-dictation-actions'),add=button(text('dictationAdd'),null,'memory-community-primary'),discard=button(text('dictationDiscard'),null,'quiet');
+    status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.className='story-dictation-status';
+    transcript.rows=4;transcript.maxLength=65536;label.append(transcript);actions.append(add,discard);review.hidden=true;review.append(label,actions);
+    stop.hidden=true;cancel.hidden=true;record.addEventListener('click',()=>void beginDictation(session));stop.addEventListener('click',()=>void finishDictation(session));cancel.addEventListener('click',()=>resetDictation(session));
+    transcript.addEventListener('input',()=>{if(dictation===session)paintDictation(session);});
+    transcript.addEventListener('compositionstart',()=>{session.composing=true;paintDictation(session);});transcript.addEventListener('compositionend',()=>{session.composing=false;paintDictation(session);});
+    body.addEventListener('compositionstart',()=>{session.composing=true;paintDictation(session);});body.addEventListener('compositionend',()=>{session.composing=false;paintDictation(session);});
+    add.addEventListener('click',()=>addDictation(session,body));discard.addEventListener('click',()=>resetDictation(session));
+    const session={story,section,owner,ticket,selectionRevision:story.selection_revision,savedId:story.id,savedRevision:story.revision,chapterId:section.id,assetsKey:JSON.stringify(section.asset_ids),panel,record,stop,cancel,review,status,transcript,add,phase:'idle',composing:false,handle:null,reservation:null,controller:null};
+    panel.append(record,stop,cancel,status,help,review);return panel;
+  }
+  async function beginDictation(session){
+    if(dictation||!dictationBound(session)||frozen()||scope().locked)return;
+    if(typeof capture!=='function'||typeof voiceCapabilities!=='function'||typeof transcribe!=='function'){session.status.textContent=text('dictationUnavailable');return;}
+    const epoch=++dictationEpoch;dictation=session;session.epoch=epoch;session.controller=new AbortController();session.phase='checking';session.status.textContent=text('dictationWait');paintDictation(session);
+    const valid=()=>dictationCurrent(session)&&session.epoch===dictationEpoch&&!session.controller.signal.aborted;
+    try{
+      const capability=await voiceCapabilities({signal:session.controller.signal});
+      if(!valid())return;
+      if(capability?.version!==1||capability.transcribe!==true||!Number.isInteger(capability.max_audio_seconds)||capability.max_audio_seconds<1||capability.max_audio_seconds>30){session.status.textContent=text('dictationUnavailable');resetDictation(session);session.status.textContent=text('dictationUnavailable');return;}
+      if(!canCapture()){session.status.textContent=text('dictationBusy');resetDictation(session);session.status.textContent=text('dictationBusy');return;}
+      const reservation=reserveCapture();if(!reservation){session.status.textContent=text('dictationBusy');resetDictation(session);session.status.textContent=text('dictationBusy');return;}
+      session.reservation=reservation;stopNarration();stopPlaying();stopAudioForCapture();
+      if(!valid()){resetDictation(session);return;}
+      session.phase='starting';session.status.textContent=text('dictationStarting');paintDictation(session);
+      let readyResolve;const ready=new Promise(resolve=>{readyResolve=resolve;});
+      const handle=await capture(file=>{if(valid()){session.handle=null;if(session.reservation){releaseCapture(session.reservation);session.reservation=null;}readyResolve(file||null);}},Math.min(30,Math.floor(capability.max_audio_seconds)),{isCurrent:valid,signal:session.controller.signal});
+      if(!valid()){await handle.stop(false);return;}
+      if(handle.stopped){session.handle=null;}else{
+        session.handle=handle;
+        if(!claimCapture(session.reservation,handle)){await handle.stop(false);session.handle=null;session.status.textContent=text('dictationBusy');resetDictation(session);session.status.textContent=text('dictationBusy');return;}
+        session.phase='recording';session.status.textContent=text('dictationRecording');paintDictation(session);
+      }
+      const abortWait=new Promise(resolve=>session.controller.signal.addEventListener('abort',()=>resolve(null),{once:true}));
+      const file=await Promise.race([ready,abortWait]);if(!valid())return;if(!file){resetDictation(session,{statusKey:'dictationCaptureError'});return;}
+      session.phase='transcribing';session.status.textContent=text('dictationTranscribing');paintDictation(session);
+      const result=await transcribe(file,{signal:session.controller.signal});if(!valid())return;
+      if(!result||result.version!==1||typeof result.text!=='string'||!validRecognizedDictationTranscript(result.text))throw new Error('Invalid dictation transcript');
+      session.transcript.value=result.text;session.phase='review';session.status.textContent='';paintDictation(session);
+    }catch(error){
+      if(error?.name==='AbortError'||!dictationCurrent(session))return;
+      const key=error?.status===401||error?.status===403?'dictationDenied':error?.name==='NotAllowedError'||error?.name==='SecurityError'?'dictationPermission':session.phase==='transcribing'?'dictationAsrError':session.phase==='checking'&&error?.status===404?'dictationUnavailable':'dictationCaptureError';
+      resetDictation(session,{statusKey:key});if(error?.status===401||error?.status===403)onError(error);
+    }
+  }
+  async function finishDictation(session){
+    if(!dictationCurrent(session)||session.phase!=='recording'||!session.handle)return;
+    const handle=session.handle;session.stop.disabled=true;
+    try{await handle.stop(true);}catch(error){if(error?.name!=='AbortError'&&dictationCurrent(session)){resetDictation(session,{statusKey:'dictationCaptureError'});}}
+  }
+  function addDictation(session,body){
+    if(!dictationCurrent(session)||session.phase!=='review'||session.composing||!session.transcript.value.trim())return;
+    if(!validEditedDictationTranscript(session.transcript.value)){session.status.textContent=text('dictationInvalidTranscript');return;}
+    const currentText=body.value,combined=currentText?currentText+'\n\n'+session.transcript.value:session.transcript.value;
+    if(new TextEncoder().encode(combined).length>6000){session.status.textContent=text('dictationOverflow');return;}
+    body.value=combined;body.dispatchEvent(new Event('input',{bubbles:true}));resetDictation(session,{statusKey:'dictationAdded'});body.focus();
+  }
   const narrationCopy = (key,lang) => ({zh:{start:'朗读本章',pause:'暂停朗读',resume:'继续朗读',stop:'停止朗读',unsupported:'此浏览器没有可用的本机中文或英文语音，文字阅读仍可继续。',recording:'请先结束录音，再朗读本章。',failed:'朗读暂时无法继续。',playing:'正在朗读本章。',complete:'本章朗读完毕。',stopped:'已停止朗读。'},en:{start:'Read this chapter aloud',pause:'Pause narration',resume:'Resume narration',stop:'Stop narration',unsupported:'No suitable on-device Chinese or English voice is available. You can keep reading the text.',recording:'Finish recording before reading this chapter aloud.',failed:'Narration could not continue.',playing:'Reading this chapter aloud.',complete:'Chapter narration complete.',stopped:'Narration stopped.'}})[lang==='en'?'en':'zh'][key];
   function stopNarration(keepProgress=false) {
     const retainProgress=keepProgress===true;
@@ -214,6 +311,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const message = key => {$('story-workspace-status').textContent=key?text(key):'';};
   const idOK = id => typeof id==='string' && /^[1-9][0-9]{0,18}$/.test(id);
   const validText = (s,max) => typeof s==='string' && Array.from(s).length<=max && !/[\u0000\uD800-\uDFFF]/u.test(s);
+  const validDictationCharacters = value => typeof value==='string'&&Boolean(value.trim())&&!/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uD800-\uDFFF]/u.test(value);
+  const validRecognizedDictationTranscript = value => validDictationCharacters(value)&&new TextEncoder().encode(value).length<=1024;
+  const validEditedDictationTranscript = value => validDictationCharacters(value)&&new TextEncoder().encode(value).length<=65536;
   Object.assign(labels.zh,{relatedDayHeading:'同一天的更多瞬间',relatedDayHelp:'按记录的拍摄日期查找，不代表属于同一个活动。由你选择要加入的画面。',relatedDayFind:'查找同一天的画面',relatedDayMore:'继续查找',relatedDayWorking:'正在查找同一天的画面…',relatedDayEmpty:'没有找到其他画面。没有拍摄日期时，不会使用文件名或上传日期推测。',relatedDayFailed:'暂时无法查找，现有选择和草稿仍保留。',relatedDayAdd:'加入故事',relatedDayAdded:'已加入',relatedDayMatch:'同一记录拍摄日 · 请核对'});
   Object.assign(labels.en,{relatedDayHeading:'More moments from the same day',relatedDayHelp:'Find by recorded capture date. Sharing a day does not establish a shared activity; choose which moments belong.',relatedDayFind:'Find moments from these days',relatedDayMore:'Keep looking',relatedDayWorking:'Finding moments from the same recorded days…',relatedDayEmpty:'No other moments found. Missing capture dates are never inferred from filenames or upload dates.',relatedDayFailed:'Could not find moments. Your selection and draft are kept.',relatedDayAdd:'Add to story',relatedDayAdded:'Added',relatedDayMatch:'Same recorded capture day · review'});
   let relatedEpoch=0,relatedView=null;
@@ -294,6 +394,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-workspace-title').disabled=frozen();$('story-workspace-theme').disabled=frozen();
     if(titleView)titleView.action.disabled=frozen()||titleComposing||titleView.busy;
     for(const el of $('story-chapter-editor').querySelectorAll('input,textarea'))el.disabled=frozen();
+    for(const button of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))button.disabled=frozen()||dictationPending();
     $('story-save-memory').hidden=!canCreate && !draft?.can_edit;
     $('story-save-memory').disabled=busy||readOnly()||!draft;
     $('story-save-memory').textContent=text(busy?'savingMemory':pendingSave?'retrySave':'saveMemory');
@@ -403,7 +504,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const refs=refsFor(story);
     for(const card of $('story-chapter-editor').querySelectorAll('.story-contribution-references')){
       const id=card.dataset.chapterId,values=refs?.available?refs.groups.get(id)||[]:null;card.replaceChildren();
-      if(values?.length){card.append(node('strong',text('savedContributionRefs')));for(const [index,ref] of values.entries()){const uuid=ref.slice('contribution-'.length),row=node('div',undefined,'story-contribution-reference'),label=node('span',`${text('editorRefLabel')} ${index+1}`),status=node('p','','story-contribution-source-status'),body=node('div',undefined,'story-contribution-source-detail');row.dataset.contributionId=uuid;status.setAttribute('role','status');body.hidden=true;const action=button(text('viewRef'),()=>void loadContributionDetail(row,story,story.chapters.find(section=>section.id===id),uuid,action,status,body,'editor'),'quiet');const remove=button(text('removeSavedRef'),()=>{const currentRefs=refsFor(story);if(frozen()||!currentRefs?.available||draft!==story||currentRefs.revision!==story.revision||!row.isConnected)return;refsLoadEpoch++;currentRefs.groups.set(id,(currentRefs.groups.get(id)||[]).filter(value=>value!==ref));dirty=true;downloaded=false;updateContributionRefViews(story);},'quiet');row.style.display='flex';row.style.flexWrap='wrap';row.style.alignItems='center';row.style.gap='.5rem';row.style.minWidth='0';label.style.overflowWrap='anywhere';for(const control of [action,remove]){control.disabled=frozen();control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}row.append(label,action,remove,status,body);card.append(row);}}
+      if(values?.length){card.append(node('strong',text('savedContributionRefs')));for(const [index,ref] of values.entries()){const uuid=ref.slice('contribution-'.length),row=node('div',undefined,'story-contribution-reference'),label=node('span',`${text('editorRefLabel')} ${index+1}`),status=node('p','','story-contribution-source-status'),body=node('div',undefined,'story-contribution-source-detail');row.dataset.contributionId=uuid;status.setAttribute('role','status');body.hidden=true;const action=button(text('viewRef'),()=>void loadContributionDetail(row,story,story.chapters.find(section=>section.id===id),uuid,action,status,body,'editor'),'quiet');const remove=button(text('removeSavedRef'),()=>{const currentRefs=refsFor(story);if(frozen()||!dictationGuard()||!currentRefs?.available||draft!==story||currentRefs.revision!==story.revision||!row.isConnected)return;refsLoadEpoch++;currentRefs.groups.set(id,(currentRefs.groups.get(id)||[]).filter(value=>value!==ref));dirty=true;downloaded=false;updateContributionRefViews(story);},'quiet');row.style.display='flex';row.style.flexWrap='wrap';row.style.alignItems='center';row.style.gap='.5rem';row.style.minWidth='0';label.style.overflowWrap='anywhere';for(const control of [action,remove]){control.disabled=frozen();control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}row.append(label,action,remove,status,body);card.append(row);}}
       else if(!refs&&story.saved){const note=node('p',text('refLoading'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
       if(refs?.refreshUnavailable||refs&&!refs.available){const note=node('p',text(refs.refreshUnavailable?'refsRefreshUnavailable':'refsUnavailable'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
     }
@@ -430,7 +531,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     selection.append(node('p',text('sourceChoiceHelp'),'fine'));
     if(!sourceReviewOptedIn){
       const enable=button(text('chooseSources'),()=>{
-        if(!current(ticket,owner)||draft!==story||frozen())return;
+        if(!current(ticket,owner)||draft!==story||frozen()||!dictationGuard())return;
         sourceReviewOptedIn=true;dirty=true;downloaded=false;invalidateTitles();refreshSourceControls();
         const card=Array.from($('story-chapter-editor').querySelectorAll('.story-chapter-card')).find(value=>value.dataset.chapterId===c.id);card?.querySelector('.story-source-choice input')?.focus();
       },'quiet story-source-opt-in');enable.disabled=frozen();selection.append(enable);return selection;
@@ -443,7 +544,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     for(const {item,evidence} of available){
       const label=node('label',undefined,'story-source-choice'),check=node('input'),info=node('span',undefined,'story-source-choice-copy');check.type='checkbox';check.value=evidence.id;check.checked=c.evidence_ids.includes(evidence.id);check.disabled=frozen();
       check.addEventListener('change',()=>{
-        if(!current(ticket,owner)||draft!==story||frozen()||draft?.chapters.find(value=>value.id===c.id)!==c||!label.isConnected){check.checked=c.evidence_ids.includes(evidence.id);return;}
+        if(!current(ticket,owner)||draft!==story||frozen()||!dictationGuard()||draft?.chapters.find(value=>value.id===c.id)!==c||!label.isConnected){check.checked=c.evidence_ids.includes(evidence.id);return;}
         const next=c.evidence_ids.filter(id=>id!==evidence.id);
         if(check.checked){if(next.length>=12){check.checked=false;status.textContent=text('sourceLimit');return;}next.push(evidence.id);}
         c.evidence_ids=next;status.textContent='';updateCount();dirty=true;downloaded=false;invalidateTitles();
@@ -463,6 +564,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }
   }
   function renderEditor() {
+    cancelDictation();
     const root=$('story-chapter-editor');root.replaceChildren();$('story-draft-actions').hidden=!draft;
     if(!draft)return;
     const renderedStory=draft,renderedOwner={...scope()},renderedTicket=generation;
@@ -480,6 +582,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       for(const id of c.asset_ids){const img=node('img');img.src=mediaURL(id,'thumbnail');img.alt=id;img.loading='lazy';strip.append(img);}section.append(strip);
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
       body.addEventListener('input',()=>{c.narration=body.value;dirty=true;downloaded=false;invalidateTitles();});bodyLabel.append(body);section.append(bodyLabel);
+      section.append(mountChapterDictation(c,renderedStory,renderedOwner,renderedTicket,body));
       const sourceControls=sourceControlsFor(c,renderedStory,renderedOwner,renderedTicket);if(sourceControls)section.append(sourceControls);
       const sourceWarning=proposalReferenceWarnings.get(c.id);
       if(sourceWarning){const note=node('p',proposalWarningNote(sourceWarning),'story-proposal-reference-note');note.setAttribute('role','note');section.append(note);}
@@ -495,7 +598,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     setSelectionCount();
   }
   function read() {
-    if(!draft||scope().locked)return;
+    if(!draft||scope().locked||!dictationGuard())return;
     readerFromShelf=false;stopPlaying();stopNarration();chapter=0;frame=0;renderReader();readerMountEpoch++;$('story-reader').showModal();
   }
   function storyPositionKey(story) { return JSON.stringify([scope().account,scope().library,story.id,story.revision]); }
@@ -653,7 +756,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(draft.saved&&community)void community.attach(communityRoot,{...structuredClone(draft),type:'story'});
   }
   function exportDraft() {
-    if(!draft||scope().locked)return;
+    if(!draft||scope().locked||!dictationGuard())return;
     draft.title=$('story-workspace-title').value;
     const exported={...draft};delete exported.source_policy;if(sourceReviewOptedIn)exported.source_policy=SOURCE_POLICY;exported.saved=Boolean(draft.saved&&!dirty);
     const url=URL.createObjectURL(new Blob([JSON.stringify(exported,null,2)+'\n'],{type:'application/json'}));
@@ -661,7 +764,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     setTimeout(()=>URL.revokeObjectURL(url),1000);downloaded=true;message('exported');
   }
   function open(ids=null,theme='everyday') {
-    if(scope().locked||!scope().account||!scope().library)return;
+    if(scope().locked||!scope().account||!scope().library||!dictationGuard())return;
     // Keep every album choice, while the story API still receives at most 24.
     let nextItems=null;
     if(ids!==null){
@@ -686,6 +789,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     loadSourceCapabilities({...scope()},generation);
   }
   function translate() {
+    cancelDictation();
     stopNarration();
     void community?.translate();
     for(const el of document.querySelectorAll('[data-story-word]')){
@@ -706,6 +810,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     setSelectionCount();
   }
   function clear({cancelCommunityJobs=true}={}) {
+    cancelDictation();
     clearRelated();
     invalidateTitles();titleView=null;titleComposing=false;
     stopNarration();
@@ -766,7 +871,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     finally{if(current(ticket,owner)){busy=false;setSelectionCount();}}
   }
   async function saveMemory() {
-    if(!draft||busy||readOnly()||scope().locked||(!canCreate&&!draft.can_edit))return;
+    if(!dictationGuard()||!draft||busy||readOnly()||scope().locked||(!canCreate&&!draft.can_edit))return;
     const owner={...scope()},ticket=generation;
     if(!pendingSave){if(!$('story-workspace-title').value.trim()){message('needsTitle');return;}if(draft.chapters.some(c=>new TextEncoder().encode(c.narration).length>6000)){message('textTooLong');return;}if(!globalThis.crypto?.randomUUID){message('error');return;}
       const body={...(sourceReviewOptedIn?{source_policy:SOURCE_POLICY}:{}),title:$('story-workspace-title').value,theme:draft.theme,language:draft.language,asset_ids:draft.items.map(i=>i.id).join(','),chapters:JSON.stringify(draft.chapters),selection_revision:draft.selection_revision,revision:draft.id?draft.revision:'0',mutation_id:crypto.randomUUID()};
@@ -1020,7 +1125,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function togglePlaying(){if(playing){stopPlaying();return;}if(!draft||scope().locked)return;stopNarration();playing=true;$('story-reader').dataset.playing='true';$('story-reader-play').textContent=text('pauseStory');$('story-reader-play').setAttribute('aria-pressed','true');playTimer=setInterval(()=>{if(scope().locked||document.hidden||!$('story-reader').open){stopPlaying();return;}const c=draft.chapters[chapter];if(frame<c.asset_ids.length-1)frame++;else if(chapter<draft.chapters.length-1){chapter++;frame=0;}else{stopPlaying();return;}renderReader();},7000);}
   $('saved-memory-refresh').addEventListener('click',()=>{void loadShelf();});$('saved-memory-more').addEventListener('click',()=>{void loadShelf(true);});
   $('story-save-memory').addEventListener('click',()=>{void saveMemory();});$('story-reload-memory').addEventListener('click',()=>{if(draft?.id)void reopen(draft.id);});
-  $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPlaying();stopNarration();}});window.addEventListener('pagehide',stopNarration);window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
+  $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelDictation();stopPlaying();stopNarration();}});window.addEventListener('pagehide',()=>{cancelDictation();stopNarration();});window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
   $('story-reader-contribute').addEventListener('click',()=>{if(!draft||scope().locked||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;const item=draft.items.find(i=>i.id===draft.chapters[chapter].asset_ids[frame]);stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAsset(item);});
   $('story-reader-related').addEventListener('click',()=>{if(!draft||scope().locked||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAssistant(draft.title);});
   $('story-workspace').addEventListener('close',clearRelated);
@@ -1042,7 +1147,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-reader-close').addEventListener('click',()=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'}))return;stopNarration();$('story-reader').close();});
   $('story-reader-edit').addEventListener('click',()=>{if(!readerFromShelf||!draft?.saved||!draft.can_edit||scope().locked||!$('story-reader').open||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;readerFromShelf=false;stopPlaying();stopNarration();$('story-reader').close();renderEditor();if(!$('story-workspace').open)$('story-workspace').showModal();});
   $('story-workspace-close').addEventListener('click',()=>$('story-workspace').close());
-  $('story-workspace').addEventListener('close',()=>{invalidateTitles();if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
+  $('story-workspace').addEventListener('close',()=>{cancelDictation();invalidateTitles();if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
+  const dictationObserver=new MutationObserver(()=>{if(dictation&&!dictationBound(dictation))cancelDictation();});dictationObserver.observe($('story-chapter-editor'),{childList:true,subtree:true});
   $('story-reader').addEventListener('keydown',event=>{
     if(!draft||event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||!['ArrowRight','ArrowLeft'].includes(event.key))return;
     if(event.target?.closest?.('#story-reader-community,input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="tablist"],[role="tab"]'))return;
@@ -1057,7 +1163,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   });
   $('memory-create').addEventListener('click',()=>open());$('memory-assistant').addEventListener('click',openAssistant);
   translate();
-  return {clear,open,translate,reopen,openBook,openBookStory,acceptProposal,canLeave:canDiscard,mountReplySpeech,
-    setItems(value){if(shelfBinding!==JSON.stringify([scope().account,scope().library]))void loadShelf();galleryItems=value.filter(i=>idOK(i.id)&&['image','video'].includes(i.kind)).slice(0,24);const first=galleryItems[0];$('memory-home').hidden=!first;for(const b of $('memory-themes').querySelectorAll('button'))b.disabled=!first;if(first){const image=$('memory-home-image');image.onerror=()=>{image.onerror=null;image.src=mediaURL(first.id,'thumbnail');};image.src=mediaURL(first.id,first.kind==='video'?'thumbnail':'preview');image.alt='';}},
+  return {clear,open,translate,reopen,openBook,openBookStory,acceptProposal,canLeave(){if(!canDiscardDraft())return false;cancelDictation();return true;},mountReplySpeech,
+    setItems(value){if(dictation){dictation.status.textContent=text('dictationNeedResolve');return;}if(shelfBinding!==JSON.stringify([scope().account,scope().library]))void loadShelf();galleryItems=value.filter(i=>idOK(i.id)&&['image','video'].includes(i.kind)).slice(0,24);const first=galleryItems[0];$('memory-home').hidden=!first;for(const b of $('memory-themes').querySelectorAll('button'))b.disabled=!first;if(first){const image=$('memory-home-image');image.onerror=()=>{image.onerror=null;image.src=mediaURL(first.id,'thumbnail');};image.src=mediaURL(first.id,first.kind==='video'?'thumbnail': 'preview');image.alt='';}},
     fromResults(value){open(value);}};
 };

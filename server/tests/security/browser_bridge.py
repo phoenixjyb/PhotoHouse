@@ -227,6 +227,10 @@ try:
                 fixture.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id=?",(fixture.member_id,))
             elif scenario=='restore-member':
                 fixture.mutate("UPDATE access_memberships SET status='approved' WHERE account_id=?",(fixture.member_id,))
+            elif scenario=='advance-auth-window':
+                # Keep admission enabled while advancing only this synthetic
+                # fixture beyond its documented 10-minute retry window.
+                fixture.now += 601
             elif scenario=='change-joined-membership':
                 fixture.mutate("UPDATE access_memberships SET revision=revision+1 WHERE account_id IN (SELECT id FROM access_accounts WHERE phone_login='+12025550103')")
             elif scenario=='expire-sessions':

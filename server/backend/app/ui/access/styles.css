@@ -316,6 +316,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-chapter-strip{display:flex;gap:.5rem;margin-top:1rem;overflow:auto}
 .story-chapter-strip img{width:70px;height:70px;object-fit:cover;border-radius:8px}
 .story-chapter-card textarea{width:100%;font:inherit;line-height:1.8;padding:.9rem;border:1px solid var(--line);border-radius:8px;resize:vertical}
+.story-chapter-dictation{min-width:0;margin:.75rem 0 1rem;padding:.75rem 0;border-top:1px solid var(--line)}
+.story-chapter-dictation>button{min-height:44px;max-width:100%;white-space:normal}
+.story-dictation-status{min-height:1.4em;margin:.35rem 0;color:var(--muted);font-size:.88rem;line-height:1.5;overflow-wrap:anywhere}
+.story-dictation-review{min-width:0;margin-top:.7rem;padding:.8rem;border:1px solid var(--line);border-radius:10px;background:#fffdf9}
+.story-dictation-review>.fine{margin:.1rem 0 .65rem;line-height:1.6;overflow-wrap:anywhere}
+.story-dictation-review label{display:block;min-width:0}
+.story-dictation-review textarea{box-sizing:border-box;display:block;min-height:7rem;margin-top:.4rem}
+.story-dictation-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.65rem}
+.story-dictation-actions button{min-height:44px;max-width:100%;white-space:normal}
 .story-source-selection{min-width:0;margin:1rem 0;padding:.85rem 1rem;border:1px solid var(--line);border-radius:12px;background:#fffdf9}
 .story-source-selection>.fine{margin:.15rem 0 .65rem;line-height:1.55;overflow-wrap:anywhere}
 .story-source-checklist{min-width:0}
