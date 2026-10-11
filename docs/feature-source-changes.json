@@ -11153,6 +11153,52 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Protected phone memoir shelf covers and rendered action ownership",
+      "source_commit": "61847c710894f531460860103efd472bcb91a35e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookShelfCardsUiTest.kt",
+          "before_sha256": null,
+          "sha256": "71c0a3fc049b1453c43a96be69c2ba26f5b29791dfadbb6c2eba5cd0f39f1766"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookShelfCards.kt",
+          "before_sha256": null,
+          "sha256": "f7786a21a2dae1a4a694d3a106daebe4b3b6f4831887a0017a2d9c95f46b8616"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "0360399264543897b530718b99dc08a34e16e9bd692906f4dba4a7df17729ec2",
+          "sha256": "c5145ed0a1c4aa367d041c3e2a4a686525675a682dd70a5907968e54139626ba"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "3f856aceaae6dfba4633e8fe470434d5d7f7d05b07f4a2ad43d09bffccbd13fe",
+          "sha256": "e1b38d11965adca607c11748c0dd8394131b3db7848563a5a6d2b2f2f2bf042b"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryBookShelfCoverStore.kt",
+          "before_sha256": null,
+          "sha256": "fa3e3927ee23d97afbaac0a5e692d690dc1466353680079272ee1b71cf764ff5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryBookShelfCoverStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "8146681c59d871126a4e14f3d2c6c83f037606e3d6816d46bb0230eee8d4152b"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "970c7a1946821fec8ef647b8edd8bc0bfebd7edf023d0b11367fea314cbcdc5b",
+          "sha256": "f667302997f68c91160fb7b415ed0d431354942d65c27a4452529e7302adb12c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
