@@ -9595,6 +9595,42 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Web chapter source choices, scoped capability fallback, reviewed exports and linked contribution preservation",
+      "source_commit": "a1d3c8ea310d6fa07583f926f2a9011133bd058f",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "fd962d3c2f1e85fc5cdfaf160e4eeb55aebc204522d2ce697f22d6a846f505fe",
+          "sha256": "e89c24ddf85247488d43d8228519ed2d77845c90d5ef020b8d6446940351225a"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "92ced31cd1f1e8feebfee5bbbf4e736d5219523b4bf3ef09f8f5af54a22cca0b",
+          "sha256": "d2d285d5a3e607335e3da656ebf1d0513d8cfb0b31c0503bbe4925c98b463142"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "91bde4628b537690de98b8861f682d7866b3540ec395a3e3076dbbacf6562903",
+          "sha256": "79596be9be88ad12f3a0d5975a2d85a158c2743de2bca5095a2fee7b825705cd"
+        },
+        {
+          "path": "server/tests/security/test_memory_contribution_refs.py",
+          "before_sha256": "3e34691e21b535144214e12b3861cd00b303d3eb0168f576a61f93d08c64daf2",
+          "sha256": "38ad8a522791c81e30a446f9850934d68a5860a3593522230d0b9cdee753dbfc"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "7cf1c52153d053c8c4b807d5300d27c31a1ee835606c8d9f72b9182512bdf055",
+          "sha256": "a3588a12f08aecd49c773b383d2721e08e7debb38c392c53318a9552c80faaff"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
