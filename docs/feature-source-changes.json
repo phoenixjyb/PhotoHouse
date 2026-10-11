@@ -9462,6 +9462,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone chapter dictation binding and transient transcript helper",
+      "source_commit": "18f0b4dd5a1350c642d273eaa034cef358c15674",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryChapterDictationStore.kt",
+          "before_sha256": null,
+          "sha256": "1b87a3f612efc173a1930d3c61f7b8fd408e02178d03f99dc0041a2f71fbe7ca"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryChapterDictationStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "46de37d35dfc43434eb848f9ff78e6df8ad99e8c64f8481f090bd92bf6b2f57c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
