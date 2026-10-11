@@ -9827,6 +9827,42 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Web chapter dictation and capture recovery guards",
+      "source_commit": "d6a3f1a5ddea2c254f7ca043fad104eb6f920e04",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "e89c24ddf85247488d43d8228519ed2d77845c90d5ef020b8d6446940351225a",
+          "sha256": "760f1f76956b9ec6ad27136152e71e193f602bf87174febb97e73fc58a9d08dc"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "d2d285d5a3e607335e3da656ebf1d0513d8cfb0b31c0503bbe4925c98b463142",
+          "sha256": "6042e4d6bc0a50ccb58a3e13c7b4e2c83f55982aea0e647c512f2a9c94c33c55"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "79596be9be88ad12f3a0d5975a2d85a158c2743de2bca5095a2fee7b825705cd",
+          "sha256": "e21e53a9fed9f8975189ec78568d93f31fb341d01e0ebd03f5288a625d07fe16"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "79231626f09ac18c232cb8cded2cf0b11621c28521ed7a4f45c896d5f80380de",
+          "sha256": "7b88c8311f7c39d181e784995f917e2b058cb8f3942113629c8242d05576a243"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "a3588a12f08aecd49c773b383d2721e08e7debb38c392c53318a9552c80faaff",
+          "sha256": "94926e65fcf479688a111b79e64d580e62f1384a62febdb18cb771e651c61b66"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
