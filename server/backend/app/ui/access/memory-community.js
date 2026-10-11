@@ -216,24 +216,26 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   const clearIdeaVoice=async(clearTranscript=true)=>{ideaVoiceEpoch++;ideaVoiceTicket=0;ideaCaptureController?.abort();ideaCaptureController=null;if(ideaCaptureTimer)clearTimeout(ideaCaptureTimer);ideaCaptureTimer=null;const handle=ideaCaptureHandle;ideaCaptureHandle=null;ideaCaptureReady=null;ideaCaptureStarting=false;ideaTranscribing=false;if(clearTranscript)ideaTranscript='';ideaVoiceError='';if(handle)await handle.stop(false);};
   const stopRequests=(includeBooks=false)=>{for(const controller of controllers)controller.abort();controllers.clear();if(includeBooks){for(const controller of bookControllers)controller.abort();bookControllers.clear();}};
   const withLibrary=path=>path;
-  async function api(path,options={},bookRequest=false) {
+  async function api(path,options={},bookRequest=false,currentRequest=()=>true) {
     const snapshot=scopeNow(),owner=JSON.stringify([snapshot?.account,snapshot?.library]),revision=membershipRevision(snapshot),attachedRevision=bookRequest?null:membershipRevision(currentScope),ticket=bookRequest?bookEpoch:epoch;
+    const activeRequest=()=>Boolean(currentRequest())&&(bookRequest?bookCurrent(ticket,owner):current(ticket,owner));
     if(!snapshot?.account||!snapshot?.library||snapshot?.locked)throw new DOMException('Memory scope closed','AbortError');
+    if(!activeRequest())throw new DOMException('Stale memory request','AbortError');
     if(!bookRequest&&currentScope&&revision!==attachedRevision)throw new DOMException('Stale memory scope','AbortError');
     const controller=new AbortController(),bucket=bookRequest?bookControllers:controllers;bucket.add(controller);
     const externalSignal=options.signal,abortExternal=()=>controller.abort();
     if(externalSignal?.aborted)controller.abort();else externalSignal?.addEventListener('abort',abortExternal,{once:true});
     try {
       const result=await request(withLibrary(path),{...options,signal:controller.signal});
-      if(!(bookRequest?bookCurrent(ticket,owner):current(ticket,owner))||membershipRevision(scopeNow())!==revision||!bookRequest&&currentScope&&membershipRevision(currentScope)!==attachedRevision)throw new DOMException('Stale memory response','AbortError');
+      if(!activeRequest()||membershipRevision(scopeNow())!==revision||!bookRequest&&currentScope&&membershipRevision(currentScope)!==attachedRevision)throw new DOMException('Stale memory response','AbortError');
       return result;
     } catch(error) {
-      const active=bookRequest?bookCurrent(ticket,owner):current(ticket,owner);
+      const active=activeRequest();
       if((error?.status===401||error?.status===403)&&active&&membershipRevision(scopeNow())===revision&&(bookRequest||!currentScope||membershipRevision(currentScope)===attachedRevision))forgetConversationScope(snapshot.account,snapshot.library,revision);
       throw error;
     } finally {externalSignal?.removeEventListener('abort',abortExternal);bucket.delete(controller);}
   }
-  const bookApi=(path,options={})=>api(path,options,true);
+  const bookApi=(path,options={},currentRequest=()=>true)=>api(path,options,true,currentRequest);
   const showStatus=(text,kind='')=>{if(text!==t('conversationRestored'))conversationRestorationNotice=false;if(statusNode){statusNode.textContent=text||'';statusNode.dataset.state=kind;}};
   const notifyError=error=>{if(error?.name==='AbortError')return;if(!error?.status||error.status===401||error.status===403||error.status>=500)onError(error);};
   const report=(error,owner,ticket)=>{if(error?.name==='AbortError')return;if(current(ticket,owner)){showStatus(error?.status===409?t('conflict'):error?.status===422?t('tooLarge'):t('error'),'error');notifyError(error);}};
@@ -1782,11 +1784,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       const opening=String(book.introduction||'').trim().slice(0,240);
       if(opening)content.append(el('p',opening,'memory-book-opening'));
       const actions=el('div','','memory-book-actions');
-      actions.append(btn(t('openBook'),()=>void openBookTarget(book.id,owner,ticket),'memory-community-primary memory-book-read'));
-      if(book.can_edit)actions.append(btn(t('updateBook'),()=>void loadBookForEdit(book.id,host,owner,ticket),'memory-book-edit'));
+      const isCurrentCard=()=>bookCurrent(ticket,owner)&&list.isConnected&&root.querySelector('.memory-book-list')===list&&
+        card.isConnected&&list.contains(card)&&booksList.includes(book);
+      actions.append(btn(t('openBook'),()=>{if(isCurrentCard())void openBookTarget(book.id,owner,ticket,isCurrentCard);},'memory-community-primary memory-book-read'));
+      if(book.can_edit)actions.append(btn(t('updateBook'),()=>{if(isCurrentCard())void loadBookForEdit(book.id,host,owner,ticket,{isCurrent:isCurrentCard});},'memory-book-edit'));
       content.append(actions);
       const stories=el('div','','memory-book-stories');
-      for(const story of book.stories)stories.append(btn(`${t('chooseStory')}: ${story.title}`,()=>onOpenStory(story.id),'memory-book-story'));
+      for(const story of book.stories)stories.append(btn(`${t('chooseStory')}: ${story.title}`,()=>{if(isCurrentCard())onOpenStory(story.id);},'memory-book-story'));
       content.append(stories);card.append(content);list.append(card);
     }
     root.append(list);
@@ -2093,16 +2097,18 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   }
   function updateBookEditorToggle(root){const toggle=root?.querySelector('.memory-book-compose-cta');if(!toggle)return;toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));}
   function bookContainerFor(node){while(node&&!bookContainers.has(node))node=node.parentNode;return node;}
-  async function loadBookForEdit(id,root,owner,ticket,{preserveEditorial=false,preserveBookDraft=false}={}){
+  async function loadBookForEdit(id,root,owner,ticket,{preserveEditorial=false,preserveBookDraft=false,isCurrent=()=>true}={}){
+    if(!bookCurrent(ticket,owner)||!isCurrent())return;
     clearEditorialInspection();const editSequence=++bookEditSequence;editorialGeneration++;
-    try{const book=await bookApi(`${API}/books/${id}`);if(!bookCurrent(ticket,owner)||bookEditSequence!==editSequence)return;
+    try{const book=await bookApi(`${API}/books/${id}`,{},isCurrent);if(!bookCurrent(ticket,owner)||!isCurrent()||bookEditSequence!==editSequence)return;
       selectedBook=book;if(!preserveEditorial){editorialModel=null;editorialPending=null;}if(!preserveBookDraft){bookTitleDraft=book.title;bookIntroDraft=book.introduction;bookStorySelection=new Set(book.stories.map(story=>story.id));}bookEditorOpen=true;updateBookEditorToggle(root);renderBookForm(root,book,ticket,owner);await loadEditorialForEdit(book,root,owner,ticket,{preserveDraft:preserveEditorial});
-    }catch(error){reportBook(error,owner,ticket);}
+    }catch(error){if(bookCurrent(ticket,owner)&&isCurrent())reportBook(error,owner,ticket);}
   }
-  async function openBookTarget(id,owner,ticket){
-    try{const book=await bookApi(`${API}/books/${id}`);if(!bookCurrent(ticket,owner))return;
+  async function openBookTarget(id,owner,ticket,isCurrent=()=>true){
+    if(!bookCurrent(ticket,owner)||!isCurrent())return;
+    try{const book=await bookApi(`${API}/books/${id}`,{},isCurrent);if(!bookCurrent(ticket,owner)||!isCurrent())return;
       if(!validBookTarget(book))throw new Error('Invalid saved collection');onOpenStory(book);
-    }catch(error){reportBook(error,owner,ticket);}
+    }catch(error){if(bookCurrent(ticket,owner)&&isCurrent())reportBook(error,owner,ticket);}
   }
   async function saveBook(form,book,ticket,owner){
     if(bookSubmittingOwner===owner||editorialPending||editorialBusyOwner===owner)return;

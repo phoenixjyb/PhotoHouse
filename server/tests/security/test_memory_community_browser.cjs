@@ -24,7 +24,10 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Community bridge failed 
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const countTurnPosts=()=>requests.filter(item=>item.method==='POST'&&/\/conversations\/[^/]+\/turns/.test(item.path)).length;
 const countAudioRequests=()=>requests.filter(item=>item.path.includes('/audio?')||item.path.includes('/contributions/audio')).length;
-let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,pendingTurnFixture=false,malformedPreviewOnce=false;
+const countBookDetailReads=()=>requests.filter(item=>item.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(item.path)).length;
+let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,bookDetailGate=null,pendingTurnFixture=false,malformedPreviewOnce=false;
+const gateBookDetail=(status=200)=>{let arrivedResolve,releaseResolve;const arrived=new Promise(resolve=>{arrivedResolve=resolve;}),releasePromise=new Promise(resolve=>{releaseResolve=resolve;});bookDetailGate={status,arrivedResolve,releasePromise};return {arrived,release:releaseResolve};};
+const awaitGate=(gate,label)=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error(`${label} did not reach protected detail request`)),8000);gate.arrived.then(()=>{clearTimeout(timeout);resolve();},reject);});
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(44+data.length);out.write('RIFF',0);out.writeUInt32LE(out.length-8,4);out.write('WAVE',8);out.write('fmt ',12);out.writeUInt32LE(16,16);out.writeUInt16LE(1,20);out.writeUInt16LE(1,22);out.writeUInt32LE(16000,24);out.writeUInt32LE(32000,28);out.writeUInt16LE(2,32);out.writeUInt16LE(16,34);out.write('data',36);out.writeUInt32LE(data.length,40);data.copy(out,44);return out;};
 
@@ -44,12 +47,15 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     const headers=await request.allHeaders();delete headers['content-length'];
     if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
     const entry={method:request.method(),path:url.pathname+url.search};requests.push(entry);
+    let gatedBookDetailStatus=null;
+    if(bookDetailGate&&entry.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(entry.path)){const gate=bookDetailGate;bookDetailGate=null;gate.arrivedResolve();await gate.releasePromise;gatedBookDetailStatus=gate.status;}
     let bridgePath=entry.path;const selectedEditorialPlan=entry.method==='GET'&&url.pathname.endsWith('/plan')&&url.searchParams.get('editorial_context')==='1';
     const selectedEditorialPost=entry.method==='POST'&&url.searchParams.get('editorial_context')==='1';
     if(selectedEditorialPlan)bridgePath=`${url.pathname}?library=${encodeURIComponent(url.searchParams.get('library')||'')}`;
     else if(selectedEditorialPost)bridgePath=url.pathname;
-    const result=await rpc({method:entry.method,path:bridgePath,headers,
+    let result=await rpc({method:entry.method,path:bridgePath,headers,
       body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
+    if(gatedBookDetailStatus!==null)result={...result,status:gatedBookDetailStatus,body:Buffer.from(JSON.stringify({detail:'Synthetic stale memoir shelf denial'})).toString('base64')};
     entry.status=result.status;
     if(result.worker_job)entry.worker_job=result.worker_job;
     if(result.worker_contribution)entry.worker_contribution=result.worker_contribution;
@@ -170,6 +176,32 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.screenshot({path:path.join(artifacts,'memory-collection-shelf-desktop.png'),fullPage:true});
     assert(requests.some(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/books?')),
       `book card must follow a successful create request: ${JSON.stringify(requests.filter(item=>item.path.includes('/memory-community/v1/books')))}`);
+    const originalCard=await card.elementHandle(),staleStory=await card.locator('.memory-book-story').first().elementHandle(),staleRead=await card.locator('.memory-book-read').elementHandle(),staleEdit=await card.locator('.memory-book-edit').elementHandle();
+    const shelfReadsBeforeStale=requests.filter(item=>item.method==='GET'&&(item.path.startsWith('/memory-stories/')||item.path.startsWith('/memory-community/v1/books/'))).length;
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();
+    await staleStory.evaluate(node=>node.click());await staleRead.evaluate(node=>node.click());await staleEdit.evaluate(node=>node.click());await page.waitForTimeout(50);
+    assert.equal(requests.filter(item=>item.method==='GET'&&(item.path.startsWith('/memory-stories/')||item.path.startsWith('/memory-community/v1/books/'))).length,shelfReadsBeforeStale,'detached same-scope child, read and edit controls start no protected reads');
+    assert.equal(await page.locator('#memory-book-reader').count(),0,'detached shelf controls cannot create the memoir reader');
+    assert.equal(await bookShelf.locator('.memory-community-book-editor').isVisible(),false,'detached shelf controls cannot open the replacement editor');
+    assert.equal(await originalCard.evaluate(node=>node.isConnected),false,'same-scope shelf refresh detaches the captured card');
+
+    const readGate=gateBookDetail(),pendingReadCount=countBookDetailReads();
+    await bookShelf.locator('.memory-book-read').click();await awaitGate(readGate,'Current read');
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();readGate.release();await page.waitForTimeout(50);
+    assert.equal(countBookDetailReads(),pendingReadCount+1,'pending stale read performs only its already-authorized request');
+    assert.equal(await page.locator('#memory-book-reader').count(),0,'a read response for a detached card cannot create its memoir reader');
+
+    const editGate=gateBookDetail(),pendingEditCount=countBookDetailReads();
+    await bookShelf.locator('.memory-book-edit').click();await awaitGate(editGate,'Current edit');
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();editGate.release();await page.waitForTimeout(50);
+    assert.equal(countBookDetailReads(),pendingEditCount+1,'pending stale edit performs only its already-authorized request');
+    assert.equal(await bookShelf.locator('.memory-community-book-form').isVisible(),false,'an edit response for a detached card cannot open the replacement editor');
+    assert.equal(await bookShelf.locator('.memory-book-card').count(),1,'same-scope stale completions leave the replacement shelf intact');
+    pass('Detached and pending memoir shelf controls cannot act on a same-scope replacement shelf');
+
     await card.getByRole('button',{name:'继续阅读这本回忆集'}).click();
     await page.locator('#memory-book-reader').waitFor({state:'visible'});
     assert.equal(requests.filter(item=>item.path.includes('/plan')).length,0,'opening a memoir does not fetch its plan automatically');
@@ -831,6 +863,18 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
   await page.setViewportSize({width:390,height:844});assert.equal(await memoirReply.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'memoir reply sources and questions fit 390px');await page.screenshot({path:path.join(artifacts,'memory-memoir-chat-followups-mobile.png')});const memoirReplyFonts=await memoirReply.evaluate(root=>[...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===3&&child.textContent.trim())).map((node,index)=>{const style=getComputedStyle(node),item={index,size:parseFloat(style.fontSize),height:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldHeight:node.style.lineHeight};node.dataset.followupFont=String(index);node.style.fontSize=`${item.size*1.5}px`;if(Number.isFinite(item.height))node.style.lineHeight=`${item.height*1.5}px`;return item;}));assert.equal(await memoirReply.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'memoir reply follow-ups fit at 150% text in a 390px viewport');await page.screenshot({path:path.join(artifacts,'memory-memoir-chat-followups-mobile-text150.png')});await memoirReply.evaluate((root,rows)=>rows.forEach(item=>{const node=root.querySelector(`[data-followup-font="${item.index}"]`);if(node){node.style.fontSize=item.oldSize;node.style.lineHeight=item.oldHeight;delete node.dataset.followupFont;}}),memoirReplyFonts);await page.setViewportSize({width:1440,height:1000});await memoirQuestionInput.fill('');
   assert(requests.some(item=>item.method==='GET'&&item.path.includes('/turns?')&&item.path.includes('page=')&&item.path.includes('&order=recent&reply_context=1')),'memoir history requests recent pages with the same additive metadata');assert.equal(requests.some(item=>item.path==='/assistant/v1/speech'),false,'suggested follow-ups do not invoke server speech');
   pass('Memoir companion reply questions and mixed source labels remain draft-only and fit mobile at 150%');
+  const retainedMemoirConversationId=await memoirConversationSelect.inputValue();
+  await page.getByRole('button',{name:'新建讨论',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#memory-book-reader .memory-chat-conversation-select option').length===2);
+  const newerMemoirConversationId=await memoirConversationSelect.inputValue();assert.notEqual(newerMemoirConversationId,retainedMemoirConversationId,'fixture has two memoir conversations so restoration preference is observable');
+  const newerMemoirDraft=page.locator('#memory-book-reader .memory-chat-history').locator('..').locator('textarea[name="message"]');await newerMemoirDraft.fill('新的合成回忆录讨论');await page.locator('#memory-book-reader').getByRole('button',{name:'发送这条消息',exact:true}).click();await page.locator('#memory-book-reader .memory-chat-turn').filter({hasText:'新的合成回忆录讨论'}).waitFor({timeout:10000});
+  await memoirConversationSelect.selectOption(retainedMemoirConversationId);await page.waitForFunction(id=>document.querySelector('#memory-book-reader .memory-chat-conversation-select')?.value===id&&[...document.querySelectorAll('#memory-book-reader .memory-chat-turn-user')].some(node=>node.textContent.includes('还可以继续追问哪些家人记得的细节？')),retainedMemoirConversationId);
+  await page.keyboard.press('Escape');await page.locator('#memory-book-reader').waitFor({state:'hidden'});
+  const denialGate=gateBookDetail(403);await bookShelf.locator('.memory-book-read').click();await awaitGate(denialGate,'Stale denial');
+  await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));await bookShelf.locator('.memory-book-card').first().waitFor();denialGate.release();await page.waitForTimeout(80);
+  assert.equal(await page.locator('#auth').isVisible(),false,'a stale shelf 403 does not clear the authenticated session');assert.equal(await page.locator('#library-select').inputValue(),'family-a','a stale shelf denial preserves the active library');
+  await bookShelf.locator('.memory-book-read').click();await page.locator('#memory-book-reader').waitFor({state:'visible'});await page.getByRole('tab',{name:'一起聊回忆',exact:true}).click();
+  await page.waitForFunction(id=>document.querySelector('#memory-book-reader .memory-chat-conversation-select')?.value===id,retainedMemoirConversationId);assert.equal(await memoirConversationSelect.inputValue(),retainedMemoirConversationId,'a stale same-scope 403 preserves the prior conversation restoration hint');
+  pass('A stale same-scope memoir shelf 403 leaves private conversation restoration hints intact');
   assert.equal(await page.locator('#memory-book-reader').getByRole('tab',{name:'整理建议',exact:true}).count(),0,
     'a viewer can chat about a memoir but has no editor-only narrative action');
   await page.locator('#memory-book-reader .memory-book-toc button').first().click();
