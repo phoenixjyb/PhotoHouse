@@ -10213,6 +10213,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Memoir voice helper identity guards",
+      "source_commit": "1e4ac83e4d61aea5738231d0f64612777f13fde5",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookNarrativePanel.kt",
+          "before_sha256": "c99d5d56e6e6350b6c1a879059c59defc4a64df32fb152dd5849eb158304b475",
+          "sha256": "d3e356c362bf680a2bf71b1558358bb091e66399494b15d1c91916789b6c0e6e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "f7ad317be796b9aa4a02a27d6156da5805489a1564edf215c7ae070a48cab206",
+          "sha256": "07c8802cb4c63e8814c703138332c1fe91b0bb7d1a2017649da63b05af840ce0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "e5eb8cec1e2dea565b45f54e0a54dda070e401161019ecafc92019cc08f86c31",
+          "sha256": "28e839e493064218d919f5ccc332fd2da6b92ae5c22f860ad837796faf8f316f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
