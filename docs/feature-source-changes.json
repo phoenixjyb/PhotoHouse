@@ -10239,6 +10239,52 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Chapter arrangement and reader continuity documentation",
+      "source_commit": "d667b72e1fd536f33accfb937394d0441037e172",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "1ff05feb01d90568703a4ad7dcb0afe8af332da2d6ff2d772edd427981c22cd8",
+          "sha256": "289fe3e0f440e90ef77f97092b67d6bc2c1c77e57691782064a2420ae7f0b690"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "fd0209491167abc2ee312bbbb3a332e069ea83f1074afa2e2170441b2a2b0aa4",
+          "sha256": "81aa7531ce9eabf0156c8ddde8bb0916fdb40f0b7024e8200ae79b083e2399d4"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f887cb86f56e250d6f5b7ef178e93b0ca1ced10668564699151be7f79340e9ff",
+          "sha256": "e7bdcda7c2c66b115c8cb47cc49f1438f51163ad235f874359c086c6e29d8b47"
+        },
+        {
+          "path": "docs/PHONE_STORY_READING_CONTINUITY.md",
+          "before_sha256": null,
+          "sha256": "743d4b93b8edcacb6ac2034ffc227c6f2eb9022ca67adb3b0a99b490278333eb"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "3fa57d1819c400c8bfe95f2bb8ea75e8edeebeb4426431728b67fcf1b5a3880f",
+          "sha256": "3ea07f26377b81c0888839b1e97e58ed7bb3d8ab4543b1e823612a3c83016a8c"
+        },
+        {
+          "path": "docs/STORY_CHAPTER_ARRANGEMENT.md",
+          "before_sha256": null,
+          "sha256": "88ff2ffd00382312f88ef65052337aedcd760f52791365196ddb58c1f12b5760"
+        },
+        {
+          "path": "docs/STORY_READER_NAVIGATION.md",
+          "before_sha256": "39a335445fffb0d606e189a07a670a73c8485ba5b2987be58dc979fafdcfdf5f",
+          "sha256": "f9e1ad194f0ca02aa43d1c275d460d4adeb2bb8fba08394972a0aa5066d77981"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
