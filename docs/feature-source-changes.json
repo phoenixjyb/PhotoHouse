@@ -10135,6 +10135,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Reviewed new story chapter arrangement in Web",
+      "source_commit": "07a340dbecb498d894c51373d7064f4036915dfa",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "2dc646737c21036abd35af9751e3b82768f4cf88db9735183d320ddb1688a919",
+          "sha256": "5121b2fd0e0a4f90f5c0c11da920e6b943eaf4b0520840afc5596029998f5f97"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "488e1dddce9aa242d34b1e6b1bb0302c1ebf29f1c58958c38c35a4fbe07dab83",
+          "sha256": "18aa9a21e4ba7fc152c925b4d0b5912eff455bd266778db48ae77918e547dabf"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
