@@ -48,6 +48,20 @@ Model I/O holds no database transaction; changed dependencies discard its
 output before adoption. This adds no schema, automatic listening, background
 source copying or anonymous TV access.
 
+[New story chapter arrangement](STORY_CHAPTER_ARRANGEMENT.md) operates on the
+reviewed create profile: split and merge preserve the selected media order,
+current evidence eligibility and original contributions. Manual partitions are
+frozen into save retries and sent to title assistance. Legacy create grouping
+and saved-story media grouping remain unchanged. Source refresh retains a valid
+manual phone layout and words while renewing its evidence snapshot.
+
+[Phone reading continuity](PHONE_STORY_READING_CONTINUITY.md) stores only
+Keystore-encrypted location metadata, separately from conversation or story
+content. A fresh authorized read must match the exact account, library, story
+revision, chapter and asset before offering an explicit resume. Automatic preview
+loads do not create a pointer. Current denial and logout clear only the matching
+account; stale work cannot erase a replacement account's positions.
+
 ## Ownership
 
 | Module | Responsibility |

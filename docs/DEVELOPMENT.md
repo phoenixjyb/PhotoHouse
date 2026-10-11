@@ -1029,3 +1029,39 @@ revision-bound, review-required title outputs before private capture. No native
 inference, household material, provider activation or live configuration change
 was performed. Current and rollback title provider observations and human review
 remain open. See [model qualification](MODEL_QUALIFICATION.md).
+
+## October 12 story composition and reading
+
+The full Android source profile passed JVM tasks, phone/TV lint and both debug
+builds before the final chapter-arrangement and memoir-session changes. Its
+report inventory was 909 tests: core 24, live-core 709, home-core 131,
+playback-core 3, story-fixture-core 16, connected 17 and TV 9. Protocol had no
+test source. Some unaffected tasks were up to date; this is not 909 newly
+executed tests or a release signing result.
+
+[Reading continuity](PHONE_STORY_READING_CONTINUITY.md), source `7b3e68d`, passed
+five generated API 36 tests using real Android Keystore encryption. The reader
+suite also passed eight journeys, including saved editing and explicit reading
+resume. Fresh English and Chinese 150% resume captures were inspected after
+removing an emulator System UI interruption; the earlier obscured captures are
+not visual acceptance evidence.
+
+[Chapter arrangement](STORY_CHAPTER_ARRANGEMENT.md), Web source `07a340d` and
+phone source `a5396a2`, passed the 710-test live-core profile after a new fixture
+was corrected to close its retained voice observer. An initial combined
+instrumentation run exposed a chapter voice cleanup null dereference. The fix
+binds disposal to the rendered helper. Its final follow-up passed five bilingual
+chapter arrangement/dictation journeys plus two bilingual reading-resume
+journeys. English and Chinese 150% chapter controls and clean resume captures
+were inspected. These are generated data on the existing API 36 emulator.
+
+Memoir voice actions in source `1e4ac83` likewise retain the rendered helper:
+a delayed Add or Close from an old panel cannot consume or clear a replacement
+session. The two focused JVM suites passed 81 tests, followed by phone UI
+compilation. These overlapping runs must not be summed into a new full-suite
+count. Full browser and any later phone checks have their own pinned results.
+
+The backend profile remains the earlier 1,208 tests and 687 subtests at
+`d0d8a34`; these client slices added no route or schema. No Windows service,
+household database, model provider, release signing, OTA feed or physical device
+was changed by these local checks.

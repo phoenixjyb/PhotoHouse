@@ -33,6 +33,11 @@ count has its own line; equally sized Previous/Next buttons retain 48 dp
 minimum targets at enlarged text. This avoids placing three competing labels
 in one narrow row.
 
+The phone can now offer [Continue reading](PHONE_STORY_READING_CONTINUITY.md)
+after a process restart and a fresh authorized detail read. Its encrypted record
+contains only location identifiers and revision metadata. The matching location
+is an offer; restoring it and opening its original media remain separate actions.
+
 ## Evidence and delivery
 
 Generated browser journeys cover keyboard navigation, narrow bilingual renders,

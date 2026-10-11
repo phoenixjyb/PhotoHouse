@@ -38,9 +38,12 @@ is implemented locally in phone and Web with explicit transcript review; the
 full 19-suite Web profile passed at `5991695`.
 [Saved phone story editing](PHONE_SAVED_STORY_EDITING.md) is implemented at
 `6e3bfc8`, preserving accepted family-memory links and unsaved words through
-failed conflict reloads. The next reader slice adds explicit, private local
-continuity after a phone process restart. Family feedback on suggested group
-boundaries and longer-story composition remains a following product gate.
+failed conflict reloads. [Phone reading continuity](PHONE_STORY_READING_CONTINUITY.md)
+now offers an explicit resume after a fresh authorized read, with encrypted local
+location metadata. [New chapter arrangement](STORY_CHAPTER_ARRANGEMENT.md) lets
+authors split and merge reviewed new drafts in Web and phone, retaining media
+order and original sources. Family feedback on suggested group boundaries and
+longer-story composition remains a following product gate.
 Do not automatically publish private memories to Home TV.
 
 ### Guarded activation preparation
