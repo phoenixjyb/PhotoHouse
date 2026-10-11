@@ -1368,3 +1368,67 @@ The [release candidate](../clients/android/docs/PHONE_V47_RELEASE_CANDIDATE_2026
 records its user-facing changes and remaining private-profile, signing, OTA and
 family gates. This task has not contacted Windows, changed a runtime task,
 published source/APKs or installed a physical device.
+
+
+## October 12 complete client profile follow-up
+
+At `d3a9a93`, the complete Android JVM/lint/debug source profile passed in
+2m26s (175 tasks: 38 executed, 137 up to date). The existing XML report inventory
+was 1,014 tests with no failures, errors or skips; the report reader itself
+runs no tests and does not establish cached-report freshness. The invocation
+receipt records unchanged HEAD and Android source snapshots
+(`ed2c2d5994c037b746b44438cc3b2a52a14af65bcb5e2b4e2c306741e1c54b5d`).
+
+The Web profile at the same HEAD failed in the original-note browser journey: a
+maximum-duration callback during delayed AudioContext resume left its shared
+startup reservation set, disabling Record after the microphone had stopped.
+Its exit-one receipt preserves the unchanged source invocation
+(`543e408d2e1ad72228de7d2a801ef2d7a43c1c29d722a8457f6e5250d1572076`).
+The failure is not counted as a passing whole Web profile. The callback fix and
+final complete retry are recorded with their own source and receipt below.
+
+A provisional unconfigured v47 unsigned release compilation passed in 51s.
+The generated release config has empty origins and no optional feature enabled;
+package metadata reports version 47 and signature verification correctly fails
+for the unsigned artifact. Two introduction-narration source files were being
+prepared during this build, so this provisional result is not a frozen source
+release qualification. The final source/artifact checks supersede it below.
+
+
+## October 12 explicit opening narration and recording correction
+
+Web opening speech is accepted at `a8e8b47`: the focused generated browser
+journey passed 30 checkpoint groups with no page errors or external requests.
+It uses the saved introduction and book language, shares local speech ownership,
+and requires an explicit start after a recording conflict. The first new guard
+referenced a ticket outside its lexical scope; the corrected guard reads it
+from the captured reader context. Its initial CSS-zoom fixture produced a
+556px element capture at a 390px viewport and could not establish viewport fit.
+The final fixture enlarges snapshotted text once and asserts direct viewport
+bounds. Both 390x844 English/Chinese viewport renders were inspected. The stale
+completion check invokes the actual saved callback after replacement.
+
+Recording source `cd87ab2` passed the original-note browser journey and WAV/
+shared-reservation checks. A duration-complete callback releases only its own
+startup or raw capture identity before rendering controls, including while
+AudioContext resume remains held. Valid recording preflight stops assistant,
+family-audio and chapter/opening speech before requesting the microphone;
+invalid, aborted and obsolete starts have no audio side effect. The community
+voice render fixture now enlarges transcript-review controls after those nodes
+exist, so the entire reviewed state is checked at 150% text.
+
+Phone opening narration is accepted at `6f140f8`. Debug and instrumentation
+compilation passed in 18s; the corrected nine-case emulator cohort passed in
+26.294s (four opening cases and five affected chapter/contents cases). Both
+150% English/Chinese saved-opening sections were inspected. The first run
+passed six cases but failed an early logout-cleanup assertion and a wrongly
+named contents class; the fixture now waits for UI disposal after logout and
+uses the real class. No source behavior was changed for those fixture errors.
+Blank introductions mount no speech control. Saved book language, exact text,
+explicit pause/resume, navigation/logout cleanup and unchanged reading position
+are covered. Shared recording denial/retry is exercised by the affected chapter
+cohort; a separate opening-specific recording fixture was not added.
+
+These are synthetic local-adapter results. They do not qualify installed voice
+availability, pronunciation, private endpoints, Windows services, signed APKs,
+OTA or family acceptance. The final frozen complete client profiles follow.

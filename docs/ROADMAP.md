@@ -38,7 +38,11 @@ excerpts and accessible reading actions. Its 125-case core cohort, two bilingual
 [Reviewed Web memoir introduction dictation](MEMOIR_INTRODUCTION_DICTATION.md)
 is integrated at `bd8f6b6`, including shared microphone ownership, current-form
 story ordering and bounded introduction review. Generated Node UI and adapter
-checks passed; final browser rendering and complete client profiles follow.
+checks passed; the recording correction at `cd87ab2` passed its focused browser
+journey. Final complete-profile evidence is in [Development](DEVELOPMENT.md).
+[Opening narration](MEMOIR_INTRODUCTION_NARRATION.md) is accepted at Web
+`a8e8b47` and phone `6f140f8`, with 30 browser checkpoint groups and nine
+opening/reader emulator cases passing. Enlarged bilingual renders were inspected.
 Phone `a4507e3` reserves v47 for a new signed release after its private profile
 and served capabilities are qualified. Following source qualification,
 the next delivery gate is the complete release closure, then approved native
@@ -458,3 +462,20 @@ covered by the 22-checkpoint community journey. It fills a reviewed question
 without sending or changing the whole-book thread. Current Android imports
 also have a complete 684-test JVM/lint/debug-build qualification. Source-only
 checks do not close signed delivery, native migration or family acceptance.
+
+## October 12 memoir composition and discovery follow-up
+
+The current local candidate adds the phone memoir composer, reviewed opening
+dictation in both clients, protected visual phone shelves, and explicit local
+opening narration. [Development evidence](DEVELOPMENT.md) records accepted
+source pins, generated flows and complete-profile results, including corrected
+failures. These features do not enable a Windows capability or publish an APK.
+
+Next delivery work is to pin and qualify the compatible Windows/API/worker
+release, resolve its existing live-data activation gates, and prepare a private
+v47 phone release for review. Then validate owner/member/revoked access and a
+family journey: dictate, edit, save, reopen, arrange stories and explicitly
+listen. Provider story quality and pronunciation require their own evaluation.
+Further feature work should use that feedback to prioritize reviewed related
+moments and collaborative chapter editing rather than expand unqualified
+provider or service changes.

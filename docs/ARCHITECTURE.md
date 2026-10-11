@@ -233,6 +233,13 @@ chapter, assistant, original-note and memoir capture from opening overlapping
 streams; obsolete reservations release only their own handle. This saves
 introduction text only.
 
+[Memoir opening narration](MEMOIR_INTRODUCTION_NARRATION.md) reads the saved
+opening only after an explicit action. Its local voice uses the saved book
+language; the exact book revision, ordered children and reader location bind
+every control and completion. Navigation stops the old speech without moving
+the reading position. It shares audio ownership with chapter/companion speech
+and recording, and introduces no provider call, retained audio or route.
+
 [Chapter dictation](STORY_CHAPTER_DICTATION.md) uses the same protected ASR
 adapter with a different destination. Explicit Add appends reviewed words to the
 current chapter draft; it neither submits an assistant command nor saves the
