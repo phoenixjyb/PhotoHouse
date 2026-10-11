@@ -11,6 +11,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       draft:'故事草稿',draftHelp:'这是可编辑的章节提纲，尚未保存。参考资料不会自动变成事实；请补充自己的回忆。刷新、切换相册库或退出后草稿会清除。',
       chapters:'章节',chapterTitle:'章节标题',narration:'这一章的故事',references:'参考这章的资料',family:'家人写下的话',ai:'AI 观察 · 待核实',
       readerSources:'查看本章素材来源',sourceDisclaimer:'以下是本章引用的参考资料，不代表已核实事实。',sourceFamily:'家人提供的文字',sourceAI:'AI 观察 · 需核对',sourceByline:'原记录署名',sharedMemoryFromPhoto:'来源素材',chooseSources:'选择各章来源',sourceChoiceHelp:'启用后，每章只会引用本章勾选的画面文字或 AI 观察；请逐章检查，也可以全部不选。不会删改章节正文或单独链接的家人回忆。',sourceCount:n=>`已选择 ${n} / 最多 12 项`,sourceLimit:'每章最多引用 12 项资料。',
+      splitChapterAfter:n=>`在第 ${n} 个画面后分章`,mergeChapterNext:'与下一章合并',chapterStructureHelp:'只调整这个未保存草稿的分组。每个故事最多 6 章，每章最多 4 个画面；改动后请检查标题、正文和来源，再另行保存。',chapterSplitLimit:'最多 6 章。当前分组未更改。',chapterMergeLimit:'合并后每章最多 4 个画面。当前分组未更改。',chapterJoinTextLimit:'合并后的标题或正文超过长度限制。当前分组未更改。',chapterJoinSourceLimit:'合并后每章最多保留 12 项来源。当前分组未更改。',
       savedContributionRefs:'已保存的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
       bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',
@@ -26,6 +27,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       draft:'Story draft',draftHelp:'This is an editable outline, not a saved story. References are not automatically facts. Add what you remember. Refreshing, switching libraries or signing out clears this draft.',
       chapters:'Chapters',chapterTitle:'Chapter title',narration:'The story in this chapter',references:'References for this chapter',family:'Family words',ai:'AI observation · verify',
       readerSources:'View sources for this chapter',sourceDisclaimer:'These are references cited for this chapter; they are not verified facts.',sourceFamily:'Family-provided wording',sourceAI:'AI observation · verify',sourceByline:'Original byline',sharedMemoryFromPhoto:'Source item',chooseSources:'Choose sources for each chapter',sourceChoiceHelp:'After opting in, each chapter uses only its checked frame wording or AI observations. Review every chapter; you can leave all unchecked. This does not change chapter text or separately linked family memories.',sourceCount:n=>`Selected ${n} / up to 12`,sourceLimit:'A chapter can cite up to 12 references.',
+      splitChapterAfter:n=>`Split after frame ${n}`,mergeChapterNext:'Merge with next chapter',chapterStructureHelp:'These controls change grouping in this unsaved draft only. A story can have up to 6 chapters, with up to 4 frames each. Review titles, wording and sources before saving separately.',chapterSplitLimit:'A story can have up to 6 chapters. No change was made.',chapterMergeLimit:'A chapter can have up to 4 frames after merging. No change was made.',chapterJoinTextLimit:'The merged title or wording exceeds its limit. No change was made.',chapterJoinSourceLimit:'A chapter can keep up to 12 sources after merging. No change was made.',
       savedContributionRefs:'Saved family-memory sources',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
       bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',
@@ -82,7 +84,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.zh,{titleAssist:'帮我起个标题',titleAssistHelp:'根据章节草稿与参考资料提出候选标题。选择后仍可修改，不会自动保存。',titleAssistWorking:'正在想几个标题…',titleAssistEmpty:'还没有合适的候选标题，可以补充回忆后再试。',titleAssistFailed:'标题建议暂不可用，你仍可修改标题并保存故事。',titleAssistReview:'AI 标题建议 · 请核对',titleAssistSources:'查看依据',titleAssistDraft:'章节草稿',titleAssistFrame:'画面'});
   Object.assign(labels.en,{titleAssist:'Suggest a title',titleAssistHelp:'Suggest titles from chapter drafts and references. Choose one, then edit it if needed. Nothing is saved automatically.',titleAssistWorking:'Thinking of a few titles…',titleAssistEmpty:'No suitable title yet. Add more context and try again.',titleAssistFailed:'Title suggestions are unavailable. You can still edit the title and save your story.',titleAssistReview:'AI title suggestions · review',titleAssistSources:'View references',titleAssistDraft:'Chapter draft',titleAssistFrame:'Frame'});
   function invalidateTitles(){titleEpoch++;if(titleView){titleView.busy=false;titleView.choices.replaceChildren();titleView.status.textContent='';titleView.action.disabled=frozen()||titleComposing;}}
-  function titleSnapshot(){return JSON.stringify([draft?.selection_revision,draft?.theme,draft?.language,draft?.items.map(i=>i.id),sourceReviewOptedIn,draft?.chapters.map(c=>({id:c.id,...(sourceReviewOptedIn?{asset_ids:c.asset_ids}:{}),narration:c.narration,evidence_ids:c.evidence_ids})),$('story-workspace-title').value]);}
+  function titleSnapshot(){return JSON.stringify([draft?.selection_revision,draft?.theme,draft?.language,draft?.items.map(i=>i.id),sourceReviewOptedIn,draft?.chapters.map(c=>({id:c.id,title:c.title,...(sourceReviewOptedIn?{asset_ids:c.asset_ids}:{}),narration:c.narration,evidence_ids:c.evidence_ids})),$('story-workspace-title').value]);}
   function mountTitleAssistance(root){
     invalidateTitles();titleView=null;
     if(!titleRequest||!draft||readOnly())return;
@@ -100,7 +102,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const view=titleView;if(!view||view.section.hidden||view.busy||frozen()||titleComposing||scope().locked||!draft||!dictationGuard())return;
     const owner={...scope()},ticket=generation,story=draft,epoch=++titleEpoch,snapshot=titleSnapshot();
     const valid=()=>current(ticket,owner)&&draft===story&&titleView===view&&titleEpoch===epoch&&!frozen()&&!titleComposing&&titleSnapshot()===snapshot&&$('story-workspace').open;
-    view.busy=true;view.action.disabled=true;view.choices.replaceChildren();view.status.textContent=text('titleAssistWorking');
+    view.busy=true;view.action.disabled=true;view.choices.replaceChildren();view.status.textContent=text('titleAssistWorking');syncChapterStructureAvailability();
     try{
       const titlePath='/story-workspace/title-suggestions'+(sourceReviewOptedIn?'?source_review=1':'');
       const titleCall=sourceReviewOptedIn?savedRequest:titleRequest;
@@ -114,7 +116,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         if(!valid())return;$('story-workspace-title').value=candidate.text;story.title=candidate.text;dirty=true;downloaded=false;invalidateTitles();$('story-workspace-title').focus();
       });choose.className='quiet story-title-choice';const sources=node('details',undefined,'story-title-sources');sources.append(node('summary',text('titleAssistSources')));for(const id of candidate.source_ids){const draftChapter=story.chapters.find(c=>'draft-'+c.id===id),item=story.items.find(i=>i.evidence.some(e=>e.id===id)),evidence=item?.evidence.find(e=>e.id===id);const label=draftChapter?`${text('titleAssistDraft')} · ${story.chapters.indexOf(draftChapter)+1}`:`${text(evidence.source==='family'?'family':'ai')} · ${text('titleAssistFrame')} ${item.id}`;const entry=node('article');entry.dataset.titleSourceId=id;entry.append(node('small',label),node('p',Array.from(draftChapter?.narration||evidence.text).slice(0,180).join(''),'fine'));sources.append(entry);}row.append(choose,sources);view.choices.append(row);}
     }catch(error){if(valid())view.status.textContent=text('titleAssistFailed');}
-    finally{if(titleView===view&&titleEpoch===epoch){view.busy=false;view.action.disabled=frozen()||titleComposing;}}
+    finally{if(titleView===view&&titleEpoch===epoch){view.busy=false;view.action.disabled=frozen()||titleComposing;syncChapterStructureAvailability();}}
   }
   // Opaque contribution IDs only. This volatile sidecar never changes the exact
   // v1 story draft payload returned by the existing saved-story endpoint.
@@ -390,6 +392,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function setSelectionCount() {
     $('story-selection-count').textContent=`${selected.size} / 24 · ${text('selected')} · ${text('selectionTotal')(items.length)}`;
+    syncChapterStructureAvailability();
     $('story-build').disabled=frozen() || !selected.size;
     $('story-workspace-title').disabled=frozen();$('story-workspace-theme').disabled=frozen();
     if(titleView)titleView.action.disabled=frozen()||titleComposing||titleView.busy;
@@ -547,12 +550,101 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         if(!current(ticket,owner)||draft!==story||frozen()||!dictationGuard()||draft?.chapters.find(value=>value.id===c.id)!==c||!label.isConnected){check.checked=c.evidence_ids.includes(evidence.id);return;}
         const next=c.evidence_ids.filter(id=>id!==evidence.id);
         if(check.checked){if(next.length>=12){check.checked=false;status.textContent=text('sourceLimit');return;}next.push(evidence.id);}
-        c.evidence_ids=next;status.textContent='';updateCount();dirty=true;downloaded=false;invalidateTitles();
+        c.evidence_ids=next;status.textContent='';updateCount();dirty=true;downloaded=false;invalidateTitles();syncChapterStructureAvailability();
       });
       info.append(node('strong',`${text(evidence.source==='family'?'family':'ai')} · ${item.id}`),node('p',evidence.text));appendEvidenceAttribution(info,evidence,item.id);
       label.append(check,info);entries.append(label);
     }
     checklist.append(summary,status,entries);selection.append(checklist);return selection;
+  }
+  function chapterStructureAllowed(story,owner,ticket){
+    return current(ticket,owner)&&draft===story&&$('story-workspace').open&&sourceReviewOptedIn&&
+      story.saved!==true&&!frozen()&&!dictation&&!titleComposing;
+  }
+  function canSplitChapter(story,index,boundary){
+    const chapter=story.chapters[index];
+    return Boolean(chapter&&story.chapters.length<6&&Number.isInteger(boundary)&&boundary>0&&boundary<chapter.asset_ids.length);
+  }
+  function mergeChapterCandidate(story,index){
+    const left=story.chapters[index],right=story.chapters[index+1];
+    if(!left||!right)return null;
+    const title=left.title===right.title?left.title:`${left.title} · ${right.title}`,narration=[left.narration,right.narration].filter(value=>value.length).join('\n\n');
+    const evidenceIds=[...left.evidence_ids,...right.evidence_ids.filter(id=>!left.evidence_ids.includes(id))];
+    if(left.asset_ids.length+right.asset_ids.length>4||!validText(title,160)||new TextEncoder().encode(title).length>640||
+      !validText(narration,6000)||new TextEncoder().encode(narration).length>6000||evidenceIds.length>12)return null;
+    return {...left,title,narration,asset_ids:[...left.asset_ids,...right.asset_ids],evidence_ids:evidenceIds};
+  }
+  function chapterStructureLimitReason(story,index,kind,boundary){
+    if(kind==='split')return canSplitChapter(story,index,boundary)?null:'chapterSplitLimit';
+    const left=story.chapters[index],right=story.chapters[index+1];
+    if(!left||!right)return 'chapterMergeLimit';
+    if(left.asset_ids.length+right.asset_ids.length>4)return 'chapterMergeLimit';
+    const title=left.title===right.title?left.title:`${left.title} · ${right.title}`,narration=[left.narration,right.narration].filter(value=>value.length).join('\n\n');
+    if(!validText(title,160)||new TextEncoder().encode(title).length>640||!validText(narration,6000)||new TextEncoder().encode(narration).length>6000)return 'chapterJoinTextLimit';
+    if(left.evidence_ids.length+right.evidence_ids.filter(id=>!left.evidence_ids.includes(id)).length>12)return 'chapterJoinSourceLimit';
+    return null;
+  }
+  function splitChapter(story,owner,ticket,index,boundary){
+    if(!chapterStructureAllowed(story,owner,ticket)||!canSplitChapter(story,index,boundary))return;
+    const chapter=story.chapters[index],firstAssets=chapter.asset_ids.slice(0,boundary),secondAssets=chapter.asset_ids.slice(boundary);
+    const evidenceFor=assetIds=>new Set(story.items.filter(item=>assetIds.includes(item.id)).flatMap(item=>item.evidence.map(evidence=>evidence.id)));
+    const firstAvailable=evidenceFor(firstAssets),secondAvailable=evidenceFor(secondAssets),firstEvidence=[],secondEvidence=[];
+    for(const id of chapter.evidence_ids){
+      if(firstAvailable.has(id))firstEvidence.push(id);
+      else if(secondAvailable.has(id))secondEvidence.push(id);
+      else return;
+    }
+    const split=[
+      {...chapter,id:'chapter-1',asset_ids:firstAssets,evidence_ids:firstEvidence},
+      {...chapter,id:'chapter-2',narration:'',asset_ids:secondAssets,evidence_ids:secondEvidence},
+    ];
+    const chapters=[...story.chapters.slice(0,index),...split,...story.chapters.slice(index+1)]
+      .map((value,position)=>({...value,id:`chapter-${position+1}`}));
+    if(chapters.length>6||chapters.some(value=>!value.asset_ids.length||value.asset_ids.length>4||value.evidence_ids.length>12))return;
+    story.chapters=chapters;dirty=true;downloaded=false;invalidateTitles();renderEditor();
+    $('story-chapter-editor').querySelector('.story-chapter-merge')?.focus();
+  }
+  function mergeAdjacentChapters(story,owner,ticket,index){
+    if(!chapterStructureAllowed(story,owner,ticket))return;
+    const merged=mergeChapterCandidate(story,index);if(!merged)return;
+    const chapters=[...story.chapters.slice(0,index),merged,...story.chapters.slice(index+2)]
+      .map((value,position)=>({...value,id:`chapter-${position+1}`}));
+    if(chapters.length<1||chapters.length>6)return;
+    story.chapters=chapters;dirty=true;downloaded=false;invalidateTitles();renderEditor();
+    $('story-chapter-editor').querySelector('.story-chapter-split')?.focus();
+  }
+  function chapterStructureControlsFor(c,story,owner,ticket){
+    if(!sourceReviewOptedIn||story.saved===true||readOnly())return null;
+    const index=story.chapters.indexOf(c),chapterAssetsKey=JSON.stringify(c.asset_ids),nextChapter=story.chapters[index+1],nextAssetsKey=nextChapter?JSON.stringify(nextChapter.asset_ids):null,controls=node('div',undefined,'story-chapter-structure-controls'),help=node('p',text('chapterStructureHelp'),'fine');
+    const structureControlCurrent=includeNext=>Boolean(controls.isConnected&&chapterStructureAllowed(story,owner,ticket)&&story.chapters[index]===c&&JSON.stringify(c.asset_ids)===chapterAssetsKey&&(!includeNext||nextChapter&&story.chapters[index+1]===nextChapter&&JSON.stringify(nextChapter.asset_ids)===nextAssetsKey));
+    controls.append(help);
+    for(let boundary=1;boundary<c.asset_ids.length;boundary++){
+      const split=button(text('splitChapterAfter')(boundary),()=>{if(structureControlCurrent(false))splitChapter(story,owner,ticket,index,boundary);},'quiet story-chapter-split');
+      split.setAttribute('aria-describedby',`chapter-structure-help-${c.id}`);split.title=text(chapterStructureLimitReason(story,index,'split',boundary)||'chapterStructureHelp');
+      split.__photoHouseSync=()=>{split.disabled=!structureControlCurrent(false)||Boolean(chapterStructureLimitReason(story,index,'split',boundary));};
+      controls.append(split);
+    }
+    if(index>=0&&index<story.chapters.length-1){
+      const merge=button(text('mergeChapterNext'),()=>{if(structureControlCurrent(true))mergeAdjacentChapters(story,owner,ticket,index);},'quiet story-chapter-merge');
+      merge.setAttribute('aria-describedby',`chapter-structure-help-${c.id}`);merge.title=text(chapterStructureLimitReason(story,index,'merge')||'chapterStructureHelp');
+      merge.__photoHouseSync=()=>{merge.disabled=!structureControlCurrent(true)||Boolean(chapterStructureLimitReason(story,index,'merge'));};
+      controls.append(merge);
+    }
+    help.id=`chapter-structure-help-${c.id}`;
+    return controls;
+  }
+  function refreshChapterStructureControls(){
+    const root=$('story-chapter-editor');root.querySelectorAll('.story-chapter-structure-controls').forEach(value=>value.remove());
+    if(!draft||!sourceReviewOptedIn||draft.saved===true)return;
+    const story=draft,owner={...scope()},ticket=generation;
+    for(const c of story.chapters){
+      const card=Array.from(root.querySelectorAll('.story-chapter-card')).find(value=>value.dataset.chapterId===c.id),controls=chapterStructureControlsFor(c,story,owner,ticket);
+      if(card&&controls){const bodyLabel=card.querySelector('textarea')?.parentElement;if(bodyLabel)card.insertBefore(controls,bodyLabel);else card.append(controls);}
+    }
+    syncChapterStructureAvailability();
+  }
+  function syncChapterStructureAvailability(){
+    for(const control of $('story-chapter-editor').querySelectorAll('.story-chapter-structure-controls button'))control.__photoHouseSync?.();
   }
   function refreshSourceControls(){
     if(!draft)return;
@@ -562,6 +654,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       card.querySelector('.story-source-selection')?.remove();const controls=sourceControlsFor(c,story,owner,ticket);if(!controls)continue;
       const before=card.querySelector('.story-proposal-reference-note')||card.querySelector('.story-contribution-references')||card.querySelector('.story-reference-list');card.insertBefore(controls,before||null);
     }
+    refreshChapterStructureControls();
   }
   function renderEditor() {
     cancelDictation();
@@ -577,11 +670,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const section=node('section',undefined,'story-chapter-card');section.dataset.chapterId=c.id;
       section.append(node('span',String(index+1).padStart(2,'0'),'story-chapter-number'));
       const titleLabel=node('label',text('chapterTitle')),title=node('input');title.value=c.title;title.maxLength=160;
-      title.addEventListener('input',()=>{c.title=title.value;dirty=true;downloaded=false;});titleLabel.append(title);section.append(titleLabel);
+      title.addEventListener('input',()=>{c.title=title.value;dirty=true;downloaded=false;invalidateTitles();syncChapterStructureAvailability();});titleLabel.append(title);section.append(titleLabel);
       const strip=node('div',undefined,'story-chapter-strip');
       for(const id of c.asset_ids){const img=node('img');img.src=mediaURL(id,'thumbnail');img.alt=id;img.loading='lazy';strip.append(img);}section.append(strip);
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
-      body.addEventListener('input',()=>{c.narration=body.value;dirty=true;downloaded=false;invalidateTitles();});bodyLabel.append(body);section.append(bodyLabel);
+      body.addEventListener('input',()=>{c.narration=body.value;dirty=true;downloaded=false;invalidateTitles();syncChapterStructureAvailability();});bodyLabel.append(body);section.append(bodyLabel);
       section.append(mountChapterDictation(c,renderedStory,renderedOwner,renderedTicket,body));
       const sourceControls=sourceControlsFor(c,renderedStory,renderedOwner,renderedTicket);if(sourceControls)section.append(sourceControls);
       const sourceWarning=proposalReferenceWarnings.get(c.id);
@@ -594,6 +687,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       }
       section.append(references);root.append(section);
     }
+    refreshChapterStructureControls();
     updateContributionRefViews(draft);
     setSelectionCount();
   }
