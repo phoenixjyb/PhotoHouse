@@ -10974,6 +10974,32 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Web full-conversation recovery",
+      "source_commit": "54f323b15577b4cbf348f0dc1c6c80064a841b01",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "760f1f76956b9ec6ad27136152e71e193f602bf87174febb97e73fc58a9d08dc",
+          "sha256": "f55b2a067ec4d2a722f92282685269d7a7544508c6aba57d6737a399ae250b1a"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "18ea58ceaf9e1f11cff0fe7d9744c752c44bc2317817c7c8a6142276a6791316",
+          "sha256": "a6f867f8502ca2bf91a795576e3d2c6ff896d14f9fe25ec5fde780337e4a1563"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "40a2ce88dbd4c9db7679c2515e0c931a7fd233edb351a914140c6d12fe70c15c",
+          "sha256": "5da629552119cb85dd7d0de22e6e827a668d36f502cc50c955264810035a1162"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
