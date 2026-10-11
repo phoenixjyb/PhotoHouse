@@ -22,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -352,13 +353,17 @@ internal fun ChapterReadAloud(
                 }
             }
         }
-        Button(onClick = toggle, enabled = chunksPresent && (active || enabled), modifier = Modifier.testTag("$tag-toggle")) {
-            Text(when (status) {
-                "speaking" -> labels?.pause ?: t("Pause reading", "暂停朗读")
-                "paused", "paused_busy" -> labels?.resume ?: t("Resume reading", "继续朗读")
-                "loading" -> labels?.stop ?: t("Stop reading", "停止朗读")
-                else -> labels?.read ?: t("Read aloud", "朗读本章")
-            })
+        // Keep an old clickable/semantics callback bound to its rendered action;
+        // Compose otherwise updates the same node's callback when Pause becomes Resume.
+        key(snapshotKey, renderedPhase) {
+            Button(onClick = toggle, enabled = chunksPresent && (active || enabled), modifier = Modifier.testTag("$tag-toggle")) {
+                Text(when (status) {
+                    "speaking" -> labels?.pause ?: t("Pause reading", "暂停朗读")
+                    "paused", "paused_busy" -> labels?.resume ?: t("Resume reading", "继续朗读")
+                    "loading" -> labels?.stop ?: t("Stop reading", "停止朗读")
+                    else -> labels?.read ?: t("Read aloud", "朗读本章")
+                })
+            }
         }
         if (status == "speaking" || paused) TextButton(onClick = {
             if (currentAndAttached()) controller.stop()
