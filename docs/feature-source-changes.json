@@ -11021,6 +11021,117 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone protected memoir composition, reviewed introduction dictation and guarded full-conversation continuation",
+      "source_commit": "e157679d4f3dc165db5f6a1b40185ffcd6c1e63e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookCompositionUiTest.kt",
+          "before_sha256": null,
+          "sha256": "82352f10de0c167e3bc03d832c0b84ad84585c28c03b2fabcdd7c476d0f872a5"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryChatContinuationUiTest.kt",
+          "before_sha256": null,
+          "sha256": "f7cc53ae02ad03a8efe6868ddc476b2e67becf9b07c6546e7b3321c7f48503e2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "2a29c2c1c9e0e8b398ed77b2c78fc763e1a5ab5e277f2f76aa85300ec8c4572f",
+          "sha256": "54bcda3cb0b896012322dc36ecc06b93f4e072d1231400f00e9e6ed9ffb10c42"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookComposerPanel.kt",
+          "before_sha256": null,
+          "sha256": "a9301a79dab3034afb88e2c0cd18f803ac31c8eed44d65a22044a9f02cccca38"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "29b76389906948129ee3a1d68749fede5b2dd59da2d8ca3b575955abc817f964",
+          "sha256": "0360399264543897b530718b99dc08a34e16e9bd692906f4dba4a7df17729ec2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "c2eb8f126e7e57869a5f5915ccaf250797fdacb2dda1f9c23e4e3425b8f0cf6a",
+          "sha256": "b4d9e1e5a1f06769730e0d57995514268412ec41e01d2b51809b33311125137e"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryDictationInput.kt",
+          "before_sha256": "c2ae08d71f20412371ff5934902a6801bc5b4aa65deec53fb40adc355a3fdae4",
+          "sha256": "6537c30143284d4798dbd8ac4585d1f236ffee8aa66c1eafac66e67de7b20317"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "36bd9365adf0c8b7c546cb752681f53fd7ce50417c36cdd6c86b06e2913c0a70",
+          "sha256": "3f856aceaae6dfba4633e8fe470434d5d7f7d05b07f4a2ad43d09bffccbd13fe"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsMemoryCommunityApi.kt",
+          "before_sha256": "c3701ce940acdaeea5be5be6e4a14022be0036e579f7dcd512ed5495ba9e9387",
+          "sha256": "05561c9c4aa61b208362e6238b3d3d97805ce4560f438eef9471e16393af3d4c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryBookCompositionDictationStore.kt",
+          "before_sha256": null,
+          "sha256": "206e3ea40bf00e4e292035ae6a6c959840de6ba69882317ddd0412f54bf76383"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryBookCompositionStore.kt",
+          "before_sha256": null,
+          "sha256": "b604dcd8c7750864afa4e3e7464e2626f4fc0427e750c86962049b94d79aa774"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryCommunityRepository.kt",
+          "before_sha256": "0e262af19c5646eae200b492f85507897034bc7642418b4870710dd8d1f3988c",
+          "sha256": "cac69b2dbb0b8eb2e60f77b0c4123f6468f36a9f17353379221b17f84bfcfab0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryDictation.kt",
+          "before_sha256": "4252d55ddbb41aedf5c93eb14f7e4f2022103326c8d672f1e4b4964b1ea28bed",
+          "sha256": "9a4c7ea50ea820ee5af722d312d4a2092e6abae0cf7826b9bdf3c6e45c0592aa"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "before_sha256": "7ab2962dbdb3b848537b4768188df331d3c0c867205b635d87af508413c534f7",
+          "sha256": "16630b19f5dc3e7029182ad0810461736abaf00bd682007fbfa155acded3bb04"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsMemoryCommunityApiTest.kt",
+          "before_sha256": "30035f10fc9a07b887bcbf2b9df3491493c0ff7aa5b83243852e3d579f6c3cf1",
+          "sha256": "7fffcf52872f0cc6b65a03d8ea68c93045a727811575da3c23992df4d06c4774"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryBookCompositionDictationStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "b01a62e7f6e3d1867e72368456c986f20904964e0745c32a564bf37e247d837f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryBookCompositionStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "ca4504e3ac49b0831d5a973a0c5d46b2d065e8761fafdef641a643ced144d2f5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityRepositoryTest.kt",
+          "before_sha256": "4e9c0074725424c5ce135f215b5dbf4dc23ae9271d99786e673184e5f6403d29",
+          "sha256": "52dc42a840aec0af5d3a13a3796ece7abfa501c2697a60c1f1f520e7ddfd3ea0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "073fcca6ccee801a9cdebd211e967d1a6de1b29630c1416e9e6bb5d7bfa19272",
+          "sha256": "970c7a1946821fec8ef647b8edd8bc0bfebd7edf023d0b11367fea314cbcdc5b"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryDictationTest.kt",
+          "before_sha256": "5444c9215a8f0a446200d75dd26980a3b9707ae2fcc7c5c8f40ed29649fbaff2",
+          "sha256": "233f7f8b2c555e719ec3a4a9ec86eaa2281cf82d2cf36d437733dfa971a97fb9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
