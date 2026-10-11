@@ -36,11 +36,12 @@ There is no new route or migration. Title assistance receives the actual chapter
 assets and source choices. A submitted save freezes those groups, sources and
 words for an identical retry.
 
-The phone's existing source-conflict refresh keeps a valid manual grouping and
-its authored words. It refreshes item evidence and the selection revision,
-removes selections no longer eligible and requires another review. A failed
-refresh retains the unfinished draft. Web conflict responses retain the draft;
-a dedicated Web source refresh remains a later slice.
+Both clients' source-conflict refresh keeps a valid manual grouping and its
+authored words. It refreshes item evidence and the selection revision, removes
+selections no longer eligible and requires another review. A failed refresh
+retains the unfinished draft. The [Web recovery flow](WEB_STORY_SOURCE_REFRESH.md)
+keeps the text fields mounted during refresh, then asks for an explicit source
+review confirmation before another save.
 
 ## Evidence and delivery
 

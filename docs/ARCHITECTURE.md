@@ -53,7 +53,9 @@ reviewed create profile: split and merge preserve the selected media order,
 current evidence eligibility and original contributions. Manual partitions are
 frozen into save retries and sent to title assistance. Legacy create grouping
 and saved-story media grouping remain unchanged. Source refresh retains a valid
-manual phone layout and words while renewing its evidence snapshot.
+manual layout and words while renewing its evidence snapshot in both clients.
+The [Web recovery flow](WEB_STORY_SOURCE_REFRESH.md) preserves mounted text
+controls during the pending read and requires a new source-review confirmation.
 
 [Phone reading continuity](PHONE_STORY_READING_CONTINUITY.md) stores only
 Keystore-encrypted location metadata, separately from conversation or story
@@ -61,6 +63,13 @@ content. A fresh authorized read must match the exact account, library, story
 revision, chapter and asset before offering an explicit resume. Automatic preview
 loads do not create a pointer. Current denial and logout clear only the matching
 account; stale work cannot erase a replacement account's positions.
+
+[Phone album-to-story selection](PHONE_ALBUM_TO_STORY.md) reads the existing
+protected album directory and rechecks a displayed album before atomically
+seeding an unsaved editor. It preserves the complete album cohort for bounded
+media browsing, while an outline uses only the user's reviewed selection.
+Albums do not supply copied source choices, descriptions or prose. The preview
+and final story save reauthorize their own actual media and evidence snapshots.
 
 ## Ownership
 

@@ -1061,6 +1061,33 @@ session. The two focused JVM suites passed 81 tests, followed by phone UI
 compilation. These overlapping runs must not be summed into a new full-suite
 count. Full browser and any later phone checks have their own pinned results.
 
+The 19-suite Web profile subsequently passed with the exact-source restoration
+readiness fixture from `a01b4a0`. Its earlier complete-run failure was not
+reproduced by two isolated runs; the strengthened fixture waits for the saved
+source IDs rather than observing a transient checkbox count. This establishes
+the final generated browser journey, not a proved cause of the earlier failure.
+Memoir voice source `1e4ac83` also passed phone lint/debug assembly and both
+English/Chinese 150% emulator journeys. Their transcript-review renders were
+inspected; Add and generation stayed separate explicit actions.
+
+[Web source-conflict recovery](WEB_STORY_SOURCE_REFRESH.md) at `acb9036` passed
+29 focused browser checkpoint groups. The full profile found a partial-workspace
+initialization error in the memoir edition shelf: its export control was outside
+the action host. Source `b5ebf2b` preserves production footer order while mounting
+under that partial host; the complete 19-suite Web profile then passed. Chinese
+390 px/150% source-review controls were visually inspected. This is browser
+fixture evidence, not a live Web switch.
+
+[Phone album-to-story selection](PHONE_ALBUM_TO_STORY.md), source `b3ddd57`,
+passed 12 focused wire/transport/selection tests and the complete Android source
+profile with phone/TV lint and debug assembly. Its report inventory was 923 tests
+(live-core 723; other module counts as above), with zero failures. Unaffected
+tasks were up to date. Four API 36 creation journeys passed, including both new
+album flows; two direct focused reruns extracted English/Chinese 150% renders
+for visual inspection after the Gradle runner removed the app. Those overlapping
+runs are not six distinct tests. Larger albums, replacement confirmation,
+manual adjustment, library return and explicit outline creation were verified.
+
 The backend profile remains the earlier 1,208 tests and 687 subtests at
 `d0d8a34`; these client slices added no route or schema. No Windows service,
 household database, model provider, release signing, OTA feed or physical device

@@ -44,6 +44,14 @@ location metadata. [New chapter arrangement](STORY_CHAPTER_ARRANGEMENT.md) lets
 authors split and merge reviewed new drafts in Web and phone, retaining media
 order and original sources. Family feedback on suggested group boundaries and
 longer-story composition remains a following product gate.
+The [Web source-conflict recovery](WEB_STORY_SOURCE_REFRESH.md) now renews a
+reviewed new draft's references without replacing its manually arranged chapters
+or mounted text controls. It requires fresh source review before another save;
+29 focused generated browser checkpoint groups passed at `acb9036`.
+The phone source at `b3ddd57` completes [album-to-story selection](PHONE_ALBUM_TO_STORY.md),
+so an existing ordered album can prepare a story without selecting every moment
+again. The complete Android source profile and bilingual simulator journeys
+passed; release and family acceptance remain separate from these checks.
 Do not automatically publish private memories to Home TV.
 
 ### Guarded activation preparation
