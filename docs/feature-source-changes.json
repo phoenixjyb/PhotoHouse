@@ -12987,6 +12987,91 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "source-validated-saved-memory-reply-speech-20261013",
+      "source_commit": "bb1c2d46ca2e6bc3689d2441bcaccd3b2f98451f",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "75f01bf05b036ad7232776562c086fdada107c2580fc8ccba10844960cf196a7"
+        },
+        {
+          "path": "docs/ASSISTANT_SAVED_MEMORY_CARDS_V1.md",
+          "sha256": "ecb6d70aeb1083e94243412facee784ef765de2d4d73ad14bb4800e9a66a29ce"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "c5879ed641ddcd0565c406a7712356a9d53624deb0885e567485cb132ebc583d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "b2708ebeae91dab0936f89353e714a6571179e8846729cd178f6e54137d9a2eb"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md",
+          "sha256": "63d6ca001e20ab2532115c1fa09e816662e569cb227b58fe0db1db29364b43ae"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md",
+          "sha256": "f792d7eed070a1076150aea6bc7aae92db4e00ff57467c6def3e5fd163211861"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "c804520895daaf4a4cfa819cfa21fca1cef026e9cb0e4c597baa1c8476374c7d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "2961263a0d75e4654d86651a1b97bee1374f6f1ec3dcbb26aed4bbae5246f840"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "a1139d5cd33c3733edcd37ae4f05ccf150aabd736d1e175731dd7bf62d52cdde"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "58f194a6040b048a1f0779839361556e01842494c4cc13f14dcfeb67cc0e7b35"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "c46805dc03b3e92e1fe302c1f5d14c50da3c24d8b3e39727f42d08afee91e6fd"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "9eff315706035e43634dd107313c27d8af403a023199cff5d78eede5f3e4af62"
+        },
+        {
+          "path": "server/scripts/qualify_private_assistant.py",
+          "sha256": "4e030c10485e86b290e8985f153c7165cbf9584bb4644c1cd5b2baf488a26ec4"
+        },
+        {
+          "path": "server/tests/security/assistant_saved_memory_browser_bridge.py",
+          "sha256": "d636b3c44b74d78384e10b97d872250e551c584f60b8b4f3da13e0c7f986ef42"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "sha256": "e05bc565e701f5b9303f2df160400edbfcd33f0e3b71c273dea4e3cdbfcb6483"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_http.py",
+          "sha256": "51d4301aeb165103550b53997e51d6e0f6d765f5ff84d1d5771f7eda94df652f"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "603c39b7ec64de3e9f7caca679156fd64d7824484d64beefcfe168dcd4a4b845"
+        },
+        {
+          "path": "server/tests/security/test_qualify_private_assistant.py",
+          "sha256": "450813589b5621e652823dd502ea0a297c0f76d4a71d9bcd8c82ec74c4be62f6"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "sha256": "a1d1bd053504cf2388abf6b39b3104eca4b6decb3e3d6e040a49ba212d65ad2a"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
