@@ -31,6 +31,8 @@
   Object.assign(words.zh,{assistantPlay:'播放结果数量',assistantSpeechStop:'停止播放',assistantSpeechError:'暂时无法播放结果数量，请重试。'});
   Object.assign(words.en,{assistantVoiceReply:'Speaking the private reply…',assistantPlayReply:'Play spoken reply',assistantReplyTooLong:'This reply is too long for speech. Read it before continuing.'});
   Object.assign(words.zh,{assistantVoiceReply:'正在播报私密回复…',assistantPlayReply:'播放语音回复',assistantReplyTooLong:'回复太长，无法语音播放。请阅读后再继续。'});
+  Object.assign(words.zh,{assistantMemoryStory:'已保存的故事',assistantMemoryMemoir:'已保存的回忆册',assistantMemorySource:'来自家人保存的内容，检索不会改写原文。'});
+  Object.assign(words.en,{assistantMemoryStory:'Saved story',assistantMemoryMemoir:'Saved memoir',assistantMemorySource:'From saved family content. Search does not rewrite the original.'});
   Object.assign(words.en,{assistantReceiptUnknown:'The server receipt is unknown. Check again when the connection is available.',assistantReceiptDisabled:'Request tracking is disabled for this service.',assistantReceiptReceived:'Received by the server; still processing.',assistantReceiptSucceeded:'The server completed this request.',assistantReceiptFailed:'The server could not complete this request.',assistantReceiptInterrupted:'Processing stopped before completion.',assistantReceiptCheck:'Check server receipt',assistantReceiptChecking:'Checking the server receipt…',assistantReceiptUnavailable:'The receipt could not be checked.',assistantReceiptUnconfirmed:'The request was sent, but the server receipt is not confirmed.',assistantOutcomeDisplayed:'The result was shown in this tab.',assistantOutcomeFailed:'The result could not be shown in this tab.',assistantRequestIdLabel:'Request ID',assistantReceiptTrackingOff:'Tracking disabled',assistantRecoveryOffer:'A previous request may have reached the server. Check its receipt before starting again. Its reply and search context are not stored for recovery.',assistantRecoveryChecking:'Checking the earlier request…',assistantRecoveryReceived:'The server received this request and may still be processing it. Check again or acknowledge to start fresh.',assistantRecoverySucceeded:'The server completed this request, but its reply and search context are unavailable. Start a new search if you still need one.',assistantRecoveryFailed:'The server recorded a failure. The original reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryInterrupted:'Server processing was interrupted. The reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryUnknown:'The earlier request outcome is still unknown. Do not resend it automatically; check again or acknowledge to start fresh.',assistantRecoveryAcknowledge:'Acknowledge and start fresh'});
   Object.assign(words.zh,{assistantReceiptUnknown:'服务器是否收到请求尚未确认。网络恢复后可以再次查询。',assistantReceiptDisabled:'此服务未启用请求跟踪。',assistantReceiptReceived:'服务器已收到，仍在处理中。',assistantReceiptSucceeded:'服务器已完成此请求。',assistantReceiptFailed:'服务器未能完成此请求。',assistantReceiptInterrupted:'请求在完成前中断。',assistantReceiptCheck:'查询服务器回执',assistantReceiptChecking:'正在查询服务器回执…',assistantReceiptUnavailable:'暂时无法查询服务器回执。',assistantReceiptUnconfirmed:'请求已发送，但尚未确认服务器回执。',assistantOutcomeDisplayed:'此标签页已显示结果。',assistantOutcomeFailed:'此标签页未能显示结果。',assistantRequestIdLabel:'请求编号',assistantReceiptTrackingOff:'未启用跟踪',assistantRecoveryOffer:'之前的请求可能已到达服务器。开始新请求前，请先查询回执。回复和搜索上下文不会保存在此处供恢复。',assistantRecoveryChecking:'正在查询之前的请求…',assistantRecoveryReceived:'服务器已收到请求，可能仍在处理中。可以再次查询，或确认后重新开始。',assistantRecoverySucceeded:'服务器已完成请求，但无法恢复其回复和搜索上下文。如仍需查找，请开始新的搜索。',assistantRecoveryFailed:'服务器记录了失败，原回复无法恢复。确认后可以重新开始。',assistantRecoveryInterrupted:'服务器处理中断，回复无法恢复。确认后可以重新开始。',assistantRecoveryUnknown:'之前请求的结果仍不确定。系统不会自动重发；请再次查询，或确认后重新开始。',assistantRecoveryAcknowledge:'确认并重新开始'});
   Object.assign(words.en,{assistantPendingTitle:'Request awaiting confirmation',assistantPendingSending:'Sending this request…',assistantPendingCancelled:'Stopped waiting. The server may still process this request.',assistantPendingUnknown:'The outcome is unknown. The server may already have processed this request.',assistantPendingDisabled:'Request tracking is unavailable. This does not show whether the server processed the request.',assistantPendingReceived:'The server received this request and may still be processing it.',assistantPendingSucceeded:'The server completed this request, but its reply and updated context were not recovered.',assistantPendingFailed:'The server recorded a failure. Its reply is unavailable.',assistantPendingInterrupted:'Server processing was interrupted. Its reply is unavailable.',assistantPendingQuestion:'Submitted question',assistantPendingHelp:'Checking a receipt only reads its status; it never resends this request. Acknowledge to clear this conversation and start fresh. The server may still finish the original request.',assistantPendingCheckUnavailable:'The receipt could not be checked. The last known status is unchanged; this does not mean the request was not processed.',assistantPendingAcknowledge:'Acknowledge and start fresh',assistantPendingRestore:'Close and restore question',assistantPendingRestoreHelp:'The server recorded a failed or interrupted request. Restore its question as a draft only if the composer is empty; sending still requires your action.',assistantReceiptDetails:'Request tracking details'});
@@ -974,6 +976,18 @@
     $('assistant-play').dataset.i18n=privateReplyReady?'assistantPlayReply':'assistantPlay';$('assistant-play').textContent=t(privateReplyReady?'assistantPlayReply':'assistantPlay');
     if(turn.kind==='unsupported'&&!turn.reply)$('assistant-reply').textContent=t('assistantUnsupported');
     if(!turn.items.length&&turn.kind==='results'&&!turn.reply)$('assistant-reply').textContent=t('assistantNoResults');
+    if(turn.kind==='memory_cards'){
+      // These are already validated, transient, scoped results. Render plain
+      // text only; reader actions require a separate protected handoff.
+      for(const memory of turn.memory_cards){
+        const card=document.createElement('article');card.className='assistant-result assistant-memory-card';
+        const badge=document.createElement('p');badge.className='assistant-memory-kind';badge.textContent=t(memory.kind==='story'?'assistantMemoryStory':'assistantMemoryMemoir');
+        const title=document.createElement('h3');title.textContent=memory.title;
+        const excerpt=document.createElement('p');excerpt.className='assistant-memory-excerpt';excerpt.textContent=memory.excerpt;
+        const source=document.createElement('p');source.className='fine assistant-memory-source';source.textContent=t('assistantMemorySource');
+        card.append(badge,title,excerpt,source);root.append(card);
+      }
+    }
     for(const item of turn.items) {
       const card=document.createElement('article');card.className='assistant-result';
       const image=document.createElement('img');image.className='assistant-thumbnail';image.loading='lazy';image.alt=assetLabel(item);image.src=safeMediaURL(item.id,'thumbnail');
@@ -1119,7 +1133,8 @@
 
   async function loadPrivateAssistant(epoch){
     if(!privateAssistant)return;
-    try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();}
+    try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();
+      if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();}
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');}
   }
 
@@ -1135,7 +1150,7 @@
   function showPrivateAssistantResult(envelope,question,{historical=false}={}){
     if(envelope.status!=='completed'||!envelope.result)return;
     const binding=Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:state.generation});
-    assistantState.binding=binding;assistantState.context=envelope.result.context;
+    assistantState.binding=binding;assistantState.context=envelope.result.kind==='memory_cards'?null:envelope.result.context;
     assistantState.pendingTurn=null;assistantState.turnAttempt=null;assistantState.busy=false;
     if(envelope.recovered){assistantState.turnRequestId=null;assistantState.turnReceipt=null;}
     if(!historical)rememberAssistantTurn(question,envelope.result);

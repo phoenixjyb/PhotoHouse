@@ -7,11 +7,15 @@
 })(typeof globalThis === 'object' ? globalThis : this, function createPrivateAssistantModule() {
   const BASE = '/assistant/workspace/v1';
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const CANONICAL_MEMORY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   const PREFS = Object.freeze({locale:[null,'zh','en'], reply_length:[null,'brief','standard'], voice_pace:[null,'slow','normal']});
   const CARD_TYPES = new Set(['media','album','story','memoir','timeline','unavailable']);
   const SAFE_CODES = new Set(['unavailable','invalid_response','conflict','request_failed','aborted','scope_changed','closed','invalid_input']);
   const STORE_ERRORS = new Set(['assistant_unavailable','context_changed','request_cancelled','access_denied','invalid_request','storage_unavailable','turn_interrupted']);
   const MAX_ASSET_ID = 9223372036854775807n;
+  const MAX_MEMORY_REVISION = 9223372036854775806n;
+  const MAX_MEMORY_CARDS = 12;
+  const MAX_MEMORY_RESULTS = 256;
 
   class PrivateAssistantError extends Error {
     constructor(code,status=null) { super(SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed'); this.name='PrivateAssistantError'; this.code=SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed';this.status=status; }
@@ -136,7 +140,60 @@
     if(parsed.origin!=='https://photohouse.invalid'||parsed.pathname!==`/assets/${item.id}/thumbnail`||parsed.hash||parsed.searchParams.getAll('library').length!==1||parsed.searchParams.get('library')!==library||[...parsed.searchParams.keys()].some(k=>k!=='library'))fail('invalid_response');
     return Object.freeze({...item});
   }
-  function validateResult(v, library, recovered=false) {
+  function validMemoryText(value,maxPoints,maxBytes,{allowNewlines=false}={}) {
+    if(typeof value!=='string'||!value.trim()||[...value].length>maxPoints||byteLength(value)>maxBytes)return false;
+    for(const char of value){
+      const cp=char.codePointAt(0);
+      if(cp>=0xd800&&cp<=0xdfff)return false;
+      if(allowNewlines&&(char==='\n'||char==='\t'))continue;
+      if(/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u.test(char)&&char!=='\u200c'&&char!=='\u200d')return false;
+    }
+    return true;
+  }
+  function validateMemoryBinding(value) {
+    if(!exactKeys(value,['kind','id','revision','source_revision'])||
+      !['story','memoir'].includes(value.kind)||typeof value.id!=='string'||!CANONICAL_MEMORY_UUID.test(value.id)||
+      typeof value.revision!=='string'||!/^[1-9][0-9]{0,18}$/.test(value.revision)||
+      BigInt(value.revision)>MAX_MEMORY_REVISION||typeof value.source_revision!=='string'||
+      !/^[0-9a-f]{64}$/.test(value.source_revision))fail('invalid_response');
+    return Object.freeze({kind:value.kind,id:value.id,revision:value.revision,source_revision:value.source_revision});
+  }
+  function validateSavedMemoryResult(v,library) {
+    const keys=['version','kind','reply','context','filters','items','total','has_more','effect','memory_cards'];
+    if(!exactKeys(v,keys)||v.version!==1||typeof v.reply!=='string'||v.reply.length>4000||byteLength(v.reply)>8192||
+      !Array.isArray(v.items)||v.items.length!==0||v.filters!==null||v.effect!==null||
+      !Array.isArray(v.memory_cards)||v.memory_cards.length>MAX_MEMORY_CARDS||!safeInt(v.total)||v.total>MAX_MEMORY_RESULTS||
+      typeof v.has_more!=='boolean')fail('invalid_response');
+    if(v.kind==='clarification'){
+      if(v.context!==null||v.total!==0||v.has_more||v.memory_cards.length!==0)fail('invalid_response');
+      return Object.freeze({...v,context:null,filters:null,items:Object.freeze([]),effect:null,memory_cards:Object.freeze([])});
+    }
+    if(v.kind!=='memory_cards'||!isObject(v.context)||
+      !exactKeys(v.context,['kind','library_id','source_revision','references'])||
+      v.context.kind!=='saved_memory'||v.context.library_id!==library||
+      typeof v.context.source_revision!=='string'||!/^[0-9a-f]{64}$/.test(v.context.source_revision)||
+      !Array.isArray(v.context.references)||v.context.references.length!==v.memory_cards.length||
+      v.memory_cards.length!==Math.min(v.total,MAX_MEMORY_CARDS)||v.has_more!==(v.total>v.memory_cards.length))fail('invalid_response');
+    const cards=[],references=[],seen=new Set();
+    for(let index=0;index<v.memory_cards.length;index++){
+      const card=v.memory_cards[index];
+      if(!exactKeys(card,['kind','id','revision','source_revision','title','excerpt'])||
+        !validMemoryText(card.title,640,640)||!validMemoryText(card.excerpt,240,960,{allowNewlines:true}))fail('invalid_response');
+      const binding=validateMemoryBinding({kind:card.kind,id:card.id,revision:card.revision,source_revision:card.source_revision});
+      const identity=`${binding.kind}:${binding.id}`;if(seen.has(identity))fail('invalid_response');seen.add(identity);
+      const contextBinding=validateMemoryBinding(v.context.references[index]);
+      if(canonical(contextBinding)!==canonical(binding))fail('invalid_response');
+      references.push(contextBinding);
+      cards.push(Object.freeze({...binding,title:card.title,excerpt:card.excerpt}));
+    }
+    return Object.freeze({...v,context:Object.freeze({kind:'saved_memory',library_id:library,source_revision:v.context.source_revision,references:Object.freeze(references)}),
+      filters:null,items:Object.freeze([]),effect:null,memory_cards:Object.freeze(cards)});
+  }
+  function validateResult(v, library, recovered=false, allowMemory=false) {
+    if(isObject(v)&&(v.kind==='memory_cards'||Object.hasOwn(v,'memory_cards'))){
+      if(!allowMemory||recovered)fail('invalid_response');
+      return validateSavedMemoryResult(v,library);
+    }
     if(!exactKeys(v,['version','kind','reply','context','filters','items','total','has_more','effect'])||v.version!==1||!['results','open','clarification','unsupported'].includes(v.kind)||typeof v.reply!=='string'||v.reply.length>4000||byteLength(v.reply)>8192||
       !Array.isArray(v.items)||v.items.length>20||!safeInt(v.total)||v.total>100000||typeof v.has_more!=='boolean') fail('invalid_response');
     const context=validateContext(v.context,library),filters=v.filters===null?null:validateFilters(v.filters),items=v.items.map(item=>validateItem(item,library));
@@ -147,14 +204,14 @@
     if(recovered&&(v.kind==='open'||v.effect!==null))fail('invalid_response');
     return Object.freeze({...v,context,filters,items:Object.freeze(items),effect:v.effect===null?null:Object.freeze({...v.effect})});
   }
-  function validateEnvelope(v, threadId, requestId, library, mode) {
+  function validateEnvelope(v, threadId, requestId, library, mode, allowMemory=false) {
     if(!exactKeys(v,['version','thread_id','request_id','status','revision','recovered','error','result'])||v.version!==1||v.thread_id!==threadId||v.request_id!==requestId||
       !['pending','completed','failed','interrupted'].includes(v.status)||!safeInt(v.revision)||typeof v.recovered!=='boolean'||(mode==='GET'&&!v.recovered)||
       !(v.error===null||(typeof v.error==='string'&&STORE_ERRORS.has(v.error)))||
-      !(v.result===null||(v.status==='completed'&&validateResult(v.result,library,v.recovered)))) fail('invalid_response');
+      !(v.result===null||(v.status==='completed'&&validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered)))) fail('invalid_response');
     if((v.status==='completed')!==!!v.result || (v.status==='failed'||v.status==='interrupted')!==(v.error!==null))fail('invalid_response');
     if((v.status==='pending'||v.status==='completed')&&v.error!==null)fail('invalid_response');
-    return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered):null});
+    return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered):null});
   }
   function validateThreadDetail(v, library, expectedId) {
     if(!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges'])||v.version!==1||!Array.isArray(v.exchanges)||
@@ -197,10 +254,10 @@
 
   function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result}={}) {
     if(typeof scope!=='function'||typeof request!=='function')throw new TypeError('scope and request are required');
-    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),readGeneration=0,speechSource=null;
+    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,savedMemoryAvailable=false,savedMemoryProbeNonce=0,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),readGeneration=0,speechSource=null;
     const snapshot=()=>{const s=scope()||{};return {account:s.account??null,library:s.library==null?null:String(s.library),generation:s.generation??s.membershipGeneration??s.epoch??null,locked:!!s.locked};};
     const stamp=s=>JSON.stringify([s.account,s.library,s.generation,s.locked]);
-    const stateValue=()=>{const s=snapshot(),speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
+    const stateValue=()=>{const s=snapshot(),speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,savedMemoryAvailable,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
     const resultContextState=value=>value?.context?'ready':'requires_search';
     const ownHistory=detail=>Object.freeze({...detail,snapshot_revision:detail.thread.revision,
       before_revision:detail.exchanges[0]?.revision??null,history_stale:false,history_limit_reached:false});
@@ -211,7 +268,7 @@
     const publish=()=>{try{onChange(stateValue());}catch(_){}};
     const state=()=>{sync();return stateValue();};
     const abortHydrations=()=>{for(const c of hydrationControllers)c.abort();hydrationControllers.clear();};
-    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';clearSpeechSource();}
+    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;savedMemoryProbeNonce++;savedMemoryAvailable=false;historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';clearSpeechSource();}
     function sync(){const s=snapshot(),key=stamp(s);if(key!==scopeStamp){scopeStamp=key;revokedStamp=null;clearScopeData();publish();}return s;}
     const assertCurrent=(base,token)=>{if(closed)fail('closed');const now=snapshot();if(stamp(now)!==scopeStamp)sync();if(stamp(now)!==stamp(base)||token!==instance||base.locked||!base.account||!base.library||revokedStamp===stamp(now))fail('scope_changed');};
     function revoke(base){revokedStamp=stamp(base);clearScopeData();publish();}
@@ -219,7 +276,14 @@
     function begin(){if(closed)fail('closed');const s=sync();if(s.locked||!s.account||!s.library||revokedStamp===stamp(s))fail('scope_changed');return {base:s,token:instance};}
     async function hydrateResult(value,t,metadata={}){assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');const c=new AbortController();hydrationControllers.add(c);try{const hydrated=await hydrateResults(value,{...metadata,signal:c.signal});assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');return hydrated;}catch(e){throw safeFailure(e);}finally{hydrationControllers.delete(c);}}
     function setDraft(value){begin();if(typeof value!=='string'||byteLength(value)>1024)fail('invalid_input');draft=value;publish();return draft;}
-    async function capabilitiesRead(){const t=begin();const v=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));capabilities=v;publish();return v;}
+    async function capabilitiesRead(){const t=begin();const v=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));capabilities=v;if(!v.available||!v.server_owned_turns){savedMemoryProbeNonce++;savedMemoryAvailable=false;}publish();return v;}
+    async function savedMemoryCapabilitiesRead(){const t=begin(),nonce=++savedMemoryProbeNonce;savedMemoryAvailable=false;publish();if(capabilities?.available!==true||capabilities?.server_owned_turns!==true)return false;try{
+      const raw=await call(`${BASE}/saved-memory-capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);
+      assertCurrent(t.base,t.token);if(nonce!==savedMemoryProbeNonce)return savedMemoryAvailable;
+      savedMemoryAvailable=exactKeys(raw,['version','available'])&&raw.version===1&&typeof raw.available==='boolean'&&raw.available&&capabilities?.available===true&&capabilities?.server_owned_turns===true;
+      publish();return savedMemoryAvailable;
+    }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed'||safe.code==='access_denied')throw safe;
+      assertCurrent(t.base,t.token);if(nonce===savedMemoryProbeNonce){savedMemoryAvailable=false;publish();}return false;}}
     async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
     function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
@@ -282,9 +346,11 @@
     }
     async function getRequest(id,rid,{_ticket,hydrate=true}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token),id,rid,t.base.library,'GET');
       if(env.status==='completed'&&hydrate){const hydrated=await hydrateResult(env.result,t,{readTicket:t.readTicket,threadId:id,revision:env.revision});return Object.freeze({...env,result:hydrated});}return env;}
-    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');clearSpeechSource();readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
-      try{const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',{library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text},t.base,t.token),sent.thread_id,rid,t.base.library,'POST');
-        if(v.status==='completed'){const result=await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=resultContextState(result);if(draft===text)draft='';if(!v.recovered)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind};publish();return Object.freeze({...v,result});}
+    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');const memoryOptIn=savedMemoryAvailable===true&&capabilities?.available===true&&capabilities?.server_owned_turns===true,memoryProbeNonce=savedMemoryProbeNonce;clearSpeechSource();readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
+      try{const body={library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text};if(memoryOptIn)body.accepts=['saved_memory_cards_v1'];
+        const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',body,t.base,t.token),sent.thread_id,rid,t.base.library,'POST',memoryOptIn);
+        if(memoryOptIn&&v.status==='completed'&&!v.recovered&&Object.hasOwn(v.result,'memory_cards')&&memoryProbeNonce!==savedMemoryProbeNonce){pendingTurn={...sent,status:'uncertain'};publish();fail('context_changed');}
+        if(v.status==='completed'){const memoryResult=Object.hasOwn(v.result,'memory_cards');const result=memoryResult?v.result:await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=memoryResult?'requires_search':resultContextState(result);if(draft===text)draft='';if(!v.recovered&&result.kind!=='memory_cards')speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind};publish();return Object.freeze({...v,result});}
         if(v.status==='failed'||v.status==='interrupted'){if(!draft)draft=text;pendingTurn=null;contextState='requires_search';publish();return v;}
         pendingTurn={...sent,status:'uncertain'};publish();return v;
       }catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401||safe.status===403)throw safe;pendingTurn={...sent,status:'uncertain'};publish();throw safe;}}
@@ -324,8 +390,8 @@
     async function readPreferences(){const t=begin();preferences=validatePrefs(await call(`${BASE}/preferences?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));publish();return preferences;}
     async function updatePreferences(changes){const t=begin();if(!isObject(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!Object.hasOwn(PREFS,k)||!PREFS[k].includes(changes[k])))fail('invalid_input');const current=preferences||await readPreferences();assertCurrent(t.base,t.token);const body={library_id:t.base.library,expected_revision:current.revision,...changes};preferences=validatePrefs(await call(`${BASE}/preferences`,'PUT',body,t.base,t.token));publish();return preferences;}
     async function resetPreferences(){const t=begin(),current=preferences||await readPreferences();assertCurrent(t.base,t.token);preferences=validatePrefs(await call(`${BASE}/preferences/reset`,'POST',{library_id:t.base.library,expected_revision:current.revision},t.base,t.token));publish();return preferences;}
-    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
-    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,list,create,reconcileCreation,read,older,send,speakReply,discardSpeechSource,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
+    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;savedMemoryProbeNonce++;savedMemoryAvailable=false;clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
+    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,savedMemoryCapabilities:savedMemoryCapabilitiesRead,list,create,reconcileCreation,read,older,send,speakReply,discardSpeechSource,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
   }
   return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validateHistoryPage,validatePrefs,validateEnvelope,validateResult,safeJson,uuid,validUtc});
 });

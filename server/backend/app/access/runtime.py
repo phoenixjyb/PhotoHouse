@@ -196,6 +196,7 @@ class RuntimeConfiguration:
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
     assistant_reply_speech_enabled: bool = False
+    assistant_saved_memory_cards_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -285,6 +286,11 @@ class RuntimeConfiguration:
             raise ValueError('Explicit assistant opt-in required')
         if type(self.assistant_reply_speech_enabled) is not bool:
             raise ValueError('Explicit private reply speech opt-in required')
+        if type(self.assistant_saved_memory_cards_enabled) is not bool:
+            raise ValueError('Explicit saved-memory cards opt-in required')
+        if self.assistant_saved_memory_cards_enabled and (not self.assistant_enabled or
+                not self.memory_collaboration_enabled or self.assistant_workspace_path is None):
+            raise ValueError('Saved-memory cards require assistant, workspace and collaboration')
         for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
             if type(timeout) not in (int, float) or not 0 < timeout <= 60:
                 raise ValueError('Invalid assistant provider timeout')
@@ -364,4 +370,5 @@ class RuntimeConfiguration:
                           assistant_journal=assistant_journal,
                           assistant_workspace_store=assistant_workspace_store,
                           assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
+                          assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           update_root=self.update_root)

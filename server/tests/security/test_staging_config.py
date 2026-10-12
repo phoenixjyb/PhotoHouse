@@ -33,6 +33,25 @@ def base():
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_saved_memory_cards_require_explicit_assistant_workspace_and_collaboration(self):
+        legacy = s.parse_configuration(base())
+        self.assertFalse(legacy.assistant_saved_memory_cards_enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            legacy.build_app()
+        self.assertIs(runtime.call_args.kwargs['assistant_saved_memory_cards_enabled'], False)
+        enabled = dict(base(), assistant_enabled=True, memory_collaboration_enabled=True,
+                       assistant_workspace_path='/synthetic/private/conversations.sqlite',
+                       assistant_saved_memory_cards_enabled=True)
+        configured = s.parse_configuration(enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            configured.build_app()
+        self.assertIs(runtime.call_args.kwargs['assistant_saved_memory_cards_enabled'], True)
+        for change in ({'assistant_saved_memory_cards_enabled': 1},
+                       {'assistant_enabled': False}, {'memory_collaboration_enabled': False},
+                       {'assistant_workspace_path': None}):
+            with self.subTest(change=change), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(enabled, **change))
+
     def test_memory_groups_are_manual_default_off_and_forward_a_typed_vector_profile_only_when_complete(self):
         legacy = s.parse_configuration(base())
         self.assertFalse(legacy.memory_groups_enabled)

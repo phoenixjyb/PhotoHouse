@@ -15,7 +15,8 @@ from app.access import assistant_memory_discovery as discovery_module
 from app.access.assistant_memory_discovery import (AssistantMemoryDiscovery,
                                                     MAX_CANDIDATES,
                                                     MAX_EXCERPT_CHARS,
-                                                    MemoryReference)
+                                                    MemoryReference,
+                                                    MemorySearchPage)
 from app.access.memory_books import MemoryBooks
 from app.access.memory_stories import MemoryStories
 from app.access.service import AccessDenied, AccessService
@@ -92,6 +93,16 @@ class AssistantMemoryDiscoveryTests(unittest.TestCase):
         with self.library.connection() as db:
             access = AccessService(db, clock=lambda: self.library.now)
             return AssistantMemoryDiscovery(access).search(token, library, query, **kwargs)
+
+    def _read_reference(self, token, library, reference):
+        with self.library.connection() as db:
+            access = AccessService(db, clock=lambda: self.library.now)
+            before = db.total_changes
+            result = AssistantMemoryDiscovery(access).read_reference(
+                token, library, reference.kind, reference.id,
+                reference.revision, reference.source_revision)
+            self.assertEqual(db.total_changes, before)
+            return result
 
     def test_literal_match_ignores_sql_metacharacter_semantics_and_source_captions(self):
         saved = self._save_story('Budget _100%\\ plan', 'The saved narration is ordinary.')
@@ -236,6 +247,114 @@ class AssistantMemoryDiscoveryTests(unittest.TestCase):
                 self._search(self.owner, 'family-a', 'Final guard target')
         self.assertEqual(raised.exception.status, 409)
 
+    def test_current_story_and_memoir_references_handoff_to_authorized_reader_payloads(self):
+        story = self._save_story('Handoff story', 'story contents')
+        memoir = self._save_memoir('Handoff memoir', 'memoir introduction', story['id'])
+        story_ref = next(item for item in self._search(self.owner, 'family-a', 'Handoff story')
+                         if item.kind == 'story')
+        memoir_ref = next(item for item in self._search(self.owner, 'family-a', 'Handoff memoir')
+                          if item.kind == 'memoir')
+        with self.library.connection() as db:
+            access = AccessService(db, clock=lambda: self.library.now)
+            discovery = AssistantMemoryDiscovery(access)
+            self.assertEqual(discovery.read_reference(self.owner, 'family-a', 'story',
+                story_ref.id, story_ref.revision, story_ref.source_revision),
+                MemoryStories(access).get(self.owner, 'family-a', story['id']))
+            self.assertEqual(discovery.read_reference(self.owner, 'family-a', 'memoir',
+                memoir_ref.id, memoir_ref.revision, memoir_ref.source_revision),
+                MemoryBooks(access).get(self.owner, 'family-a', memoir['id']))
+
+    def test_story_source_and_parent_or_child_revision_drift_refuse_handoff(self):
+        story = self._save_story('Stable story parent', 'saved body')
+        story_ref = self._search(self.owner, 'family-a', 'Stable story parent')[0]
+        self.library.mutate("UPDATE captions SET text='new evidence' WHERE id=101")
+        with self.assertRaises(TransportError) as raised:
+            self._read_reference(self.owner, 'family-a', story_ref)
+        self.assertEqual(raised.exception.status, 409)
+
+        child = self._save_story('Child of memoir', 'child body')
+        memoir = self._save_memoir('Stable memoir parent', 'parent opening', child['id'])
+        memoir_ref = next(item for item in self._search(self.owner, 'family-a', 'Stable memoir parent')
+                          if item.kind == 'memoir')
+        self.library.mutate("UPDATE captions SET text='memoir child evidence changed' WHERE id=101")
+        with self.assertRaises(TransportError) as raised:
+            self._read_reference(self.owner, 'family-a', memoir_ref)
+        self.assertEqual(raised.exception.status, 409)
+        memoir_ref = next(item for item in self._search(self.owner, 'family-a', 'Stable memoir parent')
+                          if item.kind == 'memoir')
+        self._edit_story(child['id'], '1', 'Child edited', 'child body changed')
+        with self.assertRaises(TransportError) as raised:
+            self._read_reference(self.owner, 'family-a', memoir_ref)
+        self.assertEqual(raised.exception.status, 409)
+        # The memoir itself was not edited: its parent revision remains the
+        # original one even though its ordered child evidence moved forward.
+        self.assertEqual(memoir_ref.revision, memoir['revision'])
+
+    def test_foreign_scope_and_withdrawn_story_or_memoir_child_are_denied(self):
+        story = self._save_story('Private handoff', 'private text')
+        story_ref = self._search(self.owner, 'family-a', 'Private handoff')[0]
+        with self.assertRaises(AccessDenied):
+            self._read_reference(self.owner, 'family-b', story_ref)
+        with self.assertRaises(AccessDenied):
+            self._read_reference(self.library.other_token, 'family-b', story_ref)
+
+        self.library.mutate("UPDATE assets SET status='deleted' WHERE id=101")
+        with self.assertRaises(AccessDenied):
+            self._read_reference(self.owner, 'family-a', story_ref)
+        self.library.mutate("UPDATE assets SET status='active' WHERE id=101")
+
+        child = self._save_story('Memoir child', 'child remains scoped')
+        memoir = self._save_memoir('Private memoir handoff', 'private opening', child['id'])
+        memoir_ref = next(item for item in self._search(self.owner, 'family-a', 'Private memoir handoff')
+                          if item.kind == 'memoir')
+        self.library.mutate("UPDATE assets SET status='deleted' WHERE id=101")
+        with self.assertRaises(AccessDenied):
+            self._read_reference(self.owner, 'family-a', memoir_ref)
+
+    def test_reference_shape_is_strict(self):
+        saved = self._save_story('Reference shape', 'ordinary body')
+        reference = self._search(self.owner, 'family-a', 'Reference shape')[0]
+        valid = ('story', reference.id, reference.revision, reference.source_revision)
+        bad_values = [
+            ('Story', *valid[1:]),
+            ('story', saved['id'].upper(), valid[2], valid[3]),
+            ('story', '00000000-0000-1000-8000-000000000000', valid[2], valid[3]),
+            ('story', None, valid[2], valid[3]),
+            ('story', valid[1], '0', valid[3]),
+            ('story', valid[1], '01', valid[3]),
+            ('story', valid[1], '+1', valid[3]),
+            ('story', valid[1], str(2**63 - 1), valid[3]),
+            ('story', valid[1], valid[2], valid[3].upper()),
+            ('story', valid[1], valid[2], 'a' * 63),
+            ('story', valid[1], valid[2], None),
+        ]
+        for arguments in bad_values:
+            with self.subTest(arguments=arguments), self.assertRaises(TransportError) as raised:
+                with self.library.connection() as db:
+                    access = AccessService(db, clock=lambda: self.library.now)
+                    AssistantMemoryDiscovery(access).read_reference(
+                        self.owner, 'family-a', *arguments)
+            self.assertEqual(raised.exception.status, 400)
+
+    def test_external_commit_during_handoff_is_caught_before_final_return(self):
+        self._save_story('Commit drift', 'same title')
+        reference = self._search(self.owner, 'family-a', 'Commit drift')[0]
+        original = discovery_module._source_revision
+        changed = False
+
+        def digest_then_commit(value):
+            nonlocal changed
+            digest = original(value)
+            if not changed:
+                changed = True
+                self.library.mutate("UPDATE captions SET text='committed after hydration' WHERE id=101")
+            return digest
+
+        with patch.object(discovery_module, '_source_revision', digest_then_commit):
+            with self.assertRaises(TransportError) as raised:
+                self._read_reference(self.owner, 'family-a', reference)
+        self.assertEqual(raised.exception.status, 409)
+
     def test_withdrawn_memoir_child_during_fresh_validation_is_denied(self):
         child = self._save_story('Child title', 'child body')
         self._save_memoir('Memoir card', 'Memoir opening', child['id'])
@@ -285,6 +404,49 @@ class AssistantMemoryDiscoveryTests(unittest.TestCase):
                 self._search(self.owner, 'family-a', invalid)
         with self.assertRaises(TransportError):
             self._search(self.owner, 'family-a', 'valid', limit=0)
+
+    def test_search_page_counts_full_matches_and_ranks_title_hits_first(self):
+        for index in range(13):
+            title = 'needle title match' if index == 7 else f'Ordinary title {index:02d}'
+            self._save_story(title, 'body has needle for every saved story')
+        with self.library.connection() as db:
+            access = AccessService(db, clock=lambda: self.library.now)
+            discovery = AssistantMemoryDiscovery(access)
+            page = discovery.search_page(self.owner, 'family-a', 'needle', limit=12)
+        self.assertIsInstance(page, MemorySearchPage)
+        self.assertEqual(len(page.references), 12)
+        self.assertEqual(page.total, 13)
+        self.assertTrue(page.has_more)
+        self.assertEqual(page.references[0].title, 'needle title match')
+        self.assertTrue(all(item.kind == 'story' for item in page.references))
+
+    def test_search_kind_filters_skip_unselected_reader_and_keep_legacy_tuple(self):
+        story = self._save_story('Type needle story', 'story body')
+        memoir = self._save_memoir('Type needle memoir', 'memoir introduction', story['id'])
+        with self.library.connection() as db:
+            access = AccessService(db, clock=lambda: self.library.now)
+            discovery = AssistantMemoryDiscovery(access)
+            with patch.object(discovery.books, 'list', side_effect=AssertionError('memoir scan should be skipped')):
+                stories = discovery.search_page(self.owner, 'family-a', 'Type needle', kind='story')
+            self.assertEqual([item.kind for item in stories.references], ['story'])
+            self.assertEqual(stories.total, 1)
+            with patch.object(discovery.stories, 'list', side_effect=AssertionError('story scan should be skipped')):
+                memoirs = discovery.search_page(self.owner, 'family-a', 'Type needle', kind='memoir')
+            self.assertEqual([item.kind for item in memoirs.references], ['memoir'])
+            self.assertEqual(memoirs.references[0].id, memoir['id'])
+        legacy = self._search(self.owner, 'family-a', 'Type needle')
+        self.assertIs(type(legacy), tuple)
+        self.assertEqual({item.kind for item in legacy}, {'story', 'memoir'})
+        self.assertEqual(story['id'], next(item.id for item in legacy if item.kind == 'story'))
+
+    def test_search_kind_validation_is_strict(self):
+        for kind in ('Story', '', 'story ', True, 1, [], {}):
+            with self.subTest(kind=kind), self.assertRaises(TransportError) as raised:
+                with self.library.connection() as db:
+                    access = AccessService(db, clock=lambda: self.library.now)
+                    AssistantMemoryDiscovery(access).search_page(
+                        self.owner, 'family-a', 'valid query', kind=kind)
+            self.assertEqual(raised.exception.status, 400)
 
 
 if __name__ == '__main__':

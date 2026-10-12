@@ -779,7 +779,9 @@ class AssistantWorkspaceStore:
         return row
 
     def begin_turn(self, account_id, library_id, thread_id, request_id,
-                   expected_revision, input_text):
+                   expected_revision, input_text, *, existing_only=False):
+        if type(existing_only) is not bool:
+            raise ValueError('Invalid existing request lookup')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
         request_id = _uuid4(request_id, 'request ID')
@@ -803,6 +805,9 @@ class AssistantWorkspaceStore:
                                      if prior['status'] == 'pending' else None)
                 db.commit()
                 return result
+            if existing_only:
+                db.commit()
+                return None
             thread = db.execute('''SELECT * FROM threads WHERE thread_id=? AND account_id=?
                 AND library_id=? AND expires_at>?''',
                                 (thread_id, account_id, library_id, now)).fetchone()

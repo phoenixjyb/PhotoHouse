@@ -39,7 +39,7 @@ API_TESTS = (
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
     "test_memory_jobs.py", "test_memory_narrative.py", "test_story_workspace.py", "test_story_outline.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
-    "test_assistant_http.py", "test_assistant_memory_discovery.py", "test_assistant_workspace_http.py", "test_assistant_workspace_turn_http.py",
+    "test_assistant_http.py", "test_assistant_memory_discovery.py", "test_assistant_memory_intent.py", "test_assistant_saved_memory_tool.py", "test_assistant_saved_memory_http.py", "test_assistant_workspace_http.py", "test_assistant_workspace_turn_http.py",
     "test_assistant_workspace_reply_speech.py", "test_qualify_private_assistant.py",
     "test_assistant_journal.py", "test_assistant_workspace_store.py", "test_assistant_workspace_turn_store.py",
     "test_prepare_assistant_workspace.py", "test_memory_transport.py",
@@ -87,6 +87,7 @@ ANDROID_TASKS = (
 WEB_TESTS = (
     "server/tests/ui/assistant-private-workspace.test.mjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
+    "server/tests/security/test_assistant_saved_memory_browser.cjs",
     "server/tests/security/test_annotation_web_wav.cjs",
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
     "server/tests/security/test_assistant_turn_trail_browser.cjs",

@@ -507,8 +507,17 @@ refuse the result. The `data_version` guard detects drift across the readers'
 separate transactions; it is not a persistent snapshot or permission to open a
 later reference without revalidation.
 
-This service has no HTTP route, assistant intent, client card or stored context
-yet. A later negotiated typed-card contract must keep story/memoir identities
-separate from media IDs, bind current source revisions and require an explicit
-reader handoff. Recovered history remains non-actionable. No inference,
-automatic story mutation or background propagation is performed.
+An internal explicit-command parser and saved-memory tool now project transient
+typed cards, an exact legacy history summary, and existing opaque story/memoir
+references. The private-turn gateway exposes them only with explicit negotiation
+and a separate default-off capability probe; the base capability response stays
+compatible with existing clients. Fresh cards revalidate current sources before
+completion and response. Replay keeps legacy summaries and inert placeholders;
+story/memoir reference turns are refused by the speech route pending typed-source
+validation. Web shows scoped immutable text cards without media hydration or
+automatic speech; its optional probe preserves legacy fallback and fences late
+responses after capability changes. Phone cards and reader navigation remain outstanding. The
+[saved-memory card contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) requires separate
+feature negotiation, current-source revalidation and explicit reader handoff.
+Recovered history remains non-actionable. No inference, automatic story mutation
+or background propagation is performed.

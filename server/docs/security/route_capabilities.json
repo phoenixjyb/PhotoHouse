@@ -4596,6 +4596,20 @@
    ],
    "current_control": "Same-origin no-store script; private groups require authenticated library requests",
    "gap": "No public story projection"
+  },
+  {
+   "source": "backend/app/access/assistant_workspace_transport.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/assistant/workspace/v1/saved-memory-capabilities",
+   "handler": "saved_memory_capabilities",
+   "surface": "photohouse",
+   "scope": "Current approved selected-library membership; private workspace and read-only story/memoir availability only.",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Closed boundary and exact handler; protected transport; strict query; separate default-off flag, current store and retention health, authorized reader checks; existing base capabilities remain unchanged.",
+   "gap": "Local source only. Windows activation, client card presentation and protected reader handoff are separate gates."
   }
  ]
 }

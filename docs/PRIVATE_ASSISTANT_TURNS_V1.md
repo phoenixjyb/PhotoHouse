@@ -29,9 +29,9 @@ under that ID is never adopted. Existing library-only creation remains supported
 Thread detail adds `latest_request_id` (nullable), and each saved exchange exposes
 its own `request_id` for authenticated lookup; these IDs grant no source access.
 It returns the latest 20 complete exchanges and a `has_older_exchanges` boolean,
-keeping the bounded response below 256 KiB without truncating saved text. Earlier
-exchanges remain subject to the same retention policy; older-history paging is
-not implemented in this slice.
+keeping the bounded response below 240 KiB without truncating saved text. Earlier
+exchanges remain subject to the same retention policy and can be read through
+[explicit, revision-bound older-history pages](PRIVATE_ASSISTANT_HISTORY_V1.md).
 
 ### Submit one turn
 

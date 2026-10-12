@@ -43,7 +43,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
                assistant_workspace_store=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
-               assistant_reply_speech_enabled=False):
+               assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
     if memory_group_vectors is not None and (not memory_groups_enabled or
@@ -57,10 +57,16 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         raise ValueError('Explicit assistant opt-in required')
     if type(assistant_reply_speech_enabled) is not bool:
         raise ValueError('Explicit private reply speech opt-in required')
+    if type(assistant_saved_memory_cards_enabled) is not bool:
+        raise ValueError('Explicit saved-memory cards opt-in required')
     from .access.assistant_workspace_store import AssistantWorkspaceStore
     if assistant_workspace_store is not None and (
             not assistant_enabled or type(assistant_workspace_store) is not AssistantWorkspaceStore):
         raise ValueError('Explicit enabled assistant workspace store required')
+    if assistant_saved_memory_cards_enabled and (not assistant_enabled or
+            not memory_collaboration_enabled or
+            type(assistant_workspace_store) is not AssistantWorkspaceStore):
+        raise ValueError('Saved-memory cards require assistant, workspace and collaboration')
     if assistant_reply_speech_enabled:
         from .access.assistant_journal import Journal
         from .access.assistant_speech import LocalAssistantTts
@@ -164,6 +170,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_tts = assistant_tts
     app.state.assistant_journal = assistant_journal
     app.state.assistant_reply_speech_enabled = assistant_reply_speech_enabled
+    app.state.assistant_saved_memory_cards_enabled = assistant_saved_memory_cards_enabled
     app.state.assistant_journal_healthy = True
     app.state.assistant_workspace_store = assistant_workspace_store
     app.state.assistant_workspace_healthy = assistant_workspace_store is not None

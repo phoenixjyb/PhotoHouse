@@ -7,7 +7,9 @@ media, providers, or saved-memory revision tables directly.
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 import sqlite3
+import uuid
 
 from .memory_books import MemoryBooks
 from .memory_stories import MemoryStories
@@ -31,6 +33,15 @@ class MemoryReference:
     source_revision: str
     title: str
     excerpt: str
+
+
+@dataclass(frozen=True, slots=True)
+class MemorySearchPage:
+    """Bounded results with counts from the complete authorized literal scan."""
+
+    references: tuple
+    total: int
+    has_more: bool
 
 
 def _query(value):
@@ -57,6 +68,37 @@ def _source_revision(value):
     return hashlib.sha256(packed).hexdigest()
 
 
+def _story_source_revision(detail):
+    return _source_revision({
+        'kind': 'story', 'id': detail['id'],
+        'revision': detail['revision'],
+        'selection_revision': detail['selection_revision']})
+
+
+def _memoir_source_revision(detail, stories):
+    return _source_revision({
+        'kind': 'memoir', 'id': detail['id'],
+        'revision': detail['revision'], 'stories': stories})
+
+
+def _revision_string(value):
+    if (type(value) is not str or
+            re.fullmatch(r'[1-9][0-9]{0,18}', value) is None or
+            int(value) > 2**63 - 2):
+        raise TransportError(400, 'Invalid saved memory reference')
+    return value
+
+
+def _reference_id(value):
+    try:
+        parsed = uuid.UUID(value) if type(value) is str else None
+        if parsed is None or parsed.version != 4 or str(parsed) != value:
+            raise ValueError()
+    except (ValueError, TypeError, AttributeError):
+        raise TransportError(400, 'Invalid saved memory reference') from None
+    return value
+
+
 def _excerpt(text, query):
     """Return a bounded plain-text window containing the literal match."""
     if not text:
@@ -80,7 +122,7 @@ def _excerpt(text, query):
     excerpt = text[start:end]
     # Memory title, narration and introduction are already plain text. Keep
     # whitespace but remove control characters that can affect card rendering.
-    return ''.join(char if char in '\n\t' or char.isprintable() else ' ' for char in excerpt)
+    return ''.join(char if char in '\n\t\u200c\u200d' or char.isprintable() else ' ' for char in excerpt)
 
 
 class AssistantMemoryDiscovery:
@@ -116,9 +158,11 @@ class AssistantMemoryDiscovery:
                 return items
             page += 1
 
-    def search(self, token, library, query, *, limit=MAX_RESULTS):
+    def search_page(self, token, library, query, *, limit=MAX_RESULTS, kind=None):
         phrase = _query(query)
         if type(limit) is not int or not 1 <= limit <= MAX_RESULTS:
+            raise TransportError(400, 'Invalid memory search')
+        if kind is not None and (type(kind) is not str or kind not in {'story', 'memoir'}):
             raise TransportError(400, 'Invalid memory search')
 
         try:
@@ -126,9 +170,9 @@ class AssistantMemoryDiscovery:
         except sqlite3.Error:
             raise TransportError(503, 'Saved memory search unavailable') from None
 
-        story_rows = self._list_all(self.stories, token, library, MAX_CANDIDATES)
-        book_rows = self._list_all(self.books, token, library,
-                                   MAX_CANDIDATES - len(story_rows))
+        story_rows = self._list_all(self.stories, token, library, MAX_CANDIDATES) if kind in (None, 'story') else []
+        remaining = MAX_CANDIDATES - len(story_rows)
+        book_rows = self._list_all(self.books, token, library, remaining) if kind in (None, 'memoir') else []
 
         matches = []
         for summary in story_rows:
@@ -138,10 +182,7 @@ class AssistantMemoryDiscovery:
             body = '\n'.join(chapter['narration'] for chapter in detail['chapters'])
             if title_match or phrase in body.casefold():
                 excerpt = _excerpt(title, phrase) if title_match else _excerpt(body, phrase)
-                source_revision = _source_revision({
-                    'kind': 'story', 'id': detail['id'],
-                    'revision': detail['revision'],
-                    'selection_revision': detail['selection_revision']})
+                source_revision = _story_source_revision(detail)
                 matches.append(MemoryReference('story', detail['id'], detail['revision'],
                                                source_revision, title, excerpt))
 
@@ -160,9 +201,7 @@ class AssistantMemoryDiscovery:
             title_match = phrase in title.casefold()
             if title_match or phrase in opening.casefold():
                 excerpt = _excerpt(title, phrase) if title_match else _excerpt(opening, phrase)
-                source_revision = _source_revision({
-                    'kind': 'memoir', 'id': detail['id'],
-                    'revision': detail['revision'], 'stories': current_children})
+                source_revision = _memoir_source_revision(detail, current_children)
                 matches.append(MemoryReference('memoir', detail['id'], detail['revision'],
                                                source_revision, title, excerpt))
 
@@ -174,11 +213,64 @@ class AssistantMemoryDiscovery:
             return (0 if title_match else 1, reference.title.casefold(),
                     reference.kind, reference.id)
 
-        result = tuple(sorted(matches, key=rank)[:limit])
+        ordered = tuple(sorted(matches, key=rank))
         try:
             final_version = self.access.db.execute('PRAGMA data_version').fetchone()[0]
         except sqlite3.Error:
             raise TransportError(503, 'Saved memory search unavailable') from None
+        if final_version != source_version:
+            raise TransportError(409, 'Saved memory changed; refresh before reading')
+        return MemorySearchPage(ordered[:limit], len(ordered), len(ordered) > limit)
+
+    def search(self, token, library, query, *, limit=MAX_RESULTS, kind=None):
+        """Return the legacy tuple view; use search_page for complete counts."""
+        return self.search_page(token, library, query, limit=limit, kind=kind).references
+
+    def read_reference(self, token, library, kind, ident, revision, source_revision):
+        """Resolve a frozen search reference through current authorized readers.
+
+        The reference tuple is immutable identity/evidence. The returned story
+        or memoir payload is ordinary request-owned mutable domain data; this
+        method does not promise deep immutability of that payload.
+        """
+        if (type(kind) is not str or kind not in {'story', 'memoir'} or
+                type(source_revision) is not str or
+                re.fullmatch(r'[0-9a-f]{64}', source_revision) is None):
+            raise TransportError(400, 'Invalid saved memory reference')
+        ident = _reference_id(ident)
+        revision = _revision_string(revision)
+        try:
+            source_version = self.access.db.execute('PRAGMA data_version').fetchone()[0]
+        except (sqlite3.Error, AttributeError, TypeError):
+            raise TransportError(503, 'Saved memory unavailable') from None
+
+        if kind == 'story':
+            detail = self.stories.get(token, library, ident)
+            if detail.get('revision') != revision:
+                raise TransportError(409, 'Saved memory changed; refresh before reading')
+            actual_source_revision = _story_source_revision(detail)
+            result = detail
+        else:
+            detail = self.books.get(token, library, ident)
+            if detail.get('revision') != revision:
+                raise TransportError(409, 'Saved memory changed; refresh before reading')
+            current_children = []
+            for child in detail['stories']:
+                current = self.stories.get(token, library, child['id'])
+                if current.get('revision') != child.get('revision'):
+                    raise TransportError(409, 'Saved memory changed; refresh before reading')
+                current_children.append({
+                    'id': current['id'], 'revision': current['revision'],
+                    'selection_revision': current['selection_revision']})
+            actual_source_revision = _memoir_source_revision(detail, current_children)
+            result = detail
+
+        if actual_source_revision != source_revision:
+            raise TransportError(409, 'Saved memory changed; refresh before reading')
+        try:
+            final_version = self.access.db.execute('PRAGMA data_version').fetchone()[0]
+        except (sqlite3.Error, AttributeError, TypeError):
+            raise TransportError(503, 'Saved memory unavailable') from None
         if final_version != source_version:
             raise TransportError(409, 'Saved memory changed; refresh before reading')
         return result

@@ -1580,9 +1580,10 @@ dictation remains reviewed, and the unsent text draft survives voice mode.
 The isolated private thread/preferences module passed **10 tests and 24
 subtests** using generated SQLite data. Its checks include exact owner/library
 isolation, fixed 30-day exchange expiry, revisions, exact retry conflicts, bounded
-opaque card IDs and concurrent snapshot reads. It has no HTTP integration or
-Windows database. Saved references are data; future routes must reauthorize
-membership and validate current revisions before returning actionable cards.
+opaque card IDs and concurrent snapshot reads. At that foundation stage it had no
+HTTP integration or Windows database. Saved references are data; routes must
+reauthorize membership and validate current revisions before returning actionable
+cards.
 
 The relevant Android live-core/phone run passed **850 core and 17 phone JVM
 tests**, with no failures, errors or skips; debug/test builds and phone lint
@@ -1866,6 +1867,24 @@ review fixes for expanded width and stale zero-exchange counts. Expanded and
 compact 390px renders at 150% text were inspected, along with the speaking
 state. This is local browser evidence; the live Web release is unchanged.
 
+## October 13 compact phone conversation controls
+
+The phone panel keeps the selected conversation summary visible and folds
+conversation management by default. History, the editable composer, and explicit
+text or foreground voice continuation remain reachable; creation, list,
+preferences, deletion and recovery controls open through “管理对话”. Missing
+details, pending work and unresolved confirmations keep management visible.
+Disclosure and confirmation state resets on account, library, generation,
+thread or request changes, while drafts remain scoped and preserved.
+
+The 19-case generated panel simulator cohort passed with Chinese 150% text. After
+the composer helper changed from a routine byte count to brief localized guidance
+and a clear over-limit error, the focused composer journey passed once more with
+the byte limit and disabled-send behavior checked. These source UI changes are
+not part of the pinned v51 candidate at `3a56870`; no new signed APK was created.
+The emulator screenshots are synthetic UI evidence, not phone installation or
+family acceptance.
+
 The next phone candidate is version 51 (`0.51-private-conversation-voice`). Its
 version declaration is preparation only: an unsigned package, original-icon
 check, signing authority and OTA publication still have separate evidence.
@@ -1883,12 +1902,37 @@ See [native qualification and identity](PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.m
 
 ## October 13 saved-memory discovery foundation
 
-Fifteen generated service checks passed for literal saved-text discovery,
-library access, bounded immutable references, Unicode case folding, source
-withdrawal, child/source revision changes, duplicate pages, scan budgets and
-concurrent database commits. The focused checks are included in the ordinary
-API profile. No real media or model service was used.
+The protected discovery suite passed 23 tests and 22 subtests for literal,
+kind-filtered saved-text searches, current library access, bounded immutable
+references, Unicode case folding, source withdrawal, child/source revision
+changes, duplicate pages, scan budgets and concurrent database commits. The
+revision-bound `read_reference` service rechecks the exact current source before
+returning its typed reader projection. The command parser suite passed 13 tests.
+The initial combined discovery/parser/tool cohort passed 44 tests and 40
+subtests; after the joined-emoji and neutral-reply fix, the focused nine-test
+projection/tool cohort passed. These cohorts overlap and are not additive.
 
-This is an internal foundation: saved-story/memoir retrieval is not exposed in
-the assistant UI or current Windows package. Typed cards, negotiated transport,
-reviewed reader handoff and family acceptance remain outstanding.
+The backend now has a default-off negotiated endpoint and separate optional
+capability probe. Base capabilities remain unchanged; only a fresh request that
+explicitly accepts `saved_memory_cards_v1` can receive cards. Same-ID stored
+turns return their existing status before negotiation, without recomputing cards.
+Fresh results use current-source checks and typed opaque references; history
+keeps the 30-day legacy summary and exposes references only as non-actionable
+type/count placeholders. Nine focused HTTP checks passed after correcting the
+synthetic seed writer and deriving its discovery index from the matching fixture.
+They cover negotiation, immutable replay, access/expiry, media-context clearing,
+source withdrawal and source drift after completion. The speech guard refuses
+story/memoir reference turns before synthesis. The portable runtime/staging
+configuration cohort passed 43 tests and 132 subtests; the closed-boundary/store
+cohort passed 39 tests and 24 subtests.
+
+Web now renders immutable plain-text story/memoir cards after a separate optional
+probe. Forty-five controller checks and six generated browser checkpoints passed,
+including late feature-loss fencing, missing-probe fallback, hostile source text,
+GET-only recovery and 390-pixel/150% layout. The integration owner inspected the
+rendered fixture. No client reader opening or phone cards are integrated yet.
+The earlier fifteen-check private-workspace browser regression also passed.
+These cohorts overlap and do not imply a complete new profile. This source is outside pinned v51
+candidate `3a56870` and native qualification candidate `db95b6`; no flag is
+activated and no live API or APK was updated. See [the saved-memory card
+contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md).

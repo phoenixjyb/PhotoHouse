@@ -17,6 +17,8 @@ from starlette.concurrency import run_in_threadpool
 from . import assistant as assistant_engine
 from . import discovery as discovery_engine
 from .assistant_journal import Journal, JournalUnavailable, JournalConflict, JournalMissing
+from .assistant_saved_memory_tool import AssistantSavedMemoryTool
+from .assistant_memory_discovery import AssistantMemoryDiscovery
 
 from .assistant_workspace_store import (AssistantWorkspaceStore,
     WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
@@ -318,7 +320,7 @@ def _turn_result(engine, token, library, summary, *, recovered):
     return result
 
 
-async def _turn_envelope(request, account, library, row, *, recovered):
+async def _turn_envelope(request, account, library, row, *, recovered, memory_outcome=None):
     result = None
     revision = row['revision']
     if row['status'] == 'completed':
@@ -326,8 +328,14 @@ async def _turn_envelope(request, account, library, row, *, recovered):
         _access, engine = assistant_engine._engine(request)
         if engine is None:
             raise WorkspaceStoreUnavailable()
-        result = await run_in_threadpool(_turn_result, engine, token, library,
-                                        row['result_summary'], recovered=recovered)
+        if memory_outcome is not None and not recovered:
+            _saved_memory_enabled(request)
+            await run_in_threadpool(_validate_memory_outcome, _access, token, library,
+                                    memory_outcome)
+            result = memory_outcome.fresh_result()
+        else:
+            result = await run_in_threadpool(_turn_result, engine, token, library,
+                                            row['result_summary'], recovered=recovered)
     else:
         owned = await _call(_workspace(request), 'get_thread', account, library, row['thread_id'])
         revision = owned['thread']['revision']
@@ -379,6 +387,13 @@ def _error_code(exc):
         return 'context_changed'
     if isinstance(exc, AccessDenied):
         return 'access_denied'
+    if isinstance(exc, TransportError):
+        if exc.status in (401, 403):
+            return 'access_denied'
+        if exc.status == 409:
+            return 'context_changed'
+        if exc.status in (400, 413, 422):
+            return 'invalid_request'
     if isinstance(exc, (WorkspaceInvalid, assistant_engine.AssistantInvalid,
                         discovery_engine.DiscoveryInvalid)):
         return 'invalid_request'
@@ -389,10 +404,69 @@ def _error_code(exc):
     return 'assistant_unavailable'
 
 
+def _saved_memory_enabled(request):
+    if (not getattr(request.app.state, 'assistant_saved_memory_cards_enabled', False) or
+            not getattr(request.app.state, 'memory_collaboration_enabled', False) or
+            not getattr(request.app.state, 'memory_retention_healthy', False)):
+        raise WorkspaceStoreUnavailable()
+    _workspace(request)
+
+
+def _memory_command(access, token, library, words, language):
+    with access.connection_factory() as connection:
+        return AssistantSavedMemoryTool(AccessService(connection, clock=access.clock)).run(
+            token, library, words, locale=language)
+
+
+def _validate_memory_outcome(access, token, library, outcome):
+    with access.connection_factory() as connection:
+        domain = AccessService(connection, clock=access.clock)
+        domain.library_principal(token, library)
+        version = connection.execute('PRAGMA data_version').fetchone()[0]
+        reader = AssistantMemoryDiscovery(domain)
+        for ref in outcome.references:
+            reader.read_reference(token, library, ref.kind, ref.id,
+                                  ref.revision, ref.source_revision)
+        if connection.execute('PRAGMA data_version').fetchone()[0] != version:
+            raise TransportError(409, 'Saved memory changed; refresh before reading')
+
+
+def _memory_readers_available(access, token, library):
+    with access.connection_factory() as connection:
+        reader = AssistantMemoryDiscovery(AccessService(connection, clock=access.clock))
+        reader.stories.list(token, library, 1)
+        reader.books.list(token, library, 1)
+
+
+@router.get('/assistant/workspace/v1/saved-memory-capabilities')
+async def saved_memory_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    available = False
+    try:
+        _saved_memory_enabled(request)
+        await _call(_workspace(request), 'get_preferences', account)
+        access, engine = assistant_engine._engine(request)
+        if engine is not None:
+            token, _mode = credentials_from_request(request, allow_query=True)
+            await run_in_threadpool(_memory_readers_available, access, token, library)
+            available = True
+    except AccessDenied:
+        raise
+    except Exception:
+        available = False
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
 async def create_turn(request: Request, thread_id: str):
-    body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text'},
+    body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts'},
+                       required={'library_id', 'request_id', 'expected_revision', 'text'},
                        maximum=20 * 1024)
+    memory_opt_in = 'accepts' in body
     library, selected = _library(body['library_id']), _thread_id(thread_id)
     ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
     words = _turn_text(body['text'])
@@ -408,6 +482,16 @@ async def create_turn(request: Request, thread_id: str):
     if parent is not None:
         _thread_id(parent)
     store = _workspace(request)
+    # Negotiation changes never reinterpret a previously owned request. Keep
+    # the store's original text/revision collision checks on this GET-like path.
+    prior = await _call(store, 'begin_turn', account, library, selected, ident,
+                        revision, words, existing_only=True)
+    if prior is not None:
+        return await _turn_envelope(request, account, library, prior, recovered=True)
+    if memory_opt_in:
+        if type(body['accepts']) is not list or body['accepts'] != ['saved_memory_cards_v1']:
+            raise WorkspaceInvalid()
+        _saved_memory_enabled(request)
     row = await _call(store, 'begin_turn', account, library, selected, ident, revision, words)
     if row['replayed']:
         return await _turn_envelope(request, account, library, row, recovered=True)
@@ -422,15 +506,25 @@ async def create_turn(request: Request, thread_id: str):
             journal_started = True
             await run_in_threadpool(journal.stage, ident, 'action_started')
         preferences = await _call(store, 'get_preferences', account)
-        result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
-            words, row['context'], access.clock, language=preferences['locale'])
+        memory_outcome = (await run_in_threadpool(_memory_command, access, token, library,
+                           words, preferences['locale']) if memory_opt_in else None)
+        if memory_outcome is None:
+            result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
+                words, row['context'], access.clock, language=preferences['locale'])
+            summary = {key: value for key, value in result.items() if key != 'items'}
+            context = result['context']
+            cards = ([] if context is None else [dict(type='media', id=item['id'],
+                     revision=context['binding'], fingerprint=context['fingerprint'])
+                     for item in result['items']])
+        else:
+            result = memory_outcome.fresh_result()
+            summary = memory_outcome.legacy_summary()
+            cards = memory_outcome.store_card_refs()
+            _saved_memory_enabled(request)
+            await run_in_threadpool(_validate_memory_outcome, access, token, library,
+                                    memory_outcome)
         if await _principal(request, library) != account:
             raise AccessDenied()
-        summary = {key: value for key, value in result.items() if key != 'items'}
-        context = result['context']
-        cards = ([] if context is None else [dict(type='media', id=item['id'],
-                 revision=context['binding'], fingerprint=context['fingerprint'])
-                 for item in result['items']])
         row = await _call(store, 'complete_turn', account, library, selected, ident,
                           lease, summary, cards, [ident] if journal_started else [])
         committed = row['status'] == 'completed'
@@ -438,9 +532,10 @@ async def create_turn(request: Request, thread_id: str):
             await run_in_threadpool(journal.finish, ident,
                 'succeeded' if committed else 'failed', http_status=200 if committed else 409,
                 error=None if committed else 'turn_interrupted',
-                kind=result['kind'] if committed else None,
-                total=result['total'] if committed else None)
-        response = await _turn_envelope(request, account, library, row, recovered=False)
+                kind=summary['kind'] if committed else None,
+                total=summary['total'] if committed else None)
+        response = await _turn_envelope(request, account, library, row, recovered=False,
+            memory_outcome=memory_outcome if committed else None)
         response.headers['X-PhotoHouse-Request-Id'] = ident
         response.headers['X-PhotoHouse-Tracking'] = 'enabled' if journal is not None else 'disabled'
         if journal_started:
@@ -502,6 +597,14 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
     thread_revision = current['thread']['revision']
     if (thread_revision != expected_revision or turn.get('revision') != expected_revision):
         raise WorkspaceStoreConflict()
+    exchange = next((item for item in current['exchanges']
+                     if item.get('request_id') == selected_turn), None)
+    if exchange is None:
+        raise WorkspaceStoreConflict()
+    # Typed memory turns have no persisted source context. Do not synthesize
+    # their reply until both sides of TTS can revalidate the current typed refs.
+    if any(card.get('type') in {'story', 'memoir'} for card in exchange.get('cards', [])):
+        raise WorkspaceInvalid()
     summary = turn['result_summary']
     if summary.get('kind') not in {'results', 'clarification', 'unsupported'} or summary.get('effect') is not None:
         raise WorkspaceInvalid()

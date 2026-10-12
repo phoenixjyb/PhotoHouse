@@ -83,6 +83,7 @@ class AssistantWorkspaceTurnStoreTests(unittest.TestCase):
                                       first['request_id'])
         self.assertTrue(fetched['replayed'])
         self.assertEqual(fetched['result_summary'], done['result_summary'])
+
         detail = self.store.get_thread(self.account, self.library, self.thread)
         self.assertEqual(detail['exchanges'][0]['input_text'], 'Find photos')
         with self.store.connection() as db:
@@ -94,6 +95,24 @@ class AssistantWorkspaceTurnStoreTests(unittest.TestCase):
         self.assertEqual(exchange['expires_at'], row['expires_at'])
         self.assertEqual(ctx['created_at'], row['created_at'])
         self.assertEqual(ctx['expires_at'], row['expires_at'])
+
+    def test_existing_only_lookup_reserves_nothing_and_keeps_request_conflicts(self):
+        ident = new_id()
+        self.assertIsNone(self.store.begin_turn(self.account, self.library, self.thread,
+            ident, 0, 'Find photos', existing_only=True))
+        with self.store.connection() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM turn_requests').fetchone()[0], 0)
+        pending = self.begin(request=ident)
+        replay = self.store.begin_turn(self.account, self.library, self.thread,
+            ident, 0, 'Find photos', existing_only=True)
+        self.assertTrue(replay['replayed'])
+        self.assertEqual(replay['lease_id'], pending['lease_id'])
+        with self.assertRaises(WorkspaceStoreConflict):
+            self.store.begin_turn(self.account, self.library, self.thread,
+                ident, 0, 'Other words', existing_only=True)
+        with self.assertRaises(WorkspaceStoreConflict):
+            self.store.begin_turn(self.account, self.library, self.thread,
+                ident, 1, 'Find photos', existing_only=True)
 
     def test_one_pending_reservation_across_store_instances(self):
         other = AssistantWorkspaceStore(self.path, clock=lambda: self.now[0])

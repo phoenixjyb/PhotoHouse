@@ -357,6 +357,14 @@ Recovered replies pause before speech, navigation or another capture. The
 unselected ordinary route remains v1.
 All private workspace storage remains explicitly admitted and default-off.
 
+The phone now presents the selected conversation in a compact summary and folds
+management controls behind an accessible local toggle. History, editing and
+explicit continuation remain visible; the panel keeps recovery controls open
+when state is unresolved. Its 19-case simulator cohort passed at Chinese 150%
+text, followed by a focused composer-helper/byte-limit rerun. These UI changes
+are not in the pinned v51 candidate at `3a56870`; they did not create a signed
+APK. See the [current source qualification](DEVELOPMENT.md#october-13-compact-phone-conversation-controls).
+
 
 [Private history navigation](PRIVATE_ASSISTANT_HISTORY_V1.md) adds ephemeral
 first-question labels and explicit older pages, preserving complete saved text
@@ -365,6 +373,18 @@ Phone/Web history remains readable when discovery is unavailable, with no
 automatic result hydration, speech or microphone capture. This is locally
 qualified source; Windows storage/activation and a signed phone release remain
 separate delivery gates.
+
+[Saved-memory discovery](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) now has a default-off
+backend negotiated endpoint and optional capability probe, in addition to
+literal kind-filtered search, revision-bound reader references and transient
+typed projections. Base capabilities remain unchanged; opt-in is accepted only
+for a fresh request, while same-ID replay returns stored status before fresh
+negotiation. History keeps the legacy 30-day summary and non-actionable typed
+reference counts. Web renders immutable plain-text cards after the separate
+probe, with legacy fallback and scope/capability fences. Nine focused HTTP
+checks, 45 controller checks and six generated browser checkpoints passed.
+Phone cards, reader opening and story/memoir reply TTS remain outstanding;
+no live flag or API was activated.
 
 
 [Protected private reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md) is the next

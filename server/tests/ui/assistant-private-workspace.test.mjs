@@ -12,6 +12,10 @@ const thread=(revision=0,id=threadId)=>({thread_id:id,library_id:library,created
 const result={version:1,kind:'results',reply:'Found 1 photo.',context:null,filters:null,items:[],total:0,has_more:false,effect:null};
 const envelope=(status='completed',recovered=false,revision=1)=>({version:1,thread_id:threadId,request_id:requestId,status,revision,recovered,error:null,result:status==='completed'?result:null});
 const workspaceCaps=(overrides={})=>({version:1,available:true,threads:true,preferences:true,preferences_applied:false,server_owned_turns:true,...overrides});
+const savedMemoryCapabilities=available=>({version:1,available});
+const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
+const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
+const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
 const exchange=(revision,id=`${String(revision).padStart(8,'0')}-4444-4444-8444-${String(revision).padStart(12,'0')}`)=>({exchange_id:id,revision,created_at:stamp,expires_at:'2026-11-11T00:00:00Z',input_text:`Question ${revision}`,reply:`Reply ${revision}`,cards:[],receipt_count:0});
 const detail=(from,to,hasOlder=false,overrides={})=>({version:1,thread:thread(to),exchanges:Array.from({length:to-from+1},(_,i)=>exchange(from+i)),has_older_exchanges:hasOlder,...overrides});
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
@@ -543,4 +547,141 @@ test('history paging is stale fenced by scope changes and the 200 exchange cap',
   await assert.rejects(capped.controller.older(),error=>error.code==='invalid_response');
   assert.equal(capped.controller.state().historyDetail,before);
   assert.equal(before.exchanges.length,180);
+});
+
+test('saved-memory capability probe is explicit, exact, and fail closed',async()=>{
+  let answer=savedMemoryCapabilities(true);
+  const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();assert(path.endsWith('/saved-memory-capabilities?library_id=library-a'));return answer;});
+  assert.equal(h.controller.state().savedMemoryAvailable,false);assert.equal(h.calls.length,0,'reading state performs no probe');
+  assert.equal(await h.controller.savedMemoryCapabilities(),false);assert.equal(h.calls.length,0,'saved-memory probe requires known base capabilities');
+  await h.controller.capabilities();assert.equal(await h.controller.savedMemoryCapabilities(),true);assert.equal(h.calls.length,2);assert.equal(h.calls[1].method,'GET');
+  assert.equal(h.controller.state().savedMemoryAvailable,true);
+  const disabled=harness(async(path)=>path.includes('/capabilities?')?workspaceCaps():savedMemoryCapabilities(false));await disabled.controller.capabilities();assert.equal(await disabled.controller.savedMemoryCapabilities(),false);assert.equal(disabled.controller.state().savedMemoryAvailable,false);
+  for(answer of [undefined,{version:1,available:'yes'},{version:1,available:true,extra:true}]){
+    const malformed=harness(async(path)=>path.includes('/capabilities?')?workspaceCaps():answer);await malformed.controller.capabilities();assert.equal(await malformed.controller.savedMemoryCapabilities(),false);assert.equal(malformed.controller.state().savedMemoryAvailable,false);
+  }
+  for(const status of [404,503]){
+    const unavailable=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();throw Object.assign(new Error('private detail'),{status});});await unavailable.controller.capabilities();
+    assert.equal(await unavailable.controller.savedMemoryCapabilities(),false);assert.equal(unavailable.controller.state().savedMemoryAvailable,false);
+  }
+  for(const status of [401,403]){
+    const denied=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();throw Object.assign(new Error('private detail'),{status});});await denied.controller.capabilities();
+    await assert.rejects(denied.controller.savedMemoryCapabilities(),error=>error.code==='access_denied'&&error.status===status);
+    assert.equal(denied.controller.state().savedMemoryAvailable,false);assert.equal(denied.controller.state().locked,true);
+  }
+});
+
+test('saved-memory probe is scope fenced and stale capability is cleared on base capability loss, scope and close',async()=>{
+  const gate=deferred(),started=deferred();
+  const h=harness(async(path)=>{if(path.includes('/saved-memory-capabilities')){started.resolve();await gate.promise;return savedMemoryCapabilities(true);}if(path.includes('/capabilities?'))return workspaceCaps();return workspaceCaps({server_owned_turns:false});});
+  await h.controller.capabilities();
+  const pending=h.controller.savedMemoryCapabilities();await started.promise;h.setScope({account:'account-b',library:'library-b',generation:2});gate.resolve();
+  await assert.rejects(pending,error=>error.code==='scope_changed');assert.equal(h.controller.state().savedMemoryAvailable,false);
+
+  let baseAvailable=false;const current=harness(async(path)=>path.includes('/saved-memory-capabilities')?savedMemoryCapabilities(true):workspaceCaps({server_owned_turns:baseAvailable}));
+  await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),false);
+  assert.equal(await current.controller.savedMemoryCapabilities(),false,'a feature probe cannot override known base capability loss');
+  baseAvailable=true;await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),true);current.controller.close();assert.equal(current.controller.state().savedMemoryAvailable,false);
+});
+
+test('legacy requests remain byte-shape unchanged and no capability probe is implicit',async()=>{
+  const h=harness(async(path,options)=>{if(options.method==='POST'&&path.endsWith('/threads'))return {version:1,thread:thread()};if(path.endsWith('/turns'))return envelope('completed',false,1);throw Error('unexpected');},{ids:[threadId,requestId]});
+  await h.controller.create();h.controller.setDraft('find photos');await h.controller.send();
+  assert.equal(h.calls.length,2);assert.deepEqual(Object.keys(h.calls.at(-1).body).sort(),['expected_revision','library_id','request_id','text']);
+  assert.equal(h.controller.state().savedMemoryAvailable,false);
+});
+
+test('explicitly negotiated send adds only the fixed accepts token and skips media hydration',async()=>{
+  let hydrated=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId],hydrateResults:async value=>{hydrated++;return value;}});
+  await h.controller.capabilities();assert.equal(await h.controller.savedMemoryCapabilities(),true);await h.controller.create();h.controller.setDraft('find saved memories');
+  const completed=await h.controller.send();const request=h.calls.at(-1);
+  assert.deepEqual(request.body,{library_id:library,request_id:requestId,expected_revision:0,text:'find saved memories',accepts:['saved_memory_cards_v1']});
+  assert.equal(hydrated,0);assert.equal(completed.result.kind,'memory_cards');assert.equal(h.controller.state().contextState,'requires_search');
+  assert.equal(h.controller.state().speechReady,false);assert.equal(h.controller.state().savedMemoryAvailable,true);
+  assert.equal(Object.isFrozen(completed.result),true);assert.equal(Object.isFrozen(completed.result.context),true);
+  assert.equal(Object.isFrozen(completed.result.memory_cards),true);assert.equal(Object.isFrozen(completed.result.memory_cards[0]),true);
+  assert.equal(Object.isFrozen(completed.result.context.references[0]),true);
+  await assert.rejects(h.controller.speakReply(),error=>error.code==='invalid_input');
+  assert.equal(h.calls.some(x=>x.path.includes('/speech')),false,'memory result creates no speech source or request');
+});
+
+test('late memory completion is hidden and left uncertain after base capability loss',async()=>{
+  const gate=deferred(),started=deferred();let baseAvailable=true,hydrated=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({available:baseAvailable,server_owned_turns:baseAvailable});
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){started.resolve();await gate.promise;return {...envelope('completed',false,1),result:memoryResult()};}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId],hydrateResults:async value=>{hydrated++;return value;}});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();h.controller.setDraft('find memories');
+  const sent=h.controller.send();await started.promise;baseAvailable=false;await h.controller.capabilities();gate.resolve();
+  await assert.rejects(sent,error=>error.code==='context_changed');
+  assert.equal(h.controller.state().pendingTurn.status,'uncertain');assert.equal(h.controller.state().draft,'find memories');
+  assert.equal(h.controller.state().currentResult,null);assert.equal(h.controller.state().speechReady,false);assert.equal(hydrated,0);
+  assert.equal(h.controller.state().savedMemoryAvailable,false);assert.equal(h.calls.filter(x=>x.method==='POST'&&x.path.endsWith('/turns')).length,1);
+});
+
+test('recovery never accepts or hydrates negotiated memory cards',async()=>{
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))throw Error('ambiguous');
+    if(path.includes('/requests/'))return {...envelope('completed',true,1),result:memoryResult()};
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();h.controller.setDraft('find memories');
+  await assert.rejects(h.controller.send());
+  await assert.rejects(h.controller.recover(threadId,requestId),error=>error.code==='invalid_response');
+  assert.equal(h.controller.state().draft,'find memories');assert.equal(h.controller.state().currentResult,null);
+  assert.deepEqual(h.calls.map(x=>x.method),['GET','GET','POST','POST','GET']);
+  assert.equal(h.calls.some(x=>x.method==='GET'&&x.path.includes('/saved-memory-capabilities')),true);
+});
+
+test('saved-memory clarification is negotiated, has no source refs, and may use existing reply speech',async()=>{
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryClarification()};
+    if(path.includes('/speech'))return fakeWav();
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333']});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();
+  const done=await h.controller.send('找回忆');assert.equal(done.result.kind,'clarification');assert.deepEqual(done.result.memory_cards,[]);
+  assert.equal(h.controller.state().speechReady,true);assert.equal(await h.controller.speakReply() instanceof Blob,true);
+});
+
+test('memory result grammar is exact, bounded and accepted only for negotiated fresh POST',()=>{
+  const fresh={...envelope('completed',false,1),result:memoryResult()};
+  assert.throws(()=>validateResult(fresh.result,library),error=>error.code==='invalid_response');
+  assert.throws(()=>validateEnvelope(fresh,threadId,requestId,library,'POST'),error=>error.code==='invalid_response');
+  const allowed=validateEnvelope(fresh,threadId,requestId,library,'POST',true);assert.equal(allowed.result.memory_cards.length,1);
+  const clarification={...fresh,result:memoryClarification()};assert.equal(validateEnvelope(clarification,threadId,requestId,library,'POST',true).result.kind,'clarification');
+  assert.throws(()=>validateEnvelope({...fresh,recovered:true},threadId,requestId,library,'POST',true),error=>error.code==='invalid_response');
+  assert.throws(()=>validateEnvelope({...fresh,recovered:true},threadId,requestId,library,'GET',true),error=>error.code==='invalid_response');
+
+  const invalid=[
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],id:memoryBinding.id.toUpperCase()}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],revision:'02'}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],source_revision:'B'.repeat(64)}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],title:'x'.repeat(641)}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],title:'x'.repeat(321)+'😀'.repeat(321)}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],excerpt:'😀'.repeat(241)}]}),
+    memoryResult({memory_cards:[{...memoryResult().memory_cards[0],excerpt:'x'.repeat(961)}]}),
+    memoryResult({context:{...memoryResult().context,references:[]}}),
+    memoryResult({total:257,has_more:true}),
+    memoryResult({items:[asset()]}),
+    memoryResult({effect:{type:'open_asset',asset_id:'42'}}),
+    memoryResult({memory_cards:[memoryResult().memory_cards[0],memoryResult().memory_cards[0]],total:2,has_more:false,context:{...memoryResult().context,references:[{...memoryBinding},{...memoryBinding}]}})
+  ];
+  for(const value of invalid)assert.throws(()=>validateResult(value,library,false,true),error=>error.code==='invalid_response');
 });

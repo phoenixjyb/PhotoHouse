@@ -21,6 +21,11 @@ Concurrent updates require explicit reload without losing a draft.
 Current qualification and delivery gates are recorded in Development. These
 changes do not publish an APK, create a Windows conversation database, or change
 the live API. Phone v50 and TV v30 remain the last verified published packages.
+The phone management panel now starts compact, preserves readable history and
+explicit text/voice continuation, and expands management locally; the generated
+19-case 150% simulator cohort and a focused composer-limit rerun passed. This UI
+source is outside the pinned v51 candidate at `3a56870`, and no new signed APK
+has been made.
 
 The next slices are:
 
@@ -591,7 +596,14 @@ activating them for family material.
 5. Collect family feedback on voice continuity, pronunciation, retrieval and
    history clarity before broadening agent autonomy.
 
-The saved-story/memoir discovery foundation now has scoped source tests. Its
-next delivery slice is a negotiated typed-card transport and central workspace
-presentation, followed by revision-bound explicit reader navigation. It has no
-user-facing route or live activation yet.
+The [saved-memory discovery foundation](ASSISTANT_SAVED_MEMORY_CARDS_V1.md)
+passed 23 discovery tests/22 subtests and 13 parser tests. The initial combined
+discovery/parser/tool run passed 44 tests/40 subtests; the corrected nine-test
+projection/tool rerun passed, with overlap between cohorts. The backend now has
+a default-off negotiated endpoint and optional capability probe. Same-ID replay
+returns stored status before fresh opt-in negotiation; history keeps legacy
+30-day summaries and typed non-actionable reference counts. Web renders scoped
+plain-text cards; nine focused HTTP checks, 45 controller checks and six generated
+browser checkpoints passed. No live flag or API is activated. This source is
+outside pinned v51 `3a56870` and native candidate `db95b6`. Phone cards, reviewed
+reader handoff, typed-source speech and delivery remain separate gates.
