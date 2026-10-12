@@ -1636,3 +1636,34 @@ tooling tests and four script-route subtests passed, including the real current
 index's deferred scripts, original-icon preservation and rejection of the old
 incomplete format before any router binding. The earlier five-asset candidate
 remains evidence and must not be deployed as this assistant release.
+
+## October 12 private assistant workspace API
+
+The new default-off private workspace API is wired through application, runtime,
+strict staging configuration and the reviewed boundary inventory. It exposes
+eight methods for capabilities, owned thread list/create/read/delete and own
+preference read/update/reset. Identity and membership are refreshed for each
+request; owners do not bypass account ownership. Stale revisions conflict.
+Stored reference IDs/bindings/receipt IDs are omitted from history, leaving only
+non-actionable type/count placeholders. No endpoint accepts user-supplied
+assistant replies or cards. Applied preferences and server-owned turns are
+explicitly unavailable.
+
+An independent owner run of workspace HTTP/store, strict v1 assistant, runtime
+adapter, staging configuration and closed-application checks passed **100 tests
+and 175 subtests**. One existing Starlette/httpx deprecation warning remains.
+Coverage includes user/library isolation, revocation, CSRF/origin, no-store,
+strict queries/JSON, invalid revisions/enums/UUIDs, three-second body timeout and
+framing mismatch, expiry/deletion, maintenance failure, reference redaction,
+configuration separation and missing/malformed storage without file creation.
+This is synthetic in-process evidence: no provider, listener, Windows database
+or physical device was used.
+
+Phone v49 delivery is separately recorded in its release note. The initially
+prepared release controllers had mismatched authority paths; this was corrected
+before execution and a contract regression added, giving 20 passing local
+controller checks. One signing/publication completed, verified natively and by
+independent complete trusted HTTPS download. No API restart accompanied the APK.
+The separate Web package passed Windows six-route qualification, retaining the
+original icon. Its rollout uses the unchanged served API entry/configuration and
+format-2 static binder; it does not deploy the private workspace API.

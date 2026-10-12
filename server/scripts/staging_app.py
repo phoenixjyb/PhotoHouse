@@ -27,6 +27,7 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'memory_editions_enabled', 'family_note_erasure_enabled', 'assistant_asr_url',
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
+                   'assistant_workspace_path',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
                    'original_deletion_journal_path', 'original_deletion_namespace',
                    'story_title_suggestions_enabled', 'story_title_url', 'story_title_model',
@@ -81,6 +82,7 @@ class StagingConfiguration:
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
+    assistant_workspace_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -276,6 +278,18 @@ class StagingConfiguration:
                                      *((self.incoming_root,) if self.incoming_root else ()),
                                      *((self.update_root,) if self.update_root else ()))):
                     raise InvalidConfiguration()
+            if self.assistant_workspace_path is not None:
+                workspace = self.assistant_workspace_path
+                if (not self.assistant_enabled or not isinstance(workspace, Path)
+                        or _path(str(workspace)) != workspace):
+                    raise InvalidConfiguration()
+                if any(workspace.is_relative_to(other) or other.is_relative_to(workspace)
+                       for other in (*media, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
             protected = (*media, *files, *((self.incoming_root,) if self.incoming_root else ()))
             for index in self.discovery_indexes:
                 if not isinstance(index, Path) or _path(str(index)) != index:
@@ -299,6 +313,7 @@ class StagingConfiguration:
         # Deliberate source root; no .env, legacy config or model entry point.
         sys.path.insert(0, str(ROOT/'backend'))
         from app.access.runtime import RuntimeConfiguration
+        from app.access.assistant_workspace_store import WorkspaceStoreUnavailable
         memory_group_vectors = None
         if self.memory_group_vector_identity is not None:
             from app.access.memory_group_transport import GroupVectorConfiguration
@@ -308,7 +323,7 @@ class StagingConfiguration:
                 preprocessing_sha256=preprocessing, vector_space_id=vector_space,
                 model_version=model_version, dimension=dimension, normalization=normalization)
             memory_group_vectors = GroupVectorConfiguration(self.memory_group_vector_root, identity)
-        return RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
+        runtime = RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
             original_roots=self.original_roots, derived_root=self.derived_root,
             incoming_root=self.incoming_root, discovery_indexes=self.discovery_indexes,
             upload_review_enabled=self.upload_review_enabled,
@@ -326,6 +341,7 @@ class StagingConfiguration:
             original_deletion_journal_path=self.original_deletion_journal_path,
             original_deletion_namespace=self.original_deletion_namespace,
             assistant_journal_path=self.assistant_journal_path,
+            assistant_workspace_path=self.assistant_workspace_path,
             assistant_asr_url=self.assistant_asr_url,
             assistant_asr_model=self.assistant_asr_model,
             assistant_asr_token=self.assistant_asr_token,
@@ -335,7 +351,11 @@ class StagingConfiguration:
             assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
             update_root=self.update_root,
             memory_groups_enabled=self.memory_groups_enabled,
-            memory_group_vectors=memory_group_vectors).build_app()
+            memory_group_vectors=memory_group_vectors)
+        try:
+            return runtime.build_app()
+        except WorkspaceStoreUnavailable:
+            raise InvalidConfiguration() from None
 
     def server_options(self):
         return dict(host=self.bind_host, port=self.port, ssl_certfile=str(self.tls_certificate),
@@ -389,6 +409,7 @@ def parse_configuration(value):
             original_deletion_journal_path=_path(value['original_deletion_journal_path']) if value.get('original_deletion_journal_path') is not None else None,
             original_deletion_namespace=value.get('original_deletion_namespace'),
             assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,
+            assistant_workspace_path=_path(value['assistant_workspace_path']) if value.get('assistant_workspace_path') is not None else None,
             assistant_asr_url=value.get('assistant_asr_url'),
             assistant_asr_model=value.get('assistant_asr_model'),
             assistant_asr_token=value.get('assistant_asr_token'),
@@ -428,9 +449,14 @@ def load_configuration(path):
         if any(path.is_relative_to(root) for root in (*config.original_roots, config.derived_root)):
             raise InvalidConfiguration()
         if path in (config.database, config.tls_certificate, config.tls_private_key,
-                    *config.discovery_indexes):
+                    *config.discovery_indexes, *((config.assistant_workspace_path,)
+                                                   if config.assistant_workspace_path else ())):
             raise InvalidConfiguration()
         if config.update_root is not None and path.is_relative_to(config.update_root):
+            raise InvalidConfiguration()
+        if (config.assistant_workspace_path is not None and
+                (path.is_relative_to(config.assistant_workspace_path) or
+                 config.assistant_workspace_path.is_relative_to(path))):
             raise InvalidConfiguration()
         return config
     except (OSError, ValueError, UnicodeError, RecursionError):

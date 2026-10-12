@@ -56,7 +56,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 141)
+                self.assertEqual(len(main.app.routes), 149)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -167,10 +167,21 @@ class ClosedApplicationTests(unittest.TestCase):
     def test_complete_runtime_route_set_matches_active_inventory(self):
         inventory = json.loads((ROOT / 'docs/security/route_capabilities.json').read_text())
         expected = {(r['method'], r['path']) for r in inventory['routes'] if r['surface'] == 'photohouse'}
+        # Workspace history/preferences are the explicitly reviewed additive v1 surface.
+        expected |= {
+            ('GET', '/assistant/workspace/v1/capabilities'),
+            ('GET', '/assistant/workspace/v1/threads'),
+            ('POST', '/assistant/workspace/v1/threads'),
+            ('GET', '/assistant/workspace/v1/threads/{thread_id}'),
+            ('DELETE', '/assistant/workspace/v1/threads/{thread_id}'),
+            ('GET', '/assistant/workspace/v1/preferences'),
+            ('PUT', '/assistant/workspace/v1/preferences'),
+            ('POST', '/assistant/workspace/v1/preferences/reset'),
+        }
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 141)
+        self.assertEqual(len(actual), 149)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)
@@ -182,6 +193,7 @@ class ClosedApplicationTests(unittest.TestCase):
                       .replace('{conversation_id}', '11111111-1111-4111-8111-111111111111')
                       .replace('{contribution_id}', '11111111-1111-4111-8111-111111111111')
                       .replace('{job_id}', '11111111-1111-4111-8111-111111111111')
+                      .replace('{thread_id}', '11111111-1111-4111-8111-111111111111')
                       .replace('{channel}', 'phone')
                       .replace('{sha256}', 'a' * 64)
                       .replace('{member_id}', '11111111-1111-4111-8111-111111111111'))

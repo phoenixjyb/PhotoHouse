@@ -186,6 +186,7 @@ class RuntimeConfiguration:
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
+    assistant_workspace_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -304,6 +305,25 @@ class RuntimeConfiguration:
                 raise ValueError('Journal must be separate from runtime data')
             from .assistant_journal import Journal
             assistant_journal = Journal(selected, clock=clock)
+        assistant_workspace_store = None
+        if self.assistant_workspace_path is not None:
+            if not self.assistant_enabled:
+                raise ValueError('Assistant workspace requires assistant opt-in')
+            selected = self.assistant_workspace_path
+            protected = (self.database, self.derived_root, *self.original_roots,
+                         *self.discovery_indexes,
+                         *((self.incoming_root,) if self.incoming_root else ()),
+                         *((self.update_root,) if self.update_root else ()),
+                         *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                         *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))
+            if (not isinstance(selected, Path) or not selected.is_absolute() or
+                    any(selected.is_relative_to(other) or other.is_relative_to(selected)
+                        for other in protected)):
+                raise ValueError('Assistant workspace must be separate from runtime data')
+            from .assistant_workspace_store import AssistantWorkspaceStore
+            # This opens only an existing validated store in mode=rw. It never
+            # initializes or creates the optional private database.
+            assistant_workspace_store = AssistantWorkspaceStore(selected, clock=clock)
         assistant_asr = None
         if self.assistant_asr_url is not None:
             from .assistant_speech import LocalAssistantAsr
@@ -335,4 +355,5 @@ class RuntimeConfiguration:
                           story_title_suggester=title_suggester,
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
+                          assistant_workspace_store=assistant_workspace_store,
                           update_root=self.update_root)

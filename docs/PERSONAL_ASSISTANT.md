@@ -17,15 +17,22 @@ This layer has no language-model tool agent or story-writing authority.
 `assistant_workspace_store.py` separately implements private account/library
 threads and revisioned account preferences with explicit initialization, fixed
 30-day exchange expiry, deletion, bounded typed references and exact retry checks.
-It is not mounted on HTTP routes or connected to clients yet, and no conversation
-database has been created on Windows. A future router must freshly authorize
-membership and revalidate every saved reference before returning actionable cards.
+The protected `/assistant/workspace/v1` source API now exposes owned thread
+listing/creation/reading/deletion and revisioned preference reading/updating/reset.
+It requires fresh library membership, an explicitly configured existing store and
+healthy retention maintenance. Saved references are reduced to non-actionable
+type/count placeholders; IDs, bindings and receipt IDs are not projected as actions.
+No client can upload an arbitrary assistant reply or card list. Capability flags
+report that server-owned turns and applied preferences are not implemented yet.
+The API is default-off, not deployed, and no conversation database has been created
+on Windows. Client continuation and reference revalidation remain future work.
 Preference storage alone does not change the current ASR/TTS/provider settings.
 
 The [roadmap](ROADMAP.md#october-12-central-personal-assistant) records the next
 layers: protected thread/preferences APIs, client continuation and preference
 controls, then qualified local understanding and reviewed cross-workflow tools.
-All of these remain distinct from the phone v48 artifact already on OTA.
+Phone v49 is published with the workspace/voice foundation; these private backend
+APIs are a separate source slice and are not activated by that APK.
 
 ## Product decision
 
@@ -47,7 +54,7 @@ workflow. It should feel like a patient personal guide through the family archiv
 | Voice | Opt-in foreground voice loop in phone/Web source; endpointing, strict playback completion, Pause/End; ordinary reviewed dictation retained | Native delivery and real microphone/audio-focus/echo acceptance; richer grounded speech |
 | Stories and memoirs | Separate revisioned readers, contribution/editor/chat APIs | Assistant tools that hand off or propose changes in those authorized workflows |
 | Troubleshooting | Account/library-scoped receipts, recognized text and status, 30-day retention | Conversation context distinct from audit receipts; user-visible processing stages |
-| Personal experience | Account authorization and an isolated tested thread/preferences store, inactive at runtime | Protected APIs and client continuation, editable preferences, explicit remembered facts and cross-device continuation |
+| Personal experience | Default-off, tested owned thread/preferences APIs and isolated storage, inactive at runtime | Server-owned turns, client continuation, applied preferences, explicit remembered facts and cross-device continuation |
 
 These are source facts, not current service or family-device acceptance. The
 protected assistant's narrow command parser is not an LLM conversation agent.

@@ -411,3 +411,26 @@ A single explicit Start authorizes only this foreground read-only session.
 Ordinary dictation remains capture → review → insert → send. The local providers,
 models, GPU admission and transport trust remain Windows runtime configuration;
 source builds do not discover or activate them.
+
+## Private assistant workspace API
+
+The default-off `/assistant/workspace/v1` API sits beside strict v1 retrieval.
+Identity comes from the current authenticated library principal; library owners
+receive no override for a member's private history. An optional canonical
+`assistant_workspace_path` flows through staging/runtime configuration into an
+existing validated store. Missing, malformed, overlapping or aliased paths refuse
+without creating a database. Provisioning is an explicit separate operation.
+
+The API exposes capabilities, owned thread list/create/read/delete and own
+preference read/update/reset. Mutations require current revisions; bodies have a
+2 KiB cap and three-second read deadline, strict framing and duplicate/unknown
+field rejection. Startup and hourly pruning enforce fixed 30-day exchange
+retention; failed maintenance closes the optional surface until recovery.
+
+History projects owned text, timestamps and non-actionable card type/count
+placeholders. It does not project source IDs/bindings, receipt IDs or saved
+authority as a ready action. Clients cannot upload fabricated assistant replies
+or arbitrary reference sets. Server-owned turns and freshly revalidated source
+projection are the next layer. Stored locale, response length and pace are not
+yet applied to ASR/TTS; capabilities report that distinction. These source
+contracts are not mounted in the currently served backend.

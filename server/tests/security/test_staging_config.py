@@ -216,6 +216,38 @@ class StagingConfigurationTests(unittest.TestCase):
             selected.build_app()
         self.assertEqual(runtime.call_args.kwargs['assistant_journal_path'],Path('/synthetic/private/journal.sqlite'))
 
+    def test_assistant_workspace_is_optional_separate_and_passed_without_creation(self):
+        self.assertIsNone(s.parse_configuration(base()).assistant_workspace_path)
+        invalid = (
+            {'assistant_workspace_path': '/synthetic/private/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': 'relative.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/01_INCOMING/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/VLM_DATA/derived/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/databases/metadata.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/tls/server.key'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/updates/workspace.sqlite',
+             'update_root': '/synthetic/updates'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/private/workspace.sqlite',
+             'assistant_journal_path': '/synthetic/private/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/private/workspace.sqlite',
+             'original_deletion_journal_path': '/synthetic/private/workspace.sqlite',
+             'original_deletion_namespace': '00000000-0000-4000-8000-000000000001'},
+        )
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+        selected = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_workspace_path='/synthetic/private/workspace.sqlite'))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            selected.build_app()
+        self.assertEqual(runtime.call_args.kwargs['assistant_workspace_path'],
+                         Path('/synthetic/private/workspace.sqlite'))
+        missing = Path('/synthetic/private/missing-workspace.sqlite')
+        with self.assertRaises(s.InvalidConfiguration):
+            s.parse_configuration(dict(base(), assistant_enabled=True,
+                assistant_workspace_path=str(missing))).build_app()
+        self.assertFalse(missing.exists())
+
     def test_a_configuration_written_before_upload_still_loads(self):
         configuration = s.parse_configuration(base())
         self.assertIsNone(configuration.incoming_root)

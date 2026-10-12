@@ -332,6 +332,9 @@ reuses protected photo/video retrieval, visual results and result-count speech;
 Pause/End, context changes and uncertain-request recovery are explicit. Durable
 private conversations/preferences and the grounded story/album/memoir agent are
 separate qualification/delivery layers. Source controls and synthetic journeys do
-not establish live provider quality or family-device acceptance. Phone v48 already
-published to OTA contains saved memoir editing; these assistant additions belong
-to a subsequent release.
+not establish live provider quality or family-device acceptance. Phone v49 is published with the workspace/voice foundation; the Web assets have
+passed Windows qualification. The private history/preferences API is a separate
+default-off source slice: owned list/create/read/delete, revisioned preferences
+and reset, strict request limits and 30-day retention. Saved references are
+non-actionable placeholders. Server-owned turns, applied preferences and client
+continuation are not yet enabled.

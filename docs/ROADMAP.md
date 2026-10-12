@@ -15,14 +15,17 @@ Installed-phone and family acceptance remain pending.
 
 The first workspace/voice source slice and isolated storage foundation have
 local qualification recorded in [Development](DEVELOPMENT.md#october-12-central-assistant-foundation).
-Phone v49 and the Web assets are delivery candidates; neither has been published
-by this source change. Remaining implementation follows these layers:
+Phone v49 is published on HTTPS OTA; native and independent complete downloads
+passed. The Web assets have passed Windows static-route qualification and have a
+separate service switch. Owned history/preferences APIs are now source-qualified,
+default-off and not deployed. Remaining implementation follows these layers:
 
 1. Deliver the qualified phone/Web workspace and foreground voice retrieval using the
    existing protected v1 contract. Its speech capability reads result counts;
    clarification and unsupported replies pause for review.
-2. Owned durable threads and editable presentation preferences, distinct from
-   receipt tracking and shared memories; explicit storage admission and retention.
+2. Integrate server-owned turns and client continuation with the qualified private
+   thread/preferences APIs; admit separate storage explicitly, keep 30-day exchange
+   retention and apply only supported presentation preferences.
 3. Local grounded understanding, evidence-backed archive questions and typed tools
    for stories/albums/memoirs. Model and provider qualification precedes activation.
 4. Reviewed proposals and explicit personal memory; contextual story handoffs,

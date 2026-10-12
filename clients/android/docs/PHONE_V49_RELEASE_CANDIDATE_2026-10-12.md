@@ -1,8 +1,9 @@
 # Phone v49 assistant workspace candidate
 
-Version 49 (`0.49-assistant-workspace`) is the next source candidate. The served
-phone OTA remains v48 until this exact new package is qualified, signed and
-published with operation-specific authority.
+Version 49 (`0.49-assistant-workspace`) was signed and published to the phone
+HTTPS OTA on 2026-10-12 with owner authority. Windows native verification and
+independent complete HTTPS download checks passed; family/device acceptance
+remains open. The Web workspace has a separate delivery operation.
 
 ## Changes
 
@@ -34,8 +35,8 @@ The configured unsigned package was built/linted at clean source
 `757ef78529f60ed5e7d30632be3b2d45bed5ec504590d2e1426559fcdac1af78`.
 Native metadata confirms version 49 and its package; all 17 embedded fields
 match the retained reviewed phone profile, with fixture/UIQA flags off. Signature
-verification correctly rejects the unsigned package. Signing, publication and
-family acceptance are still pending; this is not an OTA delivery claim.
+verification correctly rejects the unsigned package. This records the unsigned build inputs; the signed delivery is recorded below.
+Family acceptance remains pending.
 
 The affected modules passed 850 live-core and 17 phone JVM tests. Final phone
 lint/debug/test assembly and 17 simulator cases passed, including actual context
@@ -51,6 +52,25 @@ checks, phone-pointer publication and full trusted HTTPS readback require their
 exact scope authority and preserved rollback evidence. No API restart is needed
 for the phone package. The separate Web workspace has its own service delivery
 gate.
+
+## Signed delivery
+
+The signed APK is **10,139,968 bytes**, SHA-256
+`94d4f602ea849ad5ab30d36f2605b2f8cd9fb620b9cd465753a701a7cb7a451c`.
+Native metadata confirms `dev.photohouse.connected`, version code 49 and
+`0.49-assistant-workspace`, signed with the original certificate
+`56d7591b2b6c2538d506d1fe51327444f2307736cb12f5beefa08f1c410d6d28`.
+The Android build subtree is unchanged between artifact source `835fd900…` and
+reviewed checkout `af26a99…`; the APK was built from the earlier source pin.
+
+Twenty local controller checks passed after correcting the preparer's authority
+path to match the executor, before any signing or remote mutation. The original
+prepared scripts/manifest remain private failure evidence. Signing happened once;
+fresh Windows staging, exact native metadata/certificate/byte verification and
+phone-only publication completed. Both Windows and an independent Mac read the
+complete APK through trusted HTTPS and matched its size/hash. TV v30 and its feed
+bytes were preserved. The phone delivery did not restart the API, change a task,
+migrate a database, activate a model or install a physical device.
 
 ## Family acceptance
 

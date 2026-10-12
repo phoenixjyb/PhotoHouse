@@ -23,6 +23,7 @@ from .access.albums import router as album_router
 from .access.boundary import ClosedBoundary
 from .access.discovery_transport import router as discovery_router
 from .access.assistant import router as assistant_router
+from .access.assistant_workspace_transport import router as assistant_workspace_router
 from .access.upload_transport import router as upload_router
 from .access.upload_review import router as upload_review_router
 from .access.annotations import router as annotation_router
@@ -39,7 +40,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
-               assistant_asr=None, assistant_tts=None, assistant_journal=None, update_root=None,
+               assistant_asr=None, assistant_tts=None, assistant_journal=None,
+               assistant_workspace_store=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None):
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
@@ -52,6 +54,10 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         raise ValueError('Explicit annotation intake opt-in required')
     if type(assistant_enabled) is not bool:
         raise ValueError('Explicit assistant opt-in required')
+    from .access.assistant_workspace_store import AssistantWorkspaceStore
+    if assistant_workspace_store is not None and (
+            not assistant_enabled or type(assistant_workspace_store) is not AssistantWorkspaceStore):
+        raise ValueError('Explicit enabled assistant workspace store required')
     if type(family_note_erasure_enabled) is not bool:
         raise ValueError('Explicit family note erasure opt-in required')
     if any(type(flag) is not bool for flag in (memory_collaboration_enabled,
@@ -65,7 +71,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     async def lifespan(app):
         maintenance = None
         memory_maintenance = None
+        workspace_maintenance = None
         journal = app.state.assistant_journal
+        workspace = app.state.assistant_workspace_store
         if app.state.memory_collaboration_enabled:
             from .access.memory_jobs import maintenance as prune_memories
             await run_in_threadpool(prune_memories, app.state.access_runtime)
@@ -82,6 +90,21 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                         # until a later successful purge restores retention.
                         app.state.assistant_journal_healthy = False
             maintenance = asyncio.create_task(prune())
+        if workspace is not None:
+            try:
+                await run_in_threadpool(workspace.prune)
+                app.state.assistant_workspace_healthy = True
+            except Exception:
+                app.state.assistant_workspace_healthy = False
+            async def prune_workspace():
+                while True:
+                    await asyncio.sleep(3600)
+                    try:
+                        await run_in_threadpool(workspace.prune)
+                        app.state.assistant_workspace_healthy = True
+                    except Exception:
+                        app.state.assistant_workspace_healthy = False
+            workspace_maintenance = asyncio.create_task(prune_workspace())
         if app.state.memory_collaboration_enabled:
             async def prune_memory_history():
                 while True:
@@ -103,6 +126,10 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                 memory_maintenance.cancel()
                 with suppress(asyncio.CancelledError):
                     await memory_maintenance
+            if workspace_maintenance is not None:
+                workspace_maintenance.cancel()
+                with suppress(asyncio.CancelledError):
+                    await workspace_maintenance
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None,
                   redirect_slashes=False, lifespan=lifespan)
     app.state.access_runtime = access_runtime
@@ -127,6 +154,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_tts = assistant_tts
     app.state.assistant_journal = assistant_journal
     app.state.assistant_journal_healthy = True
+    app.state.assistant_workspace_store = assistant_workspace_store
+    app.state.assistant_workspace_healthy = assistant_workspace_store is not None
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime
     app.state.annotation_intake_enabled = annotation_intake_enabled
@@ -147,6 +176,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(ui_router)
     app.include_router(discovery_router)
     app.include_router(assistant_router)
+    app.include_router(assistant_workspace_router)
     app.include_router(upload_router)
     app.include_router(upload_review_router)
     app.include_router(annotation_router)

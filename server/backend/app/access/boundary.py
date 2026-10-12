@@ -19,6 +19,7 @@ from .tags import router as tag_router
 from .albums import router as album_router
 from .discovery_transport import router as discovery_router
 from .assistant import router as assistant_router
+from .assistant_workspace_transport import router as assistant_workspace_router
 from .upload_transport import router as upload_router
 from .upload_review import router as upload_review_router
 from .annotations import router as annotation_router
@@ -40,7 +41,7 @@ class ClosedBoundary:
     UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -173,6 +174,16 @@ class ClosedBoundary:
         if (method, path) in {('GET', '/assistant/v1/capabilities'), ('POST', '/assistant/v1/turns'),
                               ('POST', '/assistant/v1/transcribe'), ('POST', '/assistant/v1/speech')}:
             return True
+        if (method, path) in {
+                ('GET', '/assistant/workspace/v1/capabilities'),
+                ('GET', '/assistant/workspace/v1/threads'),
+                ('POST', '/assistant/workspace/v1/threads'),
+                ('GET', '/assistant/workspace/v1/preferences'),
+                ('PUT', '/assistant/workspace/v1/preferences'),
+                ('POST', '/assistant/workspace/v1/preferences/reset')}:
+            return True
+        if re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', path):
+            return method in {'GET', 'DELETE'}
         return method in {'GET', 'HEAD'} and bool(re.fullmatch(
             r'/(?:assets/[0-9]+/(?:media|thumbnail|display|playback)|faces/[0-9]+/crop)', path))
 
