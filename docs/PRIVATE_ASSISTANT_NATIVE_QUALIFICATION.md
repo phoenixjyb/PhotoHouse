@@ -4,8 +4,11 @@ The source-only candidate includes `server/scripts/qualify_private_assistant.py`
 It creates invented media metadata and captions, an a0 main database, a separate
 schema-v2 conversation store and an assistant receipt journal. It opens no real
 database or family media, starts no listener and substitutes in-process TTS.
-The six checks cover generated discovery, owned turn recovery, saved-reply
-speech receipts, paged history, actor separation and fixed retention.
+The current eight checks cover generated discovery, owned turn recovery,
+saved-reply speech receipts, negotiated story/memoir cards with legacy recovery,
+saved-memory source drift during synthesis, paged history, actor separation and
+fixed retention. Earlier immutable qualification candidates retain their own
+six-case source pin; updating this script does not update their approved scope.
 
 ## Execution identity and private storage
 
@@ -54,6 +57,6 @@ fingerprint, execution identity, native report, bounds and task-cleanup receipt
 together in private operator evidence. The public repository contains portable
 source and synthetic checks, not household task definitions or paths.
 
-The October 13 local candidate passed its extracted six-case qualification on
-macOS. Native Windows qualification, live private-store provisioning and served
+The October 13 local source passed its eight-case qualification on macOS. Native
+Windows qualification, live private-store provisioning and served
 voice behavior remain separate delivery gates.

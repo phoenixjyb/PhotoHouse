@@ -4610,6 +4610,20 @@
    ],
    "current_control": "Closed boundary and exact handler; protected transport; strict query; separate default-off flag, current store and retention health, authorized reader checks; existing base capabilities remain unchanged.",
    "gap": "Local source only. Windows activation, client card presentation and protected reader handoff are separate gates."
+  },
+  {
+   "source": "backend/app/access/assistant_workspace_transport.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/assistant/workspace/v1/saved-memory-speech-capabilities",
+   "handler": "saved_memory_speech_capabilities",
+   "surface": "photohouse",
+   "scope": "Current selected-library membership and private workspace; configured source-validated saved-memory reply speech only.",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Exact closed-boundary handler and protected query; saved-memory and reply-speech opt-ins, healthy private retention, scoped readers, journal and local TTS adapter. No provider request during probe.",
+   "gap": "Local synthetic qualification only; Windows activation and family pronunciation remain separate gates."
   }
  ]
 }

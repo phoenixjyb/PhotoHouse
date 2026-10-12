@@ -13,6 +13,7 @@ const result={version:1,kind:'results',reply:'Found 1 photo.',context:null,filte
 const envelope=(status='completed',recovered=false,revision=1)=>({version:1,thread_id:threadId,request_id:requestId,status,revision,recovered,error:null,result:status==='completed'?result:null});
 const workspaceCaps=(overrides={})=>({version:1,available:true,threads:true,preferences:true,preferences_applied:false,server_owned_turns:true,...overrides});
 const savedMemoryCapabilities=available=>({version:1,available});
+const savedMemorySpeechCapabilities=available=>({version:1,available});
 const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
 const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
 const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
@@ -208,7 +209,7 @@ test('local speech source wipe is safe after lock or close',async()=>{
 test('scope and source are rechecked after asynchronous WAV validation',async()=>{
   const gate=deferred(),started=deferred(),audio=fakeWav(),original=audio.arrayBuffer.bind(audio);Object.defineProperty(audio,'arrayBuffer',{value:()=>{started.resolve();return gate.promise;}});
   const h=await preparedSpeech({audio});const speech=h.controller.speakReply();await started.promise;await h.controller.send('newer question');gate.resolve(await original());
-  await assert.rejects(speech,e=>e.code==='scope_changed');
+  await assert.rejects(speech,e=>e.code==='aborted');
 });
 
 test('recovered completions and over-limit replies never request speech',async()=>{
@@ -235,7 +236,7 @@ test('late reply audio is fenced when a newer turn invalidates its source',async
   },{ids:[threadId,requestId,speechId,'44444444-4444-4444-8444-444444444444']});
   await h.controller.capabilities();await h.controller.create();await h.controller.send('first');
   const speech=h.controller.speakReply();await started.promise;await h.controller.send('new turn');gate.resolve();
-  await assert.rejects(speech,e=>e.code==='scope_changed');assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().speechReplyBytes,new TextEncoder().encode('Found 1 photo.').length);
+  await assert.rejects(speech,e=>e.code==='aborted');assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().speechReplyBytes,new TextEncoder().encode('Found 1 photo.').length);
 });
 
 test('strict result grammar accepts clarification and unsupported, and binds result to this library',()=>{
@@ -649,6 +650,7 @@ test('recovery never accepts or hydrates negotiated memory cards',async()=>{
 test('saved-memory clarification is negotiated, has no source refs, and may use existing reply speech',async()=>{
   const h=harness(async(path,options)=>{
     if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
     if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
     if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
     if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryClarification()};
@@ -658,6 +660,81 @@ test('saved-memory clarification is negotiated, has no source refs, and may use 
   await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();
   const done=await h.controller.send('找回忆');assert.equal(done.result.kind,'clarification');assert.deepEqual(done.result.memory_cards,[]);
   assert.equal(h.controller.state().speechReady,true);assert.equal(await h.controller.speakReply() instanceof Blob,true);
+});
+
+test('fresh memory cards seed reply speech only after both exact capability probes',async()=>{
+  const speechId='33333333-3333-4333-8333-333333333333';let speechPosts=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    if(path.includes('/speech')){speechPosts++;assert.deepEqual(options.body,{library_id:library,expected_revision:1});return fakeWav();}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,speechId]});
+  await h.controller.capabilities();assert.equal(await h.controller.savedMemoryCapabilities(),true);
+  assert.deepEqual(h.calls.slice(0,3).map(x=>x.path.split('?')[0]),[
+    '/assistant/workspace/v1/capabilities','/assistant/workspace/v1/saved-memory-capabilities',
+    '/assistant/workspace/v1/saved-memory-speech-capabilities']);
+  assert.equal(h.controller.state().savedMemorySpeechAvailable,true);await h.controller.create();await h.controller.send('find memory');
+  assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().savedMemoryAvailable,true);
+  assert.equal(await h.controller.speakReply() instanceof Blob,true);assert.equal(speechPosts,1);
+});
+
+test('missing or unavailable memory speech capability keeps cards available and never seeds speech',async()=>{
+  for(const unavailable of [404,503,'malformed']){
+    const h=harness(async(path,options)=>{
+      if(path.includes('/saved-memory-speech-capabilities')){if(unavailable==='malformed')return {version:1,available:true,unexpected:true};throw Object.assign(new Error('private detail'),{status:unavailable});}
+      if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+      if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+      if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+      if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+      if(path.includes('/speech'))throw Error('speech must remain disabled');
+      throw Error(`unexpected ${path}`);
+    },{ids:[threadId,requestId]});
+    await h.controller.capabilities();assert.equal(await h.controller.savedMemoryCapabilities(),true);
+    assert.equal(h.controller.state().savedMemoryAvailable,true);assert.equal(h.controller.state().savedMemorySpeechAvailable,false);
+    await h.controller.create();await h.controller.send('find memory');assert.equal(h.controller.state().speechReady,false);
+    await assert.rejects(h.controller.speakReply(),error=>error.code==='invalid_input');assert.equal(h.calls.some(x=>x.path.includes('/speech')),false);
+  }
+});
+
+test('new speech probe aborts active memory audio and late bytes are refused',async()=>{
+  const gate=deferred(),started=deferred(),speechId='33333333-3333-4333-8333-333333333333';
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    if(path.includes('/speech')){started.resolve();await gate.promise;return fakeWav();}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,speechId]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();await h.controller.send('find memory');
+  const pending=h.controller.speakReply();await started.promise;assert.equal(h.calls.at(-1).signal.aborted,false);
+  // A fresh optional recheck revokes the memory source before its new result arrives.
+  const recheck=h.controller.savedMemorySpeechCapabilities();assert.equal(h.calls.at(-1).path.includes('/saved-memory-speech-capabilities'),true);
+  assert.equal(h.calls.find(x=>x.path.includes('/speech')).signal.aborted,true);
+  gate.resolve();await recheck;await assert.rejects(pending,error=>error.code==='aborted');
+});
+
+test('recovered memory turn never seeds reply speech after safe GET summary recovery',async()=>{
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))throw Error('ambiguous POST');
+    if(path.includes('/requests/'))return {...envelope('completed',true,1),result};
+    if(path.includes('/speech'))throw Error('recovered memory replies cannot request speech');
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333']});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();h.controller.setDraft('find memories');
+  await assert.rejects(h.controller.send());const recovered=await h.controller.recover(threadId,requestId);
+  assert.equal(recovered.recovered,true);assert.equal(recovered.result.kind,'results');
+  assert.equal(h.controller.state().speechReady,false);await assert.rejects(h.controller.speakReply(),error=>error.code==='invalid_input');
+  assert.equal(h.calls.some(x=>x.path.includes('/speech')),false);
 });
 
 test('memory result grammar is exact, bounded and accepted only for negotiated fresh POST',()=>{

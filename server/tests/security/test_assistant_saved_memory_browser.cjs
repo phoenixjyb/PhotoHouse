@@ -21,13 +21,15 @@ createInterface({input:bridge.stdout}).on('line',line=>{
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Saved-memory browser bridge exited (${code})`));for(const item of pending.values())item.reject(new Error('Saved-memory browser bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const requests=[],errors=[],external=[],checks=[];
-let probeMode='live',dropNextTurnResponse=false;
+let probeMode='live',speechProbeMode='live',dropNextTurnResponse=false;
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const decode=response=>JSON.parse(Buffer.from(response.body,'base64').toString('utf8'));
 const turns=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/turns$/.test(item.path));
 const cards=()=>page.locator('#assistant-results .assistant-memory-card');
 const routeMemoryPath='/assistant/workspace/v1/saved-memory-capabilities';
+const routeMemorySpeechPath='/assistant/workspace/v1/saved-memory-speech-capabilities';
+const speechCalls=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/speech$/.test(item.path));
 async function installTransport(target){
   await target.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
@@ -39,12 +41,17 @@ async function installTransport(target){
       item.syntheticMissingProbe=true;item.status=404;
       await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
     }
+    if(item.method==='GET'&&url.pathname===routeMemorySpeechPath&&speechProbeMode==='missing'){
+      item.syntheticMissingProbe=true;item.status=404;
+      await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
+    }
     const headers={...item.headers};delete headers['content-length'];
     if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
     item.serverReached=true;
     const result=await rpc({method:item.method,path:item.path,headers,
       body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
     item.status=result.status;
+    item.responseHeaders=result.headers;
     try{item.response=decode(result);}catch{}
     const out={...result.headers};delete out['content-length'];delete out['content-encoding'];
     if(item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/turns$/.test(url.pathname)&&dropNextTurnResponse){
@@ -55,11 +62,34 @@ async function installTransport(target){
   });
   await target.addInitScript(()=>{
     window.__savedMemoryXss=0;window.__phSpeechCalls=0;
+    window.__phAudioPlayCalls=0;window.__phAudioPauseCalls=0;window.__phRevokedAudioUrls=[];
+    window.__phMicCalls=0;window.__privateAssistantController=null;
     try{Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){window.__phSpeechCalls++;},cancel(){},get speaking(){return false;}}});}catch{}
+    let privateApi=null;
+    Object.defineProperty(window,'PhotoHousePrivateAssistant',{configurable:true,
+      get(){return privateApi;},set(value){privateApi={...value,
+        createController(options){const controller=value.createController(options);window.__privateAssistantController=controller;return controller;},
+      };
+      }});
+    const media=window.HTMLMediaElement?.prototype;
+    if(media){
+      const originalPlay=media.play,originalPause=media.pause,originalLoad=media.load,originalRemoveAttribute=media.removeAttribute;
+      Object.defineProperty(media,'paused',{configurable:true,get(){return this.__phPlaying!==true;}});
+      Object.defineProperty(media,'ended',{configurable:true,get(){return this.__phEnded===true;}});
+      media.play=function(){if(this.id!=='assistant-speech-audio')return originalPlay.call(this);this.__phPlaying=true;window.__phAudioPlayCalls++;return Promise.resolve();};
+      media.pause=function(){if(this.id!=='assistant-speech-audio')return originalPause.call(this);this.__phPlaying=false;window.__phAudioPauseCalls++;};
+      media.load=function(){if(this.id!=='assistant-speech-audio')return originalLoad.call(this);this.__phEnded=false;};
+      media.removeAttribute=function(name){if(this.id==='assistant-speech-audio'&&name==='src')this.__phPlaying=false;return originalRemoveAttribute.call(this,name);};
+    }
+    const revoke=URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL=url=>{if(typeof url==='string'&&url.startsWith('blob:'))window.__phRevokedAudioUrls.push(url);return revoke(url);};
+    try{const devices=navigator.mediaDevices,original=devices?.getUserMedia?.bind(devices);if(original)devices.getUserMedia=(...args)=>{window.__phMicCalls++;return original(...args);};}catch{}
   });
 }
 const callCommand=async command=>{const response=await rpc({command});assert.equal(response.ok,true,`bridge command ${command}`);};
 const probeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryPath));
+const speechProbeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemorySpeechPath));
+const fakeTtsCalls=async()=>{const response=await rpc({command:'tts-calls'});assert.equal(response.ok,true);return response.calls;};
 async function waitForTurnCount(before){
   const deadline=Date.now()+10000;
   while(turns().length<=before&&Date.now()<deadline)await page.waitForTimeout(20);
@@ -128,11 +158,16 @@ async function reloadAndLogin(){
   assert(baseEntry?.response,'base capabilities request is observed');
   for(const key of ['saved_memory_cards','saved_memory_cards_enabled','memory_cards'])assert.equal(Object.hasOwn(baseEntry.response,key),false);
   const probeEntry=probeReads().find(item=>item.response?.available===true);
+  const speechProbeDeadline=Date.now()+10000;
+  while(!speechProbeReads().some(item=>item.response?.available===true)&&Date.now()<speechProbeDeadline)await page.waitForTimeout(20);
+  const speechProbeEntry=speechProbeReads().find(item=>item.response?.available===true);
+  assert(speechProbeEntry,'separate saved-memory speech probe reports the synthetic local provider and journal available');
   const listEntry=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/threads?'));
   const preferencesEntry=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/preferences?'));
   assert(baseEntry&&listEntry&&preferencesEntry&&probeEntry&&requests.indexOf(baseEntry)<requests.indexOf(listEntry)&&
-    requests.indexOf(listEntry)<requests.indexOf(preferencesEntry)&&requests.indexOf(preferencesEntry)<requests.indexOf(probeEntry),
-    'optional probe follows base capabilities, list and preferences for the current library');
+    requests.indexOf(listEntry)<requests.indexOf(preferencesEntry)&&requests.indexOf(preferencesEntry)<requests.indexOf(probeEntry)&&
+    requests.indexOf(probeEntry)<requests.indexOf(speechProbeEntry),
+    'optional probes follow base capabilities, list and preferences for the current library');
   pass('Member workspace reads a separate current-library saved-memory probe without changing base capabilities');
 
   const privatePanel=page.locator('#assistant-private');
@@ -161,8 +196,62 @@ async function reloadAndLogin(){
   assert.equal(requests.filter(item=>/^\/assets\/[^/]+\/(?:thumbnail|open|original)(?:\?|$)/.test(item.path)).length,initialMediaRequests,
     'fresh saved-memory cards do not hydrate or open media');
   assert.equal(await page.evaluate(()=>window.__phSpeechCalls),speechBefore,'fresh saved-memory cards do not start TTS');
-  assert.equal(requests.some(item=>item.path.includes('/speech')),false,'no speech route is called for the card reply');
-  pass('Fresh story card renders source title/excerpt as text with no script execution, action, media hydration, effect or speech');
+  assert.equal(speechCalls().length,0,'no private speech route is called before explicit playback');
+  assert(await page.locator('#assistant-play').isVisible(),'fresh owned card reply exposes an explicit playback action');
+  assert.match(await page.locator('#assistant-play').innerText(),/播放语音回复|Play spoken reply/);
+  const callCountBefore=await fakeTtsCalls();assert.equal(callCountBefore.length,0,'fake local TTS has no automatic calls');
+  await page.locator('#assistant-play').click();
+  const speechDeadline=Date.now()+10000;
+  while((!speechCalls().at(-1)?.response||!(await fakeTtsCalls()).length)&&Date.now()<speechDeadline)await page.waitForTimeout(20);
+  assert.equal(speechCalls().length,1,'one explicit click makes exactly one typed reply speech request');
+  const speechRequest=speechCalls()[0],speechPayload=JSON.parse(speechRequest.body);
+  const turnId=storyPayload.request_id;
+  assert.match(speechRequest.path,new RegExp(`/requests/${turnId}/speech$`),'speech is bound to the exact fresh turn');
+  assert.deepEqual(Object.keys(speechPayload).sort(),['expected_revision','library_id']);
+  assert.equal(speechPayload.library_id,'family-a');assert.equal(speechPayload.expected_revision,storyTurn.response.revision);
+  assert.notEqual(speechRequest.headers['x-photohouse-request-id'],turnId,'speech receives a distinct request ID');
+  assert.equal(speechRequest.headers['x-photohouse-parent-request-id'],turnId,'speech is correlated to the card-producing turn');
+  assert.equal(speechRequest.status,200);assert.equal(speechRequest.response,undefined,'WAV response is not parsed as JSON');
+  assert((speechRequest.headers.accept||'').includes('audio/wav'));
+  assert.equal(speechRequest.responseHeaders['x-photohouse-request-id'],speechRequest.headers['x-photohouse-request-id']);
+  assert.equal(speechRequest.responseHeaders['x-photohouse-tracking'],'enabled');
+  assert.equal(speechRequest.responseHeaders['x-photohouse-receipt-status'],'succeeded');
+  const fakeCalls=await fakeTtsCalls();assert.equal(fakeCalls.length,1);
+  assert.equal(fakeCalls[0].reply,storyTurn.response.result.reply,'TTS receives the exact server-owned generic reply');
+  assert.equal(fakeCalls[0].language,'zh');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length,0,
+    'typed reply playback does not start listening or submit another turn');
+  assert.equal(await page.evaluate(()=>window.__phSpeechCalls),speechBefore,'reply audio does not fall back to browser TTS');
+  assert.equal(page.url(),'https://photohouse.test/ui','reply speech does not navigate to a reader');
+  pass('Fresh story card stays inert until explicit play requests one correlated local rendering of its exact generic reply');
+  await page.waitForFunction(()=>window.__phAudioPlayCalls===1&&document.getElementById('assistant-speech-audio')?.paused===false);
+  const audio=page.locator('#assistant-speech-audio'),activeAudioUrl=await audio.getAttribute('src');
+  assert.match(activeAudioUrl||'',/^blob:/,'explicit play starts held audio playback');
+  const turnsBeforeSpeechLoss=turns().length,opensBeforeSpeechLoss=requests.filter(item=>/\/assets\/[^/]+\/open(?:\?|$)/.test(item.path)).length;
+  const micCallsBeforeSpeechLoss=await page.evaluate(()=>window.__phMicCalls);
+  await callCommand('saved-memory-speech-off');
+  assert.equal(await page.evaluate(()=>window.__privateAssistantController.savedMemorySpeechCapabilities()),false,
+    'the explicit capability refresh observes speech disabled');
+  const stopped=await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true&&
+    document.getElementById('assistant-speech')?.hidden===true&&document.getElementById('assistant-speech-stop')?.hidden===true&&
+    window.__phRevokedAudioUrls.length===1,{timeout:3000}).then(()=>true).catch(()=>false);
+  if(!stopped)console.error('SPEECH_LOSS_STATE',JSON.stringify(await page.evaluate(()=>({controller:window.__privateAssistantController?.state(),
+    audio:{paused:document.getElementById('assistant-speech-audio')?.paused,src:document.getElementById('assistant-speech-audio')?.getAttribute('src')},
+    speechHidden:document.getElementById('assistant-speech')?.hidden,stopHidden:document.getElementById('assistant-speech-stop')?.hidden,
+    playCalls:window.__phAudioPlayCalls,pauseCalls:window.__phAudioPauseCalls,revoked:window.__phRevokedAudioUrls}))));
+  assert.equal(stopped,true,'active private reply audio stops after the speech capability is lost');
+  assert.equal(await audio.getAttribute('src'),null,'speech capability loss removes the active audio source');
+  assert(await audio.evaluate(node=>node.hidden),'audio element remains hidden from the page');
+  assert.equal(await page.locator('#assistant-play').isDisabled(),false,'speech loss leaves no stuck disabled play control');
+  assert.equal(await cards().count(),1,'speech loss retains the saved-memory card');
+  assert.equal(await cards().first().locator('h3').innerText(),fixtureInfo.story_title,'the source card text remains visible');
+  assert.equal(turns().length,turnsBeforeSpeechLoss,'speech capability loss sends no new turn');
+  assert.equal(requests.filter(item=>/\/assets\/[^/]+\/open(?:\?|$)/.test(item.path)).length,opensBeforeSpeechLoss,
+    'speech capability loss does not open a reader or media');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micCallsBeforeSpeechLoss,'speech capability loss never starts microphone capture');
+  assert.deepEqual(await page.evaluate(()=>window.__phRevokedAudioUrls),[activeAudioUrl],'the active object URL is revoked');
+  assert.equal(await page.evaluate(()=>window.__phAudioPauseCalls)>0,true,'active playback is explicitly paused');
+  pass('Losing the saved-memory speech probe while audio is active pauses and revokes it while retaining the card');
 
   // A memoir-specific command proves the kind filter and the accessible card
   // layout at a phone-equivalent width and 150% font size.
@@ -191,6 +280,7 @@ async function reloadAndLogin(){
   await page.locator('#assistant-private-recover').waitFor({state:'visible',timeout:10000});
   assert(lost.responseDroppedAfterServer);
   const lostBody=JSON.parse(lost.body);assert.deepEqual(lostBody.accepts,['saved_memory_cards_v1']);
+  const speechCountBeforeRecovery=speechCalls().length,ttsCountBeforeRecovery=(await fakeTtsCalls()).length;
   const recoverButton=page.locator('#assistant-private-recover');await recoverButton.click();
   await page.waitForFunction(()=>document.getElementById('assistant-private-recover')?.hidden===true||document.getElementById('assistant-private-recover')?.disabled===true,{},{timeout:10000});
   assert.equal(turns().length,beforeLost+1,'recovery does not repeat the turn POST');
@@ -199,6 +289,8 @@ async function reloadAndLogin(){
   const recoveredResult=recovered.response.result;
   assert.equal(recovered.response.recovered,true);assert.equal(recoveredResult.effect,null);
   assert.equal(recoveredResult.context,null);assert.deepEqual(recoveredResult.items,[]);
+  assert.equal(speechCalls().length,speechCountBeforeRecovery,'GET recovery never repeats private reply speech');
+  assert.equal((await fakeTtsCalls()).length,ttsCountBeforeRecovery,'GET recovery never synthesizes audio');
   assert.equal(Object.hasOwn(recoveredResult,'memory_cards'),false,'recovery does not return fresh cards');
   assert.equal(JSON.stringify(recoveredResult).includes(fixtureInfo.story_id),false);
   assert.equal(JSON.stringify(recoveredResult).includes(fixtureInfo.memoir_id),false);
@@ -237,10 +329,29 @@ async function reloadAndLogin(){
   const missingBody=JSON.parse(missingTurn.body);assert.equal(Object.hasOwn(missingBody,'accepts'),false,'missing probe preserves legacy body');
   pass('Missing optional capability probe leaves legacy turn JSON without card opt-in');
 
+  // A missing second probe must not disable the independently negotiated card
+  // feature. It only withholds the explicit speech action for this scope.
+  await callCommand('reply-speech-on');probeMode='live';speechProbeMode='missing';await reloadAndLogin();
+  const fallbackMemoryDeadline=Date.now()+10000;
+  while(!probeReads().some(item=>item.response?.available===true)&&Date.now()<fallbackMemoryDeadline)await page.waitForTimeout(20);
+  const fallbackSpeechDeadline=Date.now()+10000;
+  while(!speechProbeReads().some(item=>item.syntheticMissingProbe)&&Date.now()<fallbackSpeechDeadline)await page.waitForTimeout(20);
+  assert(probeReads().some(item=>item.response?.available===true),'card capability remains available');
+  assert(speechProbeReads().some(item=>item.syntheticMissingProbe),'only the optional speech probe is missing');
+  await ensureThread();
+  const beforeFallback=turns().length;const fallbackTurn=await submit('搜索故事 野餐');
+  await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(JSON.parse(fallbackTurn.body).accepts?.[0],'saved_memory_cards_v1');
+  assert.equal(await cards().count(),1,'saved-memory card still renders with a missing speech probe');
+  assert.equal(await page.locator('#assistant-play').isHidden(),true,'missing speech probe hides reply playback');
+  assert.equal(speechCalls().length,1,'missing probe does not call speech endpoint');
+  assert.equal((await fakeTtsCalls()).length,1,'missing probe does not synthesize audio');
+  pass('Missing saved-memory speech probe preserves cards and withholds speech playback');
+
   assert.deepEqual(external,[],'browser makes no request outside the synthetic origin');
   assert.deepEqual(errors,[],'browser has no uncaught JavaScript errors');
   console.log(`CHECKPOINTS ${checks.length}`);
-})().catch(error=>{console.error(error.stack||error);process.exitCode=1;}).finally(async()=>{
+})().catch(async error=>{console.error(error.stack||error);if(page)try{console.error('BROWSER_STATE',JSON.stringify({url:page.url(),errors,authVisible:await page.locator('#auth').isVisible(),assetCount:await page.locator('#grid .asset').count()}));}catch{}process.exitCode=1;}).finally(async()=>{
   try{await page?.close();await context?.close();await browser?.close();}catch{}
   try{bridge.stdin.write('{"command":"quit"}\n');bridge.stdin.end();}catch{}
   if(bridge.exitCode===null)bridge.kill();

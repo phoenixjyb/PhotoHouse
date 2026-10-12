@@ -34,6 +34,12 @@ checked again before returning audio. Failures preserve visible text and pause.
 
 ## Voice UX
 
+Saved story/memoir results have an additional optional speech-capability probe.
+Their matching exchange references are source-validated before and after TTS,
+with one drift guard across the whole reference set. Only the generic persisted
+reply is synthesized. Missing speech capability leaves cards readable; replay
+never creates a speech source. See [saved-memory cards](ASSISTANT_SAVED_MEMORY_CARDS_V1.md).
+
 Only a fresh completed response in an explicitly started private voice session
 can automatically request speech. A recovered/replayed response pauses for
 review and never automatically synthesizes, plays, navigates or listens again.

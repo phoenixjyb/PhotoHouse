@@ -56,7 +56,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 155)
+                self.assertEqual(len(main.app.routes), 156)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -171,6 +171,7 @@ class ClosedApplicationTests(unittest.TestCase):
         expected |= {
             ('GET', '/assistant/workspace/v1/capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+            ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
             ('GET', '/assistant/workspace/v1/threads'),
             ('POST', '/assistant/workspace/v1/threads'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}'),
@@ -187,7 +188,7 @@ class ClosedApplicationTests(unittest.TestCase):
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 155)
+        self.assertEqual(len(actual), 156)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

@@ -513,10 +513,12 @@ references. The private-turn gateway exposes them only with explicit negotiation
 and a separate default-off capability probe; the base capability response stays
 compatible with existing clients. Fresh cards revalidate current sources before
 completion and response. Replay keeps legacy summaries and inert placeholders;
-story/memoir reference turns are refused by the speech route pending typed-source
-validation. Web shows scoped immutable text cards without media hydration or
-automatic speech; its optional probe preserves legacy fallback and fences late
-responses after capability changes. Phone cards and reader navigation remain outstanding. The
+saved-reference speech revalidates the matching completed exchange and every
+current story/memoir source before and after synthesis. Web shows scoped immutable
+text cards without media hydration. A separate optional speech probe enables
+their short generic replies; original card and base probes remain compatible.
+Late responses and audio are fenced on feature loss, and playback stops before
+another foreground capture can start. Phone cards and reader navigation remain outstanding. The
 [saved-memory card contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) requires separate
 feature negotiation, current-source revalidation and explicit reader handoff.
 Recovered history remains non-actionable. No inference, automatic story mutation

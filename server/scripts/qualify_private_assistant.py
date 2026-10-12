@@ -37,6 +37,8 @@ CASES = (
     'migrated_synthetic_runtime_and_generated_discovery_index',
     'private_thread_create_turn_and_idempotent_recovery',
     'saved_reply_speech_parent_receipt_and_duplicate_refusal',
+    'negotiated_saved_story_memoir_and_strict_legacy_recovery',
+    'saved_memory_reply_speech_revalidates_sources_after_synthesis',
     'opt_in_unicode_label_and_paged_history',
     'foreign_actor_reads_are_indistinguishable',
     'fixed_retention_expires_private_text',
@@ -229,6 +231,38 @@ def _assert(condition, code):
         raise RuntimeError(code)
 
 
+def _save_synthetic_story(client, title, narration, *, revision='0', ident=None):
+    """Create/edit a generated family story only through its protected API."""
+    preview = client.post('/story-workspace/preview?library=' + LIBRARY,
+        headers=_auth(TOKEN), json={'asset_ids': '1', 'theme': 'everyday',
+            'language': 'en', 'title': title})
+    _assert(preview.status_code == 200, 'synthetic_story_preview_failed')
+    chapters = [{'id': 'chapter-1', 'title': title,
+                 'narration': narration, 'asset_ids': ['1'], 'evidence_ids': []}]
+    body = {'title': title, 'theme': 'everyday', 'language': 'en',
+            'asset_ids': '1', 'chapters': json.dumps(chapters, separators=(',', ':')),
+            'selection_revision': preview.json()['selection_revision'],
+            'revision': revision, 'mutation_id': str(uuid.uuid4())}
+    if ident is None:
+        response = client.post('/memory-stories?library=' + LIBRARY,
+                               headers=_auth(TOKEN), json=body)
+    else:
+        response = client.put(f'/memory-stories/{ident}?library={LIBRARY}',
+                              headers=_auth(TOKEN), json=body)
+    _assert(response.status_code == 200, 'synthetic_story_save_failed')
+    return response.json()
+
+
+def _save_synthetic_memoir(client, story_id, title, introduction):
+    """Create a generated memoir through the protected memory API."""
+    response = client.post('/memory-community/v1/books?library=' + LIBRARY,
+        headers=_auth(TOKEN), json={'title': title, 'language': 'en',
+            'introduction': introduction, 'story_ids': story_id,
+            'revision': '0', 'mutation_id': str(uuid.uuid4())})
+    _assert(response.status_code == 200, 'synthetic_memoir_save_failed')
+    return response.json()
+
+
 def _report(native):
     return {'status': 'passed', 'synthetic_only': True, 'native_windows': native,
             'source_revision': MAIN_REVISION, 'cases_passed': list(CASES),
@@ -264,7 +298,8 @@ def run(output):
             derived_root=derived.resolve(), discovery_indexes=(index_path.resolve(),),
             assistant_enabled=True, assistant_workspace_path=workspace_path.resolve(),
             assistant_journal_path=journal_path.resolve(),
-            assistant_tts_url="http://127.0.0.1:19001/tts", assistant_reply_speech_enabled=True)
+            assistant_tts_url="http://127.0.0.1:19001/tts", assistant_reply_speech_enabled=True,
+            memory_collaboration_enabled=True, assistant_saved_memory_cards_enabled=True)
         app = configuration.build_app(clock=lambda: clock[0])
         tts = _synthetic_tts_class()()
         app.state.assistant_tts = tts
@@ -340,6 +375,123 @@ def run(output):
                     journal_record['status'] == 'succeeded' and
                     journal_record['input_text'] is None and journal_record['recognized_text'] is None,
                     'synthetic_speech_journal_failed')
+
+            phase = 'saved_memory_cards_and_recovery'
+            story_title = 'Synthetic Amber Story'
+            memoir_title = 'Synthetic Amber Memoir'
+            story = _save_synthetic_story(client, story_title,
+                'A synthetic amber picnic beside the lake.')
+            memoir = _save_synthetic_memoir(client, story['id'], memoir_title,
+                'A synthetic amber memoir opening.')
+            cards_capability = client.get(BASE + '/saved-memory-capabilities?library_id=' + LIBRARY,
+                                          headers=_auth(TOKEN))
+            speech_capability = client.get(
+                BASE + '/saved-memory-speech-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(cards_capability.status_code == 200 and
+                    cards_capability.json() == {'version': 1, 'available': True} and
+                    speech_capability.status_code == 200 and
+                    speech_capability.json() == {'version': 1, 'available': True},
+                    'synthetic_saved_memory_capability_failed')
+
+            memory_thread = client.post(BASE + '/threads', headers=_auth(TOKEN),
+                                        json={'library_id': LIBRARY})
+            _assert(memory_thread.status_code == 201, 'synthetic_memory_thread_create_failed')
+            memory_thread_id = memory_thread.json()['thread']['thread_id']
+            story_request_id = str(uuid.uuid4())
+            story_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': story_request_id, 'expected_revision': 0,
+                    'text': 'find saved story amber', 'accepts': ['saved_memory_cards_v1']})
+            _assert(story_turn.status_code == 200, 'synthetic_memory_story_turn_failed')
+            story_result = story_turn.json().get('result')
+            _assert(type(story_result) is dict and story_result.get('kind') == 'memory_cards' and
+                    [card.get('id') for card in story_result.get('memory_cards', [])] == [story['id']] and
+                    story_result.get('effect') is None and story_result.get('items') == [],
+                    'synthetic_memory_story_cards_invalid')
+
+            story_recovery = client.get(
+                f'{BASE}/threads/{memory_thread_id}/requests/{story_request_id}?library_id={LIBRARY}',
+                headers=_auth(TOKEN))
+            recovered_memory = story_recovery.json().get('result') if story_recovery.status_code == 200 else None
+            _assert(story_recovery.status_code == 200 and story_recovery.json().get('recovered') is True and
+                    type(recovered_memory) is dict and set(recovered_memory) == {
+                        'version', 'kind', 'reply', 'context', 'filters', 'total',
+                        'has_more', 'effect', 'items'} and
+                    recovered_memory.get('kind') == 'results' and
+                    recovered_memory.get('reply') == story_result['reply'] and
+                    recovered_memory.get('context') is None and recovered_memory.get('total') == 0 and
+                    recovered_memory.get('has_more') is False and recovered_memory.get('effect') is None and
+                    recovered_memory.get('items') == [] and 'memory_cards' not in recovered_memory and
+                    story['id'] not in story_recovery.text and story_title not in story_recovery.text,
+                    'synthetic_memory_recovery_not_legacy_safe')
+
+            memory_speech_url = f'{BASE}/threads/{memory_thread_id}/requests/{story_request_id}/speech'
+            story_speech_id = str(uuid.uuid4())
+            story_audio = client.post(memory_speech_url,
+                headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': story_speech_id,
+                         'X-PhotoHouse-Parent-Request-Id': story_request_id},
+                json={'library_id': LIBRARY, 'expected_revision': 1})
+            _assert(story_audio.status_code == 200 and story_audio.content == tts.audio and
+                    tts.calls[-1] == (story_result['reply'], 'en') and
+                    story_title not in tts.calls[-1][0] and story['id'] not in tts.calls[-1][0],
+                    'synthetic_memory_story_speech_failed')
+
+            phase = 'saved_memory_memoir_cards_and_speech'
+            memoir_request_id = str(uuid.uuid4())
+            memoir_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': memoir_request_id, 'expected_revision': 1,
+                    'text': 'find memoir amber', 'accepts': ['saved_memory_cards_v1']})
+            _assert(memoir_turn.status_code == 200, 'synthetic_memory_memoir_turn_failed')
+            memoir_result = memoir_turn.json().get('result')
+            _assert(type(memoir_result) is dict and memoir_result.get('kind') == 'memory_cards' and
+                    [card.get('id') for card in memoir_result.get('memory_cards', [])] == [memoir['id']] and
+                    memoir_result.get('effect') is None and memoir_result.get('items') == [],
+                    'synthetic_memory_memoir_cards_invalid')
+            memoir_speech_id = str(uuid.uuid4())
+            memoir_audio = client.post(
+                f'{BASE}/threads/{memory_thread_id}/requests/{memoir_request_id}/speech',
+                headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': memoir_speech_id,
+                         'X-PhotoHouse-Parent-Request-Id': memoir_request_id},
+                json={'library_id': LIBRARY, 'expected_revision': 2})
+            _assert(memoir_audio.status_code == 200 and memoir_audio.content == tts.audio and
+                    tts.calls[-1] == (memoir_result['reply'], 'en') and
+                    memoir_title not in tts.calls[-1][0] and memoir['id'] not in tts.calls[-1][0],
+                    'synthetic_memory_memoir_speech_failed')
+
+            phase = 'saved_memory_source_drift_during_speech'
+            drift_request_id = str(uuid.uuid4())
+            drift_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': drift_request_id, 'expected_revision': 2,
+                    'text': 'find saved story amber', 'accepts': ['saved_memory_cards_v1']})
+            _assert(drift_turn.status_code == 200, 'synthetic_memory_drift_turn_failed')
+            calls_before_drift = len(tts.calls)
+            original_synthesize = tts.synthesize
+
+            def edit_story_during_speech(words, language):
+                audio = original_synthesize(words, language)
+                _save_synthetic_story(client, story_title,
+                    'The synthetic amber picnic changed during reply speech.',
+                    revision=story['revision'], ident=story['id'])
+                return audio
+
+            with patch.object(tts, 'synthesize', side_effect=edit_story_during_speech):
+                drift_audio = client.post(
+                    f'{BASE}/threads/{memory_thread_id}/requests/{drift_request_id}/speech',
+                    headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': str(uuid.uuid4()),
+                             'X-PhotoHouse-Parent-Request-Id': drift_request_id},
+                    json={'library_id': LIBRARY, 'expected_revision': 3})
+            _assert(drift_audio.status_code == 409 and drift_audio.content != tts.audio and
+                    len(tts.calls) == calls_before_drift + 1,
+                    'synthetic_memory_source_drift_audio_not_withheld')
+            removed_memory_thread = client.request('DELETE',
+                f'{BASE}/threads/{memory_thread_id}', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'expected_revision': 3})
+            _assert(removed_memory_thread.status_code == 200 and
+                    removed_memory_thread.json().get('deleted') is True,
+                    'synthetic_memory_thread_cleanup_failed')
 
             # Populate additional deterministic rows through the private store
             # API to exercise paging without repeated engine work.

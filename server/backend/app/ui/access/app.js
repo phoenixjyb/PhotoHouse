@@ -5,6 +5,7 @@
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null};
   let storyWorkspace, memoryCommunity, memoryGroups;
   let privateAssistant=null,privateAssistantBusy=false,privateCreationRetryId=null;
+  let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let memoryGroupGalleryItems=[];
   const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechUrl:null,voicePlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
   const assistantRecoveryKey='photohouse.assistant.turn-recovery.v1',assistantRecoveryMaxChars=512;
@@ -1064,6 +1065,18 @@
 
   function renderPrivateAssistant(snapshot){
     if(!$('assistant-private'))return;
+    const memoryScope=JSON.stringify([snapshot.account,snapshot.library,state.generation]);
+    const memorySpeech=snapshot.savedMemoryAvailable===true&&snapshot.savedMemorySpeechAvailable===true;
+    const memorySpeechLost=privateMemorySpeechScope===memoryScope&&privateMemorySpeechEnabled&&!memorySpeech;
+    privateMemorySpeechScope=memoryScope;privateMemorySpeechEnabled=memorySpeech;
+    if(memorySpeechLost&&snapshot.currentResult?.kind==='memory_cards')queueMicrotask(()=>{
+      const current=privateAssistant?.state();
+      if(current&&JSON.stringify([current.account,current.library,state.generation])===memoryScope&&
+          current.currentResult?.kind==='memory_cards'&&
+          !(current.savedMemoryAvailable&&current.savedMemorySpeechAvailable)){
+        endAssistantVoice();stopAssistantSpeech();$('assistant-speech').hidden=true;syncAssistantControls();
+      }
+    });
     if(snapshot.locked&&!state.locked&&state.profile){const epoch=state.generation;queueMicrotask(()=>{if(!stale(epoch)&&privateAssistant?.state().locked){showAuth();status('denied');}});}
     const available=snapshot.capabilities?.available===true&&snapshot.capabilities?.threads===true;
     const turnAvailable=snapshot.capabilities?.server_owned_turns===true;

@@ -383,7 +383,11 @@ negotiation. History keeps the legacy 30-day summary and non-actionable typed
 reference counts. Web renders immutable plain-text cards after the separate
 probe, with legacy fallback and scope/capability fences. Nine focused HTTP
 checks, 45 controller checks and six generated browser checkpoints passed.
-Phone cards, reader opening and story/memoir reply TTS remain outstanding;
+Saved-memory reply TTS now revalidates typed sources before and after synthesis,
+behind a separate optional probe; no source prose is passed to TTS. The final
+controller and browser follow-up passed 49 checks and eight checkpoints.
+Capability loss stops active playback and revokes transient audio. Phone cards
+and reader opening remain outstanding;
 no live flag or API was activated.
 
 

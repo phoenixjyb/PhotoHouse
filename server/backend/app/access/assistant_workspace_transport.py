@@ -26,7 +26,7 @@ from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
 from .service import AccessDenied, AccessService
 from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime,
-                        _single, credentials_from_request)
+                        _single, credentials_from_request, _memory_runtime)
 
 MAX_BODY = 2048
 MAX_QUERY = 1024
@@ -330,7 +330,7 @@ async def _turn_envelope(request, account, library, row, *, recovered, memory_ou
             raise WorkspaceStoreUnavailable()
         if memory_outcome is not None and not recovered:
             _saved_memory_enabled(request)
-            await run_in_threadpool(_validate_memory_outcome, _access, token, library,
+            await run_in_threadpool(_validate_memory_outcome, _memory_runtime(request), token, library,
                                     memory_outcome)
             result = memory_outcome.fresh_result()
         else:
@@ -414,13 +414,15 @@ def _saved_memory_enabled(request):
 
 def _memory_command(access, token, library, words, language):
     with access.connection_factory() as connection:
-        return AssistantSavedMemoryTool(AccessService(connection, clock=access.clock)).run(
+        return AssistantSavedMemoryTool(AccessService(connection, clock=access.clock,
+            memory_groups_enabled=access.memory_groups_enabled)).run(
             token, library, words, locale=language)
 
 
 def _validate_memory_outcome(access, token, library, outcome):
     with access.connection_factory() as connection:
-        domain = AccessService(connection, clock=access.clock)
+        domain = AccessService(connection, clock=access.clock,
+                               memory_groups_enabled=access.memory_groups_enabled)
         domain.library_principal(token, library)
         version = connection.execute('PRAGMA data_version').fetchone()[0]
         reader = AssistantMemoryDiscovery(domain)
@@ -433,7 +435,8 @@ def _validate_memory_outcome(access, token, library, outcome):
 
 def _memory_readers_available(access, token, library):
     with access.connection_factory() as connection:
-        reader = AssistantMemoryDiscovery(AccessService(connection, clock=access.clock))
+        reader = AssistantMemoryDiscovery(AccessService(connection, clock=access.clock,
+            memory_groups_enabled=access.memory_groups_enabled))
         reader.stories.list(token, library, 1)
         reader.books.list(token, library, 1)
 
@@ -450,7 +453,7 @@ async def saved_memory_capabilities(request: Request):
         access, engine = assistant_engine._engine(request)
         if engine is not None:
             token, _mode = credentials_from_request(request, allow_query=True)
-            await run_in_threadpool(_memory_readers_available, access, token, library)
+            await run_in_threadpool(_memory_readers_available, _memory_runtime(request, allow_query=True), token, library)
             available = True
     except AccessDenied:
         raise
@@ -459,6 +462,57 @@ async def saved_memory_capabilities(request: Request):
     if await _principal(request, library) != account:
         raise AccessDenied()
     return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
+@router.get('/assistant/workspace/v1/saved-memory-speech-capabilities')
+async def saved_memory_speech_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    available = False
+    try:
+        _saved_memory_enabled(request)
+        access, engine = assistant_engine._engine(request)
+        if engine is not None:
+            token, _mode = credentials_from_request(request, allow_query=True)
+            await run_in_threadpool(_memory_readers_available, _memory_runtime(request, allow_query=True), token, library)
+            available = await _reply_speech_available(request, account)
+    except AccessDenied:
+        raise
+    except Exception:
+        available = False
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
+def _validate_saved_speech_references(access, token, library, cards):
+    if type(cards) is not list or not 1 <= len(cards) <= 12:
+        raise WorkspaceInvalid()
+    with access.connection_factory() as connection:
+        reader = AssistantMemoryDiscovery(AccessService(connection, clock=access.clock,
+            memory_groups_enabled=access.memory_groups_enabled))
+        version = connection.execute('PRAGMA data_version').fetchone()[0]
+        seen = set()
+        for ref in cards:
+            if (type(ref) is not dict or set(ref) != {'type', 'id', 'revision', 'fingerprint'} or
+                    type(ref['type']) is not str or
+                    ref['type'] not in {'story', 'memoir'} or
+                    type(ref['revision']) is not str or
+                    re.fullmatch('[0-9a-f]{64}', ref['revision']) is None or
+                    ref['revision'] != ref['fingerprint']):
+                raise WorkspaceInvalid()
+            _thread_id(ref['id'])
+            identity = (ref['type'], ref['id'])
+            if identity in seen:
+                raise WorkspaceInvalid()
+            seen.add(identity)
+            domain = reader.stories if ref['type'] == 'story' else reader.books
+            current = domain.get(token, library, ref['id'])
+            reader.read_reference(token, library, ref['type'], ref['id'],
+                                  current['revision'], ref['revision'])
+        if connection.execute('PRAGMA data_version').fetchone()[0] != version:
+            raise TransportError(409, 'Saved memory changed; refresh before reading')
 
 
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
@@ -506,7 +560,8 @@ async def create_turn(request: Request, thread_id: str):
             journal_started = True
             await run_in_threadpool(journal.stage, ident, 'action_started')
         preferences = await _call(store, 'get_preferences', account)
-        memory_outcome = (await run_in_threadpool(_memory_command, access, token, library,
+        memory_access = _memory_runtime(request) if memory_opt_in else None
+        memory_outcome = (await run_in_threadpool(_memory_command, memory_access, token, library,
                            words, preferences['locale']) if memory_opt_in else None)
         if memory_outcome is None:
             result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
@@ -521,7 +576,7 @@ async def create_turn(request: Request, thread_id: str):
             summary = memory_outcome.legacy_summary()
             cards = memory_outcome.store_card_refs()
             _saved_memory_enabled(request)
-            await run_in_threadpool(_validate_memory_outcome, access, token, library,
+            await run_in_threadpool(_validate_memory_outcome, memory_access, token, library,
                                     memory_outcome)
         if await _principal(request, library) != account:
             raise AccessDenied()
@@ -599,12 +654,9 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
         raise WorkspaceStoreConflict()
     exchange = next((item for item in current['exchanges']
                      if item.get('request_id') == selected_turn), None)
-    if exchange is None:
+    if exchange is None or exchange.get('revision') != turn.get('revision'):
         raise WorkspaceStoreConflict()
-    # Typed memory turns have no persisted source context. Do not synthesize
-    # their reply until both sides of TTS can revalidate the current typed refs.
-    if any(card.get('type') in {'story', 'memoir'} for card in exchange.get('cards', [])):
-        raise WorkspaceInvalid()
+    typed_memory = any(card.get('type') in {'story', 'memoir'} for card in exchange.get('cards', []))
     summary = turn['result_summary']
     if summary.get('kind') not in {'results', 'clarification', 'unsupported'} or summary.get('effect') is not None:
         raise WorkspaceInvalid()
@@ -617,6 +669,10 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
         raise WorkspaceInvalid()
 
     access, engine = assistant_engine._engine(request)
+    if typed_memory:
+        _saved_memory_enabled(request)
+        await run_in_threadpool(_validate_saved_speech_references, _memory_runtime(request),
+                                token, library, exchange['cards'])
     if summary.get('context') is not None:
         if engine is None:
             raise WorkspaceStoreUnavailable()
@@ -638,9 +694,16 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
 
     if await _principal(request, library) != account:
         raise AccessDenied()
+    latest_store, latest_journal, latest_tts = _reply_speech_dependencies(request)
+    if latest_store is not _store or latest_journal is not _journal_value or latest_tts is not tts:
+        raise WorkspaceStoreConflict()
     latest = await _call(_store, 'get_thread', account, library, selected_thread)
     if latest['thread']['revision'] != expected_revision:
         raise WorkspaceStoreConflict()
+    if typed_memory:
+        _saved_memory_enabled(request)
+        await run_in_threadpool(_validate_saved_speech_references, _memory_runtime(request),
+                                token, library, exchange['cards'])
     if summary.get('context') is not None:
         # Close source drift that occurred while local synthesis was running.
         await run_in_threadpool(_turn_result, engine, token,

@@ -1936,3 +1936,37 @@ These cohorts overlap and do not imply a complete new profile. This source is ou
 candidate `3a56870` and native qualification candidate `db95b6`; no flag is
 activated and no live API or APK was updated. See [the saved-memory card
 contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md).
+
+The full API profile at `1fefbb9` passed 1,331 tests and 787 independently
+reported subtests, plus the generated no-listener demo. Its private invocation
+receipt records equal start/end source hashes and commit identity. This complete
+profile precedes the saved-memory speech follow-up below.
+
+## October 13 source-validated saved-memory speech
+
+A separate optional saved-memory speech probe preserves the existing card/base
+capability responses. Web can explicitly play a fresh generic reply, or use it
+inside the already-started foreground voice session. The server loads the
+matching completed exchange, validates each current story/memoir source before
+and after TTS, and guards the whole reference set against database commit drift.
+The current memory-group opt-in is propagated through the request-local readers.
+Mixed references, changed exchange revisions, source edits/withdrawal and feature
+or speech dependency loss withhold audio. Replay remains text-only and inert.
+
+The final focused speech/turn/store/closed-boundary/qualifier cohort passed
+76 tests and 39 subtests.
+The controller suite passed 49 tests, including aborting active memory audio and
+withholding late bytes after probe loss. The generated browser initially passed
+seven checkpoints for explicit correlated playback, recovery without synthesis
+and missing-speech-probe card fallback. Its final eight-checkpoint rerun also
+holds audio active, disables the speech probe, then verifies pause, URL revocation,
+hidden playback controls, retained cards and no new capture or turn. The first
+run exposed a stale visible playback control, corrected before the passing
+rerun. These counts overlap earlier cohorts.
+
+The portable qualifier now exercises eight generated scenarios, including story
+and memoir retrieval with strict legacy recovery and source edits during fake
+TTS. Its six portable harness tests passed; Windows bounds and lazy supervisor
+imports are unchanged. Native Windows execution is not claimed, and the existing
+`db95b6` candidate retains its original six-case package and pending scope.
+No Windows API/store, model, APK or task was changed by this source follow-up.

@@ -1,5 +1,6 @@
 """Opt-in saved-memory assistant transport keeps recovery and scope safe."""
 from contextlib import closing, contextmanager
+import json
 from pathlib import Path
 import sqlite3
 import sys
@@ -16,6 +17,7 @@ sys.path.insert(0, str(SECURITY))
 
 from fastapi.testclient import TestClient
 from app.access import assistant_workspace_transport as workspace_transport
+from app.access.assistant_memory_discovery import AssistantMemoryDiscovery
 from app.access import discovery as discovery_module
 from app.access.assistant_journal import initialize as initialize_journal
 from app.access.assistant_workspace_store import RETENTION_SECONDS, initialize_v2
@@ -143,6 +145,12 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(set(response.json()), {'version', 'available'})
         self.assertEqual(response.json(), {'version': 1, 'available': True})
+        speech = self.request('GET', '/saved-memory-speech-capabilities?library_id=family-a')
+        self.assertEqual(speech.json(), {'version': 1, 'available': True})
+        self.app.state.assistant_reply_speech_enabled = False
+        self.assertEqual(self.request('GET', '/saved-memory-speech-capabilities?library_id=family-a').json(),
+                         {'version': 1, 'available': False})
+        self.assertEqual(self.capabilities().json(), {'version': 1, 'available': True})
         self.app.state.memory_retention_healthy = False
         self.assertEqual(self.capabilities().json(), {'version': 1, 'available': False})
 
@@ -264,7 +272,7 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
         self.assertEqual(expired.status_code, 404, expired.text)
         self.assertEqual(self.capabilities().status_code, 200)
 
-    def test_memory_completion_clears_previous_media_context_and_speech_is_refused(self):
+    def test_memory_completion_clears_previous_media_context_and_speaks_only_generic_reply(self):
         story, _memoir = self._seed_story_and_memoir()
         self.enable()
         thread = self.thread()
@@ -290,8 +298,138 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
             body={'library_id': 'family-a', 'expected_revision': 2},
             headers={'X-PhotoHouse-Request-Id': new_id(),
                      'X-PhotoHouse-Parent-Request-Id': memory_id})
-        self.assertEqual(speech.status_code, 400, speech.text)
+        self.assertEqual(speech.status_code, 200)
+        self.assertEqual(speech.content, self.tts.audio)
+        self.assertEqual(self.tts.calls, [(memory.json()['result']['reply'], 'en')])
+        self.assertNotIn(story['title'], self.tts.calls[0][0])
+
+    def _fresh_memory_for_speech(self, *, memoir=False):
+        story, book = self._seed_story_and_memoir()
+        self.enable()
+        thread = self.thread()
+        ident = new_id()
+        turn = self.turn(thread['thread_id'], request_id=ident,
+                         text='find memoir picnic' if memoir else 'find saved story picnic',
+                         accepts=ACCEPTS)
+        self.assertEqual(turn.status_code, 200, turn.text)
+        return thread, ident, story, book
+
+    def _speech(self, thread, ident):
+        return self.request('POST', f"/threads/{thread['thread_id']}/requests/{ident}/speech",
+            body={'library_id': 'family-a', 'expected_revision': 1},
+            headers={'X-PhotoHouse-Request-Id': new_id(), 'X-PhotoHouse-Parent-Request-Id': ident})
+
+    def test_saved_source_changed_before_synthesis_is_refused_without_tts(self):
+        thread, ident, _story, _book = self._fresh_memory_for_speech()
+        self.library_fixture.mutate("UPDATE captions SET text='different synthetic evidence' WHERE id=101")
+        speech = self._speech(thread, ident)
+        self.assertEqual(speech.status_code, 409, speech.text)
         self.assertEqual(self.tts.calls, [])
+        self.assertNotEqual(speech.headers.get('content-type'), 'audio/wav')
+
+    def test_saved_source_or_feature_change_during_synthesis_withholds_audio(self):
+        for mutation in ('caption', 'withdrawal', 'flag', 'speech_flag'):
+            with self.subTest(mutation=mutation):
+                # Each branch uses its own completed owned turn and receipt.
+                self.library_fixture.mutate("UPDATE assets SET status='active' WHERE id=101")
+                thread, ident, _story, _book = self._fresh_memory_for_speech()
+                original = self.tts.synthesize
+                def changed_synthesis(words, language):
+                    audio = original(words, language)
+                    if mutation == 'caption':
+                        self.library_fixture.mutate("UPDATE captions SET text='source changed while speaking' WHERE id=101")
+                    elif mutation == 'withdrawal':
+                        self.library_fixture.mutate("UPDATE assets SET status='deleted' WHERE id=101")
+                    elif mutation == 'flag':
+                        self.app.state.assistant_saved_memory_cards_enabled = False
+                    else:
+                        self.app.state.assistant_reply_speech_enabled = False
+                    return audio
+                with patch.object(self.tts, 'synthesize', side_effect=changed_synthesis):
+                    speech = self._speech(thread, ident)
+                self.assertEqual(speech.status_code, {'caption':409, 'withdrawal':401, 'flag':503, 'speech_flag':503}[mutation], speech.text)
+                self.assertNotEqual(speech.headers.get('content-type'), 'audio/wav')
+                self.assertNotIn(self.tts.audio, speech.content)
+
+    def test_memoir_child_revision_changed_during_synthesis_withholds_audio(self):
+        thread, ident, story, _book = self._fresh_memory_for_speech(memoir=True)
+        original = self.tts.synthesize
+        def edit_child(words, language):
+            audio = original(words, language)
+            body = self.helper.fixture.body()
+            body.update(revision='1', title='Changed child story')
+            edited = self.helper.fixture.save(body, story['id'])
+            self.assertEqual(edited.status_code, 200, edited.text)
+            return audio
+        with patch.object(self.tts, 'synthesize', side_effect=edit_child):
+            speech = self._speech(thread, ident)
+        self.assertEqual(speech.status_code, 409, speech.text)
+        self.assertNotEqual(speech.headers.get('content-type'), 'audio/wav')
+
+    def test_mixed_typed_refs_or_exchange_revision_mismatch_never_start_tts(self):
+        for corruption in ('mixed', 'revision'):
+            with self.subTest(corruption=corruption):
+                thread, ident, _story, _book = self._fresh_memory_for_speech()
+                with self.workspace.connection() as db:
+                    if corruption == 'mixed':
+                        row = db.execute('SELECT card_refs FROM exchanges WHERE request_id=?', (ident,)).fetchone()
+                        refs = json.loads(row[0])
+                        refs.append(dict(type='media', id='101', revision='a'*64, fingerprint='b'*64))
+                        db.execute('UPDATE exchanges SET card_refs=? WHERE request_id=?', (json.dumps(refs), ident))
+                    else:
+                        db.execute('UPDATE exchanges SET revision=2 WHERE request_id=?', (ident,))
+                    db.commit()
+                speech = self._speech(thread, ident)
+                self.assertEqual(speech.status_code, 400 if corruption=='mixed' else 409, speech.text)
+                self.assertEqual(self.tts.calls, [])
+
+    def test_multi_reference_pass_refuses_commit_drift_after_an_earlier_reference(self):
+        self.helper._save_story('A picnic', 'picnic first')
+        self.helper._save_story('B picnic', 'picnic second')
+        self.enable()
+        thread = self.thread()
+        ident = new_id()
+        turn = self.turn(thread['thread_id'], request_id=ident,
+                         text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(turn.status_code, 200, turn.text)
+        self.assertEqual(len(turn.json()['result']['memory_cards']), 2)
+        first = turn.json()['result']['memory_cards'][0]
+        original = AssistantMemoryDiscovery.read_reference
+        seen = []
+        def edit_already_checked(reader, *args):
+            result = original(reader, *args)
+            seen.append(True)
+            if len(seen) == 1:
+                body = self.helper.fixture.body()
+                body.update(revision='1', title='Changed first source')
+                edited = self.helper.fixture.save(body, first['id'])
+                self.assertEqual(edited.status_code, 200, edited.text)
+            return result
+        with patch.object(AssistantMemoryDiscovery, 'read_reference', new=edit_already_checked):
+            speech = self._speech(thread, ident)
+        self.assertEqual(speech.status_code, 409, speech.text)
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(self.tts.calls, [])
+
+    def test_saved_memory_readers_use_the_apps_current_memory_group_setting(self):
+        self._seed_story_and_memoir()
+        self.enable()
+        self.app.state.memory_groups_enabled = True
+        original = AssistantMemoryDiscovery.read_reference
+        observed = []
+        def record_setting(reader, *args):
+            observed.append(reader.access.memory_groups_enabled)
+            return original(reader, *args)
+        thread = self.thread()
+        ident = new_id()
+        with patch.object(AssistantMemoryDiscovery, 'read_reference', new=record_setting):
+            turn = self.turn(thread['thread_id'], request_id=ident,
+                             text='find saved story picnic', accepts=ACCEPTS)
+            self.assertEqual(turn.status_code, 200, turn.text)
+            speech = self._speech(thread, ident)
+            self.assertEqual(speech.status_code, 200)
+        self.assertGreaterEqual(len(observed), 4)
+        self.assertTrue(all(observed))
 
     def test_source_change_after_completion_withholds_cards_and_recovers_only_safe_summary(self):
         story, _memoir = self._seed_story_and_memoir()

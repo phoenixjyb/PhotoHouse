@@ -1,11 +1,13 @@
 """Synthetic browser-to-ASGI bridge for saved-memory card UI checks."""
 import base64
 from dataclasses import asdict
+import io
 import json
 from pathlib import Path
 import sys
 import time
 import uuid
+import wave
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -14,6 +16,8 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 
 from fastapi.testclient import TestClient
 from test_library_reads import LibraryReadTests
+from app.access.assistant_journal import initialize as initialize_journal
+from app.access.assistant_speech import LocalAssistantTts
 from app.access.assistant_workspace_store import initialize_v2
 from app.access.runtime import RuntimeConfiguration
 
@@ -34,13 +38,33 @@ producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True, ensure_
     separators=(',', ':')).encode())
 
 
-def runtime(*, assistant=False, workspace=None):
+def runtime(*, assistant=False, workspace=None, reply_speech=False):
     return RuntimeConfiguration(
         fixture.path.resolve(), 'https://photohouse.test', (originals,), derived,
         discovery_indexes=(index_path,), memory_collaboration_enabled=True,
         assistant_enabled=assistant, assistant_workspace_path=workspace,
         assistant_saved_memory_cards_enabled=assistant,
+        assistant_journal_path=(root / 'assistant-journal.sqlite') if reply_speech else None,
+        assistant_tts_url='http://127.0.0.1:11390/api/tts' if reply_speech else None,
+        assistant_reply_speech_enabled=reply_speech,
     )
+
+
+class FakeLocalTts(LocalAssistantTts):
+    """Deterministic local test double; it never contacts a provider."""
+    def __init__(self):
+        self.calls = []
+        output = io.BytesIO()
+        with wave.open(output, 'wb') as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(16000)
+            wav.writeframes(b'\0\0' * 1600)
+        self.audio = output.getvalue()
+
+    def synthesize(self, words, language):
+        self.calls.append({'reply': words, 'language': language})
+        return self.audio
 
 
 # Seed through the existing protected story/memoir APIs with generated assets
@@ -88,8 +112,12 @@ seed_client.close()
 
 workspace_path = root / 'assistant-workspace-v2.sqlite'
 initialize_v2(workspace_path, clock=lambda: fixture.now)
-client = TestClient(runtime(assistant=True, workspace=workspace_path).build_app(
-        clock=lambda: fixture.now), base_url='https://photohouse.test',
+initialize_journal(root / 'assistant-journal.sqlite')
+app = runtime(assistant=True, workspace=workspace_path, reply_speech=True).build_app(
+    clock=lambda: fixture.now)
+fake_tts = FakeLocalTts()
+app.state.assistant_tts = fake_tts
+client = TestClient(app, base_url='https://photohouse.test',
     client=('192.0.2.27', 23464))
 fixture.addCleanup(client.close)
 fixture.client = client
@@ -110,6 +138,21 @@ try:
         if message.get('command') == 'saved-memory-on':
             client.app.state.assistant_saved_memory_cards_enabled = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'reply-speech-off':
+            client.app.state.assistant_reply_speech_enabled = False
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'saved-memory-speech-off':
+            client.app.state.assistant_reply_speech_enabled = False
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'reply-speech-on':
+            client.app.state.assistant_reply_speech_enabled = True
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'tts-calls':
+            print(json.dumps({'id': message['id'], 'ok': True, 'calls': fake_tts.calls}), flush=True)
             continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'],

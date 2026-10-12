@@ -2,7 +2,8 @@
 
 Status: locally implemented discovery, explicit-command parser, result tool and
 negotiated default-off backend transport, plus scoped Web card presentation.
-Phone cards, reader handoff and typed-source speech revalidation remain proposed. No Windows
+Phone cards and reader handoff remain proposed. Typed-source reply speech is
+implemented locally with a separate optional capability probe. No Windows
 activation or signed client delivery is claimed.
 
 ## Existing protected foundation
@@ -64,9 +65,9 @@ loads. Missing, disabled or malformed probes preserve the legacy request body;
 access denial clears private state. New account/library generations, base
 capability loss and a newer feature probe fence late card responses. Fresh cards
 are immutable plain-text projections and bypass media hydration. They have no
-open button, automatic speech or stored actionable context. The phone SDK has
-not adopted this extension yet. Forty-five controller checks and six generated
-browser checkpoints passed; they do not prove live or family acceptance.
+open button or stored actionable context. The phone SDK has not adopted this
+extension yet. Qualified source and generated-browser evidence are recorded in
+[Development](DEVELOPMENT.md); they do not prove live or family acceptance.
 
 The existing turn request remains byte-for-byte unchanged unless a capable
 client opts in. Extend its strict body with one optional field:
@@ -286,22 +287,29 @@ the saved-story shelf; `openMemoryBook` expects a book summary in the book shelf
 The integration therefore needs a scope-guarded central handoff method that
 fetches the exact current reference through the existing repository and opens
 the existing reader state. Web has the protected memory endpoints, but its
-private assistant result renderer currently presents media assets only and its
-Web reader handoff for memoirs is not wired. The Web client needs the same
-explicit reader callback before this is user-facing.
+private assistant result renderer presents media and saved-memory cards, while its
+Web reader handoff for memoirs is not wired. Its assistant can display saved
+memory cards, but still needs the explicit protected callback to open a reader.
 
-Voice may speak only the short server-owned reply using the existing private
-reply-speech capability and receipt rules; persist that exact reply in the
-legacy summary. The current speech route revalidates media context before and
-after synthesis but does not validate saved-memory card references. Until it
-loads this turn's stored typed references and rehydrates/rechecks their source
-digests both before and after synthesis, saved-memory replies must not be
-automatically spoken. Until that path is implemented, the speech route detects
-the saved-memory `story` / `memoir` references and rejects speech for that
-turn; `context: null` alone is not evidence that the reply is safe to speak.
-The reply becomes eligible only after this source-validation path is
-implemented; a failed post-synthesis check must finalize the receipt as failed
-and return no audio bytes. It does not read excerpts aloud
+Voice speaks only the short server-owned reply under the existing private
+receipt rules. A separate optional
+`GET /assistant/workspace/v1/saved-memory-speech-capabilities?library_id=...`
+returns exactly `{version: 1, available: <boolean>}`. Missing or disabled speech
+capability preserves cards while disabling their playback. The original card
+probe and base capability shapes stay unchanged.
+
+The speech route loads this completed turn's stored typed references, requires
+the exchange and turn revisions to match, and rehydrates them through current
+authorized readers before and after TTS. Stored digest fields are not numeric
+reader revisions: the reader obtains its current numeric revision separately
+and verifies it together with the stored source digest. Mixed/unknown references,
+duplicates and malformed bindings are refused. One `data_version` guard covers
+the whole multi-reference validation pass. The request-local memory-group
+setting is propagated to all readers. Current feature, retention, membership,
+thread and speech dependency checks are repeated before returning bytes.
+TTS receives only the persisted generic reply, never card text or reader payload.
+A failed post-synthesis check finalizes the receipt as failed
+and returns no audio bytes. It does not read excerpts aloud
 automatically. A fresh voice response can return to listen only after playback
 completion. Recovered turns pause before speech, navigation, or listening. A
 card's explicit open control ends the foreground voice progression before

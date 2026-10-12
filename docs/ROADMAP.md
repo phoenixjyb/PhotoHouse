@@ -605,5 +605,21 @@ returns stored status before fresh opt-in negotiation; history keeps legacy
 30-day summaries and typed non-actionable reference counts. Web renders scoped
 plain-text cards; nine focused HTTP checks, 45 controller checks and six generated
 browser checkpoints passed. No live flag or API is activated. This source is
-outside pinned v51 `3a56870` and native candidate `db95b6`. Phone cards, reviewed
-reader handoff, typed-source speech and delivery remain separate gates.
+outside pinned v51 `3a56870` and native candidate `db95b6`. Typed-source reply
+speech now has a separate optional probe and revalidates the current source set
+before and after synthesis. The source-only qualifier exercises eight generated
+scenarios. Phone cards, reviewed reader handoff and delivery remain separate gates.
+
+The next bounded product slices are:
+
+1. Explicit story/memoir reader opening from a fresh assistant card, bound to
+   its completed owned turn and current source digest. End foreground voice
+   before reader navigation and preserve unsaved reader work.
+2. Matching phone negotiation and cards, with simulator checks before a new
+   signed release. Keep the immutable v51 delivery candidate separate.
+3. Grounded questions about a saved story or whole memoir, showing cited source
+   passages and asking about uncertainty. Current retrieval is literal saved-text
+   matching; it does not yet answer free-form story questions or infer new facts.
+4. Reviewed related-moment suggestions and shared memory links, retaining manual
+   inclusion/exclusion and original authorship. Generation and source propagation
+   remain explicit separate opt-ins.
