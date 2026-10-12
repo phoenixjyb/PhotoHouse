@@ -12019,6 +12019,35 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "assistant-web-served-delivery-and-recovery-record",
+      "source_commit": "97d6c4ef080a38888c0ebc7fe3b96abd5040d24e",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "bb31072f27ad83392728bc06a3f3cba929ad45844ec9e82eab35ad653c5914db"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "d683d8420b3b0e233fda02b0f67d9e02197a03cda639121bb6c9f3409213f89c"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "sha256": "f7b0ecaf710a1776ce53eedabaacd038c0eabc964fc2fa61d557a3b9629d22e8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "a0609480c1f6adf2f48095c37f3f404fb242c70e717730a0d5f39a7be092f31b"
+        },
+        {
+          "path": "docs/WEB_ASSISTANT_DELIVERY_2026-10-12.md",
+          "sha256": "0f3ae9a88d4009fe9e98322e139fb8b36a1d0d10892b2a08940c4d41e88928ca"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
