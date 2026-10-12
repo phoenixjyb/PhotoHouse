@@ -12123,6 +12123,35 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "phone-v50-signed-ota-delivery-and-controller-recovery-record",
+      "source_commit": "2e1171b868f95d829252024b25ac824ba08282d6",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md",
+          "sha256": "233c7cbb617cf01bcdf9c11d0791ff01d6dc14e779255ef0388daffb340ac19a"
+        },
+        {
+          "path": "docs/ANDROID_OTA_TROUBLESHOOTING.md",
+          "sha256": "ea0c9440066a9c16443dc13670e5b43366ff45774e880b83ba16af7f905dd71b"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "0484c957455ab0c35d3a2744964d5a50581c0e35fbe798ff77df5cbd1be54017"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "e8d7a768da7120018e708e29bea0166d31f0c51f5313720701d0769a8402b072"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "34d2256341e2fb3308be3a055cfffd93cc82949ccbe8267e16e309603538a663"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
