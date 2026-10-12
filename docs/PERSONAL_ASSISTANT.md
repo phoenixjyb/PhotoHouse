@@ -29,9 +29,9 @@ on Windows. Client continuation and reference revalidation remain future work.
 Preference storage alone does not change the current ASR/TTS/provider settings.
 
 The [roadmap](ROADMAP.md#october-12-central-personal-assistant) records the next
-layers: protected thread/preferences APIs, client continuation and preference
-controls, then qualified local understanding and reviewed cross-workflow tools.
-Phone v49 is published with the workspace/voice foundation; these private backend
+layers: server-owned turns, client continuation and applied preference controls,
+then qualified local understanding and reviewed cross-workflow tools.
+Phone v49 and the Web workspace are delivered with the voice foundation; these private backend
 APIs are a separate source slice and are not activated by that APK.
 
 ## Product decision

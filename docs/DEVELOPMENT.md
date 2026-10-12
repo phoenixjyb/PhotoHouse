@@ -1667,3 +1667,9 @@ independent complete trusted HTTPS download. No API restart accompanied the APK.
 The separate Web package passed Windows six-route qualification, retaining the
 original icon. Its rollout uses the unchanged served API entry/configuration and
 format-2 static binder; it does not deploy the private workspace API.
+
+The Web switch is now delivered; see [the exact boundary and recovery
+record](WEB_ASSISTANT_DELIVERY_2026-10-12.md). The final native controller and
+independent Mac HTTPS checks passed for six byte-identical assets, unchanged
+icon and unchanged phone v49/TV v30 feeds. Its actual live backend remains c6;
+these default-off private workspace APIs are not deployed by the static rollout.
