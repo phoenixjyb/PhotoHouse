@@ -84,7 +84,9 @@ internal fun rememberAssistantVoiceControls(
         VoiceSessionStopReason.TRANSCRIPTION_FAILED, VoiceSessionStopReason.REQUEST_FAILED, VoiceSessionStopReason.SPEECH_FAILED ->
             if (zh) "本轮未能完成，已暂停；请查看回复或回执。" else "This turn could not finish. Review its reply or receipt before continuing."
         else -> if (voice.phase == VoiceSessionPhase.SPEAKING) {
-            if (zh) "正在播报当前结果数量；完成后会继续聆听。" else "Reading the current result count; listening resumes after playback."
+            if (store.privateReplySpeechEnabled()) {
+                if (zh) "正在播报助手回复；播放完成前不会聆听。" else "Reading the assistant reply; listening stays off during playback."
+            } else if (zh) "正在播报当前结果数量；完成后会继续聆听。" else "Reading the current result count; listening resumes after playback."
         } else null
     }
     val session = when (voice.phase) {

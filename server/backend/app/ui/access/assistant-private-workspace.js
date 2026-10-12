@@ -21,6 +21,38 @@
   const safeInt = v => Number.isSafeInteger(v) && v >= 0;
   const uuid = v => typeof v === 'string' && UUID.test(v);
   const byteLength = value => new TextEncoder().encode(value).length;
+  async function validateSpeechBlob(value) {
+    const maxBytes=2*1024*1024;
+    if(typeof Blob!=='function'||!(value instanceof Blob)||value.size<44||value.size>maxBytes||value.type.split(';')[0].trim().toLowerCase()!=='audio/wav')fail('invalid_response');
+    // The server accepts bounded PCM RIFF/WAVE files rather than one encoder's
+    // exact 44-byte header. Parse every chunk against both the RIFF and Blob bounds.
+    const bytes=new Uint8Array(await value.arrayBuffer());
+    try {
+    if(bytes.length!==value.size)fail('invalid_response');
+    const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    const label=(at,want)=>at>=0&&at+want.length<=bytes.length&&Array.from({length:want.length},(_,i)=>String.fromCharCode(bytes[at+i])).join('')===want;
+    if(!label(0,'RIFF')||!label(8,'WAVE'))fail('invalid_response');
+    const end=8+view.getUint32(4,true);if(end!==bytes.length||end<12)fail('invalid_response');
+    let offset=12,format=null,dataBytes=null;
+    while(offset<end){
+      if(offset+8>end)fail('invalid_response');
+      const name=String.fromCharCode(...bytes.subarray(offset,offset+4)),size=view.getUint32(offset+4,true),start=offset+8,chunkEnd=start+size,paddedEnd=chunkEnd+(size&1);
+      if(chunkEnd> end||paddedEnd>end)fail('invalid_response');
+      if(name==='fmt '){
+        if(format||size<16)fail('invalid_response');
+        const code=view.getUint16(start,true),channels=view.getUint16(start+2,true),rate=view.getUint32(start+4,true),byteRate=view.getUint32(start+8,true),align=view.getUint16(start+12,true),bits=view.getUint16(start+14,true);
+        const expectedAlign=channels*(bits/8);
+        if(code!==1||![1,2].includes(channels)||![8,16,24,32].includes(bits)||bits%8!==0||rate<8000||rate>48000||align!==expectedAlign||byteRate!==rate*align)fail('invalid_response');
+        format={channels,rate,align};
+      }else if(name==='data'){
+        if(dataBytes!==null)fail('invalid_response');dataBytes=size;
+      }
+      offset=paddedEnd;
+    }
+    if(offset!==end||!format||!dataBytes||dataBytes%format.align!==0||dataBytes/format.align>format.rate*30)fail('invalid_response');
+    return value;
+    } finally { bytes.fill(0); }
+  }
   function exactKeys(value, required, optional=[]) {
     if (!isObject(value)) return false;
     const allowed = new Set([...required,...optional]);
@@ -61,11 +93,11 @@
     return Object.freeze({exchange_id:row.exchange_id,revision:row.revision,created_at:row.created_at,expires_at:row.expires_at,input_text:row.input_text,reply:row.reply,cards:Object.freeze(cards),receipt_count:row.receipt_count,...(row.request_id?{request_id:row.request_id}:{})});
   }
   function validateCapabilities(v) {
-    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging'])||v.version!==1||
+    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech'])||v.version!==1||
       ['available','threads','preferences','preferences_applied','server_owned_turns'].some(k=>typeof v[k]!=='boolean')||
-      ['thread_labels','history_paging'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
+      ['thread_labels','history_paging','reply_speech'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
       (Object.hasOwn(v,'applied_preferences')&&(!Array.isArray(v.applied_preferences)||v.applied_preferences.some(x=>x!=='locale')||new Set(v.applied_preferences).size!==v.applied_preferences.length)))fail('invalid_response');
-    return Object.freeze({...v,thread_labels:v.thread_labels===true,history_paging:v.history_paging===true,
+    return Object.freeze({...v,thread_labels:v.thread_labels===true,history_paging:v.history_paging===true,reply_speech:v.reply_speech===true,
       ...(v.applied_preferences?{applied_preferences:Object.freeze([...v.applied_preferences])}:{})});
   }
   function validatePrefs(v) {
@@ -165,24 +197,25 @@
 
   function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result}={}) {
     if(typeof scope!=='function'||typeof request!=='function')throw new TypeError('scope and request are required');
-    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),readGeneration=0;
+    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),readGeneration=0,speechSource=null;
     const snapshot=()=>{const s=scope()||{};return {account:s.account??null,library:s.library==null?null:String(s.library),generation:s.generation??s.membershipGeneration??s.epoch??null,locked:!!s.locked};};
     const stamp=s=>JSON.stringify([s.account,s.library,s.generation,s.locked]);
-    const stateValue=()=>{const s=snapshot();return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired});};
+    const stateValue=()=>{const s=snapshot(),speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
     const resultContextState=value=>value?.context?'ready':'requires_search';
     const ownHistory=detail=>Object.freeze({...detail,snapshot_revision:detail.thread.revision,
       before_revision:detail.exchanges[0]?.revision??null,history_stale:false,history_limit_reached:false});
     const staleHistory=detail=>Object.freeze({...detail,before_revision:null,has_older_exchanges:false,history_stale:true,history_limit_reached:false});
     function clearHistory(){historyNonce++;historyLoading=false;historyDetail=null;historyRefreshRequired=false;}
+    function clearSpeechSource(){speechSource=null;}
     function invalidateHistory(){historyNonce++;historyLoading=false;historyRefreshRequired=true;if(historyDetail)historyDetail=staleHistory(historyDetail);}
     const publish=()=>{try{onChange(stateValue());}catch(_){}};
     const state=()=>{sync();return stateValue();};
     const abortHydrations=()=>{for(const c of hydrationControllers)c.abort();hydrationControllers.clear();};
-    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';}
+    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';clearSpeechSource();}
     function sync(){const s=snapshot(),key=stamp(s);if(key!==scopeStamp){scopeStamp=key;revokedStamp=null;clearScopeData();publish();}return s;}
     const assertCurrent=(base,token)=>{if(closed)fail('closed');const now=snapshot();if(stamp(now)!==scopeStamp)sync();if(stamp(now)!==stamp(base)||token!==instance||base.locked||!base.account||!base.library||revokedStamp===stamp(now))fail('scope_changed');};
     function revoke(base){revokedStamp=stamp(base);clearScopeData();publish();}
-    async function call(path,method,body,base,token) {assertCurrent(base,token);const c=new AbortController();controllers.add(c);try{const raw=await request(path,{method,body,signal:c.signal});assertCurrent(base,token);return safeJson(raw);}catch(e){const safe=safeFailure(e);if(safe.status===401||safe.status===403)revoke(base);throw safe;}finally{controllers.delete(c);}}
+    async function call(path,method,body,base,token,extra={}) {assertCurrent(base,token);const c=new AbortController(),upstream=extra.signal,abort=()=>c.abort();if(upstream?.aborted)c.abort();else upstream?.addEventListener('abort',abort,{once:true});controllers.add(c);try{const raw=await request(path,{...extra,method,body,signal:c.signal});assertCurrent(base,token);return safeJson(raw);}catch(e){const safe=safeFailure(e);if(safe.status===401||safe.status===403)revoke(base);throw safe;}finally{upstream?.removeEventListener('abort',abort);controllers.delete(c);}}
     function begin(){if(closed)fail('closed');const s=sync();if(s.locked||!s.account||!s.library||revokedStamp===stamp(s))fail('scope_changed');return {base:s,token:instance};}
     async function hydrateResult(value,t,metadata={}){assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');const c=new AbortController();hydrationControllers.add(c);try{const hydrated=await hydrateResults(value,{...metadata,signal:c.signal});assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');return hydrated;}catch(e){throw safeFailure(e);}finally{hydrationControllers.delete(c);}}
     function setDraft(value){begin();if(typeof value!=='string'||byteLength(value)>1024)fail('invalid_input');draft=value;publish();return draft;}
@@ -190,7 +223,7 @@
     async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
     function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
-    async function read(id,{hydrate=true}={}){if(!uuid(id))fail('invalid_input');const t=begin();if(pendingTurn)fail('conflict');abortHydrations();const ticket=++readGeneration;beginHistoryRead(id);publish();const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');let detail=validateThreadDetail(raw,t.base.library,id);historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();let latest=null;
+    async function read(id,{hydrate=true}={}){if(!uuid(id))fail('invalid_input');const t=begin();if(pendingTurn)fail('conflict');clearSpeechSource();abortHydrations();const ticket=++readGeneration;beginHistoryRead(id);publish();const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');let detail=validateThreadDetail(raw,t.base.library,id);historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();let latest=null;
       currentResult=null;contextState=detail.latest_request_id?'unloaded':'requires_search';
       if(detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false});
           if(latest.status==='completed'&&latest.revision===detail.thread.revision){currentResult=await hydrateResult(latest.result,t,{readTicket:ticket,threadId:id,revision:latest.revision});contextState=resultContextState(currentResult);}
@@ -202,13 +235,20 @@
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;publish();
       const latestSummary=latest?Object.freeze({request_id:latest.request_id,status:latest.status,revision:latest.revision,error:latest.error}):null;
       return Object.freeze({...historyDetail,current_result:currentResult,context_state:contextState,...(latestSummary?{latest_request:latestSummary}:{})});}
-    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;
+    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');clearSpeechSource();let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;
       try{const raw=await call(`${BASE}/threads`,'POST',{library_id:t.base.library,thread_id:id},t.base,t.token);const created=validateCreation(raw,t.base.library,id);assertCurrent(t.base,t.token);pendingCreation=null;if(ticket!==readGeneration){threads=[created.thread,...threads.filter(x=>x.thread_id!==id)];publish();return created;}activeThread=created.thread;revision=created.thread.revision;currentResult=null;contextState='requires_search';publish();return created;}
       catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed')throw safe; // retain ID and require explicit reconciliation or retry
         throw safe;}}
-    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const env=await getRequest(id,rid,{_ticket:t,hydrate:true});assertCurrent(t.base,t.token);if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else{if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
-    function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
-    async function reconcileCreation(){const t=begin();if(!pendingCreation||pendingTurn)fail('invalid_input');const id=pendingCreation.thread_id;clearHistory();abortHydrations();const ticket=++readGeneration;const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');const detail=validateThreadDetail(raw,t.base.library,id);pendingCreation=null;activeThread=detail.thread;revision=detail.thread.revision;currentResult=null;contextState='requires_search';historyDetail=ownHistory(detail);publish();return detail;}
+    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();clearSpeechSource();if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const env=await getRequest(id,rid,{_ticket:t,hydrate:true});assertCurrent(t.base,t.token);if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else{if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
+    function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
+    function discardSpeechSource(){
+      // This is a local revocation path (Pause/End), so it must still wipe the
+      // reference after a library lock, account switch, or controller close.
+      clearSpeechSource();
+      try{sync();}catch(_){}
+      try{publish();}catch(_){}
+    }
+    async function reconcileCreation(){const t=begin();if(!pendingCreation||pendingTurn)fail('invalid_input');clearSpeechSource();const id=pendingCreation.thread_id;clearHistory();abortHydrations();const ticket=++readGeneration;const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');const detail=validateThreadDetail(raw,t.base.library,id);pendingCreation=null;activeThread=detail.thread;revision=detail.thread.revision;currentResult=null;contextState='requires_search';historyDetail=ownHistory(detail);publish();return detail;}
     async function older(){
       const t=begin(),owned=historyDetail,threadId=activeThread?.thread_id;
       if(!capabilities?.history_paging||!owned||!threadId||owned.thread.thread_id!==threadId||owned.history_stale||!owned.has_older_exchanges||
@@ -242,18 +282,50 @@
     }
     async function getRequest(id,rid,{_ticket,hydrate=true}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token),id,rid,t.base.library,'GET');
       if(env.status==='completed'&&hydrate){const hydrated=await hydrateResult(env.result,t,{readTicket:t.readTicket,threadId:id,revision:env.revision});return Object.freeze({...env,result:hydrated});}return env;}
-    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
+    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');clearSpeechSource();readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
       try{const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',{library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text},t.base,t.token),sent.thread_id,rid,t.base.library,'POST');
-        if(v.status==='completed'){const result=await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=resultContextState(result);if(draft===text)draft='';publish();return Object.freeze({...v,result});}
+        if(v.status==='completed'){const result=await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=resultContextState(result);if(draft===text)draft='';if(!v.recovered)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind};publish();return Object.freeze({...v,result});}
         if(v.status==='failed'||v.status==='interrupted'){if(!draft)draft=text;pendingTurn=null;contextState='requires_search';publish();return v;}
         pendingTurn={...sent,status:'uncertain'};publish();return v;
       }catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401||safe.status===403)throw safe;pendingTurn={...sent,status:'uncertain'};publish();throw safe;}}
-    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');readGeneration++;historyNonce++;historyLoading=false;if(activeThread?.thread_id===id){abortHydrations();clearHistory();activeThread=null;revision=0;currentResult=null;contextState='unavailable';}threads=threads.filter(x=>x.thread_id!==id);publish();return Object.freeze({thread_id:id,deleted:true});}
+    async function speakReply({signal}={}){
+      const t=begin(),source=speechSource;
+      if(capabilities?.reply_speech!==true||!source||source.kind==='open'||!activeThread||source.thread_id!==activeThread.thread_id||source.revision!==revision||source.account!==t.base.account||source.library!==t.base.library||source.generation!==t.base.generation||pendingTurn||pendingCreation)fail('invalid_input');
+      if(source.replyBytes>600)fail('invalid_input');
+      const speechId=typeof newUUID==='function'?newUUID():null;if(!uuid(speechId)||speechId===source.request_id)fail('invalid_input');
+      let responseValidated=false;
+      const raw=await call(`${threadPath(source.thread_id)}/requests/${encodeURIComponent(source.request_id)}/speech`, 'POST',
+        {library_id:t.base.library,expected_revision:source.revision},t.base,t.token,{
+          responseType:'blob',signal,
+          extraHeaders:{'X-PhotoHouse-Request-Id':speechId,'X-PhotoHouse-Parent-Request-Id':source.request_id},
+          onResponse:response=>{
+            const headers=response?.headers;
+            if(!headers||typeof headers.get!=='function')return;
+            const cache=(headers.get('Cache-Control')||'').split(',').map(x=>x.trim().toLowerCase());
+            const encoding=headers.get('Content-Encoding');
+            const mime=(headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase();
+            responseValidated=response.ok===true&&response.status===200&&headers.get('X-PhotoHouse-Request-Id')===speechId&&
+              headers.get('X-PhotoHouse-Tracking')==='enabled'&&headers.get('X-PhotoHouse-Receipt-Status')==='succeeded'&&
+              mime==='audio/wav'&&cache.includes('no-store')&&(!encoding||encoding.trim().toLowerCase()==='identity');
+          }
+        });
+      assertCurrent(t.base,t.token);
+      if(speechSource!==source||activeThread?.thread_id!==source.thread_id||revision!==source.revision)fail('scope_changed');
+      if(!responseValidated)fail('invalid_response');
+      const audio=await validateSpeechBlob(raw);
+      // Blob parsing is asynchronous; revoke bytes if Pause, scope change, or a
+      // newer turn occurred while the response was being validated.
+      assertCurrent(t.base,t.token);
+      if(signal?.aborted)fail('aborted');
+      if(speechSource!==source||activeThread?.thread_id!==source.thread_id||revision!==source.revision)fail('scope_changed');
+      return audio;
+    }
+    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');if(activeThread?.thread_id===id)clearSpeechSource();const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');readGeneration++;historyNonce++;historyLoading=false;if(activeThread?.thread_id===id){abortHydrations();clearHistory();activeThread=null;revision=0;currentResult=null;contextState='unavailable';}threads=threads.filter(x=>x.thread_id!==id);publish();return Object.freeze({thread_id:id,deleted:true});}
     async function readPreferences(){const t=begin();preferences=validatePrefs(await call(`${BASE}/preferences?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));publish();return preferences;}
     async function updatePreferences(changes){const t=begin();if(!isObject(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!Object.hasOwn(PREFS,k)||!PREFS[k].includes(changes[k])))fail('invalid_input');const current=preferences||await readPreferences();assertCurrent(t.base,t.token);const body={library_id:t.base.library,expected_revision:current.revision,...changes};preferences=validatePrefs(await call(`${BASE}/preferences`,'PUT',body,t.base,t.token));publish();return preferences;}
     async function resetPreferences(){const t=begin(),current=preferences||await readPreferences();assertCurrent(t.base,t.token);preferences=validatePrefs(await call(`${BASE}/preferences/reset`,'POST',{library_id:t.base.library,expected_revision:current.revision},t.base,t.token));publish();return preferences;}
-    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;clearHistory();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
-    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,list,create,reconcileCreation,read,older,send,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
+    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
+    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,list,create,reconcileCreation,read,older,send,speakReply,discardSpeechSource,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
   }
   return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validateHistoryPage,validatePrefs,validateEnvelope,validateResult,safeJson,uuid,validUtc});
 });

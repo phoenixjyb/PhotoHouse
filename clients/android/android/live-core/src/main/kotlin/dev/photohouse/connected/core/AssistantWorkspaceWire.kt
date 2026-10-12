@@ -72,14 +72,15 @@ object AssistantWorkspaceWire {
     fun capabilities(bytes: ByteArray): AssistantWorkspaceCapabilities = guarded {
         check(bytes.size in 1..4096)
         val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available", "threads", "preferences", "preferences_applied", "server_owned_turns"),
-            setOf("applied_preferences", "history_paging", "thread_labels"))
+            setOf("applied_preferences", "history_paging", "thread_labels", "reply_speech"))
         check(o.getValue("version").count(1) == 1)
         val applied = o["applied_preferences"]?.array(4)?.map { it.str(32) } ?: emptyList()
         check(applied.distinct().size == applied.size && applied.all { it == "locale" })
         val appliedFlag = o.getValue("preferences_applied").bool()
         AssistantWorkspaceCapabilities(1, o.getValue("available").bool(), o.getValue("threads").bool(),
             o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet(),
-            o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false)
+            o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false,
+            o["reply_speech"]?.bool() ?: false)
     }
 
     fun threadList(bytes: ByteArray, library: String, includeLabels: Boolean = false): AssistantWorkspaceThreadList = guarded {
@@ -203,6 +204,73 @@ object AssistantWorkspaceWire {
         if (!PhoneDiscoveryWire.validLibrary(library) || expectedRevision !in 0..REVISION_MAX) throw ApiFailure(FailureKind.INVALID_INPUT)
         return buildJsonObject { put("library_id", library); put("expected_revision", expectedRevision) }.toString()
     }
+    fun replySpeechRequest(library: String, expectedRevision: Long,
+                           turnId: String, speechRequestId: String): String {
+        if (!PhoneDiscoveryWire.validLibrary(library) || expectedRevision !in 0..REVISION_MAX ||
+            !validUuid4(turnId) || !validUuid4(speechRequestId) || turnId == speechRequestId) {
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        }
+        return buildJsonObject {
+            put("library_id", library)
+            put("expected_revision", expectedRevision)
+        }.toString()
+    }
+
+    /** Apply the shared WAV envelope check plus the private Windows TTS duration contract. */
+    fun replySpeechAudio(bytes: ByteArray): ByteArray = guarded {
+        AssistantWire.speechAudio(bytes)
+        check(bytes.size >= 44 && readAscii(bytes, 0, 4) == "RIFF" && readAscii(bytes, 8, 4) == "WAVE")
+        check(readU32(bytes, 4) + 8L == bytes.size.toLong())
+        var offset = 12
+        var formatSeen = false
+        var dataSeen = false
+        var blockAlign = 0L
+        var sampleRate = 0L
+        var frames = 0L
+        while (offset < bytes.size) {
+            check(offset <= bytes.size - 8)
+            val chunk = readAscii(bytes, offset, 4)
+            val size = readU32(bytes, offset + 4)
+            val contentStart = offset + 8L
+            val contentEnd = contentStart + size
+            check(contentEnd <= bytes.size.toLong())
+            when (chunk) {
+                "fmt " -> {
+                    check(!formatSeen && size >= 16)
+                    val encoding = readU16(bytes, contentStart.toInt())
+                    val channels = readU16(bytes, contentStart.toInt() + 2)
+                    sampleRate = readU32(bytes, contentStart.toInt() + 4)
+                    val byteRate = readU32(bytes, contentStart.toInt() + 8)
+                    blockAlign = readU16(bytes, contentStart.toInt() + 12).toLong()
+                    val bits = readU16(bytes, contentStart.toInt() + 14)
+                    check(encoding == 1 && channels in 1..2 && sampleRate in 8_000..48_000 &&
+                        bits in setOf(8, 16, 24, 32))
+                    check(blockAlign == channels.toLong() * (bits / 8) &&
+                        byteRate == sampleRate * blockAlign)
+                    formatSeen = true
+                }
+                "data" -> {
+                    check(!dataSeen && size > 0)
+                    frames = size
+                    dataSeen = true
+                }
+            }
+            offset = (contentEnd + (size and 1L)).toInt()
+            check(offset <= bytes.size)
+        }
+        check(offset == bytes.size && formatSeen && dataSeen && blockAlign > 0 && frames % blockAlign == 0L)
+        check(frames / blockAlign <= sampleRate * 30L)
+        bytes
+    }
+
+    private fun readAscii(bytes: ByteArray, offset: Int, length: Int): String =
+        String(bytes, offset, length, Charsets.US_ASCII)
+    private fun readU16(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or ((bytes[offset + 1].toInt() and 0xff) shl 8)
+    private fun readU32(bytes: ByteArray, offset: Int): Long =
+        (bytes[offset].toLong() and 0xff) or ((bytes[offset + 1].toLong() and 0xff) shl 8) or
+            ((bytes[offset + 2].toLong() and 0xff) shl 16) or ((bytes[offset + 3].toLong() and 0xff) shl 24)
+
     fun turnRequest(library: String, requestId: String, expectedRevision: Long, text: String): String {
         if (!PhoneDiscoveryWire.validLibrary(library) || !validUuid4(requestId) || expectedRevision !in 0..REVISION_MAX) throw ApiFailure(FailureKind.INVALID_INPUT)
         val textBytes = strictUtf8(text)

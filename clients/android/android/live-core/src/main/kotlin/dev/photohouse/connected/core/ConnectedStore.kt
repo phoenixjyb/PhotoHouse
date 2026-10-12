@@ -376,6 +376,9 @@ class ConnectedStore(
     ) : this(api, scope, persistence, uploadNetwork, batchPersistence, batchSource, memoryCommunityApi,
         memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null)
 
+    private var assistantSpeechJob: Job? = null
+    private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
+    private val assistantWorkspaceTransport = assistantWorkspaceApi?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
     private var assistantSpeechRequest = 0L
     private var assistantTurnRequest = 0L
     private var assistantTranscriptRequest = 0L
@@ -400,6 +403,14 @@ class ConnectedStore(
             }
             val current = state.value.assistant ?: return@collect
             val selected = current.privateThreadId ?: return@collect
+            val speakingReply = assistantSpeechReplyReference
+            if (current.speechBusy && speakingReply != null && privateReplySpeechReference() != speakingReply) {
+                assistantSpeechRequest++
+                assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+                current.speechAudio?.close()
+                mutable.value = state.value.copy(assistant = current.copy(speechBusy = false, speechAudio = null,
+                    failure = LiveProblem(Message.DISCOVERY_CHANGED)))
+            }
             if (workspace.accountId == state.value.session?.account_id && workspace.libraryId == current.library &&
                 workspace.generation == current.generation && workspace.detail?.thread?.threadId == selected &&
                 workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true) return@collect
@@ -409,6 +420,7 @@ class ConnectedStore(
                 current.speechAudio == null && !current.speechBusy && current.transcript == null && !current.transcribing &&
                 current.failure?.message == Message.DISCOVERY_CHANGED) return@collect
             assistantTurnRequest++; assistantTranscriptRequest++; assistantSpeechRequest++
+            assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
             current.speechAudio?.close()
             mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null,
                 pendingTurn = null, busy = false, transcript = null, transcribing = false,
@@ -708,6 +720,7 @@ class ConnectedStore(
         savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
         savedMemoryContributionChapterEpoch++
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantTurnRequest++
         assistantTranscriptRequest++
         val nextGeneration = previous.generation + 1
@@ -4746,6 +4759,7 @@ class ConnectedStore(
         if (current.library != state.value.library || current.generation != state.value.generation) return
         assistantTranscriptRequest++
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         if (current.busy) assistantTurnRequest++
         if (current.privateThreadId != null) current.pendingTurn?.let {
             assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
@@ -4761,27 +4775,73 @@ class ConnectedStore(
         if (current.library != state.value.library || current.generation != state.value.generation) return
         current.speechAudio?.close()
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false))
     }
-    fun loadAssistantSpeech(language: String): Boolean {
+    private data class PrivateReplySpeechReference(val threadId: String, val turnId: String,
+                                                  val revision: Long, val kind: String, val reply: String)
+
+    /** Capability presence is separate from an eligible fresh reply; never fall back on an over-limit reply. */
+    fun privateReplySpeechEnabled(): Boolean {
         val current = state.value.assistant ?: return false
-        val latest = current.turns.lastOrNull()?.turn
+        val workspace = assistantWorkspaceState.value
+        return current.privateThreadId != null && workspace.capabilities?.replySpeech == true
+    }
+
+    private fun privateReplySpeechReference(): PrivateReplySpeechReference? {
+        val current = state.value.assistant ?: return null
+        val workspace = assistantWorkspaceState.value
+        val thread = workspace.detail?.thread ?: return null
+        val completed = workspace.currentTurn ?: return null
+        val exchange = current.turns.lastOrNull() ?: return null
+        val result = completed.result ?: return null
+        if (!allowed() || current.library != state.value.library || current.generation != state.value.generation ||
+            workspace.accountId != state.value.session?.account_id || workspace.libraryId != current.library ||
+            workspace.generation != current.generation || current.privateThreadId != thread.threadId ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns && it.replySpeech } != true ||
+            workspace.busy || workspace.pendingTurn != null || workspace.historyRefreshRequired ||
+            current.busy || current.pendingTurn != null || completed.threadId != thread.threadId ||
+            completed.status != AssistantWorkspaceRequestStatus.COMPLETED || completed.revision != thread.revision ||
+            completed.recovered || exchange.turn.recovered || completed.requestId != exchange.localRequestId ||
+            exchange.turn.reply != result.reply || exchange.turn.kind != result.kind || result.effect != null ||
+            result.kind !in setOf("results", "clarification", "unsupported") || result.reply.isBlank() ||
+            result.reply.toByteArray(Charsets.UTF_8).size !in 1..600) return null
+        return PrivateReplySpeechReference(thread.threadId, completed.requestId, completed.revision, result.kind, result.reply)
+    }
+
+    fun canReadAssistantReply(): Boolean {
+        val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
-            current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || current.context == null ||
-            latest?.kind != "results" || latest.items.isEmpty() || language !in setOf("zh", "en") || !allowed() || coolingDown()) return false
+            current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || !allowed() || coolingDown()) return false
+        if (privateReplySpeechEnabled()) return privateReplySpeechReference() != null
+        val latest = current.turns.lastOrNull()?.turn
+        return current.context != null && latest?.kind == "results" && latest.items.isNotEmpty()
+    }
+
+    fun loadAssistantSpeech(language: String): Boolean {
+        if (language !in setOf("zh", "en") || !canReadAssistantReply()) return false
+        val current = state.value.assistant ?: return false
+        val privateReply = if (privateReplySpeechEnabled()) privateReplySpeechReference() ?: return false else null
+        val workspaceApi = if (privateReply != null) assistantWorkspaceTransport ?: return false else null
         val library = current.library; val generation = current.generation; val credential = token!!; val context = current.context
         val parentId = current.turns.lastOrNull()?.turn?.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId
         val requestId = java.util.UUID.randomUUID().toString()
         val request = ++assistantSpeechRequest
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         current.speechAudio?.close()
         mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
-        launch { activeGeneration ->
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             var bytes: ByteArray? = null
             try {
-                val speech = api.assistantSpeech(credential, library, context, language, requestId, parentId)
+                if (privateReply != null && privateReplySpeechReference() != privateReply)
+                    throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = if (privateReply != null) workspaceApi!!.speakTurn(credential, library,
+                    privateReply.threadId, privateReply.turnId, privateReply.revision, requestId)
+                else api.assistantSpeech(credential, library, context, language, requestId, parentId)
                 bytes = speech.bytes
                 val received = speech.bytes
-                if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantSpeechRequest) { received.fill(0); return@launch }
+                if (!active(generation) || state.value.library != library || token !== credential || request != assistantSpeechRequest ||
+                    privateReply != null && privateReplySpeechReference() != privateReply) { received.fill(0); return@launch }
                 val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: run { received.fill(0); return@launch }
                 val audio = ProtectedAnnotationAudio(received); bytes = null
                 mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, speechAudio = audio, lastRequestReceipt = speech.receipt, failure = null))
@@ -4789,15 +4849,22 @@ class ConnectedStore(
             } catch (e: CancellationException) { bytes?.fill(0); throw e }
             catch (e: Exception) {
                 bytes?.fill(0)
-                if (!active(activeGeneration) || state.value.library != library || request != assistantSpeechRequest) return@launch
+                if (!active(generation) || state.value.library != library || token !== credential || request != assistantSpeechRequest) return@launch
                 if (e is ApiFailure && e.status in listOf(401, 403)) {
-                    readFailure(e, activeGeneration, credential) { }
+                    readFailure(e, generation, credential) { }
                 } else {
                     val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
                     mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
                 }
             }
         }
+        assistantSpeechJob = job
+        assistantSpeechReplyReference = privateReply
+        requests += job
+        job.invokeOnCompletion { requests.remove(job); if (assistantSpeechJob === job) {
+            assistantSpeechJob = null; assistantSpeechReplyReference = null
+        } }
+        job.start()
         return true
     }
     fun clearAssistantTranscript() {
@@ -4905,6 +4972,7 @@ class ConnectedStore(
         }
         current.speechAudio?.close()
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null, speechAudio = null, speechBusy = false))
         launch { activeGeneration ->
             try {
@@ -4977,6 +5045,7 @@ class ConnectedStore(
         if (!coordinator.sendTurn(requestId, pending.parentRequestId)) return false
         current.speechAudio?.close()
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         val request = ++assistantTurnRequest
         mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
             lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), privateRequestStatus = "pending",
@@ -5546,6 +5615,7 @@ class ConnectedStore(
             // late voice callbacks; no new request is admitted by the old scope.
             state.value.assistant?.speechAudio?.close()
             assistantTranscriptRequest++; assistantSpeechRequest++; assistantTurnRequest++
+            assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
             mutable.value = state.value.copy(assistant = null)
             if (token === credential) {
                 clearSavedStoryReaderPositions(identity?.account_id)

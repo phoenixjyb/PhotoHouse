@@ -62,7 +62,7 @@ class ConnectedPrivateAssistantVoiceTest {
     }
 
     @Test fun recoveredPrivateTurnPausesBeforeSpeechNavigationOrRelistening() = runTest {
-        val fixture = fixture(activatePrivate = true)
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
         fixture.workspaceApi.submitHandler = { _, _, _, _ -> throw ApiFailure(FailureKind.OFFLINE) }
         fixture.workspaceApi.getHandler = { id, request, expectedRevision ->
             fixture.workspaceApi.revision = expectedRevision + 1
@@ -87,8 +87,306 @@ class ConnectedPrivateAssistantVoiceTest {
         assertEquals(1, fixture.workspaceApi.getCalls)
         assertEquals(0, fixture.photoApi.speechCalls)
         assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
         assertEquals(0, opened)
         assertTrue(fixture.store.state.value.assistant!!.turns.last().turn.recovered)
+        assertEquals(0, fixture.photoApi.v1TurnCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun privateClarificationAndZeroResultsSpeakOnceThenRelisten() = runTest {
+        val replyCases = listOf(
+            "clarification" to "Which beach do you mean?",
+            "results" to "No photos matched. Try another date.",
+        )
+        for ((kind, reply) in replyCases) {
+            val fixture = fixture(activatePrivate = true, replySpeech = true)
+            fixture.workspaceApi.resultFactory = { request ->
+                if (kind == "clarification") serverReply(request, kind, reply)
+                else serverReply(request, kind, reply, noResults = true)
+            }
+            fixture.platform.captures.send(wav())
+
+            assertTrue(fixture.driver.start())
+            runCurrent()
+            fixture.platform.speechStarted.receive()
+
+            assertEquals(1, fixture.workspaceApi.speechCalls)
+            assertEquals(0, fixture.photoApi.speechCalls)
+            assertEquals(1, fixture.workspaceApi.speechTurnIds.size)
+            assertEquals(fixture.workspaceApi.requestIds.single(), fixture.workspaceApi.speechTurnIds.single())
+            assertEquals(threadId, fixture.workspaceApi.speechThreadIds.single())
+            assertEquals(fixture.workspaceApi.revision, fixture.workspaceApi.speechRevisions.single())
+            assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+            assertEquals(reply, fixture.driver.state.value.replyText)
+
+            fixture.platform.speechResults.send(true)
+            runCurrent()
+            assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+            assertEquals(2, fixture.platform.captureCalls)
+            assertEquals(1, fixture.workspaceApi.submitCalls)
+            fixture.driver.end()
+            fixture.driver.close()
+        }
+    }
+
+    @Test fun privateUnsupportedReplySpeaksOnceThenPauses() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        fixture.workspaceApi.resultFactory = { request ->
+            serverReply(request, "unsupported", "I can only help search photos right now.")
+        }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        assertEquals(1, fixture.workspaceApi.speechCalls)
+        assertEquals("I can only help search photos right now.", fixture.driver.state.value.replyText)
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+
+        fixture.platform.speechResults.send(true)
+        runCurrent()
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.REVIEW_REQUIRED, fixture.driver.state.value.reason)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertEquals(1, fixture.workspaceApi.submitCalls)
+        assertEquals(0, fixture.photoApi.speechCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun overLimitPrivateReplyStaysVisibleAndNeverFallsBackToCountSpeech() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        fixture.workspaceApi.resultFactory = { request -> serverReply(request, "clarification", "x".repeat(601)) }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.REVIEW_REQUIRED, fixture.driver.state.value.reason)
+        assertEquals(601, fixture.store.state.value.assistant!!.turns.last().turn.reply.length)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
+        assertEquals(0, fixture.photoApi.speechCalls)
+        assertEquals(1, fixture.platform.captureCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun freshPrivateMultiResultOpenUsesOnlyExactServerSelectedAsset() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        fixture.workspaceApi.resultFactory = { request -> multiResultOpen(request) }
+        fixture.platform.captures.send(wav())
+        fixture.driver.close()
+        val opened = mutableListOf<Pair<String, String?>>()
+        fixture.driver = AssistantVoiceSessionStore(
+            fixture.store, voiceScope(fixture.store), backgroundScope, fixture.platform, "en", { true },
+        ) { id, request ->
+            val workspace = fixture.store.assistantWorkspaceState.value
+            assertEquals(workspace.detail!!.thread.revision, workspace.currentTurn!!.revision)
+            assertEquals(fixture.workspaceApi.requestIds.single(), workspace.currentTurn!!.requestId)
+            opened += id to request
+        }
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(listOf("2" to fixture.workspaceApi.requestIds.single()), opened)
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
+        assertEquals(0, fixture.photoApi.speechCalls)
+        assertEquals(1, fixture.workspaceApi.submitCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun recoveredPrivateOpenEffectNeverNavigates() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        fixture.workspaceApi.submitHandler = { _, _, _, _ -> throw ApiFailure(FailureKind.OFFLINE) }
+        fixture.workspaceApi.getHandler = { id, request, expectedRevision ->
+            fixture.workspaceApi.revision = expectedRevision + 1
+            fixture.workspaceApi.latestRequestId = request
+            fixture.workspaceApi.completed(id, request, fixture.workspaceApi.revision, recovered = true)
+                .copy(result = multiResultOpen(request).copy(recovered = true))
+        }
+        fixture.platform.captures.send(wav())
+        fixture.driver.close()
+        var opened = 0
+        fixture.driver = AssistantVoiceSessionStore(
+            fixture.store, voiceScope(fixture.store), backgroundScope, fixture.platform, "en", { true },
+        ) { _, _ -> opened++ }
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(0, opened)
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun pausingWhilePrivateSpeechIsInFlightCancelsLateAudioAndNeverPlaysIt() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        val ttsStarted = CompletableDeferred<Unit>()
+        val releaseTts = CompletableDeferred<Unit>()
+        var lateBytes = ByteArray(256) { 0x55.toByte() }
+        fixture.workspaceApi.speechHandler = { _, _, _, _, request ->
+            ttsStarted.complete(Unit)
+            withContext(NonCancellable) { releaseTts.await() }
+            AssistantSpeechResult(lateBytes, AssistantRequestReceipt(request, "enabled", "succeeded"))
+        }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.workspaceApi.speechCalls)
+        ttsStarted.await()
+        assertTrue(fixture.driver.pause())
+        runCurrent()
+        releaseTts.complete(Unit)
+        runCurrent()
+
+        assertTrue(lateBytes.all { it == 0.toByte() })
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        fixture.driver.close()
+    }
+
+    @Test fun losingReplySpeechCapabilityCancelsHeldPrivateAudioAndEndsVoiceSession() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        val ttsStarted = CompletableDeferred<Unit>()
+        val releaseTts = CompletableDeferred<Unit>()
+        val lateBytes = ByteArray(256) { 0x44.toByte() }
+        fixture.workspaceApi.speechHandler = { _, _, _, _, request ->
+            ttsStarted.complete(Unit)
+            withContext(NonCancellable) { releaseTts.await() }
+            AssistantSpeechResult(lateBytes, AssistantRequestReceipt(request, "enabled", "succeeded"))
+        }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        ttsStarted.await()
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertTrue(fixture.store.state.value.assistant!!.speechBusy)
+
+        fixture.workspaceApi.capabilitiesResponse = fixture.workspaceApi.capabilitiesResponse.copy(replySpeech = false)
+        assertTrue(requireNotNull(fixture.store.assistantWorkspaceCoordinator).refreshCapabilities())
+        runCurrent()
+
+        val assistant = requireNotNull(fixture.store.state.value.assistant)
+        assertFalse(assistant.speechBusy)
+        assertNull(assistant.speechAudio)
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.CONTEXT_CHANGED, fixture.driver.state.value.reason)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.workspaceApi.speechCalls)
+
+        releaseTts.complete(Unit)
+        runCurrent()
+        assertTrue(lateBytes.all { it == 0.toByte() })
+        assertNull(fixture.store.state.value.assistant!!.speechAudio)
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.workspaceApi.speechCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun newerManualPrivateTurnCancelsHeldReplySpeechWithoutLosingLatestResult() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        val replies = listOf("Earlier answer", "Latest answer")
+        var nextReply = 0
+        fixture.workspaceApi.resultFactory = { request ->
+            serverReply(request, "clarification", replies[nextReply++])
+        }
+        assertTrue(fixture.store.sendAssistantText("first private question"))
+        runCurrent()
+        assertEquals("Earlier answer", fixture.store.state.value.assistant!!.turns.last().turn.reply)
+
+        val ttsStarted = CompletableDeferred<Unit>()
+        val releaseTts = CompletableDeferred<Unit>()
+        val lateBytes = ByteArray(256) { 0x66.toByte() }
+        fixture.workspaceApi.speechHandler = { _, _, _, _, request ->
+            ttsStarted.complete(Unit)
+            withContext(NonCancellable) { releaseTts.await() }
+            AssistantSpeechResult(lateBytes, AssistantRequestReceipt(request, "enabled", "succeeded"))
+        }
+        assertTrue(fixture.store.loadAssistantSpeech("en"))
+        runCurrent()
+        ttsStarted.await()
+        assertTrue(fixture.store.state.value.assistant!!.speechBusy)
+
+        assertTrue(fixture.store.sendAssistantText("new private question"))
+        assertFalse(fixture.store.state.value.assistant!!.speechBusy)
+        runCurrent()
+        assertEquals(2, fixture.workspaceApi.submitCalls)
+        assertEquals("Latest answer", fixture.store.state.value.assistant!!.turns.last().turn.reply)
+        assertFalse(fixture.store.state.value.assistant!!.busy)
+
+        releaseTts.complete(Unit)
+        runCurrent()
+        val assistant = requireNotNull(fixture.store.state.value.assistant)
+        assertTrue(lateBytes.all { it == 0.toByte() })
+        assertEquals("Latest answer", assistant.turns.last().turn.reply)
+        assertFalse(assistant.speechBusy)
+        assertNull(assistant.speechAudio)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.workspaceApi.speechCalls)
+        assertEquals(0, fixture.photoApi.v1TurnCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun losingReplySpeechCapabilityDuringPlaybackStopsAndWipesAudioWithoutRelistening() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        val playbackBytes = ByteArray(256) { 0x35.toByte() }
+        fixture.workspaceApi.speechHandler = { _, _, _, _, request ->
+            AssistantSpeechResult(playbackBytes, AssistantRequestReceipt(request, "enabled", "succeeded"))
+        }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.platform.speechCalls)
+        val playingAudio = requireNotNull(fixture.platform.lastSpeechAudio)
+        assertFalse(playingAudio.isClosed)
+
+        fixture.workspaceApi.capabilitiesResponse = fixture.workspaceApi.capabilitiesResponse.copy(replySpeech = false)
+        assertTrue(requireNotNull(fixture.store.assistantWorkspaceCoordinator).refreshCapabilities())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.CONTEXT_CHANGED, fixture.driver.state.value.reason)
+        assertTrue(playingAudio.isClosed)
+        assertTrue(playbackBytes.all { it == 0.toByte() })
+        assertTrue(fixture.platform.stopAudioCalls > 0)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertEquals(1, fixture.platform.speechCalls)
+        assertNull(fixture.store.state.value.assistant!!.speechAudio)
+        assertFalse(fixture.store.state.value.assistant!!.speechBusy)
+        fixture.driver.close()
+    }
+
+    @Test fun losingReplySpeechCapabilityWhileListeningEndsBeforeSubmittingCapture() = runTest {
+        val fixture = fixture(activatePrivate = true, replySpeech = true)
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.platform.captureCalls)
+
+        fixture.workspaceApi.capabilitiesResponse = fixture.workspaceApi.capabilitiesResponse.copy(replySpeech = false)
+        assertTrue(requireNotNull(fixture.store.assistantWorkspaceCoordinator).refreshCapabilities())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.CONTEXT_CHANGED, fixture.driver.state.value.reason)
+        assertTrue(fixture.platform.stopAudioCalls > 0)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertTrue(fixture.photoApi.transcriptionIds.isEmpty())
+        assertEquals(0, fixture.workspaceApi.submitCalls)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
         assertEquals(0, fixture.photoApi.v1TurnCalls)
         fixture.driver.close()
     }
@@ -278,9 +576,9 @@ class ConnectedPrivateAssistantVoiceTest {
         fixture.driver.close()
     }
 
-    private suspend fun TestScope.fixture(activatePrivate: Boolean): Fixture {
+    private suspend fun TestScope.fixture(activatePrivate: Boolean, replySpeech: Boolean = false): Fixture {
         val photoApi = PhotoApi()
-        val workspaceApi = WorkspaceApi(threadId)
+        val workspaceApi = WorkspaceApi(threadId, replySpeech)
         val store = ConnectedStore(
             photoApi, backgroundScope, now = { testScheduler.currentTime }, assistantWorkspaceApi = workspaceApi,
         )
@@ -320,16 +618,19 @@ class ConnectedPrivateAssistantVoiceTest {
         val speechResults = Channel<Boolean>(Channel.UNLIMITED)
         var captureCalls = 0
         var speechCalls = 0
+        var stopAudioCalls = 0
+        var lastSpeechAudio: ProtectedAnnotationAudio? = null
         override suspend fun capture(maxSeconds: Int): ByteArray? {
             captureCalls++
             return captures.receive()
         }
         override suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean {
             speechCalls++
+            lastSpeechAudio = audio
             speechStarted.send(Unit)
             return speechResults.receive()
         }
-        override fun stopAudio() = Unit
+        override fun stopAudio() { stopAudioCalls++ }
         override fun finishCapture() { captures.trySend(null) }
     }
 
@@ -372,18 +673,26 @@ class ConnectedPrivateAssistantVoiceTest {
         override suspend fun originalPhoto(token: Bearer, library: String, assetId: String) = byteArrayOf()
     }
 
-    private class WorkspaceApi(private val threadId: String) : AssistantWorkspaceApi {
+    private class WorkspaceApi(private val threadId: String, replySpeech: Boolean = false) : AssistantWorkspaceApi {
         override val assistantWorkspaceEnabled = true
         var capabilitiesResponse = AssistantWorkspaceCapabilities(
-            1, true, true, true, true, true, setOf("locale"),
+            1, true, true, true, true, true, setOf("locale"), replySpeech = replySpeech,
         )
         var revision = 0L
         var latestRequestId: String? = null
         var submitCalls = 0
         var getCalls = 0
+        var speechCalls = 0
         val requestIds = mutableListOf<String>()
         val parentIds = mutableListOf<String?>()
         val texts = mutableListOf<String>()
+        val speechThreadIds = mutableListOf<String>()
+        val speechTurnIds = mutableListOf<String>()
+        val speechRevisions = mutableListOf<Long>()
+        val speechRequestIds = mutableListOf<String>()
+        var resultFactory: (String) -> AssistantTurn = ::result
+        var speechHandler: suspend (String, String, String, Long, String) -> AssistantSpeechResult =
+            { _, _, _, _, request -> AssistantSpeechResult(syntheticAnnotationWav(), AssistantRequestReceipt(request, "enabled", "succeeded")) }
         var submitHandler: suspend (String, String, Long, String) -> AssistantWorkspaceTurn = { id, request, expected, _ ->
             revision = expected + 1
             latestRequestId = request
@@ -414,10 +723,20 @@ class ConnectedPrivateAssistantVoiceTest {
             return getHandler(threadId, requestId, revision)
         }
 
+        override suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
+                                       expectedRevision: Long, speechRequestId: String): AssistantSpeechResult {
+            speechCalls++
+            speechThreadIds += threadId
+            speechTurnIds += turnId
+            speechRevisions += expectedRevision
+            speechRequestIds += speechRequestId
+            return speechHandler(library, threadId, turnId, expectedRevision, speechRequestId)
+        }
+
         fun completed(id: String, request: String, resultRevision: Long, recovered: Boolean) = AssistantWorkspaceTurn(
             version = 1, threadId = id, requestId = request, status = AssistantWorkspaceRequestStatus.COMPLETED,
             revision = resultRevision, recovered = recovered, error = null,
-            result = result(request), receipt = AssistantRequestReceipt(request, "enabled", "succeeded"),
+            result = resultFactory(request), receipt = AssistantRequestReceipt(request, "enabled", "succeeded"),
         )
 
         private fun summary(id: String = threadId) = AssistantWorkspaceThreadSummary(
@@ -433,11 +752,33 @@ class ConnectedPrivateAssistantVoiceTest {
             receipt = AssistantRequestReceipt(requestId, "enabled", "succeeded"),
         )
 
+        private fun serverReply(requestId: String, kind: String, reply: String,
+                                noResults: Boolean = false) = AssistantTurn(
+            kind = kind, reply = reply, context = null, filters = null, items = emptyList(), total = 0,
+            hasMore = false, effect = null,
+            receipt = AssistantRequestReceipt(requestId, "enabled", "succeeded"),
+        ).also { check(!noResults || it.kind == "results") }
+
+        private fun multiResultOpen(requestId: String): AssistantTurn {
+            val items = listOf(testAsset(), testAsset("2"), testAsset("3"))
+            val ids = items.map { it.id }
+            return AssistantTurn(
+                kind = "open", reply = "Opening the second photo.",
+                context = buildJsonObject {
+                    put("visible_ids", buildJsonArray { ids.forEach { add(JsonPrimitive(it)) } })
+                    put("total", JsonPrimitive(ids.size))
+                },
+                filters = buildJsonObject { }, items = items, total = ids.size, hasMore = false,
+                effect = AssistantEffect("open_asset", "2"),
+                receipt = AssistantRequestReceipt(requestId, "enabled", "succeeded"),
+            )
+        }
+
         private fun visibleContext(): JsonObject = buildJsonObject {
             put("visible_ids", buildJsonArray { add(JsonPrimitive("1")) })
         }
 
-        private fun testAsset() = Asset("1", "image", 640, 480, null, null, "/assets/1/thumbnail?library=family")
+        private fun testAsset(id: String = "1") = Asset(id, "image", 640, 480, null, null, "/assets/$id/thumbnail?library=family")
 
         private fun wav() = ByteArray(16_046).also { bytes ->
             "RIFF".toByteArray().copyInto(bytes)

@@ -27,7 +27,7 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         result = qualification.run(output)
         self.assertEqual(result, qualification._report(os.name == 'nt'))
         self.assertEqual({path.name for path in output.iterdir()}, {
-            'main.sqlite', 'assistant-workspace.sqlite', 'discovery-index.json',
+            'main.sqlite', 'assistant-workspace.sqlite', 'assistant-journal.sqlite', 'discovery-index.json',
             'qualification-report.json', 'synthetic-originals', 'synthetic-derived'})
         report = (output / 'qualification-report.json').read_text(encoding='ascii')
         self.assertNotIn(qualification.TOKEN, report)

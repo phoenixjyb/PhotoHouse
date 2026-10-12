@@ -195,6 +195,7 @@ class RuntimeConfiguration:
     update_root: Path | None = None
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
+    assistant_reply_speech_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -282,6 +283,8 @@ class RuntimeConfiguration:
             raise ValueError('Explicit annotation intake opt-in required')
         if type(self.assistant_enabled) is not bool:
             raise ValueError('Explicit assistant opt-in required')
+        if type(self.assistant_reply_speech_enabled) is not bool:
+            raise ValueError('Explicit private reply speech opt-in required')
         for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
             if type(timeout) not in (int, float) or not 0 < timeout <= 60:
                 raise ValueError('Invalid assistant provider timeout')
@@ -291,6 +294,10 @@ class RuntimeConfiguration:
             raise ValueError('Assistant ASR requires assistant opt-in')
         if self.assistant_tts_url is not None and not self.assistant_enabled:
             raise ValueError('Assistant TTS requires assistant opt-in')
+        if (self.assistant_reply_speech_enabled and
+                (not self.assistant_enabled or self.assistant_tts_url is None or
+                 self.assistant_journal_path is None or self.assistant_workspace_path is None)):
+            raise ValueError('Private reply speech requires assistant TTS, journal and workspace')
         assistant_journal = None
         if self.assistant_journal_path is not None:
             if not self.assistant_enabled:
@@ -356,4 +363,5 @@ class RuntimeConfiguration:
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
                           assistant_workspace_store=assistant_workspace_store,
+                          assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
                           update_root=self.update_root)

@@ -11,6 +11,7 @@ data class AssistantWorkspaceCapabilities(
     val appliedPreferences: Set<String> = emptySet(),
     val historyPaging: Boolean = false,
     val threadLabels: Boolean = false,
+    val replySpeech: Boolean = false,
 )
 
 data class AssistantWorkspaceThreadSummary(
@@ -108,4 +109,8 @@ interface AssistantWorkspaceApi {
                            expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn =
         submitTurn(token, library, threadId, requestId, expectedRevision, text)
     suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Synthesizes only the server-owned reply for an exact completed private turn. */
+    suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
+                          expectedRevision: Long, speechRequestId: String): AssistantSpeechResult =
+        throw ApiFailure(FailureKind.HTTP, 503)
 }

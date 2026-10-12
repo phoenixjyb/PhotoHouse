@@ -18,6 +18,7 @@ class HttpsAssistantWorkspaceApiTest {
     private val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
     private val thread = "22222222-2222-4222-8222-222222222222"
     private val request = "11111111-1111-4111-8111-111111111111"
+    private val speechRequest = "55555555-5555-4555-8555-555555555555"
 
     private class Fixture : AutoCloseable {
         private val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
@@ -37,6 +38,30 @@ class HttpsAssistantWorkspaceApiTest {
     private fun response(body: String, status: Int = 200) = MockResponse().setResponseCode(status)
         .setHeader("Content-Type", "application/json; charset=utf-8")
         .setHeader("Cache-Control", "private, no-store").setBody(body)
+
+    private fun wav(seconds: Int = 1): ByteArray {
+        val rate = 16_000
+        val dataBytes = seconds * rate * 2
+        return ByteArray(44 + dataBytes).also { bytes ->
+            fun ascii(offset: Int, value: String) = value.toByteArray().copyInto(bytes, offset)
+            fun u16(offset: Int, value: Int) { bytes[offset] = value.toByte(); bytes[offset + 1] = (value shr 8).toByte() }
+            fun u32(offset: Int, value: Int) {
+                for (i in 0..3) bytes[offset + i] = (value ushr (i * 8)).toByte()
+            }
+            ascii(0, "RIFF"); u32(4, bytes.size - 8); ascii(8, "WAVE")
+            ascii(12, "fmt "); u32(16, 16); u16(20, 1); u16(22, 1)
+            u32(24, rate); u32(28, rate * 2); u16(32, 2); u16(34, 16)
+            ascii(36, "data"); u32(40, dataBytes)
+        }
+    }
+
+    private fun speechResponse(bytes: ByteArray, requestId: String = speechRequest) = MockResponse()
+        .setHeader("Content-Type", "audio/wav")
+        .setHeader("Cache-Control", "private, no-store")
+        .setHeader("X-PhotoHouse-Tracking", "enabled")
+        .setHeader("X-PhotoHouse-Request-Id", requestId)
+        .setHeader("X-PhotoHouse-Receipt-Status", "succeeded")
+        .setBody(okio.Buffer().write(bytes))
 
     private fun result(kind: String = "results", effect: String = "null") =
         """{"version":1,"kind":"$kind","reply":"Found one.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1},"filters":{},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}],"total":1,"has_more":false,"effect":$effect}"""
@@ -101,6 +126,96 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request?library_id=family-a", get.path)
             assertProtected(get)
             assertEquals(2, f.server.requestCount)
+        }
+    }
+
+    @Test fun privateReplySpeechUsesExactOwnedTurnAndDistinctJournalRequest() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            val audioBytes = wav()
+            f.server.enqueue(speechResponse(audioBytes))
+            val result = api.speakTurn(token, "family-a", thread, request, 7, speechRequest)
+            assertEquals(speechRequest, result.receipt.requestId)
+            assertEquals("enabled", result.receipt.tracking)
+            assertEquals("succeeded", result.receipt.status)
+            assertArrayEquals(audioBytes, result.bytes)
+            result.bytes.fill(0)
+
+            val sent = f.server.takeRequest()
+            assertEquals("POST", sent.method)
+            assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request/speech", sent.path)
+            assertEquals(token.header(), sent.getHeader("Authorization"))
+            assertEquals("audio/wav", sent.getHeader("Accept"))
+            assertEquals("no-store", sent.getHeader("Cache-Control"))
+            assertEquals("identity", sent.getHeader("Accept-Encoding"))
+            assertEquals(speechRequest, sent.getHeader("X-PhotoHouse-Request-Id"))
+            assertEquals(request, sent.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
+            assertEquals(setOf("library_id", "expected_revision"), body.keys)
+            assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
+            assertEquals("7", body.getValue("expected_revision").jsonPrimitive.content)
+            assertEquals(1, f.server.requestCount)
+        }
+    }
+
+    @Test fun privateReplySpeechRejectsBadReceiptMIMEAndOversizedAudioWithoutRetry() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(speechResponse(wav(), requestId = "33333333-3333-4333-8333-333333333333"))
+            invalid { api.speakTurn(token, "family-a", thread, request, 1, speechRequest) }
+            assertEquals(1, f.server.requestCount); f.server.takeRequest()
+
+            f.server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setHeader("Cache-Control", "no-store"))
+            invalid { api.speakTurn(token, "family-a", thread, request, 1, speechRequest) }
+            f.server.takeRequest()
+
+            f.server.enqueue(MockResponse().setHeader("Content-Type", "audio/wav").setBody(okio.Buffer().write(wav())))
+            invalid { api.speakTurn(token, "family-a", thread, request, 1, speechRequest) }
+            f.server.takeRequest()
+
+            f.server.enqueue(speechResponse(wav()).setHeader("Content-Encoding", "gzip"))
+            invalid { api.speakTurn(token, "family-a", thread, request, 1, speechRequest) }
+            f.server.takeRequest()
+
+            val oversized = ByteArray(2 * 1024 * 1024 + 1)
+            f.server.enqueue(speechResponse(oversized))
+            try { api.speakTurn(token, "family-a", thread, request, 1, speechRequest); fail("oversized audio accepted") }
+            catch (e: ApiFailure) { assertEquals(FailureKind.TOO_LARGE, e.kind) }
+            f.server.takeRequest()
+
+            invalidInput { api.speakTurn(token, "family-a", thread, request, 1, request) }
+            invalidInput { api.speakTurn(token, "family-a", "bad-thread", request, 1, speechRequest) }
+            assertEquals(5, f.server.requestCount)
+        }
+    }
+
+    @Test fun privateReplySpeechPostIsNotAutomaticallyRetried() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST))
+            try { f.api().speakTurn(token, "family-a", thread, request, 1, speechRequest); fail("disconnected speech POST succeeded") }
+            catch (e: ApiFailure) { assertTrue(e.kind in setOf(FailureKind.OFFLINE, FailureKind.TLS)) }
+            assertEquals("POST", f.server.takeRequest().method)
+            assertEquals(1, f.server.requestCount)
+        }
+    }
+
+    @Test fun privateReplySpeechCancellationStopsTheHttpsCall() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(MockResponse().setHeader("Content-Type", "audio/wav")
+                .setHeader("Cache-Control", "no-store")
+                .setChunkedBody("x".repeat(64 * 1024), 1024)
+                .throttleBody(1024, 100, java.util.concurrent.TimeUnit.MILLISECONDS))
+            val pending = launch(Dispatchers.IO) {
+                try { f.api().speakTurn(token, "family-a", thread, request, 1, speechRequest) }
+                catch (_: CancellationException) { }
+                catch (_: ApiFailure) { }
+            }
+            assertNotNull(f.server.takeRequest())
+            delay(150)
+            pending.cancelAndJoin()
+            assertTrue(pending.isCancelled)
+            assertEquals(1, f.server.requestCount)
         }
     }
 
@@ -223,6 +338,10 @@ class HttpsAssistantWorkspaceApiTest {
     private fun invalid(block: suspend () -> Any?) = runBlocking {
         try { block(); fail("invalid workspace response accepted") }
         catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_RESPONSE, e.kind) }
+    }
+    private fun invalidInput(block: suspend () -> Any?) = runBlocking {
+        try { block(); fail("invalid workspace request accepted") }
+        catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
     }
     private fun httpFailure(status: Int, block: suspend () -> Any?) = runBlocking {
         try { block(); fail("HTTP $status accepted") }

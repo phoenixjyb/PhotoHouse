@@ -287,7 +287,7 @@ Client clearing and server troubleshooting retention are separate lifecycles.
 | Assistant transcription | Authenticated server adapter calls the configured local ASR service; assistant audio is transient. |
 | Intent, context and permitted action | Server assistant contracts, current membership and explicit action validation. |
 | Story proposal or writing companion | Optional local model adapter and bounded worker; qualification is required before enabling generation. |
-| Spoken assistant reply | Configured server speech adapter generates audio. The explicit foreground session may play a result count and resume capture only after actual playback; ordinary playback retains explicit controls. The Windows adapter uses System.Speech. |
+| Spoken assistant reply | Configured server speech adapter generates audio. v1 reads result counts; optional private reply speech reads the server-owned completed reply. Actual playback completion admits another capture, with unsupported requests pausing for review. The Windows adapter uses System.Speech. |
 | Chapter read-aloud | Android TextToSpeech or browser speech synthesis, with explicit playback controls; installed voices determine availability. |
 
 Changing a model endpoint does not authorize it to perform arbitrary actions.
@@ -400,8 +400,9 @@ uncertain submitted request remains available for receipt inspection, with no
 automatic resubmission. Idle voice controls do not cancel manual requests.
 
 The initial adapter uses the protected v1 ASR/search/result-count TTS services.
-This is continuous voice retrieval, not a general language-model agent. Empty,
-clarifying and unsupported spoken replies pause and remain visible. Typed tools,
+This adapter provides continuous voice retrieval. With the v1 count-only
+capability, empty, clarifying and unsupported replies pause and remain visible.
+The optional private reply speech path below broadens that spoken interaction. Typed tools,
 owned durable conversations/preferences and grounded local understanding are
 separate backend layers. Personal thread storage must be deliberately initialized
 and admitted, distinct from audit receipts and family story/audio storage. Existing
@@ -464,3 +465,21 @@ they do not configure ASR/TTS or select providers. Capability checks expose this
 distinction. Schema-v2 initialization or the explicit offline v1 upgrade is a
 separate operation; opening a store never creates or migrates it. This source
 does not activate private storage in the currently served Windows backend.
+
+## Optional private reply speech
+
+[Protected reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md) reads an exact
+completed owned turn. A separate default-off runtime flag requires healthy
+workspace/journal stores and an existing local TTS adapter. The caller sends
+only library, expected revision and distinct turn/speech request IDs. The server
+validates current membership, source context and a successful parent journal
+record, derives voice language from saved text, and rechecks authority after
+synthesis. Each speech ID is admitted once; no audio or duplicate reply text is
+retained in the journal. Replies exceeding 600 UTF-8 bytes remain visible.
+
+The foreground phone/Web loop may speak a fresh result, empty result or
+clarification, then listen after actual audio completion. Unsupported requests
+speak help and pause for review. Recovery never triggers speech or navigation.
+Client scope/cancellation fences discard late audio. This source flag does not
+activate the Windows provider or private database, and retains v1 count speech
+when the new capability is absent.

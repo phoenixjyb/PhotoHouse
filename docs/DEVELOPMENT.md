@@ -1816,3 +1816,38 @@ bounded Job wrapper: 15 minutes, 2 GiB process memory, four processes and an
 8 GiB free-RAM admission floor. Native execution requires its own staging/run
 approval. Five portable safety/behavior tests passed; source-package closure is
 checked again after pinning the new script in Git.
+
+
+## October 13 protected private reply speech
+
+The candidate adds default-off saved-reply TTS with current ownership, revision
+and source checks, a successful parent turn receipt and at-most-once admission
+for each speech request ID. Phone/Web speak fresh clarifications and empty
+results, then listen only after actual playback. Unsupported requests speak help
+and pause. Recovered replies never speak or navigate automatically.
+
+The full generated API profile passed **1,274 tests and 743 subtests**, followed
+by the no-listener demo. The focused speech/configuration/closed-boundary cohort
+passed 68 tests. The portable qualification tool's five tests now include fake
+saved-reply synthesis, matching parent receipts and duplicate refusal. Those
+cohorts overlap. Provider/model inference and real databases were not used.
+
+Web's private controller passed 37 Node tests, plus the 15 history browser
+journeys and the complete voice browser flow. Review corrected missing required
+speech metadata and an overly restrictive WAV header check; the final client
+requires matching successful receipt metadata, the supported bounded PCM
+formats and a 30-second limit. Temporary parsed PCM copies are wiped.
+
+The final full phone JVM profile passed 913 live-core tests; the connected
+profile passed 17 tests. The 19-case private voice cohort covers cancellation
+guards and capability changes during capture, synthesis and actual playback;
+phone lint and debug/test assemblies passed. Four generated API 36 simulator
+checks passed for Chinese at 150% text: explicit reply reading without capture,
+visible loading, a long-reply reading hint, and accessible Pause/End controls.
+Phone and Web speaking-state renders were inspected. These checks do not prove
+Windows pronunciation, physical-device acceptance, signing or publication.
+
+The API packager now declares its actual required main schema `a0c9d2e4f817`
+instead of the historical e7 marker. This metadata correction performs no
+migration. The package closure includes the listener-free qualifier and preserves
+the separate, explicitly provisioned schema-v2 private store.

@@ -573,3 +573,20 @@ Next product work is reviewed related-moment suggestions and collaborative
 chapter editing, using family feedback from the dictate → edit → save → reopen
 journey. Qualify local narrative processing and pronunciation separately before
 activating them for family material.
+
+
+## October 13 assistant continuation and delivery priorities
+
+1. Qualify the local private conversation, older-history and protected reply
+   speech candidate across server, Web and phone. Preserve explicit session
+   consent, exact request recovery and individual history ownership.
+2. Package an immutable API candidate and its synthetic listener-free Windows
+   qualification tool. Native staging/checks, isolated store provisioning and
+   live activation remain separately authorized operations.
+3. Prepare the matching unsigned phone candidate with the original icon. Sign
+   and publish only after source qualification and release authority.
+4. Extend the grounded assistant to stories and memoirs through typed read-only
+   tools, showing evidence and reviewed suggestions. Keep uncertain narrative
+   inference, family mutations and collaborative edits behind explicit review.
+5. Collect family feedback on voice continuity, pronunciation, retrieval and
+   history clarity before broadening agent autonomy.

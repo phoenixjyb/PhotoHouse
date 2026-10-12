@@ -198,7 +198,7 @@ class StagingPackageTests(unittest.TestCase):
             for name in package.FILES:
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),manifest['files'][name])
             self.assertIn('backend/app/ui/photohouse-icon.svg',archive.namelist())
-            self.assertEqual(manifest['migration_revision'], 'e7c1a9d5b304')
+            self.assertEqual(manifest['migration_revision'], 'a0c9d2e4f817')
             self.assertIn('backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
                           archive.namelist())
             for name in ('backend/app/tasks.py', 'backend/app/gps_utils.py',

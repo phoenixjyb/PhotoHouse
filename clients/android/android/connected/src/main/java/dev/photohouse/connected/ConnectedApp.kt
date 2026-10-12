@@ -697,6 +697,9 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
                 }
                 AssistantScreen(state.assistant, words.zh, previews = state.previews,
+                    privateReplySpeechEnabled = store.privateReplySpeechEnabled(),
+                    privateReplySpeechAvailable = store.privateReplySpeechEnabled() &&
+                        (state.assistant?.speechBusy == true || state.assistant?.speechAudio != null || store.canReadAssistantReply()),
                     onPrivateConversations = if(privateAssistantState.capabilities?.let { it.available && it.threads } == true) ({
                         if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();
                             assistantPermissionContext=null;assistantPendingCapture?.capture?.discard();assistantPendingCapture=null;

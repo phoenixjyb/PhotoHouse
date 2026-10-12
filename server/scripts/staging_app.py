@@ -28,6 +28,7 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
                    'assistant_workspace_path',
+                   'assistant_reply_speech_enabled',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
                    'original_deletion_journal_path', 'original_deletion_namespace',
                    'story_title_suggestions_enabled', 'story_title_url', 'story_title_model',
@@ -91,6 +92,7 @@ class StagingConfiguration:
     update_root: Path | None = None
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
+    assistant_reply_speech_enabled: bool = False
     memory_groups_enabled: bool = False
     memory_group_vector_root: Path | None = None
     # An immutable tuple copied from the private JSON object.  The JSON mapping is never retained.
@@ -234,6 +236,8 @@ class StagingConfiguration:
                     raise InvalidConfiguration()
             if type(self.assistant_enabled) is not bool:
                 raise InvalidConfiguration()
+            if type(self.assistant_reply_speech_enabled) is not bool:
+                raise InvalidConfiguration()
             for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
                 if type(timeout) not in (int, float) or not 0 < timeout <= 60:
                     raise InvalidConfiguration()
@@ -290,6 +294,10 @@ class StagingConfiguration:
                                      *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
                                      *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))):
                     raise InvalidConfiguration()
+            if (self.assistant_reply_speech_enabled and
+                    (not self.assistant_enabled or self.assistant_tts_url is None or
+                     self.assistant_journal_path is None or self.assistant_workspace_path is None)):
+                raise InvalidConfiguration()
             protected = (*media, *files, *((self.incoming_root,) if self.incoming_root else ()))
             for index in self.discovery_indexes:
                 if not isinstance(index, Path) or _path(str(index)) != index:
@@ -349,6 +357,7 @@ class StagingConfiguration:
             assistant_tts_token=self.assistant_tts_token,
             assistant_asr_timeout_seconds=self.assistant_asr_timeout_seconds,
             assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
+            assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
             update_root=self.update_root,
             memory_groups_enabled=self.memory_groups_enabled,
             memory_group_vectors=memory_group_vectors)
@@ -417,6 +426,7 @@ def parse_configuration(value):
             assistant_tts_token=value.get('assistant_tts_token'),
             assistant_asr_timeout_seconds=value.get('assistant_asr_timeout_seconds', 45),
             assistant_tts_timeout_seconds=value.get('assistant_tts_timeout_seconds', 45),
+            assistant_reply_speech_enabled=value.get('assistant_reply_speech_enabled', False),
             update_root=None if value.get('update_root') is None else _path(value['update_root']),
             memory_groups_enabled=value.get('memory_groups_enabled', False),
             memory_group_vector_root=None if vector_root_value is None else _path(vector_root_value),

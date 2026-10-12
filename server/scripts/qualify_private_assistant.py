@@ -10,6 +10,8 @@ import argparse
 from contextlib import closing
 from dataclasses import asdict
 import json
+import io
+import wave
 import os
 from pathlib import Path, PureWindowsPath
 import sqlite3
@@ -26,6 +28,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
 from app.access.assistant_workspace_store import RETENTION_SECONDS, initialize_v2
+from app.access.assistant_journal import initialize as initialize_journal
+from app.access.assistant_speech import LocalAssistantTts
 from app.access.credentials import session_digest
 from app.access.discovery import ReadBudget, digest, scoped_source
 from app.access.discovery_provider import ReviewedIndex
@@ -44,13 +48,14 @@ MAIN_REVISION = 'a0c9d2e4f817'
 CASES = (
     'migrated_synthetic_runtime_and_generated_discovery_index',
     'private_thread_create_turn_and_idempotent_recovery',
+    'saved_reply_speech_parent_receipt_and_duplicate_refusal',
     'opt_in_unicode_label_and_paged_history',
     'foreign_actor_reads_are_indistinguishable',
     'fixed_retention_expires_private_text',
 )
 REPORT_NAME = 'qualification-report.json'
 FAILURE_NAME = 'qualification-failure.json'
-DATA_NAMES = ('main.sqlite', 'assistant-workspace.sqlite', 'discovery-index.json')
+DATA_NAMES = ('main.sqlite', 'assistant-workspace.sqlite', 'assistant-journal.sqlite', 'discovery-index.json')
 MAX_REPORT_BYTES = 8192
 
 
@@ -185,6 +190,23 @@ def _write_discovery_index(database, index_path):
     require_private_file(index_path)
 
 
+class _SyntheticTts(LocalAssistantTts):
+    """In-process fixture: constructor and synthesis never make a provider request."""
+    def __init__(self):
+        self.calls = []
+        stream = io.BytesIO()
+        with wave.open(stream, 'wb') as writer:
+            writer.setnchannels(1)
+            writer.setsampwidth(2)
+            writer.setframerate(16000)
+            writer.writeframes(b'\0\0' * 1600)
+        self.audio = stream.getvalue()
+
+    def synthesize(self, words, language):
+        self.calls.append((words, language))
+        return self.audio
+
+
 def _auth(token):
     return {'Authorization': 'Bearer ' + token}
 
@@ -211,6 +233,8 @@ def run(output):
     try:
         database = target / 'main.sqlite'
         workspace_path = target / 'assistant-workspace.sqlite'
+        journal_path = target / 'assistant-journal.sqlite'
+        initialize_journal(journal_path)
         index_path = target / 'discovery-index.json'
         _seed_main(database)
         _write_discovery_index(database, index_path)
@@ -224,8 +248,12 @@ def run(output):
         configuration = RuntimeConfiguration(
             database=database.resolve(), web_origin=ORIGIN, original_roots=(originals.resolve(),),
             derived_root=derived.resolve(), discovery_indexes=(index_path.resolve(),),
-            assistant_enabled=True, assistant_workspace_path=workspace_path.resolve())
+            assistant_enabled=True, assistant_workspace_path=workspace_path.resolve(),
+            assistant_journal_path=journal_path.resolve(),
+            assistant_tts_url="http://127.0.0.1:19001/tts", assistant_reply_speech_enabled=True)
         app = configuration.build_app(clock=lambda: clock[0])
+        tts = _SyntheticTts()
+        app.state.assistant_tts = tts
 
         # TestClient is an in-process ASGI harness. The turn implementation is a
         # fixed local fixture, so this qualification cannot call a provider.
@@ -275,6 +303,29 @@ def run(output):
                 _assert(replay.status_code == 200 and replay.json().get('recovered') is True,
                         'synthetic_duplicate_request_not_recovered')
                 _assert(engine_turn.call_count == 1, 'synthetic_duplicate_regenerated')
+
+            phase = 'saved_reply_speech'
+            speech_id = str(uuid.uuid4())
+            speech_headers = {**_auth(TOKEN), 'X-PhotoHouse-Request-Id': speech_id,
+                              'X-PhotoHouse-Parent-Request-Id': request_id}
+            speech_url = f'{BASE}/threads/{thread_id}/requests/{request_id}/speech'
+            speech_body = {'library_id': LIBRARY, 'expected_revision': 1}
+            spoken = client.post(speech_url, headers=speech_headers, json=speech_body)
+            _assert(spoken.status_code == 200 and spoken.content == tts.audio and
+                    spoken.headers.get('X-PhotoHouse-Request-Id') == speech_id and
+                    spoken.headers.get('X-PhotoHouse-Receipt-Status') == 'succeeded' and
+                    spoken.headers.get('cache-control') == 'no-store' and
+                    tts.calls == [(first_result['reply'], 'en')],
+                    'synthetic_saved_reply_speech_failed')
+            duplicate_speech = client.post(speech_url, headers=speech_headers, json=speech_body)
+            _assert(duplicate_speech.status_code == 409 and len(tts.calls) == 1,
+                    'synthetic_duplicate_speech_regenerated')
+            journal_record = app.state.assistant_journal.get(speech_id, OWNER, LIBRARY)
+            _assert(journal_record['operation'] == 'speech' and
+                    journal_record['parent_request_id'] == request_id and
+                    journal_record['status'] == 'succeeded' and
+                    journal_record['input_text'] is None and journal_record['recognized_text'] is None,
+                    'synthetic_speech_journal_failed')
 
             # Populate additional deterministic rows through the private store
             # API to exercise paging without repeated engine work.

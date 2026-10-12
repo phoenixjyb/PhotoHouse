@@ -2,6 +2,8 @@ package dev.photohouse.connected.core
 
 import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -54,6 +56,48 @@ class AssistantWorkspaceWireTest {
         assertTrue(latest.historyPaging)
         assertFalse(latest.threadLabels)
         invalid { AssistantWorkspaceWire.capabilities(extended.replace("\"thread_labels\":false", "\"thread_labels\":\"false\"").toByteArray()) }
+    }
+
+    @Test fun privateReplySpeechCapabilityAndRequestStayOptionalAndNarrow() {
+        val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":false}"""
+        assertFalse(AssistantWorkspaceWire.capabilities(legacy.toByteArray()).replySpeech)
+        val enabled = legacy.dropLast(1) + ",\"reply_speech\":true}"
+        assertTrue(AssistantWorkspaceWire.capabilities(enabled.toByteArray()).replySpeech)
+        invalid { AssistantWorkspaceWire.capabilities(enabled.replace("\"reply_speech\":true", "\"reply_speech\":\"true\"").toByteArray()) }
+
+        val speechId = "55555555-5555-4555-8555-555555555555"
+        val body = AssistantWorkspaceWire.replySpeechRequest("family-a", 9, request, speechId)
+        val parsed = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+        assertEquals(setOf("library_id", "expected_revision"), parsed.keys)
+        assertEquals("family-a", parsed.getValue("library_id").jsonPrimitive.content)
+        assertEquals("9", parsed.getValue("expected_revision").jsonPrimitive.content)
+        invalidInput { AssistantWorkspaceWire.replySpeechRequest("family-a", 9, request, request) }
+        invalidInput { AssistantWorkspaceWire.replySpeechRequest("family-a", 9, request, "not-a-uuid") }
+        invalidInput { AssistantWorkspaceWire.replySpeechRequest("family-a", Long.MAX_VALUE, request, speechId) }
+        invalidInput { AssistantWorkspaceWire.replySpeechRequest("", 9, request, speechId) }
+    }
+
+    @Test fun replySpeechWavEnforcesPcmFramingAndThirtySecondLimit() {
+        fun wav(seconds: Int): ByteArray {
+            val rate = 16_000
+            val dataBytes = seconds * rate * 2
+            return ByteArray(44 + dataBytes).also { bytes ->
+                fun ascii(offset: Int, value: String) = value.toByteArray().copyInto(bytes, offset)
+                fun u16(offset: Int, value: Int) { bytes[offset] = value.toByte(); bytes[offset + 1] = (value shr 8).toByte() }
+                fun u32(offset: Int, value: Int) {
+                    for (i in 0..3) bytes[offset + i] = (value ushr (i * 8)).toByte()
+                }
+                ascii(0, "RIFF"); u32(4, bytes.size - 8); ascii(8, "WAVE")
+                ascii(12, "fmt "); u32(16, 16); u16(20, 1); u16(22, 1)
+                u32(24, rate); u32(28, rate * 2); u16(32, 2); u16(34, 16)
+                ascii(36, "data"); u32(40, dataBytes)
+            }
+        }
+        val valid = wav(1)
+        assertSame(valid, AssistantWorkspaceWire.replySpeechAudio(valid))
+        invalid { AssistantWorkspaceWire.replySpeechAudio(wav(31)) }
+        invalid { AssistantWorkspaceWire.replySpeechAudio(valid.copyOf().also { it[20] = 3 }) }
+        invalid { AssistantWorkspaceWire.replySpeechAudio(valid.copyOf().also { it[4] = 0 }) }
     }
 
     @Test fun listLabelsAreOptInNullableBoundedUnicodeAndControlFree() {
@@ -154,6 +198,8 @@ class AssistantWorkspaceWireTest {
         assertTrue(legacy.listThreads(token, "family-a", includeLabels = true).threads.isEmpty())
         assertEquals(1, listCalls)
         try { legacy.readHistory(token, "family-a", thread, 2, 2); fail("legacy API unexpectedly supports paging") }
+        catch (e: ApiFailure) { assertEquals(FailureKind.HTTP, e.kind); assertEquals(503, e.status) }
+        try { legacy.speakTurn(token, "family-a", thread, request, 2, "55555555-5555-4555-8555-555555555555"); fail("legacy API unexpectedly supports private reply speech") }
         catch (e: ApiFailure) { assertEquals(FailureKind.HTTP, e.kind); assertEquals(503, e.status) }
     }
 

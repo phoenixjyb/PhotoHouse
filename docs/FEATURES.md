@@ -365,3 +365,13 @@ Phone/Web history remains readable when discovery is unavailable, with no
 automatic result hydration, speech or microphone capture. This is locally
 qualified source; Windows storage/activation and a signed phone release remain
 separate delivery gates.
+
+
+[Protected private reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md) is the next
+local candidate: it reads the completed reply instead of only a result count.
+Clarifications and empty results can continue an explicitly started voice
+session after playback; unsupported requests pause for review. The server owns
+the spoken text and enforces the current turn revision, membership, parent
+receipt and transient audio limits. Its separate runtime flag defaults off.
+Source and generated-client qualification are complete; native Windows checks,
+activation and a matching signed phone release remain separate delivery gates.

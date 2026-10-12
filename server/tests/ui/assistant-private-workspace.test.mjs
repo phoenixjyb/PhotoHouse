@@ -17,7 +17,11 @@ const detail=(from,to,hasOlder=false,overrides={})=>({version:1,thread:thread(to
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function harness(handler=async()=>{throw new Error('unexpected request')},opts={}){
   let current={account:'account-a',library,generation:1,locked:false},next=0;const calls=[],changes=[];
-  const controller=createController({scope:()=>current,request:async(path,options)=>{calls.push({path,...options});return handler(path,options,calls);},
+  const controller=createController({scope:()=>current,request:async(path,options)=>{calls.push({path,...options});const value=await handler(path,options,calls);if(path.includes('/speech')&&opts.autoSpeechResponse!==false)options.onResponse?.({ok:true,status:opts.speechStatus??200,headers:new Headers({
+      'X-PhotoHouse-Request-Id':options.extraHeaders?.['X-PhotoHouse-Request-Id']||'',
+      'X-PhotoHouse-Tracking':'enabled','X-PhotoHouse-Receipt-Status':'succeeded',
+      'Content-Type':'audio/wav','Cache-Control':'private, no-store','Content-Encoding':'identity',...opts.speechHeaders
+    })});return value;},
     newUUID:()=>opts.ids?.[next++]||requestId,onChange:s=>changes.push(s),hydrateResults:opts.hydrateResults||(async v=>v)});
   return {controller,calls,changes,setScope:v=>{current={...current,...v};},getScope:()=>current};
 }
@@ -121,6 +125,114 @@ test('invalid draft and preferences fail before network requests',async()=>{
 const asset=(id='42',lib=library)=>({id,kind:'image',width:640,height:480,duration_sec:null,taken_at:'2024-04-05 12:13:14',thumbnail_url:`/assets/${id}/thumbnail?library=${encodeURIComponent(lib)}`});
 const context=(lib=library)=>({library_id:lib,binding:'a'.repeat(64),fingerprint:'b'.repeat(64),filters:{},visible_ids:['42'],total:1});
 const contextualResult=(overrides={})=>({version:1,kind:'results',reply:'Found 1 photo.',context:context(),filters:{},items:[asset()],total:1,has_more:false,effect:null,...overrides});
+
+function wavChunk(name,payload){const part=new Uint8Array(8+payload.length+(payload.length&1)),view=new DataView(part.buffer);for(let i=0;i<4;i++)part[i]=name.charCodeAt(i);view.setUint32(4,payload.length,true);part.set(payload,8);return part;}
+function pcmWav({channels=1,rate=16000,bits=16,dataBytes=320,ancillary=false,badByteRate=false}={}){
+  const align=channels*(bits/8),format=new Uint8Array(16),fv=new DataView(format.buffer);fv.setUint16(0,1,true);fv.setUint16(2,channels,true);fv.setUint32(4,rate,true);fv.setUint32(8,rate*align+(badByteRate?1:0),true);fv.setUint16(12,align,true);fv.setUint16(14,bits,true);
+  const data=new Uint8Array(dataBytes),chunks=[];if(ancillary)chunks.push(wavChunk('JUNK',new Uint8Array([1,2,3])));chunks.push(wavChunk('fmt ',format),wavChunk('data',data));if(ancillary)chunks.push(wavChunk('LIST',new Uint8Array([4,5])));
+  const length=12+chunks.reduce((sum,chunk)=>sum+chunk.length,0),bytes=new Uint8Array(length),view=new DataView(bytes.buffer),label=(at,value)=>[...value].forEach((c,i)=>bytes[at+i]=c.charCodeAt(0));
+  label(0,'RIFF');view.setUint32(4,length-8,true);label(8,'WAVE');let offset=12;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}return new Blob([bytes],{type:'audio/wav'});
+}
+function fakeWav(){return pcmWav();}
+async function preparedSpeech({headers,autoSpeechResponse=true,audio=fakeWav(),reply='Question reply.'}={}){
+  const ids=[threadId,requestId,'33333333-3333-4333-8333-333333333333'];
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:contextualResult({reply})};
+    if(path.includes('/speech'))return audio;throw Error(`unexpected ${path}`);
+  },{ids,autoSpeechResponse,speechHeaders:headers});
+  await h.controller.capabilities();await h.controller.create();await h.controller.send('question');return h;
+}
+
+test('reply speech capability is optional and must be boolean',()=>{
+  assert.equal(validateCapabilities(workspaceCaps()).reply_speech,false);
+  assert.equal(validateCapabilities(workspaceCaps({reply_speech:true})).reply_speech,true);
+  assert.throws(()=>validateCapabilities(workspaceCaps({reply_speech:'yes'})),e=>e.code==='invalid_response');
+});
+
+test('only a fresh private completion can request scoped reply audio',async()=>{
+  const speechId='33333333-3333-4333-8333-333333333333';let wav=fakeWav();
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:contextualResult({reply:'家'.repeat(200)})};
+    if(path.endsWith(`/requests/${requestId}/speech`)){assert.equal(options.method,'POST');return wav;}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,speechId]});
+  await h.controller.capabilities();await h.controller.create();h.controller.setDraft('find photos');
+  const completed=await h.controller.send();assert.equal(completed.recovered,false);assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().speechReplyBytes,600);
+  const audio=await h.controller.speakReply();assert.equal(audio,wav);
+  const call=h.calls.at(-1);assert.equal(call.path,`/assistant/workspace/v1/threads/${threadId}/requests/${requestId}/speech`);
+  assert.deepEqual(call.body,{library_id:library,expected_revision:1});
+  assert.deepEqual(call.extraHeaders,{'X-PhotoHouse-Request-Id':speechId,'X-PhotoHouse-Parent-Request-Id':requestId});
+  assert.equal(call.responseType,'blob');assert.equal(Object.hasOwn(call.body,'text'),false);assert.equal(Object.hasOwn(call.body,'context'),false);assert.equal(Object.hasOwn(call.body,'language'),false);
+});
+
+test('reply speech accepts bounded PCM WAV variants and ancillary RIFF chunks',async()=>{
+  for(const audio of [
+    pcmWav({channels:2,rate:44100,bits:24,dataBytes:600,ancillary:true}),
+    pcmWav({channels:2,rate:48000,bits:32,dataBytes:384000}),
+    pcmWav({channels:1,rate:8000,bits:8,dataBytes:240000,ancillary:true})
+  ]){const h=await preparedSpeech({audio});assert.equal(await h.controller.speakReply(),audio);}
+});
+
+test('reply speech rejects overlong or internally inconsistent PCM WAV',async()=>{
+  for(const audio of [pcmWav({rate:8000,bits:8,dataBytes:240001}),pcmWav({channels:2,rate:44100,bits:24,badByteRate:true})]){
+    const h=await preparedSpeech({audio});await assert.rejects(h.controller.speakReply(),e=>e.code==='invalid_response');
+  }
+});
+
+test('reply speech requires genuine successful no-store audio response metadata',async()=>{
+  const badHeaders=[
+    {'X-PhotoHouse-Tracking':'disabled'},
+    {'X-PhotoHouse-Receipt-Status':'failed'},
+    {'X-PhotoHouse-Request-Id':'44444444-4444-4444-8444-444444444444'},
+    {'Content-Type':'application/json'},
+    {'Cache-Control':'private, no-cache'},
+    {'Content-Encoding':'gzip'}
+  ];
+  for(const headers of badHeaders){const h=await preparedSpeech({headers});await assert.rejects(h.controller.speakReply(),e=>e.code==='invalid_response');}
+  const missing=await preparedSpeech({autoSpeechResponse:false});await assert.rejects(missing.controller.speakReply(),e=>e.code==='invalid_response');
+});
+
+test('local speech source wipe is safe after lock or close',async()=>{
+  const locked=await preparedSpeech();locked.setScope({locked:true});assert.doesNotThrow(()=>locked.controller.discardSpeechSource());assert.equal(locked.controller.state().speechReady,false);
+  const closed=await preparedSpeech();closed.controller.close();assert.doesNotThrow(()=>closed.controller.discardSpeechSource());
+});
+
+test('scope and source are rechecked after asynchronous WAV validation',async()=>{
+  const gate=deferred(),started=deferred(),audio=fakeWav(),original=audio.arrayBuffer.bind(audio);Object.defineProperty(audio,'arrayBuffer',{value:()=>{started.resolve();return gate.promise;}});
+  const h=await preparedSpeech({audio});const speech=h.controller.speakReply();await started.promise;await h.controller.send('newer question');gate.resolve(await original());
+  await assert.rejects(speech,e=>e.code==='scope_changed');
+});
+
+test('recovered completions and over-limit replies never request speech',async()=>{
+  const speechId='33333333-3333-4333-8333-333333333333';let recovered=true,reply='x',speechPosts=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,options.body.thread_id)};
+    if(path.endsWith('/turns'))return {...envelope('completed',recovered,1),request_id:options.body.request_id,result:contextualResult({reply})};
+    if(path.includes('/speech')){speechPosts++;return fakeWav();}throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,speechId]});
+  await h.controller.capabilities();await h.controller.create();await h.controller.send('question');
+  assert.equal(h.controller.state().speechReady,false);await assert.rejects(h.controller.speakReply(),e=>e.code==='invalid_input');
+  recovered=false;reply='家'.repeat(201);await h.controller.send('second question');assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().speechReplyBytes,603);
+  await assert.rejects(h.controller.speakReply(),e=>e.code==='invalid_input');assert.equal(speechPosts,0);
+});
+
+test('late reply audio is fenced when a newer turn invalidates its source',async()=>{
+  const speechId='33333333-3333-4333-8333-333333333333',gate=deferred(),started=deferred();let turn=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns')){turn++;return {...envelope('completed',false,turn),request_id:options.body.request_id};}
+    if(path.includes('/speech')){started.resolve();await gate.promise;return fakeWav();}throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,speechId,'44444444-4444-4444-8444-444444444444']});
+  await h.controller.capabilities();await h.controller.create();await h.controller.send('first');
+  const speech=h.controller.speakReply();await started.promise;await h.controller.send('new turn');gate.resolve();
+  await assert.rejects(speech,e=>e.code==='scope_changed');assert.equal(h.controller.state().speechReady,true);assert.equal(h.controller.state().speechReplyBytes,new TextEncoder().encode('Found 1 photo.').length);
+});
 
 test('strict result grammar accepts clarification and unsupported, and binds result to this library',()=>{
   for(const kind of ['clarification','unsupported'])assert.equal(validateResult(contextualResult({kind}),library).kind,kind);

@@ -10,7 +10,7 @@ import uuid
 from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.routing import APIRoute
 from starlette.concurrency import run_in_threadpool
 
@@ -20,6 +20,8 @@ from .assistant_journal import Journal, JournalUnavailable, JournalConflict, Jou
 
 from .assistant_workspace_store import (AssistantWorkspaceStore,
     WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
+from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
+                               valid_reply_wav)
 from .service import AccessDenied, AccessService
 from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime,
                         _single, credentials_from_request)
@@ -74,6 +76,8 @@ class WorkspaceRoute(APIRoute):
                 response = _failure(409, 'request_conflict', 'Check the existing request')
             except JournalMissing:
                 response = _failure(404, 'receipt_unavailable', 'Receipt unavailable')
+            except AssistantSpeechUnavailable:
+                response = _failure(503, 'speech_unavailable', 'Local speech service unavailable')
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -86,6 +90,10 @@ class WorkspaceRoute(APIRoute):
 
 
 router = APIRouter(route_class=WorkspaceRoute)
+
+
+class PrivateReplySpeechRoute(assistant_engine.AssistantRoute, WorkspaceRoute):
+    """Compose assistant receipt finalization with workspace error mapping."""
 
 
 def _workspace(request):
@@ -339,6 +347,33 @@ def _journal(request):
     return journal
 
 
+def _reply_speech_dependencies(request):
+    if not getattr(request.app.state, 'assistant_reply_speech_enabled', False):
+        raise WorkspaceStoreUnavailable()
+    tts = getattr(request.app.state, 'assistant_tts', None)
+    journal = getattr(request.app.state, 'assistant_journal', None)
+    if not isinstance(tts, LocalAssistantTts):
+        raise AssistantSpeechUnavailable()
+    if not isinstance(journal, Journal) or not getattr(request.app.state,
+                                                       'assistant_journal_healthy', False):
+        raise JournalUnavailable()
+    return _workspace(request), journal, tts
+
+
+async def _reply_speech_available(request, account):
+    if not getattr(request.app.state, 'assistant_reply_speech_enabled', False):
+        return False
+    try:
+        store, journal, tts = _reply_speech_dependencies(request)
+        if not isinstance(tts, LocalAssistantTts):
+            return False
+        await _call(store, 'get_preferences', account)
+        await run_in_threadpool(journal.inspect, limit=0)
+        return True
+    except Exception:
+        return False
+
+
 def _error_code(exc):
     if isinstance(exc, (assistant_engine.AssistantChanged, discovery_engine.DiscoveryChanged)):
         return 'context_changed'
@@ -440,6 +475,81 @@ async def read_turn(request: Request, thread_id: str, request_id: str):
     return await _turn_envelope(request, account, library, row, recovered=True)
 
 
+async def reply_speech(request: Request, thread_id: str, turn_id: str):
+    body = await _body(request, {'library_id', 'expected_revision'})
+    library = _library(body['library_id'])
+    expected_revision = _revision(body['expected_revision'])
+    selected_thread = _thread_id(thread_id)
+    selected_turn = _thread_id(turn_id)
+    _store, _journal_value, tts = _reply_speech_dependencies(request)
+
+    token, _mode = credentials_from_request(request)
+    account = await _principal(request, library)
+    speech_id = _single(request, 'x-photohouse-request-id')
+    parent_id = _single(request, 'x-photohouse-parent-request-id')
+    try:
+        speech_id = assistant_engine.request_id(speech_id)
+        parent_id = assistant_engine.request_id(parent_id)
+    except ValueError:
+        raise WorkspaceInvalid() from None
+    if speech_id == selected_turn or parent_id != selected_turn:
+        raise WorkspaceInvalid()
+
+    turn = await _call(_store, 'get_turn', account, library, selected_thread, selected_turn)
+    if turn.get('status') != 'completed' or type(turn.get('result_summary')) is not dict:
+        raise WorkspaceStoreConflict()
+    current = await _call(_store, 'get_thread', account, library, selected_thread)
+    thread_revision = current['thread']['revision']
+    if (thread_revision != expected_revision or turn.get('revision') != expected_revision):
+        raise WorkspaceStoreConflict()
+    summary = turn['result_summary']
+    if summary.get('kind') not in {'results', 'clarification', 'unsupported'} or summary.get('effect') is not None:
+        raise WorkspaceInvalid()
+    reply = summary.get('reply')
+    try:
+        reply_bytes = reply.encode('utf-8') if type(reply) is str else b''
+    except UnicodeError:
+        raise WorkspaceInvalid() from None
+    if not reply_bytes or not reply.strip() or len(reply_bytes) > 600:
+        raise WorkspaceInvalid()
+
+    access, engine = assistant_engine._engine(request)
+    if summary.get('context') is not None:
+        if engine is None:
+            raise WorkspaceStoreUnavailable()
+        # Re-read the currently authorized result set. The persisted summary is
+        # never trusted as current source state and no client context is accepted.
+        await run_in_threadpool(_turn_result, engine, token,
+                                library, summary, recovered=True)
+
+    # The shared assistant route owns durable receipt completion and privacy
+    # headers. Journal.begin verifies a successful parent turn in this scope.
+    await assistant_engine._begin(request, access, token, library, 'speech')
+    await assistant_engine._stage(request, 'validated')
+    await assistant_engine._stage(request, 'provider_started')
+    language = assistant_engine._language(reply)
+    audio = await run_in_threadpool(tts.synthesize, reply, language)
+    if not valid_reply_wav(audio):
+        raise AssistantSpeechUnavailable()
+    await assistant_engine._stage(request, 'provider_completed')
+
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    latest = await _call(_store, 'get_thread', account, library, selected_thread)
+    if latest['thread']['revision'] != expected_revision:
+        raise WorkspaceStoreConflict()
+    if summary.get('context') is not None:
+        # Close source drift that occurred while local synthesis was running.
+        await run_in_threadpool(_turn_result, engine, token,
+                                library, summary, recovered=True)
+    return Response(content=audio, media_type='audio/wav', headers=PRIVACY_HEADERS)
+
+
+router.add_api_route(
+    '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/speech',
+    reply_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
+
+
 @router.get('/assistant/workspace/v1/capabilities')
 async def capabilities(request: Request):
     query = _query(request, {'library_id'}, {'library_id'})
@@ -458,12 +568,15 @@ async def capabilities(request: Request):
             healthy = False
     _access, engine = assistant_engine._engine(request)
     turns = bool(healthy and engine is not None)
-    return JSONResponse({'version': 1, 'available': bool(healthy),
-                         'threads': bool(healthy), 'preferences': bool(healthy),
-                         'thread_labels': bool(healthy), 'history_paging': bool(healthy),
-                         'preferences_applied': turns,
-                         'applied_preferences': ['locale'] if turns else [],
-                         'server_owned_turns': turns}, headers=PRIVACY_HEADERS)
+    value = {'version': 1, 'available': bool(healthy),
+             'threads': bool(healthy), 'preferences': bool(healthy),
+             'thread_labels': bool(healthy), 'history_paging': bool(healthy),
+             'preferences_applied': turns,
+             'applied_preferences': ['locale'] if turns else [],
+             'server_owned_turns': turns}
+    if getattr(request.app.state, 'assistant_reply_speech_enabled', False):
+        value['reply_speech'] = await _reply_speech_available(request, account)
+    return JSONResponse(value, headers=PRIVACY_HEADERS)
 
 
 @router.get('/assistant/workspace/v1/threads')

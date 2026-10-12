@@ -241,7 +241,7 @@ def package_bytes(commit, files):
     if set(files) != set(FILES):
         raise ValueError('Exact source allowlist required')
     manifest = {'format_version':1,'source_commit':commit,'artifact_kind':'source_only_not_deployed',
-        'migration_revision':'e7c1a9d5b304','dependencies_included':False,'private_configuration_included':False,
+        'migration_revision':'a0c9d2e4f817','dependencies_included':False,'private_configuration_included':False,
         'files':{name:hashlib.sha256(files[name]).hexdigest() for name in FILES}}
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_STORED) as archive:

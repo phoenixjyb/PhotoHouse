@@ -45,6 +45,8 @@ class AssistantVoiceSessionStore(
     private var ownedTranscriptRequestId: String? = null
     private var ownedTurnRequestId: String? = null
     private var ownedSpeechRequestId: String? = null
+    /** The explicit start/resume choice is held for this session; capability loss ends the loop. */
+    @Volatile private var sessionPrivateReplySpeechEnabled: Boolean? = null
     @Volatile private var closed = false
     private val storeMonitor = coroutineScope.launch {
         store.state.collect { live ->
@@ -54,6 +56,15 @@ class AssistantVoiceSessionStore(
                     !scopeMatches(live) -> stopForTransition(controller.contextChanged(observedScope(live)))
                     !supportsVoice(live) -> stopForTransition(controller.contextChanged(null))
                 }
+            }
+        }
+    }
+    private val workspaceReplySpeechMonitor = coroutineScope.launch {
+        store.assistantWorkspaceState.collect {
+            val boundMode = sessionPrivateReplySpeechEnabled
+            if (!closed && boundMode != null && boundMode != store.privateReplySpeechEnabled() &&
+                controller.state.phase in ACTIVE_PHASES) {
+                stopForTransition(controller.contextChanged(null))
             }
         }
     }
@@ -70,6 +81,7 @@ class AssistantVoiceSessionStore(
     /** Starts only from an explicit foreground action and a clean, qualified assistant scope. */
     fun start(): Boolean = synchronized(lock) {
         if (closed || !foregroundNow() || !scopeMatches(store.state.value) || !readyForStart()) return false
+        sessionPrivateReplySpeechEnabled = store.privateReplySpeechEnabled()
         val transition = controller.start(voiceScope, foreground = true)
         if (!transition.accepted) return false
         ownedTranscriptRequestId = null
@@ -86,6 +98,7 @@ class AssistantVoiceSessionStore(
         if (closed || current.phase != VoiceSessionPhase.PAUSED ||
             current.reason == VoiceSessionStopReason.UNCERTAIN_REQUEST || !foregroundNow() ||
             !scopeMatches(store.state.value) || !readyForStart()) return false
+        sessionPrivateReplySpeechEnabled = store.privateReplySpeechEnabled()
         val transition = controller.resume(voiceScope, foreground = true)
         if (!transition.accepted) return false
         mutableState.value = transition.state
@@ -131,6 +144,7 @@ class AssistantVoiceSessionStore(
         if (active) end()
         synchronized(lock) { closed = true }
         storeMonitor.cancel()
+        workspaceReplySpeechMonitor.cancel()
         synchronized(lock) {
             operationJob?.cancel()
             operationJob = null
@@ -194,6 +208,10 @@ class AssistantVoiceSessionStore(
         if (closed || !foregroundNow() || !scopeMatches(store.state.value)) {
             if (!closed && !foregroundNow()) backgrounded()
             else if (!closed && !scopeMatches(store.state.value)) stopForTransition(controller.contextChanged(observedScope(store.state.value)))
+            return false
+        }
+        if (sessionPrivateReplySpeechEnabled?.let { it != store.privateReplySpeechEnabled() } == true) {
+            stopForTransition(controller.contextChanged(null))
             return false
         }
         val current = controller.state
@@ -284,9 +302,17 @@ class AssistantVoiceSessionStore(
         val turn = exchange.turn
         if (turn.recovered) { reviewCompletedRequest(binding); return }
         if (turn.kind == "open" && turn.effect?.type == "open_asset") {
-            val asset = turn.items.singleOrNull()?.takeIf {
-                it.id == turn.effect.assetId && turn.total == 1 && !turn.hasMore
-            }
+            val privateThread = assistant?.privateThreadId
+            val workspace = store.assistantWorkspaceState.value
+            val privateOpenCurrent = privateThread != null && workspace.detail?.thread?.threadId == privateThread &&
+                workspace.currentTurn?.let { it.requestId == requestId && it.threadId == privateThread &&
+                    it.status == AssistantWorkspaceRequestStatus.COMPLETED && !it.recovered &&
+                    it.revision == workspace.detail?.thread?.revision } == true
+            val asset = if (privateOpenCurrent && turn.items.map { it.id }.distinct().size == turn.items.size)
+                turn.items.singleOrNull { it.id == turn.effect.assetId }
+                else if (privateThread == null) turn.items.singleOrNull()?.takeIf {
+                    it.id == turn.effect.assetId && turn.total == 1 && !turn.hasMore
+                } else null
             if (asset == null) {
                 reviewCompletedRequest(binding)
                 return
@@ -294,14 +320,19 @@ class AssistantVoiceSessionStore(
             endForOpen(asset, requestId)
             return
         }
-        // v1 supports protected speech only for a nonempty result count. Other replies stay visible for review.
-        if (turn.kind != "results" || turn.items.isEmpty() || turn.effect != null) {
+        val privateReplySpeech = sessionPrivateReplySpeechEnabled == true
+        // An enabled private reply path never silently degrades to a count or truncates the reply.
+        if (turn.effect != null || if (privateReplySpeech) !store.canReadAssistantReply()
+            else turn.kind != "results" || turn.items.isEmpty()) {
             reviewCompletedRequest(binding)
             return
         }
         val transition = controller.requestCompleted(binding, VoiceAssistantReply(
             text = turn.reply,
             receipt = VoiceRequestReceipt.CONFIRMED_SUCCESS,
+            disposition = if (privateReplySpeech && turn.kind == "unsupported") VoiceReplyDisposition.REVIEW_REQUIRED
+                else VoiceReplyDisposition.READ_ONLY,
+            reviewCardId = requestId.takeIf { privateReplySpeech && turn.kind == "unsupported" },
         ))
         if (!accept(transition)) return
         val speak = transition.effects.filterIsInstance<VoiceSessionEffect.Speak>().singleOrNull()

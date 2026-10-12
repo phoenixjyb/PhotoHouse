@@ -23,14 +23,20 @@ It requires fresh library membership, an explicitly configured existing store an
 healthy retention maintenance. Saved references are reduced to non-actionable
 type/count placeholders; IDs, bindings and receipt IDs are not projected as actions.
 No client can upload an arbitrary assistant reply or card list. Capability flags
-report that server-owned turns and applied preferences are not implemented yet.
-The API is default-off, not deployed, and no conversation database has been created
-on Windows. Client continuation and reference revalidation remain future work.
-Preference storage alone does not change the current ASR/TTS/provider settings.
+report server-owned turns, applied reply language and optional history/speech
+features independently. The local candidate implements revision-bound turns,
+reference revalidation, explicit phone/Web continuation and older history paging.
+The private API remains default-off and is not activated in the served Windows
+release; its database must be provisioned explicitly. Response length and voice
+pace remain unsupported preferences. Preference storage does not select providers.
+See [private turns](PRIVATE_ASSISTANT_TURNS_V1.md),
+[continuation](PRIVATE_ASSISTANT_VOICE_V1.md),
+[history navigation](PRIVATE_ASSISTANT_HISTORY_V1.md) and
+[protected reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md).
 
 The [roadmap](ROADMAP.md#october-12-central-personal-assistant) records the next
-layers: server-owned turns, client continuation and applied preference controls,
-then qualified local understanding and reviewed cross-workflow tools.
+layers: qualify and activate the private conversation candidate, then add grounded
+saved-story/memoir retrieval and reviewed cross-workflow tools.
 Phone v49 and the Web workspace are delivered with the voice foundation; these private backend
 APIs are a separate source slice and are not activated by that APK.
 

@@ -27,8 +27,15 @@ class HttpsAssistantWorkspaceApi internal constructor(
         .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE).proxy(Proxy.NO_PROXY)
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS)).connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS).build()
+    /** TTS can take up to 60 seconds; this timeout is isolated from all JSON workspace calls. */
+    private val speechClient = this.client.newBuilder()
+        .readTimeout(60, TimeUnit.SECONDS).callTimeout(60, TimeUnit.SECONDS).build()
 
     private data class Packet(val bytes: ByteArray, val assistantHeaders: Map<String, String>)
+
+    private class WipingByteArrayOutputStream(initialSize: Int) : java.io.ByteArrayOutputStream(initialSize) {
+        fun wipe() { buf.fill(0); reset() }
+    }
 
     private fun assistantResponseHeaders(headers: Headers): Map<String, String> {
         val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status")
@@ -127,20 +134,21 @@ class HttpsAssistantWorkspaceApi internal constructor(
         override fun writeTo(sink: BufferedSink) { sink.write(bytes) }
     }
 
-    private fun readBounded(body: ResponseBody, call: Call): ByteArray = body.byteStream().use { input ->
-        val out = java.io.ByteArrayOutputStream(minOf(body.contentLength().takeIf { it >= 0 }?.toInt() ?: 8192, AssistantWorkspaceWire.RESPONSE_LIMIT))
+    private fun readBounded(body: ResponseBody, call: Call,
+                            limit: Int = AssistantWorkspaceWire.RESPONSE_LIMIT): ByteArray = body.byteStream().use { input ->
+        val out = WipingByteArrayOutputStream(minOf(body.contentLength().takeIf { it >= 0 }?.toInt() ?: 8192, limit))
         val buffer = ByteArray(8192)
         try {
             while (true) {
                 if (call.isCanceled()) throw IOException("request cancelled")
                 val count = input.read(buffer)
                 if (count < 0) break
-                if (out.size() + count > AssistantWorkspaceWire.RESPONSE_LIMIT) throw ApiFailure(FailureKind.TOO_LARGE)
+                if (out.size() + count > limit) throw ApiFailure(FailureKind.TOO_LARGE)
                 out.write(buffer, 0, count)
             }
             if (out.size() == 0) throw ApiFailure(FailureKind.INVALID_RESPONSE)
             out.toByteArray()
-        } finally { buffer.fill(0) }
+        } finally { buffer.fill(0); out.wipe() }
     }
 
     override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities =
@@ -230,5 +238,77 @@ class HttpsAssistantWorkspaceApi internal constructor(
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
+                                   expectedRevision: Long, speechRequestId: String): AssistantSpeechResult {
+        if (!assistantWorkspaceEnabled) throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (!AssistantWorkspaceWire.validUuid4(threadId)) throw ApiFailure(FailureKind.INVALID_INPUT)
+        val bodyText = AssistantWorkspaceWire.replySpeechRequest(library, expectedRevision, turnId, speechRequestId)
+        val requestBytes = bodyText.toByteArray(Charsets.UTF_8)
+        val request = try {
+            Request.Builder().url(url("/assistant/workspace/v1/threads/$threadId/requests/$turnId/speech"))
+                .header("Authorization", token.header()).header("Accept", "audio/wav")
+                .header("Cache-Control", "no-store").header("Accept-Encoding", "identity")
+                .header("X-PhotoHouse-Request-Id", speechRequestId)
+                .header("X-PhotoHouse-Parent-Request-Id", turnId)
+                .post(ownedBody(requestBytes)).build()
+        } catch (e: Exception) {
+            requestBytes.fill(0)
+            if (e is ApiFailure) throw e
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        }
+        return suspendCancellableCoroutine { continuation ->
+            val call = speechClient.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    requestBytes.fill(0)
+                    if (continuation.isActive) continuation.resumeWithException(
+                        ApiFailure(if (e is SSLException) FailureKind.TLS else FailureKind.OFFLINE))
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    var replyBytes: ByteArray? = null
+                    var transferred = false
+                    try {
+                        val packet = response.use { r ->
+                            if (r.code != 200) throw ApiFailure(FailureKind.HTTP, r.code,
+                                if (r.code == 429 || r.code in 502..504) retryAfterMillis(r.header("Retry-After")) else 0)
+                            val noStore = r.headers.values("Cache-Control").singleOrNull()?.split(',')?.map { it.trim().lowercase() }
+                                ?.contains("no-store") == true
+                            if (r.headers.values("Content-Type").size != 1 ||
+                                r.headers.values("Content-Encoding").size > 1 ||
+                                r.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase() != "audio/wav" ||
+                                r.header("Content-Encoding")?.lowercase() !in setOf(null, "identity") || !noStore) {
+                                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            }
+                            val responseBody = r.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            if (responseBody.contentLength() > 2 * 1024 * 1024) throw ApiFailure(FailureKind.TOO_LARGE)
+                            val headers = assistantResponseHeaders(r.headers)
+                            Packet(readBounded(responseBody, call, 2 * 1024 * 1024), headers)
+                        }
+                        replyBytes = packet.bytes
+                        val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, speechRequestId)
+                        if (receipt.tracking != "enabled" || receipt.status != "succeeded") {
+                            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                        }
+                        AssistantWorkspaceWire.replySpeechAudio(packet.bytes)
+                        if (continuation.isActive) {
+                            val audio = AssistantSpeechResult(packet.bytes, receipt)
+                            transferred = true
+                            continuation.resume(audio) { audio.bytes.fill(0) }
+                        }
+                    } catch (e: Exception) {
+                        if (continuation.isActive) continuation.resumeWithException(
+                            e as? ApiFailure ?: ApiFailure(FailureKind.INVALID_RESPONSE))
+                    } finally {
+                        if (!transferred) replyBytes?.fill(0)
+                        requestBytes.fill(0)
+                    }
+                }
+            })
+        }
     }
 }

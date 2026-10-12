@@ -76,6 +76,8 @@ internal fun AssistantScreen(
     onEndVoiceSession: (() -> Unit)? = null,
     onFinishVoiceTurn: (() -> Unit)? = null,
     onPrivateConversations: (() -> Unit)? = null,
+    privateReplySpeechEnabled: Boolean = false,
+    privateReplySpeechAvailable: Boolean = false,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
@@ -500,11 +502,14 @@ internal fun AssistantScreen(
                 if (voiceSessionState == null) {
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val latest = exchanges.lastOrNull()?.turn
-                    if (voiceSessionState == null && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty()) {
+                    if (privateReplySpeechEnabled && latest?.reply?.toByteArray(Charsets.UTF_8)?.size?.let { it > 600 } == true)
+                        Text(t("This reply is long. Read the complete text here.", "这条回复较长，可在这里阅读完整文字。"),
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-reply-speech-unavailable"))
+                    if (privateReplySpeechAvailable || !privateReplySpeechEnabled && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                             if (assistant.speechBusy) LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-speech-loading"))
                             Button(onClick = onPlaySpeech, enabled = !assistant.speechBusy,
-                                modifier = Modifier.testTag("assistant-play-speech")) { Text(t("Play spoken result count", "播放结果数量语音")) }
+                                modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken result count", "播放结果数量语音")) }
                         }
                     assistant.speechAudio?.let { AssistantSpeechPlayback(it, zh, onStopSpeech) }
                     }

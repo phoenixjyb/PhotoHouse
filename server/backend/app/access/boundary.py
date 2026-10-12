@@ -186,6 +186,8 @@ class ClosedBoundary:
             return method in {'GET', 'DELETE'}
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
             return True
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
+            return True
         if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/history', path):
             return True
         if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}', path):
