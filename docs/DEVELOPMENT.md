@@ -1628,3 +1628,11 @@ conversation navigation, titles, related media, memory groups, reader frames and
 story workspace. Successful desktop/390 px/150% assistant renders were inspected.
 These use generated data, fake capture/playback and a protected ASGI fixture;
 they do not establish a served Web release, local-provider quality or family use.
+
+Delivery preparation found a static-package gap: the older five-asset overlay
+changed `UI_DIR` but omitted the current index's `memory-groups.js`. Overlay
+format 2 now contains six assets and requires its matching verifier. Eleven
+tooling tests and four script-route subtests passed, including the real current
+index's deferred scripts, original-icon preservation and rejection of the old
+incomplete format before any router binding. The earlier five-asset candidate
+remains evidence and must not be deployed as this assistant release.

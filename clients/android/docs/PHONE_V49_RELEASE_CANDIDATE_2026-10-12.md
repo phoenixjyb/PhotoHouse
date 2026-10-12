@@ -29,6 +29,14 @@ inactive. See [the approved design](../../../docs/PERSONAL_ASSISTANT.md).
 
 ## Delivery gates
 
+The configured unsigned package was built/linted at clean source
+`835fd900268a142f4444e2c6fa5d12ba0967f561`: **10,120,589 bytes**, SHA-256
+`757ef78529f60ed5e7d30632be3b2d45bed5ec504590d2e1426559fcdac1af78`.
+Native metadata confirms version 49 and its package; all 17 embedded fields
+match the retained reviewed phone profile, with fixture/UIQA flags off. Signature
+verification correctly rejects the unsigned package. Signing, publication and
+family acceptance are still pending; this is not an OTA delivery claim.
+
 The affected modules passed 850 live-core and 17 phone JVM tests. Final phone
 lint/debug/test assembly and 17 simulator cases passed, including actual context
 labels, voice entry and receipt recovery above the IME at enlarged text. Failure

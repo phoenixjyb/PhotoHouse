@@ -17,6 +17,7 @@ ASSETS = tuple(sorted((
     'backend/app/ui/access/app.js',
     'backend/app/ui/access/story-workspace.js',
     'backend/app/ui/access/memory-community.js',
+    'backend/app/ui/access/memory-groups.js',
     'backend/app/ui/access/styles.css',
 )))
 MANIFEST_NAME = 'manifest.json'
@@ -96,7 +97,7 @@ def verify_overlay(overlay_dir, *, expected_source_commit, expected_manifest_sha
         if (type(manifest) is not dict
                 or set(manifest) != {'artifact_kind', 'format_version', 'source_commit', 'files'}
                 or manifest['artifact_kind'] != 'photohouse_access_ui_overlay_source_only'
-                or type(manifest['format_version']) is not int or manifest['format_version'] != 1
+                or type(manifest['format_version']) is not int or manifest['format_version'] != 2
                 or manifest['source_commit'] != expected_source_commit
                 or type(manifest['files']) is not dict or set(manifest['files']) != set(ASSETS)):
             _fail()
