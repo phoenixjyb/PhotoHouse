@@ -1768,3 +1768,34 @@ No new phone version is signed/published, no Windows private store is created or
 upgraded, and no Windows service changes. Phone v50 and TV v30 remain the latest
 verified published packages. Rich spoken answers and story/album/memoir agent
 tools remain follow-up work; current speech reads grounded result counts.
+
+
+## October 13 private history navigation
+
+The [history navigation contract](PRIVATE_ASSISTANT_HISTORY_V1.md) adds opt-in
+first-question labels and explicit older-message paging. Pages keep complete
+text under a 240 KiB JSON budget and share one owned thread revision. Foreign
+threads remain indistinguishable 404s; membership is rechecked before exposing
+labels or text. A concurrent turn requires explicit reload rather than mixing
+pages. Labels expire with their source and require no schema migration.
+
+Web/phone retain readable history when discovery is down, disable unavailable
+turn/voice actions, and preserve drafts. Paging neither rehydrates old actions
+nor changes the selected search context. Oversized combined history is rejected
+rather than silently dropping messages. Phone continuation controls now precede
+the long message history.
+
+Qualification passed **1,262 backend tests and 741 subtests**, **28 Web controller
+tests**, **15 synthetic browser checkpoints**, **897 Android core tests**, phone
+debug lint/build, and the final **12 private-panel simulator UI tests**. The first
+12-test simulator run found a test that asserted a scrolled-off control was
+visible; the check now scrolls to it, and continuation controls moved ahead of
+history. The complete simulator rerun passed. After review hardening, the
+**78-test scoped backend cohort** and the scoped phone coordinator tests passed
+again. Root inspected the narrow Web history render. These counts belong to
+local/synthetic qualification, not installed or live service acceptance.
+
+Phone v50/TV v30 remain the verified published packages. Private storage, these
+routes, providers, API actions and APK signing/publication were not activated by
+this source work. Portable synthetic qualification preparation is a separate
+next slice.

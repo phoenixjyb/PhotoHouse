@@ -8,6 +8,8 @@ import org.junit.Test
 class AssistantWorkspaceWireTest {
     private val thread = "22222222-2222-4222-8222-222222222222"
     private val request = "11111111-1111-4111-8111-111111111111"
+    private val exchangeA = "33333333-3333-4333-8333-333333333333"
+    private val exchangeB = "44444444-4444-4444-8444-444444444444"
 
     private fun turn(result: String, recovered: Boolean = true, status: String = "completed", error: String = "null") =
         """{"version":1,"thread_id":"$thread","request_id":"$request","status":"$status","revision":1,"recovered":$recovered,"error":$error,"result":$result}"""
@@ -40,6 +42,61 @@ class AssistantWorkspaceWireTest {
         invalid { AssistantWorkspaceWire.capabilities(capabilities.replace("\"available\":true", "\"available\":\"true\"").toByteArray()) }
         val prefs = """{"version":1,"locale":null,"reply_length":null,"voice_pace":null,"revision":false}"""
         invalid { AssistantWorkspaceWire.preferences(prefs.toByteArray()) }
+    }
+
+    @Test fun capabilitiesRemainCompatibleAndExposeOptionalHistoryFeatures() {
+        val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":false}"""
+        val old = AssistantWorkspaceWire.capabilities(legacy.toByteArray())
+        assertFalse(old.historyPaging)
+        assertFalse(old.threadLabels)
+        val extended = legacy.dropLast(1) + ",\"history_paging\":true,\"thread_labels\":false}"
+        val latest = AssistantWorkspaceWire.capabilities(extended.toByteArray())
+        assertTrue(latest.historyPaging)
+        assertFalse(latest.threadLabels)
+        invalid { AssistantWorkspaceWire.capabilities(extended.replace("\"thread_labels\":false", "\"thread_labels\":\"false\"").toByteArray()) }
+    }
+
+    @Test fun listLabelsAreOptInNullableBoundedUnicodeAndControlFree() {
+        val prefix = """{"version":1,"threads":[{"thread_id":"$thread","library_id":"family-a","created_at":"2026-10-13T00:00:00Z","updated_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","revision":2,"exchange_count":2"""
+        val without = AssistantWorkspaceWire.threadList((prefix + "}]}").toByteArray(), "family-a")
+        assertNull(without.threads.single().label)
+        val labeled = AssistantWorkspaceWire.threadList((prefix + ",\"label\":\"旅行照片 · 北京\"}]}").toByteArray(), "family-a", includeLabels = true)
+        assertEquals("旅行照片 · 北京", labeled.threads.single().label)
+        val unicodeBoundary = AssistantWorkspaceWire.threadList((prefix + ",\"label\":\"${"😀".repeat(64)}\"}]}").toByteArray(), "family-a", includeLabels = true)
+        assertEquals(64, unicodeBoundary.threads.single().label!!.codePointCount(0, unicodeBoundary.threads.single().label!!.length))
+        val empty = AssistantWorkspaceWire.threadList((prefix + ",\"label\":null}]}").toByteArray(), "family-a", includeLabels = true)
+        assertNull(empty.threads.single().label)
+        invalid { AssistantWorkspaceWire.threadList((prefix + ",\"label\":\"${"a".repeat(65)}\"}]}").toByteArray(), "family-a", true) }
+        invalid { AssistantWorkspaceWire.threadList((prefix + ",\"label\":\"${"😀".repeat(65)}\"}]}").toByteArray(), "family-a", true) }
+        invalid { AssistantWorkspaceWire.threadList((prefix + ",\"label\":\"line\\nbreak\"}]}").toByteArray(), "family-a", true) }
+        invalid { AssistantWorkspaceWire.threadList((prefix + ",\"label\":null}]}").toByteArray(), "family-a", false) }
+    }
+
+    @Test fun historyPagesRequireOneOrderedOwnedSnapshotAndConsistentCursor() {
+        val rows = """[{"exchange_id":"$exchangeA","revision":2,"created_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","input_text":"older question","reply":"older answer","cards":[],"receipt_count":0},{"exchange_id":"$exchangeB","revision":4,"created_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","input_text":"newer question","reply":"newer answer","cards":[],"receipt_count":0}]"""
+        fun page(threadId: String = thread, snapshot: Int = 5, before: Int = 5, exchanges: String = rows,
+                 older: Boolean = true, next: String = "2") =
+            """{"version":1,"thread_id":"$threadId","snapshot_revision":$snapshot,"before_revision":$before,"exchanges":$exchanges,"has_older_exchanges":$older,"next_before_revision":$next}"""
+
+        val parsed = AssistantWorkspaceWire.historyPage(page().toByteArray(), "family-a", thread, 5, 5)
+        assertEquals(listOf(2L, 4L), parsed.exchanges.map { it.revision })
+        assertTrue(parsed.hasOlderExchanges)
+        assertEquals(2L, parsed.nextBeforeRevision)
+        assertEquals("older answer", parsed.exchanges.first().reply)
+
+        invalid { AssistantWorkspaceWire.historyPage(page(threadId = "55555555-5555-4555-8555-555555555555").toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(snapshot = 6).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(before = 4).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(exchanges = rows.replace("\"revision\":4", "\"revision\":2")).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(exchanges = rows.replace(exchangeB, exchangeA)).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(exchanges = rows.replace("\"revision\":4", "\"revision\":5")).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(older = false).toByteArray(), "family-a", thread, 5, 5) }
+        invalid { AssistantWorkspaceWire.historyPage(page(exchanges = "[]").toByteArray(), "family-a", thread, 5, 5) }
+        val noMore = page(exchanges = rows, older = false, next = "null")
+        val terminal = AssistantWorkspaceWire.historyPage(noMore.toByteArray(), "family-a", thread, 5, 5)
+        assertFalse(terminal.hasOlderExchanges)
+        assertNull(terminal.nextBeforeRevision)
+        invalid { AssistantWorkspaceWire.historyPage(page().replace("\"has_older_exchanges\":true", "\"has_older_exchanges\":true,\"future\":false").toByteArray(), "family-a", thread, 5, 5) }
     }
 
     @Test fun parsesPrivateHistoryWithoutReturningCardIdentifiersAndAllowsClearingPreference() {
@@ -83,6 +140,21 @@ class AssistantWorkspaceWireTest {
         val returned = legacy.submitTurn(token, "family-a", thread, request, 0, "Find photos", "33333333-3333-4333-8333-333333333333")
         assertTrue(received)
         assertEquals(AssistantWorkspaceRequestStatus.PENDING, returned.status)
+    }
+
+    @Test fun historyApiOverloadPreservesLegacyListAndFailsUnavailableByDefault() = runBlocking {
+        val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+        var listCalls = 0
+        val legacy = object : AssistantWorkspaceApi {
+            override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList {
+                listCalls++
+                return AssistantWorkspaceThreadList(1, emptyList())
+            }
+        }
+        assertTrue(legacy.listThreads(token, "family-a", includeLabels = true).threads.isEmpty())
+        assertEquals(1, listCalls)
+        try { legacy.readHistory(token, "family-a", thread, 2, 2); fail("legacy API unexpectedly supports paging") }
+        catch (e: ApiFailure) { assertEquals(FailureKind.HTTP, e.kind); assertEquals(503, e.status) }
     }
 
     private fun invalid(block: () -> Any?) {

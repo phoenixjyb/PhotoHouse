@@ -64,13 +64,16 @@ internal fun PrivateAssistantPanel(
     onAbandonPending: ((String, String, Long) -> Unit)? = null,
     onContinueVoice: ((String, Long) -> Unit)? = null,
     onContinueText: ((String, Long) -> Unit)? = null,
+    onLoadOlder: ((String, Long, Long) -> Unit)? = null,
+    onReloadHistory: ((String, Long) -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val capabilities = state.capabilities
-    val ready = capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true
+    val historyReady = capabilities?.let { it.available && it.threads } == true
+    val ready = historyReady && capabilities?.serverOwnedTurns == true
     val pending = state.pendingTurn != null
     val scopeAvailable = state.accountId != null && state.libraryId != null
-    val controlsEnabled = ready && !state.busy && !pending && state.pendingCreationId == null && scopeAvailable
+    val controlsEnabled = historyReady && !state.busy && !pending && state.pendingCreationId == null && scopeAvailable
     val draftBytes = state.draft.toByteArray(Charsets.UTF_8).size
     val draftValid = state.draft.isNotBlank() && draftBytes in 1..1024
     val keyboard = LocalSoftwareKeyboardController.current
@@ -83,7 +86,7 @@ internal fun PrivateAssistantPanel(
     var preservedPendingQuestion by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
     var preservedLocalDraft by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
     val send: () -> Unit = {
-        if (controlsEnabled && state.continuationEnabled && draftValid) {
+        if (controlsEnabled && ready && state.continuationEnabled && draftValid) {
             keyboard?.hide()
             focusManager.clearFocus()
             onSend()
@@ -124,13 +127,16 @@ internal fun PrivateAssistantPanel(
                         Text(if (state.busy) t("Checking…", "正在检查…") else t("Check availability", "检查可用状态"))
                     }
                 }
-                !ready -> {
+                !historyReady -> {
                     Text(t("Private server-owned conversations are unavailable for this library.", "此资料库暂未开放由服务器管理的私人对话。"),
                         style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("private-assistant-unavailable"))
                     OutlinedButton(onClick = onRefresh, enabled = !state.busy && scopeAvailable,
                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-refresh")) { Text(t("Retry", "重试")) }
                 }
                 else -> {
+                    if (!ready) Text(t("Search is temporarily unavailable. Your saved conversations are still readable.",
+                        "检索暂不可用，仍可查看已保存的对话。"), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("private-assistant-search-unavailable"))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { if (state.pendingCreationId != null) onReconcileCreation?.invoke() else onNew() },
@@ -207,7 +213,7 @@ internal fun PrivateAssistantPanel(
                                     Text(
                                         text = buildString {
                                             append(if (selected) "• " else "")
-                                            append(t("Conversation", "对话"))
+                                            append(thread.label ?: t("Conversation", "对话"))
                                             append(" · ")
                                             append(thread.exchangeCount)
                                             append(t(" exchanges · ", " 轮 · "))
@@ -240,9 +246,42 @@ internal fun PrivateAssistantPanel(
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-delete"),
                             ) { Text(t("Delete conversation", "删除对话"), color = MaterialTheme.colorScheme.error) }
                         }
-                        if (detail.hasOlderExchanges) {
-                            Text(t("Showing the latest 20 exchanges. Earlier history is not available in this view.",
-                                "当前显示最近 20 轮；更早的记录暂不支持查看。"),
+                        if ((onContinueVoice != null || onContinueText != null) && ready && state.continuationEnabled &&
+                            state.pendingTurn == null && !state.busy && scopeAvailable) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (onContinueText != null) OutlinedButton(
+                                    onClick = { onContinueText(detail.thread.threadId, detail.thread.revision) },
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                        .testTag("private-assistant-continue-text"),
+                                ) {
+                                    Text(t("Continue chatting", "继续聊天"))
+                                }
+                                if (onContinueVoice != null) OutlinedButton(
+                                    onClick = { onContinueVoice(detail.thread.threadId, detail.thread.revision) },
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                        .testTag("private-assistant-continue-voice"),
+                                ) {
+                                    Text(t("Continue with voice in this conversation", "在这个对话中语音聊"))
+                                }
+                            }
+                        }
+                        if (state.historyRefreshRequired) {
+                            Text(t("This conversation has changed. Reload its history before continuing.", "对话已有更新，请重新加载记录后继续。"),
+                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("private-assistant-history-changed"))
+                            onReloadHistory?.let { reload -> OutlinedButton(
+                                onClick = { reload(detail.thread.threadId, detail.thread.revision) },
+                                enabled = !state.busy && !pending, modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-reload"),
+                            ) { Text(t("Reload history", "重新加载记录")) } }
+                        } else if (detail.hasOlderExchanges) {
+                            val before = detail.exchanges.firstOrNull()?.revision
+                            if (capabilities?.historyPaging == true && before != null && onLoadOlder != null) {
+                                OutlinedButton(onClick = { onLoadOlder(detail.thread.threadId, detail.thread.revision, before) },
+                                    enabled = !state.busy && !pending && state.pendingCreationId == null,
+                                    modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-older")) {
+                                    Text(t("Read earlier messages", "查看更早消息"))
+                                }
+                            } else Text(t("Showing recent complete messages. Earlier history is not available on this server.",
+                                "正在显示最近的完整消息；此服务器暂不支持查看更早记录。"),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.testTag("private-assistant-history-older"))
                         }
@@ -375,30 +414,12 @@ internal fun PrivateAssistantPanel(
                             horizontalArrangement = Arrangement.SpaceBetween) {
                             TextButton(onClick = { onRefresh() }, enabled = scopeAvailable && !state.busy,
                                 modifier = Modifier.heightIn(min = 48.dp)) { Text(t("Refresh history", "刷新记录")) }
-                            Button(onClick = send, enabled = controlsEnabled && state.continuationEnabled && draftValid,
+                            Button(onClick = send, enabled = controlsEnabled && ready && state.continuationEnabled && draftValid,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-send")) {
                                 Text(if (state.busy) t("Sending…", "正在发送…") else t("Send", "发送"))
                             }
                         }
-                        if ((onContinueVoice != null || onContinueText != null) && ready && state.continuationEnabled &&
-                            state.pendingTurn == null && !state.busy && scopeAvailable) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (onContinueText != null) OutlinedButton(
-                                    onClick = { onContinueText(detail.thread.threadId, detail.thread.revision) },
-                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                                        .testTag("private-assistant-continue-text"),
-                                ) {
-                                    Text(t("Continue chatting", "继续聊天"))
-                                }
-                                if (onContinueVoice != null) OutlinedButton(
-                                    onClick = { onContinueVoice(detail.thread.threadId, detail.thread.revision) },
-                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                                        .testTag("private-assistant-continue-voice"),
-                                ) {
-                                    Text(t("Continue with voice in this conversation", "在这个对话中语音聊"))
-                                }
-                            }
-                        }
+
                     }
                 }
             }

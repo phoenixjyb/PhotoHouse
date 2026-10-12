@@ -248,6 +248,147 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforeUnreceivedCreationTurns,'creation recovery does not submit a turn');
   checkpoint('A creation lost before server receipt requires exact GET 404 and explicit same-ID retry while preserving the draft');
 
+  // Use only synthetic owned text to exercise the server-backed history window.
+  // Labels and saved question/reply content remain text even when they resemble HTML.
+  const seeded=await rpc({command:'seed-private-history'});assert.equal(seeded.ok,true);
+  const historyThreadId=seeded.thread_id,firstHistoryQuestion=seeded.first_question;
+  assert.match(historyThreadId,/^[0-9a-f-]{36}$/i);
+  const seededCreates=threadCreates().length;
+  await page.locator('#assistant-private-refresh').click();
+  await page.locator(`#assistant-private-select option[value="${historyThreadId}"]`).waitFor({state:'attached'});
+  assert.equal(threadCreates().length,seededCreates,'synthetic history seeding never creates through the browser');
+  const historyDetailRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
+  await page.locator('#assistant-private-select').selectOption(historyThreadId);await historyDetailRead;
+  const trail=page.locator('#assistant-turn-trail-list');
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
+  const historyOption=page.locator(`#assistant-private-select option[value="${historyThreadId}"]`);
+  assert((await historyOption.innerText()).includes(firstHistoryQuestion),'HTML-like Unicode label is rendered literally');
+  assert.equal(await historyOption.locator('img').count(),0,'label content cannot create markup');
+  assert.equal(await trail.locator('.assistant-turn-trail-entry').count(),20,'thread detail starts with the latest twenty complete exchanges');
+  await trail.getByText('Synthetic private question 45',{exact:true}).waitFor();
+  await trail.getByText('Synthetic private reply 45',{exact:true}).waitFor();
+  assert.equal(await trail.getByText(firstHistoryQuestion,{exact:true}).count(),0,'older first question is not hydrated automatically');
+  await page.locator('#assistant-text').fill('draft stays while paging');
+  const historySpeechBefore=await page.evaluate(()=>window.__phSpeechCalls);
+  const historyTurnPostsBefore=turns().length;
+  const historyCreatePostsBefore=threadCreates().length;
+  const historyRequestGetsBefore=browserRequests.filter(x=>x.method==='GET'&&x.path.startsWith(`${workspace}/threads/${historyThreadId}/requests/`)).length;
+  const historyOpenRequestsBefore=browserRequests.filter(x=>/\/assets\/[^/]+(?:\/open|\/original)(?:\?|$)/.test(x.path)).length;
+  const historyPageUrl=page.url();
+  await trail.evaluate(list=>{list.scrollTop=Math.min(260,list.scrollHeight);});
+  const scrollAnchorBefore=await trail.evaluate(list=>{
+    const bounds=list.getBoundingClientRect();
+    const row=[...list.children].find(item=>{const rect=item.getBoundingClientRect();return rect.bottom>bounds.top&&rect.top<bounds.bottom;});
+    return row?{id:row.dataset.assistantTurnId,offset:row.getBoundingClientRect().top-bounds.top}:null;
+  });
+  assert(scrollAnchorBefore,'history trail has a visible scroll anchor');
+  const firstOlder=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await page.locator('#assistant-private-load-older').click();const firstOlderResponse=await firstOlder;
+  assert.equal(firstOlderResponse.status(),200);
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===40);
+  const scrollAnchorAfter=await trail.evaluate((list,id)=>{
+    const row=[...list.children].find(item=>item.dataset.assistantTurnId===id);
+    return row?row.getBoundingClientRect().top-list.getBoundingClientRect().top:null;
+  },scrollAnchorBefore.id);
+  assert.notEqual(scrollAnchorAfter,null,'the same exchange remains rendered after prepending older history');
+  assert(Math.abs(scrollAnchorAfter-scrollAnchorBefore.offset)<=2,`paging keeps the visible scroll anchor: ${scrollAnchorBefore.offset} -> ${scrollAnchorAfter}`);
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging');
+  assert.equal(browserRequests.filter(x=>x.method==='GET'&&x.path.startsWith(`${workspace}/threads/${historyThreadId}/requests/`)).length,historyRequestGetsBefore,
+    'loading older text does not hydrate prior request results');
+  assert.equal(turns().length,historyTurnPostsBefore,'history paging never posts a turn');
+  assert.equal(threadCreates().length,historyCreatePostsBefore,'history paging never creates a thread');
+  assert.equal(await page.evaluate(()=>window.__phSpeechCalls),historySpeechBefore,'history paging never starts speech');
+  assert.equal(browserRequests.filter(x=>/\/assets\/[^/]+(?:\/open|\/original)(?:\?|$)/.test(x.path)).length,historyOpenRequestsBefore,
+    'history paging never opens or navigates to media');
+  assert.equal(page.url(),historyPageUrl,'history paging leaves the page in place');
+
+  // A server-side turn advances the thread while an older-page cursor is visible.
+  // The stale page must be rejected as a whole, then replaced only on explicit reload.
+  const beforeConcurrent=await rpc({command:'append-private-history',thread_id:historyThreadId});
+  assert.equal(beforeConcurrent.ok,true);assert.equal(beforeConcurrent.revision,46);
+  const staleRowsBefore=await trail.locator('.assistant-turn-trail-entry').evaluateAll(rows=>rows.map(row=>row.dataset.assistantTurnId));
+  const conflictedPage=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`)&&response.status()===409);
+  await page.locator('#assistant-private-load-older').click();await conflictedPage;
+  await page.locator('#assistant-private-reload-history').waitFor({state:'visible'});
+  const staleRowsAfter=await trail.locator('.assistant-turn-trail-entry').evaluateAll(rows=>rows.map(row=>row.dataset.assistantTurnId));
+  assert.deepEqual(staleRowsAfter,staleRowsBefore,'409 never mixes rows from a second snapshot');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging','snapshot conflict preserves the draft');
+  const refreshedDetail=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
+  await page.locator('#assistant-private-reload-history').click();await refreshedDetail;
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
+  await trail.getByText('Synthetic concurrent question 46',{exact:true}).waitFor();
+  assert.equal(await trail.getByText('Synthetic private question 26',{exact:true}).count(),0,'explicit reload replaces the old snapshot with the latest twenty');
+  assert.equal(await page.locator('#assistant-private-reload-history').isHidden(),true);
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging');
+  const nextOlder=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await page.locator('#assistant-private-load-older').click();assert.equal((await nextOlder).status(),200);
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===40);
+  const oldestPage=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await page.locator('#assistant-private-load-older').click();assert.equal((await oldestPage).status(),200);
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===46);
+  await trail.getByText(firstHistoryQuestion,{exact:true}).waitFor();
+  await trail.getByText('Synthetic private question 45',{exact:true}).waitFor();
+  await trail.getByText('Synthetic concurrent question 46',{exact:true}).waitFor();
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging');
+  await page.setViewportSize({width:390,height:844});
+  await trail.scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'assistant-private-history-narrow-390.png'),fullPage:false});
+  await page.evaluate(()=>document.documentElement.scrollTop=0);
+  checkpoint('Owned history opens at the latest twenty, explicitly prepends older text with stable scroll anchoring, and preserves the typed draft without turn, result-hydration, speech, or media-navigation side effects');
+  checkpoint('A concurrent server turn makes the old page return 409; stale rows remain intact until explicit reload, which replaces them with a coherent new snapshot');
+
+  // Reload under discovery-off capabilities to prove private history does not
+  // depend on search and cannot fall through to the legacy v1 turn or voice APIs.
+  await callCommand('discovery-off');
+  assert.equal((await readCapabilities()).server_owned_turns,false);
+  await page.reload();
+  await page.locator('#grid .asset').first().waitFor();
+  await page.locator('#memory-assistant').click();
+  await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  await page.locator('#assistant-panel').evaluate(el=>{if(!el.open)el.open=true;});
+  await page.locator('#assistant-private').waitFor({state:'visible'});
+  await page.locator('#assistant-private').evaluate(el=>{el.open=true;});
+  await page.locator('#assistant-private-select').waitFor();
+  await page.locator(`#assistant-private-select option[value="${historyThreadId}"]`).waitFor({state:'attached'});
+  assert.match(await page.locator('#assistant-private-status').innerText(),/检索暂不可用|Search is unavailable/);
+  const offlineRequestGetsBefore=browserRequests.filter(x=>x.method==='GET'&&x.path.startsWith(`${workspace}/threads/${historyThreadId}/requests/`)).length;
+  const offlineV1PostsBefore=browserRequests.filter(x=>x.method==='POST'&&x.path.startsWith('/assistant/v1/')).length;
+  const offlineSpeechBefore=await page.evaluate(()=>window.__phSpeechCalls);
+  await page.locator('#assistant-private-select').selectOption(historyThreadId);
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
+  await trail.getByText('Synthetic concurrent question 46',{exact:true}).waitFor();
+  assert.equal(browserRequests.filter(x=>x.method==='GET'&&x.path.startsWith(`${workspace}/threads/${historyThreadId}/requests/`)).length,offlineRequestGetsBefore,
+    'engine-off history read skips latest-result hydration');
+  // Engine-off hides/disables the search composer. Set its value in the DOM so
+  // the submit guard is exercised directly without depending on a visible
+  // search control in this state.
+  await page.locator('#assistant-text').evaluate(el=>{el.value='must remain private while search is unavailable';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  const v1PostsBeforeSubmit=browserRequests.filter(x=>x.method==='POST'&&x.path.startsWith('/assistant/v1/')).length;
+  await page.locator('#assistant-form').evaluate(form=>form.dispatchEvent(new SubmitEvent('submit',{bubbles:true,cancelable:true})));
+  await page.waitForFunction(()=>/检索暂不可用|Search is unavailable/.test(document.getElementById('assistant-status').textContent));
+  assert.equal(browserRequests.filter(x=>x.method==='POST'&&x.path.startsWith('/assistant/v1/')).length,v1PostsBeforeSubmit,
+    'engine-off private submission cannot use a legacy v1 endpoint');
+  assert.equal(browserRequests.filter(x=>x.method==='POST'&&x.path.startsWith('/assistant/v1/')).length,offlineV1PostsBefore,
+    'engine-off history creates no legacy requests');
+  assert.equal(await page.locator('#assistant-voice-start').isDisabled(),true,'voice remains disabled without server-owned turns');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'must remain private while search is unavailable');
+  assert.equal(await page.evaluate(()=>window.__phSpeechCalls),offlineSpeechBefore);
+  checkpoint('With discovery disabled, owned history stays readable while latest request hydration, v1 submission, and voice remain unavailable');
+
+  await callCommand('discovery-on');
+  await page.reload();
+  await page.locator('#grid .asset').first().waitFor();
+  await page.locator('#memory-assistant').click();
+  await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  await page.locator('#assistant-panel').evaluate(el=>{if(!el.open)el.open=true;});
+  await page.locator('#assistant-private').waitFor({state:'visible'});
+  await page.locator('#assistant-private').evaluate(el=>{el.open=true;});
+  await page.locator('#assistant-private-select').waitFor();
+  await page.locator(`#assistant-private-select option[value="${threadId}"]`).waitFor({state:'attached'});
+  await page.locator('#assistant-private-select').selectOption(threadId);
+  await page.waitForFunction(id=>document.querySelector('#assistant-private-select')?.value===id,threadId);
+  if(!await page.locator('#assistant-private .assistant-private-preferences').evaluate(el=>el.open))await page.locator('#assistant-private .assistant-private-preferences > summary').click();
+
   // Two-step delete keeps the thread until the explicit confirmation action.
   await page.locator('#assistant-private-delete').click();
   await page.locator('#assistant-private-delete-confirm').waitFor({state:'visible'});
@@ -279,7 +420,7 @@ async function installSyntheticTransport(targetContext){
   // its scrolling content while the composer stays in the separate footer row.
   await page.setViewportSize({width:1280,height:900});
   await page.locator('#memory-assistant').scrollIntoViewIfNeeded();
-  await page.locator('#memory-assistant').click();
+  if(!await page.locator('#assistant-workspace-dialog').evaluate(el=>el.open))await page.locator('#memory-assistant').click();
   const dialog=page.locator('#assistant-workspace-dialog'),content=page.locator('#assistant-workspace-content'),footer=page.locator('#assistant-workspace-footer');
   await dialog.waitFor({state:'visible'});assert.equal(await dialog.evaluate(el=>el.open),true);
   assert.equal(await page.locator('#assistant-private').evaluate(el=>el.closest('#assistant-workspace-content')?.id),'assistant-workspace-content');

@@ -56,7 +56,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 152)
+                self.assertEqual(len(main.app.routes), 153)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -179,12 +179,13 @@ class ClosedApplicationTests(unittest.TestCase):
             ('POST', '/assistant/workspace/v1/preferences/reset'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/turns'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}'),
+            ('GET', '/assistant/workspace/v1/threads/{thread_id}/history'),
             ('GET', '/ui/assistant-private-workspace.js'),
         }
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 152)
+        self.assertEqual(len(actual), 153)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

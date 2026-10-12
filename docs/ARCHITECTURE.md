@@ -441,8 +441,12 @@ and never replays navigation. The receipt journal is separate: a failure to
 finalize a receipt cannot regenerate an already committed exchange.
 
 The Web controller keeps draft text and an exact pending request identity in
-process memory. History shows the latest 20 complete exchanges, with an explicit
-older-history notice. Phone uses a separately scoped coordinator and private
+process memory. [History navigation](PRIVATE_ASSISTANT_HISTORY_V1.md) shows up to 20 recent
+complete exchanges under a 240 KiB JSON budget, with explicit older pages pinned
+to the same thread revision. Opted-in list labels derive from the first
+unexpired question and add no stored copy. History is independently available
+when discovery is down; paging never changes trusted context, receipts or voice
+consent. Clients reject mixed snapshots and preserve drafts on an explicit reload. Phone uses a separately scoped coordinator and private
 conversation panel; account/library/generation changes and backgrounding clear
 its private buffers. [Phone private voice/text continuation](PRIVATE_ASSISTANT_VOICE_V1.md)
 uses an explicitly activated owned thread: “继续聊天” enters typed conversation

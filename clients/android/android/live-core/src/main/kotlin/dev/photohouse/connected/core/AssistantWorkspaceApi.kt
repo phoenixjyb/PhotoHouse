@@ -9,6 +9,8 @@ data class AssistantWorkspaceCapabilities(
     val preferencesApplied: Boolean,
     val serverOwnedTurns: Boolean,
     val appliedPreferences: Set<String> = emptySet(),
+    val historyPaging: Boolean = false,
+    val threadLabels: Boolean = false,
 )
 
 data class AssistantWorkspaceThreadSummary(
@@ -19,6 +21,7 @@ data class AssistantWorkspaceThreadSummary(
     val expiresAt: String,
     val revision: Long,
     val exchangeCount: Int = 0,
+    val label: String? = null,
 )
 
 data class AssistantWorkspaceThreadList(val version: Int, val threads: List<AssistantWorkspaceThreadSummary>)
@@ -42,6 +45,16 @@ data class AssistantWorkspaceThreadDetail(
     val exchanges: List<AssistantWorkspaceExchange>,
     val latestRequestId: String? = null,
     val hasOlderExchanges: Boolean = false,
+)
+
+data class AssistantWorkspaceHistoryPage(
+    val version: Int,
+    val threadId: String,
+    val snapshotRevision: Long,
+    val beforeRevision: Long,
+    val exchanges: List<AssistantWorkspaceExchange>,
+    val hasOlderExchanges: Boolean,
+    val nextBeforeRevision: Long?,
 )
 
 data class AssistantWorkspacePreferences(
@@ -73,6 +86,13 @@ interface AssistantWorkspaceApi {
     val assistantWorkspaceEnabled: Boolean get() = false
     suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList = throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Opt-in overload; legacy adapters retain their original unlabelled list behavior. */
+    suspend fun listThreads(token: Bearer, library: String, includeLabels: Boolean): AssistantWorkspaceThreadList =
+        listThreads(token, library)
+    /** Older adapters explicitly report that history paging is unavailable. */
+    suspend fun readHistory(token: Bearer, library: String, threadId: String,
+                            beforeRevision: Long, snapshotRevision: Long): AssistantWorkspaceHistoryPage =
+        throw ApiFailure(FailureKind.HTTP, 503)
     suspend fun createThread(token: Bearer, library: String, clientThreadId: String): AssistantWorkspaceCreatedThread = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun readThread(token: Bearer, library: String, threadId: String): AssistantWorkspaceThreadDetail = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun deleteThread(token: Bearer, library: String, threadId: String, expectedRevision: Long): AssistantWorkspaceDeletedThread = throw ApiFailure(FailureKind.INVALID_INPUT)

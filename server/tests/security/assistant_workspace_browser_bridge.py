@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -45,6 +46,15 @@ fixture.client = client
 fixture.client.headers['Sec-Fetch-Site'] = 'same-origin'
 discovery = client.app.state.discovery_runtime
 
+def append_synthetic_exchange(store, account_id, thread_id, revision, question, reply):
+    request_id = str(uuid.uuid4())
+    started = store.begin_turn(account_id, 'family-a', thread_id, request_id,
+                               revision, question)
+    summary = dict(version=1, kind='clarification', reply=reply, context=None,
+                   filters=None, total=0, has_more=False, effect=None)
+    return store.complete_turn(account_id, 'family-a', thread_id, request_id,
+                               started['lease_id'], summary)
+
 try:
     print(json.dumps({'ready': True}), flush=True)
     for line in sys.stdin:
@@ -66,6 +76,29 @@ try:
         if message.get('command') == 'workspace-healthy':
             client.app.state.assistant_workspace_healthy = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'seed-private-history':
+            store = client.app.state.assistant_workspace_store
+            thread = store.create_thread(fixture.member_id, 'family-a')['thread_id']
+            first_question = '  <img src=x onerror=alert(1)> 家庭 🌟  '
+            for revision in range(45):
+                question = (first_question if revision == 0 else
+                            f'Synthetic private question {revision + 1}')
+                append_synthetic_exchange(store, fixture.member_id, thread, revision, question,
+                    f'Synthetic private reply {revision + 1}')
+            print(json.dumps({'id': message['id'], 'ok': True,
+                              'thread_id': thread, 'first_question': first_question.strip()}), flush=True)
+            continue
+        if message.get('command') == 'append-private-history':
+            store = client.app.state.assistant_workspace_store
+            thread = message.get('thread_id')
+            current = store.get_thread(fixture.member_id, 'family-a', thread)
+            revision = current['thread']['revision']
+            append_synthetic_exchange(store, fixture.member_id, thread, revision,
+                f'Synthetic concurrent question {revision + 1}',
+                f'Synthetic concurrent reply {revision + 1}')
+            print(json.dumps({'id': message['id'], 'ok': True,
+                              'revision': revision + 1}), flush=True)
             continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'], headers=message['headers'],

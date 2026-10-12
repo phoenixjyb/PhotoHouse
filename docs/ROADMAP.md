@@ -13,16 +13,21 @@ continue the same private thread through central text or foreground voice;
 recoveries pause without replaying audio or navigation. Installed v50 remains
 the earlier v1 voice experience until a separately delivered update.
 
+[Conversation labels and older-history paging](PRIVATE_ASSISTANT_HISTORY_V1.md)
+now add explicit full-text page reads at a fixed thread revision, ephemeral
+first-question labels, and history access while discovery is unavailable.
+Concurrent updates require explicit reload without losing a draft.
+
 Current qualification and delivery gates are recorded in Development. These
 changes do not publish an APK, create a Windows conversation database, or change
 the live API. Phone v50 and TV v30 remain the last verified published packages.
 
 The next slices are:
 
-1. Complete the private voice/text simulator and release-package checks,
+1. Complete the private conversation release-package/native qualification,
    preserving account/background erasure and v1 compatibility.
-2. Finish useful private conversation labels and older-history paging; current
-   history presents the latest 20 complete exchanges without truncating text.
+2. Extend grounded spoken replies and deliberate media-open behavior; current
+   speech reads result counts and unsupported replies pause for review.
 3. Prepare explicit Windows private-store provisioning and an exact API/phone
    release with rollback; runtime activation and publication retain their gates.
 4. Add grounded story/album/memoir tools and richer spoken replies only after

@@ -112,6 +112,11 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
             [str(uuid.uuid4())])
         listed = self.request('GET', '/threads?library_id=family-a').json()['threads']
         self.assertEqual([entry['thread_id'] for entry in listed], [thread['thread_id']])
+        self.assertNotIn('label', listed[0])
+        labeled = self.request('GET', '/threads?library_id=family-a&include_labels=true').json()['threads']
+        self.assertEqual(labeled[0]['label'], 'Find the park photos')
+        self.assertEqual(self.request('GET', '/threads?library_id=family-a&include_labels=false').status_code, 200)
+        self.assertEqual(self.request('GET', '/threads?library_id=family-a&include_labels=1').status_code, 400)
         self.assertEqual(self.request('GET', '/threads?library_id=family-b').json()['threads'], [])
         for headers, library in (({'Authorization': 'Bearer ' + SECOND}, 'family-a'),
                                  (self.auth, 'family-b')):
@@ -243,6 +248,7 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
         capability = self.request('GET', '/capabilities?library_id=family-a')
         self.assertEqual(capability.json(), {'version': 1, 'available': True,
             'threads': True, 'preferences': True, 'preferences_applied': False,
+            'thread_labels': True, 'history_paging': True,
             'server_owned_turns': False, 'applied_preferences': []})
         self.assertEqual(self.client.get('/assistant/v1/capabilities?library_id=family-a',
                          headers=self.auth).status_code, 200)
@@ -250,6 +256,97 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
                          json={'library_id': 'family-a'}, headers=self.auth).status_code, 403)
         self.update("UPDATE access_memberships SET status='requested' WHERE account_id='one'")
         self.assertEqual(self.request('GET', '/capabilities?library_id=family-a').status_code, 401)
+
+    def test_history_route_paginates_strictly_older_and_rejects_noncanonical_or_foreign_scopes(self):
+        thread = self.store.create_thread('one', 'family-a')['thread_id']
+        for revision in range(22):
+            self.store.append_exchange('one', 'family-a', thread, str(uuid.uuid4()), revision,
+                f'Question {revision + 1}', f'Reply {revision + 1}', [], [])
+        path = f'/threads/{thread}/history?library_id=family-a&snapshot_revision=22&before_revision=22'
+        first = self.request('GET', path)
+        self.assertEqual(first.status_code, 200, first.text)
+        body = first.json()
+        self.assertEqual(body['snapshot_revision'], 22)
+        self.assertEqual(body['before_revision'], 22)
+        self.assertEqual([row['revision'] for row in body['exchanges']], list(range(2, 22)))
+        self.assertTrue(body['has_older_exchanges'])
+        self.assertEqual(body['next_before_revision'], 2)
+
+        second = self.request('GET', path.replace('before_revision=22', 'before_revision=2'))
+        self.assertEqual([row['revision'] for row in second.json()['exchanges']], [1])
+        self.assertFalse(second.json()['has_older_exchanges'])
+        self.assertIsNone(second.json()['next_before_revision'])
+        empty = self.request('GET', path.replace('before_revision=22', 'before_revision=1'))
+        self.assertEqual(empty.json()['exchanges'], [])
+        self.assertFalse(empty.json()['has_older_exchanges'])
+        self.assertIsNone(empty.json()['next_before_revision'])
+
+        for query, expected in (
+            ('snapshot_revision=022&before_revision=2', 400),
+            ('snapshot_revision=+22&before_revision=2', 400),
+            ('snapshot_revision=22&before_revision=0', 400),
+            ('snapshot_revision=22&before_revision=23', 400),
+            ('snapshot_revision=21&before_revision=2', 409),
+        ):
+            response = self.request('GET', f'/threads/{thread}/history?library_id=family-a&{query}')
+            self.assertEqual(response.status_code, expected, response.text)
+        missing = str(uuid.uuid4())
+        self.assertEqual(self.request('GET', f'/threads/{missing}/history?library_id=family-a&'
+            'snapshot_revision=22&before_revision=2').status_code, 404)
+        self.assertEqual(self.request('GET', f'/threads/{thread}/history?library_id=family-b&'
+            'snapshot_revision=22&before_revision=2').status_code, 401)
+        foreign = self.request('GET', f'/threads/{thread}/history?library_id=family-a&'
+            'snapshot_revision=22&before_revision=2', headers={'Authorization': 'Bearer ' + SECOND})
+        self.assertEqual(foreign.status_code, 404)
+
+    def test_detail_and_history_keep_complete_text_under_240_kibibyte_budget(self):
+        thread = self.store.create_thread('one', 'family-a')['thread_id']
+        full_reply = 'x\n' * 4096
+        for revision in range(30):
+            self.store.append_exchange('one', 'family-a', thread, str(uuid.uuid4()), revision,
+                f'Question {revision + 1}', full_reply, [], [])
+
+        detail = self.request('GET', f'/threads/{thread}?library_id=family-a')
+        self.assertEqual(detail.status_code, 200, detail.text[:200])
+        self.assertLessEqual(len(detail.content), 240 * 1024)
+        self.assertTrue(detail.json()['has_older_exchanges'])
+        self.assertGreater(len(detail.json()['exchanges']), 0)
+        self.assertTrue(all(row['reply'] == full_reply for row in detail.json()['exchanges']))
+
+        history = self.request('GET', f'/threads/{thread}/history?library_id=family-a&'
+            'snapshot_revision=30&before_revision=30')
+        self.assertEqual(history.status_code, 200, history.text[:200])
+        self.assertLessEqual(len(history.content), 240 * 1024)
+        page = history.json()
+        self.assertTrue(page['has_older_exchanges'])
+        self.assertGreater(len(page['exchanges']), 0)
+        self.assertTrue(all(row['reply'] == full_reply for row in page['exchanges']))
+        self.assertEqual(page['next_before_revision'], page['exchanges'][0]['revision'])
+
+    def test_history_rechecks_membership_after_snapshot_read_before_exposing_text(self):
+        thread = self.store.create_thread('one', 'family-a')['thread_id']
+        self.store.append_exchange('one', 'family-a', thread, str(uuid.uuid4()), 0,
+                                   'A private question', 'A private reply', [], [])
+        original = workspace_transport._principal
+        calls = 0
+
+        async def revoke_after_initial_check(request, library):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                account = await original(request, library)
+                self.update("UPDATE access_memberships SET status='requested' "
+                            "WHERE account_id='one' AND library_id='family-a'")
+                return account
+            return await original(request, library)
+
+        with patch.object(workspace_transport, '_principal', new=revoke_after_initial_check):
+            response = self.request('GET', f'/threads/{thread}/history?library_id=family-a&'
+                'snapshot_revision=1&before_revision=1')
+        self.assertEqual(calls, 2)
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn('A private question', response.text)
+        self.assertNotIn('A private reply', response.text)
 
     def test_runtime_configuration_uses_only_explicit_separate_existing_workspace_path(self):
         with self.assertRaises(ValueError):

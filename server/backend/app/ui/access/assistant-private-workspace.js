@@ -43,10 +43,13 @@
     value();ws();if(i!==raw.length)fail('invalid_response');
     try{return JSON.parse(raw);}catch(_){fail('invalid_response');}
   }
-  function validateThread(row, library) {
-    if(!exactKeys(row,['thread_id','library_id','created_at','updated_at','expires_at','revision'],['exchange_count']) ||
+  function validateThread(row, library, includeLabel=false) {
+    const required=['thread_id','library_id','created_at','updated_at','expires_at','revision'];
+    if(includeLabel)required.push('label');
+    if(!exactKeys(row,required,['exchange_count']) ||
       !uuid(row.thread_id) || row.library_id!==library || !validUtc(row.created_at) || !validUtc(row.updated_at) ||
       !validUtc(row.expires_at) || !safeInt(row.revision) || (Object.hasOwn(row,'exchange_count')&&!safeInt(row.exchange_count))) fail('invalid_response');
+    if(includeLabel&&row.label!==null&&(typeof row.label!=='string'||!row.label.trim()||[...row.label].length>64||/\p{Cc}/u.test(row.label)))fail('invalid_response');
     return Object.freeze({...row});
   }
   function validateExchange(row) {
@@ -58,10 +61,12 @@
     return Object.freeze({exchange_id:row.exchange_id,revision:row.revision,created_at:row.created_at,expires_at:row.expires_at,input_text:row.input_text,reply:row.reply,cards:Object.freeze(cards),receipt_count:row.receipt_count,...(row.request_id?{request_id:row.request_id}:{})});
   }
   function validateCapabilities(v) {
-    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences'])||v.version!==1||
+    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging'])||v.version!==1||
       ['available','threads','preferences','preferences_applied','server_owned_turns'].some(k=>typeof v[k]!=='boolean')||
+      ['thread_labels','history_paging'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
       (Object.hasOwn(v,'applied_preferences')&&(!Array.isArray(v.applied_preferences)||v.applied_preferences.some(x=>x!=='locale')||new Set(v.applied_preferences).size!==v.applied_preferences.length)))fail('invalid_response');
-    return Object.freeze({...v, ...(v.applied_preferences?{applied_preferences:Object.freeze([...v.applied_preferences])}:{})});
+    return Object.freeze({...v,thread_labels:v.thread_labels===true,history_paging:v.history_paging===true,
+      ...(v.applied_preferences?{applied_preferences:Object.freeze([...v.applied_preferences])}:{})});
   }
   function validatePrefs(v) {
     if(!exactKeys(v,['version','locale','reply_length','voice_pace','revision'])||v.version!==1||!safeInt(v.revision)||
@@ -125,8 +130,25 @@
       (Object.hasOwn(v,'latest_request_id')&&v.latest_request_id!==null&&!uuid(v.latest_request_id))||
       (Object.hasOwn(v,'has_older_exchanges')&&typeof v.has_older_exchanges!=='boolean'))fail('invalid_response');
     const thread=validateThread(v.thread,library);if(thread.thread_id!==expectedId)fail('invalid_response');
-    const exchanges=v.exchanges.map(validateExchange);let previous=0;for(const e of exchanges){if(e.revision<=previous)fail('invalid_response');previous=e.revision;}
+    const exchanges=v.exchanges.map(validateExchange);let previous=0;const ids=new Set();for(const e of exchanges){if(e.revision<=previous||ids.has(e.exchange_id))fail('invalid_response');previous=e.revision;ids.add(e.exchange_id);}
+    if(v.has_older_exchanges===true&&exchanges.length===0)fail('invalid_response');
     return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{})});
+  }
+  function validateHistoryPage(v, threadId, library, snapshotRevision, beforeRevision) {
+    if(!exactKeys(v,['version','thread_id','snapshot_revision','before_revision','exchanges','has_older_exchanges','next_before_revision'])||
+      v.version!==1||v.thread_id!==threadId||!safeInt(v.snapshot_revision)||v.snapshot_revision!==snapshotRevision||
+      !safeInt(v.before_revision)||v.before_revision<1||v.before_revision!==beforeRevision||snapshotRevision<beforeRevision||
+      !Array.isArray(v.exchanges)||v.exchanges.length>20||typeof v.has_older_exchanges!=='boolean'||
+      !(v.next_before_revision===null||(safeInt(v.next_before_revision)&&v.next_before_revision>0)))fail('invalid_response');
+    const exchanges=v.exchanges.map(validateExchange);let previous=0;const ids=new Set();
+    for(const exchange of exchanges){
+      if(exchange.revision<=previous||exchange.revision>=beforeRevision||exchange.revision>snapshotRevision||ids.has(exchange.exchange_id))fail('invalid_response');
+      previous=exchange.revision;ids.add(exchange.exchange_id);
+    }
+    if(v.has_older_exchanges){
+      if(exchanges.length===0||v.next_before_revision!==exchanges[0].revision||v.next_before_revision>=beforeRevision)fail('invalid_response');
+    }else if(v.next_before_revision!==null)fail('invalid_response');
+    return Object.freeze({...v,exchanges:Object.freeze(exchanges)});
   }
   function validateCreation(v, library, id) {
     if(!exactKeys(v,['version','thread'])||v.version!==1)fail('invalid_response');const thread=validateThread(v.thread,library);if(thread.thread_id!==id)fail('invalid_response');return Object.freeze({version:1,thread});
@@ -143,15 +165,20 @@
 
   function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result}={}) {
     if(typeof scope!=='function'||typeof request!=='function')throw new TypeError('scope and request are required');
-    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,threads=[],preferences=null,currentResult=null,contextState='unavailable',controllers=new Set(),hydrationControllers=new Set(),readGeneration=0;
+    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),readGeneration=0;
     const snapshot=()=>{const s=scope()||{};return {account:s.account??null,library:s.library==null?null:String(s.library),generation:s.generation??s.membershipGeneration??s.epoch??null,locked:!!s.locked};};
     const stamp=s=>JSON.stringify([s.account,s.library,s.generation,s.locked]);
-    const stateValue=()=>{const s=snapshot();return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState});};
+    const stateValue=()=>{const s=snapshot();return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired});};
     const resultContextState=value=>value?.context?'ready':'requires_search';
+    const ownHistory=detail=>Object.freeze({...detail,snapshot_revision:detail.thread.revision,
+      before_revision:detail.exchanges[0]?.revision??null,history_stale:false,history_limit_reached:false});
+    const staleHistory=detail=>Object.freeze({...detail,before_revision:null,has_older_exchanges:false,history_stale:true,history_limit_reached:false});
+    function clearHistory(){historyNonce++;historyLoading=false;historyDetail=null;historyRefreshRequired=false;}
+    function invalidateHistory(){historyNonce++;historyLoading=false;historyRefreshRequired=true;if(historyDetail)historyDetail=staleHistory(historyDetail);}
     const publish=()=>{try{onChange(stateValue());}catch(_){}};
     const state=()=>{sync();return stateValue();};
     const abortHydrations=()=>{for(const c of hydrationControllers)c.abort();hydrationControllers.clear();};
-    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';}
+    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';}
     function sync(){const s=snapshot(),key=stamp(s);if(key!==scopeStamp){scopeStamp=key;revokedStamp=null;clearScopeData();publish();}return s;}
     const assertCurrent=(base,token)=>{if(closed)fail('closed');const now=snapshot();if(stamp(now)!==scopeStamp)sync();if(stamp(now)!==stamp(base)||token!==instance||base.locked||!base.account||!base.library||revokedStamp===stamp(now))fail('scope_changed');};
     function revoke(base){revokedStamp=stamp(base);clearScopeData();publish();}
@@ -160,11 +187,12 @@
     async function hydrateResult(value,t,metadata={}){assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');const c=new AbortController();hydrationControllers.add(c);try{const hydrated=await hydrateResults(value,{...metadata,signal:c.signal});assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');return hydrated;}catch(e){throw safeFailure(e);}finally{hydrationControllers.delete(c);}}
     function setDraft(value){begin();if(typeof value!=='string'||byteLength(value)>1024)fail('invalid_input');draft=value;publish();return draft;}
     async function capabilitiesRead(){const t=begin();const v=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));capabilities=v;publish();return v;}
-    async function list(){const t=begin();const raw=await call(`${BASE}/threads?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library));threads=values;publish();return values;}
+    async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
-    async function read(id,{hydrate=true}={}){if(!uuid(id))fail('invalid_input');const t=begin();if(pendingTurn)fail('conflict');abortHydrations();const ticket=++readGeneration;const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);let detail=validateThreadDetail(raw,t.base.library,id);let latest=null;
+    function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
+    async function read(id,{hydrate=true}={}){if(!uuid(id))fail('invalid_input');const t=begin();if(pendingTurn)fail('conflict');abortHydrations();const ticket=++readGeneration;beginHistoryRead(id);publish();const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');let detail=validateThreadDetail(raw,t.base.library,id);historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();let latest=null;
       currentResult=null;contextState=detail.latest_request_id?'unloaded':'requires_search';
-      if(detail.latest_request_id&&hydrate){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false});
+      if(detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false});
           if(latest.status==='completed'&&latest.revision===detail.thread.revision){currentResult=await hydrateResult(latest.result,t,{readTicket:ticket,threadId:id,revision:latest.revision});contextState=resultContextState(currentResult);}
           else if(latest.status==='completed')contextState='stale';
           else if(latest.status==='pending')contextState='pending';
@@ -173,28 +201,59 @@
         }catch(e){const safe=safeFailure(e);if(safe.status===409||safe.status===404){latest=null;currentResult=null;contextState='requires_search';}else throw safe;}}
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;publish();
       const latestSummary=latest?Object.freeze({request_id:latest.request_id,status:latest.status,revision:latest.revision,error:latest.error}):null;
-      return Object.freeze({...detail,current_result:currentResult,context_state:contextState,...(latestSummary?{latest_request:latestSummary}:{})});}
-    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};publish();}abortHydrations();const ticket=++readGeneration;
+      return Object.freeze({...historyDetail,current_result:currentResult,context_state:contextState,...(latestSummary?{latest_request:latestSummary}:{})});}
+    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;
       try{const raw=await call(`${BASE}/threads`,'POST',{library_id:t.base.library,thread_id:id},t.base,t.token);const created=validateCreation(raw,t.base.library,id);assertCurrent(t.base,t.token);pendingCreation=null;if(ticket!==readGeneration){threads=[created.thread,...threads.filter(x=>x.thread_id!==id)];publish();return created;}activeThread=created.thread;revision=created.thread.revision;currentResult=null;contextState='requires_search';publish();return created;}
       catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed')throw safe; // retain ID and require explicit reconciliation or retry
         throw safe;}}
-    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const env=await getRequest(id,rid,{_ticket:t,hydrate:true});if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else if(env.status==='failed'||env.status==='interrupted'){if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
+    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const env=await getRequest(id,rid,{_ticket:t,hydrate:true});assertCurrent(t.base,t.token);if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else{if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
     function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
-    async function reconcileCreation(){const t=begin();if(!pendingCreation||pendingTurn)fail('invalid_input');const id=pendingCreation.thread_id;abortHydrations();const ticket=++readGeneration;const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);const detail=validateThreadDetail(raw,t.base.library,id);pendingCreation=null;if(ticket!==readGeneration){threads=[detail.thread,...threads.filter(x=>x.thread_id!==id)];publish();return detail;}activeThread=detail.thread;revision=detail.thread.revision;currentResult=null;contextState='requires_search';publish();return detail;}
+    async function reconcileCreation(){const t=begin();if(!pendingCreation||pendingTurn)fail('invalid_input');const id=pendingCreation.thread_id;clearHistory();abortHydrations();const ticket=++readGeneration;const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');const detail=validateThreadDetail(raw,t.base.library,id);pendingCreation=null;activeThread=detail.thread;revision=detail.thread.revision;currentResult=null;contextState='requires_search';historyDetail=ownHistory(detail);publish();return detail;}
+    async function older(){
+      const t=begin(),owned=historyDetail,threadId=activeThread?.thread_id;
+      if(!capabilities?.history_paging||!owned||!threadId||owned.thread.thread_id!==threadId||owned.history_stale||!owned.has_older_exchanges||
+        !safeInt(owned.snapshot_revision)||!safeInt(owned.before_revision)||owned.before_revision<1||historyLoading||pendingTurn)fail(historyLoading?'conflict':'invalid_input');
+      const snapshotRevision=owned.snapshot_revision,beforeRevision=owned.before_revision,ticket=readGeneration,nonce=++historyNonce;
+      const query=new URLSearchParams({library_id:t.base.library,before_revision:String(beforeRevision),snapshot_revision:String(snapshotRevision)});
+      historyLoading=true;publish();
+      try{
+        const raw=await call(`${threadPath(threadId)}/history?${query}`,'GET',undefined,t.base,t.token);
+        assertCurrent(t.base,t.token);
+        if(ticket!==readGeneration||nonce!==historyNonce||historyDetail!==owned||activeThread?.thread_id!==threadId)fail('scope_changed');
+        const page=validateHistoryPage(raw,threadId,t.base.library,snapshotRevision,beforeRevision);
+        const ids=new Set(owned.exchanges.map(exchange=>exchange.exchange_id)),revisions=new Set(owned.exchanges.map(exchange=>exchange.revision));
+        for(const exchange of page.exchanges){if(ids.has(exchange.exchange_id)||revisions.has(exchange.revision))fail('invalid_response');ids.add(exchange.exchange_id);revisions.add(exchange.revision);}
+        const merged=[...page.exchanges,...owned.exchanges];
+        for(let i=1;i<merged.length;i++)if(merged[i-1].revision>=merged[i].revision)fail('invalid_response');
+        if(merged.length>200||(page.has_older_exchanges&&merged.length>=200))fail('invalid_response');
+        const limitReached=false;
+        const exchanges=Object.freeze(merged);
+        historyDetail=Object.freeze({...owned,exchanges,has_older_exchanges:page.has_older_exchanges&&!limitReached,
+          before_revision:page.has_older_exchanges&&!limitReached?page.next_before_revision:null,history_stale:false,history_limit_reached:limitReached});
+        historyLoading=false;publish();return historyDetail;
+      }catch(error){
+        if(nonce===historyNonce&&ticket===readGeneration&&historyDetail===owned){
+          historyLoading=false;
+          if(error?.status===404||error?.status===409){historyDetail=staleHistory(owned);historyRefreshRequired=true;}
+          publish();
+        }
+        throw error;
+      }
+    }
     async function getRequest(id,rid,{_ticket,hydrate=true}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token),id,rid,t.base.library,'GET');
       if(env.status==='completed'&&hydrate){const hydrated=await hydrateResult(env.result,t,{readTicket:t.readTicket,threadId:id,revision:env.revision});return Object.freeze({...env,result:hydrated});}return env;}
-    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
+    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
       try{const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',{library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text},t.base,t.token),sent.thread_id,rid,t.base.library,'POST');
         if(v.status==='completed'){const result=await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=resultContextState(result);if(draft===text)draft='';publish();return Object.freeze({...v,result});}
         if(v.status==='failed'||v.status==='interrupted'){if(!draft)draft=text;pendingTurn=null;contextState='requires_search';publish();return v;}
         pendingTurn={...sent,status:'uncertain'};publish();return v;
       }catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401||safe.status===403)throw safe;pendingTurn={...sent,status:'uncertain'};publish();throw safe;}}
-    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');if(activeThread?.thread_id===id)abortHydrations();readGeneration++;threads=threads.filter(x=>x.thread_id!==id);if(activeThread?.thread_id===id){activeThread=null;revision=0;currentResult=null;contextState='unavailable';}publish();return Object.freeze({thread_id:id,deleted:true});}
+    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');readGeneration++;historyNonce++;historyLoading=false;if(activeThread?.thread_id===id){abortHydrations();clearHistory();activeThread=null;revision=0;currentResult=null;contextState='unavailable';}threads=threads.filter(x=>x.thread_id!==id);publish();return Object.freeze({thread_id:id,deleted:true});}
     async function readPreferences(){const t=begin();preferences=validatePrefs(await call(`${BASE}/preferences?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));publish();return preferences;}
     async function updatePreferences(changes){const t=begin();if(!isObject(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!Object.hasOwn(PREFS,k)||!PREFS[k].includes(changes[k])))fail('invalid_input');const current=preferences||await readPreferences();assertCurrent(t.base,t.token);const body={library_id:t.base.library,expected_revision:current.revision,...changes};preferences=validatePrefs(await call(`${BASE}/preferences`,'PUT',body,t.base,t.token));publish();return preferences;}
     async function resetPreferences(){const t=begin(),current=preferences||await readPreferences();assertCurrent(t.base,t.token);preferences=validatePrefs(await call(`${BASE}/preferences/reset`,'POST',{library_id:t.base.library,expected_revision:current.revision},t.base,t.token));publish();return preferences;}
-    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
-    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,list,create,reconcileCreation,read,send,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
+    function close(){if(closed)return;closed=true;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;clearHistory();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';publish();}
+    return Object.freeze({state,setDraft,capabilities:capabilitiesRead,list,create,reconcileCreation,read,older,send,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
   }
-  return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validatePrefs,validateEnvelope,validateResult,safeJson,uuid,validUtc});
+  return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validateHistoryPage,validatePrefs,validateEnvelope,validateResult,safeJson,uuid,validUtc});
 });

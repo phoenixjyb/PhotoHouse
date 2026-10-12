@@ -55,6 +55,7 @@ data class AssistantWorkspaceState(
     ),
     val continuationEnabled: Boolean = false,
     val busy: Boolean = false,
+    val historyRefreshRequired: Boolean = false,
 )
 
 /**
@@ -109,13 +110,13 @@ class AssistantWorkspaceStore(
             capabilities = value,
             unsupportedPreferences = AssistantWorkspacePreference.entries.toSet() -
                 if ("locale" in value.appliedPreferences) setOf(AssistantWorkspacePreference.LOCALE) else emptySet(),
-            error = if (value.available && value.threads && value.serverOwnedTurns) null else AssistantWorkspaceError.UNAVAILABLE,
+            error = if (value.available && value.threads) null else AssistantWorkspaceError.UNAVAILABLE,
         )
     }
 
     fun refreshThreads(): Boolean = launchAction {
         val scope = requireUsableCapabilities()
-        val value = api.listThreads(scope.bearer, scope.libraryId)
+        val value = api.listThreads(scope.bearer, scope.libraryId, mutableState.value.capabilities?.threadLabels == true)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(threads = value, error = null)
     }
@@ -143,7 +144,7 @@ class AssistantWorkspaceStore(
             mutableState.value = mutableState.value.copy(
                 pendingCreationId = null,
                 detail = AssistantWorkspaceThreadDetail(1, created.thread, emptyList()),
-                currentTurn = null, uncertain = false, continuationEnabled = true, error = null,
+                currentTurn = null, uncertain = false, continuationEnabled = true, error = null, historyRefreshRequired = false,
                 threads = mutableState.value.threads?.let { list ->
                     list.copy(threads = (list.threads.filterNot { it.threadId == clientId } + created.thread).sortedByDescending { it.updatedAt })
                 },
@@ -176,6 +177,7 @@ class AssistantWorkspaceStore(
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(pendingCreationId = null, detail = detail,
             currentTurn = null, uncertain = false, continuationEnabled = detail.thread.revision == 0L,
+            historyRefreshRequired = false,
             error = if (detail.thread.revision == 0L) null else AssistantWorkspaceError.CONTEXT_CHANGED)
     }
 
@@ -187,10 +189,11 @@ class AssistantWorkspaceStore(
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(
             detail = detail, currentTurn = null, pendingCreationId = null,
-            uncertain = false, continuationEnabled = true, error = null,
+            uncertain = false, continuationEnabled = mutableState.value.capabilities?.serverOwnedTurns == true, error = null,
+            historyRefreshRequired = false,
         )
         val latest = detail.latestRequestId
-        if (latest != null) {
+        if (latest != null && mutableState.value.capabilities?.serverOwnedTurns == true) {
             val savedInput = detail.exchanges.firstOrNull { it.requestId == latest }?.inputText.orEmpty()
             val pending = AssistantWorkspacePendingTurn(
                 detail.thread.threadId, latest, (detail.thread.revision - 1).coerceAtLeast(0), savedInput,
@@ -198,6 +201,41 @@ class AssistantWorkspaceStore(
             mutableState.value = mutableState.value.copy(pendingTurn = pending, uncertain = true)
             recoverInternal(scope, pending, detail)
         }
+    }
+
+    /** Explicit text-only paging, anchored to the selected owned revision and cursor. */
+    fun loadOlderHistory(): Boolean = launchAction {
+        val scope = requireUsableCapabilities()
+        val snapshot = mutableState.value
+        val detail = snapshot.detail ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        val before = detail.exchanges.firstOrNull()?.revision ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (snapshot.capabilities?.historyPaging != true || !detail.hasOlderExchanges ||
+            snapshot.pendingTurn != null || snapshot.pendingCreationId != null || snapshot.historyRefreshRequired)
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        val page = try {
+            api.readHistory(scope.bearer, scope.libraryId, detail.thread.threadId, before, detail.thread.revision)
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (error: ApiFailure) {
+            requireCurrent(scope)
+            if (error.status == 409) mutableState.value = mutableState.value.copy(
+                historyRefreshRequired = true, continuationEnabled = false)
+            throw error
+        }
+        requireCurrent(scope)
+        val latest = mutableState.value.detail ?: throw CancellationException("History selection changed")
+        if (latest.thread.threadId != detail.thread.threadId || latest.thread.revision != detail.thread.revision ||
+            latest.exchanges.firstOrNull()?.revision != before) throw CancellationException("History cursor changed")
+        if (page.threadId != detail.thread.threadId || page.snapshotRevision != detail.thread.revision ||
+            page.beforeRevision != before || page.exchanges.size > 20 ||
+            page.exchanges.any { it.revision >= before } ||
+            page.hasOlderExchanges && (page.exchanges.isEmpty() || page.nextBeforeRevision != page.exchanges.first().revision) ||
+            !page.hasOlderExchanges && page.nextBeforeRevision != null)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val combined = page.exchanges + latest.exchanges
+        if (combined.size > 200 || page.hasOlderExchanges && combined.size >= 200 || combined.map { it.exchangeId }.distinct().size != combined.size ||
+            !combined.zipWithNext().all { (a, b) -> a.revision < b.revision }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        mutableState.value = mutableState.value.copy(detail = latest.copy(exchanges = combined,
+            hasOlderExchanges = page.hasOlderExchanges), error = null)
     }
 
     fun sendTurn(requestId: String? = null, parentRequestId: String? = null): Boolean {
@@ -339,7 +377,7 @@ class AssistantWorkspaceStore(
         requireCurrent(scope)
         if (deleted.deleted && mutableState.value.detail?.thread?.threadId == detail.thread.threadId) {
             mutableState.value = mutableState.value.copy(
-                detail = null, currentTurn = null, draft = "", pendingCreationId = null,
+                detail = null, currentTurn = null, draft = "", pendingCreationId = null, historyRefreshRequired = false,
                 pendingTurn = null, uncertain = false, continuationEnabled = false, error = null,
                 threads = mutableState.value.threads?.let { list -> list.copy(threads = list.threads.filterNot { it.threadId == deleted.threadId }) },
             )
@@ -424,6 +462,7 @@ class AssistantWorkspaceStore(
                 val keepDraft = mutableState.value.draft != pending.text || !revisionMatches
                 mutableState.value = mutableState.value.copy(
                     detail = detail ?: oldDetail ?: mutableState.value.detail,
+                    historyRefreshRequired = false,
                     currentTurn = safeTurn,
                     pendingTurn = null,
                     uncertain = false,
@@ -491,7 +530,7 @@ class AssistantWorkspaceStore(
     private fun requireUsableCapabilities(): AssistantWorkspaceScope {
         requireEnabled()
         val caps = mutableState.value.capabilities ?: throw ApiFailure(FailureKind.INVALID_INPUT)
-        if (!caps.available || !caps.threads || !caps.serverOwnedTurns) throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (!caps.available || !caps.threads) throw ApiFailure(FailureKind.INVALID_INPUT)
         return requireScope()
     }
 

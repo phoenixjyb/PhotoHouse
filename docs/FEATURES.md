@@ -356,3 +356,12 @@ capability-loss stopping and access-denial cache erasure are implemented locally
 Recovered replies pause before speech, navigation or another capture. The
 unselected ordinary route remains v1.
 All private workspace storage remains explicitly admitted and default-off.
+
+
+[Private history navigation](PRIVATE_ASSISTANT_HISTORY_V1.md) adds ephemeral
+first-question labels and explicit older pages, preserving complete saved text
+and a fixed thread snapshot. A concurrent revision requires explicit reload.
+Phone/Web history remains readable when discovery is unavailable, with no
+automatic result hydration, speech or microphone capture. This is locally
+qualified source; Windows storage/activation and a signed phone release remain
+separate delivery gates.

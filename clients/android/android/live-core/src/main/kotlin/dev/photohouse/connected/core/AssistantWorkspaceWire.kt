@@ -49,31 +49,44 @@ object AssistantWorkspaceWire {
         ByteArray(buffer.remaining()).also(buffer::get)
     } catch (_: Exception) { throw ApiFailure(FailureKind.INVALID_INPUT) }
 
-    private fun parseThread(value: JsonElement, library: String): AssistantWorkspaceThreadSummary {
-        val o = value.obj(setOf("thread_id", "library_id", "created_at", "updated_at", "expires_at", "revision"), setOf("exchange_count"))
+    private fun parseThread(value: JsonElement, library: String, includeLabel: Boolean = false): AssistantWorkspaceThreadSummary {
+        val optional = buildSet { add("exchange_count"); if (includeLabel) add("label") }
+        val o = value.obj(setOf("thread_id", "library_id", "created_at", "updated_at", "expires_at", "revision"), optional)
         val threadId = uuid(o.getValue("thread_id")); check(o.getValue("library_id").str(128) == library && PhoneDiscoveryWire.validLibrary(library))
         val revision = o.getValue("revision").integer()
         val count = o["exchange_count"]?.count(100000) ?: 0
+        val label = o["label"]?.let { element ->
+            if (element == JsonNull) null else element.str(64).also { value ->
+                var offset = 0
+                while (offset < value.length) {
+                    val codePoint = value.codePointAt(offset)
+                    check(!Character.isISOControl(codePoint))
+                    offset += Character.charCount(codePoint)
+                }
+            }
+        }
         return AssistantWorkspaceThreadSummary(threadId, library, validDate(o.getValue("created_at").str(64)),
-            validDate(o.getValue("updated_at").str(64)), validDate(o.getValue("expires_at").str(64)), revision, count)
+            validDate(o.getValue("updated_at").str(64)), validDate(o.getValue("expires_at").str(64)), revision, count, label)
     }
 
     fun capabilities(bytes: ByteArray): AssistantWorkspaceCapabilities = guarded {
         check(bytes.size in 1..4096)
-        val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available", "threads", "preferences", "preferences_applied", "server_owned_turns"), setOf("applied_preferences"))
+        val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available", "threads", "preferences", "preferences_applied", "server_owned_turns"),
+            setOf("applied_preferences", "history_paging", "thread_labels"))
         check(o.getValue("version").count(1) == 1)
         val applied = o["applied_preferences"]?.array(4)?.map { it.str(32) } ?: emptyList()
         check(applied.distinct().size == applied.size && applied.all { it == "locale" })
         val appliedFlag = o.getValue("preferences_applied").bool()
         AssistantWorkspaceCapabilities(1, o.getValue("available").bool(), o.getValue("threads").bool(),
-            o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet())
+            o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet(),
+            o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false)
     }
 
-    fun threadList(bytes: ByteArray, library: String): AssistantWorkspaceThreadList = guarded {
+    fun threadList(bytes: ByteArray, library: String, includeLabels: Boolean = false): AssistantWorkspaceThreadList = guarded {
         check(bytes.size in 1..RESPONSE_LIMIT && PhoneDiscoveryWire.validLibrary(library))
         val o = DiscoveryJson.parse(bytes).obj(setOf("version", "threads"))
         check(o.getValue("version").count(1) == 1)
-        val items = o.getValue("threads").array(100).map { parseThread(it, library) }
+        val items = o.getValue("threads").array(100).map { parseThread(it, library, includeLabels) }
         check(items.map { it.threadId }.distinct().size == items.size)
         AssistantWorkspaceThreadList(1, items)
     }
@@ -114,6 +127,32 @@ object AssistantWorkspaceWire {
         val latest = o["latest_request_id"]?.let { nullableString(it, 36)?.also { id -> check(validUuid4(id)) } }
         val older = o["has_older_exchanges"]?.bool() ?: false
         AssistantWorkspaceThreadDetail(1, thread, exchanges, latest, older)
+    }
+
+    fun historyPage(bytes: ByteArray, library: String, expectedThreadId: String,
+                    expectedBeforeRevision: Long, expectedSnapshotRevision: Long): AssistantWorkspaceHistoryPage = guarded {
+        check(bytes.size in 1..RESPONSE_LIMIT && PhoneDiscoveryWire.validLibrary(library) && validUuid4(expectedThreadId))
+        check(expectedBeforeRevision in 1..REVISION_MAX && expectedSnapshotRevision in 0..REVISION_MAX &&
+            expectedBeforeRevision <= expectedSnapshotRevision)
+        val o = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(setOf("version", "thread_id", "snapshot_revision", "before_revision",
+            "exchanges", "has_older_exchanges", "next_before_revision"))
+        check(o.getValue("version").count(1) == 1)
+        check(uuid(o.getValue("thread_id")) == expectedThreadId)
+        val snapshot = o.getValue("snapshot_revision").integer()
+        val before = o.getValue("before_revision").integer()
+        check(snapshot == expectedSnapshotRevision && before == expectedBeforeRevision && before <= snapshot)
+        val exchanges = o.getValue("exchanges").array(20).map(::parseExchange)
+        check(exchanges.zipWithNext().all { (a, b) -> a.revision < b.revision })
+        check(exchanges.all { it.revision > 0 && it.revision < before && it.revision <= snapshot })
+        check(exchanges.map { it.exchangeId }.distinct().size == exchanges.size)
+        check(exchanges.mapNotNull { it.requestId }.distinct().size == exchanges.count { it.requestId != null })
+        val hasOlder = o.getValue("has_older_exchanges").bool()
+        val next = if (o.getValue("next_before_revision") == JsonNull) null else o.getValue("next_before_revision").integer()
+        if (hasOlder) {
+            val cursor = next ?: bad()
+            check(exchanges.isNotEmpty() && cursor == exchanges.first().revision && cursor > 0 && cursor < before)
+        } else check(next == null)
+        AssistantWorkspaceHistoryPage(1, expectedThreadId, snapshot, before, exchanges, hasOlder, next)
     }
 
     fun preferences(bytes: ByteArray): AssistantWorkspacePreferences = guarded {

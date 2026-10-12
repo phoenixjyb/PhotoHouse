@@ -6,7 +6,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -20,11 +25,16 @@ class AssistantWorkspaceStoreTest {
         version = 1, available = true, threads = true, preferences = true,
         preferencesApplied = true, serverOwnedTurns = true, appliedPreferences = setOf("locale"),
     )
+    private fun exchange(revision: Long, exchangeId: String = uuid((revision + 100).toInt())) = AssistantWorkspaceExchange(
+        exchangeId, revision, "2026-10-13T00:00:00Z", "2026-11-12T00:00:00Z",
+        "Question $revision", "Answer $revision", emptyList(), 0, uuid((revision + 200).toInt()),
+    )
     private fun thread(id: String = uuid(1), revision: Long = 0) = AssistantWorkspaceThreadSummary(
         id, "family-a", "2026-10-13T00:00:00Z", "2026-10-13T00:00:00Z", "2026-11-12T00:00:00Z", revision,
     )
-    private fun detail(id: String = uuid(1), revision: Long = 0, latest: String? = null) =
-        AssistantWorkspaceThreadDetail(1, thread(id, revision), emptyList(), latest)
+    private fun detail(id: String = uuid(1), revision: Long = 0, latest: String? = null,
+                       exchanges: List<AssistantWorkspaceExchange> = emptyList(), hasOlder: Boolean = false) =
+        AssistantWorkspaceThreadDetail(1, thread(id, revision), exchanges, latest, hasOlder)
     private fun uuid(n: Int) = "00000000-0000-4000-8000-${n.toString().padStart(12, '0')}"
     private fun completed(id: String, requestId: String, revision: Long, recovered: Boolean,
                          kind: String = "results", effect: AssistantEffect? = null) = AssistantWorkspaceTurn(
@@ -46,6 +56,10 @@ class AssistantWorkspaceStoreTest {
         var readCalls = 0
         var deleteExpectedRevision: Long? = null
         var prefsUpdates: Map<AssistantWorkspacePreference, String?>? = null
+        var capabilityValue = capabilities
+        var listIncludedLabels: Boolean? = null
+        var historyCalls = 0
+        val historyRequests = mutableListOf<Triple<String, Long, Long>>()
         var listHandler: suspend () -> AssistantWorkspaceThreadList = { AssistantWorkspaceThreadList(1, emptyList()) }
         var createHandler: suspend (String) -> AssistantWorkspaceCreatedThread = { id -> AssistantWorkspaceCreatedThread(1, thread(id)) }
         var submitHandler: suspend (String, Long, String) -> AssistantWorkspaceTurn = { id, _, _ -> completed(id, uuid(9), 1, false) }
@@ -53,14 +67,26 @@ class AssistantWorkspaceStoreTest {
             AssistantWorkspaceTurn(1, id, request, AssistantWorkspaceRequestStatus.PENDING, 0, true, null, null)
         }
         var readHandler: suspend (String) -> AssistantWorkspaceThreadDetail = { detail(it) }
+        var historyHandler: suspend (String, Long, Long) -> AssistantWorkspaceHistoryPage = { id, before, snapshot ->
+            AssistantWorkspaceHistoryPage(1, id, snapshot, before, emptyList(), false, null)
+        }
         var deleteHandler: suspend (String, Long) -> AssistantWorkspaceDeletedThread = { id, _ -> AssistantWorkspaceDeletedThread(id, true) }
         var preferencesValue = AssistantWorkspacePreferences(1, "zh", "standard", "normal", 0)
 
         override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities {
-            capabilitiesCalls++; return capabilities
+            capabilitiesCalls++; return capabilityValue
         }
         override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList {
             listCalls++; return listHandler()
+        }
+        override suspend fun listThreads(token: Bearer, library: String, includeLabels: Boolean): AssistantWorkspaceThreadList {
+            listCalls++; listIncludedLabels = includeLabels; return listHandler()
+        }
+        override suspend fun readHistory(token: Bearer, library: String, threadId: String,
+                                         beforeRevision: Long, snapshotRevision: Long): AssistantWorkspaceHistoryPage {
+            historyCalls++
+            historyRequests += Triple(threadId, beforeRevision, snapshotRevision)
+            return historyHandler(threadId, beforeRevision, snapshotRevision)
         }
         override suspend fun createThread(token: Bearer, library: String, clientThreadId: String): AssistantWorkspaceCreatedThread {
             createCalls++; return createHandler(clientThreadId)
@@ -345,5 +371,172 @@ class AssistantWorkspaceStoreTest {
         assertNull(store.state.value.pendingTurn)
         assertFalse(store.state.value.busy)
         assertEquals(0, api.submitCalls)
+    }
+
+    @Test fun olderHistoryLoadsTwoPagesWithoutChangingCurrentTurnDraftOrContext() = runTest {
+        val api = FakeApi()
+        val recent = (36L..55L).map(::exchange)
+        api.historyHandler = { id, before, snapshot ->
+            when (before) {
+                36L -> AssistantWorkspaceHistoryPage(1, id, snapshot, before,
+                    (16L..35L).map(::exchange), true, 16L)
+                16L -> AssistantWorkspaceHistoryPage(1, id, snapshot, before,
+                    (1L..15L).map(::exchange), false, null)
+                else -> error("unexpected cursor $before")
+            }
+        }
+        val store = openHistoryStore(api, recent, uuid(8))
+        store.setDraft("unsent editable draft")
+        val initial = store.state.value
+        val currentTurn = initial.currentTurn
+        val currentResult = currentTurn?.result
+        val currentContext = currentResult?.context
+        assertNotNull(currentTurn)
+        assertTrue(initial.detail!!.hasOlderExchanges)
+        assertEquals(1, api.getCalls)
+
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertEquals((16L..55L).toList(), store.state.value.detail!!.exchanges.map { it.revision })
+        assertTrue(store.state.value.detail!!.hasOlderExchanges)
+        assertEquals(Triple(uuid(1), 36L, 55L), api.historyRequests[0])
+        assertSame(currentTurn, store.state.value.currentTurn)
+        assertSame(currentResult, store.state.value.currentTurn?.result)
+        assertSame(currentContext, store.state.value.currentTurn?.result?.context)
+        assertEquals("unsent editable draft", store.state.value.draft)
+
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertEquals((1L..55L).toList(), store.state.value.detail!!.exchanges.map { it.revision })
+        assertFalse(store.state.value.detail!!.hasOlderExchanges)
+        assertEquals(Triple(uuid(1), 16L, 55L), api.historyRequests[1])
+        assertSame(currentTurn, store.state.value.currentTurn)
+        assertSame(currentResult, store.state.value.currentTurn?.result)
+        assertSame(currentContext, store.state.value.currentTurn?.result?.context)
+        assertEquals("unsent editable draft", store.state.value.draft)
+        assertEquals(1, api.getCalls)
+        assertEquals(0, api.submitCalls)
+    }
+
+    @Test fun malformedHistorySnapshotCursorAndDuplicateRowsAreRejectedWithoutAppend() = runTest {
+        val recent = (36L..55L).map(::exchange)
+        val api = FakeApi()
+        val store = openHistoryStore(api, recent, uuid(8))
+        val original = store.state.value.detail
+        val validRows = (16L..35L).map(::exchange)
+        api.historyHandler = { id, before, _ -> AssistantWorkspaceHistoryPage(
+            1, id, snapshotRevision = 54, beforeRevision = before,
+            exchanges = validRows, hasOlderExchanges = true, nextBeforeRevision = 16,
+        ) }
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertEquals(AssistantWorkspaceError.INVALID_RESPONSE, store.state.value.error)
+        assertEquals(original, store.state.value.detail)
+
+        api.historyHandler = { id, before, snapshot -> AssistantWorkspaceHistoryPage(
+            1, id, snapshot, before,
+            validRows.mapIndexed { index, row -> if (index == 0) row.copy(exchangeId = recent.first().exchangeId) else row },
+            true, 16,
+        ) }
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertEquals(AssistantWorkspaceError.INVALID_RESPONSE, store.state.value.error)
+        assertEquals(original, store.state.value.detail)
+        assertEquals(2, api.historyCalls)
+    }
+
+    @Test fun historyConflictFreezesPagingUntilExplicitThreadRefresh() = runTest {
+        val api = FakeApi()
+        val store = openHistoryStore(api, (36L..55L).map(::exchange), latest = null)
+        api.historyHandler = { _, _, _ -> throw ApiFailure(FailureKind.HTTP, status = 409) }
+
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertTrue(store.state.value.historyRefreshRequired)
+        assertFalse(store.state.value.continuationEnabled)
+        assertEquals(1, api.historyCalls)
+
+        api.readHandler = { detail(it, revision = 56, exchanges = (37L..56L).map(::exchange), hasOlder = true) }
+        assertTrue(store.openThread(uuid(1)))
+        runCurrent()
+        assertFalse(store.state.value.historyRefreshRequired)
+        assertEquals(56L, store.state.value.detail?.thread?.revision)
+        assertEquals(1, api.historyCalls)
+    }
+
+    @Test fun lateNonCancellableHistoryPageCannotRestoreTextAfterScopeWipe() = runTest {
+        val api = FakeApi()
+        val gate = CompletableDeferred<Unit>()
+        api.historyHandler = { id, before, snapshot ->
+            withContext(NonCancellable) { gate.await() }
+            AssistantWorkspaceHistoryPage(1, id, snapshot, before, (16L..35L).map(::exchange), true, 16L)
+        }
+        var current: AssistantWorkspaceScope? = scope()
+        api.capabilityValue = capabilities.copy(historyPaging = true)
+        api.readHandler = { detail(it, revision = 55, exchanges = (36L..55L).map(::exchange), hasOlder = true) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { current })
+        store.onScopeChanged(); store.refreshCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+        store.setDraft("private draft before scope switch")
+
+        assertTrue(store.loadOlderHistory())
+        runCurrent()
+        assertTrue(store.state.value.busy)
+        assertEquals(1, api.historyCalls)
+        current = scope(account = "account-b", generation = 2)
+        store.onScopeChanged()
+        assertEquals("account-b", store.state.value.accountId)
+        assertNull(store.state.value.detail)
+        assertEquals("", store.state.value.draft)
+
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals("account-b", store.state.value.accountId)
+        assertNull(store.state.value.detail)
+        assertNull(store.state.value.currentTurn)
+        assertEquals("", store.state.value.draft)
+        assertFalse(store.state.value.busy)
+    }
+
+    @Test fun historyAndLabelsStayAvailableWhenServerOwnedTurnsAreOffline() = runTest {
+        val api = FakeApi()
+        api.capabilityValue = capabilities.copy(serverOwnedTurns = false, historyPaging = true, threadLabels = true)
+        api.readHandler = { detail(it, revision = 55, latest = uuid(8),
+            exchanges = (36L..55L).map(::exchange), hasOlder = true) }
+        api.historyHandler = { id, before, snapshot -> AssistantWorkspaceHistoryPage(
+            1, id, snapshot, before, (16L..35L).map(::exchange), true, 16,
+        ) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
+        store.onScopeChanged(); store.refreshCapabilities(); runCurrent()
+        assertTrue(store.refreshThreads()); runCurrent()
+        assertEquals(true, api.listIncludedLabels)
+        assertTrue(store.openThread(uuid(1))); runCurrent()
+
+        assertEquals(0, api.getCalls)
+        assertFalse(store.state.value.continuationEnabled)
+        assertTrue(store.loadOlderHistory()); runCurrent()
+        assertEquals((16L..55L).toList(), store.state.value.detail!!.exchanges.map { it.revision })
+        assertFalse(store.sendTurn(uuid(7)))
+        assertEquals(0, api.submitCalls)
+        assertEquals(1, api.historyCalls)
+    }
+
+    private suspend fun TestScope.openHistoryStore(
+        api: FakeApi,
+        exchanges: List<AssistantWorkspaceExchange>,
+        latest: String?,
+    ): AssistantWorkspaceStore {
+        api.capabilityValue = capabilities.copy(historyPaging = true, threadLabels = true)
+        api.readHandler = { detail(it, revision = 55, latest = latest,
+            exchanges = exchanges, hasOlder = true) }
+        api.getHandler = { id, request -> AssistantWorkspaceTurn(
+            1, id, request, AssistantWorkspaceRequestStatus.COMPLETED, 55, true, null,
+            AssistantTurn("results", "current result", buildJsonObject { put("visible", JsonPrimitive(true)) },
+                buildJsonObject { put("filter", JsonPrimitive("original")) }, emptyList(), 0, false, null),
+        ) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
+        store.onScopeChanged(); store.refreshCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+        return store
     }
 }

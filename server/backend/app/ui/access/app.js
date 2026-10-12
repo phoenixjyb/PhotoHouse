@@ -14,8 +14,8 @@
   };
   Object.assign(words.en,{assistantTrailTitle:'Recent turns on this page',assistantTrailYou:'You',assistantTrailAssistant:'Assistant',assistantTrailLatest:'Jump to latest'});
   Object.assign(words.zh,{assistantTrailTitle:'本页最近对话',assistantTrailYou:'你',assistantTrailAssistant:'助手',assistantTrailLatest:'跳到最新'});
-  Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近 20 轮对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
-  Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing the latest 20 exchanges.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
+  Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近的完整消息。',assistantPrivateLoadOlder:'查看更早消息',assistantPrivateReloadHistory:'对话已有更新，重新加载记录',assistantPrivateSearchOffline:'检索暂不可用，仍可查看已保存的对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
+  Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing recent complete messages.',assistantPrivateLoadOlder:'Read earlier messages',assistantPrivateReloadHistory:'Conversation changed; reload history',assistantPrivateSearchOffline:'Search is unavailable. Saved conversations are still readable.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
   const t = key => words[state.language][key] || key;
   Object.assign(words.zh,{assistantPrivateAbandon:'结束等待，开始新对话',assistantPrivateAbandonHelp:'服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。',assistantPrivateAbandonYes:'我了解，开始新对话',assistantPrivateRetryCreation:'重试创建同一个对话'});
   Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
@@ -621,20 +621,22 @@
     const recoveryPending=assistantRecoveryPending();
     const session=assistantState.voiceSession,active=session.phase==='listening'||session.phase==='transcribing'||session.phase==='requesting'||session.phase==='speaking',paused=session.phase==='paused';
     const sessionOwnsVoice=active||paused;
-    const privatePending=privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation;
-    const blocked=privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
+    const privateSnapshot=privateAssistant?.state();
+    const privatePending=privateSnapshot?.pendingTurn||privateSnapshot?.pendingCreation;
+    const privateUnavailable=!!privateSnapshot?.activeThread&&privateSnapshot?.capabilities?.server_owned_turns!==true;
+    const blocked=privateUnavailable||privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
     $('assistant-text').disabled=sessionOwnsVoice;
     $('assistant-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();
     $('assistant-mic').disabled=blocked||sessionOwnsVoice;
     $('assistant-voice-session').hidden=!assistantState.transcribe;
-    $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&sessionOwnsVoice;
+    $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden);
     $('assistant-voice-start').hidden=session.phase!=='idle';$('assistant-voice-pause').hidden=!active;$('assistant-voice-resume').hidden=!paused;$('assistant-voice-end').hidden=!(active||paused);
     $('assistant-voice-start').disabled=blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=state.locked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
     $('assistant-mic').hidden=active||paused;
     $('assistant-play').disabled=sessionOwnsVoice;
     const voiceStatus={idle:'assistantVoiceReady',listening:'assistantVoiceListening',transcribing:'assistantVoiceTranscribing',requesting:'assistantVoiceWorking',speaking:'assistantVoiceSpeaking',paused:session.reason||'assistantVoiceReview'};
     $('assistant-voice-session-status').textContent=t(voiceStatus[session.phase]||'assistantVoiceReady');
-    const privateMode=privateAssistant?.state().capabilities?.server_owned_turns===true;
+    const privateMode=privateSnapshot?.capabilities?.available===true&&privateSnapshot?.capabilities?.threads===true;
     $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
     $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
     $('assistant-cancel').hidden=!assistantState.busy;
@@ -977,7 +979,11 @@
     if(assistantState.busy||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||assistantState.transcribing||state.locked||!state.profile||!state.library)return;
     const text=(typeof overrideText==='string'?overrideText:$('assistant-text').value).trim();if(!text)return;
     if(new TextEncoder().encode(text).length>1024){$('assistant-status').textContent=t('assistantTextTooLong');return;}
-    if(privateAssistant?.state().capabilities?.server_owned_turns){await submitPrivateAssistant(text,voiceToken);return;}
+    const privateScope=privateAssistant?.state();
+    if(privateScope?.activeThread||privateScope?.capabilities?.server_owned_turns){
+      if(privateScope?.capabilities?.server_owned_turns!==true){$('assistant-status').textContent=t('assistantPrivateSearchOffline');return;}
+      await submitPrivateAssistant(text,voiceToken);return;
+    }
     stopAssistantSpeech();
     const epoch=state.generation,binding=Object.freeze({library:String(state.library),account:String(state.profile.account_id),generation:epoch});
     const bindingKey=JSON.stringify(binding);
@@ -1030,12 +1036,14 @@
   function renderPrivateAssistant(snapshot){
     if(!$('assistant-private'))return;
     if(snapshot.locked&&!state.locked&&state.profile){const epoch=state.generation;queueMicrotask(()=>{if(!stale(epoch)&&privateAssistant?.state().locked){showAuth();status('denied');}});}
-    const available=snapshot.capabilities?.server_owned_turns===true;
+    const available=snapshot.capabilities?.available===true&&snapshot.capabilities?.threads===true;
+    const turnAvailable=snapshot.capabilities?.server_owned_turns===true;
+    if(snapshot.activeThread&&!turnAvailable&&assistantState.voiceSession.phase!=='idle')queueMicrotask(()=>{if(privateAssistant?.state().activeThread&&privateAssistant.state().capabilities?.server_owned_turns!==true)endAssistantVoice();});
     $('assistant-private').hidden=!available;
     const select=$('assistant-private-select'),selected=snapshot.activeThread?.thread_id||'';
     const option=document.createElement('option');option.value='';option.textContent=t('assistantPrivateSelect');
     select.replaceChildren(option);
-    for(const thread of snapshot.threads){const row=document.createElement('option');row.value=thread.thread_id;row.textContent=new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(thread.updated_at));select.append(row);}
+    for(const thread of snapshot.threads){const row=document.createElement('option');row.value=thread.thread_id;row.textContent=[thread.label,new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(thread.updated_at))].filter(Boolean).join(' · ');select.append(row);}
     if(selected&&!snapshot.threads.some(thread=>thread.thread_id===selected)){const row=document.createElement('option');row.value=selected;row.textContent=t('assistantPrivateNew');select.append(row);}
     select.value=selected;
     const voiceActive=assistantState.voiceSession.phase!=='idle';
@@ -1055,12 +1063,19 @@
     $('assistant-private-delete').hidden=!selected;
     if(!selected)$('assistant-private-delete-confirm').hidden=true;
     $('assistant-private-locale').value=snapshot.preferences?.locale||'';
+    const history=snapshot.historyDetail,refresh=snapshot.historyRefreshRequired===true;
+    $('assistant-private-load-older').hidden=!available||!snapshot.capabilities?.history_paging||!history?.has_older_exchanges||refresh;
+    $('assistant-private-load-older').disabled=blocked||snapshot.historyLoading===true;
+    $('assistant-private-reload-history').hidden=!available||!refresh;
+    $('assistant-private-reload-history').disabled=blocked;
+    $('assistant-private-older').hidden=!history?.has_older_exchanges||!!snapshot.capabilities?.history_paging;
+    if(available&&!turnAvailable)$('assistant-private-status').textContent=t('assistantPrivateSearchOffline');
     if(!available){$('assistant-private-status').textContent='';$('assistant-private-older').hidden=true;}
   }
 
   async function loadPrivateAssistant(epoch){
     if(!privateAssistant)return;
-    try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.server_owned_turns)return;await privateAssistant.list();await privateAssistant.readPreferences();}
+    try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();}
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');}
   }
 
@@ -1091,9 +1106,9 @@
     await privateAssistantAction(async()=>{
       const detail=await privateAssistant.read(id);
       stopAssistantSpeech();assistantState.context=null;assistantState.items=[];
-      assistantState.turnTrail=detail.exchanges.map(exchange=>({id:++assistantState.turnTrailSerial,question:exchange.input_text,reply:exchange.reply}));
+      assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
       renderAssistantTrail();$('assistant-results').replaceChildren();$('assistant-reply').textContent='';
-      $('assistant-private-older').hidden=!detail.has_older_exchanges;
+      $('assistant-private-older').hidden=!detail.has_older_exchanges||privateAssistant.state().capabilities?.history_paging===true;
       $('assistant-text').value=privateAssistant.state().draft;
       if(detail.current_result)showPrivateAssistantResult({status:'completed',result:detail.current_result,recovered:true},'',{historical:true});
     });
@@ -2834,7 +2849,7 @@
     dialog.showModal();syncAssistantControls();
     if(!privateAssistant?.state().capabilities)void loadPrivateAssistant(state.generation);
     if(setHash)history.replaceState(history.state,'','#assistant-panel');
-    const initialFocus=$('assistant-workspace-footer').hidden?(!$('assistant-voice-pause').hidden?$('assistant-voice-pause'):$('assistant-voice-resume')):$('assistant-text');
+    const initialFocus=$('assistant-form').hidden?$('assistant-private-select'):$('assistant-workspace-footer').hidden?(!$('assistant-voice-pause').hidden?$('assistant-voice-pause'):$('assistant-voice-resume')):$('assistant-text');
     initialFocus.focus({preventScroll:true});
   }
   function closeAssistantWorkspace({restoreFocus=true,restoreScroll=true,stopVoice=true}={}){
@@ -3024,6 +3039,13 @@
   $('assistant-private-new').addEventListener('click',()=>void newPrivateConversation());
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));
   $('assistant-private-select').addEventListener('change',()=>void readPrivateAssistant($('assistant-private-select').value));
+  $('assistant-private-load-older').addEventListener('click',()=>void privateAssistantAction(async()=>{
+    const position=captureAssistantTrailPosition($('assistant-turn-trail-list'));
+    const detail=await privateAssistant.older();
+    assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
+    renderAssistantTrail({position});
+  }));
+  $('assistant-private-reload-history').addEventListener('click',()=>void readPrivateAssistant(privateAssistant?.state().activeThread?.thread_id));
   $('assistant-private-recover').addEventListener('click',()=>void recoverPrivateAssistant());
   $('assistant-private-reconcile').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const id=privateAssistant.state().pendingCreation?.thread_id;
@@ -3060,8 +3082,8 @@
   $('assistant-pending-check').addEventListener('click',()=>{void checkAssistantReceipt();});
   $('assistant-pending-ack').addEventListener('click',()=>acknowledgeAssistantPending(false));
   $('assistant-pending-restore').addEventListener('click',()=>acknowledgeAssistantPending(true));
-  $('assistant-text').addEventListener('input',()=>{if(privateAssistant?.state().capabilities?.server_owned_turns){try{privateAssistant.setDraft($('assistant-text').value);}catch{}}syncAssistantControls();});
-  $('assistant-clear').addEventListener('click',()=>{if(state.locked)return;if(privateAssistant?.state().capabilities?.server_owned_turns){if(privateAssistant.state().pendingTurn||privateAssistant.state().pendingCreation){$('assistant-private-status').textContent=t('assistantPrivateUnknown');return;}void newPrivateConversation();return;}if(assistantState.receipt?.recovered&&!assistantState.receipt.recoveryCleared){acknowledgeAssistantRecovery();return;}if(assistantState.pendingTurn){$('assistant-text').value='';syncAssistantControls();return;}clearAssistantRecoveryPointer();resetAssistant();});
+  $('assistant-text').addEventListener('input',()=>{if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){try{privateAssistant.setDraft($('assistant-text').value);}catch{}}syncAssistantControls();});
+  $('assistant-clear').addEventListener('click',()=>{if(state.locked)return;if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){if(privateAssistant.state().pendingTurn||privateAssistant.state().pendingCreation){$('assistant-private-status').textContent=t('assistantPrivateUnknown');return;}void newPrivateConversation();return;}if(assistantState.receipt?.recovered&&!assistantState.receipt.recoveryCleared){acknowledgeAssistantRecovery();return;}if(assistantState.pendingTurn){$('assistant-text').value='';syncAssistantControls();return;}clearAssistantRecoveryPointer();resetAssistant();});
   $('assistant-cancel').addEventListener('click',()=>{if(!assistantState.busy)return;if(assistantState.pendingTurn){assistantState.pendingTurn.receipt.cancelled=true;renderAssistantPending();}$('assistant-status').textContent=t('assistantPendingCancelled');assistantState.controller?.abort();});
   $('assistant-mic').addEventListener('pointerdown',event=>{if(!event.isPrimary||assistantState.capture||assistantState.captureStarting)return;event.preventDefault();assistantState.pressPointerId=event.pointerId;assistantState.ignoreMicClick=true;try{$('assistant-mic').setPointerCapture(event.pointerId);}catch{}void startAssistantCapture();});
   $('assistant-mic').addEventListener('pointerup',event=>{if(event.pointerId!==assistantState.pressPointerId)return;assistantState.pressPointerId=null;finishAssistantCapture(true);setTimeout(()=>{assistantState.ignoreMicClick=false;},0);});

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 
 const require=createRequire(import.meta.url);
-const {createController,PrivateAssistantError,safeJson,validateExchange,validateResult,validateEnvelope}=require('../../backend/app/ui/access/assistant-private-workspace.js');
+const {createController,PrivateAssistantError,safeJson,validateExchange,validateResult,validateEnvelope,validateCapabilities,validateThread,validateHistoryPage}=require('../../backend/app/ui/access/assistant-private-workspace.js');
 const threadId='22222222-2222-4222-8222-222222222222';
 const requestId='11111111-1111-4111-8111-111111111111';
 const library='library-a';
@@ -11,6 +11,9 @@ const stamp='2026-10-12T00:00:00Z';
 const thread=(revision=0,id=threadId)=>({thread_id:id,library_id:library,created_at:stamp,updated_at:stamp,expires_at:'2026-11-11T00:00:00Z',revision,exchange_count:0});
 const result={version:1,kind:'results',reply:'Found 1 photo.',context:null,filters:null,items:[],total:0,has_more:false,effect:null};
 const envelope=(status='completed',recovered=false,revision=1)=>({version:1,thread_id:threadId,request_id:requestId,status,revision,recovered,error:null,result:status==='completed'?result:null});
+const workspaceCaps=(overrides={})=>({version:1,available:true,threads:true,preferences:true,preferences_applied:false,server_owned_turns:true,...overrides});
+const exchange=(revision,id=`${String(revision).padStart(8,'0')}-4444-4444-8444-${String(revision).padStart(12,'0')}`)=>({exchange_id:id,revision,created_at:stamp,expires_at:'2026-11-11T00:00:00Z',input_text:`Question ${revision}`,reply:`Reply ${revision}`,cards:[],receipt_count:0});
+const detail=(from,to,hasOlder=false,overrides={})=>({version:1,thread:thread(to),exchanges:Array.from({length:to-from+1},(_,i)=>exchange(from+i)),has_older_exchanges:hasOlder,...overrides});
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function harness(handler=async()=>{throw new Error('unexpected request')},opts={}){
   let current={account:'account-a',library,generation:1,locked:false},next=0;const calls=[],changes=[];
@@ -150,7 +153,7 @@ test('POST replay may be recovered, GET requires recovered and both enforce fixe
 });
 
 test('thread read hydrates only one latest request, honors hydrate false, and never promotes stale result revision',async()=>{
-  const detail={version:1,thread:thread(4),exchanges:[],latest_request_id:requestId,has_older_exchanges:true};
+  const detail={version:1,thread:thread(4),exchanges:[exchange(4)],latest_request_id:requestId,has_older_exchanges:true};
   const h=harness(async(path)=>path.includes('/requests/')?{...envelope('completed',true,3),result:contextualResult()}:detail);
   const read=await h.controller.read(threadId);
   assert.equal(h.calls.length,2);assert.equal(h.calls.at(-1).method,'GET');
@@ -239,4 +242,193 @@ test('changing threads aborts an already running result hydration',async()=>{
   assert.equal(second.thread.thread_id,otherId);
   assert.equal(h.controller.state().activeThread.thread_id,otherId);
   assert.equal(h.controller.state().currentResult,null);
+});
+
+test('history capabilities default off, labels are strictly opted in, and safe Unicode plain text is accepted',async()=>{
+  const base=workspaceCaps();
+  assert.equal(validateCapabilities(base).thread_labels,false);
+  assert.equal(validateCapabilities(base).history_paging,false);
+  assert.throws(()=>validateCapabilities({...base,history_paging:'true'}),e=>e.code==='invalid_response');
+  const label='家庭 📷 <b>夏天</b>';
+  assert.equal(validateThread({...thread(),label},library,true).label,label);
+  assert.equal(validateThread({...thread(),label:null},library,true).label,null);
+  for(const invalid of ['',`😀`.repeat(65),'  ', 'bad\u0001label'])
+    assert.throws(()=>validateThread({...thread(),label:invalid},library,true),e=>e.code==='invalid_response');
+  assert.throws(()=>validateThread({...thread(),label:'unexpected'},library),e=>e.code==='invalid_response');
+  assert.throws(()=>validateThread(thread(),library,true),e=>e.code==='invalid_response');
+
+  const off=harness(async()=>({version:1,threads:[thread()]}));
+  await off.controller.list();
+  assert.equal(off.calls[0].path,`/assistant/workspace/v1/threads?library_id=${library}`);
+  const on=harness(async(path)=>path.includes('/capabilities?')?workspaceCaps({thread_labels:true}):
+    {version:1,threads:[{...thread(),label}]});
+  await on.controller.capabilities();
+  const optedIn=await on.controller.list();
+  assert.equal(optedIn[0].label,label);
+  assert.match(on.calls[1].path,/include_labels=true/);
+});
+
+test('explicit older pages are validated, merged once, and preserve draft and grounded context',async()=>{
+  const detail45={...detail(26,45,true,{latest_request_id:requestId})};
+  const page6to25={version:1,thread_id:threadId,snapshot_revision:45,before_revision:26,
+    exchanges:Array.from({length:20},(_,i)=>exchange(i+6)),has_older_exchanges:true,next_before_revision:6};
+  const page1to5={version:1,thread_id:threadId,snapshot_revision:45,before_revision:6,
+    exchanges:Array.from({length:5},(_,i)=>exchange(i+1)),has_older_exchanges:false,next_before_revision:null};
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({history_paging:true});
+    if(path===`/assistant/workspace/v1/threads/${threadId}?library_id=${library}`)return detail45;
+    if(path.includes('/requests/'))return {...envelope('completed',true,45),result:contextualResult()};
+    if(path.includes('/history?')&&path.includes('before_revision=26'))return page6to25;
+    if(path.includes('/history?')&&path.includes('before_revision=6'))return page1to5;
+    throw Error(`unexpected request ${options.method} ${path}`);
+  });
+  await h.controller.capabilities();
+  const initial=await h.controller.read(threadId);
+  assert.equal(initial.exchanges.length,20);
+  assert.equal(h.controller.state().historyDetail.snapshot_revision,45);
+  assert.equal(h.controller.state().historyDetail.before_revision,26);
+  assert.equal(h.controller.state().currentResult.kind,'results');
+  h.controller.setDraft('keep this draft');
+  assert.equal(h.calls.filter(c=>c.path.includes('/history?')).length,0);
+  const first=await h.controller.older();
+  assert.equal(first.exchanges.length,40);
+  assert.deepEqual(first.exchanges.map(x=>x.revision),Array.from({length:40},(_,i)=>i+6));
+  assert.equal(first.before_revision,6);assert.equal(first.has_older_exchanges,true);
+  const second=await h.controller.older();
+  assert.equal(second.exchanges.length,45);
+  assert.deepEqual(second.exchanges.map(x=>x.revision),Array.from({length:45},(_,i)=>i+1));
+  assert.equal(second.has_older_exchanges,false);assert.equal(second.before_revision,null);
+  assert.equal(h.controller.state().draft,'keep this draft');
+  assert.equal(h.controller.state().currentResult.kind,'results');
+  assert.equal(h.controller.state().contextState,'ready');
+  assert.equal(h.controller.state().historyRefreshRequired,false);
+  assert.deepEqual(h.calls.filter(c=>c.path.includes('/history?')).map(c=>c.method),['GET','GET']);
+});
+
+test('history page validator rejects envelope, cursor, ordering and size mismatches',()=>{
+  const valid={version:1,thread_id:threadId,snapshot_revision:45,before_revision:26,
+    exchanges:[exchange(6),exchange(25)],has_older_exchanges:true,next_before_revision:6};
+  assert.equal(validateHistoryPage(valid,threadId,library,45,26).exchanges.length,2);
+  const malformed=[
+    {...valid,extra:true},
+    {...valid,thread_id:'33333333-3333-4333-8333-333333333333'},
+    {...valid,snapshot_revision:44},
+    {...valid,before_revision:25},
+    {...valid,exchanges:[exchange(25),exchange(6)]},
+    {...valid,exchanges:[exchange(6),exchange(6,'33333333-3333-4333-8333-333333333333')]},
+    {...valid,exchanges:[exchange(6),exchange(25)],next_before_revision:25},
+    {...valid,exchanges:[],has_older_exchanges:true,next_before_revision:1},
+    {...valid,exchanges:Array.from({length:21},(_,i)=>exchange(i+1)),has_older_exchanges:false,next_before_revision:null},
+    {...valid,exchanges:[exchange(26)]},
+  ];
+  for(const value of malformed)assert.throws(()=>validateHistoryPage(value,threadId,library,45,26),e=>e.code==='invalid_response');
+});
+
+test('an expired history snapshot requires an explicit detail refresh and never merges the page',async()=>{
+  const h=harness(async(path)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({history_paging:true});
+    if(path.includes('/history?'))throw Object.assign(new Error('revision changed'),{status:409});
+    return detail(26,45,true);
+  });
+  await h.controller.capabilities();await h.controller.read(threadId,{hydrate:false});
+  const before=h.controller.state().historyDetail.exchanges.map(x=>x.exchange_id);
+  await assert.rejects(h.controller.older(),e=>e.status===409);
+  assert.equal(h.controller.state().historyRefreshRequired,true);
+  assert.equal(h.controller.state().historyDetail.history_stale,true);
+  assert.deepEqual(h.controller.state().historyDetail.exchanges.map(x=>x.exchange_id),before);
+  assert.equal(h.calls.filter(c=>c.path.includes('/history?')).length,1);
+});
+
+test('starting a new thread and deleting the active thread clear owned history',async()=>{
+  const newId='33333333-3333-4333-8333-333333333333';
+  const h=harness(async(path,options)=>{
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,options.body.thread_id)};
+    if(path.includes('/history?'))return {version:1,thread_id:threadId,snapshot_revision:1,before_revision:1,exchanges:[],has_older_exchanges:false,next_before_revision:null};
+    if(path.includes(`/threads/${threadId}?`))return detail(1,1,true);
+    if(path.includes(`/threads/${newId}?`))return {version:1,thread:thread(0,newId),exchanges:[]};
+    if(path===`/assistant/workspace/v1/threads/${newId}`&&options.method==='DELETE')return {deleted:true,thread_id:newId};
+    throw Error(`unexpected ${options.method} ${path}`);
+  },{ids:[newId]});
+  await h.controller.read(threadId,{hydrate:false});
+  assert.ok(h.controller.state().historyDetail);
+  await h.controller.create();
+  assert.equal(h.controller.state().historyDetail,null);
+  await h.controller.read(newId,{hydrate:false});
+  assert.ok(h.controller.state().historyDetail);
+  await h.controller.delete(newId);
+  assert.equal(h.controller.state().historyDetail,null);
+});
+
+test('engine-off reads retain history without request hydration and server labels are requested only when advertised',async()=>{
+  const label='Summer photos';
+  const h=harness(async(path)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({available:false,server_owned_turns:false,thread_labels:true});
+    if(path.includes('/threads?'))return {version:1,threads:[{...thread(),label}]};
+    if(path.includes('/threads/')&&path.includes('?'))return detail(1,1,false,{latest_request_id:requestId});
+    throw Error('unexpected request');
+  });
+  await h.controller.capabilities();
+  const rows=await h.controller.list();
+  assert.equal(rows[0].label,label);
+  assert.match(h.calls[1].path,/include_labels=true/);
+  const read=await h.controller.read(threadId);
+  assert.equal(read.exchanges.length,1);
+  assert.equal(read.context_state,'unloaded');
+  assert.deepEqual(h.calls.map(c=>c.method),['GET','GET','GET']);
+  assert.equal(h.calls.some(c=>c.path.includes('/requests/')),false);
+});
+
+test('turn and recovery invalidate paging until an explicit latest detail reload',async()=>{
+  let revisionNow=2;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({history_paging:true});
+    if(path.endsWith('/threads'))return {version:1,thread:thread()};
+    if(path.includes('/history?'))return {version:1,thread_id:threadId,snapshot_revision:revisionNow,before_revision:1,exchanges:[],has_older_exchanges:false,next_before_revision:null};
+    if(path.includes(`/threads/${threadId}?`))return detail(1,2,true,{thread:thread(revisionNow)});
+    if(path.endsWith('/turns')){revisionNow=3;throw Error('ambiguous');}
+    if(path.includes('/requests/'))return envelope('completed',true,3);
+    throw Error(`unexpected ${options.method} ${path}`);
+  },{ids:[threadId,requestId]});
+  await h.controller.capabilities();await h.controller.create();
+  await h.controller.read(threadId,{hydrate:false});h.controller.setDraft('keep after uncertainty');
+  await assert.rejects(h.controller.send());
+  assert.equal(h.controller.state().historyRefreshRequired,true);
+  assert.equal(h.controller.state().historyDetail.history_stale,true);
+  assert.equal(h.controller.state().draft,'keep after uncertainty');
+  h.controller.setDraft('separate unsent draft');
+  await h.controller.recover(threadId,requestId);
+  assert.equal(h.controller.state().historyRefreshRequired,true);
+  assert.equal(h.controller.state().draft,'separate unsent draft');
+  const refreshed=await h.controller.read(threadId,{hydrate:false});
+  assert.equal(refreshed.snapshot_revision,3);
+  assert.equal(h.controller.state().historyRefreshRequired,false);
+});
+
+test('history paging is stale fenced by scope changes and the 200 exchange cap',async()=>{
+  const gate=deferred(),started=deferred();
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({history_paging:true});
+    if(path.includes(`/threads/${threadId}?`))return detail(181,200,true);
+    if(path.includes('/history?')){started.resolve();await gate.promise;if(options.signal.aborted){const e=new Error('aborted');e.name='AbortError';throw e;}return {version:1,thread_id:threadId,snapshot_revision:200,before_revision:181,exchanges:Array.from({length:20},(_,i)=>exchange(i+161)),has_older_exchanges:true,next_before_revision:161};}
+    throw Error('unexpected request');
+  });
+  await h.controller.capabilities();await h.controller.read(threadId,{hydrate:false});
+  const pending=h.controller.older();await started.promise;h.setScope({account:'account-b',library:'library-b',generation:2});gate.resolve();
+  await assert.rejects(pending);assert.equal(h.controller.state().historyDetail,null);
+  assert.equal(h.calls.at(-1).signal.aborted,true);
+
+  // Rebuild a full 200-row buffer and verify a page cannot push it beyond the cap.
+  let pageNo=0;
+  const capped=harness(async(path)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({history_paging:true});
+    if(path.includes(`/threads/${threadId}?`))return detail(221,240,true);
+    if(path.includes('/history?')){pageNo++;const before=Number(new URLSearchParams(path.split('?')[1]).get('before_revision'));const values=Array.from({length:20},(_,i)=>exchange(before-20+i));const hasOlder=before>21;return {version:1,thread_id:threadId,snapshot_revision:240,before_revision:before,exchanges:values,has_older_exchanges:hasOlder,next_before_revision:hasOlder?before-20:null};}
+    throw Error('unexpected request');
+  });
+  await capped.controller.capabilities();await capped.controller.read(threadId,{hydrate:false});
+  while(capped.controller.state().historyDetail.exchanges.length<180)await capped.controller.older();
+  const before=capped.controller.state().historyDetail;
+  await assert.rejects(capped.controller.older(),error=>error.code==='invalid_response');
+  assert.equal(capped.controller.state().historyDetail,before);
+  assert.equal(before.exchanges.length,180);
 });

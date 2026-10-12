@@ -59,14 +59,15 @@ class PrivateAssistantPanelUiTest {
         appliedPreferences = setOf("locale"),
     )
 
-    private fun thread(exchangeCount: Int = 2) = AssistantWorkspaceThreadSummary(
+    private fun thread(exchangeCount: Int = 2, revision: Long = exchangeCount.toLong(), label: String? = null) = AssistantWorkspaceThreadSummary(
         threadId = threadId,
         libraryId = libraryId,
         createdAt = createdAt,
         updatedAt = createdAt,
         expiresAt = "2026-11-09T08:00:00Z",
-        revision = exchangeCount.toLong(),
+        revision = revision,
         exchangeCount = exchangeCount,
+        label = label,
     )
 
     private fun exchange(index: Int, input: String, reply: String) = AssistantWorkspaceExchange(
@@ -88,15 +89,20 @@ class PrivateAssistantPanelUiTest {
         ),
         draft: String = "",
         pending: Boolean = false,
+        assistantCapabilities: AssistantWorkspaceCapabilities = capabilities,
+        hasOlderExchanges: Boolean = false,
+        threadLabel: String? = null,
+        historyRefreshRequired: Boolean = false,
     ): AssistantWorkspaceState {
-        val detailThread = thread(exchanges.size + if (pending) 1 else 0)
+        val detailRevision = (exchanges.maxOfOrNull { it.revision } ?: 0L) + if (pending) 1 else 0
+        val detailThread = thread(exchanges.size + if (pending) 1 else 0, detailRevision, threadLabel)
         return AssistantWorkspaceState(
             accountId = "synthetic-account",
             libraryId = libraryId,
             generation = 1,
-            capabilities = capabilities,
+            capabilities = assistantCapabilities,
             threads = AssistantWorkspaceThreadList(1, listOf(detailThread)),
-            detail = AssistantWorkspaceThreadDetail(1, detailThread, exchanges),
+            detail = AssistantWorkspaceThreadDetail(1, detailThread, exchanges, hasOlderExchanges = hasOlderExchanges),
             draft = draft,
             pendingTurn = if (pending) AssistantWorkspacePendingTurn(
                 threadId = threadId,
@@ -107,7 +113,8 @@ class PrivateAssistantPanelUiTest {
             uncertain = pending,
             preferences = AssistantWorkspacePreferences(1, "zh", null, null, 1),
             unsupportedPreferences = emptySet(),
-            continuationEnabled = true,
+            continuationEnabled = assistantCapabilities.serverOwnedTurns,
+            historyRefreshRequired = historyRefreshRequired,
         )
     }
 
@@ -122,6 +129,8 @@ class PrivateAssistantPanelUiTest {
         var abandons = 0
         val voiceContinuations = mutableListOf<Pair<String, Long>>()
         val textContinuations = mutableListOf<Pair<String, Long>>()
+        val olderPageReads = mutableListOf<Triple<String, Long, Long>>()
+        val historyReloads = mutableListOf<Pair<String, Long>>()
         var reconciliations = 0
         var newThreads = 0
         var refreshes = 0
@@ -137,6 +146,8 @@ class PrivateAssistantPanelUiTest {
         onContinueVoice: ((String, Long) -> Unit)? = null,
         onContinueText: ((String, Long) -> Unit)? = null,
         onAbandonPending: ((String, String, Long) -> Unit)? = null,
+        onLoadOlder: ((String, Long, Long) -> Unit)? = null,
+        onReloadHistory: ((String, Long) -> Unit)? = null,
     ) {
         rule.activity.runOnUiThread {
             rule.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -164,6 +175,14 @@ class PrivateAssistantPanelUiTest {
                         onAbandonPending = onAbandonPending,
                         onContinueVoice = onContinueVoice,
                         onContinueText = onContinueText,
+                        onLoadOlder = { id, revision, before ->
+                            callbacks.olderPageReads += Triple(id, revision, before)
+                            onLoadOlder?.invoke(id, revision, before)
+                        },
+                        onReloadHistory = { id, revision ->
+                            callbacks.historyReloads += id to revision
+                            onReloadHistory?.invoke(id, revision)
+                        },
                         onReconcileCreation = { callbacks.reconciliations++ },
                     )
                 }
@@ -259,6 +278,103 @@ class PrivateAssistantPanelUiTest {
         assertEquals(listOf(threadId to 2L), callbacks.textContinuations)
         assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
         assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun olderHistoryRequiresExplicitTapUsesRenderedCursorAndPreservesDraft() {
+        val pagingCapabilities = capabilities.copy(
+            historyPaging = true,
+            threadLabels = true,
+        )
+        val uiState = mutableStateOf(state(
+            exchanges = listOf(
+                exchange(10, "Recent question", "Recent answer"),
+                exchange(11, "Latest question", "Latest answer"),
+            ),
+            draft = "keep this editable draft",
+            assistantCapabilities = pagingCapabilities,
+            hasOlderExchanges = true,
+            threadLabel = "旅行标签",
+        ))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks,
+            onContinueVoice = { id, revision -> callbacks.voiceContinuations += id to revision },
+            onContinueText = { id, revision -> callbacks.textContinuations += id to revision },
+            onLoadOlder = { _, _, _ ->
+                val before = uiState.value
+                val detail = requireNotNull(before.detail)
+                uiState.value = before.copy(detail = detail.copy(
+                    exchanges = listOf(exchange(8, "Earlier question", "Earlier answer")) + detail.exchanges,
+                ))
+            })
+
+        rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithText("旅行标签", substring = true).performScrollTo().assertIsDisplayed()
+        assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().performClick()
+        assertEquals(listOf(threadId to 11L), callbacks.openedThreads)
+        assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+
+        rule.onNodeWithTag("private-assistant-continue-text").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-voice").performScrollTo().assertIsDisplayed()
+        val older = rule.onNodeWithTag("private-assistant-history-older").performScrollTo()
+        older.assertIsDisplayed()
+        assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
+        older.performClick()
+        assertEquals(listOf(Triple(threadId, 11L, 10L)), callbacks.olderPageReads)
+        assertEquals(listOf("Earlier question"), uiState.value.detail!!.exchanges.take(1).map { it.inputText })
+        assertEquals("keep this editable draft", uiState.value.draft)
+        val composer = rule.onNodeWithTag("private-assistant-composer").performScrollTo()
+        composer.performTextReplacement("edited after paging")
+        assertEquals("edited after paging", uiState.value.draft)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun historyOnlyCapabilityKeepsLabelsAndOlderPagingReadableWithoutTurnActions() {
+        val historyOnly = capabilities.copy(serverOwnedTurns = false, historyPaging = true, threadLabels = true)
+        val uiState = mutableStateOf(state(
+            assistantCapabilities = historyOnly,
+            hasOlderExchanges = true,
+            threadLabel = "旧照片问题",
+            draft = "read-only draft",
+        ))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks,
+            onContinueVoice = { id, revision -> callbacks.voiceContinuations += id to revision },
+            onContinueText = { id, revision -> callbacks.textContinuations += id to revision })
+
+        rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithText("旧照片问题", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-history-older").performScrollTo().assertIsEnabled()
+        rule.onNodeWithTag("private-assistant-send").assertIsNotEnabled()
+        rule.onNodeWithTag("private-assistant-continue-text").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-continue-voice").assertDoesNotExist()
+        assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun historyConflictRequiresExplicitReloadAtRenderedRevision() {
+        val uiState = mutableStateOf(state(hasOlderExchanges = true, historyRefreshRequired = true)
+            .copy(continuationEnabled = false))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        rule.onNodeWithTag("private-assistant-history-changed").performScrollTo().assertIsDisplayed()
+        val reload = rule.onNodeWithTag("private-assistant-history-reload").performScrollTo()
+        reload.assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-history-older").assertDoesNotExist()
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.historyReloads)
+        reload.performClick()
+        assertEquals(listOf(threadId to 2L), callbacks.historyReloads)
+        assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
     }
 
     @Test

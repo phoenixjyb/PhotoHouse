@@ -589,7 +589,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     }
                     PrivateAssistantPanel(privateAssistantState, words.zh,
                         onNew = { if(current()) privateAssistant.createThread() },
-                        onRefresh = { if(current()) { if(privateAssistantState.capabilities?.serverOwnedTurns == true)
+                        onRefresh = { if(current()) { if(privateAssistantState.capabilities?.let { it.available && it.threads } == true)
                             privateAssistant.refreshThreads() else privateAssistant.refreshCapabilities() } },
                         onOpenThread = { threadId, revision ->
                             val rendered = privateAssistantState.threads?.threads?.firstOrNull { it.threadId == threadId }
@@ -655,6 +655,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 privateAssistantOpen = false
                             }
                         }) else null,
+                        onLoadOlder = { threadId, revision, before ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.detail?.exchanges?.firstOrNull()?.revision == before &&
+                                privateAssistant.state.value.detail?.exchanges?.firstOrNull()?.revision == before)
+                                privateAssistant.loadOlderHistory()
+                        },
+                        onReloadHistory = { threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision)) privateAssistant.openThread(threadId)
+                        },
                         onDismiss = { privateAssistantOpen=false },
                         onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
                             privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
@@ -688,7 +697,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
                 }
                 AssistantScreen(state.assistant, words.zh, previews = state.previews,
-                    onPrivateConversations = if(privateAssistantState.capabilities?.serverOwnedTurns == true) ({
+                    onPrivateConversations = if(privateAssistantState.capabilities?.let { it.available && it.threads } == true) ({
                         if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();
                             assistantPermissionContext=null;assistantPendingCapture?.capture?.discard();assistantPendingCapture=null;
                             assistantRecording=false;privateAssistantOpen=true }

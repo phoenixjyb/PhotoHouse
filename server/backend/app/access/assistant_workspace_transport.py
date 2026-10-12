@@ -27,6 +27,7 @@ from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime
 MAX_BODY = 2048
 MAX_QUERY = 1024
 MAX_REVISION = (1 << 63) - 2
+MAX_RESPONSE_BYTES = 240 * 1024
 
 
 class WorkspaceInvalid(ValueError):
@@ -205,9 +206,9 @@ async def _call(store, method, *args, **kwargs):
 
 
 def _safe_thread(row):
-    return {key: row[key] for key in
-            ('thread_id', 'library_id', 'created_at', 'updated_at', 'expires_at',
-             'revision', 'exchange_count') if key in row}
+    fields = ('thread_id', 'library_id', 'created_at', 'updated_at', 'expires_at',
+              'revision', 'exchange_count', 'label')
+    return {key: row[key] for key in fields if key in row}
 
 
 def _safe_exchange(row):
@@ -225,6 +226,36 @@ def _safe_exchange(row):
             'cards': [{'type': kind, 'count': count, 'actionable': False}
                       for kind, count in sorted(by_type.items())],
             'receipt_count': len(row.get('receipts', []))}
+
+
+def _json_size(value):
+    return len(json.dumps(value, ensure_ascii=False, separators=(',', ':'),
+                          allow_nan=False).encode('utf-8'))
+
+
+def _bounded_exchange_rows(rows, response, *, has_older):
+    """Drop oldest complete projections until the serialized response fits."""
+    selected = list(rows)
+    dropped = False
+    while selected:
+        more = bool(has_older or dropped)
+        if _json_size(response(selected, more)) <= MAX_RESPONSE_BYTES:
+            return selected, more
+        selected.pop(0)
+        dropped = True
+    if _json_size(response([], False)) > MAX_RESPONSE_BYTES:
+        raise WorkspaceStoreUnavailable()
+    # An empty response must never claim another page exists.
+    return [], False
+
+
+def _canonical_revision(value, *, positive=False):
+    if (type(value) is not str or re.fullmatch(r'(?:0|[1-9][0-9]*)', value) is None):
+        raise WorkspaceInvalid()
+    parsed = int(value)
+    if parsed > MAX_REVISION or positive and parsed == 0:
+        raise WorkspaceInvalid()
+    return parsed
 
 
 def _create_owned_thread(store, account, library, selected):
@@ -429,6 +460,7 @@ async def capabilities(request: Request):
     turns = bool(healthy and engine is not None)
     return JSONResponse({'version': 1, 'available': bool(healthy),
                          'threads': bool(healthy), 'preferences': bool(healthy),
+                         'thread_labels': bool(healthy), 'history_paging': bool(healthy),
                          'preferences_applied': turns,
                          'applied_preferences': ['locale'] if turns else [],
                          'server_owned_turns': turns}, headers=PRIVACY_HEADERS)
@@ -436,7 +468,7 @@ async def capabilities(request: Request):
 
 @router.get('/assistant/workspace/v1/threads')
 async def list_threads(request: Request):
-    query = _query(request, {'library_id', 'limit'}, {'library_id'})
+    query = _query(request, {'library_id', 'limit', 'include_labels'}, {'library_id'})
     library = _library(query['library_id'])
     account = await _principal(request, library)
     limit = 50
@@ -444,8 +476,16 @@ async def list_threads(request: Request):
         if not query['limit'].isascii() or not query['limit'].isdecimal() or not 1 <= int(query['limit']) <= 100:
             raise WorkspaceInvalid()
         limit = int(query['limit'])
+    include_labels = False
+    if 'include_labels' in query:
+        if query['include_labels'] not in ('true', 'false'):
+            raise WorkspaceInvalid()
+        include_labels = query['include_labels'] == 'true'
     store = _workspace(request)
-    items = await _call(store, 'list_threads', account, library, limit=limit)
+    items = await _call(store, 'list_threads', account, library, limit=limit,
+                        include_labels=include_labels)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
     return JSONResponse({'version': 1, 'threads': [_safe_thread(row) for row in items]},
                         headers=PRIVACY_HEADERS)
 
@@ -470,12 +510,50 @@ async def read_thread(request: Request, thread_id: str):
     store = _workspace(request)
     selected = _thread_id(thread_id)
     result = await _call(store, 'get_thread', account, library, selected)
-    latest = await _call(store, 'latest_turn_id', account, library, selected)
-    return JSONResponse({'version': 1, 'thread': _safe_thread(result['thread']),
-                         'exchanges': [_safe_exchange(row) for row in result['exchanges'][-20:]],
-                         'has_older_exchanges': len(result['exchanges']) > 20,
-                         'latest_request_id': latest},
-                        headers=PRIVACY_HEADERS)
+    latest = result.get('latest_request_id')
+    all_rows = result['exchanges']
+
+    def response(rows, has_older):
+        return {'version': 1, 'thread': _safe_thread(result['thread']),
+                'exchanges': [_safe_exchange(row) for row in rows],
+                'has_older_exchanges': has_older,
+                'latest_request_id': latest}
+
+    selected_rows = all_rows[-20:]
+    bounded, has_older = _bounded_exchange_rows(
+        selected_rows, response, has_older=len(all_rows) > len(selected_rows))
+    return JSONResponse(response(bounded, has_older), headers=PRIVACY_HEADERS)
+
+
+@router.get('/assistant/workspace/v1/threads/{thread_id}/history')
+async def read_thread_history(request: Request, thread_id: str):
+    query = _query(request, {'library_id', 'snapshot_revision', 'before_revision'},
+                   {'library_id', 'snapshot_revision', 'before_revision'})
+    library = _library(query['library_id'])
+    snapshot = _canonical_revision(query['snapshot_revision'])
+    before = _canonical_revision(query['before_revision'], positive=True)
+    if before > snapshot:
+        raise WorkspaceInvalid()
+    account = await _principal(request, library)
+    selected = _thread_id(thread_id)
+    result = await _call(_workspace(request), 'get_thread_history_page', account,
+                         library, selected, snapshot, before)
+    rows = result['exchanges']
+
+    def response(page, has_older):
+        revisions = [row['revision'] for row in page]
+        next_cursor = revisions[0] if has_older and revisions else None
+        return {'version': 1, 'thread_id': selected,
+                'snapshot_revision': snapshot, 'before_revision': before,
+                'exchanges': [_safe_exchange(row) for row in page],
+                'has_older_exchanges': bool(has_older and page),
+                'next_before_revision': next_cursor}
+
+    bounded, has_older = _bounded_exchange_rows(
+        rows, response, has_older=result['has_older_exchanges'])
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse(response(bounded, has_older), headers=PRIVACY_HEADERS)
 
 
 @router.delete('/assistant/workspace/v1/threads/{thread_id}')

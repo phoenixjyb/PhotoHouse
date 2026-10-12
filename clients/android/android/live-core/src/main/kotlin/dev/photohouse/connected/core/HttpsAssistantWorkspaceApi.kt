@@ -147,9 +147,27 @@ class HttpsAssistantWorkspaceApi internal constructor(
         decoded(send(token, "/assistant/workspace/v1/capabilities", library), AssistantWorkspaceWire::capabilities)
 
     override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList =
-        decoded(send(token, "/assistant/workspace/v1/threads", library, extraQuery = mapOf("limit" to "50"))) {
-            AssistantWorkspaceWire.threadList(it, library)
+        listThreads(token, library, includeLabels = false)
+
+    override suspend fun listThreads(token: Bearer, library: String, includeLabels: Boolean): AssistantWorkspaceThreadList =
+        decoded(send(token, "/assistant/workspace/v1/threads", library, extraQuery = buildMap {
+            put("limit", "50")
+            if (includeLabels) put("include_labels", "true")
+        })) { AssistantWorkspaceWire.threadList(it, library, includeLabels) }
+
+    override suspend fun readHistory(token: Bearer, library: String, threadId: String,
+                                     beforeRevision: Long, snapshotRevision: Long): AssistantWorkspaceHistoryPage {
+        if (!PhoneDiscoveryWire.validLibrary(library) || !AssistantWorkspaceWire.validUuid4(threadId) ||
+            beforeRevision <= 0 || snapshotRevision < 0 || beforeRevision > snapshotRevision ||
+            beforeRevision >= Long.MAX_VALUE || snapshotRevision >= Long.MAX_VALUE) {
+            throw ApiFailure(FailureKind.INVALID_INPUT)
         }
+        return decoded(send(token, "/assistant/workspace/v1/threads/$threadId/history", library,
+            extraQuery = mapOf("before_revision" to beforeRevision.toString(),
+                "snapshot_revision" to snapshotRevision.toString()))) {
+            AssistantWorkspaceWire.historyPage(it, library, threadId, beforeRevision, snapshotRevision)
+        }
+    }
 
     override suspend fun createThread(token: Bearer, library: String, clientThreadId: String): AssistantWorkspaceCreatedThread {
         val body = AssistantWorkspaceWire.createThreadRequest(library, clientThreadId)

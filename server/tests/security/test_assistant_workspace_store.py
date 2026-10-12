@@ -219,6 +219,57 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         self.assertEqual(self.store.list_threads('member-a', 'family-a'), [])
         self.assertEqual(self.store.prune(), dict(exchanges=1, threads=1))
 
+    def test_opt_in_labels_are_ephemeral_first_live_questions(self):
+        empty = self.store.create_thread('member-a', 'family-a')['thread_id']
+        thread = self.store.create_thread('member-a', 'family-a')['thread_id']
+        first = '  <b>  ' + ('界' * 70) + '  </b>  '
+        self.append('member-a', 'family-a', thread, new_id(), 0, input_text=first)
+        empty_label = next(item['label'] for item in
+                           self.store.list_threads('member-a', 'family-a', include_labels=True)
+                           if item['thread_id'] == empty)
+        self.assertIsNone(empty_label)
+        self.now[0] += 29 * 86400
+        self.append('member-a', 'family-a', thread, new_id(), 1,
+                    input_text='  Second\n   question\tfrom family  ')
+        self.now[0] += 2 * 86400
+
+        legacy = {item['thread_id']: item for item in self.store.list_threads('member-a', 'family-a')}
+        self.assertNotIn('label', legacy[thread])
+        self.assertNotIn(empty, legacy)  # its thread retention elapsed
+        labeled = {item['thread_id']: item for item in
+                   self.store.list_threads('member-a', 'family-a', include_labels=True)}
+        self.assertEqual(labeled[thread]['label'], 'Second question from family')
+        self.assertLessEqual(len(labeled[thread]['label']), 64)
+
+        fresh = self.store.create_thread('member-a', 'family-a')['thread_id']
+        long_question = '  <b>  ' + ('界' * 70) + '  </b>  '
+        self.append('member-a', 'family-a', fresh, new_id(), 0, input_text=long_question)
+        label = next(item['label'] for item in
+                     self.store.list_threads('member-a', 'family-a', include_labels=True)
+                     if item['thread_id'] == fresh)
+        self.assertEqual(label, ('<b> ' + '界' * 59) + '…')
+        self.assertEqual(len(label), 64)
+
+    def test_history_pages_are_owned_revision_checked_and_strictly_older(self):
+        thread = self.store.create_thread('member-a', 'family-a')['thread_id']
+        for revision in range(22):
+            self.append('member-a', 'family-a', thread, new_id(), revision,
+                        input_text=f'Question {revision + 1}', reply=f'Reply {revision + 1}')
+
+        first = self.store.get_thread_history_page('member-a', 'family-a', thread, 22, 22)
+        self.assertEqual([row['revision'] for row in first['exchanges']], list(range(2, 22)))
+        self.assertTrue(first['has_older_exchanges'])
+        second = self.store.get_thread_history_page('member-a', 'family-a', thread, 22, 2)
+        self.assertEqual([row['revision'] for row in second['exchanges']], [1])
+        self.assertFalse(second['has_older_exchanges'])
+        with self.assertRaises(WorkspaceStoreConflict):
+            self.store.get_thread_history_page('member-a', 'family-a', thread, 21, 21)
+        for account, library in (('member-b', 'family-a'), ('member-a', 'family-b')):
+            with self.assertRaises(WorkspaceStoreMissing):
+                self.store.get_thread_history_page(account, library, thread, 22, 2)
+        with self.assertRaises(ValueError):
+            self.store.get_thread_history_page('member-a', 'family-a', thread, 22, 23)
+
     def test_get_thread_reads_parent_and_exchanges_from_one_snapshot(self):
         thread = self.store.create_thread('member-a', 'family-a')['thread_id']
         self.append('member-a', 'family-a', thread, new_id(), 0)

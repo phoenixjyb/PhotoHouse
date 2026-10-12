@@ -28,6 +28,7 @@ MAX_REQUESTS_PER_THREAD = 200
 LEASE_SECONDS = 90
 MAX_CARDS = 40
 MAX_RECEIPTS = 20
+HISTORY_PAGE_SIZE = 20
 MAX_INPUT_BYTES = 1024
 MAX_REPLY_BYTES = 8192
 MAX_SCOPE_ID_BYTES = 128
@@ -571,18 +572,47 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
-    def list_threads(self, account_id, library_id, *, limit=50):
+    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False):
         account_id, library_id = _scope(account_id), _scope(library_id)
-        if type(limit) is not int or not 1 <= limit <= 100:
+        if (type(limit) is not int or not 1 <= limit <= 100 or
+                type(include_labels) is not bool):
             raise ValueError('Invalid limit')
+        # Labels are an explicit presentation opt-in. Keeping the default
+        # projection unchanged preserves the original strict list contract.
         now = int(self.clock())
         with self.connection() as db:
+            if include_labels:
+                rows = db.execute('''SELECT t.*,
+                    (SELECT count(*) FROM exchanges e WHERE e.thread_id=t.thread_id
+                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count,
+                    (SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
+                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
+                        ORDER BY e.revision LIMIT 1) AS first_question
+                    FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
+                    ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
+                    (now, now, account_id, library_id, now, limit)).fetchall()
+                result = []
+                for row in rows:
+                    item = self._thread(row, row['exchange_count'])
+                    item['label'] = self._display_label(row['first_question'])
+                    result.append(item)
+                return result
             rows = db.execute('''SELECT t.*, (SELECT count(*) FROM exchanges e
                 WHERE e.thread_id=t.thread_id AND e.expires_at>?) AS exchange_count
                 FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
                 ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
                               (now, account_id, library_id, now, limit)).fetchall()
             return [self._thread(row, row['exchange_count']) for row in rows]
+
+    @staticmethod
+    def _display_label(value):
+        if value is None:
+            return None
+        value = _text(value, MAX_INPUT_BYTES)
+        collapsed = ' '.join(value.split())
+        if len(collapsed) <= 64:
+            return collapsed or None
+        return collapsed[:63].rstrip() + '…'
 
     def get_thread(self, account_id, library_id, thread_id):
         account_id, library_id = _scope(account_id), _scope(library_id)
@@ -598,8 +628,45 @@ class AssistantWorkspaceStore:
             exchanges = db.execute('''SELECT * FROM exchanges WHERE thread_id=? AND account_id=?
                 AND library_id=? AND expires_at>? ORDER BY revision''',
                                   (thread_id, account_id, library_id, now)).fetchall()
+            latest = db.execute('''SELECT request_id FROM turn_requests WHERE thread_id=?
+                AND account_id=? AND library_id=? AND status='completed' AND expires_at>?
+                AND revision<=? ORDER BY revision DESC LIMIT 1''',
+                (thread_id, account_id, library_id, now, row['revision'])).fetchone()
             return dict(version=1, thread=self._thread(row, len(exchanges)),
-                        exchanges=[self._exchange(item) for item in exchanges])
+                        exchanges=[self._exchange(item) for item in exchanges],
+                        latest_request_id=None if latest is None else latest['request_id'])
+
+    def get_thread_history_page(self, account_id, library_id, thread_id,
+                                snapshot_revision, before_revision):
+        """Read one immutable page and its owning revision in a DB snapshot."""
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id = _uuid4(thread_id, 'thread ID')
+        snapshot_revision = _expected_revision(snapshot_revision)
+        before_revision = _expected_revision(before_revision)
+        if before_revision < 1 or before_revision > snapshot_revision:
+            raise ValueError('Invalid history cursor')
+        now = int(self.clock())
+        with self.connection() as db:
+            db.execute('BEGIN')
+            thread = db.execute('''SELECT revision FROM threads WHERE thread_id=?
+                AND account_id=? AND library_id=? AND expires_at>?''',
+                (thread_id, account_id, library_id, now)).fetchone()
+            if thread is None:
+                raise WorkspaceStoreMissing()
+            if thread['revision'] != snapshot_revision:
+                raise WorkspaceStoreConflict()
+            rows = db.execute('''SELECT * FROM exchanges WHERE thread_id=? AND account_id=?
+                AND library_id=? AND expires_at>? AND revision<? ORDER BY revision DESC LIMIT ?''',
+                (thread_id, account_id, library_id, now, before_revision,
+                 HISTORY_PAGE_SIZE + 1)).fetchall()
+            has_older = len(rows) > HISTORY_PAGE_SIZE
+            page = rows[:HISTORY_PAGE_SIZE]
+            page.reverse()
+            return dict(version=1, thread_id=thread_id,
+                        snapshot_revision=snapshot_revision,
+                        before_revision=before_revision,
+                        exchanges=[self._exchange(item) for item in page],
+                        has_older_exchanges=has_older)
 
     def delete_thread(self, account_id, library_id, thread_id, expected_revision):
         account_id, library_id = _scope(account_id), _scope(library_id)

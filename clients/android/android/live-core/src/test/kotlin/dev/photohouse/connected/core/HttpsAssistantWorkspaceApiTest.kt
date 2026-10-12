@@ -104,6 +104,42 @@ class HttpsAssistantWorkspaceApiTest {
         }
     }
 
+    @Test fun labelsAreRequestedOnlyByOptInAndHistoryUsesExactSnapshotCursor() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            val summary = """{"thread_id":"$thread","library_id":"family-a","created_at":"2026-10-13T00:00:00Z","updated_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","revision":5,"exchange_count":2"""
+
+            f.server.enqueue(response("""{"version":1,"threads":[$summary}]}"""))
+            assertNull(api.listThreads(token, "family-a").threads.single().label)
+            val legacy = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/threads?library_id=family-a&limit=50", legacy.path)
+            assertProtected(legacy)
+
+            f.server.enqueue(response("""{"version":1,"threads":[$summary,"label":"旅行照片 · 北京"}]}"""))
+            assertEquals("旅行照片 · 北京", api.listThreads(token, "family-a", includeLabels = true).threads.single().label)
+            val labeled = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/threads?library_id=family-a&limit=50&include_labels=true", labeled.path)
+            assertProtected(labeled)
+
+            val row = """{"exchange_id":"33333333-3333-4333-8333-333333333333","revision":2,"created_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","input_text":"older question","reply":"older answer","cards":[],"receipt_count":0}"""
+            f.server.enqueue(response("""{"version":1,"thread_id":"$thread","snapshot_revision":5,"before_revision":5,"exchanges":[$row],"has_older_exchanges":true,"next_before_revision":2}"""))
+            val page = api.readHistory(token, "family-a", thread, beforeRevision = 5, snapshotRevision = 5)
+            assertEquals(thread, page.threadId)
+            assertEquals(5L, page.snapshotRevision)
+            assertEquals(5L, page.beforeRevision)
+            assertEquals(listOf(2L), page.exchanges.map { it.revision })
+            assertEquals(2L, page.nextBeforeRevision)
+            val history = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/threads/$thread/history?library_id=family-a&before_revision=5&snapshot_revision=5", history.path)
+            assertProtected(history)
+
+            f.server.enqueue(response("""{"version":1,"thread_id":"$thread","snapshot_revision":5,"before_revision":4,"exchanges":[],"has_older_exchanges":false,"next_before_revision":null}"""))
+            invalid { api.readHistory(token, "family-a", thread, beforeRevision = 5, snapshotRevision = 5) }
+            assertEquals("GET", f.server.takeRequest().method)
+            assertEquals(4, f.server.requestCount)
+        }
+    }
+
     @Test fun refusesRecoveredOpenEffectAndBadCorrelation() = runBlocking {
         Fixture().use { f ->
             val api = f.api()
