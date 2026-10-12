@@ -11950,6 +11950,75 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "private-assistant-workspace-api-and-phone-v49-delivery",
+      "source_commit": "4e547dc630c0f8893b516a2d4ec592c150490a62",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V49_RELEASE_CANDIDATE_2026-10-12.md",
+          "sha256": "e1b7a8b12c3554809eb5a42984b54508d970da10a071f565a80a103cdaf01952"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "ea7af11963491478e95e1c39748ecad48eb51d5937f253561686ac2f1b868247"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "16be23fca1a50d5ca94f43666f800909d041bb1a00818d2336c7c908e577f2bb"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "dd4308c0de456359168759d80d1e6352530de272fb24f55d4f879d955af3c3b8"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "sha256": "fb176834be47ae64c2d046ebc491a97b6cd08cb875bee9c2c9b6beecb5cbcc43"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "8284c34879e3f34f590744726d56846b815b4330a7a60b59f28d80276590d05d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "1678093e357443d1f11d284f8af3ede842805126a2e29b8865eb2a96681b7a66"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "a0eacc6f0801db68602d022e7a5c9ea8522cc1b5b058b4a0f9695768948d43a9"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "da22cee1cdb115e34c371de96d853c35f69deb9db18aa7c3a3c8b67c7283f4fb"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "sha256": "f913bc96f7e124c10118967aeafec2da7e19e1b4588ecadb894f76443e28779f"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "sha256": "9c87a4306b447ce9bcc561a12898809c4568ff67b81093145d25e3e28ce6f2cc"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_http.py",
+          "sha256": "e869231e3652a576c4f58b14f166e3eb64e8457a897a04f06fe431302f517bd5"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "bdb33d0cc8a714db46a445201a3599655e52025aa6c9040f00fd892caaff4005"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "sha256": "1937582390b9605d29a7573c6c9ae52fb1e5cd465bd3ea1eec1c810bc7b76618"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "42c642d26593753d32aea1039a93426c5f1ca5f1f9683f477a670b9dc1a91b98"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
