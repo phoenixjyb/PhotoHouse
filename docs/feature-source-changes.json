@@ -12556,6 +12556,35 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "portable-synthetic-private-assistant-qualification",
+      "source_commit": "decec070f29bd0d39e23af354028a9fbd659f8db",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "f30cede7c5db22a264fbd192fa9fd95e0fbf898375b016a422f23ccc23799783"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "0bb14fb0d883fedba7283e2d61438d5414fc54845362f563631c30dc1a207cbb"
+        },
+        {
+          "path": "server/scripts/qualify_private_assistant.py",
+          "sha256": "ae44bbb4fc220145b98bb64b787e73eed455b1afb66d1e27dd1d229ce1d42173"
+        },
+        {
+          "path": "server/tests/security/test_qualify_private_assistant.py",
+          "sha256": "a83773f2bc8d985b924e6f706b779214e0b8905463c381483ad7b9c994caae3f"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "558c51ae5a2938a9268fda2c641c33adb91ec88e9d8cafeca7be26cd331163ed"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
