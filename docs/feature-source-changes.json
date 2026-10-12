@@ -13093,6 +13093,23 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "explicit-combined-voice-fixture-profile-20261013",
+      "source_commit": "1c372528140c3f43a424e5e1266335cffe47a3ae",
+      "files": [
+        {
+          "path": "server/tests/security/assistant_pending_recovery_browser_bridge.py",
+          "sha256": "b521eb07f3f1cf952866b3f632cea0ab01aea09ba47f6965d8680f4b9eb194af"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "sha256": "1ae2246e8c15c360343e1f776be722169aeb52c124fa954176553f5121cb77f5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
