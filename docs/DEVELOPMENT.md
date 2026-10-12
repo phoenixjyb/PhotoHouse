@@ -1979,3 +1979,12 @@ had enabled the separate private store, causing the app to select private turns
 instead of the legacy POST being intercepted. The fixture now explicitly omits
 private-store admission and asserts that private turns are unavailable. Product
 route selection is preserved; the complete Web rerun is recorded separately.
+
+The combined voice fixture now explicitly selects `--private-workspace`; the
+legacy recovery, transcript, capture and trail fixtures retain their ordinary
+route. At `9249c80`, the Web rerun passed both corrected journeys and all suites
+before the older title-browser script, then stopped because its default
+`playwright` package was absent. The remaining seven suites passed with the
+already-installed `PLAYWRIGHT_MODULE=playwright-core`. All 23 configured suites
+therefore have passing cohort evidence, but no new single complete Web invocation
+is claimed. The next complete command should set that module explicitly.
