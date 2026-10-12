@@ -1,5 +1,37 @@
 # Product roadmap
 
+## October 12 central personal assistant
+
+The owner approved [拾光助手](PERSONAL_ASSISTANT.md): a central phone/Web chat
+workspace, visible media/story cards and private per-user experience. One explicit
+foreground Start authorizes read-only listen → reply → listen until Pause/End;
+saving or changing family material retains a separate reviewed confirmation.
+The synthetic [interactive prototype](assistant-design/prototype.html) was reviewed.
+
+Phone v48 saved memoir editing has been signed and published to phone HTTPS OTA;
+Windows and independent Mac complete-download checks passed. TV OTA remains v30.
+See the [v48 delivery record](../clients/android/docs/PHONE_V48_RELEASE_CANDIDATE_2026-10-12.md).
+Installed-phone and family acceptance remain pending.
+
+The first workspace/voice source slice and isolated storage foundation have
+local qualification recorded in [Development](DEVELOPMENT.md#october-12-central-assistant-foundation).
+Phone v49 and the Web assets are delivery candidates; neither has been published
+by this source change. Remaining implementation follows these layers:
+
+1. Deliver the qualified phone/Web workspace and foreground voice retrieval using the
+   existing protected v1 contract. Its speech capability reads result counts;
+   clarification and unsupported replies pause for review.
+2. Owned durable threads and editable presentation preferences, distinct from
+   receipt tracking and shared memories; explicit storage admission and retention.
+3. Local grounded understanding, evidence-backed archive questions and typed tools
+   for stories/albums/memoirs. Model and provider qualification precedes activation.
+4. Reviewed proposals and explicit personal memory; contextual story handoffs,
+   richer spoken replies, cross-device continuation and opt-in TV presentation.
+
+The design approval authorizes development, not an unqualified runtime switch.
+No conversation database, new provider or autonomous writing is activated by a
+source build. Continuous capture is foreground-only and always visibly stoppable.
+
 ## October 12 conversation and reading follow-up
 
 The phone [story/memoir history](PHONE_MEMORY_CHAT_NAVIGATION.md) now has a direct
@@ -392,7 +424,7 @@ checks, API switch and a phone update remain to be delivered.
 | Priority | User journey | Completion evidence |
 |---|---|---|
 | 1 — Deliver existing work | Owner arranges a memoir, saves citations and transitions, then reopens it on Web and phone | Additive b1 migration and paired deletion recovery qualification; compatible workers; exact service/source; signed phone update; owner/member and revoked-access checks |
-| 2 — Reliable voice conversation | User records, reviews, submits, receives a reply and continues with an understandable context | Explicit turn boundaries; no automatic listening or resend; uncertain receipt recovery after interruption/reload; stale-account/library rejection |
+| 2 — Reliable voice conversation | User starts a foreground session or uses reviewed dictation, receives visible results and continues in the same context | Explicit session consent with Pause/End; actual playback gates the next capture; no automatic resend; uncertain receipt recovery after interruption/reload; stale-account/library rejection |
 | 3 — Read and contribute | Family reads a themed story and contributes original text or audio to a selected chapter | Reader navigation, original playback, attribution, contribution review and removal of a link without deletion of its original |
 | 4 — Album to long memoir | Owner chooses related media and stories, reviews a chapter outline, then arranges the book | Ordered media and chapter provenance; chronology labels; revision conflict/rebase; clear distinctions among library, album, story and memoir |
 | 5 — Assisted storytelling | A bounded local worker proposes coherent prose from reviewed family contributions | Synthetic multi-chapter evaluations; source-linked facts; no invented identities/dates/dialogue; separate original/transcript/proposal; explicit owner acceptance; timeout/retry and model-quality checks |

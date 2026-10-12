@@ -4684,6 +4684,19 @@ class ConnectedStore(
             speechAudio = null, speechBusy = false, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
             receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, pendingTurn = null))
     }
+    /** Stop local voice work, retaining uncertain submitted requests for read-only recovery. */
+    fun cancelAssistantVoiceWork() {
+        val current = state.value.assistant ?: return
+        if (current.library != state.value.library || current.generation != state.value.generation) return
+        assistantTranscriptRequest++
+        assistantSpeechRequest++
+        if (current.busy) assistantTurnRequest++
+        current.speechAudio?.close()
+        mutable.value = state.value.copy(assistant = current.copy(
+            transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
+            speechBusy = false, speechAudio = null, busy = false,
+        ))
+    }
     fun clearAssistantSpeech() {
         val current = state.value.assistant ?: return
         if (current.library != state.value.library || current.generation != state.value.generation) return
@@ -4691,12 +4704,12 @@ class ConnectedStore(
         assistantSpeechRequest++
         mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false))
     }
-    fun loadAssistantSpeech(language: String) {
-        val current = state.value.assistant ?: return
+    fun loadAssistantSpeech(language: String): Boolean {
+        val current = state.value.assistant ?: return false
         val latest = current.turns.lastOrNull()?.turn
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
             current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || current.context == null ||
-            latest?.kind != "results" || latest.items.isEmpty() || language !in setOf("zh", "en") || !allowed() || coolingDown()) return
+            latest?.kind != "results" || latest.items.isEmpty() || language !in setOf("zh", "en") || !allowed() || coolingDown()) return false
         val library = current.library; val generation = current.generation; val credential = token!!; val context = current.context
         val parentId = current.turns.lastOrNull()?.turn?.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId
         val requestId = java.util.UUID.randomUUID().toString()
@@ -4718,10 +4731,15 @@ class ConnectedStore(
             catch (e: Exception) {
                 bytes?.fill(0)
                 if (!active(activeGeneration) || state.value.library != library || request != assistantSpeechRequest) return@launch
-                val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    readFailure(e, activeGeneration, credential) { }
+                } else {
+                    val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
+                    mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
             }
         }
+        return true
     }
     fun clearAssistantTranscript() {
         val current = state.value.assistant ?: return
@@ -4767,15 +4785,15 @@ class ConnectedStore(
                 runCatching { api.assistantOutcome(credential, library, requestId, outcome) }
         }
     }
-    fun transcribeAssistant(wav: ByteArray) {
-        val current = state.value.assistant ?: return
+    fun transcribeAssistant(wav: ByteArray): Boolean {
+        val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
             current.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } != true ||
-            current.transcribing || current.busy || current.pendingTurn != null || !allowed() || coolingDown()) return
+            current.transcribing || current.busy || current.pendingTurn != null || !allowed() || coolingDown()) return false
         val library = current.library; val generation = current.generation; val credential = token!!
         val requestId = java.util.UUID.randomUUID().toString()
         if (wav.size !in 16046..(44 + 16_000 * 2 * 30) ||
-            !wav.copyOfRange(0, 4).contentEquals("RIFF".toByteArray()) || !wav.copyOfRange(8, 12).contentEquals("WAVE".toByteArray())) return
+            !wav.copyOfRange(0, 4).contentEquals("RIFF".toByteArray()) || !wav.copyOfRange(8, 12).contentEquals("WAVE".toByteArray())) return false
         val request = ++assistantTranscriptRequest
         mutable.value = state.value.copy(assistant = current.copy(transcribing = true, transcript = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null))
         launch { activeGeneration ->
@@ -4788,10 +4806,15 @@ class ConnectedStore(
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(activeGeneration) || state.value.library != library || request != assistantTranscriptRequest) return@launch
-                val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
-            }
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    readFailure(e, activeGeneration, credential) { }
+                } else {
+                    val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
+                    mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
+            } finally { wav.fill(0) }
         }
+        return true
     }
     /** Explicitly accept the exact current transcript into the caller's editable draft. */
     fun takeAssistantTranscriptForDraft(expected: AssistantTranscript): String? {
@@ -5347,6 +5370,11 @@ class ConnectedStore(
     private suspend fun readFailure(error: Exception, generation: Long, credential: Bearer, allowTransientRetry: Boolean = false, retryRead: () -> Unit) {
         if (!active(generation)) return
         if (error is ApiFailure && error.status in listOf(401, 403)) {
+            // A denied protected read also revokes cached assistant context and
+            // late voice callbacks; no new request is admitted by the old scope.
+            state.value.assistant?.speechAudio?.close()
+            assistantTranscriptRequest++; assistantSpeechRequest++; assistantTurnRequest++
+            mutable.value = state.value.copy(assistant = null)
             if (token === credential) {
                 clearSavedStoryReaderPositions(identity?.account_id)
                 clearMemoryBookReaderPositions(identity?.account_id)

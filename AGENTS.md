@@ -32,8 +32,12 @@ until their preservation and release-path gates are complete.
   configured access path; it must not broaden library or assistant access.
 - Preserve original text/audio and distinguish it from transcripts, polished
   prose, tags and chapter links. A chapter link does not transfer ownership.
-- Recording, transcript insertion, command submission and playback are explicit
-  user actions. Do not start listening or send a command automatically.
+- Recording, transcript insertion, command submission and playback require user
+  authorization. The approved foreground voice mode allows one explicit Start
+  to authorize listen/reply/listen and read-only requests until Pause/End or
+  lifecycle interruption. Keep those controls visible, pause on uncertainty, and
+  never use session consent to execute changes to memories or access. Outside
+  that opt-in session, retain explicit capture, transcript review and submission.
 - Failed or incomplete conversion records are evidence. Resume unfinished work
   without re-encoding completed videos or silently clearing source failures.
 - Deployment, service control, production data changes, release signing and

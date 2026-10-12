@@ -47,12 +47,31 @@
       <section id="memory-books" class="memory-books" hidden></section>
       <section class="memory-themes-section"><h3 data-story-word="chooseTheme">从一个主题开始</h3><div id="memory-themes" class="memory-themes"></div></section>
       <form id="story-search" class="story-search"><label for="search-text" data-i18n="searchMemories">Find a memory</label><input id="search-text" type="search" maxlength="160"><label for="search-source" data-i18n="searchIn">Search in</label><select id="search-source"><option value="all" data-i18n="allDescriptions">Stories and AI descriptions</option><option value="family" data-i18n="familySearchSources">Family entries</option><option value="ai" data-i18n="aiDescriptions">AI descriptions</option></select><button class="primary" type="submit" data-i18n="search">Search</button><button id="clear-search" class="quiet" type="button" data-i18n="clearSearch">Show all</button></form>
+      <span id="assistant-panel-placeholder" hidden></span>
+      <dialog id="assistant-workspace-dialog" class="assistant-workspace-dialog" aria-labelledby="assistant-workspace-title">
+        <header class="assistant-workspace-header">
+          <div><p class="assistant-workspace-kicker" data-i18n="assistantWorkspaceKicker">PRIVATE FAMILY SEARCH</p><h2 id="assistant-workspace-title" data-i18n="assistantTitle">拾光助手</h2><div class="assistant-library-chip"><span data-i18n="assistantPrivateLibrary">当前私密相册库</span><strong id="assistant-workspace-library"></strong></div></div>
+          <div class="assistant-workspace-header-actions"><button id="assistant-workspace-lock" class="quiet" type="button" data-i18n="signOut">退出登录</button><button id="assistant-workspace-close" class="quiet" type="button" data-i18n="assistantWorkspaceClose">返回</button></div>
+        </header>
+        <div id="assistant-workspace-voice" class="assistant-workspace-voice" role="group" aria-labelledby="assistant-voice-session-status"></div>
+        <div id="assistant-workspace-content" class="assistant-workspace-content" tabindex="0"></div>
+        <footer id="assistant-workspace-footer" class="assistant-workspace-footer"></footer>
+      </dialog>
       <details id="assistant-panel" class="access-panel assistant-panel">
         <summary data-i18n="assistantTitle">用一句话找回忆</summary>
         <p class="fine" data-i18n="assistantHelp">仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。</p>
         <div id="assistant-prompts" class="assistant-prompts"><button class="quiet" type="button" data-assistant-prompt="photos" data-i18n="assistantFindPhotos">找照片</button><button class="quiet" type="button" data-assistant-prompt="videos" data-i18n="assistantFindVideos">找视频</button><button class="quiet" type="button" data-assistant-prompt="open" data-i18n="assistantOpenFirst">打开第一个</button></div>
+        <span id="assistant-form-placeholder" hidden></span>
         <form id="assistant-form" class="assistant-form">
           <div id="assistant-voice" class="assistant-voice" hidden>
+            <span id="assistant-voice-session-placeholder" hidden></span>
+            <div id="assistant-voice-session" class="assistant-voice-session" hidden>
+              <p id="assistant-voice-session-status" role="status" aria-live="polite"></p>
+              <button id="assistant-voice-start" class="primary" type="button" data-i18n="assistantVoiceStart">开始语音查找</button>
+              <button id="assistant-voice-pause" class="quiet" type="button" hidden data-i18n="assistantVoicePause">暂停</button>
+              <button id="assistant-voice-resume" class="quiet" type="button" hidden data-i18n="assistantVoiceResume">继续</button>
+              <button id="assistant-voice-end" class="quiet" type="button" hidden data-i18n="assistantVoiceEnd">结束语音查找</button>
+            </div>
             <button id="assistant-mic" class="quiet" type="button" aria-pressed="false" data-i18n="assistantMic">按住说话</button>
             <button id="assistant-stop" class="quiet" type="button" hidden data-i18n="assistantStop">结束录音</button>
             <button id="assistant-recording-cancel" class="quiet" type="button" hidden data-i18n="assistantRecordingCancel">取消录音</button>

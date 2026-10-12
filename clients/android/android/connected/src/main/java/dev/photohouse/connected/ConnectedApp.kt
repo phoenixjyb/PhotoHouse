@@ -138,7 +138,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val t = words::t
     val state = store?.state?.collectAsState()?.value ?: LiveState()
     var assistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
-    var handledAssistantExchange by remember(state.session?.account_id, state.library) { mutableIntStateOf(0) }
+    var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -156,11 +156,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (store?.assistantEnabled == true && state.library != null && state.session != null && !state.covered)
             store.loadAssistantCapabilities()
     }
-    val assistantExchangeCount = state.assistant?.turns?.size ?: 0
+    val assistantLatestExchangeId = state.assistant?.turns?.lastOrNull()?.localRequestId
     val assistantEffect = state.assistant?.turns?.lastOrNull()?.turn?.effect
-    LaunchedEffect(assistantOpen, assistantExchangeCount, assistantEffect) {
-        if (assistantOpen && assistantExchangeCount > handledAssistantExchange && assistantEffect?.type == "open_asset") {
-            handledAssistantExchange = assistantExchangeCount
+    LaunchedEffect(state.assistant, state.problem?.message) {
+        if (state.assistant == null && state.problem?.message == Message.ACCESS_DENIED) assistantOpen = false
+    }
+    LaunchedEffect(assistantOpen, assistantLatestExchangeId, assistantEffect) {
+        if (assistantOpen && assistantLatestExchangeId != null && assistantLatestExchangeId != handledAssistantExchangeId && assistantEffect?.type == "open_asset") {
+            handledAssistantExchangeId = assistantLatestExchangeId
             assistantOpen = false
             store?.openAssetById(assistantEffect.assetId)
         }
@@ -196,6 +199,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var assistantRecordError by remember(state.generation, state.library) { mutableStateOf(false) }
     var assistantCaptureRecorder = remember(state.generation, state.library) { AnnotationAudioRecorder() }
     DisposableEffect(assistantCaptureRecorder) { onDispose { assistantCaptureRecorder.stop() } }
+    LaunchedEffect(assistantOpen, state.covered) {
+        if (!assistantOpen || state.covered) {
+            assistantPermissionContext = null
+            assistantPendingCapture?.capture?.discard()
+            assistantPendingCapture = null
+            assistantRecording = false
+            assistantCaptureRecorder.stop()
+        }
+    }
     var activeRecording by remember(annotationTarget, state.generation) { mutableStateOf(false) }
     var recordingError by remember(annotationTarget, state.generation) { mutableStateOf(false) }
     var microphonePermissionDenied by remember(annotationTarget, state.generation) { mutableStateOf(false) }
@@ -542,14 +554,38 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 return@Surface
             }
             if (assistantOpen && state.library != null && !state.covered && store != null) {
-                AssistantScreen(state.assistant, words.zh, previews = state.previews, onBack = { store.clearAssistantSpeech(); assistantOpen = false },
-                    onRetryCapabilities = { store.loadAssistantCapabilities() },
-                    onSend = store::sendAssistantText, onClear = store::clearAssistant,
-                    onOpen = { id, requestId -> store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id) },
+                val voice = rememberAssistantVoiceControls(store, state, words.zh) { id, requestId ->
+                    if (assistantOpen && requestId != handledAssistantExchangeId) {
+                        handledAssistantExchangeId = requestId
+                        store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id)
+                    }
+                }
+                val assistantScopeCurrent: () -> Boolean = {
+                    val live = store.state.value
+                    assistantOpen && !live.covered && live.generation == state.generation &&
+                        live.library == state.library && live.session?.account_id == state.session?.account_id
+                }
+                val manualAssistantAction: () -> Boolean = {
+                    assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
+                }
+                AssistantScreen(state.assistant, words.zh, previews = state.previews,
+                    libraryLabel = LibraryNames.display(state.library!!, words.zh),
+                    accountLabel = t("Current account", "当前账号"),
+                    voiceSessionState = voice?.session,
+                    onStartVoiceSession = voice?.start?.let { start -> ({
+                        if (!assistantRecording && assistantPendingCapture == null && assistantPermissionContext == null) start()
+                    }) },
+                    onPauseVoiceSession = voice?.pause, onResumeVoiceSession = voice?.resume,
+                    onEndVoiceSession = voice?.end, onFinishVoiceTurn = voice?.finishTurn,
+                    onBack = { voice?.end?.invoke(); store.clearAssistantSpeech(); assistantOpen = false },
+                    onRetryCapabilities = { if (manualAssistantAction()) store.loadAssistantCapabilities() },
+                    onSend = { text -> manualAssistantAction() && store.sendAssistantText(text) }, onClear = { if (assistantScopeCurrent()) { voice?.end?.invoke(); store.clearAssistant() } },
+                    onOpen = { id, requestId -> voice?.end?.invoke(); store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id) },
                     onCheckReceipt = store::checkAssistantReceipt,
                     onRecord = {
-                        val capability = state.assistant?.capabilities
-                        val account = state.session?.account_id
+                        if (!manualAssistantAction()) return@AssistantScreen
+                        val capability = store.state.value.assistant?.capabilities
+                        val account = store.state.value.session?.account_id
                         if (account != null && !state.covered && capability?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true) {
                             val library = state.library ?: return@AssistantScreen
                             val selection = AssistantCaptureSelection(account, library, state.generation, capability.maxAudioSeconds)
@@ -564,10 +600,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     },
                     onStopRecording = { assistantPendingCapture?.capture?.stop() },
                     onCancelRecording = { assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false },
-                    recording = assistantRecording, recordError = assistantRecordError,
+                    recording = assistantRecording || assistantPendingCapture != null || assistantPermissionContext != null, recordError = assistantRecordError || voice?.permissionDenied == true,
                     onClearTranscript = store::clearAssistantTranscript,
                     onUseTranscript = store::takeAssistantTranscriptForDraft,
-                    onPlaySpeech = { store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
+                    onPlaySpeech = { if (manualAssistantAction()) store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
                     onStopSpeech = store::clearAssistantSpeech)
                 return@Surface
             }
@@ -1058,7 +1094,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     if (store.assistantEnabled) item {
                                         OutlinedButton(onClick = { assistantOpen = true }, enabled = !state.busy,
                                             modifier = Modifier.fillMaxWidth().testTag("open-assistant")) {
-                                            Text(t("Ask the PhotoHouse assistant", "询问拾光相册助手"))
+                                            Text(t("PhotoHouse assistant", "拾光助手"))
                                         }
                                     }
                                     state.gallery?.let { gallery ->

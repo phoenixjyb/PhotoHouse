@@ -1,12 +1,29 @@
 # Phone v48 saved memoir editor source candidate
 
-Version 48 (`0.48-saved-memoir-editor`) reserves the next phone release identity
-on the clean source baseline `f7482b24a70009d403ed31a9fb4539988081e860`. The
-saved memoir editor was added in `136a036`; v47
-(`0.47-family-memoir-composer`) was previously published to OTA; physical
-installation remains a separate acceptance check. This version bump and candidate note are
-the current local release overlay and still need source integration before a
-build can be pinned.
+Version 48 (`0.48-saved-memoir-editor`) was built from clean source
+`88b23b6c48083eec53bd8f6a8dee804d71057197`, signed with the existing phone
+certificate, and published to the Windows HTTPS phone OTA feed on October 12.
+The saved memoir editor was added in `136a036`. Physical installation and the
+family walkthrough remain separate acceptance checks.
+
+## Delivered artifact
+
+- Signed APK: 10,086,720 bytes; SHA-256
+  `12e569ba22f7e6c69a4437a370274f9db7f1c03711db3e195db8f4d68bd4f260`.
+- Configured release build/lint, all 17 DEX profile fields, native package,
+  alignment and original signing certificate checks passed.
+- Windows and an independent Mac check each read the complete served APK over
+  trusted HTTPS and matched its size and hash. TV OTA remained version 30.
+- No API restart, service-task change, schema migration, media modification or
+  physical-device installation was performed for this publication.
+- The first native attempt correctly rejected a signing receipt whose copied
+  version fields still said v47. Native metadata proved the APK itself was v48.
+  The original evidence was retained, a corrected receipt was hash-pinned, and
+  publication continued with the same signed APK. Three regression checks cover
+  receipt/package consistency and preservation of the native guards.
+
+The central personal assistant and continuous voice session belong to subsequent
+source development; they are not included in this published v48 artifact.
 
 ## User-facing source change
 
@@ -36,7 +53,8 @@ separate gates.
 
 ## Release preparation gates
 
-This is a source candidate, not a configured family package. Before the unsigned
+The following gates were used for this release and remain required for future
+packages. Before the unsigned
 release build, pin the exact committed source revision and Gradle file hash, JDK,
 Gradle distribution, Android build tools and a reviewed private phone profile.
 Explicitly pass every phone routing and feature property, clear inherited
@@ -79,5 +97,5 @@ Record installed version, served source and capability state, language, and the
 step that failed. Keep family text and media private; use asset IDs and status
 rather than copying content into public reports.
 
-No signing, Windows operation, publication, physical installation or family
-acceptance is claimed by this source candidate.
+Package and OTA delivery passed as recorded above. Installed-device and family
+acceptance remain pending.

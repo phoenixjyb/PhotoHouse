@@ -12,7 +12,9 @@ bridge.stderr.on('data',v=>process.stderr.write(v));
 createInterface({input:bridge.stdout}).on('line',line=>{const m=JSON.parse(line);if(m.ready)readyResolve(m);else{pending.get(m.id)?.(m);pending.delete(m.id);}});
 function rpc(m){return new Promise(resolve=>{const id=++next;pending.set(id,resolve);bridge.stdin.write(JSON.stringify({...m,id})+'\n');});}
 let historyUnavailable=false,holdHistory=false,releaseHistory,historyHeld,holdNoteTextSave=false,releaseNoteTextSave,noteTextSaveHeld,nextNoteTextFailure=false,holdNoteAudioSave=false,releaseNoteAudioSave,noteAudioSaveHeld,nextNoteAudioFailure=false,malformedNoteLimit=false;const errors=[],outside=[],requests=[],noteTextMutations=[],noteAudioMutations=[];
-let browser;
+let browser,guardPage=null,bootstrapCatalogueEnteredResolve,releaseBootstrapCatalogue;
+const bootstrapCatalogueEntered=new Promise(resolve=>bootstrapCatalogueEnteredResolve=resolve);
+const bootstrapCatalogueRelease=new Promise(resolve=>releaseBootstrapCatalogue=resolve);
 (async()=>{
   const seed=await ready;
   browser=await chromium.launch({headless:true,args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
@@ -31,6 +33,7 @@ let browser;
       noteAudioMutations.push(headers['x-annotation-mutation-id']);
       if(nextNoteAudioFailure){nextNoteAudioFailure=false;requests.push([request.method(),url.pathname,503]);return route.fulfill({status:503,contentType:'application/json',body:'{}'});}
     }
+    if(request.method()==='GET'&&url.pathname==='/library-catalogue'&&guardPage&&request.frame().page()===guardPage){bootstrapCatalogueEnteredResolve();await bootstrapCatalogueRelease;}
     const result=await rpc({method:request.method(),path:url.pathname+url.search,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
     requests.push([request.method(),url.pathname,result.status]);
     if(request.method()==='POST'&&url.pathname==='/upload-annotations/text'&&holdNoteTextSave){holdNoteTextSave=false;await new Promise(resolve=>{releaseNoteTextSave=resolve;noteTextSaveHeld?.();});}
@@ -64,7 +67,28 @@ let browser;
   assert.equal(requests.filter(r=>r[1]==='/upload-annotations').length,0);
   await rpc({command:'approve'});await page.locator('#my-uploads-refresh').click();
   await page.locator('.receipt-card').getByRole('button',{name:'Open',exact:true}).waitFor();
-  malformedNoteLimit=true;const guardPage=await context.newPage();guardPage.on('pageerror',e=>errors.push(e.message));await guardPage.goto('https://photohouse.test/ui');await guardPage.locator('#my-uploads-open').waitFor();await guardPage.locator('#my-uploads-open').click();await guardPage.locator(`.receipt-card[data-asset="${seed.asset_id}"]`).waitFor();await guardPage.locator(`.receipt-card[data-asset="${seed.asset_id}"]`).locator('.annotation-open').click();await guardPage.locator('.annotation-dialog .annotation-composer').waitFor();await guardPage.locator('.annotation-composer button').nth(1).click();await guardPage.waitForFunction(()=>document.querySelector('.annotation-dialog[open] .annotation-status')?.textContent.length>0);assert.equal(await guardPage.evaluate(()=>window.__noteMedia.length),0,'malformed capture duration is rejected before a microphone prompt');assert.equal(await guardPage.evaluate(()=>window.__noteContexts.length),0,'malformed capture duration is rejected before AudioContext construction');assert.equal(await guardPage.evaluate(()=>window.__memoryAudioStartCount),0,'invalid capture requests do not stop current audio');await guardPage.close();malformedNoteLimit=false;console.log('PASS malformed note capture limit is rejected before permission or audio context setup');
+  malformedNoteLimit=true;
+  guardPage=await context.newPage();guardPage.on('pageerror',e=>errors.push(e.message));
+  await guardPage.goto('https://photohouse.test/ui');
+  await guardPage.locator('#my-uploads-open').waitFor({state:'attached'});
+  await bootstrapCatalogueEntered;
+  assert.equal(await guardPage.locator('#my-uploads-open').isVisible(),false,'upload history remains unavailable while restore is loading the library catalogue');
+  assert.equal(await guardPage.locator('#my-uploads-panel').evaluate(panel=>panel.hidden),true,'history panel remains hidden during bootstrap');
+  releaseBootstrapCatalogue();
+  await guardPage.waitForFunction(()=>document.querySelectorAll('#grid .asset').length>0&&document.querySelector('#status').textContent==='');
+  await guardPage.locator('#my-uploads-open').waitFor({state:'visible'});
+  await guardPage.locator('#my-uploads-open').click();
+  await guardPage.locator(`.receipt-card[data-asset="${seed.asset_id}"]`).waitFor();
+  await guardPage.locator(`.receipt-card[data-asset="${seed.asset_id}"]`).locator('.annotation-open').click();
+  await guardPage.locator('.annotation-dialog .annotation-composer').waitFor();
+  await guardPage.locator('.annotation-composer button').nth(1).click();
+  await guardPage.waitForFunction(()=>document.querySelector('.annotation-dialog[open] .annotation-status')?.textContent.length>0);
+  assert.equal(await guardPage.evaluate(()=>window.__noteMedia.length),0,'malformed capture duration is rejected before a microphone prompt');
+  assert.equal(await guardPage.evaluate(()=>window.__noteContexts.length),0,'malformed capture duration is rejected before AudioContext construction');
+  assert.equal(await guardPage.evaluate(()=>window.__memoryAudioStartCount),0,'invalid capture requests do not stop current audio');
+  await guardPage.close();guardPage=null;malformedNoteLimit=false;
+  console.log('PASS delayed bootstrap gates upload history without losing the later receipt');
+  console.log('PASS malformed note capture limit is rejected before permission or audio context setup');
   const selectedCard=page.locator(`.receipt-card[data-asset="${seed.asset_id}"]`);
   await selectedCard.locator('.annotation-open').click();
   await selectedCard.locator('.annotation-dialog .annotation-composer').waitFor();
@@ -164,7 +188,8 @@ let browser;
   await rpc({command:'revoke'});await page.locator('#my-uploads-refresh').click();
   await page.locator('#auth').waitFor({state:'visible'});
   assert.equal(await page.locator('.receipt-card').count(),0);
+  assert.equal(await page.locator('#my-uploads-open').isVisible(),false,'revocation clears upload-history access with the old account scope');
+  assert.equal(await page.locator('#my-uploads-panel').evaluate(panel=>panel.hidden),true,'revocation keeps the history panel unavailable');
   assert.deepEqual(errors,[]);assert.deepEqual(outside,[]);
   console.log(JSON.stringify({passed:['member history distinct from owner review','10 plus 2 pagination','pending has no open','notes load only when dialog opens','real promotion reflected after refresh','folder and item notes saved and scoped through signed-in browser','approved opens authorized viewer','Chinese narrow dialog without overflow','closing clears receipts','503 clears rows while gallery remains usable','late closed-panel response discarded','revocation clears private history'],artifacts}));
-  await context.close();
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');bridge.stdin.end();});

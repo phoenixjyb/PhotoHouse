@@ -1567,3 +1567,64 @@ APK; it does not establish a private build, OTA, Windows or family acceptance.
 Final unsigned release compilation and generic release lint passed together in
 121s (99 tasks: 17 executed, 82 up to date), at the same phone source snapshot.
 No private configuration or signer was supplied.
+
+## October 12 central assistant foundation
+
+The owner approved [the personal assistant design](PERSONAL_ASSISTANT.md) and
+an explicit foreground Start with listen/reply/listen, Pause and End. Phone and
+Web source use the existing protected v1 transcription, retrieval and result-count
+speech. Actual playback completion admits the next capture. Uncertainty, denied
+access, provider failures and context/lifecycle changes stop progression. Manual
+dictation remains reviewed, and the unsent text draft survives voice mode.
+
+The isolated private thread/preferences module passed **10 tests and 24
+subtests** using generated SQLite data. Its checks include exact owner/library
+isolation, fixed 30-day exchange expiry, revisions, exact retry conflicts, bounded
+opaque card IDs and concurrent snapshot reads. It has no HTTP integration or
+Windows database. Saved references are data; future routes must reauthorize
+membership and validate current revisions before returning actionable cards.
+
+The relevant Android live-core/phone run passed **850 core and 17 phone JVM
+tests**, with no failures, errors or skips; debug/test builds and phone lint
+passed. These counts cover the affected modules, not the complete Android profile.
+Subsequent UI and screenshot-capture corrections have their separate checks below.
+No microphone, model, family content or physical device was used by these tests.
+
+The final **17-case simulator cohort passed in 142.969s**, with a complete
+AndroidJUnitRunner terminal and zero failures, errors or skips. Navigation cases
+include the actual library/account labels and available voice entry, at 150%
+Chinese/English text. Pending receipt controls and the composer remain fully
+visible above the IME. Voice controls preserve the typed draft and require actual
+playback before another capture in the separate core driver checks. Final phone
+lint and debug/test assembly also passed after the compact-layout correction.
+
+Earlier failure evidence is retained: an outdated optional-introduction
+expectation; an unnecessary pause callback when opening Privacy after End;
+PixelCopy capture timeouts; and a cramped production-context keyboard layout.
+The source fixes keep the UI assertions, compact the header/available actions,
+and use native window screenshots. Subsequent emulator attach/system failures
+occurred before tests started; the same API 36 AVD, with its data preserved,
+completed the final run using the host renderer, Vulkan disabled and 3 GiB guest
+RAM. This does not establish real microphone, echo or Samsung acceptance.
+
+The three voice-display cases were then repeated successfully in 64.284s after
+aligning the fixture with MainActivity's `adjustResize` and awaiting the current
+committed frame before native capture. This avoids a stale/panned capture during
+IME transitions. These overlap the 17-case cohort and are not added to its count.
+
+The **20 Web suites were covered across the initial cohort and scoped follow-ups**,
+not a newly passing complete invocation. One memory-community fixture took its
+request-count baseline before an authorized contribution-reference GET finished;
+waiting for that exact response preserves its stale-callback equality assertion.
+Upload-history failures revealed a real restore race: controls appeared before
+bootstrap's gallery invalidation closed the newly opened panel. The repair keeps
+history unavailable until the current bootstrap settles; its delayed-catalogue
+regression and all 12 upload checks passed with normal zero exit. Browser-owned
+context cleanup is performed by the existing final browser close.
+
+After that Web source correction, voice workspace/session, pending recovery and
+capture-scope suites also passed with zero exit. Other tail journeys passed for
+conversation navigation, titles, related media, memory groups, reader frames and
+story workspace. Successful desktop/390 px/150% assistant renders were inspected.
+These use generated data, fake capture/playback and a protected ASGI fixture;
+they do not establish a served Web release, local-provider quality or family use.

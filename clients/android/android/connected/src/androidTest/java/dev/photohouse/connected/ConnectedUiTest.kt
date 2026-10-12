@@ -263,7 +263,7 @@ class ConnectedUiTest {
         rule.onNodeWithTag("assistant-receipt").assertTextContains("服务器已完成", substring=true)
         assertEquals(1,checks)
         rule.onNodeWithTag("assistant-suggestion-2").performClick()
-        rule.onNodeWithTag("assistant-text").assertTextContains("打开第一个结果")
+        rule.onNodeWithTag("assistant-text").assertTextContains("找春天出游的照片")
         assertEquals("Selecting a follow-up suggestion does not send it", 0, sends)
         val image=rule.onRoot().captureToImage().asAndroidBitmap()
         File(rule.activity.filesDir,"assistant-receipts-zh.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }

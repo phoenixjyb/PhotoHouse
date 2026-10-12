@@ -215,7 +215,7 @@ class ConnectedStoreTest {
         store.selectLibrary("family"); runCurrent(); store.loadAssistantCapabilities(); runCurrent()
         val wav = ByteArray(16046).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
 
-        store.transcribeAssistant(wav); runCurrent()
+        store.transcribeAssistant(wav.copyOf()); runCurrent()
         val first = store.state.value.assistant!!.transcript!!
         assertNull(first.receipt)
         assertTrue(AssistantWire.validRequestId(first.localRequestId))
@@ -223,7 +223,7 @@ class ConnectedStoreTest {
         assertNull(store.takeAssistantTranscriptForDraft(first))
         assertNull(store.state.value.assistant!!.transcript)
 
-        store.transcribeAssistant(wav); runCurrent()
+        store.transcribeAssistant(wav.copyOf()); runCurrent()
         val second = store.state.value.assistant!!.transcript!!
         assertEquals(first.text, second.text)
         assertNull(second.receipt)
@@ -279,7 +279,7 @@ class ConnectedStoreTest {
         store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
         store.selectLibrary("family"); runCurrent(); store.loadAssistantCapabilities(); runCurrent()
         val wav = ByteArray(16046).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
-        store.transcribeAssistant(wav); runCurrent()
+        store.transcribeAssistant(wav.copyOf()); runCurrent()
         val discarded = store.state.value.assistant!!.transcript!!
         store.clearAssistantTranscript()
         val afterDiscard = store.state.value.assistant
@@ -288,7 +288,7 @@ class ConnectedStoreTest {
         assertSame(afterDiscard, store.state.value.assistant)
         assertEquals(1, api.assistantTranscribeCalls); assertEquals(0, api.assistantTurnCalls)
 
-        store.transcribeAssistant(wav); runCurrent()
+        store.transcribeAssistant(wav.copyOf()); runCurrent()
         val stale = store.state.value.assistant!!.transcript!!
         store.clearAssistant()
         val afterClear = store.state.value.assistant
@@ -297,7 +297,7 @@ class ConnectedStoreTest {
         assertSame(afterClear, store.state.value.assistant)
         assertEquals(2, api.assistantTranscribeCalls); assertEquals(0, api.assistantTurnCalls)
 
-        store.transcribeAssistant(wav); runCurrent()
+        store.transcribeAssistant(wav.copyOf()); runCurrent()
         val oldLibraryTranscript = store.state.value.assistant!!.transcript!!
         store.selectLibrary("second"); runCurrent()
         val afterLibrarySwitch = store.state.value.assistant

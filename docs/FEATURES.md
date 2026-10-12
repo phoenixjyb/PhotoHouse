@@ -322,3 +322,16 @@ The Android report inventory reads existing XML without running tests or
 binding results to a revision. It reports missing modules and failure/skip
 counts, rejects unsafe/invalid files and prints no raw test output. The prepared
 CI template calls it after the Android build. No hosted run is claimed.
+
+
+## Central personal assistant (approved development)
+
+The approved [拾光助手 design](PERSONAL_ASSISTANT.md) brings typed chat and an
+opt-in foreground voice session into one phone/Web workspace. The initial slice
+reuses protected photo/video retrieval, visual results and result-count speech;
+Pause/End, context changes and uncertain-request recovery are explicit. Durable
+private conversations/preferences and the grounded story/album/memoir agent are
+separate qualification/delivery layers. Source controls and synthetic journeys do
+not establish live provider quality or family-device acceptance. Phone v48 already
+published to OTA contains saved memoir editing; these assistant additions belong
+to a subsequent release.

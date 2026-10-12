@@ -283,11 +283,11 @@ Client clearing and server troubleshooting retention are separate lifecycles.
 
 | Step | Where it happens |
 |---|---|
-| Capture and transcript review | Web browser or Android phone; the user starts, stops and reviews. |
+| Capture and transcript review | Web browser or Android phone. Ordinary dictation is reviewed; the approved explicit foreground voice session sends read-only requests until Pause/End. |
 | Assistant transcription | Authenticated server adapter calls the configured local ASR service; assistant audio is transient. |
 | Intent, context and permitted action | Server assistant contracts, current membership and explicit action validation. |
 | Story proposal or writing companion | Optional local model adapter and bounded worker; qualification is required before enabling generation. |
-| Spoken assistant reply | Configured server speech adapter generates audio; the client starts/stops playback explicitly. The Windows adapter uses System.Speech. |
+| Spoken assistant reply | Configured server speech adapter generates audio. The explicit foreground session may play a result count and resume capture only after actual playback; ordinary playback retains explicit controls. The Windows adapter uses System.Speech. |
 | Chapter read-aloud | Android TextToSpeech or browser speech synthesis, with explicit playback controls; installed voices determine availability. |
 
 Changing a model endpoint does not authorize it to perform arbitrary actions.
@@ -386,3 +386,28 @@ of a ready, current story or memoir reply. Both clients require valid bounded
 reply metadata before presenting the cue. A suggested follow-up prepares an
 editable draft only when existing draft, dictation and pending-send guards allow
 it. No cue starts recording, submits a message or applies a proposal.
+
+
+## Approved central assistant and foreground session
+
+[拾光助手](PERSONAL_ASSISTANT.md) is the shared phone/Web entry for conversational
+retrieval. The Android pure `VoiceSessionController` binds callbacks to account,
+library, app generation, session and operation. Its platform adapter owns a single
+microphone/player; sample-based endpointing retains no PCM. Actual playback
+completion, rather than synthesis/download success, admits the next capture.
+Pause/End/background/audio-focus loss invalidate outstanding progression. An
+uncertain submitted request remains available for receipt inspection, with no
+automatic resubmission. Idle voice controls do not cancel manual requests.
+
+The initial adapter uses the protected v1 ASR/search/result-count TTS services.
+This is continuous voice retrieval, not a general language-model agent. Empty,
+clarifying and unsupported spoken replies pause and remain visible. Typed tools,
+owned durable conversations/preferences and grounded local understanding are
+separate backend layers. Personal thread storage must be deliberately initialized
+and admitted, distinct from audit receipts and family story/audio storage. Existing
+installed v1 clients continue to use their strict contracts.
+
+A single explicit Start authorizes only this foreground read-only session.
+Ordinary dictation remains capture → review → insert → send. The local providers,
+models, GPU admission and transport trust remain Windows runtime configuration;
+source builds do not discover or activate them.

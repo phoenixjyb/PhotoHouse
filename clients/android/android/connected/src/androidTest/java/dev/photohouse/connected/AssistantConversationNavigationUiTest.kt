@@ -27,7 +27,7 @@ class AssistantConversationNavigationUiTest {
     private fun exchange(id: String, question: String = "Question $id", reply: String = "Reply $id") =
         AssistantExchange(question, turn(reply), id)
     private fun baseState(generation: Long = 1, library: String = "synthetic-library", turns: List<AssistantExchange> = emptyList()) =
-        AssistantClientState(library, generation, capabilities = AssistantCapabilities(true, true, true, false, 30), turns = turns)
+        AssistantClientState(library, generation, capabilities = AssistantCapabilities(true, true, true, true, 30), turns = turns)
 
     @Suppress("DEPRECATION")
     private fun show(state: androidx.compose.runtime.MutableState<AssistantClientState>, zh: Boolean, callbacks: Callbacks) {
@@ -39,6 +39,9 @@ class AssistantConversationNavigationUiTest {
             CompositionLocalProvider(LocalDensity provides Density(current.density, 1.5f)) {
                 PhotoHouseTheme {
                     AssistantScreen(state.value, zh, onBack = {}, previews = emptyMap(), onRetryCapabilities = {},
+                        libraryLabel = if (zh) "合成旅行相册" else "Synthetic travel library",
+                        accountLabel = if (zh) "当前账号" else "Current account",
+                        onStartVoiceSession = { error("This layout fixture must not start microphone capture") },
                         onSend = { callbacks.sent += it; true }, onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = { callbacks.receiptChecks++ },
                         onRecord = { callbacks.records++ }, onStopRecording = {}, onCancelRecording = {}, recording = false,
                         recordError = false, onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {})
@@ -277,8 +280,9 @@ class AssistantConversationNavigationUiTest {
         val callbacks = Callbacks()
         show(state, zh = true, callbacks)
 
-        rule.onNodeWithTag("assistant-intro-description").assertIsDisplayed()
-        rule.onNodeWithTag("assistant-usage-description").assertIsDisplayed()
+        // The 150% workspace hides optional guidance before and after the IME.
+        rule.onNodeWithTag("assistant-intro-description").assertDoesNotExist()
+        rule.onNodeWithTag("assistant-usage-description").assertDoesNotExist()
         rule.onNodeWithTag("assistant-retention-notice").assertIsDisplayed()
         rule.onNodeWithTag("assistant-pending-status").assertIsDisplayed()
         rule.onNodeWithTag("assistant-check-receipt").assertIsDisplayed()
