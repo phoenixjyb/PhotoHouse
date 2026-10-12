@@ -12048,6 +12048,39 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "android-ota-current-version-and-connection-feedback",
+      "source_commit": "d3d8a3db0a8fe6ab30ada6460481628bc1142719",
+      "files": [
+        {
+          "path": "clients/android/android/home-core/src/main/kotlin/dev/photohouse/home/UpdateClient.kt",
+          "sha256": "b6e59dcec3f247485e77302765e8d092f4852bf97463282eaec2f00960ef291f"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/UpdateClientTest.kt",
+          "sha256": "501bafb8399792351ebc6c7aa093864bca2bae37887bddadf6efc521d6e3c413"
+        },
+        {
+          "path": "clients/android/android/home-core/src/test/kotlin/dev/photohouse/home/UpdateWireTest.kt",
+          "sha256": "6c1e35293f21e41e95ea5f0c478659588d9616d47a3e149bceb1d54a71cec3d3"
+        },
+        {
+          "path": "clients/android/android/ota-android/src/main/java/dev/photohouse/ota/PhotoHouseOta.kt",
+          "sha256": "abddb252f3e8b39c2ed0f656d48134dad3114e05ae3824150f14811e1c4a8b0b"
+        },
+        {
+          "path": "clients/android/android/ota-android/src/main/java/dev/photohouse/ota/PhotoHouseOtaControl.kt",
+          "sha256": "d0232f21f3c567059c050bff9f6405f4f3c2a5082121983fc201cba35ab62f09"
+        },
+        {
+          "path": "docs/ANDROID_OTA_TROUBLESHOOTING.md",
+          "sha256": "092eb2b15e026b3b428ed224b7fd6a243c422e3dab491e8344a1e16c9acf4de2"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
