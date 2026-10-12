@@ -5,6 +5,7 @@ import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
 import okio.Buffer
@@ -72,5 +73,42 @@ class UpdateClientTest {
 
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "https://attacker.example/apk"))
         try { api.check("phone", "dev.photohouse.connected", 25, signer); fail("redirect accepted") } catch (_: HomeFailure) { }
+    }
+
+    @Test fun disconnectedServerMapsToOffline() = runBlocking {
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
+        try {
+            api.check("phone", "dev.photohouse.connected", 25, signer)
+            fail("disconnected server accepted")
+        } catch (e: HomeFailure) {
+            assertEquals(HomeError.OFFLINE, e.kind)
+        }
+    }
+
+    @Test fun untrustedServerCertificateMapsToTls() = runBlocking {
+        val untrustedClient = OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
+            .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
+        val untrustedApi = HttpsUpdateClient(HomeOrigin.parse("https://updates.example:${server.port}"), untrustedClient)
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+            .setHeader("Cache-Control", "no-store").setBody(Buffer().write(feed())))
+        try {
+            untrustedApi.check("phone", "dev.photohouse.connected", 25, signer)
+            fail("untrusted certificate accepted")
+        } catch (e: HomeFailure) {
+            assertEquals(HomeError.TLS, e.kind)
+        }
+    }
+
+    @Test fun equalVersionHttpFeedPreservesTypedAlreadyCurrentResult() = runBlocking {
+        val equalVersionFeed = feed().decodeToString().replace("\"version_code\":26", "\"version_code\":25").toByteArray()
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+            .setHeader("Cache-Control", "no-store").setBody(Buffer().write(equalVersionFeed)))
+        try {
+            api.check("phone", "dev.photohouse.connected", 25, signer)
+            fail("equal-version feed accepted as update")
+        } catch (e: UpdateNotNewerException) {
+            assertEquals(25L, e.installedVersionCode)
+            assertEquals(25L, e.offeredVersionCode)
+        }
     }
 }

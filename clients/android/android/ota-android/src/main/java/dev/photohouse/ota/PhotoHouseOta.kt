@@ -21,6 +21,12 @@ object PhotoHouseOta {
     private const val PHONE_PACKAGE = "dev.photohouse.connected"
     private const val TV_PACKAGE = "dev.photohouse.tv"
 
+    fun installedVersionLabel(context: Context): String = runCatching {
+        val packageName = context.packageName
+        val info = context.packageManager.getPackageInfoCompat(packageName)
+        "${info.versionName ?: "unknown"} (code ${info.longVersionCodeCompat()})"
+    }.getOrDefault("unknown")
+
     suspend fun prepare(context: Context, origin: String, channel: String, lanAddress: String = ""): PreparedPhotoHouseUpdate {
         val expectedPackage = when (channel) { "phone" -> PHONE_PACKAGE; "tv" -> TV_PACKAGE; else -> error("Unsupported update channel") }
         val packageName = context.packageName
