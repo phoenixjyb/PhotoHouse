@@ -8,7 +8,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_M
 const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-assistant-voice-'));
 fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700);console.log('ARTIFACTS_DIR '+artifacts);
-const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'assistant_pending_recovery_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
+const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'assistant_pending_recovery_browser_bridge.py'),'--private-workspace'],{cwd:root,stdio:['pipe','pipe','pipe']});
 let serial=0,readyResolve,readyReject,nextTurn=0,turnMode=null,privateReplyMode='results',privateSpeechGate=null,loggedPhone=null;const pendingRpc=new Map(),requests=[],transcriptionRequests=[],privateSpeechRequests=[],errors=[],origins=[],gates=new Set();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready){readyResolve();return;}const call=pendingRpc.get(value.id);if(call){pendingRpc.delete(value.id);call.resolve(value);}});
