@@ -1970,3 +1970,12 @@ TTS. Its six portable harness tests passed; Windows bounds and lazy supervisor
 imports are unchanged. Native Windows execution is not claimed, and the existing
 `db95b6` candidate retains its original six-case package and pending scope.
 No Windows API/store, model, APK or task was changed by this source follow-up.
+
+The final full API invocation at `7daf740` passed 1,337 tests and 793 subtests,
+plus the generated no-listener demo, with equal source hashes at both ends.
+The complete Web invocation at that source passed the new eight-checkpoint
+memory journey but failed the older receipt-only recovery fixture: that fixture
+had enabled the separate private store, causing the app to select private turns
+instead of the legacy POST being intercepted. The fixture now explicitly omits
+private-store admission and asserts that private turns are unavailable. Product
+route selection is preserved; the complete Web rerun is recorded separately.
