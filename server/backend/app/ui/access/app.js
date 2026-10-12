@@ -14,8 +14,8 @@
   };
   Object.assign(words.en,{assistantTrailTitle:'Recent turns on this page',assistantTrailYou:'You',assistantTrailAssistant:'Assistant',assistantTrailLatest:'Jump to latest'});
   Object.assign(words.zh,{assistantTrailTitle:'本页最近对话',assistantTrailYou:'你',assistantTrailAssistant:'助手',assistantTrailLatest:'跳到最新'});
-  Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近的完整消息。',assistantPrivateLoadOlder:'查看更早消息',assistantPrivateReloadHistory:'对话已有更新，重新加载记录',assistantPrivateSearchOffline:'检索暂不可用，仍可查看已保存的对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
-  Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing recent complete messages.',assistantPrivateLoadOlder:'Read earlier messages',assistantPrivateReloadHistory:'Conversation changed; reload history',assistantPrivateSearchOffline:'Search is unavailable. Saved conversations are still readable.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
+  Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateCurrentLabel:'当前对话',assistantPrivateNoCurrent:'尚未选择对话',assistantPrivateContinue:'可以继续补充条件',assistantPrivateManage:'管理对话',assistantPrivateReturn:'返回对话',assistantPrivateExchangeCount:'{count} 条交流',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近的完整消息。',assistantPrivateLoadOlder:'查看更早消息',assistantPrivateReloadHistory:'对话已有更新，重新加载记录',assistantPrivateSearchOffline:'检索暂不可用，仍可查看已保存的对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
+  Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateCurrentLabel:'Current conversation',assistantPrivateNoCurrent:'No conversation selected',assistantPrivateContinue:'Ready to add details',assistantPrivateManage:'Manage conversations',assistantPrivateReturn:'Return to conversation',assistantPrivateExchangeCount:'{count} exchanges',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing recent complete messages.',assistantPrivateLoadOlder:'Read earlier messages',assistantPrivateReloadHistory:'Conversation changed; reload history',assistantPrivateSearchOffline:'Search is unavailable. Saved conversations are still readable.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
   const t = key => words[state.language][key] || key;
   Object.assign(words.zh,{assistantPrivateAbandon:'结束等待，开始新对话',assistantPrivateAbandonHelp:'服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。',assistantPrivateAbandonYes:'我了解，开始新对话',assistantPrivateRetryCreation:'重试创建同一个对话'});
   Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
@@ -414,6 +414,7 @@
   function translate() {
     document.documentElement.lang = state.language === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-i18n]').forEach(node => {node.textContent=t(node.dataset.i18n);});
+    try{syncPrivateManagement(privateAssistant?.state());}catch{syncPrivateManagement(null);}
     $('language').textContent = state.language === 'en' ? '中文' : 'English';
     $('auth-submit').textContent=t(state.busy?'working':state.mode==='login'?'signIn':'join');
     status(statusKey);
@@ -1055,6 +1056,7 @@
     if(snapshot.activeThread&&!turnAvailable&&assistantState.voiceSession.phase!=='idle')queueMicrotask(()=>{if(privateAssistant?.state().activeThread&&privateAssistant.state().capabilities?.server_owned_turns!==true)endAssistantVoice();});
     $('assistant-private').hidden=!available;
     const select=$('assistant-private-select'),selected=snapshot.activeThread?.thread_id||'';
+    syncPrivateManagement(snapshot);
     const option=document.createElement('option');option.value='';option.textContent=t('assistantPrivateSelect');
     select.replaceChildren(option);
     for(const thread of snapshot.threads){const row=document.createElement('option');row.value=thread.thread_id;row.textContent=[thread.label,new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(thread.updated_at))].filter(Boolean).join(' · ');select.append(row);}
@@ -1085,6 +1087,34 @@
     $('assistant-private-older').hidden=!history?.has_older_exchanges||!!snapshot.capabilities?.history_paging;
     if(available&&!turnAvailable)$('assistant-private-status').textContent=t('assistantPrivateSearchOffline');
     if(!available){$('assistant-private-status').textContent='';$('assistant-private-older').hidden=true;}
+  }
+
+  function syncPrivateManagement(snapshot){
+    const panel=$('assistant-private-management'),toggle=$('assistant-private-management-toggle');
+    if(!panel||!toggle)return;
+    if(snapshot){
+      const selected=snapshot.activeThread?.thread_id||'';
+      const forced=!selected||!!snapshot.pendingTurn||!!snapshot.pendingCreation||!!privateCreationRetryId||
+        !$('assistant-private-delete-confirm').hidden||!$('assistant-private-abandon-confirm').hidden;
+      const changed=panel.dataset.threadId!==selected;
+      if(forced){if(!panel.open)panel.dataset.autoOpened='true';panel.open=true;}
+      else if(changed||panel.dataset.autoOpened==='true'){panel.open=false;panel.dataset.autoOpened='false';}
+      panel.dataset.threadId=selected;
+      const summary=$('assistant-private-current-summary'),thread=snapshot.activeThread;
+      if(thread){
+        const listed=snapshot.threads.find(row=>row.thread_id===selected);
+        const detail=snapshot.historyDetail;
+        const freshDetail=detail?.thread?.thread_id===selected&&detail.snapshot_revision===thread.revision&&detail.history_stale!==true&&snapshot.historyRefreshRequired!==true;
+        const current= freshDetail?detail.thread:(listed?.revision===thread.revision?listed:null);
+        if(current&&Number.isSafeInteger(current.exchange_count)&&typeof current.updated_at==='string'){
+          const date=new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(current.updated_at));
+          summary.textContent=`${date} · ${t('assistantPrivateExchangeCount').replace('{count}',String(current.exchange_count))}`;
+        }else if(typeof listed?.label==='string'&&listed.label.trim())summary.textContent=listed.label;
+        else summary.textContent=t('assistantPrivateContinue');
+      }else summary.textContent=t('assistantPrivateNoCurrent');
+    }
+    const key=panel.open?'assistantPrivateReturn':'assistantPrivateManage';
+    toggle.dataset.i18n=key;toggle.textContent=t(key);
   }
 
   async function loadPrivateAssistant(epoch){
@@ -3054,6 +3084,10 @@
       request:privateWorkspaceRequest,
     });
   }
+  const privateManagement=$('assistant-private-management');
+  const privateManagementRequired=()=>{const snapshot=privateAssistant?.state();return !snapshot?.activeThread||!!snapshot.pendingTurn||!!snapshot.pendingCreation||!!privateCreationRetryId||!$('assistant-private-delete-confirm').hidden||!$('assistant-private-abandon-confirm').hidden;};
+  $('assistant-private-management-toggle').addEventListener('click',event=>{if(privateManagementRequired())event.preventDefault();});
+  privateManagement.addEventListener('toggle',()=>{const snapshot=privateAssistant?.state();if(privateManagementRequired()&&!privateManagement.open)privateManagement.open=true;syncPrivateManagement(snapshot);});
   const clearPrivateView=()=>{stopAssistantSpeech();assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.pendingTurn=null;assistantState.turnReceipt=null;assistantState.turnRequestId=null;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';$('assistant-receipt').hidden=true;$('assistant-private-older').hidden=true;$('assistant-private-delete-confirm').hidden=true;renderAssistantTrail();syncAssistantControls();};
   const newPrivateConversation=()=>privateAssistantAction(async()=>{await privateAssistant.create();clearPrivateView();$('assistant-text').value=privateAssistant.state().draft;await privateAssistant.list();});
   $('assistant-private-new').addEventListener('click',()=>void newPrivateConversation());

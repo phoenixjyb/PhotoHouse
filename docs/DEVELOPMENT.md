@@ -1851,3 +1851,21 @@ The API packager now declares its actual required main schema `a0c9d2e4f817`
 instead of the historical e7 marker. This metadata correction performs no
 migration. The package closure includes the listener-free qualifier and preserves
 the separate, explicitly provisioned schema-v2 private store.
+
+## October 13 compact Web conversation controls
+
+The Web assistant keeps the current conversation visible and folds history,
+preferences and deletion behind an accessible “管理对话” control. Unconfirmed
+creation/turns and destructive confirmations keep those controls expanded.
+Opening or closing the panel never starts capture, sends a request or changes
+the selected conversation. Counts and dates require a matching current revision;
+stale metadata is replaced by a continuation hint.
+
+The 15 generated history journeys and complete voice browser flow passed after
+review fixes for expanded width and stale zero-exchange counts. Expanded and
+compact 390px renders at 150% text were inspected, along with the speaking
+state. This is local browser evidence; the live Web release is unchanged.
+
+The next phone candidate is version 51 (`0.51-private-conversation-voice`). Its
+version declaration is preparation only: an unsigned package, original-icon
+check, signing authority and OTA publication still have separate evidence.

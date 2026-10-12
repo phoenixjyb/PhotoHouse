@@ -70,8 +70,11 @@ async function installSyntheticTransport(targetContext){
   const callCommand=async command=>{const result=await rpc({command});assert.equal(result.ok,true);};
   const readCapabilities=()=>page.evaluate(async()=>{const response=await fetch('/assistant/workspace/v1/capabilities?library_id=family-a');return response.json();});
   const workspacePanel=page.locator('#assistant-private');
+  const management=page.locator('#assistant-private-management'),managementToggle=page.locator('#assistant-private-management-toggle');
+  const openManagement=async()=>{if(!await management.evaluate(el=>el.open))await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),true,'private conversation controls are expanded for an explicit management action');};
   await workspacePanel.waitFor({state:'visible',timeout:10000});
   assert.match(await page.locator('#assistant-private-new').innerText(),/新对话|新建|创建|开始/,'Chinese is the default private pane language');
+  assert.equal(await management.evaluate(el=>el.open),true,'management is available while no conversation is selected');
   await page.locator('#assistant-private-status').waitFor();
   checkpoint('The signed-in page exposes the private workspace in the default Chinese UI');
 
@@ -92,6 +95,13 @@ async function installSyntheticTransport(targetContext){
   await page.waitForFunction(()=>document.getElementById('assistant-private-new')&&!document.getElementById('assistant-private-new').disabled,
     null,{timeout:10000});
   assert.equal(threadCreates().length,firstCreateCount+1,'keyboard activation creates one scoped thread');
+  assert.equal(await management.evaluate(el=>el.open),false,'an active conversation defaults to the compact view');
+  assert.match(await page.locator('#assistant-private-current-summary').innerText(),/\d+ 条交流/,'compact view keeps its current-conversation summary visible');
+  assert.equal(await managementToggle.innerText(),'管理对话');
+  const beforeManageToggle={creates:threadCreates().length,turns:turns().length};
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),true);await page.waitForFunction(()=>document.getElementById('assistant-private-management-toggle').textContent==='返回对话');
+  assert.deepEqual({creates:threadCreates().length,turns:turns().length},beforeManageToggle,'management control does not create or send');
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),false);await page.waitForFunction(()=>document.getElementById('assistant-private-management-toggle').textContent==='管理对话');
   let threadId=await page.locator('#assistant-private-select').inputValue();
   assert.match(threadId,/^[0-9a-f-]{36}$/i);
   await page.locator('#assistant-text').fill('找照片');
@@ -109,11 +119,13 @@ async function installSyntheticTransport(targetContext){
   // Persist and read the exact exchange; history is text-only and has no replay side effect.
   const speechBefore=await page.evaluate(()=>window.__phSpeechCalls);
   const opensBefore=browserRequests.filter(x=>/\/assets\/[^/]+(?:\/open|\/original)(?:\?|$)/.test(x.path)).length;
+  await openManagement();
   await page.locator('#assistant-private-refresh').click();
   const option=page.locator('#assistant-private-select');
   await option.selectOption('');
   const historyRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${threadId}?`));
   await option.selectOption(threadId);await historyRead;
+  await openManagement();
   await page.locator('#assistant-turn-trail').getByText('找照片',{exact:true}).waitFor();
   await page.locator('#assistant-turn-trail').getByText(firstReply,{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.__phSpeechCalls),speechBefore,'opening history never starts speech');
@@ -147,6 +159,7 @@ async function installSyntheticTransport(targetContext){
   loseNextTurn=true;const beforeLost=turns().length;
   await page.locator('#assistant-text').fill('找公园照片');await page.locator('#assistant-send').click();
   await page.locator('#assistant-private-recover').waitFor({state:'visible'});
+  assert.equal(await management.evaluate(el=>el.open),true,'an ambiguous turn keeps its recovery action expanded');
   assert.equal(turns().length,beforeLost+1);
   const lost=turns().at(-1),lostPayload=JSON.parse(lost.body),lostThread=lost.path.split('/')[5];
   assert.equal(lostThread,threadId);assert.equal(lostPayload.text,'找公园照片');
@@ -171,6 +184,7 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforeCancel+1);
   const beforeCancelRecovery=turns().length;await page.locator('#assistant-private-recover').click();
   await page.waitForFunction(()=>document.getElementById('assistant-private-recover').hidden||document.getElementById('assistant-private-recover').disabled);
+  assert.equal(await management.evaluate(el=>el.open),true,'canceled turn recovery stays in the expanded management section');
   assert.equal(turns().length,beforeCancelRecovery,'cancellation recovery is GET-only');
   checkpoint('Cancel stops waiting and preserves the draft while the server result remains recoverable');
 
@@ -184,6 +198,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-text').fill(unreceivedQuestion);
   await page.locator('#assistant-send').click();
   await page.locator('#assistant-private-recover').waitFor({state:'visible'});
+  assert.equal(await management.evaluate(el=>el.open),true,'an unreceived turn keeps recovery visible in the expanded management section');
   const unreceivedTurn=turns().at(-1),unreceivedPayload=JSON.parse(unreceivedTurn.body);
   assert.equal(unreceivedTurn.serverReached,false,'the simulated lost turn is aborted before the ASGI server receives it');
   assert.equal(unreceivedTurn.droppedBeforeServer,true);
@@ -195,9 +210,14 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforeUnreceivedTurn+1,'GET 404 does not resend the turn');
   assert.equal(await page.locator('#assistant-text').inputValue(),unreceivedQuestion,'GET 404 preserves the question');
   await page.locator('#assistant-private-abandon').waitFor({state:'visible'});
+  assert.equal(await management.evaluate(el=>el.open),true,'uncertain turn keeps its recovery controls expanded');
   await page.locator('#assistant-private-abandon').click();
   const abandonConfirmation=page.locator('#assistant-private-abandon-confirm');
   await abandonConfirmation.waitFor({state:'visible'});
+  const abandonActionCounts={creates:threadCreates().length,turns:turns().length};await managementToggle.click();
+  assert.equal(await management.evaluate(el=>el.open),true,'management cannot collapse while the abandon warning needs attention');
+  assert.equal(await abandonConfirmation.isVisible(),true,'the explicit abandon warning cannot be hidden by its section control');
+  assert.deepEqual({creates:threadCreates().length,turns:turns().length},abandonActionCounts,'return-to-conversation control has no write side effect');
   assert.match(await abandonConfirmation.innerText(),/服务器可能仍会完成之前的请求/,'the explicit abandon confirmation warns the server may still finish');
   assert.equal(threadCreates().length,beforeUnreceivedCreate,'opening the warning does not create a thread');
   assert.equal(turns().length,beforeUnreceivedTurn+1,'opening the warning does not retry the turn');
@@ -206,6 +226,7 @@ async function installSyntheticTransport(targetContext){
     const select=document.getElementById('assistant-private-select');return select?.value&&select.value!==oldId;
   },threadId,{timeout:10000});
   threadId=await page.locator('#assistant-private-select').inputValue();
+  assert.equal(await management.evaluate(el=>el.open),false,'confirmed new conversation returns to compact view');
   assert.equal(await page.locator('#assistant-text').inputValue(),unreceivedQuestion,'the new thread keeps the question as an unsent draft');
   assert.equal(threadCreates().length,beforeUnreceivedCreate+1,'fresh thread creation follows only the explicit confirmation');
   assert.equal(turns().length,beforeUnreceivedTurn+1,'the unreceived turn is never resent after GET 404 and abandon');
@@ -219,8 +240,10 @@ async function installSyntheticTransport(targetContext){
   const beforeUnreceivedCreationTurns=turns().length;
   loseNextCreationBeforeServer=true;
   await page.locator('#assistant-text').fill(creationDraft);
+  await openManagement();
   await page.locator('#assistant-private-new').click();
   await page.locator('#assistant-private-reconcile').waitFor({state:'visible'});
+  assert.equal(await management.evaluate(el=>el.open),true,'pending creation keeps reconciliation visible');
   const droppedCreation=threadCreates().at(-1);
   const droppedCreationId=JSON.parse(droppedCreation.body).thread_id;
   assert.equal(droppedCreation.serverReached,false,'the simulated lost creation is aborted before the ASGI server receives it');
@@ -232,6 +255,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-private-reconcile').click();await creation404;
   assert.equal(await page.locator('#assistant-text').inputValue(),creationDraft,'exact GET 404 preserves the draft');
   await page.locator('#assistant-private-retry-creation').waitFor({state:'visible'});
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),true,'pending creation reconciliation cannot be hidden before its explicit same-ID retry');
   assert.equal(threadCreates().length,beforeUnreceivedCreation+1,'GET 404 alone never retries creation');
   const sameIdCreated=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().endsWith(`${workspace}/threads`)&&response.status()===201);
   await page.locator('#assistant-private-retry-creation').click();await sameIdCreated;
@@ -254,15 +278,17 @@ async function installSyntheticTransport(targetContext){
   const historyThreadId=seeded.thread_id,firstHistoryQuestion=seeded.first_question;
   assert.match(historyThreadId,/^[0-9a-f-]{36}$/i);
   const seededCreates=threadCreates().length;
+  await openManagement();
   await page.locator('#assistant-private-refresh').click();
   await page.locator(`#assistant-private-select option[value="${historyThreadId}"]`).waitFor({state:'attached'});
   assert.equal(threadCreates().length,seededCreates,'synthetic history seeding never creates through the browser');
   const historyDetailRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
   await page.locator('#assistant-private-select').selectOption(historyThreadId);await historyDetailRead;
+  await openManagement();
   const trail=page.locator('#assistant-turn-trail-list');
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
   const historyOption=page.locator(`#assistant-private-select option[value="${historyThreadId}"]`);
-  assert((await historyOption.innerText()).includes(firstHistoryQuestion),'HTML-like Unicode label is rendered literally');
+  assert((await historyOption.textContent()).includes(firstHistoryQuestion),'HTML-like Unicode label is rendered literally');
   assert.equal(await historyOption.locator('img').count(),0,'label content cannot create markup');
   assert.equal(await trail.locator('.assistant-turn-trail-entry').count(),20,'thread detail starts with the latest twenty complete exchanges');
   await trail.getByText('Synthetic private question 45',{exact:true}).waitFor();
@@ -283,6 +309,7 @@ async function installSyntheticTransport(targetContext){
   });
   assert(scrollAnchorBefore,'history trail has a visible scroll anchor');
   const firstOlder=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await openManagement();
   await page.locator('#assistant-private-load-older').click();const firstOlderResponse=await firstOlder;
   assert.equal(firstOlderResponse.status(),200);
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===40);
@@ -301,6 +328,8 @@ async function installSyntheticTransport(targetContext){
   assert.equal(browserRequests.filter(x=>/\/assets\/[^/]+(?:\/open|\/original)(?:\?|$)/.test(x.path)).length,historyOpenRequestsBefore,
     'history paging never opens or navigates to media');
   assert.equal(page.url(),historyPageUrl,'history paging leaves the page in place');
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),false,'active history can return to its compact conversation view');
+  assert.match(await page.locator('#assistant-private-current-summary').textContent(),/\d+ 条交流/,'the compact history view keeps its selected conversation summary visible');
 
   // A server-side turn advances the thread while an older-page cursor is visible.
   // The stale page must be rejected as a whole, then replaced only on explicit reload.
@@ -308,12 +337,14 @@ async function installSyntheticTransport(targetContext){
   assert.equal(beforeConcurrent.ok,true);assert.equal(beforeConcurrent.revision,46);
   const staleRowsBefore=await trail.locator('.assistant-turn-trail-entry').evaluateAll(rows=>rows.map(row=>row.dataset.assistantTurnId));
   const conflictedPage=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`)&&response.status()===409);
+  await openManagement();
   await page.locator('#assistant-private-load-older').click();await conflictedPage;
   await page.locator('#assistant-private-reload-history').waitFor({state:'visible'});
   const staleRowsAfter=await trail.locator('.assistant-turn-trail-entry').evaluateAll(rows=>rows.map(row=>row.dataset.assistantTurnId));
   assert.deepEqual(staleRowsAfter,staleRowsBefore,'409 never mixes rows from a second snapshot');
   assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging','snapshot conflict preserves the draft');
   const refreshedDetail=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
+  await openManagement();
   await page.locator('#assistant-private-reload-history').click();await refreshedDetail;
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
   await trail.getByText('Synthetic concurrent question 46',{exact:true}).waitFor();
@@ -321,9 +352,11 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-private-reload-history').isHidden(),true);
   assert.equal(await page.locator('#assistant-text').inputValue(),'draft stays while paging');
   const nextOlder=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await openManagement();
   await page.locator('#assistant-private-load-older').click();assert.equal((await nextOlder).status(),200);
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===40);
   const oldestPage=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}/history?`));
+  await openManagement();
   await page.locator('#assistant-private-load-older').click();assert.equal((await oldestPage).status(),200);
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===46);
   await trail.getByText(firstHistoryQuestion,{exact:true}).waitFor();
@@ -387,6 +420,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator(`#assistant-private-select option[value="${threadId}"]`).waitFor({state:'attached'});
   await page.locator('#assistant-private-select').selectOption(threadId);
   await page.waitForFunction(id=>document.querySelector('#assistant-private-select')?.value===id,threadId);
+  await openManagement();
   if(!await page.locator('#assistant-private .assistant-private-preferences').evaluate(el=>el.open))await page.locator('#assistant-private .assistant-private-preferences > summary').click();
 
   // Two-step delete keeps the thread until the explicit confirmation action.
@@ -400,11 +434,34 @@ async function installSyntheticTransport(targetContext){
   assert(browserRequests.filter(x=>x.method==='GET'&&x.path===`${workspace}/threads?library_id=family-a`).length>=listBeforeDelete);
   checkpoint('Thread deletion requires a second keyboard-confirmed action');
 
+  const compactDetail=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
+  await page.locator('#assistant-private-select').selectOption(historyThreadId);await compactDetail;
+  await page.waitForFunction(()=>!document.getElementById('assistant-private-management').open);
+  assert.equal(await management.evaluate(el=>el.open),false,'selecting an active thread defaults to compact management');
+  assert.match(await page.locator('#assistant-private-current-summary').textContent(),/46 条交流/,'the compact card summarizes the selected conversation history');
+  await page.locator('#assistant-workspace-content').evaluate(node=>{node.scrollTop=0;});
+  await page.setViewportSize({width:1280,height:900});
+  const compactDesktop=path.join(artifacts,'assistant-private-management-compact-desktop-1280.png');await page.screenshot({path:compactDesktop,fullPage:false});
+  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'compact private conversation fits at 390px with 150% text');
+  const compactPhone=path.join(artifacts,'assistant-private-management-compact-phone-390-150.png');await page.screenshot({path:compactPhone,fullPage:false});
+  await openManagement();
+  await page.waitForFunction(()=>document.getElementById('assistant-private-management-toggle').textContent==='返回对话');
+  const expandedLayout=await page.evaluate(()=>{const card=document.querySelector('.assistant-private'),details=document.querySelector('#assistant-private-management'),content=document.querySelector('.assistant-private-management-content');const box=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width};};return {card:box(card),details:box(details),content:box(content),viewport:innerWidth};});
+  assert(expandedLayout.details.width>=expandedLayout.card.width-40,'expanded management uses the full private conversation card width');
+  assert(expandedLayout.content.width>=expandedLayout.details.width-2,'expanded management controls occupy the full-width content column');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'expanded private management fits at 390px with 150% text');
+  const expandedPhone=path.join(artifacts,'assistant-private-management-expanded-phone-390-150.png');await page.screenshot({path:expandedPhone,fullPage:false});
+  console.log('PRIVATE_MANAGEMENT_SCREENSHOTS '+compactPhone+' '+expandedPhone);
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),false,'expanded phone review can return to compact conversation view');
+  await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+
   // Visual and keyboard checks at the requested viewports.
   await page.setViewportSize({width:1280,height:900});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'desktop UI has no horizontal overflow');
   await page.screenshot({path:path.join(artifacts,'assistant-workspace-desktop-1280.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  await openManagement();
   if(!await page.locator('#assistant-private .assistant-private-preferences').evaluate(el=>el.open))await page.locator('#assistant-private .assistant-private-preferences > summary').click();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'private workspace has no horizontal overflow at 390px with 150% root font size');
   assert(await workspacePanel.isVisible());
