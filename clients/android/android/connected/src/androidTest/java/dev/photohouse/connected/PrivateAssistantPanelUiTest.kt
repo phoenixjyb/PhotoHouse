@@ -191,6 +191,165 @@ class PrivateAssistantPanelUiTest {
         rule.waitForIdle()
     }
 
+    private fun openManagement() {
+        rule.onNodeWithTag("private-assistant-manage-toggle").performScrollTo().performClick()
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun selectedConversationStartsCompactWithHistoryAndContinuationReachable() {
+        val uiState = mutableStateOf(state(threadLabel = "旅行标签"))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks,
+            onContinueVoice = { id, revision -> callbacks.voiceContinuations += id to revision },
+            onContinueText = { id, revision -> callbacks.textContinuations += id to revision })
+
+        rule.onNodeWithTag("private-assistant-current-summary").assertIsDisplayed()
+        rule.onNodeWithText("管理对话").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-exchange-0").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-text").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-voice").assertIsDisplayed()
+        captureBottomScreenshot("private-assistant-zh-large-current")
+        rule.onNodeWithTag("private-assistant-thread-list").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-new").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-locale").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-delete").assertDoesNotExist()
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(0, callbacks.newThreads)
+        assertEquals(0, callbacks.refreshes)
+        assertEquals(emptyList<String?>(), callbacks.locales)
+        assertEquals(0, callbacks.deletes)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun managementToggleExpandsAndCollapsesLocallyWithoutCallbacks() {
+        val uiState = mutableStateOf(state())
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks,
+            onContinueVoice = { id, revision -> callbacks.voiceContinuations += id to revision },
+            onContinueText = { id, revision -> callbacks.textContinuations += id to revision })
+
+        openManagement()
+        rule.onNodeWithTag("private-assistant-thread-list").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-new").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-refresh").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-locale").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-delete").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo()
+        captureBottomScreenshot("private-assistant-zh-large-management")
+        rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-text").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-voice").assertIsDisplayed()
+
+        rule.onNodeWithTag("private-assistant-manage-toggle").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag("private-assistant-thread-list").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-new").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-locale").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-delete").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-text").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-voice").assertIsDisplayed()
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.openedThreads)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(0, callbacks.newThreads)
+        assertEquals(0, callbacks.refreshes)
+        assertEquals(emptyList<String?>(), callbacks.locales)
+        assertEquals(0, callbacks.deletes)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun scopeChangeResetsManagementDisclosure() {
+        val uiState = mutableStateOf(state())
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        openManagement()
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo().assertIsDisplayed()
+        val current = uiState.value
+        uiState.value = current.copy(
+            accountId = "other-synthetic-account",
+            libraryId = "other-synthetic-library",
+            threads = current.threads?.copy(threads = current.threads!!.threads.map {
+                it.copy(libraryId = "other-synthetic-library")
+            }),
+            detail = current.detail?.copy(thread = current.detail!!.thread.copy(libraryId = "other-synthetic-library")),
+        )
+        rule.waitForIdle()
+
+        rule.onNodeWithTag("private-assistant-thread-list").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-current-summary").assertIsDisplayed()
+        rule.onNodeWithText("管理对话").assertIsDisplayed()
+        assertEquals(0, callbacks.newThreads)
+        assertEquals(0, callbacks.refreshes)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.openedThreads)
+        assertEquals(0, callbacks.sends)
+        assertEquals(0, callbacks.recoveries)
+        assertEquals(0, callbacks.deletes)
+    }
+
+    @Test
+    fun generationFenceResetsManagementAndDeleteConfirmation() {
+        val uiState = mutableStateOf(state())
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        openManagement()
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-delete").performScrollTo().performClick()
+        rule.onNodeWithTag("private-assistant-delete-ack").performClick()
+        rule.onNodeWithTag("private-assistant-delete-confirm").assertIsEnabled()
+
+        uiState.value = uiState.value.copy(generation = requireNotNull(uiState.value.generation) + 1)
+        rule.waitForIdle()
+
+        rule.onNodeWithTag("private-assistant-delete-dialog").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-thread-list").assertDoesNotExist()
+        assertEquals(0, callbacks.deletes)
+        openManagement()
+        rule.onNodeWithTag("private-assistant-delete").performScrollTo().performClick()
+        rule.onNodeWithTag("private-assistant-delete-confirm").assertIsNotEnabled()
+        assertEquals(0, callbacks.deletes)
+    }
+
+    @Test
+    fun generationFenceClearsAbandonConfirmationAcknowledgement() {
+        val uiState = mutableStateOf(state(draft = "保留草稿", pending = true))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, onAbandonPending = { _, _, _ -> callbacks.abandons++ })
+
+        rule.onNodeWithTag("private-assistant-abandon-pending").performScrollTo().performClick()
+        rule.onNodeWithTag("private-assistant-abandon-ack").performClick()
+        rule.onNodeWithTag("private-assistant-abandon-confirm").assertIsEnabled()
+        uiState.value = uiState.value.copy(generation = requireNotNull(uiState.value.generation) + 1)
+        rule.waitForIdle()
+
+        rule.onNodeWithTag("private-assistant-abandon-dialog").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-abandon-pending").performScrollTo().performClick()
+        rule.onNodeWithTag("private-assistant-abandon-confirm").assertIsNotEnabled()
+        assertEquals(0, callbacks.abandons)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun refreshRequiredHidesPotentiallyStaleDatesAndCounts() {
+        val uiState = mutableStateOf(state(historyRefreshRequired = true))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        rule.onNodeWithTag("private-assistant-refresh-needed").assertIsDisplayed()
+        rule.onNodeWithText("2 轮对话").assertDoesNotExist()
+        openManagement()
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("2026-10-10 08:00").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-exchange-0").performScrollTo().assertIsDisplayed()
+    }
+
     @Test
     fun chineseHistoryShowsPlainTextWithoutOpeningItemsOrStartingAudio() {
         val privateText = "保持原样：<img src=x onerror=alert(1)>"
@@ -201,6 +360,8 @@ class PrivateAssistantPanelUiTest {
         show(uiState, zh = true, callbacks)
 
         rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-current-summary").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-thread-list").assertDoesNotExist()
         rule.onNodeWithTag("private-assistant-exchange-0").assertIsDisplayed()
         rule.onNodeWithText("家庭相册里这句应保持纯文本：$privateText").assertIsDisplayed()
         rule.onNodeWithText("这段回复只显示为私人对话文字。").assertIsDisplayed()
@@ -224,6 +385,8 @@ class PrivateAssistantPanelUiTest {
 
         val composer = rule.onNodeWithTag("private-assistant-composer")
         composer.assertIsEnabled()
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-uncertain").performScrollTo().assertIsDisplayed()
         composer.performTextReplacement("编辑后的草稿")
         rule.waitForIdle()
         composer.assertTextContains("编辑后的草稿")
@@ -267,6 +430,7 @@ class PrivateAssistantPanelUiTest {
 
         assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
         assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        openManagement()
         rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().performClick()
         assertEquals(listOf(threadId to 2L), callbacks.openedThreads)
         assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
@@ -308,8 +472,10 @@ class PrivateAssistantPanelUiTest {
                 ))
             })
 
+        openManagement()
         rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
-        rule.onNodeWithText("旅行标签", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo()
+            .assertTextContains("旅行标签", substring = true)
         assertEquals(emptyList<Triple<String, Long, Long>>(), callbacks.olderPageReads)
         rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().performClick()
         assertEquals(listOf(threadId to 11L), callbacks.openedThreads)
@@ -348,8 +514,10 @@ class PrivateAssistantPanelUiTest {
             onContinueVoice = { id, revision -> callbacks.voiceContinuations += id to revision },
             onContinueText = { id, revision -> callbacks.textContinuations += id to revision })
 
+        openManagement()
         rule.onNodeWithTag("private-assistant-history-heading").assertIsDisplayed()
-        rule.onNodeWithText("旧照片问题", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo()
+            .assertTextContains("旧照片问题", substring = true)
         rule.onNodeWithTag("private-assistant-history-older").performScrollTo().assertIsEnabled()
         rule.onNodeWithTag("private-assistant-send").assertIsNotEnabled()
         rule.onNodeWithTag("private-assistant-continue-text").assertDoesNotExist()
@@ -409,6 +577,9 @@ class PrivateAssistantPanelUiTest {
         val callbacks = Callbacks()
         show(uiState, zh = true, callbacks)
 
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-pending-creation").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-retry-creation").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("private-assistant-new").performScrollTo().performClick()
         assertEquals(1, callbacks.reconciliations)
         assertEquals(0, callbacks.newThreads)
@@ -418,11 +589,29 @@ class PrivateAssistantPanelUiTest {
     }
 
     @Test
+    fun missingSelectedThreadKeepsManagementControlsVisible() {
+        val uiState = mutableStateOf(state().copy(detail = null))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        rule.onNodeWithTag("private-assistant-current-summary").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-thread-list").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-new").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-refresh").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().assertIsDisplayed()
+        assertEquals(0, callbacks.newThreads)
+        assertEquals(0, callbacks.refreshes)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.openedThreads)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
     fun localePickerOffersSystemChineseAndEnglishAndReportsOnlySelectedChoices() {
         val uiState = mutableStateOf(state())
         val callbacks = Callbacks()
         show(uiState, zh = true, callbacks)
 
+        openManagement()
         rule.onNodeWithTag("private-assistant-locale").performScrollTo()
         rule.onNodeWithText("回复语言").assertIsDisplayed()
         rule.onNodeWithText("跟随请求语言").assertIsDisplayed()
@@ -441,6 +630,7 @@ class PrivateAssistantPanelUiTest {
         val callbacks = Callbacks()
         show(uiState, zh = true, callbacks)
 
+        openManagement()
         rule.onNodeWithTag("private-assistant-delete").performScrollTo()
         rule.onNodeWithTag("private-assistant-delete").performClick()
         rule.onNodeWithText("删除这段对话？").assertIsDisplayed()
@@ -468,6 +658,13 @@ class PrivateAssistantPanelUiTest {
         rule.waitForIdle()
         rule.onNodeWithTag("private-assistant-composer").assertIsDisplayed()
         rule.onNodeWithTag("private-assistant-send").assertIsDisplayed()
+        rule.onNodeWithText("写下问题，发送前可以修改。").assertIsDisplayed()
+        uiState.value = uiState.value.copy(draft = "中".repeat(342))
+        rule.waitForIdle()
+        rule.onNodeWithText("内容太长，请缩短后发送。").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-send").assertIsNotEnabled()
+        uiState.value = uiState.value.copy(draft = "底部草稿")
+        rule.waitForIdle()
         val root = rule.onRoot().getBoundsInRoot()
         val action = rule.onNodeWithTag("private-assistant-send")
         val fullAction = action.getUnclippedBoundsInRoot()

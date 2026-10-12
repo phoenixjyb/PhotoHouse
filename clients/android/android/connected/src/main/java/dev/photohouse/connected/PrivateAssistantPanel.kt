@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -76,15 +78,33 @@ internal fun PrivateAssistantPanel(
     val controlsEnabled = historyReady && !state.busy && !pending && state.pendingCreationId == null && scopeAvailable
     val draftBytes = state.draft.toByteArray(Charsets.UTF_8).size
     val draftValid = state.draft.isNotBlank() && draftBytes in 1..1024
+    val detail = state.detail
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    var showDeleteDialog by remember(state.detail?.thread?.threadId) { mutableStateOf(false) }
-    var deleteAcknowledged by remember(state.detail?.thread?.threadId) { mutableStateOf(false) }
-    var deleteTarget by remember(state.detail?.thread?.threadId) { mutableStateOf<Pair<String, Long>?>(null) }
-    var showAbandonDialog by remember(state.pendingTurn?.requestId) { mutableStateOf(false) }
-    var abandonAcknowledged by remember(state.pendingTurn?.requestId) { mutableStateOf(false) }
+    var showDeleteDialog by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
+        mutableStateOf(false)
+    }
+    var deleteAcknowledged by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
+        mutableStateOf(false)
+    }
+    var deleteTarget by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
+        mutableStateOf<Pair<String, Long>?>(null)
+    }
+    var showAbandonDialog by remember(state.accountId, state.libraryId, state.generation, state.pendingTurn?.requestId) {
+        mutableStateOf(false)
+    }
+    var abandonAcknowledged by remember(state.accountId, state.libraryId, state.generation, state.pendingTurn?.requestId) {
+        mutableStateOf(false)
+    }
     var preservedPendingQuestion by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
     var preservedLocalDraft by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
+    var managementExpanded by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
+        mutableStateOf(detail == null)
+    }
+    val managementForcedOpen = detail == null || state.pendingCreationId != null || pending || state.uncertain ||
+        state.error != null || showDeleteDialog || showAbandonDialog || preservedPendingQuestion != null ||
+        preservedLocalDraft != null
+    val managementVisible = managementExpanded || managementForcedOpen
     val send: () -> Unit = {
         if (controlsEnabled && ready && state.continuationEnabled && draftValid) {
             keyboard?.hide()
@@ -118,6 +138,44 @@ internal fun PrivateAssistantPanel(
                 modifier = Modifier.testTag("private-assistant-retention"),
             )
 
+            if (detail != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("private-assistant-current-summary"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(t("Current conversation", "当前对话"), style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(detail.thread.label ?: t("Private conversation", "私人对话"),
+                                style = MaterialTheme.typography.bodyMedium)
+                            if (state.historyRefreshRequired) {
+                                Text(t("Refresh needed", "需要刷新记录"), style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.testTag("private-assistant-refresh-needed"))
+                            } else {
+                                Text(t("${detail.thread.exchangeCount} exchanges", "${detail.thread.exchangeCount} 轮对话"),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { managementExpanded = !managementExpanded },
+                            enabled = historyReady && !managementForcedOpen,
+                            modifier = Modifier.padding(end = 8.dp).heightIn(min = 48.dp)
+                                .semantics { stateDescription = if (managementVisible) t("Expanded", "已展开") else t("Collapsed", "已收起") }
+                                .testTag("private-assistant-manage-toggle"),
+                        ) {
+                            Text(if (managementVisible) t("Back to conversation", "返回对话")
+                                else t("Manage conversations", "管理对话"))
+                        }
+                    }
+                }
+            }
+
             when {
                 capabilities == null -> {
                     Text(t("Private conversations are not available yet. Check availability to continue.", "私人对话暂不可用。请检查当前状态后继续。"),
@@ -137,6 +195,7 @@ internal fun PrivateAssistantPanel(
                     if (!ready) Text(t("Search is temporarily unavailable. Your saved conversations are still readable.",
                         "检索暂不可用，仍可查看已保存的对话。"), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("private-assistant-search-unavailable"))
+                    if (managementVisible) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { if (state.pendingCreationId != null) onReconcileCreation?.invoke() else onNew() },
@@ -214,10 +273,12 @@ internal fun PrivateAssistantPanel(
                                         text = buildString {
                                             append(if (selected) "• " else "")
                                             append(thread.label ?: t("Conversation", "对话"))
-                                            append(" · ")
-                                            append(thread.exchangeCount)
-                                            append(t(" exchanges · ", " 轮 · "))
-                                            append(displayPrivateDate(thread.updatedAt))
+                                            if (!state.historyRefreshRequired) {
+                                                append(" · ")
+                                                append(thread.exchangeCount)
+                                                append(t(" exchanges · ", " 轮 · "))
+                                                append(displayPrivateDate(thread.updatedAt))
+                                            }
                                         },
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
@@ -228,15 +289,15 @@ internal fun PrivateAssistantPanel(
                         Text(t("No saved conversations in this library yet.", "此资料库中还没有保存的对话。"),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    }
 
-                    val detail = state.detail
                     if (detail != null) {
                         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(t("Conversation history", "对话记录"), style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.testTag("private-assistant-history-heading"))
-                            TextButton(
+                            if (managementVisible) TextButton(
                                 onClick = {
                                     deleteTarget = detail.thread.threadId to detail.thread.revision
                                     showDeleteDialog = true
@@ -274,7 +335,7 @@ internal fun PrivateAssistantPanel(
                             ) { Text(t("Reload history", "重新加载记录")) } }
                         } else if (detail.hasOlderExchanges) {
                             val before = detail.exchanges.firstOrNull()?.revision
-                            if (capabilities?.historyPaging == true && before != null && onLoadOlder != null) {
+                            if (capabilities.historyPaging && before != null && onLoadOlder != null) {
                                 OutlinedButton(onClick = { onLoadOlder(detail.thread.threadId, detail.thread.revision, before) },
                                     enabled = !state.busy && !pending && state.pendingCreationId == null,
                                     modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-older")) {
@@ -292,7 +353,8 @@ internal fun PrivateAssistantPanel(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                                 ) {
                                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(displayPrivateDate(exchange.createdAt), style = MaterialTheme.typography.labelSmall,
+                                        if (!state.historyRefreshRequired) Text(displayPrivateDate(exchange.createdAt),
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Text(t("You", "你"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                         Text(exchange.inputText, style = MaterialTheme.typography.bodyLarge)
@@ -360,6 +422,7 @@ internal fun PrivateAssistantPanel(
                                 style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("private-assistant-error"))
                         }
 
+                        if (managementVisible) {
                         val localeSupported = capabilities.preferences && capabilities.preferencesApplied &&
                             "locale" in capabilities.appliedPreferences &&
                             state.unsupportedPreferences.contains(AssistantWorkspacePreference.LOCALE).not()
@@ -382,6 +445,7 @@ internal fun PrivateAssistantPanel(
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.testTag("private-assistant-unsupported-preferences"),
                         )
+                        }
 
                         val currentTurnState = state.currentTurn?.status
                         if (currentTurnState == AssistantWorkspaceRequestStatus.FAILED || currentTurnState == AssistantWorkspaceRequestStatus.INTERRUPTED) {
@@ -404,7 +468,15 @@ internal fun PrivateAssistantPanel(
                             enabled = ready && scopeAvailable && !state.busy,
                             modifier = Modifier.fillMaxWidth().testTag("private-assistant-composer"),
                             label = { Text(t("Your message", "输入消息")) },
-                            supportingText = { Text(t("${draftBytes}/1024 UTF-8 bytes", "${draftBytes}/1024 UTF-8 字节")) },
+                            supportingText = {
+                                Text(
+                                    if (draftBytes > 1024) {
+                                        t("Message is too long. Shorten it before sending.", "内容太长，请缩短后发送。")
+                                    } else {
+                                        t("Write your question; you can edit it before sending.", "写下问题，发送前可以修改。")
+                                    },
+                                )
+                            },
                             minLines = if (compact) 2 else 3,
                             maxLines = 7,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
