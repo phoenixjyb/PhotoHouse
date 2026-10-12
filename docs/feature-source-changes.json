@@ -11624,6 +11624,77 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone saved memoir edit with scoped revision and exact retry",
+      "source_commit": "136a036cf7627b84e219053d318dd9cb7e7d6027",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookCompositionUiTest.kt",
+          "before_sha256": "82352f10de0c167e3bc03d832c0b84ad84585c28c03b2fabcdd7c476d0f872a5",
+          "sha256": "929f58c0f4faed100a9fda39ac8a03987d490ba076716bdbaeb74fb09c9f8ef4"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBookComposerPanel.kt",
+          "before_sha256": "a9301a79dab3034afb88e2c0cd18f803ac31c8eed44d65a22044a9f02cccca38",
+          "sha256": "deed501189c88e12bdd191b430ce361513419ac971e031e200ce47dbbf8bb9c2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "6b8e268bd5f0354da493c132facb9341f00d9d1f112e40ec744bf4bded786aa4",
+          "sha256": "ce3abab459c4e3b21180221ffb298f4560417c5b4b9404ae824d825a88a6bc66"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "e1b38d11965adca607c11748c0dd8394131b3db7848563a5a6d2b2f2f2bf042b",
+          "sha256": "8f115240487235aa31e641dc2de880d34b045c882e2cebbdd7234156dcd0b2be"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/MemoryBookCompositionStore.kt",
+          "before_sha256": "b604dcd8c7750864afa4e3e7464e2626f4fc0427e750c86962049b94d79aa774",
+          "sha256": "21b0a5ae624f1c4a04eb40f365a8a570fc726e8bd882a77069c242f1edacdb38"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryBookCompositionStoreTest.kt",
+          "before_sha256": "ca4504e3ac49b0831d5a973a0c5d46b2d065e8761fafdef641a643ced144d2f5",
+          "sha256": "d468303d15e088293d4892bd295d80e5824621f4803747fedbaf927c6f166b94"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityStoreTest.kt",
+          "before_sha256": "f667302997f68c91160fb7b415ed0d431354942d65c27a4452529e7302adb12c",
+          "sha256": "d5863b4045cf3484085a1132cd9857d75f65fa26c0e5a5df5cef1ab5fed3fa62"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "4e172d4fc2a85deb652c4f626436715fe710d49211c6e07f02fb6f9006b8cef1",
+          "sha256": "66c9d334983480cf87638ba26867245c733f8965996a274fce6a738204cdcfe0"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "ddc888502f2ecf7369bfdefe8a80fad7eaf2c5f812db93dfce6d6a082ad4ef11",
+          "sha256": "15b67de1d00606584717e88e188f22a38dedf8b66e5e2752c307785d1dddc42d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ffd125ad422ac22a03854264814f6a41b11ddbc49a699b3d88a2cb287a99799d",
+          "sha256": "05c51dcbe932507c4481407229d379488b26f6d1a36b84227c15312e7a4327ab"
+        },
+        {
+          "path": "docs/PHONE_MEMOIR_COMPOSITION.md",
+          "before_sha256": "15a58842c8b831a7512b0681380c341c7bb094ecc8b3834220aef19795fa51f6",
+          "sha256": "b91e6e0fd76e7e5f0709cf592d07685fdd60a9079a2a4082b65c8fcbbd8a1ae6"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2b94c8b3b3b9ce6e9525fb8789c9198d9ef47aa45db31593b06d921cccbb6b38",
+          "sha256": "eccc7e3a8ff31a420658b41953490b34b9024abe7208801b50b631a46281dd09"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
