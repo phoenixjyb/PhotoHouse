@@ -12850,6 +12850,143 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "negotiated-private-saved-memory-cards-20261013",
+      "source_commit": "f9ae4a83b5e178bb96f0fbe78926f6cdf39823ef",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "0000a667be64f49f7c04c1ab1fd57e36a4fb57d8393827b2bef5e6d952dac3d8"
+        },
+        {
+          "path": "docs/ASSISTANT_SAVED_MEMORY_CARDS_V1.md",
+          "sha256": "6c327ee316f2358e0bb58607f5d4b4a32bb7fa9b26c9f7d3f07c91daf44e077b"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "0b97d1da845284231f776988ad138b725b75add7fb403118fd4159973dcc444e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "678a45d529b5479d287e52a9f42f1e6faa09a5509a0735f43b3ef80fc2772008"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "sha256": "e997b8cc3550f100aea698a1f59fd63b29e7346075f98e74fd0970a8efa6d3af"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "04751fea9531142179cbc645d61c293e128882738496a8208b39383e97e2deba"
+        },
+        {
+          "path": "server/backend/app/access/assistant_memory_discovery.py",
+          "sha256": "8b25842cb399444113e4d6f15cb96a029140b7f5dc442dd2a9effa36aa527ebb"
+        },
+        {
+          "path": "server/backend/app/access/assistant_memory_intent.py",
+          "sha256": "35180bed15a1c0dfd0cdb77aedcac976c81f5b061c50ce2bae4f2971d40a23c1"
+        },
+        {
+          "path": "server/backend/app/access/assistant_saved_memory_tool.py",
+          "sha256": "98d0543c9f33a68e54de20040d7b27a95ccc6078c0ab13b7c38cd247935592bd"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "sha256": "aa989677da69a2d51fbff64305ef4304ddd886b5aa7f7f10ef3ababa754be50d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "5e6e1b87d22a255a681b97b7df0a0050eb66aa067e10b2f03c63d43b63fe58d6"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "e85619f3f2bf0bbe1048080acc5c19057b6dbf04eec8a9ccef0494c2e89b4236"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "c9550f703af1c3f21939ad5df9e2c2558e9a7d463b58cbad2d3b03083ce15b39"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "sha256": "00dbd8447ff0e78c2b4f7c1c59999bee6e273812711d18b26fb75e2c5443ee43"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "5eb49918cfc20b7707bda485bfc18f85615b51a4f4c26b887d3736969960b17a"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "7ee1445aba51d6f25672d0f3ac890e973ebc2eb517b81b1e37d2dd9e3152e3e0"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "sha256": "515410001e93320508ab90b9d09f1e8c976bc9d79ac7f5302ae3aeec94a3a247"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "be55bf2a8734e766a39644cd7490b682fd2cdad6459855fceced2b329d83faf1"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "f571a857f973a99eecac66eea8efe726a2bd8f60411975c901d37d467ec7b916"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "sha256": "82fd978835ebf98a62c7a65a067a74d6238038156f131f23e887ce1668f9fb0c"
+        },
+        {
+          "path": "server/tests/security/assistant_saved_memory_browser_bridge.py",
+          "sha256": "a78e66b6a8ce6074abfc03c2987935f393a0ec3046c14913a0a95a2f16f54e12"
+        },
+        {
+          "path": "server/tests/security/test_assistant_memory_discovery.py",
+          "sha256": "998b4e7175ce9260b1aae5ea1c52a03def95fedb6cc954c0b97948a8c421ceb2"
+        },
+        {
+          "path": "server/tests/security/test_assistant_memory_intent.py",
+          "sha256": "13434b92659fa9d71e4fca231c5de2c90638ffed96718a4300cb25abbcaba151"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "sha256": "a3e727e212d2300fd7e5bf50087a5e9cda1c41144bc9cb325d33d6c553f3bc9f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_http.py",
+          "sha256": "ea64689c5218a93cd4cbbe7315cd7957e9c1a02e17791352b5eda00bf5e90968"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_tool.py",
+          "sha256": "0de1fa233ab85ed0cabed8d5e2ecd8b334d5a6bb1fa97bcdb2be84232bd9220d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_store.py",
+          "sha256": "782f66e3463c9aeb20d729722c0526bd66211226e103b28ceee39f87f97a79fd"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "757135db2e0d6a8a30fc92caaaeddb79ec5c5de5c7624a3057e7f0f514caea7e"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "sha256": "62800235c96c21b51e40636fa9f683a7c04e6ea3a0a60e1ce74215510ebd9093"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "0a2e31eb572ac8851763a7669aa5af2797ed42bcf317796d2f2484da39168e0f"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "sha256": "f606965cb1f6eaaa3a9d8574c0a5585e1ed57f49bac431b4dfaf3a25393c213c"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "1ebcfef6d7610fa0225a623521057f5293eab9f6ab36dc628e8d0eabca9b0962"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
