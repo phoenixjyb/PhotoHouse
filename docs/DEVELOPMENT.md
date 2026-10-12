@@ -1880,3 +1880,15 @@ Qualification review also moved application/database imports into the bounded
 Windows child. Six portable tests and two subtests passed, including a fresh
 process import check that the supervisor does not load those dependencies.
 See [native qualification and identity](PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md).
+
+## October 13 saved-memory discovery foundation
+
+Fifteen generated service checks passed for literal saved-text discovery,
+library access, bounded immutable references, Unicode case folding, source
+withdrawal, child/source revision changes, duplicate pages, scan budgets and
+concurrent database commits. The focused checks are included in the ordinary
+API profile. No real media or model service was used.
+
+This is an internal foundation: saved-story/memoir retrieval is not exposed in
+the assistant UI or current Windows package. Typed cards, negotiated transport,
+reviewed reader handoff and family acceptance remain outstanding.

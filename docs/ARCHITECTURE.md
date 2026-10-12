@@ -489,3 +489,26 @@ speak help and pause for review. Recovery never triggers speech or navigation.
 Client scope/cancellation fences discard late audio. This source flag does not
 activate the Windows provider or private database, and retains v1 count speech
 when the new capability is absent.
+
+## Saved memory retrieval foundation
+
+`assistant_memory_discovery.py` is an internal, read-only service over the
+existing authorized saved-story and memoir readers. Literal, case-insensitive
+queries match saved titles, chapter narration and memoir openings. It returns
+up to 12 immutable references with a bounded excerpt, editorial revision and a
+separate source revision. A memoir source revision binds its ordered current
+child stories and their source snapshots; changing a child does not require an
+artificial parent edit to invalidate the reference.
+
+The scan refuses incomplete discovery above 256 combined candidates. Existing
+domain readers filter inaccessible media before paging and reauthorize details;
+duplicate identities or a concurrent database commit during the multi-page scan
+refuse the result. The `data_version` guard detects drift across the readers'
+separate transactions; it is not a persistent snapshot or permission to open a
+later reference without revalidation.
+
+This service has no HTTP route, assistant intent, client card or stored context
+yet. A later negotiated typed-card contract must keep story/memoir identities
+separate from media IDs, bind current source revisions and require an explicit
+reader handoff. Recovered history remains non-actionable. No inference,
+automatic story mutation or background propagation is performed.

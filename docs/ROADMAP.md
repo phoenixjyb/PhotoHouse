@@ -590,3 +590,8 @@ activating them for family material.
    inference, family mutations and collaborative edits behind explicit review.
 5. Collect family feedback on voice continuity, pronunciation, retrieval and
    history clarity before broadening agent autonomy.
+
+The saved-story/memoir discovery foundation now has scoped source tests. Its
+next delivery slice is a negotiated typed-card transport and central workspace
+presentation, followed by revision-bound explicit reader navigation. It has no
+user-facing route or live activation yet.
