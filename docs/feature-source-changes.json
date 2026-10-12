@@ -13110,6 +13110,23 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "overnight-source-and-delivery-handoff-20261013",
+      "source_commit": "5009ff0f8e265ee087fc21b12d2f908e5eeb6376",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "e6fa7aa58ce01f9f1234365acd7e3379866dc59df9aea846e7eaf402e0d195c2"
+        },
+        {
+          "path": "docs/NEXT_SESSION_2026-10-13.md",
+          "sha256": "dbf619471234ff231a8200df323357d93e589ceb0151a19a9b8310beeb179a02"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
