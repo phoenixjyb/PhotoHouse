@@ -11716,6 +11716,204 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Approved personal assistant workspace and foreground voice foundation",
+      "source_commit": "3f5e71fb9b1667f6ea87a02416579832a89d064c",
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "before_sha256": "13cb12ca7bbaa998d751ab3bcdd05089dfbbf73f031e8620300f883e04f179de",
+          "sha256": "0d0d4e1761c290e58e29026aee697d62bce769a757c10e3c22ce50a20f3aeebd"
+        },
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "cbfc61e22c5ddb2d2e67da4417996e8b420ded27d517ea0c107390449f72c967",
+          "sha256": "a0186ef50eae299e1cfc2b962097638937fb5d43f2a6ffb7c5ee735b834a5ddf"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantConversationNavigationUiTest.kt",
+          "before_sha256": "5cf1e1e7495f5ff0f063219a83570271d46fe8934a6a7057f43a7ed689dd9068",
+          "sha256": "1cf8096d3da88180f3fefbb415dd9d78ee8ab3d75f78011adf00c9611347b989"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "before_sha256": "1fad28714262834930163321347d7e671bf60cb6b4a45545f337ab0becbb074b",
+          "sha256": "4a6750ed57bf59b253593fffc94a13c4ae4dcad4c6144212fda7e56a2f407cb5"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": null,
+          "sha256": "90812ef13a7b099f095a7c5bb9142207c13a0e49ac5256dfe5f7b4b89b5846be"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "cbfce3c982424ef7b1c71a52e5d8ac60ca4957f5ed7e37668a93f7f9a3454f90",
+          "sha256": "bab42f01ea8b3ee879968ba17ed47a2d66b114f66572824a155dedfc5784e378"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AndroidAssistantVoicePlatform.kt",
+          "before_sha256": null,
+          "sha256": "6eca393946017939ac0b94d2379593c60da6d3c51db2b95ae6ac815342529d3c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AnnotationAudioRecorder.kt",
+          "before_sha256": "4dd2c40a183930a23a4b707275451af288ae3620d5698d9e10eb398e4802f234",
+          "sha256": "a212006f23a0e6626a0ce278fef72d8e3e763f1f46c75ae70082799e4f1b9b7b"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "bc0d19c2018a61b3320a0b3ad4bb56889f90f8a006e57e9e9a184948e8c8908f",
+          "sha256": "c957b7f920bf8f6a0b64abe8cb91550903a81285941f974fa32053f04517fdf0"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": null,
+          "sha256": "07402a7ed16b79ff891556eb8cad69c1d88dfd8d12ef02314ef35ceeb48a667c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": null,
+          "sha256": "94608d2d52e57e0c2b210f6831efee9d4f4d908bbc9c3972040a50ce48cbc461"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "54bcda3cb0b896012322dc36ecc06b93f4e072d1231400f00e9e6ed9ffb10c42",
+          "sha256": "088eca08012e018e0eeb21eb566ef1b1a175c7448a461071592ba1aed5e30deb"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "before_sha256": null,
+          "sha256": "f506ba50e7d4c7244bd53bf50ac131f17e890656ced654b76eebdde5537bd848"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "8f115240487235aa31e641dc2de880d34b045c882e2cebbdd7234156dcd0b2be",
+          "sha256": "29db11e1c4fc479494f3c3291b873768e1efa7642f0ebbae888674ca7055f034"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceEndpointDetector.kt",
+          "before_sha256": null,
+          "sha256": "a768887e5311130abcc5ab6a89e5da68d1c99372931b31dbf3f8dc45e0de75a2"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionController.kt",
+          "before_sha256": null,
+          "sha256": "02010af8833bde7ce47405434f4ba70e2413d3ebf5dcdabb598ac135dbfbdb35"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "59450ea15547405b7da4376105184658d026d99cb99ee1264511d3ef1de2ef32"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "before_sha256": "f9e6304784fda3b2d4d2b53d390f643216c9d0d44d48bfd68bb2f77424edb101",
+          "sha256": "0e65bf86035fc14ceb72ae73a90cdc16e69b246c0b9781be0cf71f49ee9b54a8"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceEndpointDetectorTest.kt",
+          "before_sha256": null,
+          "sha256": "1e4b4990d029abf75eb3ccffc62d7ff1ff6aacde23644696f1df43f524d7e1bb"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceSessionControllerTest.kt",
+          "before_sha256": null,
+          "sha256": "ad4d45fecbfa2cb4396b6073c4519bfb3cdf2b96e733132d51c27719461e6b6a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V48_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "85340ca024d12275060bb4e2187fe5e56f52dc8d7b7a6b48d2f66ce833ee888a",
+          "sha256": "32252322e43c69ffef3556b0645f41e2715ad4e77535987d187b992a659dbf64"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V49_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": null,
+          "sha256": "7ca53c10dba6b2290545282ae91840532fd7c08d2ac24b6463b87bd024c6224b"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "66c9d334983480cf87638ba26867245c733f8965996a274fce6a738204cdcfe0",
+          "sha256": "0ea346ea083190e796c4a1645ea2918901ca8e21f6803a2411dbf447bae776e0"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "15b67de1d00606584717e88e188f22a38dedf8b66e5e2752c307785d1dddc42d",
+          "sha256": "9d288bc9eeb5fe902249a48f89f6f606f301aa6eb4cf4b2d45f4c18d00b06987"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "05c51dcbe932507c4481407229d379488b26f6d1a36b84227c15312e7a4327ab",
+          "sha256": "aa50ff0520063a721bf35c7f60583e3da25492a393b21b058961a226a119591c"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "before_sha256": null,
+          "sha256": "dab354e5ca5f09dc6e729eea96c001edbda79cc0bc3c5d32a498668d15eb75bb"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "eccc7e3a8ff31a420658b41953490b34b9024abe7208801b50b631a46281dd09",
+          "sha256": "a9da251093bf29b2b91ad2b5796638e3b8099db6e2e0538f7856affc49b1fe1d"
+        },
+        {
+          "path": "docs/assistant-design/prototype.html",
+          "before_sha256": null,
+          "sha256": "1207657876c6aeadd1e4e998f371c005af294f559090dd08b9e3730507906b4e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": null,
+          "sha256": "b61c25e587facdfa697df15182a30dd9b659943bfdfe05b8d93da6e411e854a9"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "2a2ebca22e9fd26f5cf43cfd5e053f03df6168c060a79e54877468da44e4a3f4",
+          "sha256": "f513eb4d6121bd289d9d0e0e8013cf451d5ea9b8e9988c5e66ea0c3c0c004ac7"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "cfcb8a060bf6106566695ff18f8d2f8d436a16bb2dce7d79b23fff9a72feb283",
+          "sha256": "56da2e51d774934e52cc613fd89ab6b15f6e12836746d4d3959bc8abdf7aa4f6"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "f0b798b92067ad545c83e317805ed2365a3865835f121f508e501112967b04b7",
+          "sha256": "40dcae251c4bf77fe69adcd61db590bf183a5c1b38ec53d6efa0276c9c1b7918"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": null,
+          "sha256": "c677410d5fcd7cfc0ea578d61e71fbd2f598e130a46749de4a9dc1eb41c950a7"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_store.py",
+          "before_sha256": null,
+          "sha256": "33e49760f9411ee85b1ec688160c59a6072ed099f1905f785f36a0f218a20278"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "6814d94384c74e1c438c95d458d9f07eeb087f6af19773d0fd6e4df8808c87c2",
+          "sha256": "ee207f42e9b4eeb3d72bce19ac07d0c25d0e02682750b2308a3725e08c451378"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "0e8987a17be4da902070b437f1ae8342af81b92a020e2dbcef3e48b332edfed4",
+          "sha256": "da6a4bdf66ec3eaede4e5923b083cd7c0d09b5c217efecb338514d445ab8ff00"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "279ded4065614b6d93dee5eef6de0c4ad6f53558d527171ae49ac1f2373085cd",
+          "sha256": "4fade386adb32720e5b89b3a3c01dad71fc96e3956ab76ceab40d421fa72c7db"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "isolated_store_schema_added": true,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false,
+      "boundary": "The private thread store is inactive; the main API schema is unchanged. The v48 document records an earlier delivery; v49 and Web are candidates."
     }
   ]
 }
