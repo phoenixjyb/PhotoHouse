@@ -1736,3 +1736,35 @@ Phone includes private text/history beside its current v1 continuous voice
 screen. Unifying continuous voice with private turns is the next integration
 slice. No APK signing/publication, Windows store creation/upgrade, API restart,
 provider execution or production data change is part of this qualification.
+
+## October 13 private voice and uncertainty recovery
+
+The [private voice contract](PRIVATE_ASSISTANT_VOICE_V1.md) now connects the
+phone's central text/voice workspace to an explicitly selected owned thread.
+“继续聊天” starts no microphone; “在这个对话中语音聊” starts the approved
+foreground driver once. Pause/End cancel only the exact local wait, preserve
+its immutable identity and question, and fence late completion. Recovered
+responses pause before speech, navigation or further capture. Thread changes,
+capability loss and denied access clear or stop the affected private presentation.
+The unselected ordinary assistant remains v1.
+
+Web now explains explicit abandonment, preserves the question and draft, and
+permits a same-ID creation retry only after an exact GET reports absence.
+Neither action resends a submitted turn. Phone has equivalent reviewed controls
+and separate creation status/retry actions; terminal failures retain their
+question for explicit review and conversation re-entry.
+
+Local evidence: **887 Android core tests** passed; debug APK/test APK assembly
+and debug lint passed; the final private-panel simulator cohort passed
+**9 tests** on the reused Android 36 AVD. The earlier eight-test UI run also
+passed before typed continuation was added. **20 Web controller tests** and
+**12 synthetic browser checkpoints** passed, including POSTs lost before server
+receipt, exact GET 404s, preserved drafts and deliberate same-ID creation retry.
+Root inspected the large-text phone and narrow Web renders. The final scoped
+core rerun rechecks private voice after bounding the central history buffer.
+These synthetic tests use no household media, model inference or live database.
+
+No new phone version is signed/published, no Windows private store is created or
+upgraded, and no Windows service changes. Phone v50 and TV v30 remain the latest
+verified published packages. Rich spoken answers and story/album/memoir agent
+tools remain follow-up work; current speech reads grounded result counts.

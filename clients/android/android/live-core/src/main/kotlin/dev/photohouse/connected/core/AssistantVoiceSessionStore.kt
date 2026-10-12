@@ -142,7 +142,7 @@ class AssistantVoiceSessionStore(
         val live = store.state.value
         val assistant = live.assistant ?: return false
         val capabilities = assistant.capabilities ?: return false
-        return scopeMatches(live) && !live.busy &&
+        return scopeMatches(live) && store.privateAssistantConversationAvailable() && !live.busy &&
             assistant.library == voiceScope.libraryId && assistant.generation == voiceScope.appGeneration &&
             capabilities.enabled && capabilities.text && capabilities.transcribe && capabilities.speech &&
             capabilities.maxAudioSeconds in 1..30 &&
@@ -155,7 +155,7 @@ class AssistantVoiceSessionStore(
             live.session?.account_id == voiceScope.accountId && live.library == voiceScope.libraryId &&
             live.assistant?.let { it.library == voiceScope.libraryId && it.generation == voiceScope.appGeneration } == true
 
-    private fun supportsVoice(live: LiveState): Boolean = live.assistant?.capabilities?.let {
+    private fun supportsVoice(live: LiveState): Boolean = store.privateAssistantConversationAvailable() && live.assistant?.capabilities?.let {
         it.enabled && it.text && it.transcribe && it.speech && it.maxAudioSeconds in 1..30
     } == true
 
@@ -274,7 +274,7 @@ class AssistantVoiceSessionStore(
         val assistant = result?.assistant
         val exchange = assistant?.turns?.firstOrNull { it.localRequestId == requestId }
         if (exchange == null) {
-            val receiptStatus = assistant?.receiptDetail?.status ?: assistant?.lastRequestReceipt?.status
+            val receiptStatus = assistant?.privateRequestStatus ?: assistant?.receiptDetail?.status ?: assistant?.lastRequestReceipt?.status
             val receipt = if (receiptStatus in setOf("failed", "interrupted")) VoiceRequestReceipt.CONFIRMED_FAILURE
                 else VoiceRequestReceipt.UNCERTAIN
             completeRequest(binding, VoiceAssistantReply("", receipt))
@@ -282,6 +282,7 @@ class AssistantVoiceSessionStore(
         }
         ownedTurnRequestId = null
         val turn = exchange.turn
+        if (turn.recovered) { reviewCompletedRequest(binding); return }
         if (turn.kind == "open" && turn.effect?.type == "open_asset") {
             val asset = turn.items.singleOrNull()?.takeIf {
                 it.id == turn.effect.assetId && turn.total == 1 && !turn.hasMore

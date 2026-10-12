@@ -17,6 +17,8 @@ data class AssistantTurn(
     val total: Int,
     val hasMore: Boolean,
     val effect: AssistantEffect?, val receipt: AssistantRequestReceipt? = null,
+    /** Local recovery marker; never accepted as an extra wire field. */
+    val recovered: Boolean = false,
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,

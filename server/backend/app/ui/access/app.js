@@ -4,7 +4,7 @@
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null};
   let storyWorkspace, memoryCommunity, memoryGroups;
-  let privateAssistant=null,privateAssistantBusy=false;
+  let privateAssistant=null,privateAssistantBusy=false,privateCreationRetryId=null;
   let memoryGroupGalleryItems=[];
   const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechUrl:null,voicePlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
   const assistantRecoveryKey='photohouse.assistant.turn-recovery.v1',assistantRecoveryMaxChars=512;
@@ -17,6 +17,8 @@
   Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近 20 轮对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
   Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing the latest 20 exchanges.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
   const t = key => words[state.language][key] || key;
+  Object.assign(words.zh,{assistantPrivateAbandon:'结束等待，开始新对话',assistantPrivateAbandonHelp:'服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。',assistantPrivateAbandonYes:'我了解，开始新对话',assistantPrivateRetryCreation:'重试创建同一个对话'});
+  Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
   Object.assign(words.en,{libraryTools:'Explore this library'});
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
   Object.assign(words.en,{assistantTitle:'PhotoHouse Memory Assistant',assistantHelp:'Search this library only. Add details to refine; matching photos are shown before you open one. Recognized text, submitted commands, and processing status are kept for 30 days. Recordings are transient. This is separate from saved family notes.',assistantPrompt:'What would you like to find?',assistantSend:'Find',assistantClear:'Clear',assistantCancel:'Cancel request',assistantCancelled:'Request canceled.',assistantWorking:'Looking in this library…',assistantError:'The assistant could not complete that request. Try again.',assistantDenied:'Your access could not be confirmed. Sign in again or contact the library owner.',assistantConflict:'The library changed. Clear this search and try again.',assistantLimited:'Too many requests. Please wait and try again.',assistantUnavailable:'The assistant is temporarily unavailable. Please try again later.',assistantInvalid:'The reply could not be safely displayed. Please try again.',assistantNoResults:'No matching photos were found.',assistantOpen:'Open photo',assistantUnsupported:'This request is not supported yet.'});
@@ -465,6 +467,7 @@
     closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
     state.generation++;
     privateAssistantBusy=false;
+    privateCreationRetryId=null;
     privateAssistant?.state();
     if(assistantState.pendingTurn||assistantState.busy)resetAssistant();
     else if(assistantState.captureAttempt||assistantState.captureStarting||assistantState.capture||assistantState.transcribing||assistantState.transcriptionController||assistantState.transcriptReviewPending)resetAssistant({clearText:false});
@@ -631,8 +634,9 @@
     $('assistant-play').disabled=sessionOwnsVoice;
     const voiceStatus={idle:'assistantVoiceReady',listening:'assistantVoiceListening',transcribing:'assistantVoiceTranscribing',requesting:'assistantVoiceWorking',speaking:'assistantVoiceSpeaking',paused:session.reason||'assistantVoiceReview'};
     $('assistant-voice-session-status').textContent=t(voiceStatus[session.phase]||'assistantVoiceReady');
-    $('assistant-clear').disabled=state.locked;
-    $('assistant-clear').textContent=recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
+    const privateMode=privateAssistant?.state().capabilities?.server_owned_turns===true;
+    $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
+    $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
     $('assistant-cancel').hidden=!assistantState.busy;
     if(assistantState.pendingTurn)renderAssistantPending();
   }
@@ -1039,6 +1043,13 @@
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
     $('assistant-private-recover').hidden=!snapshot.pendingTurn;
     $('assistant-private-reconcile').hidden=!snapshot.pendingCreation;
+    $('assistant-private-abandon').hidden=!snapshot.pendingTurn;
+    $('assistant-private-abandon').disabled=privateAssistantBusy;
+    if(!snapshot.pendingTurn||$('assistant-private-abandon-confirm').dataset.requestId!==snapshot.pendingTurn.request_id)$('assistant-private-abandon-confirm').hidden=true;
+    $('assistant-private-abandon-yes').disabled=privateAssistantBusy;
+    if(snapshot.pendingCreation?.thread_id!==privateCreationRetryId)privateCreationRetryId=null;
+    $('assistant-private-retry-creation').hidden=!privateCreationRetryId;
+    $('assistant-private-retry-creation').disabled=privateAssistantBusy;
     $('assistant-private-recover').disabled=privateAssistantBusy;
     $('assistant-private-reconcile').disabled=privateAssistantBusy;
     $('assistant-private-delete').hidden=!selected;
@@ -1053,8 +1064,9 @@
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');}
   }
 
-  async function privateAssistantAction(action){
-    if(!privateAssistant||privateAssistantBusy||state.locked||assistantState.voiceSession.phase!=='idle')return;
+  async function privateAssistantAction(action,{allowPaused=false}={}){
+    const phase=assistantState.voiceSession.phase;
+    if(!privateAssistant||privateAssistantBusy||state.locked||(phase!=='idle'&&!(allowPaused&&phase==='paused')))return;
     const epoch=state.generation;privateAssistantBusy=true;renderPrivateAssistant(privateAssistant.state());
     try{await action();if(!stale(epoch))$('assistant-private-status').textContent=t('assistantPrivateReady');}
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantPrivateFailed');}
@@ -3013,7 +3025,29 @@
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));
   $('assistant-private-select').addEventListener('change',()=>void readPrivateAssistant($('assistant-private-select').value));
   $('assistant-private-recover').addEventListener('click',()=>void recoverPrivateAssistant());
-  $('assistant-private-reconcile').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.reconcileCreation()));
+  $('assistant-private-reconcile').addEventListener('click',()=>void privateAssistantAction(async()=>{
+    const id=privateAssistant.state().pendingCreation?.thread_id;
+    try{await privateAssistant.reconcileCreation();privateCreationRetryId=null;}
+    catch(error){if(error.status===404&&privateAssistant.state().pendingCreation?.thread_id===id)privateCreationRetryId=id;throw error;}
+  },{allowPaused:true}));
+  $('assistant-private-retry-creation').addEventListener('click',()=>{
+    endAssistantVoice();void privateAssistantAction(async()=>{
+    if(!privateCreationRetryId||privateAssistant.state().pendingCreation?.thread_id!==privateCreationRetryId)return;
+    await privateAssistant.create({retry:true});privateCreationRetryId=null;clearPrivateView();await privateAssistant.list();
+  });});
+  $('assistant-private-abandon').addEventListener('click',()=>{
+    const pending=privateAssistant?.state().pendingTurn;if(!pending||privateAssistantBusy||state.locked)return;
+    $('assistant-private-abandon-confirm').dataset.requestId=pending.request_id;
+    $('assistant-private-abandon-confirm').hidden=false;$('assistant-private-abandon-yes').focus();
+  });
+  $('assistant-private-abandon-no').addEventListener('click',()=>{$('assistant-private-abandon-confirm').hidden=true;$('assistant-private-abandon').focus();});
+  $('assistant-private-abandon-yes').addEventListener('click',()=>{
+    const pending=privateAssistant?.state().pendingTurn;
+    if(!pending||privateAssistantBusy||state.locked||$('assistant-private-abandon-confirm').dataset.requestId!==pending.request_id)return;
+    endAssistantVoice();
+    void privateAssistantAction(async()=>{const draft=privateAssistant.abandonPending();$('assistant-text').value=draft;
+      $('assistant-private-abandon-confirm').hidden=true;await privateAssistant.create();clearPrivateView();await privateAssistant.list();});
+  });
   $('assistant-private-locale').addEventListener('change',()=>void privateAssistantAction(()=>privateAssistant.updatePreferences({locale:$('assistant-private-locale').value||null})));
   $('assistant-private-delete').addEventListener('click',()=>{$('assistant-private-delete-confirm').hidden=false;$('assistant-private-delete-confirm').focus();});
   $('assistant-private-delete-confirm').addEventListener('click',()=>void privateAssistantAction(async()=>{await privateAssistant.delete();clearPrivateView();await privateAssistant.list();}));

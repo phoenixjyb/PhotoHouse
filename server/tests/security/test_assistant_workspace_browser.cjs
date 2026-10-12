@@ -16,7 +16,7 @@ createInterface({input:bridge.stdout}).on('line',line=>{const result=JSON.parse(
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Browser bridge exited (${code})`));for(const call of pendingRpc.values())call.reject(new Error('Browser bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pendingRpc.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const browserRequests=[],pageErrors=[],checkpoints=[],blockedOrigins=[];
-let loseNextTurn=false,holdNextTurn=null,releaseHeldTurn=null;
+let loseNextTurn=false,loseNextTurnBeforeServer=false,loseNextCreationBeforeServer=false,holdNextTurn=null,releaseHeldTurn=null;
 function gateTurn(){let arrive,release;const seen=new Promise(resolve=>{arrive=resolve;});const released=new Promise(resolve=>{release=resolve;});releaseHeldTurn=release;holdNextTurn={arrive,released};return {seen,release:()=>{releaseHeldTurn=null;release();}};}
 function checkpoint(text){checkpoints.push(text);console.log('PASS '+text);}
 function body(response){return JSON.parse(Buffer.from(response.body,'base64').toString());}
@@ -25,8 +25,15 @@ async function installSyntheticTransport(targetContext){
   await targetContext.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){blockedOrigins.push(url.origin);await route.abort();return;}
-    const entry={method:request.method(),path:url.pathname+url.search,headers:await request.allHeaders(),body:request.postData()||''};browserRequests.push(entry);
+    const entry={method:request.method(),path:url.pathname+url.search,headers:await request.allHeaders(),body:request.postData()||'',serverReached:false};browserRequests.push(entry);
+    if(entry.method==='POST'&&url.pathname==='/assistant/workspace/v1/threads'&&loseNextCreationBeforeServer){
+      loseNextCreationBeforeServer=false;entry.droppedBeforeServer=true;await route.abort('failed');return;
+    }
+    if(entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/turns$/.test(url.pathname)&&loseNextTurnBeforeServer){
+      loseNextTurnBeforeServer=false;entry.droppedBeforeServer=true;await route.abort('failed');return;
+    }
     const headers={...entry.headers};delete headers['content-length'];if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
+    entry.serverReached=true;
     const response=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
     entry.status=response.status;
     try{entry.response=body(response);}catch{}
@@ -59,6 +66,7 @@ async function installSyntheticTransport(targetContext){
   const workspace='/assistant/workspace/v1';
   const requests=(method,suffix)=>browserRequests.filter(x=>x.method===method&&x.path.startsWith(suffix));
   const turns=()=>browserRequests.filter(x=>x.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/turns$/.test(x.path));
+  const threadCreates=()=>browserRequests.filter(x=>x.method==='POST'&&x.path===workspace+'/threads');
   const callCommand=async command=>{const result=await rpc({command});assert.equal(result.ok,true);};
   const readCapabilities=()=>page.evaluate(async()=>{const response=await fetch('/assistant/workspace/v1/capabilities?library_id=family-a');return response.json();});
   const workspacePanel=page.locator('#assistant-private');
@@ -78,12 +86,12 @@ async function installSyntheticTransport(targetContext){
   checkpoint('Server-owned turn admission is false without discovery and returns when the synthetic discovery index is available');
 
   // Create through the keyboard, then make a grounded server-owned search.
-  const firstCreateCount=requests('POST',workspace+'/threads').length;
+  const firstCreateCount=threadCreates().length;
   await page.locator('#assistant-private-new').focus();await page.keyboard.press('Enter');
   await page.waitForFunction(()=>document.querySelector('#assistant-private-select')?.value);
   await page.waitForFunction(()=>document.getElementById('assistant-private-new')&&!document.getElementById('assistant-private-new').disabled,
     null,{timeout:10000});
-  assert.equal(requests('POST',workspace+'/threads').length,firstCreateCount+1,'keyboard activation creates one scoped thread');
+  assert.equal(threadCreates().length,firstCreateCount+1,'keyboard activation creates one scoped thread');
   let threadId=await page.locator('#assistant-private-select').inputValue();
   assert.match(threadId,/^[0-9a-f-]{36}$/i);
   await page.locator('#assistant-text').fill('找照片');
@@ -165,6 +173,80 @@ async function installSyntheticTransport(targetContext){
   await page.waitForFunction(()=>document.getElementById('assistant-private-recover').hidden||document.getElementById('assistant-private-recover').disabled);
   assert.equal(turns().length,beforeCancelRecovery,'cancellation recovery is GET-only');
   checkpoint('Cancel stops waiting and preserves the draft while the server result remains recoverable');
+
+  // A turn can be lost before it reaches the server. GET 404 remains an explicit
+  // uncertainty gate: the question is preserved until the user acknowledges and
+  // chooses to create a fresh thread, with no repeated turn POST.
+  const beforeUnreceivedTurn=turns().length;
+  const beforeUnreceivedCreate=threadCreates().length;
+  const unreceivedQuestion='这条请求没有到达服务器';
+  loseNextTurnBeforeServer=true;
+  await page.locator('#assistant-text').fill(unreceivedQuestion);
+  await page.locator('#assistant-send').click();
+  await page.locator('#assistant-private-recover').waitFor({state:'visible'});
+  const unreceivedTurn=turns().at(-1),unreceivedPayload=JSON.parse(unreceivedTurn.body);
+  assert.equal(unreceivedTurn.serverReached,false,'the simulated lost turn is aborted before the ASGI server receives it');
+  assert.equal(unreceivedTurn.droppedBeforeServer,true);
+  assert.equal(unreceivedPayload.text,unreceivedQuestion);
+  assert.equal(await page.locator('#assistant-text').inputValue(),unreceivedQuestion,'the failed request question remains in the composer');
+  const unreceivedPath=`${workspace}/threads/${threadId}/requests/${unreceivedPayload.request_id}?library_id=family-a`;
+  const unreceived404=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(unreceivedPath)&&response.status()===404);
+  await page.locator('#assistant-private-recover').click();await unreceived404;
+  assert.equal(turns().length,beforeUnreceivedTurn+1,'GET 404 does not resend the turn');
+  assert.equal(await page.locator('#assistant-text').inputValue(),unreceivedQuestion,'GET 404 preserves the question');
+  await page.locator('#assistant-private-abandon').waitFor({state:'visible'});
+  await page.locator('#assistant-private-abandon').click();
+  const abandonConfirmation=page.locator('#assistant-private-abandon-confirm');
+  await abandonConfirmation.waitFor({state:'visible'});
+  assert.match(await abandonConfirmation.innerText(),/服务器可能仍会完成之前的请求/,'the explicit abandon confirmation warns the server may still finish');
+  assert.equal(threadCreates().length,beforeUnreceivedCreate,'opening the warning does not create a thread');
+  assert.equal(turns().length,beforeUnreceivedTurn+1,'opening the warning does not retry the turn');
+  await page.locator('#assistant-private-abandon-yes').click();
+  await page.waitForFunction(oldId=>{
+    const select=document.getElementById('assistant-private-select');return select?.value&&select.value!==oldId;
+  },threadId,{timeout:10000});
+  threadId=await page.locator('#assistant-private-select').inputValue();
+  assert.equal(await page.locator('#assistant-text').inputValue(),unreceivedQuestion,'the new thread keeps the question as an unsent draft');
+  assert.equal(threadCreates().length,beforeUnreceivedCreate+1,'fresh thread creation follows only the explicit confirmation');
+  assert.equal(turns().length,beforeUnreceivedTurn+1,'the unreceived turn is never resent after GET 404 and abandon');
+  checkpoint('A turn lost before server receipt returns exact GET 404; explicit warning/abandon creates a fresh thread and preserves the question without resending');
+
+  // A thread-creation POST lost before receipt retains its exact client ID and
+  // draft. Reconciliation must first issue GET for that ID; only after the
+  // explicit 404 does the user get a same-ID retry action.
+  const creationDraft='草稿在创建恢复后仍保留';
+  const beforeUnreceivedCreation=threadCreates().length;
+  const beforeUnreceivedCreationTurns=turns().length;
+  loseNextCreationBeforeServer=true;
+  await page.locator('#assistant-text').fill(creationDraft);
+  await page.locator('#assistant-private-new').click();
+  await page.locator('#assistant-private-reconcile').waitFor({state:'visible'});
+  const droppedCreation=threadCreates().at(-1);
+  const droppedCreationId=JSON.parse(droppedCreation.body).thread_id;
+  assert.equal(droppedCreation.serverReached,false,'the simulated lost creation is aborted before the ASGI server receives it');
+  assert.equal(droppedCreation.droppedBeforeServer,true);
+  assert.match(droppedCreationId,/^[0-9a-f-]{36}$/i);
+  assert.equal(await page.locator('#assistant-text').inputValue(),creationDraft,'failed creation preserves the visible draft');
+  const exactThreadPath=`${workspace}/threads/${droppedCreationId}?library_id=family-a`;
+  const creation404=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(exactThreadPath)&&response.status()===404);
+  await page.locator('#assistant-private-reconcile').click();await creation404;
+  assert.equal(await page.locator('#assistant-text').inputValue(),creationDraft,'exact GET 404 preserves the draft');
+  await page.locator('#assistant-private-retry-creation').waitFor({state:'visible'});
+  assert.equal(threadCreates().length,beforeUnreceivedCreation+1,'GET 404 alone never retries creation');
+  const sameIdCreated=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().endsWith(`${workspace}/threads`)&&response.status()===201);
+  await page.locator('#assistant-private-retry-creation').click();await sameIdCreated;
+  await page.waitForFunction(id=>document.getElementById('assistant-private-select')?.value===id,droppedCreationId,{timeout:10000});
+  const creationAttempts=threadCreates().slice(beforeUnreceivedCreation);
+  assert.equal(creationAttempts.length,2,'the second creation POST occurs only after explicit retry');
+  assert.deepEqual(creationAttempts.map(request=>JSON.parse(request.body).thread_id),[droppedCreationId,droppedCreationId],
+    'retry uses the exact pending creation ID');
+  assert.equal(creationAttempts[0].serverReached,false);
+  assert.equal(creationAttempts[1].serverReached,true);
+  assert.equal(creationAttempts[1].response.thread.thread_id,droppedCreationId);
+  assert.equal(await page.locator('#assistant-text').inputValue(),creationDraft,'same-ID retry preserves the draft');
+  threadId=droppedCreationId;
+  assert.equal(turns().length,beforeUnreceivedCreationTurns,'creation recovery does not submit a turn');
+  checkpoint('A creation lost before server receipt requires exact GET 404 and explicit same-ID retry while preserving the draft');
 
   // Two-step delete keeps the thread until the explicit confirmation action.
   await page.locator('#assistant-private-delete').click();

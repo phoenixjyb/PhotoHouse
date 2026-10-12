@@ -28,6 +28,20 @@ class HttpsAssistantWorkspaceApi internal constructor(
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS)).connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS).build()
 
+    private data class Packet(val bytes: ByteArray, val assistantHeaders: Map<String, String>)
+
+    private fun assistantResponseHeaders(headers: Headers): Map<String, String> {
+        val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status")
+        return names.mapNotNull { name ->
+            val values = headers.values(name)
+            if (values.size > 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            values.singleOrNull()?.let { name to it }
+        }.toMap()
+    }
+
+    private inline fun <T> decoded(packet: Packet, parse: (ByteArray) -> T): T =
+        try { parse(packet.bytes) } finally { packet.bytes.fill(0) }
+
     private fun url(path: String, library: String? = null, extraQuery: Map<String, String> = emptyMap()): HttpUrl {
         require(path.startsWith('/') && !path.startsWith("//"))
         val result = origin.newBuilder().encodedPath(path)
@@ -48,7 +62,8 @@ class HttpsAssistantWorkspaceApi internal constructor(
         json: String? = null,
         successCodes: Set<Int> = setOf(200),
         extraQuery: Map<String, String> = emptyMap(),
-    ): ByteArray {
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): Packet {
         if (!assistantWorkspaceEnabled) throw ApiFailure(FailureKind.INVALID_INPUT)
         require(method in setOf("GET", "POST", "PUT", "DELETE"))
         val bytes = json?.toByteArray(Charsets.UTF_8)
@@ -59,6 +74,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
             Request.Builder().url(url(path, library, extraQuery)).header("Authorization", token.header())
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
                 .header("Accept-Encoding", "identity")
+                .apply { extraHeaders.forEach { (name, value) -> header(name, value) } }
                 .apply {
                     val body = bytes?.let(::ownedBody)
                     if (body != null) method(method, body) else if (method != "GET") method(method, null)
@@ -92,9 +108,11 @@ class HttpsAssistantWorkspaceApi internal constructor(
                                 throw ApiFailure(FailureKind.INVALID_RESPONSE)
                             val body = r.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
                             if (body.contentLength() > AssistantWorkspaceWire.RESPONSE_LIMIT) throw ApiFailure(FailureKind.TOO_LARGE)
-                            readBounded(body, call)
+                            val responseBytes = readBounded(body, call)
+                            try { Packet(responseBytes, assistantResponseHeaders(r.headers)) }
+                            catch (e: Exception) { responseBytes.fill(0); throw e }
                         }
-                        if (continuation.isActive) continuation.resume(result)
+                        if (continuation.isActive) continuation.resume(result) { result.bytes.fill(0) } else result.bytes.fill(0)
                     } catch (e: Exception) {
                         if (continuation.isActive) continuation.resumeWithException(e as? ApiFailure ?: ApiFailure(FailureKind.INVALID_RESPONSE))
                     } finally { bytes?.fill(0) }
@@ -126,53 +144,73 @@ class HttpsAssistantWorkspaceApi internal constructor(
     }
 
     override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities =
-        AssistantWorkspaceWire.capabilities(send(token, "/assistant/workspace/v1/capabilities", library))
+        decoded(send(token, "/assistant/workspace/v1/capabilities", library), AssistantWorkspaceWire::capabilities)
 
     override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList =
-        AssistantWorkspaceWire.threadList(send(token, "/assistant/workspace/v1/threads", library, extraQuery = mapOf("limit" to "50")), library)
+        decoded(send(token, "/assistant/workspace/v1/threads", library, extraQuery = mapOf("limit" to "50"))) {
+            AssistantWorkspaceWire.threadList(it, library)
+        }
 
     override suspend fun createThread(token: Bearer, library: String, clientThreadId: String): AssistantWorkspaceCreatedThread {
         val body = AssistantWorkspaceWire.createThreadRequest(library, clientThreadId)
-        return AssistantWorkspaceWire.createdThread(send(token, "/assistant/workspace/v1/threads", method = "POST", json = body,
-            successCodes = setOf(200, 201)), library, clientThreadId)
+        return decoded(send(token, "/assistant/workspace/v1/threads", method = "POST", json = body,
+            successCodes = setOf(200, 201))) { AssistantWorkspaceWire.createdThread(it, library, clientThreadId) }
     }
 
     override suspend fun readThread(token: Bearer, library: String, threadId: String): AssistantWorkspaceThreadDetail {
         require(AssistantWorkspaceWire.validUuid4(threadId))
-        return AssistantWorkspaceWire.threadDetail(send(token, "/assistant/workspace/v1/threads/$threadId", library), library, threadId)
+        return decoded(send(token, "/assistant/workspace/v1/threads/$threadId", library)) {
+            AssistantWorkspaceWire.threadDetail(it, library, threadId)
+        }
     }
 
     override suspend fun deleteThread(token: Bearer, library: String, threadId: String, expectedRevision: Long): AssistantWorkspaceDeletedThread {
         require(AssistantWorkspaceWire.validUuid4(threadId))
         val body = AssistantWorkspaceWire.deleteThreadRequest(library, expectedRevision)
-        return AssistantWorkspaceWire.deletedThread(send(token, "/assistant/workspace/v1/threads/$threadId", method = "DELETE", json = body), threadId)
+        return decoded(send(token, "/assistant/workspace/v1/threads/$threadId", method = "DELETE", json = body)) {
+            AssistantWorkspaceWire.deletedThread(it, threadId)
+        }
     }
 
     override suspend fun preferences(token: Bearer, library: String): AssistantWorkspacePreferences =
-        AssistantWorkspaceWire.preferences(send(token, "/assistant/workspace/v1/preferences", library))
+        decoded(send(token, "/assistant/workspace/v1/preferences", library), AssistantWorkspaceWire::preferences)
 
     override suspend fun updatePreferences(token: Bearer, library: String, expectedRevision: Long,
                                            updates: Map<AssistantWorkspacePreference, String?>): AssistantWorkspacePreferences {
         val body = AssistantWorkspaceWire.preferencesRequest(library, expectedRevision, updates)
-        return AssistantWorkspaceWire.preferences(send(token, "/assistant/workspace/v1/preferences", method = "PUT", json = body))
+        return decoded(send(token, "/assistant/workspace/v1/preferences", method = "PUT", json = body), AssistantWorkspaceWire::preferences)
     }
 
     override suspend fun resetPreferences(token: Bearer, library: String, expectedRevision: Long): AssistantWorkspacePreferences {
         val body = AssistantWorkspaceWire.resetPreferencesRequest(library, expectedRevision)
-        return AssistantWorkspaceWire.preferences(send(token, "/assistant/workspace/v1/preferences/reset", method = "POST", json = body))
+        return decoded(send(token, "/assistant/workspace/v1/preferences/reset", method = "POST", json = body), AssistantWorkspaceWire::preferences)
     }
 
     override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                     expectedRevision: Long, text: String): AssistantWorkspaceTurn {
+        return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId = null)
+    }
+
+    override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                    expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId))
+        require(parentRequestId == null || AssistantWire.validRequestId(parentRequestId))
         val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text)
-        return AssistantWorkspaceWire.turn(send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body),
-            library, threadId, requestId, fromGet = false)
+        val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
+            extraHeaders = buildMap {
+                put("X-PhotoHouse-Request-Id", requestId)
+                parentRequestId?.let { put("X-PhotoHouse-Parent-Request-Id", it) }
+            })
+        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false) }
+        val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
+        return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
 
     override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId) && AssistantWorkspaceWire.validUuid4(requestId))
-        return AssistantWorkspaceWire.turn(send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library),
-            library, threadId, requestId, fromGet = true)
+        val packet = send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library)
+        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true) }
+        val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
+        return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
 }

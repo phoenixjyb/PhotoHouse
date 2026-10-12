@@ -113,6 +113,7 @@ private data class PendingAnnotationCapture(
 )
 private data class AssistantCaptureSelection(val account: String, val library: String, val generation: Long, val maxSeconds: Int)
 private data class PendingAssistantCapture(val selection: AssistantCaptureSelection, val capture: AnnotationAudioRecorder.Capture)
+private data class PendingPrivateVoiceStart(val threadId: String, val revision: Long, val nonce: Long)
 
 private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val limit = 2 * 1024 * 1024
@@ -140,6 +141,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val state = store?.state?.collectAsState()?.value ?: LiveState()
     var assistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
     var privateAssistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
+    var pendingPrivateVoiceStart by remember(state.generation, state.library) { mutableStateOf<PendingPrivateVoiceStart?>(null) }
+    var privateVoiceStartNonce by remember(state.generation, state.library) { mutableLongStateOf(0L) }
     val privateAssistant = store?.assistantWorkspaceCoordinator
     val privateAssistantState = store?.assistantWorkspaceState?.collectAsState()?.value ?: AssistantWorkspaceState()
     LaunchedEffect(assistantOpen, state.generation, state.library) {
@@ -572,17 +575,86 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     val current: () -> Boolean = { val live=store.state.value
                         assistantOpen && !live.covered && live.generation == state.generation &&
                             live.library == state.library && live.session?.account_id == state.session?.account_id }
+                    val renderedAndLiveThreadCurrent: (String, Long) -> Boolean = { threadId, revision ->
+                        val rendered = privateAssistantState.detail?.thread
+                        val liveWorkspace = privateAssistant.state.value
+                        val live = liveWorkspace.detail?.thread
+                        current() && rendered?.threadId == threadId && rendered.revision == revision &&
+                            live?.threadId == threadId && live.revision == revision &&
+                            privateAssistantState.accountId == state.session?.account_id &&
+                            privateAssistantState.libraryId == state.library && privateAssistantState.generation == state.generation &&
+                            liveWorkspace.accountId == privateAssistantState.accountId &&
+                            liveWorkspace.libraryId == privateAssistantState.libraryId &&
+                            liveWorkspace.generation == privateAssistantState.generation
+                    }
                     PrivateAssistantPanel(privateAssistantState, words.zh,
                         onNew = { if(current()) privateAssistant.createThread() },
                         onRefresh = { if(current()) { if(privateAssistantState.capabilities?.serverOwnedTurns == true)
                             privateAssistant.refreshThreads() else privateAssistant.refreshCapabilities() } },
-                        onOpenThread = { if(current()) privateAssistant.openThread(it) },
-                        onDraft = { if(current()) runCatching { privateAssistant.setDraft(it) } },
-                        onSend = { if(current()) privateAssistant.sendTurn() },
-                        onRecover = { if(current()) privateAssistant.recoverPendingTurn() },
-                        onReconcileCreation = { if(current()) privateAssistant.reconcileCreation() },
-                        onDelete = { if(current()) privateAssistant.deleteCurrentThread() },
+                        onOpenThread = { threadId, revision ->
+                            val rendered = privateAssistantState.threads?.threads?.firstOrNull { it.threadId == threadId }
+                            val live = privateAssistant.state.value.threads?.threads?.firstOrNull { it.threadId == threadId }
+                            if (current() && rendered?.revision == revision && live?.revision == revision &&
+                                !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
+                                !privateAssistant.state.value.busy && privateAssistant.state.value.pendingTurn == null)
+                                privateAssistant.openThread(threadId)
+                        },
+                        onDraft = { text ->
+                            val rendered = privateAssistantState.detail?.thread
+                            val liveThread = privateAssistant.state.value.detail?.thread
+                            if (current() && rendered?.threadId == liveThread?.threadId && rendered?.revision == liveThread?.revision)
+                                runCatching { privateAssistant.setDraft(text) }
+                        },
+                        onSend = { privateAssistantState.detail?.thread?.let { thread ->
+                            if (renderedAndLiveThreadCurrent(thread.threadId, thread.revision)) privateAssistant.sendTurn()
+                        } },
+                        onRecover = { val rendered = privateAssistantState.pendingTurn
+                            if (current() && rendered != null && privateAssistant.state.value.pendingTurn == rendered)
+                                privateAssistant.recoverPendingTurn()
+                        },
+                        onReconcileCreation = { val rendered = privateAssistantState.pendingCreationId
+                            if (current() && rendered != null && privateAssistant.state.value.pendingCreationId == rendered)
+                                privateAssistant.reconcileCreation()
+                        },
+                        onAbandonPending = { threadId, requestId, revision ->
+                            val renderedPending = privateAssistantState.pendingTurn
+                            val livePending = privateAssistant.state.value.pendingTurn
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                renderedPending?.threadId == threadId && renderedPending.requestId == requestId &&
+                                livePending?.threadId == threadId && livePending.requestId == requestId &&
+                                privateAssistant.abandonPendingTurn(true)) {
+                                privateAssistant.createThread()
+                            }
+                        },
+                        onDelete = { threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null) {
+                                privateAssistant.deleteCurrentThread()
+                            }
+                        },
                         onSetLocale = { if(current()) privateAssistant.updatePreferences(mapOf(AssistantWorkspacePreference.LOCALE to it)) },
+                        onContinueVoice = if (privateAssistantState.capabilities?.let {
+                                it.available && it.threads && it.serverOwnedTurns
+                            } == true) ({ threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null &&
+                                store.activatePrivateAssistantConversation(threadId, revision)) {
+                                privateVoiceStartNonce += 1
+                                pendingPrivateVoiceStart = PendingPrivateVoiceStart(threadId, revision, privateVoiceStartNonce)
+                                assistantOpen = true
+                                privateAssistantOpen = false
+                            }
+                        }) else null,
+                        onContinueText = if (privateAssistantState.capabilities?.let {
+                                it.available && it.threads && it.serverOwnedTurns
+                            } == true) ({ threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null &&
+                                store.activatePrivateAssistantConversation(threadId, revision)) {
+                                assistantOpen = true
+                                privateAssistantOpen = false
+                            }
+                        }) else null,
                         onDismiss = { privateAssistantOpen=false },
                         onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
                             privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
@@ -600,6 +672,17 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     val live = store.state.value
                     assistantOpen && !live.covered && live.generation == state.generation &&
                         live.library == state.library && live.session?.account_id == state.session?.account_id
+                }
+                LaunchedEffect(pendingPrivateVoiceStart?.nonce, privateAssistantOpen) {
+                    val requested = pendingPrivateVoiceStart ?: return@LaunchedEffect
+                    if (privateAssistantOpen) return@LaunchedEffect
+                    pendingPrivateVoiceStart = null
+                    val liveDetail = privateAssistant?.state?.value?.detail?.thread
+                    if (assistantScopeCurrent() && store.privateAssistantConversationAvailable() &&
+                        liveDetail?.threadId == requested.threadId && liveDetail.revision == requested.revision &&
+                        !assistantRecording && assistantPendingCapture == null && assistantPermissionContext == null) {
+                        voice?.start?.invoke()
+                    }
                 }
                 val manualAssistantAction: () -> Boolean = {
                     assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
@@ -620,7 +703,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     onEndVoiceSession = voice?.end, onFinishVoiceTurn = voice?.finishTurn,
                     onBack = { voice?.end?.invoke(); store.clearAssistantSpeech(); assistantOpen = false },
                     onRetryCapabilities = { if (manualAssistantAction()) store.loadAssistantCapabilities() },
-                    onSend = { text -> manualAssistantAction() && store.sendAssistantText(text) }, onClear = { if (assistantScopeCurrent()) { voice?.end?.invoke(); store.clearAssistant() } },
+                    onSend = { text -> manualAssistantAction() && store.sendAssistantText(text) }, onClear = { if (assistantScopeCurrent()) {
+                        voice?.end?.invoke()
+                        if (state.assistant?.privateThreadId != null) {
+                            store.clearAssistantSpeech()
+                            privateAssistantOpen = true
+                        } else store.clearAssistant()
+                    } },
                     onOpen = { id, requestId -> voice?.end?.invoke(); store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id) },
                     onCheckReceipt = store::checkAssistantReceipt,
                     onRecord = {

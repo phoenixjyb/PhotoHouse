@@ -63,6 +63,8 @@ data class AssistantWorkspaceTurn(
     val recovered: Boolean,
     val error: String?,
     val result: AssistantTurn?,
+    /** Validated transport receipt metadata; never read from or written into the JSON body. */
+    val receipt: AssistantRequestReceipt? = null,
 )
 data class AssistantWorkspaceDeletedThread(val threadId: String, val deleted: Boolean)
 
@@ -81,5 +83,9 @@ interface AssistantWorkspaceApi {
     suspend fun resetPreferences(token: Bearer, library: String, expectedRevision: Long): AssistantWorkspacePreferences = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                            expectedRevision: Long, text: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Backward-compatible parent correlation overload; old implementations keep their behavior. */
+    suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                           expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn =
+        submitTurn(token, library, threadId, requestId, expectedRevision, text)
     suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
 }

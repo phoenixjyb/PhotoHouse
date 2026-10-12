@@ -92,7 +92,7 @@ internal fun AssistantScreen(
     }
     val exchanges = state?.turns.orEmpty()
     val pending = state?.pendingTurn
-    val pendingReceiptStatus = state?.receiptDetail?.status ?: state?.lastRequestReceipt?.status
+    val pendingReceiptStatus = state?.privateRequestStatus ?: state?.receiptDetail?.status ?: state?.lastRequestReceipt?.status
     val pendingFailed = pendingReceiptStatus in setOf("failed", "interrupted")
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
         val compactIntro = maxHeight < 640.dp || LocalDensity.current.fontScale >= 1.3f || voiceSessionState != null
@@ -104,7 +104,7 @@ internal fun AssistantScreen(
                 modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-private-conversations")) {
                 Text(t("My conversations", "我的对话"))
             } }
-            if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(t("Clear", "清空对话")) }
+            if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(if (state?.privateThreadId != null) t("Manage conversation", "管理对话") else t("Clear", "清空对话")) }
             if (compactIntro) TextButton(onClick = {
                 if (recording) onCancelRecording()
                 if (voiceSessionState != null) onPauseVoiceSession?.invoke()
@@ -138,6 +138,9 @@ internal fun AssistantScreen(
             }
         }
         }
+        if (state?.privateThreadId != null) Text(t("Continuing your private conversation", "正在继续你的私人对话"),
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 4.dp).testTag("assistant-private-context"))
         if (!compactIntro) {
             Text(t("Find a moment, then keep the conversation going.", "一起找回一个瞬间，再慢慢聊下去。"),
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -173,7 +176,7 @@ internal fun AssistantScreen(
             )
         }
         val assistant = state
-        assistant?.takeIf { it.pendingTurn == null }?.lastRequestReceipt?.let { receipt ->
+        assistant?.takeIf { it.pendingTurn == null && it.privateThreadId == null }?.lastRequestReceipt?.let { receipt ->
             val receiptStatus = assistant.receiptDetail?.status ?: receipt.status ?: receipt.tracking
             val statusLabel = when (receiptStatus) {
                 "succeeded" -> t("Server completed", "服务器已完成")
@@ -421,7 +424,10 @@ internal fun AssistantScreen(
                             pendingReceiptStatus == "interrupted" -> t("Server processing was interrupted; its reply is unavailable.", "服务器处理中断，回复不可用。")
                             else -> t("The outcome is unknown. The server may already have processed this request.", "结果尚不确定；服务器可能已经处理了这条请求。")
                         }
-                        val recoveryActionText = if (pendingFailed)
+                        val recoveryActionText = if (assistant.privateThreadId != null)
+                            t("Open My conversations to review the saved question or deliberately start another conversation. Checking this request never resends it; leaving it does not delete its history.",
+                                "前往我的对话，可检查原问题或确认开始另一个对话。查询不会重新提交请求；放下请求不会删除历史。")
+                        else if (pendingFailed)
                             t("Close this conversation to edit the original question, or keep your newer draft. Review it and press Ask to send.",
                                 "关闭后可编辑原问题；若已输入新问题，则保留新草稿。检查后点击发送才会提交。")
                         else
@@ -436,10 +442,11 @@ internal fun AssistantScreen(
                                     Text(if (assistant.receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
                                 }
                                 TextButton(onClick = {
-                                    if (pendingFailed && draft.isBlank()) draft = pendingTurn.text
+                                    if (assistant.privateThreadId == null && pendingFailed && draft.isBlank()) draft = pendingTurn.text
                                     onClear()
                                 }, modifier = Modifier.testTag("assistant-close-pending")) {
-                                    Text(if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
+                                    Text(if (assistant.privateThreadId != null) t("Manage this request", "管理这次请求")
+                                        else if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
                                 }
                                 if (assistant.receiptCheckFailed) Text(t("Receipt check unavailable. The previous status is unchanged.", "暂时无法查询回执，上次确认的状态未改变。"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,

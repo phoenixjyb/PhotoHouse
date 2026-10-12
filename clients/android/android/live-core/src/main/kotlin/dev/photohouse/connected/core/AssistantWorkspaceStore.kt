@@ -2,13 +2,16 @@ package dev.photohouse.connected.core
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.coroutines.coroutineContext
 import java.util.UUID
 
 /** The exact authenticated foreground owner for one private workspace operation. */
@@ -30,6 +33,7 @@ data class AssistantWorkspacePendingTurn(
     val requestId: String,
     val expectedRevision: Long,
     val text: String,
+    val parentRequestId: String? = null,
 )
 
 data class AssistantWorkspaceState(
@@ -68,7 +72,8 @@ class AssistantWorkspaceStore(
     private val mutableState = MutableStateFlow(AssistantWorkspaceState())
     val state: StateFlow<AssistantWorkspaceState> = mutableState.asStateFlow()
 
-    private var epoch = 0L
+    private var operationNonce = 0L
+    private var activeOperationNonce = 0L
     private var scopeKey: AssistantWorkspaceScope? = null
     private var activeJob: Job? = null
     private var closed = false
@@ -78,7 +83,7 @@ class AssistantWorkspaceStore(
         val next = usableScope()
         synchronized(guard) {
             if (closed || sameScope(scopeKey, next)) return
-            epoch++
+            operationNonce++
             scopeKey = next
             activeJob?.cancel()
             activeJob = null
@@ -167,7 +172,7 @@ class AssistantWorkspaceStore(
         adoptCreatedThread(scope, api.readThread(scope.bearer, scope.libraryId, id))
     }
 
-    private fun adoptCreatedThread(scope: AssistantWorkspaceScope, detail: AssistantWorkspaceThreadDetail) {
+    private suspend fun adoptCreatedThread(scope: AssistantWorkspaceScope, detail: AssistantWorkspaceThreadDetail) {
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(pendingCreationId = null, detail = detail,
             currentTurn = null, uncertain = false, continuationEnabled = detail.thread.revision == 0L,
@@ -195,19 +200,90 @@ class AssistantWorkspaceStore(
         }
     }
 
-    fun sendTurn(): Boolean = launchAction {
-        val scope = requireUsableCapabilities()
-        val detail = mutableState.value.detail ?: throw ApiFailure(FailureKind.INVALID_INPUT)
-        if (!mutableState.value.continuationEnabled || mutableState.value.pendingTurn != null ||
-            mutableState.value.pendingCreationId != null) throw ApiFailure(FailureKind.INVALID_INPUT)
-        val text = mutableState.value.draft
-        if (text.isBlank() || text.toByteArray(Charsets.UTF_8).size !in 1..1024) throw ApiFailure(FailureKind.INVALID_INPUT)
-        val pending = AssistantWorkspacePendingTurn(detail.thread.threadId, uuidFactory(), detail.thread.revision, text)
-        if (!AssistantWorkspaceWire.validUuid4(pending.requestId)) throw ApiFailure(FailureKind.INVALID_INPUT)
-        mutableState.value = mutableState.value.copy(pendingTurn = pending, uncertain = true, error = null)
+    fun sendTurn(requestId: String? = null, parentRequestId: String? = null): Boolean {
+        onScopeChanged()
+        val scope = usableScope() ?: return false
+        synchronized(guard) {
+            val current = mutableState.value
+            val caps = current.capabilities
+            val detail = current.detail
+            if (closed || !api.assistantWorkspaceEnabled || current.busy || current.pendingTurn != null ||
+                current.pendingCreationId != null || !current.continuationEnabled ||
+                caps?.let { it.available && it.threads && it.serverOwnedTurns } != true || detail == null ||
+                current.accountId != scope.accountId || current.libraryId != scope.libraryId ||
+                current.generation != scope.generation || detail.thread.libraryId != scope.libraryId) return false
+            val text = current.draft
+            val request = requestId ?: runCatching(uuidFactory).getOrNull() ?: return false
+            if (!AssistantWorkspaceWire.validUuid4(request) ||
+                parentRequestId != null && !AssistantWorkspaceWire.validUuid4(parentRequestId)) return false
+            try { AssistantWorkspaceWire.turnRequest(scope.libraryId, request, detail.thread.revision, text) }
+            catch (_: ApiFailure) { return false }
+            val pending = AssistantWorkspacePendingTurn(
+                detail.thread.threadId, request, detail.thread.revision, text, parentRequestId,
+            )
+            mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null)
+            launchReservedTurn(scope, pending, detail)
+            return true
+        }
+    }
+
+    /** Cancels only the local wait. It deliberately leaves the request identity recoverable by GET. */
+    fun cancelWaitingForTurn(requestId: String): Boolean {
+        onScopeChanged()
+        synchronized(guard) {
+            val pending = mutableState.value.pendingTurn
+            val job = activeJob
+            if (closed || pending?.requestId != requestId || job == null || !mutableState.value.busy) return false
+            operationNonce++
+            activeJob = null
+            job.cancel(CancellationException("Local wait cancelled; server request may still commit"))
+            mutableState.value = mutableState.value.copy(busy = false, uncertain = true)
+            return true
+        }
+    }
+
+    private fun launchReservedTurn(
+        scope: AssistantWorkspaceScope,
+        pending: AssistantWorkspacePendingTurn,
+        detail: AssistantWorkspaceThreadDetail,
+    ) {
+        operationNonce++
+        activeOperationNonce = operationNonce
+        val operation = operationNonce
+        val job = coroutineScope.launch(start = CoroutineStart.LAZY) {
+            try {
+                // Let the caller observe and bind the reserved request identity before I/O starts.
+                yield()
+                actionMutex.withLock {
+                    requireCurrent(scope)
+                    submitReservedTurn(scope, pending, detail)
+                }
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) {
+                if (isCurrent(scope)) mutableState.value = if (authorizationDenied(error))
+                    AssistantWorkspaceState(error = AssistantWorkspaceError.ACCESS_DENIED)
+                else mutableState.value.copy(error = safeError(error))
+            } finally {
+                synchronized(guard) {
+                    if (activeJob === coroutineContext[Job] && operation == operationNonce && !closed) {
+                        mutableState.value = mutableState.value.copy(busy = false)
+                        activeJob = null
+                    }
+                }
+            }
+        }
+        activeJob = job
+        job.start()
+    }
+
+    private suspend fun submitReservedTurn(
+        scope: AssistantWorkspaceScope,
+        pending: AssistantWorkspacePendingTurn,
+        detail: AssistantWorkspaceThreadDetail,
+    ) {
         val turn = try {
             api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
-                pending.expectedRevision, pending.text)
+                pending.expectedRevision, pending.text, pending.parentRequestId)
         } catch (cancel: CancellationException) { throw cancel }
         catch (postFailure: Exception) {
             requireCurrent(scope)
@@ -215,7 +291,7 @@ class AssistantWorkspaceStore(
             mutableState.value = mutableState.value.copy(uncertain = true, error = safeError(postFailure))
             // A failed/ambiguous POST is reconciled by GET only, with the exact immutable identity.
             recoverInternal(scope, pending, detail)
-            return@launchAction
+            return
         }
         requireCurrent(scope)
         if (turn.status == AssistantWorkspaceRequestStatus.PENDING) {
@@ -227,7 +303,7 @@ class AssistantWorkspaceStore(
                 requireCurrent(scope)
                 mutableState.value = mutableState.value.copy(pendingTurn = pending, uncertain = true, error = safeError(recoveryFailure))
             }
-            return@launchAction
+            return
         }
         val latestDetail = if (turn.status == AssistantWorkspaceRequestStatus.COMPLETED) {
             try { api.readThread(scope.bearer, scope.libraryId, pending.threadId).also { requireCurrent(scope) } }
@@ -373,30 +449,34 @@ class AssistantWorkspaceStore(
         synchronized(guard) {
             if (closed || mutableState.value.busy || !api.assistantWorkspaceEnabled) return false
             mutableState.value = mutableState.value.copy(busy = true, error = null)
-            val ticket = epoch
-            activeJob = coroutineScope.launch {
+            operationNonce++
+            activeOperationNonce = operationNonce
+            val operation = operationNonce
+            val job = coroutineScope.launch(start = CoroutineStart.LAZY) {
                 try {
                     actionMutex.withLock {
-                        requireCurrent(captured, ticket)
+                        requireCurrent(captured)
                         block()
                     }
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
-                    if (isCurrent(captured, ticket)) {
+                    if (isCurrent(captured)) {
                         mutableState.value = if (authorizationDenied(error))
                             AssistantWorkspaceState(error = AssistantWorkspaceError.ACCESS_DENIED)
                         else mutableState.value.copy(error = safeError(error))
                     }
                 } finally {
                     synchronized(guard) {
-                        if (ticket == epoch && !closed) {
+                        if (activeJob === coroutineContext[Job] && operation == operationNonce && !closed) {
                             mutableState.value = mutableState.value.copy(busy = false)
                             activeJob = null
                         }
                     }
                 }
             }
+            activeJob = job
+            job.start()
             return true
         }
     }
@@ -421,15 +501,28 @@ class AssistantWorkspaceStore(
         it.foregroundAllowed && it.accountId.isNotBlank() && it.libraryId.isNotBlank() && it.generation >= 0
     }
 
-    private fun requireCurrent(scope: AssistantWorkspaceScope, ticket: Long = epoch) {
-        if (!isCurrent(scope, ticket)) {
+    private suspend fun requireCurrent(scope: AssistantWorkspaceScope) {
+        if (!scopeMatchesCurrent(scope)) {
             onScopeChanged()
             throw CancellationException("Workspace scope changed")
         }
+        val job = coroutineContext[Job]
+        val owned = synchronized(guard) {
+            !closed && job != null && activeJob === job && activeOperationNonce == operationNonce
+        }
+        if (!owned) throw CancellationException("Workspace operation invalidated")
     }
 
-    private fun isCurrent(scope: AssistantWorkspaceScope, ticket: Long = epoch): Boolean = synchronized(guard) {
-        !closed && ticket == epoch && sameScope(scope, usableScope())
+    private suspend fun isCurrent(scope: AssistantWorkspaceScope): Boolean {
+        if (!scopeMatchesCurrent(scope)) return false
+        val job = coroutineContext[Job]
+        return synchronized(guard) {
+            !closed && job != null && activeJob === job && activeOperationNonce == operationNonce
+        }
+    }
+
+    private fun scopeMatchesCurrent(scope: AssistantWorkspaceScope): Boolean = synchronized(guard) {
+        !closed && sameScope(scopeKey, scope) && sameScope(scope, usableScope())
     }
 
     private fun sameScope(left: AssistantWorkspaceScope?, right: AssistantWorkspaceScope?): Boolean =
@@ -456,7 +549,7 @@ class AssistantWorkspaceStore(
         synchronized(guard) {
             if (closed) return
             closed = true
-            epoch++
+            operationNonce++
             activeJob?.cancel()
             activeJob = null
             mutableState.value = AssistantWorkspaceState()

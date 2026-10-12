@@ -1,5 +1,7 @@
 package dev.photohouse.connected.core
 
+import dev.photohouse.protocol.SessionToken
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -65,6 +67,22 @@ class AssistantWorkspaceWireTest {
         invalidInput { AssistantWorkspaceWire.turnRequest("family-a", request, 0, "x".repeat(1025)) }
         invalidInput { AssistantWorkspaceWire.turnRequest("family-a", request, 0, "bad\u007ftext") }
         invalidInput { AssistantWorkspaceWire.createThreadRequest("family-a", thread.replace("4", "1")) }
+    }
+
+    @Test fun parentCorrelationOverloadDelegatesForLegacyImplementations() = runBlocking {
+        val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+        var received = false
+        val legacy = object : AssistantWorkspaceApi {
+            override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                           expectedRevision: Long, text: String): AssistantWorkspaceTurn {
+                received = text == "Find photos"
+                return AssistantWorkspaceTurn(1, threadId, requestId, AssistantWorkspaceRequestStatus.PENDING,
+                    expectedRevision, false, null, null)
+            }
+        }
+        val returned = legacy.submitTurn(token, "family-a", thread, request, 0, "Find photos", "33333333-3333-4333-8333-333333333333")
+        assertTrue(received)
+        assertEquals(AssistantWorkspaceRequestStatus.PENDING, returned.status)
     }
 
     private fun invalid(block: () -> Any?) {

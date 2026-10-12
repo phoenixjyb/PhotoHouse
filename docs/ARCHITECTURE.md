@@ -444,8 +444,14 @@ The Web controller keeps draft text and an exact pending request identity in
 process memory. History shows the latest 20 complete exchanges, with an explicit
 older-history notice. Phone uses a separately scoped coordinator and private
 conversation panel; account/library/generation changes and backgrounding clear
-its private buffers. The existing phone foreground voice driver continues to
-use v1 while its private coordinator integration is developed. A saved reference
+its private buffers. [Phone private voice/text continuation](PRIVATE_ASSISTANT_VOICE_V1.md)
+uses an explicitly activated owned thread: “继续聊天” enters typed conversation
+without capture, while “在这个对话中语音聊” starts the approved foreground
+listen/reply/listen driver. One synchronous request identity and an optional
+confirmed ASR parent join the private ledger to actual receipt metadata. The
+ordinary v1 route remains when no private conversation is selected; a stale or
+deleted selection never silently falls back. Capability loss stops capture,
+and access denial clears protected caches. A saved reference
 never grants access and a recovered reply never opens media automatically.
 
 The first applied preference is the language of a grounded textual reply.

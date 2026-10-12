@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
 import java.util.Collections
 import java.util.UUID
@@ -293,6 +294,9 @@ data class AssistantClientState(
     val confirmedTranscriptRequestId: String? = null,
     val receiptChecking: Boolean = false, val receiptCheckFailed: Boolean = false,
     val failure: LiveProblem? = null,
+    val privateThreadId: String? = null,
+    /** Ledger status is independent of optional audit-journal tracking. */
+    val privateRequestStatus: String? = null,
 )
 data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null,
@@ -385,6 +389,33 @@ class ConnectedStore(
         get() = assistantWorkspaceCoordinator?.state ?: emptyAssistantWorkspaceState.asStateFlow()
     private val assistantWorkspaceScopeMonitor = assistantWorkspaceCoordinator?.let { coordinator ->
         scope.launch { state.collect { coordinator.onScopeChanged() } }
+    }
+    private val assistantWorkspaceSelectionMonitor = assistantWorkspaceCoordinator?.let { coordinator ->
+        scope.launch { coordinator.state.collect { workspace ->
+            if (workspace.error == AssistantWorkspaceError.ACCESS_DENIED) {
+                val credential = token
+                if (credential != null && !state.value.covered)
+                    readFailure(ApiFailure(FailureKind.HTTP, status = 403), state.value.generation, credential) { }
+                return@collect
+            }
+            val current = state.value.assistant ?: return@collect
+            val selected = current.privateThreadId ?: return@collect
+            if (workspace.accountId == state.value.session?.account_id && workspace.libraryId == current.library &&
+                workspace.generation == current.generation && workspace.detail?.thread?.threadId == selected &&
+                workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true) return@collect
+            // A switched/deleted thread must not leave its private text on the central screen.
+            // Retain the selection marker so subsequent voice never silently becomes stateless.
+            if (current.turns.isEmpty() && current.context == null && current.pendingTurn == null && !current.busy &&
+                current.speechAudio == null && !current.speechBusy && current.transcript == null && !current.transcribing &&
+                current.failure?.message == Message.DISCOVERY_CHANGED) return@collect
+            assistantTurnRequest++; assistantTranscriptRequest++; assistantSpeechRequest++
+            current.speechAudio?.close()
+            mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null,
+                pendingTurn = null, busy = false, transcript = null, transcribing = false,
+                confirmedTranscriptRequestId = null, speechAudio = null, speechBusy = false,
+                lastRequestReceipt = null, receiptDetail = null, receiptChecking = false,
+                privateRequestStatus = null, failure = LiveProblem(Message.DISCOVERY_CHANGED)))
+        } }
     }
     private val playbackProgress = PlaybackProgress()
     private var restorationAttempted = false
@@ -698,7 +729,10 @@ class ConnectedStore(
             storageFailed = runCatching { persistence?.clear() }.isFailure
             token = null; identity = null; deadline = 0; expiryJob?.cancel(); expiryJob = null }
         val assistant = previous.assistant?.takeIf { keepIdentity && !cover && previous.library == it.library }
-            ?.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, pendingTurn = null)
+            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, pendingTurn = null,
+                privateThreadId = null, privateRequestStatus = null,
+                turns = if (it.privateThreadId != null) emptyList() else it.turns,
+                context = if (it.privateThreadId != null) null else it.context) }
         mutable.value = LiveState(generation = nextGeneration, session = if (cover) null else identity, covered = cover,
             assistant = assistant,
             problem = if (storageFailed) LiveProblem(Message.SESSION_STORAGE_UNAVAILABLE) else if (coolingDown()) LiveProblem(Message.RATE_LIMITED, cooldownUntil) else null)
@@ -4695,6 +4729,8 @@ class ConnectedStore(
     }
     fun clearAssistant() {
         val current = state.value.assistant ?: return
+        // Private conversation switches go through the explicit workspace controls.
+        if (current.privateThreadId != null) return
         if (current.library != state.value.library || current.generation != state.value.generation) return
         current.speechAudio?.close()
         assistantSpeechRequest++
@@ -4711,6 +4747,9 @@ class ConnectedStore(
         assistantTranscriptRequest++
         assistantSpeechRequest++
         if (current.busy) assistantTurnRequest++
+        if (current.privateThreadId != null) current.pendingTurn?.let {
+            assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
+        }
         current.speechAudio?.close()
         mutable.value = state.value.copy(assistant = current.copy(
             transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
@@ -4771,6 +4810,9 @@ class ConnectedStore(
     fun checkAssistantReceipt() {
         val current = state.value.assistant ?: return
         val receipt = current.lastRequestReceipt ?: return
+        if (current.privateThreadId != null && current.pendingTurn?.requestId == receipt.requestId) {
+            recoverPrivateAssistantTurn(current); return
+        }
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation || current.receiptChecking || receipt.tracking == "disabled" || !allowed()) return
         val credential = token ?: return; val library = current.library; val generation = current.generation
         mutable.value = state.value.copy(assistant = current.copy(receiptChecking = true, receiptCheckFailed = false))
@@ -4849,6 +4891,7 @@ class ConnectedStore(
         val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
             current.capabilities?.let { it.enabled && it.text } != true || current.busy || current.transcribing || current.pendingTurn != null || !allowed() || coolingDown()) return false
+        if (current.privateThreadId != null) return sendPrivateAssistantText(current, text)
         val library = current.library; val generation = current.generation; val credential = token ?: return false; val context = current.context
         val requestId = java.util.UUID.randomUUID().toString()
         val parentId = current.confirmedTranscriptRequestId
@@ -4887,6 +4930,115 @@ class ConnectedStore(
         }
         return true
     }
+    /** Explicitly selects an owned thread. Reading history alone never activates voice. */
+    fun activatePrivateAssistantConversation(threadId: String, expectedRevision: Long): Boolean {
+        val current = state.value.assistant ?: return false
+        val workspace = assistantWorkspaceState.value
+        val detail = workspace.detail ?: return false
+        if (!allowed() || current.library != state.value.library || current.generation != state.value.generation ||
+            current.busy || current.transcribing || current.speechBusy || current.speechAudio != null ||
+            workspace.accountId != identity?.account_id || workspace.libraryId != current.library ||
+            workspace.generation != current.generation || workspace.busy || workspace.pendingTurn != null ||
+            workspace.pendingCreationId != null || !workspace.continuationEnabled ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } != true ||
+            detail.thread.threadId != threadId || detail.thread.revision != expectedRevision) return false
+        assistantTurnRequest++
+        val history = detail.exchanges.takeLast(40).map { exchange ->
+            AssistantExchange(exchange.inputText,
+                AssistantTurn("unsupported", exchange.reply, null, null, emptyList(), 0, false, null, recovered = true),
+                exchange.requestId ?: "history-${exchange.exchangeId}")
+        }
+        mutable.value = state.value.copy(assistant = current.copy(
+            privateThreadId = threadId, privateRequestStatus = null, turns = history, context = null,
+            pendingTurn = null, transcript = null, confirmedTranscriptRequestId = null,
+            lastRequestReceipt = null, receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
+        return true
+    }
+
+    /** An active selection never silently falls back to the stateless route. */
+    fun privateAssistantConversationAvailable(): Boolean {
+        val current = state.value.assistant ?: return false
+        val thread = current.privateThreadId ?: return true
+        val workspace = assistantWorkspaceState.value
+        return allowed() && workspace.accountId == identity?.account_id &&
+            workspace.libraryId == current.library && workspace.generation == current.generation &&
+            workspace.detail?.thread?.threadId == thread &&
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true &&
+            (workspace.continuationEnabled || workspace.pendingTurn?.threadId == thread)
+    }
+
+    private fun sendPrivateAssistantText(current: AssistantClientState, text: String): Boolean {
+        val coordinator = assistantWorkspaceCoordinator ?: return false
+        if (!privateAssistantConversationAvailable()) return false
+        val requestId = UUID.randomUUID().toString()
+        val pending = AssistantPendingTurn(identity?.account_id ?: return false, current.library, current.generation,
+            text, null, current.confirmedTranscriptRequestId, requestId)
+        coordinator.setDraft(text)
+        if (!coordinator.sendTurn(requestId, pending.parentRequestId)) return false
+        current.speechAudio?.close()
+        assistantSpeechRequest++
+        val request = ++assistantTurnRequest
+        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), privateRequestStatus = "pending",
+            receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null,
+            failure = null, speechAudio = null, speechBusy = false))
+        awaitPrivateAssistantTurn(current, pending, request, checking = false)
+        return true
+    }
+
+    private fun recoverPrivateAssistantTurn(current: AssistantClientState) {
+        val coordinator = assistantWorkspaceCoordinator ?: return
+        val pending = current.pendingTurn ?: return
+        if (!allowed() || current.busy || current.receiptChecking ||
+            coordinator.state.value.pendingTurn?.requestId != pending.requestId ||
+            !privateAssistantConversationAvailable() || !coordinator.recoverPendingTurn()) return
+        val request = ++assistantTurnRequest
+        mutable.value = state.value.copy(assistant = current.copy(receiptChecking = true, receiptCheckFailed = false))
+        awaitPrivateAssistantTurn(current, pending, request, checking = true)
+    }
+
+    private fun awaitPrivateAssistantTurn(owner: AssistantClientState, pending: AssistantPendingTurn, request: Long, checking: Boolean) {
+        val coordinator = assistantWorkspaceCoordinator ?: return
+        val credential = token ?: return
+        launch { activeGeneration ->
+            val workspace = withTimeoutOrNull(40_000) {
+                coordinator.state.first { value ->
+                    value.accountId != pending.accountId || value.libraryId != pending.library || value.generation != pending.generation ||
+                        (!value.busy && (value.currentTurn?.requestId == pending.requestId || value.pendingTurn?.requestId == pending.requestId))
+                }
+            }
+            if (!active(activeGeneration) || activeGeneration != pending.generation || token !== credential ||
+                state.value.library != pending.library || request != assistantTurnRequest) return@launch
+            if (workspace?.error == AssistantWorkspaceError.ACCESS_DENIED) {
+                readFailure(ApiFailure(FailureKind.HTTP, status = 403), activeGeneration, credential) { }; return@launch
+            }
+            val latest = state.value.assistant?.takeIf { it.privateThreadId == owner.privateThreadId && it.pendingTurn?.requestId == pending.requestId } ?: return@launch
+            if (workspace == null) coordinator.cancelWaitingForTurn(pending.requestId)
+            val turn = workspace?.currentTurn?.takeIf { it.requestId == pending.requestId && it.threadId == owner.privateThreadId }
+            val result = turn?.result?.takeIf { turn.status == AssistantWorkspaceRequestStatus.COMPLETED }
+            if (result != null) {
+                val safeResult = result.copy(recovered = turn.recovered)
+                mutable.value = state.value.copy(assistant = latest.copy(
+                    turns = (latest.turns.filterNot { it.localRequestId == pending.requestId } + AssistantExchange(pending.text, safeResult, pending.requestId)).takeLast(40),
+                    context = safeResult.context, busy = false, pendingTurn = null, transcript = null, failure = null,
+                    receiptChecking = false, receiptCheckFailed = false, privateRequestStatus = "completed",
+                    lastRequestReceipt = safeResult.receipt ?: AssistantRequestReceipt(pending.requestId, "unknown", null)))
+                safeResult.receipt?.takeIf { !turn.recovered && it.tracking == "enabled" && it.status == "succeeded" }
+                    ?.let { reportAssistantOutcome(pending.library, pending.generation, credential, pending.requestId, "displayed") }
+                safeResult.items.forEach { loadAssistantPreview(pending.library, pending.generation, it) }
+            } else {
+                val status = when (turn?.status) {
+                    AssistantWorkspaceRequestStatus.FAILED -> "failed"
+                    AssistantWorkspaceRequestStatus.INTERRUPTED -> "interrupted"
+                    else -> "pending"
+                }
+                mutable.value = state.value.copy(assistant = latest.copy(busy = false, receiptChecking = false,
+                    receiptCheckFailed = checking && turn == null, privateRequestStatus = status,
+                    failure = LiveProblem(if (workspace?.error == AssistantWorkspaceError.INVALID_RESPONSE) Message.INVALID_RESPONSE else Message.UNAVAILABLE)))
+            }
+        }
+    }
+
     private fun loadAssistantPreview(library: String, generation: Long, asset: Asset) {
         if (!api.assistantEnabled || !PhoneDiscoveryWire.validLibrary(library) || !PhoneDiscoveryWire.validId(asset.id) ||
             state.value.library != library || state.value.generation != generation || state.value.previews.containsKey(asset.id) ||

@@ -73,19 +73,29 @@ class HttpsAssistantWorkspaceApiTest {
     @Test fun turnPostCarriesOnlyUserInputAndGetRecoversWithoutResending() = runBlocking {
         Fixture().use { f ->
             val api = f.api()
-            f.server.enqueue(response(envelope("pending")))
-            assertEquals(AssistantWorkspaceRequestStatus.PENDING,
-                api.submitTurn(token, "family-a", thread, request, 0, "找照片").status)
+            val parent = "33333333-3333-4333-8333-333333333333"
+            f.server.enqueue(response(envelope("pending"))
+                .setHeader("X-PhotoHouse-Tracking", "enabled")
+                .setHeader("X-PhotoHouse-Request-Id", request)
+                .setHeader("X-PhotoHouse-Receipt-Status", "received"))
+            val submitted = api.submitTurn(token, "family-a", thread, request, 0, "找照片", parent)
+            assertEquals(AssistantWorkspaceRequestStatus.PENDING, submitted.status)
+            assertEquals(AssistantRequestReceipt(request, "enabled", "received"), submitted.receipt)
             val post = f.server.takeRequest()
             assertEquals("POST", post.method); assertEquals("/assistant/workspace/v1/threads/$thread/turns", post.path); assertProtected(post)
+            assertEquals(request, post.getHeader("X-PhotoHouse-Request-Id"))
+            assertEquals(parent, post.getHeader("X-PhotoHouse-Parent-Request-Id"))
             val body = Json.parseToJsonElement(post.body.readUtf8()).jsonObject
             assertEquals(setOf("library_id", "request_id", "expected_revision", "text"), body.keys)
+            assertEquals(request, body.getValue("request_id").jsonPrimitive.content)
             assertFalse(body.containsKey("context")); assertFalse(body.containsKey("reply")); assertFalse(body.containsKey("cards"))
 
             f.server.enqueue(response(envelope("completed", result(), recovered = true)))
             val recovered = api.getTurn(token, "family-a", thread, request)
             assertEquals(AssistantWorkspaceRequestStatus.COMPLETED, recovered.status)
             assertTrue(recovered.recovered); assertNull(recovered.result!!.effect)
+            assertEquals(AssistantRequestReceipt(request, "unknown", null), recovered.receipt)
+            assertEquals(recovered.receipt, recovered.result!!.receipt)
             val get = f.server.takeRequest()
             assertEquals("GET", get.method)
             assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request?library_id=family-a", get.path)
@@ -101,7 +111,14 @@ class HttpsAssistantWorkspaceApiTest {
             invalid { api.getTurn(token, "family-a", thread, request) }; f.server.takeRequest()
             f.server.enqueue(response(envelope("completed", result(), recovered = true).replace(thread, "33333333-3333-4333-8333-333333333333")))
             invalid { api.getTurn(token, "family-a", thread, request) }
-            assertEquals(2, f.server.requestCount)
+            assertEquals("GET", f.server.takeRequest().method)
+            f.server.enqueue(response(envelope("pending")).setHeader("X-PhotoHouse-Tracking", "enabled")
+                .setHeader("X-PhotoHouse-Request-Id", "33333333-3333-4333-8333-333333333333")
+                .setHeader("X-PhotoHouse-Receipt-Status", "received"))
+            invalid { api.submitTurn(token, "family-a", thread, request, 0, "Find", "33333333-3333-4333-8333-333333333334") }
+            val mismatched = f.server.takeRequest()
+            assertEquals("33333333-3333-4333-8333-333333333334", mismatched.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            assertEquals(3, f.server.requestCount)
         }
     }
 

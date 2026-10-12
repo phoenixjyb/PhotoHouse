@@ -113,12 +113,16 @@ class PrivateAssistantPanelUiTest {
 
     private class Callbacks {
         val drafts = mutableListOf<String>()
-        val openedThreads = mutableListOf<String>()
+        val openedThreads = mutableListOf<Pair<String, Long>>()
         val locales = mutableListOf<String?>()
         val openedAssets = mutableListOf<String>()
         var sends = 0
         var recoveries = 0
         var deletes = 0
+        var abandons = 0
+        val voiceContinuations = mutableListOf<Pair<String, Long>>()
+        val textContinuations = mutableListOf<Pair<String, Long>>()
+        var reconciliations = 0
         var newThreads = 0
         var refreshes = 0
         var dismissals = 0
@@ -130,6 +134,9 @@ class PrivateAssistantPanelUiTest {
         zh: Boolean,
         callbacks: Callbacks,
         fontScale: Float = 1.5f,
+        onContinueVoice: ((String, Long) -> Unit)? = null,
+        onContinueText: ((String, Long) -> Unit)? = null,
+        onAbandonPending: ((String, String, Long) -> Unit)? = null,
     ) {
         rule.activity.runOnUiThread {
             rule.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -143,17 +150,21 @@ class PrivateAssistantPanelUiTest {
                         zh = zh,
                         onNew = { callbacks.newThreads++ },
                         onRefresh = { callbacks.refreshes++ },
-                        onOpenThread = { callbacks.openedThreads += it },
+                        onOpenThread = { id, revision -> callbacks.openedThreads += id to revision },
                         onDraft = {
                             callbacks.drafts += it
                             state.value = state.value.copy(draft = it)
                         },
                         onSend = { callbacks.sends++ },
                         onRecover = { callbacks.recoveries++ },
-                        onDelete = { callbacks.deletes++ },
+                        onDelete = { _, _ -> callbacks.deletes++ },
                         onSetLocale = { callbacks.locales += it },
                         onDismiss = { callbacks.dismissals++ },
                         onOpenAsset = { callbacks.openedAssets += it },
+                        onAbandonPending = onAbandonPending,
+                        onContinueVoice = onContinueVoice,
+                        onContinueText = onContinueText,
+                        onReconcileCreation = { callbacks.reconciliations++ },
                     )
                 }
             }
@@ -178,7 +189,7 @@ class PrivateAssistantPanelUiTest {
         rule.onNodeWithText("录音", substring = true).assertDoesNotExist()
 
         assertEquals(emptyList<String>(), callbacks.openedAssets)
-        assertEquals(emptyList<String>(), callbacks.openedThreads)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.openedThreads)
         assertEquals(emptyList<String>(), callbacks.drafts)
         assertEquals(0, callbacks.sends)
         assertEquals(0, callbacks.recoveries)
@@ -208,6 +219,86 @@ class PrivateAssistantPanelUiTest {
         rule.onNodeWithTag("private-assistant-recover").performClick()
         assertEquals(1, callbacks.recoveries)
         assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun voiceContinuationRunsOnlyAfterExplicitButtonTapWithRenderedThreadRevision() {
+        val uiState = mutableStateOf(state())
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, onContinueVoice = { id, revision ->
+            callbacks.voiceContinuations += id to revision
+        })
+
+        rule.onNodeWithTag("private-assistant-continue-voice").performScrollTo().assertIsDisplayed()
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        rule.onNodeWithTag("private-assistant-continue-voice").performClick()
+        assertEquals(listOf(threadId to 2L), callbacks.voiceContinuations)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun textContinuationRequiresExplicitTapAndReadingDoesNotActivateVoice() {
+        val uiState = mutableStateOf(state())
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, onContinueVoice = { id, revision ->
+            callbacks.voiceContinuations += id to revision
+        }, onContinueText = { id, revision ->
+            callbacks.textContinuations += id to revision
+        })
+
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        rule.onNodeWithTag("private-assistant-thread-$threadId").performScrollTo().performClick()
+        assertEquals(listOf(threadId to 2L), callbacks.openedThreads)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+
+        rule.onNodeWithTag("private-assistant-continue-text").performScrollTo().assertIsDisplayed()
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.textContinuations)
+        rule.onNodeWithTag("private-assistant-continue-text").performClick()
+        assertEquals(listOf(threadId to 2L), callbacks.textContinuations)
+        assertEquals(emptyList<Pair<String, Long>>(), callbacks.voiceContinuations)
+        assertEquals(0, callbacks.sends)
+    }
+
+    @Test
+    fun abandoningPendingRequestShowsWarningRequiresAcknowledgementAndDoesNotSend() {
+        val uiState = mutableStateOf(state(draft = "保留草稿", pending = true))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, onAbandonPending = { id, request, revision ->
+            assertEquals(threadId, id)
+            assertEquals(requestId, request)
+            assertEquals(3L, revision)
+            callbacks.abandons++
+        })
+
+        rule.onNodeWithTag("private-assistant-abandon-pending").performScrollTo().performClick()
+        rule.onNodeWithText("服务器仍可能完成上一条请求。已提交的问题和未发送草稿会保留在此手机，不会自动再次发送。此操作不会删除已保存的对话，也不会写入家庭回忆。")
+            .assertIsDisplayed()
+        val confirm = rule.onNodeWithTag("private-assistant-abandon-confirm")
+        confirm.assertIsNotEnabled()
+        assertEquals(0, callbacks.abandons)
+
+        rule.onNodeWithTag("private-assistant-abandon-ack").performClick()
+        confirm.assertIsEnabled()
+        confirm.performClick()
+        assertEquals(1, callbacks.abandons)
+        assertEquals(0, callbacks.sends)
+        assertEquals(0, callbacks.recoveries)
+    }
+
+    @Test
+    fun pendingCreationSeparatesGetReconcileFromSameIdPostRetry() {
+        val uiState = mutableStateOf(state().copy(pendingCreationId = "pending-client-id"))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks)
+
+        rule.onNodeWithTag("private-assistant-new").performScrollTo().performClick()
+        assertEquals(1, callbacks.reconciliations)
+        assertEquals(0, callbacks.newThreads)
+        rule.onNodeWithTag("private-assistant-retry-creation").performClick()
+        assertEquals(1, callbacks.newThreads)
+        assertEquals(1, callbacks.reconciliations)
     }
 
     @Test

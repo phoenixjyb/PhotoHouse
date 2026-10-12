@@ -71,7 +71,7 @@ internal fun rememberAssistantVoiceControls(
             owner.close()
         }
     }
-    val available = live.assistant?.capabilities?.let {
+    val available = store.privateAssistantConversationAvailable() && live.assistant?.capabilities?.let {
         it.enabled && it.text && it.transcribe && it.speech && it.maxAudioSeconds in 1..30
     } == true
     val detail = when (voice.reason) {

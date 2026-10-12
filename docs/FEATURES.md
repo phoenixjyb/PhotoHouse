@@ -348,6 +348,11 @@ request retries recover existing state; stored results are revalidated and
 readback cannot replay an open action. Web adds private conversation selection,
 recent text history, reply-language preferences and explicit deletion. Phone
 adds a strict protected SDK, lifecycle-scoped coordinator and private text/history
-panel. Its existing foreground continuous voice driver still uses v1; unifying
-that driver with private conversation continuation is the next integration slice.
+panel. [Explicit text/voice continuation](PRIVATE_ASSISTANT_VOICE_V1.md) now
+activates the same owned thread in the central assistant: typing starts no
+microphone, while the voice button starts foreground listen/reply/listen.
+Synchronous request correlation, GET-only recovery, confirmed abandonment,
+capability-loss stopping and access-denial cache erasure are implemented locally.
+Recovered replies pause before speech, navigation or another capture. The
+unselected ordinary route remains v1.
 All private workspace storage remains explicitly admitted and default-off.

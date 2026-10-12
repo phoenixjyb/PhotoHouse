@@ -8,7 +8,10 @@ context, account/library ownership, idempotent request recovery, fixed retention
 and response-language preferences. Web has conversation selection, complete
 recent-history text, GET-only recovery, and explicit deletion. The phone SDK and
 coordinator are wired behind the existing assistant capability, with a separate
-private conversation panel beside the installed v1 voice experience.
+private conversation panel. Explicit “继续聊天” and “在这个对话中语音聊”
+continue the same private thread through central text or foreground voice;
+recoveries pause without replaying audio or navigation. Installed v50 remains
+the earlier v1 voice experience until a separately delivered update.
 
 Current qualification and delivery gates are recorded in Development. These
 changes do not publish an APK, create a Windows conversation database, or change
@@ -16,16 +19,16 @@ the live API. Phone v50 and TV v30 remain the last verified published packages.
 
 The next slices are:
 
-1. Finish simulator and extracted-package qualification, including private
-   history erasure on account/background transitions and v1 voice compatibility.
-2. Integrate phone foreground voice with the private turn coordinator while
-   preserving one immutable request identity, Pause/End and no replayed effects.
+1. Complete the private voice/text simulator and release-package checks,
+   preserving account/background erasure and v1 compatibility.
+2. Finish useful private conversation labels and older-history paging; current
+   history presents the latest 20 complete exchanges without truncating text.
 3. Prepare explicit Windows private-store provisioning and an exact API/phone
    release with rollback; runtime activation and publication retain their gates.
 4. Add grounded story/album/memoir tools and richer spoken replies only after
    local provider qualification; then evaluate real family conversation quality.
-5. Add older-history paging and useful private conversation labels. The current
-   UI truthfully shows the latest 20 exchanges rather than truncating saved text.
+5. Evaluate the delivered private thread experience with real family questions,
+   including phone interruption/recovery and language clarity.
 
 ## October 12 central personal assistant
 

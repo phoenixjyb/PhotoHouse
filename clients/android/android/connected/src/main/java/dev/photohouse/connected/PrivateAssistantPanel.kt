@@ -52,15 +52,18 @@ internal fun PrivateAssistantPanel(
     zh: Boolean,
     onNew: () -> Unit,
     onRefresh: () -> Unit,
-    onOpenThread: (String) -> Unit,
+    onOpenThread: (String, Long) -> Unit,
     onDraft: (String) -> Unit,
     onSend: () -> Unit,
     onRecover: () -> Unit,
     onReconcileCreation: (() -> Unit)? = null,
-    onDelete: () -> Unit,
+    onDelete: (String, Long) -> Unit,
     onSetLocale: (String?) -> Unit,
     onDismiss: () -> Unit,
     onOpenAsset: (String) -> Unit = {},
+    onAbandonPending: ((String, String, Long) -> Unit)? = null,
+    onContinueVoice: ((String, Long) -> Unit)? = null,
+    onContinueText: ((String, Long) -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val capabilities = state.capabilities
@@ -74,6 +77,11 @@ internal fun PrivateAssistantPanel(
     val focusManager = LocalFocusManager.current
     var showDeleteDialog by remember(state.detail?.thread?.threadId) { mutableStateOf(false) }
     var deleteAcknowledged by remember(state.detail?.thread?.threadId) { mutableStateOf(false) }
+    var deleteTarget by remember(state.detail?.thread?.threadId) { mutableStateOf<Pair<String, Long>?>(null) }
+    var showAbandonDialog by remember(state.pendingTurn?.requestId) { mutableStateOf(false) }
+    var abandonAcknowledged by remember(state.pendingTurn?.requestId) { mutableStateOf(false) }
+    var preservedPendingQuestion by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
+    var preservedLocalDraft by remember(state.accountId, state.libraryId, state.generation) { mutableStateOf<String?>(null) }
     val send: () -> Unit = {
         if (controlsEnabled && state.continuationEnabled && draftValid) {
             keyboard?.hide()
@@ -96,7 +104,7 @@ internal fun PrivateAssistantPanel(
             ) {
                 Text(t("Private conversations", "私人对话"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-dismiss")) {
-                    Text(t("Close", "关闭"))
+                    Text(t("Back to assistant", "返回助手"))
                 }
             }
             Text(
@@ -125,11 +133,11 @@ internal fun PrivateAssistantPanel(
                 else -> {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = { if (state.pendingCreationId != null) (onReconcileCreation ?: onNew)() else onNew() },
+                            onClick = { if (state.pendingCreationId != null) onReconcileCreation?.invoke() else onNew() },
                             enabled = scopeAvailable && !state.busy && !pending,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("private-assistant-new"),
                         ) {
-                            Text(if (state.pendingCreationId != null) t("Check existing conversation", "检查现有对话")
+                            Text(if (state.pendingCreationId != null) t("Check creation status", "检查创建状态")
                                 else t("New conversation", "新建对话"))
                         }
                         OutlinedButton(
@@ -143,6 +151,45 @@ internal fun PrivateAssistantPanel(
                             "对话创建可能仍在完成中。请先检查同一请求，再开始其他操作。"),
                             color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.testTag("private-assistant-pending-creation"))
+                        OutlinedButton(
+                            onClick = onNew,
+                            enabled = scopeAvailable && !state.busy && !pending,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .testTag("private-assistant-retry-creation"),
+                        ) {
+                            Text(t("Retry creation with the same ID", "使用相同 ID 重试创建"))
+                        }
+                    }
+
+                    if (preservedPendingQuestion != null || preservedLocalDraft != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            modifier = Modifier.fillMaxWidth().testTag("private-assistant-abandoned-request"),
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(t("Kept on this phone · not resubmitted", "已保留在此手机 · 未重新发送"),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                preservedPendingQuestion?.let { question ->
+                                    Text(t("Previous question", "上一条问题"), style = MaterialTheme.typography.labelMedium)
+                                    Text(question, style = MaterialTheme.typography.bodyMedium)
+                                    OutlinedButton(
+                                        onClick = { onDraft(question) },
+                                        enabled = scopeAvailable && !state.busy,
+                                        modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-restore-question"),
+                                    ) { Text(t("Use previous question as a draft", "将上一条问题放入草稿")) }
+                                }
+                                preservedLocalDraft?.takeIf { it.isNotEmpty() }?.let { localDraft ->
+                                    Text(t("Unsent draft", "未发送的草稿"), style = MaterialTheme.typography.labelMedium)
+                                    Text(localDraft, style = MaterialTheme.typography.bodyMedium)
+                                    OutlinedButton(
+                                        onClick = { onDraft(localDraft) },
+                                        enabled = scopeAvailable && !state.busy,
+                                        modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-restore-draft"),
+                                    ) { Text(t("Restore unsent draft", "恢复未发送草稿")) }
+                                }
+                            }
+                        }
                     }
 
                     val availableThreads = state.threads?.threads.orEmpty()
@@ -152,7 +199,7 @@ internal fun PrivateAssistantPanel(
                             availableThreads.forEach { thread ->
                                 val selected = state.detail?.thread?.threadId == thread.threadId
                                 OutlinedButton(
-                                    onClick = { onOpenThread(thread.threadId) },
+                                    onClick = { onOpenThread(thread.threadId, thread.revision) },
                                     enabled = scopeAvailable && !state.busy && !pending,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                         .testTag("private-assistant-thread-${thread.threadId}"),
@@ -184,7 +231,11 @@ internal fun PrivateAssistantPanel(
                             Text(t("Conversation history", "对话记录"), style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.testTag("private-assistant-history-heading"))
                             TextButton(
-                                onClick = { showDeleteDialog = true; deleteAcknowledged = false },
+                                onClick = {
+                                    deleteTarget = detail.thread.threadId to detail.thread.revision
+                                    showDeleteDialog = true
+                                    deleteAcknowledged = false
+                                },
                                 enabled = !state.busy && !pending,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-delete"),
                             ) { Text(t("Delete conversation", "删除对话"), color = MaterialTheme.colorScheme.error) }
@@ -251,6 +302,15 @@ internal fun PrivateAssistantPanel(
                                     Button(onClick = onRecover, enabled = scopeAvailable && !state.busy,
                                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-recover")) {
                                         Text(if (state.busy) t("Checking…", "正在查询…") else t("Check saved status", "查询已保存状态"))
+                                    }
+                                    if (onAbandonPending != null) {
+                                        OutlinedButton(
+                                            onClick = { showAbandonDialog = true; abandonAcknowledged = false },
+                                            enabled = scopeAvailable && !state.busy,
+                                            modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-abandon-pending"),
+                                        ) {
+                                            Text(t("Leave this request and start a new conversation", "放下这次请求，开始新对话"))
+                                        }
                                     }
                                 }
                             }
@@ -320,6 +380,25 @@ internal fun PrivateAssistantPanel(
                                 Text(if (state.busy) t("Sending…", "正在发送…") else t("Send", "发送"))
                             }
                         }
+                        if ((onContinueVoice != null || onContinueText != null) && ready && state.continuationEnabled &&
+                            state.pendingTurn == null && !state.busy && scopeAvailable) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (onContinueText != null) OutlinedButton(
+                                    onClick = { onContinueText(detail.thread.threadId, detail.thread.revision) },
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                        .testTag("private-assistant-continue-text"),
+                                ) {
+                                    Text(t("Continue chatting", "继续聊天"))
+                                }
+                                if (onContinueVoice != null) OutlinedButton(
+                                    onClick = { onContinueVoice(detail.thread.threadId, detail.thread.revision) },
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                        .testTag("private-assistant-continue-voice"),
+                                ) {
+                                    Text(t("Continue with voice in this conversation", "在这个对话中语音聊"))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -344,7 +423,13 @@ internal fun PrivateAssistantPanel(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { showDeleteDialog = false; deleteAcknowledged = false; onDelete() },
+                    onClick = {
+                        val target = deleteTarget
+                        showDeleteDialog = false
+                        deleteAcknowledged = false
+                        deleteTarget = null
+                        if (target != null) onDelete(target.first, target.second)
+                    },
                     enabled = deleteAcknowledged && !state.busy && state.pendingTurn == null,
                     modifier = Modifier.testTag("private-assistant-delete-confirm"),
                 ) { Text(t("Delete permanently", "永久删除"), color = MaterialTheme.colorScheme.error) }
@@ -354,6 +439,53 @@ internal fun PrivateAssistantPanel(
                     modifier = Modifier.testTag("private-assistant-delete-cancel")) { Text(t("Cancel", "取消")) }
             },
             modifier = Modifier.testTag("private-assistant-delete-dialog"),
+        )
+    }
+
+    if (showAbandonDialog && state.pendingTurn != null && onAbandonPending != null) {
+        AlertDialog(
+            onDismissRequest = { showAbandonDialog = false; abandonAcknowledged = false },
+            title = { Text(t("Leave this uncertain request?", "放下这次状态不确定的请求？")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(t(
+                        "The server may still complete the previous request. Its submitted question and your unsent draft will remain available on this phone, and nothing will be sent again automatically. This does not delete the saved conversation or write a family memory.",
+                        "服务器仍可能完成上一条请求。已提交的问题和未发送草稿会保留在此手机，不会自动再次发送。此操作不会删除已保存的对话，也不会写入家庭回忆。",
+                    ))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = abandonAcknowledged,
+                            onCheckedChange = { abandonAcknowledged = it },
+                            modifier = Modifier.testTag("private-assistant-abandon-ack"),
+                        )
+                        Text(t("I understand the previous request may still complete.", "我了解上一条请求仍可能完成。"),
+                            modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val pendingTurn = state.pendingTurn
+                        if (pendingTurn == null) return@TextButton
+                        preservedPendingQuestion = pendingTurn.text
+                        preservedLocalDraft = state.draft
+                        showAbandonDialog = false
+                        abandonAcknowledged = false
+                        val renderedRevision = state.detail?.thread?.revision
+                        if (renderedRevision != null) {
+                            onAbandonPending(pendingTurn.threadId, pendingTurn.requestId, renderedRevision)
+                        }
+                    },
+                    enabled = abandonAcknowledged && !state.busy && state.pendingTurn != null,
+                    modifier = Modifier.testTag("private-assistant-abandon-confirm"),
+                ) { Text(t("Leave request", "放下请求")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAbandonDialog = false; abandonAcknowledged = false },
+                    modifier = Modifier.testTag("private-assistant-abandon-cancel")) { Text(t("Keep checking", "继续查询")) }
+            },
+            modifier = Modifier.testTag("private-assistant-abandon-dialog"),
         )
     }
 }

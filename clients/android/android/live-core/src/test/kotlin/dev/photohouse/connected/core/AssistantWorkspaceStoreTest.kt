@@ -3,8 +3,10 @@ package dev.photohouse.connected.core
 import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -37,6 +39,9 @@ class AssistantWorkspaceStoreTest {
         var listCalls = 0
         var createCalls = 0
         var submitCalls = 0
+        var submittedRequestId: String? = null
+        var submittedParentRequestId: String? = null
+        var submittedText: String? = null
         var getCalls = 0
         var readCalls = 0
         var deleteExpectedRevision: Long? = null
@@ -76,7 +81,15 @@ class AssistantWorkspaceStoreTest {
             preferencesValue.copy(locale = null, revision = expectedRevision + 1)
         override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                         expectedRevision: Long, text: String): AssistantWorkspaceTurn {
-            submitCalls++; return submitHandler(threadId, expectedRevision, text)
+            submitCalls++; submittedRequestId = requestId; return submitHandler(threadId, expectedRevision, text)
+        }
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn {
+            submitCalls++
+            submittedRequestId = requestId
+            submittedParentRequestId = parentRequestId
+            submittedText = text
+            return submitHandler(threadId, expectedRevision, text)
         }
         override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
             getCalls++; return getHandler(threadId, requestId)
@@ -255,5 +268,82 @@ class AssistantWorkspaceStoreTest {
             assertNotNull(store.state.value.pendingTurn)
             assertNull(store.state.value.currentTurn)
         }
+    }
+
+    @Test fun sendReservesSuppliedIdentitySynchronouslyAndForwardsParentRequestId() = runTest {
+        val api = FakeApi()
+        val response = CompletableDeferred<AssistantWorkspaceTurn>()
+        api.submitHandler = { id, _, _ -> response.await().copy(threadId = id) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
+        store.refreshCapabilities(); runCurrent(); store.openThread(uuid(1)); runCurrent()
+        store.setDraft("voice transcript")
+
+        assertTrue(store.sendTurn(uuid(7), uuid(6)))
+        val reserved = store.state.value.pendingTurn
+        assertEquals(uuid(7), reserved?.requestId)
+        assertEquals(uuid(6), reserved?.parentRequestId)
+        assertEquals("voice transcript", reserved?.text)
+        assertEquals(0, api.submitCalls)
+        assertFalse(store.sendTurn(uuid(5)))
+        store.setDraft("later edit")
+        assertEquals("voice transcript", store.state.value.pendingTurn?.text)
+        runCurrent()
+
+        assertEquals(uuid(7), api.submittedRequestId)
+        assertEquals(uuid(6), api.submittedParentRequestId)
+        assertEquals("voice transcript", api.submittedText)
+        assertEquals("later edit", store.state.value.draft)
+        response.complete(AssistantWorkspaceTurn(1, uuid(1), uuid(7), AssistantWorkspaceRequestStatus.PENDING,
+            0, false, null, null))
+        runCurrent()
+    }
+
+    @Test fun cancelWaitingRetainsPendingIdentityAndDraftAndLateCompletionIsInertUntilGetRecovery() = runTest {
+        val api = FakeApi()
+        val response = CompletableDeferred<AssistantWorkspaceTurn>()
+        api.submitHandler = { id, _, _ -> withContext(NonCancellable) { response.await().copy(threadId = id) } }
+        api.getHandler = { id, request -> AssistantWorkspaceTurn(
+            1, id, request, AssistantWorkspaceRequestStatus.PENDING, 0, true, null, null,
+        ) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
+        store.refreshCapabilities(); runCurrent(); store.openThread(uuid(1)); runCurrent()
+        store.setDraft("hold this text")
+        assertTrue(store.sendTurn(uuid(7)))
+        val reserved = store.state.value.pendingTurn
+        runCurrent()
+        assertTrue(store.state.value.busy)
+
+        assertTrue(store.cancelWaitingForTurn(uuid(7)))
+        assertFalse(store.state.value.busy)
+        assertTrue(store.state.value.uncertain)
+        assertEquals(reserved, store.state.value.pendingTurn)
+        assertEquals("hold this text", store.state.value.draft)
+        response.complete(completed(uuid(1), uuid(7), 1, recovered = false))
+        runCurrent()
+
+        assertEquals(1, api.submitCalls)
+        assertEquals(0, api.getCalls)
+        assertEquals(reserved, store.state.value.pendingTurn)
+        assertNull(store.state.value.currentTurn)
+        assertEquals("hold this text", store.state.value.draft)
+
+        assertTrue(store.recoverPendingTurn())
+        runCurrent()
+        assertEquals(1, api.submitCalls)
+        assertEquals(1, api.getCalls)
+        assertEquals(reserved, store.state.value.pendingTurn)
+        assertTrue(store.state.value.uncertain)
+    }
+
+    @Test fun invalidSendDoesNotReserveOrStartNetworkWork() = runTest {
+        val api = FakeApi()
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
+        store.refreshCapabilities(); runCurrent(); store.openThread(uuid(1)); runCurrent()
+        store.setDraft("x".repeat(1025))
+
+        assertFalse(store.sendTurn(uuid(7), uuid(6)))
+        assertNull(store.state.value.pendingTurn)
+        assertFalse(store.state.value.busy)
+        assertEquals(0, api.submitCalls)
     }
 }
