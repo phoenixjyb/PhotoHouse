@@ -11695,6 +11695,27 @@
       "live_activation": false,
       "apk_publication": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "Phone v48 saved memoir release identity",
+      "source_commit": "149665e2917279d55a4004fa92b53dcd23ad9221",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "b8a6c55b77599a5259771e3cf10b6e6017423e70bd686febc6624bfb95cb3ba3",
+          "sha256": "cbfc61e22c5ddb2d2e67da4417996e8b420ded27d517ea0c107390449f72c967"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V48_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": null,
+          "sha256": "85340ca024d12275060bb4e2187fe5e56f52dc8d7b7a6b48d2f66ce833ee888a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
