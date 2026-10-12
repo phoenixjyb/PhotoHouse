@@ -11914,6 +11914,42 @@
       "apk_publication": false,
       "generation_enabled": false,
       "boundary": "The private thread store is inactive; the main API schema is unchanged. The v48 document records an earlier delivery; v49 and Web are candidates."
+    },
+    {
+      "feature": "Complete format 2 access UI overlay and v49 unsigned artifact record",
+      "source_commit": "070a436621ba21a984d030d45405f04cb7fbaa5e",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V49_RELEASE_CANDIDATE_2026-10-12.md",
+          "before_sha256": "7ca53c10dba6b2290545282ae91840532fd7c08d2ac24b6463b87bd024c6224b",
+          "sha256": "12eb4b1bff97847518112219ae84d937a757a59c9a3d2f6cc1df2d364731db9c"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "9d288bc9eeb5fe902249a48f89f6f606f301aa6eb4cf4b2d45f4c18d00b06987",
+          "sha256": "b70ae391ff4f909536d9e3d81bb77867f41d5382503de84f3f09c1b915579b3b"
+        },
+        {
+          "path": "server/scripts/access_ui_overlay.py",
+          "before_sha256": "568d097042cf5065546c899b8d3fc5a998ec27f44d2fd507891d307aa16f84b1",
+          "sha256": "fcaaabe797d20efe0fa1bf9ffc01f2b394b7dd5dd581885c33ff77d40474023f"
+        },
+        {
+          "path": "server/scripts/build_access_ui_overlay.py",
+          "before_sha256": "d0e7b484b99893b79ba4b8a8ab88f2d2c1ae6356ef390f03dd5abd931a337737",
+          "sha256": "668cdeefcb7536f53cb5d69af0aca4da4248c796dd5668559df2fb6c16d3d700"
+        },
+        {
+          "path": "server/tests/security/test_access_ui_overlay.py",
+          "before_sha256": "a51d5145780cfdb636bbca72865205a7e6531c8bf743e0992d5ba43d5db419f9",
+          "sha256": "49f4e2900e2ec32b4760e186465957abe70476aac1c6c0f97e6b9c41dde48ee6"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_activation": false,
+      "apk_publication": false,
+      "generation_enabled": false
     }
   ]
 }
