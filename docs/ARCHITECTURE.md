@@ -466,6 +466,12 @@ distinction. Schema-v2 initialization or the explicit offline v1 upgrade is a
 separate operation; opening a store never creates or migrates it. This source
 does not activate private storage in the currently served Windows backend.
 
+[Native qualification](PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md) must use the
+service's execution identity. In particular, an interactive-user private-store
+ACL is not accepted automatically by a SYSTEM API. The synthetic Windows child
+loads application dependencies after its Job admission; real store provisioning
+and live activation remain separate operations.
+
 ## Optional private reply speech
 
 [Protected reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md) reads an exact

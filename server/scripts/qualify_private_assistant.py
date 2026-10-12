@@ -22,19 +22,7 @@ SERVER = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVER / 'backend'))
 sys.path.insert(0, str(SERVER / 'scripts'))
 
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
-
-from app.access.assistant_workspace_store import RETENTION_SECONDS, initialize_v2
-from app.access.assistant_journal import initialize as initialize_journal
-from app.access.assistant_speech import LocalAssistantTts
-from app.access.credentials import session_digest
-from app.access.discovery import ReadBudget, digest, scoped_source
-from app.access.discovery_provider import ReviewedIndex
 from app.access.private_storage import require_private_directory, require_private_file
-from app.access.runtime import RuntimeConfiguration
 
 ORIGIN = 'https://private-assistant.synthetic.test'
 LIBRARY = 'synthetic-library'
@@ -117,6 +105,27 @@ def _write_json(path, value):
         os.fsync(stream.fileno())
 
 
+def _load_runtime():
+    """Load application dependencies only after the bounded child starts run()."""
+    global SERVER, command, Config, create_engine, URL
+    global RETENTION_SECONDS, initialize_v2, initialize_journal, LocalAssistantTts
+    global session_digest, ReadBudget, digest, scoped_source, ReviewedIndex
+    global RuntimeConfiguration
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import create_engine
+    from sqlalchemy.engine import URL
+
+    from app.access.assistant_workspace_store import RETENTION_SECONDS, initialize_v2
+    from app.access.assistant_journal import initialize as initialize_journal
+    from app.access.assistant_speech import LocalAssistantTts
+    from app.access.credentials import session_digest
+    from app.access.discovery import ReadBudget, digest, scoped_source
+    from app.access.discovery_provider import ReviewedIndex
+    from app.access.runtime import RuntimeConfiguration
+
+
 def _migrate(database):
     engine = create_engine(URL.create('sqlite', database=str(database)))
     try:
@@ -190,21 +199,25 @@ def _write_discovery_index(database, index_path):
     require_private_file(index_path)
 
 
-class _SyntheticTts(LocalAssistantTts):
-    """In-process fixture: constructor and synthesis never make a provider request."""
-    def __init__(self):
-        self.calls = []
-        stream = io.BytesIO()
-        with wave.open(stream, 'wb') as writer:
-            writer.setnchannels(1)
-            writer.setsampwidth(2)
-            writer.setframerate(16000)
-            writer.writeframes(b'\0\0' * 1600)
-        self.audio = stream.getvalue()
+def _synthetic_tts_class():
+    """Build the fixture subtype after its runtime base has been loaded."""
+    class SyntheticTts(LocalAssistantTts):
+        """In-process fixture: constructor and synthesis never make a provider request."""
+        def __init__(self):
+            self.calls = []
+            stream = io.BytesIO()
+            with wave.open(stream, 'wb') as writer:
+                writer.setnchannels(1)
+                writer.setsampwidth(2)
+                writer.setframerate(16000)
+                writer.writeframes(b'\0\0' * 1600)
+            self.audio = stream.getvalue()
 
-    def synthesize(self, words, language):
-        self.calls.append((words, language))
-        return self.audio
+        def synthesize(self, words, language):
+            self.calls.append((words, language))
+            return self.audio
+
+    return SyntheticTts
 
 
 def _auth(token):
@@ -231,6 +244,7 @@ def run(output):
     phase = 'migration'
     clock = [NOW]
     try:
+        _load_runtime()
         database = target / 'main.sqlite'
         workspace_path = target / 'assistant-workspace.sqlite'
         journal_path = target / 'assistant-journal.sqlite'
@@ -252,7 +266,7 @@ def run(output):
             assistant_journal_path=journal_path.resolve(),
             assistant_tts_url="http://127.0.0.1:19001/tts", assistant_reply_speech_enabled=True)
         app = configuration.build_app(clock=lambda: clock[0])
-        tts = _SyntheticTts()
+        tts = _synthetic_tts_class()()
         app.state.assistant_tts = tts
 
         # TestClient is an in-process ASGI harness. The turn implementation is a

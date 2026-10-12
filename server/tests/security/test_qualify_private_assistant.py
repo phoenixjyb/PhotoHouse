@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path, PureWindowsPath
+import subprocess
 import sys
 import stat
 import tempfile
@@ -21,6 +22,23 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         self.parent = Path(self.parent_context.name).resolve()
         if os.name != 'nt':
             self.parent.chmod(0o700)
+
+    def test_import_keeps_runtime_dependencies_unloaded_until_run(self):
+        script = Path(qualification.__file__).resolve()
+        code = (
+            'import importlib.util,sys; '
+            f'spec=importlib.util.spec_from_file_location("qualifier_probe",{str(script)!r}); '
+            'module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); '
+            'names=("alembic", "sqlalchemy", "fastapi", "app.access.runtime", '
+            '"app.access.assistant_speech"); '
+            'loaded=[name for name in sys.modules if any(name == item or name.startswith(item + ".") '
+            'for item in names)]; '
+            'assert not loaded, sorted(loaded)'
+        )
+        probe = subprocess.run([sys.executable, '-I', '-B', '-c', code],
+                               capture_output=True, text=True, check=False)
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertEqual(probe.stdout, '')
 
     def test_generated_runtime_qualifies_turn_recovery_labels_history_scope_and_retention(self):
         output = self.parent / 'fresh-output'

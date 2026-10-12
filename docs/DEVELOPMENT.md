@@ -1869,3 +1869,14 @@ state. This is local browser evidence; the live Web release is unchanged.
 The next phone candidate is version 51 (`0.51-private-conversation-voice`). Its
 version declaration is preparation only: an unsigned package, original-icon
 check, signing authority and OTA publication still have separate evidence.
+
+The fixed v51 candidate subsequently passed offline release assembly and release
+lint, plus shared phone/TV resource processing. Package identity and unsigned
+status were checked. AAPT rewrites PNG encoding; decoded RGBA pixels in the APK
+match the original 1254×1254 icon exactly. This does not prove launcher/device
+acceptance, signing or OTA delivery.
+
+Qualification review also moved application/database imports into the bounded
+Windows child. Six portable tests and two subtests passed, including a fresh
+process import check that the supervisor does not load those dependencies.
+See [native qualification and identity](PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md).
