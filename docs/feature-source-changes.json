@@ -12110,6 +12110,19 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "phone-v50-original-artwork-qualified-candidate-record",
+      "source_commit": "8b73ff3fb1b2da6369d729365e13a37966bfbe11",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md",
+          "sha256": "c9a7a9a0b5ec487dcf0e2c4d27082c4b60d8fa6cd5257e2806d08d183228d7f5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
