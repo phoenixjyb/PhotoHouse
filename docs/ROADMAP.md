@@ -18,7 +18,14 @@ local qualification recorded in [Development](DEVELOPMENT.md#october-12-central-
 Phone v49 is published on HTTPS OTA; native and independent complete downloads
 passed. The Web workspace is served after its separate API-action switch; native and
 independent HTTPS checks passed. Owned history/preferences APIs are now source-qualified,
-default-off and not deployed. Remaining implementation follows these layers:
+default-off and not deployed.
+
+Phone v50 is now signed and published on phone HTTPS OTA, restoring the original
+user-approved artwork and distinguishing update outcomes. Native and independent
+complete download checks passed; installed-phone acceptance remains open. See
+the [v50 delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
+
+Remaining implementation follows these layers:
 
 1. Complete family acceptance of the delivered phone v49/Web workspace and
    foreground voice retrieval using the existing protected v1 contract. Its

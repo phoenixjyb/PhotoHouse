@@ -16,6 +16,10 @@ checks do not update the hosted or household release records above.
 
 This matrix records the source migration baseline. Live installations and physical devices have their own acceptance records.
 
+Phone v50 is delivered on HTTPS OTA with the original artwork and clearer update
+messages. Native verification and an independent complete download passed; phone
+installation remains a separate gate. See the [delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
+
 | Area | Implemented baseline | Remaining gate or next improvement |
 |---|---|---|
 | Library access | Protected membership, owner review, per-member auto-approval | Member-account and revoked-access device walkthrough |

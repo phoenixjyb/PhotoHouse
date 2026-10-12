@@ -1673,3 +1673,26 @@ record](WEB_ASSISTANT_DELIVERY_2026-10-12.md). The final native controller and
 independent Mac HTTPS checks passed for six byte-identical assets, unchanged
 icon and unchanged phone v49/TV v30 feeds. Its actual live backend remains c6;
 these default-off private workspace APIs are not deployed by the static rollout.
+
+## October 12 original Android artwork and phone v50
+
+The user-approved original PNG is restored in the shared Android launcher and
+TV banner source. Its source bytes and the phone APK's decoded pixels match the
+retained original. Phone v50 includes the updater's installed-version label and
+distinct current, connection/TLS and safe validation/preparation outcomes. Ten
+focused wire/client tests, release assembly/lint and TV/fixture resource checks
+passed. See the [artifact and delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
+
+Owner-authorized signing and phone-only publication completed, with default-TLS
+full download checks on Windows and an independent Mac. The rollout's retained
+size, wrapper-process and resolver-hash assumptions were corrected before feed
+publication. The failed attempts remain private evidence; two added guard
+regressions extend the controller cohort from 20 to 22 checks. The wrapper was
+qualified by its exact hash, declared backend entry hash, task arguments and
+launcher/listener ownership. A bare port or filename match was insufficient.
+
+Signing ran once. Recovery added a corrected controller/authority beside the
+verified staged files and reused the same APK. Both old feed pointers were
+verified before publication; TV v30 stayed byte-identical. The API task, config,
+wrapper and listener were unchanged afterward. Physical phone/TV installation
+and family voice behavior remain separate acceptance gates.

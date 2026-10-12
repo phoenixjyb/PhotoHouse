@@ -18,8 +18,8 @@ Older feed versions still undergo package, channel, signer and same-origin URL
 validation before being classified as already current. TLS, artifact hashes,
 package signatures and redirect restrictions remain enforced.
 
-This improvement is locally implemented; it is not included in the previously
-published phone v49 APK. A subsequent signed release is required for delivery.
+This improvement is delivered in phone v50; the earlier phone v49 APK does not
+include it. See the [v50 delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
 The changed wire and HTTPS-client checks passed ten focused JVM tests, and the
 OTA module and unconfigured phone debug application built successfully. Physical
 phone and TV acceptance remains outstanding.
