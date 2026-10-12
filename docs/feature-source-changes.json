@@ -12152,6 +12152,179 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "private-assistant-server-owned-turns-and-client-continuation",
+      "source_commit": "7a938b7e8c78908ef340a99728348818674da298",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/PrivateAssistantPanelUiTest.kt",
+          "sha256": "c10e825a97a313c1631879b99f04a2b3b86cb751c0405cb5ab1e81451f55ed33"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "sha256": "255d2b1c03bd51bee3edf75a8076134272429ce1681bf489c0d54476d9c627ea"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "6a0cadd748fa901829a2111a19127d7c9e48a78ab158a781a3225dcde1e62198"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "sha256": "38253016475c3b3c3f26d15d681adc817a00a3871680fc294e8202668cb3ca1d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "sha256": "3f983de86db6b02fcddb500996cf3c98ec29dea42177486af463b4e7f53b92cb"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceApi.kt",
+          "sha256": "6bdefad80ad1033adb4cb459e47b41205870909463c023db14addcc882f582f8"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStore.kt",
+          "sha256": "ff4e58e4c5ee12bdad30e320bb3a5b516696a141f65e2341a8e011964b8e63e9"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWire.kt",
+          "sha256": "f4fdeabcf00535cade1e73ca4c8eb1885cd38293dea68c3549af0e6cfe5d1691"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "sha256": "9f115bd79bdecb54307757cb5f5b9ec17ff4b1b1109291542ee30749e1ae21be"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApi.kt",
+          "sha256": "1a0b2afb1a9273c0f435a57840cc461dbe5a74a6890e6e6e80394093b952c9a2"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStoreTest.kt",
+          "sha256": "8939e211b950c0c1a52953e37efd31900c4a08c912393481cdc39680a179685c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "sha256": "8c7ff588e056b92002dd98cca8bcacc20f3d97d433348937f9b3615f363cc963"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreAssistantWorkspaceTest.kt",
+          "sha256": "45057cb23f5f3a530794927bd1dbb2e279d0d3f7e258be3e2e2ce74ed4ca3b43"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApiTest.kt",
+          "sha256": "82083d5deeeac85c0b5f31990797bac10ded79c1accf1669df19740055944f8f"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "9a4305cf2743d5e854f19b73c18490dd441687cb53e43803b62418b3e81701b0"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "15153fc8e575dcc7f3eeac5a14171e8a85fcc0a5f75e8196a0e92c1d036fc6e3"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "b0f8d893dfa1d6ad1ccf347388f4aa54a7022dd832d5577b72a20366ac78bea6"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "sha256": "1cd2e4f17394a7ff4496308a3d1b837794fb0024dbb0a47eec9b82cdecdd31b1"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "c1bc6af08a86a66ee4104aa077ba0a016d312a6b8ff701448933025acbe92280"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "7763da5d1a0a9408a8966e81b785c6ce2bdaec3a448fdd9f8cbc7dbacdc30c5b"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "sha256": "03d258f1d8dc7737c54ca9609f7a842e6484e70202ebb1f81496d5f57839aabc"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "802fa8d9a24f9375458d67ca5e7d27f606b2aab0d8d80329c2577c50876ba87e"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "2fd008a52cc7bbf9df33cdcd2165c42fc789b07b971265c64e7c5d06e931f251"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "sha256": "565ac21844d0a9971f668a922f3610ba2c4d8f38abb39d1d9726d9c4efd02c0f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "4675f6eb59e8c00059d6c4b05ae9cdb001572fcd212b156cfb3deddf9b4fca14"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "101b78d6046e1ed06a8b5cbd516273132eb748d6fef55783dc4119dbbe718a2f"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "6078b3004adb626aef7cc7f2024f7c1a57f65a0ea449e1a69514d44194ce0b31"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "sha256": "32ba2cf98fbfc95d341202fa445927ef166908d0ca8de62c554d25d96680b375"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "305aac539f744fa44e020d9196e9746644a6ad7e90deb3f5f6ae46590d619b81"
+        },
+        {
+          "path": "server/scripts/prepare_assistant_workspace.py",
+          "sha256": "4e17ba2f9702b495c30f51d8ba2a2623230170bbd4ec1bb87126ceb9f36c0817"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "sha256": "02b85c96f589a587b3f768a30823d560017669234efa8d6a58ee5cc70a27adc8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "sha256": "aefcb6b8de6395e12cdc4abab92461f1192c397333c9d0d1e28b5f44044b8e19"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_http.py",
+          "sha256": "0502f44d9e254a8ffaea34e7b8b9ef2f12bb4ed12670e6e6c8d8ecdd42904cab"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_store.py",
+          "sha256": "8f3f3b24aeeb3426cd279b44c9335e962de4217705b02d9b747d9c05358d143b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "sha256": "40ff4719739d432752b1e4cdafa5318ec99ad80bee34ab4819fb587c69808cb9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_store.py",
+          "sha256": "8b06e998756dbdbc185deea34b176e3899276f384dad59e1387c19f4143d058e"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "e0abbe7c6b113d3f3dd58c1c31930b3e4648464e297f0129c38db28f750a0a3e"
+        },
+        {
+          "path": "server/tests/security/test_prepare_assistant_workspace.py",
+          "sha256": "ad59f9d2ecdfcf69998d5426565befc1bd30dc9efd6ecf03503935d0b7d03955"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "0edc1639a0b112785b7a82021cd972c26cc4b00e3053d177a0af9e97c91349ce"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "sha256": "d81b5014efd761b515933250f1929f8d7022a5da0728b2501244259faf031055"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "b8aa7be77834ef07a970891602363b29eb5d3503c39804e3eb3d8a3b121b9a65"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": true,
+      "generation_enabled": false
     }
   ]
 }
