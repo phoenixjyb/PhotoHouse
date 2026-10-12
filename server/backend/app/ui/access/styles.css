@@ -730,3 +730,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 .memory-group-save { background:var(--accent,#ad583b); color:#fff; }
 .memory-group-gallery { max-height:22rem; overflow:auto; }
+
+.assistant-private { padding:1rem; margin:1rem 0; border:1px solid var(--line,#e4dacf); border-radius:1rem; background:var(--paper,#fffaf4); }
+.assistant-private-heading { display:flex; gap:.75rem; justify-content:space-between; align-items:flex-start; }
+.assistant-private-heading h3 { margin:0 0 .4rem; }
+.assistant-private-heading .fine { margin:0; }
+.assistant-private-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-top:1rem; }
+.assistant-private-toolbar select { flex:1 1 12rem; min-width:0; max-width:100%; }
+.assistant-private-preferences { margin-top:.75rem; }
+.assistant-private-preferences label { display:block; margin:.75rem 0 .35rem; }
+.assistant-private-preferences select { min-width:0; max-width:100%; margin-right:.5rem; }
+.assistant-private :focus-visible { outline:3px solid var(--accent,#ad583b); outline-offset:3px; }
+.assistant-private button { min-height:44px; overflow-wrap:anywhere; }
+@media(max-width:600px) { .assistant-private-heading { flex-wrap:wrap; } .assistant-private-toolbar label { flex-basis:100%; } .assistant-private-preferences button { display:block; margin-top:.6rem; } }

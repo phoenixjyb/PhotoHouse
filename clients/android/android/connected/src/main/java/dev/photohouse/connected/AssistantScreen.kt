@@ -75,6 +75,7 @@ internal fun AssistantScreen(
     onResumeVoiceSession: (() -> Unit)? = null,
     onEndVoiceSession: (() -> Unit)? = null,
     onFinishVoiceTurn: (() -> Unit)? = null,
+    onPrivateConversations: (() -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
@@ -99,6 +100,10 @@ internal fun AssistantScreen(
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("assistant-back")) { Text(t("Back to album", "返回相册")) }
+            onPrivateConversations?.let { open -> TextButton(onClick = open,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-private-conversations")) {
+                Text(t("My conversations", "我的对话"))
+            } }
             if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(t("Clear", "清空对话")) }
             if (compactIntro) TextButton(onClick = {
                 if (recording) onCancelRecording()

@@ -50,6 +50,7 @@ import dev.photohouse.protocol.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 
 internal class Words(val zh: Boolean) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -138,6 +139,18 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val t = words::t
     val state = store?.state?.collectAsState()?.value ?: LiveState()
     var assistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
+    var privateAssistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
+    val privateAssistant = store?.assistantWorkspaceCoordinator
+    val privateAssistantState = store?.assistantWorkspaceState?.collectAsState()?.value ?: AssistantWorkspaceState()
+    LaunchedEffect(assistantOpen, state.generation, state.library) {
+        if (assistantOpen && !state.covered && state.session != null) privateAssistant?.refreshCapabilities()
+    }
+    LaunchedEffect(privateAssistantOpen) {
+        if (privateAssistantOpen && privateAssistant != null && privateAssistant.refreshThreads()) {
+            privateAssistant.state.first { !it.busy }
+            privateAssistant.refreshPreferences()
+        }
+    }
     var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
@@ -507,7 +520,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         )
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             BackHandler(store != null && state.library != null && !state.covered) {
-                if (assistantOpen) assistantOpen = false
+                if (privateAssistantOpen) privateAssistantOpen = false
+                else if (assistantOpen) assistantOpen = false
                 else if (state.video != null) store?.closeVideo()
                 else if (state.viewingOriginal) store?.closeOriginalPhoto()
                 else if (state.detail != null || state.photoNavigation != null) store?.backToPhotos()
@@ -554,6 +568,28 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 return@Surface
             }
             if (assistantOpen && state.library != null && !state.covered && store != null) {
+                if (privateAssistantOpen && privateAssistant != null) {
+                    val current: () -> Boolean = { val live=store.state.value
+                        assistantOpen && !live.covered && live.generation == state.generation &&
+                            live.library == state.library && live.session?.account_id == state.session?.account_id }
+                    PrivateAssistantPanel(privateAssistantState, words.zh,
+                        onNew = { if(current()) privateAssistant.createThread() },
+                        onRefresh = { if(current()) { if(privateAssistantState.capabilities?.serverOwnedTurns == true)
+                            privateAssistant.refreshThreads() else privateAssistant.refreshCapabilities() } },
+                        onOpenThread = { if(current()) privateAssistant.openThread(it) },
+                        onDraft = { if(current()) runCatching { privateAssistant.setDraft(it) } },
+                        onSend = { if(current()) privateAssistant.sendTurn() },
+                        onRecover = { if(current()) privateAssistant.recoverPendingTurn() },
+                        onReconcileCreation = { if(current()) privateAssistant.reconcileCreation() },
+                        onDelete = { if(current()) privateAssistant.deleteCurrentThread() },
+                        onSetLocale = { if(current()) privateAssistant.updatePreferences(mapOf(AssistantWorkspacePreference.LOCALE to it)) },
+                        onDismiss = { privateAssistantOpen=false },
+                        onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
+                            privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
+                            privateAssistantOpen=false;assistantOpen=false;store.openAssetById(id)
+                        } })
+                    return@Surface
+                }
                 val voice = rememberAssistantVoiceControls(store, state, words.zh) { id, requestId ->
                     if (assistantOpen && requestId != handledAssistantExchangeId) {
                         handledAssistantExchangeId = requestId
@@ -569,6 +605,11 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
                 }
                 AssistantScreen(state.assistant, words.zh, previews = state.previews,
+                    onPrivateConversations = if(privateAssistantState.capabilities?.serverOwnedTurns == true) ({
+                        if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();
+                            assistantPermissionContext=null;assistantPendingCapture?.capture?.discard();assistantPendingCapture=null;
+                            assistantRecording=false;privateAssistantOpen=true }
+                    }) else null,
                     libraryLabel = LibraryNames.display(state.library!!, words.zh),
                     accountLabel = t("Current account", "当前账号"),
                     voiceSessionState = voice?.session,

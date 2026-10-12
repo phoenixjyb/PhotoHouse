@@ -243,7 +243,7 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
         capability = self.request('GET', '/capabilities?library_id=family-a')
         self.assertEqual(capability.json(), {'version': 1, 'available': True,
             'threads': True, 'preferences': True, 'preferences_applied': False,
-            'server_owned_turns': False})
+            'server_owned_turns': False, 'applied_preferences': []})
         self.assertEqual(self.client.get('/assistant/v1/capabilities?library_id=family-a',
                          headers=self.auth).status_code, 200)
         self.assertEqual(self.client.post('/assistant/workspace/v1/threads/extra',

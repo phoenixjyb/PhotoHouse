@@ -430,7 +430,27 @@ retention; failed maintenance closes the optional surface until recovery.
 History projects owned text, timestamps and non-actionable card type/count
 placeholders. It does not project source IDs/bindings, receipt IDs or saved
 authority as a ready action. Clients cannot upload fabricated assistant replies
-or arbitrary reference sets. Server-owned turns and freshly revalidated source
-projection are the next layer. Stored locale, response length and pace are not
-yet applied to ASR/TTS; capabilities report that distinction. These source
-contracts are not mounted in the currently served backend.
+or arbitrary reference sets.
+
+[Server-owned turns and continuation](PRIVATE_ASSISTANT_TURNS_V1.md) add an
+isolated schema-v2 request ledger and revision-bound context. A bounded lease
+reserves the revision before computation. Completion commits the exchange,
+summary and context atomically; identical retries read the existing request.
+GET recovery rehydrates results against current membership and source bindings,
+and never replays navigation. The receipt journal is separate: a failure to
+finalize a receipt cannot regenerate an already committed exchange.
+
+The Web controller keeps draft text and an exact pending request identity in
+process memory. History shows the latest 20 complete exchanges, with an explicit
+older-history notice. Phone uses a separately scoped coordinator and private
+conversation panel; account/library/generation changes and backgrounding clear
+its private buffers. The existing phone foreground voice driver continues to
+use v1 while its private coordinator integration is developed. A saved reference
+never grants access and a recovered reply never opens media automatically.
+
+The first applied preference is the language of a grounded textual reply.
+Response length and voice pace remain unsupported presentation preferences;
+they do not configure ASR/TTS or select providers. Capability checks expose this
+distinction. Schema-v2 initialization or the explicit offline v1 upgrade is a
+separate operation; opening a store never creates or migrates it. This source
+does not activate private storage in the currently served Windows backend.

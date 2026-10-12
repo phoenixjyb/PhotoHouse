@@ -385,8 +385,8 @@ def _search(engine, token, library, binding, filters, fingerprint=None):
     return result
 
 
-def _turn(engine, token, library, words, previous, clock):
-    lang = _language(words)
+def _turn(engine, token, library, words, previous, clock, *, language=None):
+    lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
     existing = None
     if previous is not None:

@@ -1,9 +1,7 @@
-"""Protected HTTP surface for private assistant workspace history/preferences.
+"""Protected, per-account assistant history and server-owned read-only turns.
 
-This adapter never accepts assistant replies or cards from clients. It serves
-only owned stored text; persisted source bindings are deliberately reduced to
-non-actionable type/count placeholders until a future turn path can revalidate
-them against current source authorization.
+The client supplies words and a revision, never trusted context or replies.
+Readback revalidates current source authorization and never replays effects.
 """
 import asyncio
 import json
@@ -15,6 +13,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from starlette.concurrency import run_in_threadpool
+
+from . import assistant as assistant_engine
+from . import discovery as discovery_engine
+from .assistant_journal import Journal, JournalUnavailable, JournalConflict, JournalMissing
 
 from .assistant_workspace_store import (AssistantWorkspaceStore,
     WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
@@ -58,6 +60,19 @@ class WorkspaceRoute(APIRoute):
                 response = _failure(404, 'workspace_unavailable', 'Workspace item unavailable')
             except WorkspaceStoreUnavailable:
                 response = _failure(503, 'workspace_unavailable', 'Workspace unavailable')
+            except (assistant_engine.AssistantChanged, discovery_engine.DiscoveryChanged):
+                response = _failure(409, 'context_changed', 'Refresh assistant results')
+            except (assistant_engine.AssistantInvalid, discovery_engine.DiscoveryInvalid):
+                response = _failure(400, 'invalid_request', 'Invalid assistant request')
+            except discovery_engine.DiscoveryBusy:
+                response = _failure(429, 'assistant_busy', 'Assistant busy')
+                response.headers['Retry-After'] = '2'
+            except JournalUnavailable:
+                response = _failure(503, 'tracking_unavailable', 'Request tracking unavailable')
+            except JournalConflict:
+                response = _failure(409, 'request_conflict', 'Check the existing request')
+            except JournalMissing:
+                response = _failure(404, 'receipt_unavailable', 'Receipt unavailable')
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -128,19 +143,19 @@ def _thread_id(value):
         raise WorkspaceInvalid() from None
 
 
-async def _body(request, fields, *, required=None):
+async def _body(request, fields, *, required=None, maximum=MAX_BODY):
     if request.scope.get('query_string') or _single(request, 'content-encoding') is not None:
         raise WorkspaceInvalid()
     if (_single(request, 'content-type') or '').split(';')[0].strip().lower() != 'application/json':
         raise WorkspaceInvalid()
     length = _single(request, 'content-length')
-    if length is not None and (not length.isascii() or not length.isdecimal() or int(length) > MAX_BODY):
+    if length is not None and (not length.isascii() or not length.isdecimal() or int(length) > maximum):
         raise TransportError(413, 'Request too large')
     raw = bytearray()
     try:
         async with asyncio.timeout(3):
             async for chunk in request.stream():
-                if len(raw) + len(chunk) > MAX_BODY:
+                if len(raw) + len(chunk) > maximum:
                     raise TransportError(413, 'Request too large')
                 raw.extend(chunk)
     except TimeoutError:
@@ -204,11 +219,194 @@ def _safe_exchange(row):
             kind = 'unavailable'
         by_type[kind] = by_type.get(kind, 0) + 1
     return {'exchange_id': row['exchange_id'], 'revision': row['revision'],
+            'request_id': row['request_id'],
             'created_at': row['created_at'], 'expires_at': row['expires_at'],
             'input_text': row['input_text'], 'reply': row['reply'],
             'cards': [{'type': kind, 'count': count, 'actionable': False}
                       for kind, count in sorted(by_type.items())],
             'receipt_count': len(row.get('receipts', []))}
+
+
+def _create_owned_thread(store, account, library, selected):
+    if selected is not None:
+        try:
+            return store.get_thread(account, library, selected)['thread'], False
+        except WorkspaceStoreMissing:
+            pass
+    try:
+        return store.create_thread(account, library, selected), True
+    except WorkspaceStoreConflict:
+        # Another identical request may have committed while its response was
+        # lost. A foreign thread still cannot be adopted or read.
+        if selected is None:
+            raise
+        return store.get_thread(account, library, selected)['thread'], False
+
+
+def _turn_text(value):
+    if type(value) is not str or not value.strip():
+        raise WorkspaceInvalid()
+    try:
+        if len(value.encode('utf-8')) > 1024:
+            raise WorkspaceInvalid()
+    except UnicodeError:
+        raise WorkspaceInvalid() from None
+    if any(ord(char) < 32 and char not in '\n\t' or ord(char) == 127 for char in value):
+        raise WorkspaceInvalid()
+    return value
+
+
+def _turn_result(engine, token, library, summary, *, recovered):
+    result = dict(summary)
+    context = summary['context']
+    items = []
+    if context is not None:
+        context = assistant_engine._context(context, library)
+        found = assistant_engine._search(engine, token, library, context['binding'],
+                                         context['filters'], context['fingerprint'])
+        if ([item['id'] for item in found['items']] != context['visible_ids'] or
+                found['total'] != context['total']):
+            raise assistant_engine.AssistantChanged()
+        items = found['items']
+    result['items'] = items
+    if recovered:
+        result['effect'] = None
+        if result['kind'] == 'open':
+            result['kind'] = 'results'
+            result['reply'] = ('结果已恢复，请选择要打开的照片或视频。'
+                               if assistant_engine._language(result['reply']) == 'zh' else
+                               'Results restored. Choose the photo or video to open.')
+    return result
+
+
+async def _turn_envelope(request, account, library, row, *, recovered):
+    result = None
+    revision = row['revision']
+    if row['status'] == 'completed':
+        token, _mode = credentials_from_request(request, allow_query=request.method == 'GET')
+        _access, engine = assistant_engine._engine(request)
+        if engine is None:
+            raise WorkspaceStoreUnavailable()
+        result = await run_in_threadpool(_turn_result, engine, token, library,
+                                        row['result_summary'], recovered=recovered)
+    else:
+        owned = await _call(_workspace(request), 'get_thread', account, library, row['thread_id'])
+        revision = owned['thread']['revision']
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'thread_id': row['thread_id'],
+        'request_id': row['request_id'], 'status': row['status'],
+        'revision': revision, 'recovered': recovered,
+        'error': row['error_code'], 'result': result}, headers=PRIVACY_HEADERS)
+
+
+def _journal(request):
+    journal = getattr(request.app.state, 'assistant_journal', None)
+    if journal is not None and (not isinstance(journal, Journal) or
+            not getattr(request.app.state, 'assistant_journal_healthy', False)):
+        raise JournalUnavailable()
+    return journal
+
+
+def _error_code(exc):
+    if isinstance(exc, (assistant_engine.AssistantChanged, discovery_engine.DiscoveryChanged)):
+        return 'context_changed'
+    if isinstance(exc, AccessDenied):
+        return 'access_denied'
+    if isinstance(exc, (WorkspaceInvalid, assistant_engine.AssistantInvalid,
+                        discovery_engine.DiscoveryInvalid)):
+        return 'invalid_request'
+    if isinstance(exc, asyncio.CancelledError):
+        return 'request_cancelled'
+    if isinstance(exc, WorkspaceStoreUnavailable):
+        return 'storage_unavailable'
+    return 'assistant_unavailable'
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
+async def create_turn(request: Request, thread_id: str):
+    body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text'},
+                       maximum=20 * 1024)
+    library, selected = _library(body['library_id']), _thread_id(thread_id)
+    ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
+    words = _turn_text(body['text'])
+    account = await _principal(request, library)
+    token, _mode = credentials_from_request(request)
+    access, engine = assistant_engine._engine(request)
+    if engine is None:
+        raise WorkspaceStoreUnavailable()
+    header_id = _single(request, 'x-photohouse-request-id')
+    if header_id is not None and header_id != ident:
+        raise WorkspaceInvalid()
+    parent = _single(request, 'x-photohouse-parent-request-id')
+    if parent is not None:
+        _thread_id(parent)
+    store = _workspace(request)
+    row = await _call(store, 'begin_turn', account, library, selected, ident, revision, words)
+    if row['replayed']:
+        return await _turn_envelope(request, account, library, row, recovered=True)
+    lease = row['lease_id']
+    committed = False
+    journal_started = False
+    journal = None
+    try:
+        journal = _journal(request)
+        if journal is not None:
+            await run_in_threadpool(journal.begin, account, library, 'turn', ident, parent, words)
+            journal_started = True
+            await run_in_threadpool(journal.stage, ident, 'action_started')
+        preferences = await _call(store, 'get_preferences', account)
+        result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
+            words, row['context'], access.clock, language=preferences['locale'])
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        summary = {key: value for key, value in result.items() if key != 'items'}
+        context = result['context']
+        cards = ([] if context is None else [dict(type='media', id=item['id'],
+                 revision=context['binding'], fingerprint=context['fingerprint'])
+                 for item in result['items']])
+        row = await _call(store, 'complete_turn', account, library, selected, ident,
+                          lease, summary, cards, [ident] if journal_started else [])
+        committed = row['status'] == 'completed'
+        if journal_started:
+            await run_in_threadpool(journal.finish, ident,
+                'succeeded' if committed else 'failed', http_status=200 if committed else 409,
+                error=None if committed else 'turn_interrupted',
+                kind=result['kind'] if committed else None,
+                total=result['total'] if committed else None)
+        response = await _turn_envelope(request, account, library, row, recovered=False)
+        response.headers['X-PhotoHouse-Request-Id'] = ident
+        response.headers['X-PhotoHouse-Tracking'] = 'enabled' if journal is not None else 'disabled'
+        if journal_started:
+            response.headers['X-PhotoHouse-Receipt-Status'] = 'succeeded' if committed else 'failed'
+        return response
+    except BaseException as exc:
+        if not committed:
+            try:
+                await asyncio.shield(_call(store, 'fail_turn', account, library, selected,
+                                           ident, lease, _error_code(exc)))
+            except Exception:
+                # A hard shutdown leaves a bounded lease, not permission to
+                # regenerate the same request. Readback reconciles its expiry.
+                pass
+        if journal_started and not committed:
+            try:
+                await asyncio.shield(run_in_threadpool(journal.finish, ident, 'failed',
+                    http_status=499 if isinstance(exc, asyncio.CancelledError) else 503,
+                    error=_error_code(exc)))
+            except Exception:
+                pass
+        raise
+
+
+@router.get('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}')
+async def read_turn(request: Request, thread_id: str, request_id: str):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    row = await _call(_workspace(request), 'get_turn', account, library,
+                      _thread_id(thread_id), _thread_id(request_id))
+    return await _turn_envelope(request, account, library, row, recovered=True)
 
 
 @router.get('/assistant/workspace/v1/capabilities')
@@ -227,10 +425,13 @@ async def capabilities(request: Request):
             healthy = False
         except Exception:
             healthy = False
+    _access, engine = assistant_engine._engine(request)
+    turns = bool(healthy and engine is not None)
     return JSONResponse({'version': 1, 'available': bool(healthy),
                          'threads': bool(healthy), 'preferences': bool(healthy),
-                         'preferences_applied': False,
-                         'server_owned_turns': False}, headers=PRIVACY_HEADERS)
+                         'preferences_applied': turns,
+                         'applied_preferences': ['locale'] if turns else [],
+                         'server_owned_turns': turns}, headers=PRIVACY_HEADERS)
 
 
 @router.get('/assistant/workspace/v1/threads')
@@ -251,11 +452,13 @@ async def list_threads(request: Request):
 
 @router.post('/assistant/workspace/v1/threads')
 async def create_thread(request: Request):
-    body = await _body(request, {'library_id'})
+    body = await _body(request, {'library_id', 'thread_id'}, required={'library_id'})
     library = _library(body['library_id'])
     account = await _principal(request, library)
-    result = await _call(_workspace(request), 'create_thread', account, library)
-    return JSONResponse({'version': 1, 'thread': _safe_thread(result)}, status_code=201,
+    store = _workspace(request)
+    selected = _thread_id(body['thread_id']) if 'thread_id' in body else None
+    result, created = await run_in_threadpool(_create_owned_thread, store, account, library, selected)
+    return JSONResponse({'version': 1, 'thread': _safe_thread(result)}, status_code=201 if created else 200,
                         headers=PRIVACY_HEADERS)
 
 
@@ -264,9 +467,14 @@ async def read_thread(request: Request, thread_id: str):
     query = _query(request, {'library_id'}, {'library_id'})
     library = _library(query['library_id'])
     account = await _principal(request, library)
-    result = await _call(_workspace(request), 'get_thread', account, library, _thread_id(thread_id))
+    store = _workspace(request)
+    selected = _thread_id(thread_id)
+    result = await _call(store, 'get_thread', account, library, selected)
+    latest = await _call(store, 'latest_turn_id', account, library, selected)
     return JSONResponse({'version': 1, 'thread': _safe_thread(result['thread']),
-                         'exchanges': [_safe_exchange(row) for row in result['exchanges']]},
+                         'exchanges': [_safe_exchange(row) for row in result['exchanges'][-20:]],
+                         'has_older_exchanges': len(result['exchanges']) > 20,
+                         'latest_request_id': latest},
                         headers=PRIVACY_HEADERS)
 
 

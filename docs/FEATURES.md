@@ -340,4 +340,14 @@ not establish live provider quality or family-device acceptance. Phone v49 is pu
 default-off source slice: owned list/create/read/delete, revisioned preferences
 and reset, strict request limits and 30-day retention. Saved references are
 non-actionable placeholders. Server-owned turns, applied preferences and client
-continuation are not yet enabled.
+continuation are not yet enabled in the served Windows backend.
+
+The [private turn layer](PRIVATE_ASSISTANT_TURNS_V1.md) now implements an isolated
+schema-v2 request ledger and server-owned continuation in local source. Identical
+request retries recover existing state; stored results are revalidated and
+readback cannot replay an open action. Web adds private conversation selection,
+recent text history, reply-language preferences and explicit deletion. Phone
+adds a strict protected SDK, lifecycle-scoped coordinator and private text/history
+panel. Its existing foreground continuous voice driver still uses v1; unifying
+that driver with private conversation continuation is the next integration slice.
+All private workspace storage remains explicitly admitted and default-off.

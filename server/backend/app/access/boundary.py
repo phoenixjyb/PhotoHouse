@@ -38,7 +38,7 @@ class ClosedBoundary:
         ('GET', '/auth/session'), ('POST', '/auth/logout'),
         ('POST', '/auth/invitations/accept'),
     }
-    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
+    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/assistant-private-workspace.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
 
     REVIEWED = {(method, route.path, route.endpoint)
                 for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
@@ -184,6 +184,10 @@ class ClosedBoundary:
             return True
         if re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', path):
             return method in {'GET', 'DELETE'}
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
+            return True
+        if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}', path):
+            return True
         return method in {'GET', 'HEAD'} and bool(re.fullmatch(
             r'/(?:assets/[0-9]+/(?:media|thumbnail|display|playback)|faces/[0-9]+/crop)', path))
 

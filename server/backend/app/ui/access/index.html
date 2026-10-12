@@ -9,6 +9,7 @@
   <script src="/ui/memory-community.js" defer></script>
   <script src="/ui/story-workspace.js" defer></script>
   <script src="/ui/memory-groups.js" defer></script>
+  <script src="/ui/assistant-private-workspace.js" defer></script>
   <script src="/ui/app.js" defer></script>
 </head>
 <body>
@@ -60,6 +61,14 @@
       <details id="assistant-panel" class="access-panel assistant-panel">
         <summary data-i18n="assistantTitle">用一句话找回忆</summary>
         <p class="fine" data-i18n="assistantHelp">仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。</p>
+        <section id="assistant-private" class="assistant-private" hidden aria-labelledby="assistant-private-title">
+          <div class="assistant-private-heading"><div><h3 id="assistant-private-title" data-i18n="assistantPrivateTitle">我的私密对话</h3><p class="fine" data-i18n="assistantPrivateHelp">只对你可见，保留 30 天。录音不保存在对话中。</p></div><button id="assistant-private-new" class="quiet" type="button" data-i18n="assistantPrivateNew">新对话</button></div>
+          <div class="assistant-private-toolbar"><label for="assistant-private-select" data-i18n="assistantPrivateChoose">继续之前的对话</label><select id="assistant-private-select"><option value="">选择对话</option></select><button id="assistant-private-refresh" class="quiet" type="button" data-i18n="refresh">刷新</button></div>
+          <p id="assistant-private-status" role="status" aria-live="polite"></p>
+          <div class="assistant-actions"><button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button><button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button></div>
+          <details class="assistant-private-preferences"><summary data-i18n="assistantPrivatePreferences">我的助手偏好</summary><label for="assistant-private-locale" data-i18n="assistantPrivateLocale">回复语言</label><select id="assistant-private-locale"><option value="" data-i18n="assistantPrivateAuto">跟随请求语言</option><option value="zh">中文</option><option value="en">English</option></select><button id="assistant-private-delete" class="quiet" type="button" hidden data-i18n="assistantPrivateDelete">删除这段对话</button><button id="assistant-private-delete-confirm" class="quiet danger" type="button" hidden data-i18n="assistantPrivateDeleteConfirm">确认删除对话</button></details>
+          <p id="assistant-private-older" class="fine" hidden data-i18n="assistantPrivateOlder">显示最近 20 轮对话。</p>
+        </section>
         <div id="assistant-prompts" class="assistant-prompts"><button class="quiet" type="button" data-assistant-prompt="photos" data-i18n="assistantFindPhotos">找照片</button><button class="quiet" type="button" data-assistant-prompt="videos" data-i18n="assistantFindVideos">找视频</button><button class="quiet" type="button" data-assistant-prompt="open" data-i18n="assistantOpenFirst">打开第一个</button></div>
         <span id="assistant-form-placeholder" hidden></span>
         <form id="assistant-form" class="assistant-form">

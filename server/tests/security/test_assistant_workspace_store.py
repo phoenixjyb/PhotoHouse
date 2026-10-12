@@ -52,7 +52,7 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
         with sqlite3.connect(self.path) as db:
             self.assertEqual(db.execute('PRAGMA application_id').fetchone()[0], 1346914882)
-            self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 1)
+            self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 2)
             self.assertEqual(db.execute('PRAGMA journal_mode').fetchone()[0], 'delete')
         with self.store.connection() as db:
             self.assertEqual(db.execute('PRAGMA secure_delete').fetchone()[0], 1)

@@ -60,6 +60,11 @@ async def ui_css():
     return _ui_file_response(STYLE_FILE, "text/css")
 
 
+@router.get("/ui/assistant-private-workspace.js")
+async def ui_assistant_private_workspace():
+    return _ui_file_response(UI_DIR / "assistant-private-workspace.js", "application/javascript")
+
+
 @router.get("/ui/photohouse-icon.svg")
 async def ui_icon():
     return _ui_file_response(ICON_FILE, "image/svg+xml")

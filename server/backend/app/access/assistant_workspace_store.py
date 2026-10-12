@@ -23,6 +23,9 @@ MAX_THREADS = 10000
 MAX_EXCHANGES = 100000
 MAX_PREFERENCES = 100000
 MAX_EXCHANGES_PER_THREAD = 200
+MAX_REQUESTS = 100000
+MAX_REQUESTS_PER_THREAD = 200
+LEASE_SECONDS = 90
 MAX_CARDS = 40
 MAX_RECEIPTS = 20
 MAX_INPUT_BYTES = 1024
@@ -30,9 +33,10 @@ MAX_REPLY_BYTES = 8192
 MAX_SCOPE_ID_BYTES = 128
 MAX_EXPECTED_REVISION = (1 << 63) - 2
 APPLICATION_ID = 1346914882
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+V1_SCHEMA_VERSION = 1
 
-_SCHEMA_SQL = '''
+_V1_SCHEMA_SQL = '''
 PRAGMA application_id=1346914882;
 PRAGMA user_version=1;
 CREATE TABLE threads (
@@ -73,6 +77,44 @@ CREATE TABLE preferences (
  revision INTEGER NOT NULL CHECK(revision > 0),
  updated_at INTEGER NOT NULL
 );
+'''
+
+_SCHEMA_SQL = _V1_SCHEMA_SQL.replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;') + '''
+CREATE TABLE turn_requests (
+ request_id TEXT NOT NULL,
+ thread_id TEXT NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
+ account_id TEXT NOT NULL,
+ library_id TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('pending','completed','failed','interrupted')),
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ expected_revision INTEGER NOT NULL CHECK(expected_revision >= 0),
+ input_text TEXT NOT NULL,
+ lease_id TEXT,
+ lease_expires_at INTEGER,
+ revision INTEGER NOT NULL CHECK(revision >= 0),
+ result_summary TEXT,
+ error_code TEXT,
+ UNIQUE(account_id,library_id,request_id),
+ CHECK((status='pending' AND lease_id IS NOT NULL AND lease_expires_at IS NOT NULL
+        AND result_summary IS NULL AND error_code IS NULL) OR
+       (status='completed' AND lease_id IS NULL AND lease_expires_at IS NULL
+        AND result_summary IS NOT NULL AND error_code IS NULL) OR
+       (status IN ('failed','interrupted') AND lease_id IS NULL AND lease_expires_at IS NULL
+        AND result_summary IS NULL AND error_code IS NOT NULL))
+);
+CREATE INDEX turn_requests_thread ON turn_requests(thread_id,created_at);
+CREATE INDEX turn_requests_expiry ON turn_requests(expires_at);
+CREATE INDEX turn_requests_pending ON turn_requests(thread_id,status,lease_expires_at);
+CREATE TABLE thread_context (
+ thread_id TEXT PRIMARY KEY REFERENCES threads(thread_id) ON DELETE CASCADE,
+ account_id TEXT NOT NULL,
+ library_id TEXT NOT NULL,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ context_json TEXT NOT NULL
+);
+CREATE INDEX thread_context_expiry ON thread_context(expires_at);
 '''
 
 
@@ -187,13 +229,150 @@ def _receipt_ids(value):
     return result
 
 
+def _json_value(value, maximum, label):
+    try:
+        packed = json.dumps(value, ensure_ascii=False, sort_keys=True,
+                            separators=(',', ':'), allow_nan=False).encode('utf-8')
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        raise ValueError(f'Invalid {label}') from None
+    if len(packed) > maximum:
+        raise ValueError(f'Invalid {label}')
+    return packed.decode('utf-8')
+
+
+def _filters(value):
+    if type(value) is not dict:
+        raise ValueError('Invalid filters')
+    return json.loads(_json_value(value, 16 * 1024, 'filters'))
+
+
+def _context_value(value, library_id):
+    if value is None:
+        return None
+    fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
+    if type(value) is not dict or set(value) != fields or value['library_id'] != library_id:
+        raise ValueError('Invalid context')
+    if any(type(value[name]) is not str or re.fullmatch(r'[0-9a-f]{64}', value[name]) is None
+           for name in ('binding', 'fingerprint')):
+        raise ValueError('Invalid context')
+    filters = _filters(value['filters'])
+    ids = value['visible_ids']
+    if type(ids) is not list or len(ids) > 20:
+        raise ValueError('Invalid context')
+    max_id = (1 << 63) - 1
+    for ident in ids:
+        if (type(ident) is not str or re.fullmatch(r'[1-9][0-9]{0,18}', ident) is None
+                or int(ident) > max_id):
+            raise ValueError('Invalid context')
+    if len(set(ids)) != len(ids):
+        raise ValueError('Invalid context')
+    if type(value['total']) is not int or not 0 <= value['total'] <= 100000:
+        raise ValueError('Invalid context')
+    if len(ids) != min(20, value['total']):
+        raise ValueError('Invalid context')
+    return dict(library_id=library_id, binding=value['binding'],
+                fingerprint=value['fingerprint'], filters=filters,
+                visible_ids=list(ids), total=value['total'])
+
+
+def _result_summary(value, library_id):
+    fields = {'version', 'kind', 'reply', 'context', 'filters', 'total',
+              'has_more', 'effect'}
+    if type(value) is not dict or set(value) != fields:
+        raise ValueError('Invalid result summary')
+    if type(value['version']) is not int or value['version'] != 1:
+        raise ValueError('Invalid result summary')
+    if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
+        raise ValueError('Invalid result summary')
+    reply = _text(value['reply'], MAX_REPLY_BYTES)
+    ctx = _context_value(value['context'], library_id)
+    filters = None if value['filters'] is None else _filters(value['filters'])
+    if type(value['total']) is not int or not 0 <= value['total'] <= 100000:
+        raise ValueError('Invalid result summary')
+    if type(value['has_more']) is not bool:
+        raise ValueError('Invalid result summary')
+    effect = value['effect']
+    if (value['kind'] == 'open') != (effect is not None):
+        raise ValueError('Invalid result summary')
+    if effect is not None:
+        if (type(effect) is not dict or set(effect) != {'type', 'asset_id'} or
+                effect['type'] != 'open_asset' or value['kind'] != 'open' or
+                ctx is None or effect['asset_id'] not in ctx['visible_ids']):
+            raise ValueError('Invalid result summary')
+    if ctx is not None and (filters != ctx['filters'] or value['total'] != ctx['total']):
+        raise ValueError('Invalid result summary')
+    if ctx is None and (filters is not None or value['total'] != 0 or value['has_more']):
+        raise ValueError('Invalid result summary')
+    if ctx is not None and value['has_more'] != (ctx['total'] > len(ctx['visible_ids'])):
+        raise ValueError('Invalid result summary')
+    result = dict(version=1, kind=value['kind'], reply=reply, context=ctx,
+                  filters=filters, total=value['total'], has_more=value['has_more'],
+                  effect=None if effect is None else dict(effect))
+    return json.loads(_json_value(result, 32 * 1024, 'result summary'))
+
+
+def _stored_json(raw, maximum):
+    try:
+        if type(raw) is not str or len(raw.encode('utf-8')) > maximum:
+            raise ValueError()
+        return json.loads(raw)
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        raise WorkspaceStoreUnavailable() from None
+
+
+def _stored_context(raw, library_id):
+    try:
+        return _context_value(_stored_json(raw, 32 * 1024), library_id)
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        raise WorkspaceStoreUnavailable() from None
+
+
+def _stored_summary(raw, library_id):
+    try:
+        return _result_summary(_stored_json(raw, 32 * 1024), library_id)
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        raise WorkspaceStoreUnavailable() from None
+
+
+_SAFE_ERROR_CODES = frozenset({
+    'assistant_unavailable', 'context_changed', 'request_cancelled',
+    'access_denied', 'invalid_request', 'storage_unavailable', 'turn_interrupted',
+})
+
+
 def _payload_fingerprint(payload):
     packed = json.dumps(payload, ensure_ascii=False, sort_keys=True,
                         separators=(',', ':'), allow_nan=False).encode('utf-8')
     return hashlib.sha256(packed).hexdigest()
 
 
-def initialize(path, *, clock=time.time):
+def _schema_shape(db, schema_sql):
+    objects = db.execute("SELECT type,name,sql FROM sqlite_master "
+                         "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
+    schema_db = sqlite3.connect(':memory:')
+    try:
+        schema_db.executescript(schema_sql)
+        expected_objects = schema_db.execute(
+            "SELECT type,name,sql FROM sqlite_master "
+            "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
+    finally:
+        schema_db.close()
+    actual_shape = [(row[0], row[1], _normalized_sql(row[2] or '')) for row in objects]
+    expected_shape = [(row[0], row[1], _normalized_sql(row[2] or ''))
+                      for row in expected_objects]
+    return actual_shape == expected_shape
+
+
+def _validate_v1_db(db):
+    if (db.execute('PRAGMA application_id').fetchone()[0] != APPLICATION_ID or
+            db.execute('PRAGMA user_version').fetchone()[0] != V1_SCHEMA_VERSION or
+            db.execute('PRAGMA journal_mode').fetchone()[0] != 'delete'):
+        raise WorkspaceStoreUnavailable()
+    if not _schema_shape(db, _V1_SCHEMA_SQL):
+        raise WorkspaceStoreUnavailable()
+
+
+def initialize_v2(path, *, clock=time.time):
     """Exclusively create a new private DB; never initialize an existing file."""
     path = _path(path, exists=False)
     try:
@@ -212,6 +391,86 @@ def initialize(path, *, clock=time.time):
     except (OSError, sqlite3.Error):
         raise WorkspaceStoreUnavailable() from None
     return AssistantWorkspaceStore(path, clock=clock)
+
+
+def initialize(path, *, clock=time.time):
+    """Compatibility name for explicit creation of a fresh v2 store."""
+    return initialize_v2(path, clock=clock)
+
+
+def offline_upgrade_v1(path):
+    """Atomically upgrade a validated v1 file while it is offline."""
+    path = _path(path)
+    try:
+        if _has_wal_sidecars(path):
+            raise WorkspaceStoreUnavailable()
+        before = path.lstat()
+        db = sqlite3.connect(path.as_uri() + '?mode=rw', uri=True, timeout=2,
+                             isolation_level=None)
+        try:
+            after = path.lstat()
+            if ((before.st_dev, before.st_ino) != (after.st_dev, after.st_ino) or
+                    _has_wal_sidecars(path)):
+                raise WorkspaceStoreUnavailable()
+            db.execute('PRAGMA trusted_schema=OFF')
+            db.execute('PRAGMA foreign_keys=ON')
+            if db.execute('PRAGMA secure_delete=ON').fetchone()[0] != 1:
+                raise WorkspaceStoreUnavailable()
+            _validate_v1_db(db)
+            db.execute('BEGIN IMMEDIATE')
+            migration_sql = '''
+CREATE TABLE turn_requests (
+ request_id TEXT NOT NULL,
+ thread_id TEXT NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
+ account_id TEXT NOT NULL,
+ library_id TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('pending','completed','failed','interrupted')),
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ expected_revision INTEGER NOT NULL CHECK(expected_revision >= 0),
+ input_text TEXT NOT NULL,
+ lease_id TEXT,
+ lease_expires_at INTEGER,
+ revision INTEGER NOT NULL CHECK(revision >= 0),
+ result_summary TEXT,
+ error_code TEXT,
+ UNIQUE(account_id,library_id,request_id),
+ CHECK((status='pending' AND lease_id IS NOT NULL AND lease_expires_at IS NOT NULL
+        AND result_summary IS NULL AND error_code IS NULL) OR
+       (status='completed' AND lease_id IS NULL AND lease_expires_at IS NULL
+        AND result_summary IS NOT NULL AND error_code IS NULL) OR
+       (status IN ('failed','interrupted') AND lease_id IS NULL AND lease_expires_at IS NULL
+        AND result_summary IS NULL AND error_code IS NOT NULL))
+);
+CREATE INDEX turn_requests_thread ON turn_requests(thread_id,created_at);
+CREATE INDEX turn_requests_expiry ON turn_requests(expires_at);
+CREATE INDEX turn_requests_pending ON turn_requests(thread_id,status,lease_expires_at);
+CREATE TABLE thread_context (
+ thread_id TEXT PRIMARY KEY REFERENCES threads(thread_id) ON DELETE CASCADE,
+ account_id TEXT NOT NULL,
+ library_id TEXT NOT NULL,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ context_json TEXT NOT NULL
+);
+CREATE INDEX thread_context_expiry ON thread_context(expires_at);
+'''
+            for statement in migration_sql.split(';'):
+                if statement.strip():
+                    db.execute(statement)
+            db.execute('PRAGMA user_version=2')
+            db.commit()
+        except BaseException:
+            if db.in_transaction:
+                db.rollback()
+            raise
+        finally:
+            db.close()
+        return AssistantWorkspaceStore(path)
+    except WorkspaceStoreUnavailable:
+        raise
+    except (OSError, sqlite3.Error, ValueError):
+        raise WorkspaceStoreUnavailable() from None
 
 
 class AssistantWorkspaceStore:
@@ -246,21 +505,7 @@ class AssistantWorkspaceStore:
                     db.execute('PRAGMA user_version').fetchone()[0] != SCHEMA_VERSION or
                     db.execute('PRAGMA journal_mode').fetchone()[0] != 'delete'):
                 raise WorkspaceStoreUnavailable()
-            objects = db.execute("SELECT type,name,sql FROM sqlite_master "
-                                 "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
-            schema_db = sqlite3.connect(':memory:')
-            try:
-                schema_db.executescript(_SCHEMA_SQL)
-                expected_objects = schema_db.execute(
-                    "SELECT type,name,sql FROM sqlite_master "
-                    "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
-            finally:
-                schema_db.close()
-            actual_shape = [(row['type'], row['name'], _normalized_sql(row['sql'] or ''))
-                            for row in objects]
-            expected_shape = [(row[0], row[1], _normalized_sql(row[2] or ''))
-                              for row in expected_objects]
-            if actual_shape != expected_shape:
+            if not _schema_shape(db, _SCHEMA_SQL):
                 raise WorkspaceStoreUnavailable()
             yield db
         except WorkspaceStoreUnavailable:
@@ -282,6 +527,8 @@ class AssistantWorkspaceStore:
     def _prune(self, db, now):
         # Old exchanges expire at their original turn timestamp. Thread expiry
         # follows the latest activity, so fresh turns cannot immortalize old ones.
+        db.execute('DELETE FROM turn_requests WHERE expires_at<=?', (now,))
+        db.execute('DELETE FROM thread_context WHERE expires_at<=?', (now,))
         db.execute('DELETE FROM exchanges WHERE expires_at<=?', (now,))
         db.execute('DELETE FROM threads WHERE expires_at<=?', (now,))
         return db.execute('SELECT changes()').fetchone()[0]
@@ -404,6 +651,9 @@ class AssistantWorkspaceStore:
                                 (thread_id, account_id, library_id, now)).fetchone()
             if thread is None:
                 raise WorkspaceStoreMissing()
+            if db.execute("SELECT 1 FROM turn_requests WHERE thread_id=? AND status='pending'",
+                          (thread_id,)).fetchone() is not None:
+                raise WorkspaceStoreConflict()
             if thread['revision'] != expected_revision:
                 raise WorkspaceStoreConflict()
             if db.execute('SELECT count(*) FROM exchanges').fetchone()[0] >= MAX_EXCHANGES:
@@ -428,6 +678,260 @@ class AssistantWorkspaceStore:
                           exchange=self._exchange(row), replayed=False)
             db.commit()
             return result
+
+    @staticmethod
+    def _turn_view(row, *, replayed=False):
+        result_summary = (_stored_summary(row['result_summary'], row['library_id'])
+                          if row['status'] == 'completed' else None)
+        return dict(request_id=row['request_id'], thread_id=row['thread_id'],
+                    status=row['status'], lease_id=row['lease_id'],
+                    context=(None if result_summary is None else result_summary['context']),
+                    revision=row['revision'], result_summary=result_summary,
+                    error_code=row['error_code'], replayed=replayed)
+
+    @staticmethod
+    def _context_for(db, thread_id, account_id, library_id, now):
+        row = db.execute('''SELECT context_json FROM thread_context WHERE thread_id=?
+            AND account_id=? AND library_id=? AND expires_at>?''',
+                         (thread_id, account_id, library_id, now)).fetchone()
+        return (None if row is None else _stored_context(row['context_json'], library_id))
+
+    @staticmethod
+    def _reconcile_lease(db, row, now):
+        if row['status'] == 'pending' and row['lease_expires_at'] <= now:
+            revision = db.execute('SELECT revision FROM threads WHERE thread_id=?',
+                                  (row['thread_id'],)).fetchone()
+            current = row['revision'] if revision is None else revision['revision']
+            db.execute('''UPDATE turn_requests SET status='interrupted',lease_id=NULL,
+                lease_expires_at=NULL,revision=?,error_code='turn_interrupted'
+                WHERE request_id=? AND account_id=? AND library_id=? AND status='pending' ''',
+                       (current, row['request_id'], row['account_id'], row['library_id']))
+            return db.execute('''SELECT * FROM turn_requests WHERE request_id=?
+                AND account_id=? AND library_id=?''',
+                              (row['request_id'], row['account_id'], row['library_id'])).fetchone()
+        return row
+
+    def begin_turn(self, account_id, library_id, thread_id, request_id,
+                   expected_revision, input_text):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id = _uuid4(thread_id, 'thread ID')
+        request_id = _uuid4(request_id, 'request ID')
+        expected_revision = _expected_revision(expected_revision)
+        input_text = _text(input_text, MAX_INPUT_BYTES)
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            prior = db.execute('''SELECT * FROM turn_requests WHERE account_id=?
+                AND library_id=? AND request_id=?''',
+                               (account_id, library_id, request_id)).fetchone()
+            if prior is not None:
+                if (prior['thread_id'] != thread_id or prior['input_text'] != input_text or
+                        prior['expected_revision'] != expected_revision):
+                    raise WorkspaceStoreConflict()
+                prior = self._reconcile_lease(db, prior, now)
+                result = self._turn_view(prior, replayed=True)
+                result['context'] = (self._context_for(db, thread_id, account_id,
+                                                       library_id, now)
+                                     if prior['status'] == 'pending' else None)
+                db.commit()
+                return result
+            thread = db.execute('''SELECT * FROM threads WHERE thread_id=? AND account_id=?
+                AND library_id=? AND expires_at>?''',
+                                (thread_id, account_id, library_id, now)).fetchone()
+            if thread is None:
+                raise WorkspaceStoreMissing()
+            if thread['revision'] != expected_revision:
+                raise WorkspaceStoreConflict()
+            pending = db.execute("SELECT * FROM turn_requests WHERE thread_id=? AND status='pending'",
+                                 (thread_id,)).fetchone()
+            if pending is not None:
+                pending = self._reconcile_lease(db, pending, now)
+                if pending['status'] == 'pending':
+                    raise WorkspaceStoreConflict()
+            if (db.execute('SELECT count(*) FROM turn_requests').fetchone()[0] >= MAX_REQUESTS or
+                    db.execute('SELECT count(*) FROM turn_requests WHERE thread_id=?',
+                               (thread_id,)).fetchone()[0] >= MAX_REQUESTS_PER_THREAD):
+                raise WorkspaceStoreUnavailable()
+            lease_id = str(uuid.uuid4())
+            db.execute('''INSERT INTO turn_requests(request_id,thread_id,account_id,library_id,
+                status,created_at,expires_at,expected_revision,input_text,lease_id,
+                lease_expires_at,revision,result_summary,error_code)
+                VALUES (?,?,?,?, 'pending',?,?,?,?,?,?,?,NULL,NULL)''',
+                       (request_id, thread_id, account_id, library_id, now,
+                        now + RETENTION_SECONDS, expected_revision, input_text,
+                        lease_id, now + LEASE_SECONDS, expected_revision))
+            row = db.execute('''SELECT * FROM turn_requests WHERE account_id=?
+                AND library_id=? AND request_id=?''',
+                             (account_id, library_id, request_id)).fetchone()
+            result = self._turn_view(row)
+            result['context'] = self._context_for(db, thread_id, account_id, library_id, now)
+            db.commit()
+            return result
+
+    def get_turn(self, account_id, library_id, thread_id, request_id):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id, request_id = _uuid4(thread_id, 'thread ID'), _uuid4(request_id, 'request ID')
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            row = db.execute('''SELECT r.* FROM turn_requests r JOIN threads t
+                ON t.thread_id=r.thread_id WHERE r.account_id=? AND r.library_id=?
+                AND r.thread_id=? AND r.request_id=? AND t.expires_at>?''',
+                             (account_id, library_id, thread_id, request_id, now)).fetchone()
+            if row is None:
+                raise WorkspaceStoreMissing()
+            row = self._reconcile_lease(db, row, now)
+            result = self._turn_view(row, replayed=True)
+            result['context'] = (self._context_for(db, thread_id, account_id,
+                                                   library_id, now)
+                                 if row['status'] == 'pending' else None)
+            db.commit()
+            return result
+
+    def _leased_request(self, db, account_id, library_id, thread_id, request_id,
+                        lease_id, now):
+        lease_id = _uuid4(lease_id, 'lease ID')
+        row = db.execute('''SELECT r.* FROM turn_requests r JOIN threads t
+            ON t.thread_id=r.thread_id WHERE r.account_id=? AND r.library_id=?
+            AND r.thread_id=? AND r.request_id=? AND t.expires_at>?''',
+                         (account_id, library_id, thread_id, request_id, now)).fetchone()
+        if row is None:
+            raise WorkspaceStoreMissing()
+        if row['status'] != 'pending' or row['lease_id'] != lease_id:
+            raise WorkspaceStoreConflict()
+        if row['lease_expires_at'] <= now:
+            self._reconcile_lease(db, row, now)
+            return None
+        return row
+
+    def complete_turn(self, account_id, library_id, thread_id, request_id,
+                      lease_id, result_summary, cards=None, receipts=None):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id, request_id = _uuid4(thread_id, 'thread ID'), _uuid4(request_id, 'request ID')
+        summary = _result_summary(result_summary, library_id)
+        cards = _card_refs([] if cards is None else cards)
+        receipts = _receipt_ids([] if receipts is None else receipts)
+        summary_json = _json_value(summary, 32 * 1024, 'result summary')
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            row = self._leased_request(db, account_id, library_id, thread_id,
+                                       request_id, lease_id, now)
+            if row is None:
+                row = db.execute('''SELECT * FROM turn_requests WHERE account_id=?
+                    AND library_id=? AND thread_id=? AND request_id=?''',
+                                 (account_id, library_id, thread_id, request_id)).fetchone()
+                result = self._turn_view(row)
+                result['context'] = None
+                db.commit()
+                return result
+            thread = db.execute('SELECT * FROM threads WHERE thread_id=? AND account_id=? AND library_id=?',
+                                (thread_id, account_id, library_id)).fetchone()
+            if thread is None:
+                raise WorkspaceStoreMissing()
+            if thread['revision'] != row['expected_revision']:
+                raise WorkspaceStoreConflict()
+            if (db.execute('SELECT count(*) FROM exchanges').fetchone()[0] >= MAX_EXCHANGES or
+                    db.execute('SELECT count(*) FROM exchanges WHERE thread_id=?',
+                               (thread_id,)).fetchone()[0] >= MAX_EXCHANGES_PER_THREAD):
+                raise WorkspaceStoreUnavailable()
+            revision = row['expected_revision'] + 1
+            created_at = row['created_at']
+            expires_at = row['expires_at']
+            exchange_id = str(uuid.uuid4())
+            exchange_payload = dict(expected_revision=row['expected_revision'],
+                                    input_text=row['input_text'], result_summary=summary,
+                                    cards=cards, receipts=receipts)
+            fingerprint = _payload_fingerprint(exchange_payload)
+            db.execute('''INSERT INTO exchanges(exchange_id,thread_id,account_id,library_id,
+                request_id,revision,created_at,expires_at,input_text,reply,card_refs,receipt_ids,
+                payload_fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                       (exchange_id, thread_id, account_id, library_id, request_id,
+                        revision, created_at, expires_at, row['input_text'], summary['reply'],
+                        json.dumps(cards, ensure_ascii=False, sort_keys=True, separators=(',', ':')),
+                        json.dumps(receipts, separators=(',', ':')), fingerprint))
+            db.execute('''UPDATE threads SET updated_at=?,expires_at=?,revision=?
+                WHERE thread_id=?''', (now, now + RETENTION_SECONDS, revision, thread_id))
+            if summary['context'] is not None:
+                context_json = _json_value(summary['context'], 32 * 1024, 'context')
+                current = db.execute('''SELECT created_at,expires_at,context_json
+                    FROM thread_context WHERE thread_id=? AND account_id=? AND library_id=?
+                    AND expires_at>?''', (thread_id, account_id, library_id, now)).fetchone()
+                current_context = (None if current is None else
+                                   _stored_context(current['context_json'], library_id))
+                if current_context != summary['context']:
+                    db.execute('''INSERT INTO thread_context(thread_id,account_id,library_id,
+                        created_at,expires_at,context_json) VALUES (?,?,?,?,?,?)
+                        ON CONFLICT(thread_id) DO UPDATE SET account_id=excluded.account_id,
+                        library_id=excluded.library_id,created_at=excluded.created_at,
+                        expires_at=excluded.expires_at,context_json=excluded.context_json''',
+                               (thread_id, account_id, library_id, created_at, expires_at,
+                                context_json))
+            else:
+                db.execute('DELETE FROM thread_context WHERE thread_id=?', (thread_id,))
+            db.execute('''UPDATE turn_requests SET status='completed',lease_id=NULL,
+                lease_expires_at=NULL,revision=?,result_summary=?,error_code=NULL
+                WHERE request_id=? AND account_id=? AND library_id=?''',
+                       (revision, summary_json, request_id, account_id, library_id))
+            updated = db.execute('''SELECT * FROM turn_requests WHERE request_id=?
+                AND account_id=? AND library_id=?''',
+                                 (request_id, account_id, library_id)).fetchone()
+            result = self._turn_view(updated)
+            db.commit()
+            return result
+
+    def fail_turn(self, account_id, library_id, thread_id, request_id,
+                  lease_id, error_code):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id, request_id = _uuid4(thread_id, 'thread ID'), _uuid4(request_id, 'request ID')
+        if type(error_code) is not str or error_code not in _SAFE_ERROR_CODES:
+            raise ValueError('Invalid error code')
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            row = self._leased_request(db, account_id, library_id, thread_id,
+                                       request_id, lease_id, now)
+            if row is None:
+                row = db.execute('''SELECT * FROM turn_requests WHERE account_id=?
+                    AND library_id=? AND thread_id=? AND request_id=?''',
+                                 (account_id, library_id, thread_id, request_id)).fetchone()
+                result = self._turn_view(row)
+                result['context'] = None
+                db.commit()
+                return result
+            thread = db.execute('SELECT revision FROM threads WHERE thread_id=?',
+                                (thread_id,)).fetchone()
+            revision = row['expected_revision'] if thread is None else thread['revision']
+            db.execute('''UPDATE turn_requests SET status='failed',lease_id=NULL,
+                lease_expires_at=NULL,revision=?,result_summary=NULL,error_code=?
+                WHERE request_id=? AND account_id=? AND library_id=?''',
+                       (revision, error_code, request_id, account_id, library_id))
+            updated = db.execute('''SELECT * FROM turn_requests WHERE request_id=?
+                AND account_id=? AND library_id=?''',
+                                 (request_id, account_id, library_id)).fetchone()
+            result = self._turn_view(updated)
+            result['context'] = None
+            db.commit()
+            return result
+
+    def latest_turn_id(self, account_id, library_id, thread_id):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id = _uuid4(thread_id, 'thread ID')
+        now = int(self.clock())
+        with self.connection() as db:
+            row = db.execute('''SELECT r.request_id FROM turn_requests r JOIN threads t
+                ON t.thread_id=r.thread_id WHERE r.account_id=? AND r.library_id=?
+                AND r.thread_id=? AND r.status='completed' AND r.expires_at>? AND t.expires_at>?
+                ORDER BY r.revision DESC LIMIT 1''',
+                             (account_id, library_id, thread_id, now, now)).fetchone()
+            if row is None:
+                # Keep missing and foreign threads indistinguishable from an empty history.
+                return None
+            return row['request_id']
 
     def get_preferences(self, account_id):
         account_id = _scope(account_id)
@@ -502,6 +1006,13 @@ class AssistantWorkspaceStore:
         now = int(self.clock())
         with self.connection() as db:
             self._begin(db)
+            # A still-retained lease may be reconciled only after its own deadline.
+            db.execute('''UPDATE turn_requests SET status='interrupted',lease_id=NULL,
+                lease_expires_at=NULL,revision=coalesce((SELECT revision FROM threads t
+                WHERE t.thread_id=turn_requests.thread_id),revision),error_code='turn_interrupted'
+                WHERE status='pending' AND lease_expires_at<=?''', (now,))
+            db.execute('DELETE FROM turn_requests WHERE expires_at<=?', (now,))
+            db.execute('DELETE FROM thread_context WHERE expires_at<=?', (now,))
             removed_exchanges = db.execute('DELETE FROM exchanges WHERE expires_at<=?', (now,)).rowcount
             removed_threads = db.execute('DELETE FROM threads WHERE expires_at<=?', (now,)).rowcount
             db.commit()

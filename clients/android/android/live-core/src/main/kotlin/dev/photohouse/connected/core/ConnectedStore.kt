@@ -5,6 +5,7 @@ import dev.photohouse.playback.PlaybackProgress
 import dev.photohouse.playback.PlaybackBookmark
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
 import java.util.Collections
@@ -352,6 +353,7 @@ class ConnectedStore(
     private val savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
     private val now: () -> Long = System::currentTimeMillis,
     private val memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
+    assistantWorkspaceApi: AssistantWorkspaceApi? = null,
 ) {
     /** Keeps historical trailing-lambda clock construction source-compatible. */
     constructor(
@@ -368,13 +370,22 @@ class ConnectedStore(
         savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
         clock: () -> Long,
     ) : this(api, scope, persistence, uploadNetwork, batchPersistence, batchSource, memoryCommunityApi,
-        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null)
+        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null)
 
     private var assistantSpeechRequest = 0L
     private var assistantTurnRequest = 0L
     private var assistantTranscriptRequest = 0L
     private val mutable = MutableStateFlow(LiveState())
     val state = mutable.asStateFlow()
+    val assistantWorkspaceCoordinator: AssistantWorkspaceStore? = assistantWorkspaceApi
+        ?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
+        ?.let { workspaceApi -> AssistantWorkspaceStore(workspaceApi, scope, ::currentAssistantWorkspaceScope) }
+    private val emptyAssistantWorkspaceState = MutableStateFlow(AssistantWorkspaceState())
+    val assistantWorkspaceState: StateFlow<AssistantWorkspaceState>
+        get() = assistantWorkspaceCoordinator?.state ?: emptyAssistantWorkspaceState.asStateFlow()
+    private val assistantWorkspaceScopeMonitor = assistantWorkspaceCoordinator?.let { coordinator ->
+        scope.launch { state.collect { coordinator.onScopeChanged() } }
+    }
     private val playbackProgress = PlaybackProgress()
     private var restorationAttempted = false
     private var resumeLibrary: String? = null
@@ -691,6 +702,7 @@ class ConnectedStore(
         mutable.value = LiveState(generation = nextGeneration, session = if (cover) null else identity, covered = cover,
             assistant = assistant,
             problem = if (storageFailed) LiveProblem(Message.SESSION_STORAGE_UNAVAILABLE) else if (coolingDown()) LiveProblem(Message.RATE_LIMITED, cooldownUntil) else null)
+        assistantWorkspaceCoordinator?.onScopeChanged()
     }
     private fun active(generation: Long): Boolean {
         if (state.value.generation != generation) return false
@@ -699,6 +711,14 @@ class ConnectedStore(
     }
     private fun usable(): Boolean = !state.value.covered && token != null && active(state.value.generation)
     private fun allowed(): Boolean = usable() && identity?.memberships?.any { it.library_id == state.value.library && it.available } == true
+    private fun currentAssistantWorkspaceScope(): AssistantWorkspaceScope? {
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        val library = state.value.library ?: return null
+        val live = state.value
+        return AssistantWorkspaceScope(account, credential, library, live.generation,
+            foregroundAllowed = allowed() && !live.covered)
+    }
     private fun launch(block: suspend (Long) -> Unit) {
         val generation = state.value.generation
         val job = scope.launch {
