@@ -12771,6 +12771,35 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "bounded-private-qualification-runtime-imports-20261013",
+      "source_commit": "31da62b4700a595719df9d8384ddc3da9f9828bb",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "c7e200076f55008b71cb95be2b883f477f53f494b3570bbfa160c1aec1e05f85"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "a6f86d5d85bba0a62cea0b8046f661e999797e2f8d2fd0bbbb5cc77b5d196e77"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md",
+          "sha256": "ca2ec0e6715e0567a7f391b24acfad41dd68ff94454888b3b6077684e34df280"
+        },
+        {
+          "path": "server/scripts/qualify_private_assistant.py",
+          "sha256": "9d9e231b281aaba88bca02f40ec675db5a7d75e1c324c3b1b79ba50bcae35372"
+        },
+        {
+          "path": "server/tests/security/test_qualify_private_assistant.py",
+          "sha256": "38ad8a97b3d4fbfecb30ddb37831db54ee1cde4de77f79b4cb445b8f3f2d67cb"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
