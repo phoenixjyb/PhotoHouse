@@ -13072,6 +13072,27 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "isolated-legacy-recovery-browser-fixture-20261013",
+      "source_commit": "55d7213fb942c48456e5cf52440a337560acc1ca",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "8261ace73fb5191923bec233c4d2e9a5c99a57a84f106aebce3a05cdeaa612ca"
+        },
+        {
+          "path": "server/tests/security/assistant_pending_recovery_browser_bridge.py",
+          "sha256": "423a8e4fafdbe4bfcf1fccc511f31edf7548531aac1962b2b6cac637b0128a9d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_recovery_browser.cjs",
+          "sha256": "2934b7de583028c67ca84a9f1116b5c72c0324de3303f00bba668524f34a4591"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
