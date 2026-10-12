@@ -1659,36 +1659,6 @@ configuration separation and missing/malformed storage without file creation.
 This is synthetic in-process evidence: no provider, listener, Windows database
 or physical device was used.
 
-## October 13 private assistant turns and clients
-
-The [private turn contract](PRIVATE_ASSISTANT_TURNS_V1.md) now has local server,
-Web and phone implementation. Isolated schema-v2 storage reserves a revision
-with a bounded lease, commits exchange/result/context atomically, and recovers
-the exact request without regeneration or repeated media-open effects. Current
-membership and discovery bindings are checked again on recovery. The first
-applied preference is textual reply language. Carried context keeps its original
-expiry; private history remains separate from durable family text/audio.
-
-Root qualification passed **84 backend tests and 63 subtests**, **20 Web client
-tests**, **10 synthetic browser checkpoints**, **874 core Android tests** and
-**5 simulator UI tests**. The simulator reused `Medium_Phone_API_36.0`; phone UI
-fixtures used 150% font size. Web dialog checks used 1280×900 desktop, a
-260×563 CSS viewport at device scale 1.5 for a phone-equivalent render, and a
-390px viewport with 150% root font size. These are fixture/layout checks, not
-physical device or native browser-zoom acceptance. Root inspected both rendered
-clients. The existing Web foreground voice compatibility journey also passed.
-
-The first broad API run used the wrong system Python and lacked Alembic; it was
-rerun with the existing repository virtual environment. That run passed 1,249
-tests and 738 subtests, with two extracted-package failures identifying omitted
-workspace source files. The release allowlist now includes the store, transport,
-Web module and explicit offline operator CLI. Extracted-package requalification
-follows the source commit; until it passes, this is not a deployment candidate.
-
-Phone includes private text/history beside its current v1 continuous voice
-screen. Unifying continuous voice with private turns is the next integration
-slice. No APK signing/publication, Windows store creation/upgrade, API restart,
-provider execution or production data change is part of this qualification.
 
 Phone v49 delivery is separately recorded in its release note. The initially
 prepared release controllers had mismatched authority paths; this was corrected
@@ -1727,3 +1697,42 @@ verified staged files and reused the same APK. Both old feed pointers were
 verified before publication; TV v30 stayed byte-identical. The API task, config,
 wrapper and listener were unchanged afterward. Physical phone/TV installation
 and family voice behavior remain separate acceptance gates.
+
+## October 13 private assistant turns and clients
+
+The [private turn contract](PRIVATE_ASSISTANT_TURNS_V1.md) now has local server,
+Web and phone implementation. Isolated schema-v2 storage reserves a revision
+with a bounded lease, commits exchange/result/context atomically, and recovers
+the exact request without regeneration or repeated media-open effects. Current
+membership and discovery bindings are checked again on recovery. The first
+applied preference is textual reply language. Carried context keeps its original
+expiry; private history remains separate from durable family text/audio.
+
+Root qualification passed **84 backend tests and 63 subtests**, **20 Web client
+tests**, **10 synthetic browser checkpoints**, **874 core Android tests** and
+**5 simulator UI tests**. The simulator reused `Medium_Phone_API_36.0`; phone UI
+fixtures used 150% font size. Web dialog checks used 1280×900 desktop, a
+260×563 CSS viewport at device scale 1.5 for a phone-equivalent render, and a
+390px viewport with 150% root font size. These are fixture/layout checks, not
+physical device or native browser-zoom acceptance. Root inspected both rendered
+clients. The existing Web foreground voice compatibility journey also passed.
+
+The first broad API run used the wrong system Python and lacked Alembic; it was
+rerun with the existing repository virtual environment. That run passed 1,249
+tests and 738 subtests, with two extracted-package failures identifying omitted
+workspace source files. The release allowlist now includes the store, transport,
+Web module and explicit offline operator CLI. The extracted-package suite then
+passed **6 tests**, including isolated imports and synthetic `a0` serving without
+advancing the main database to the package migration head.
+
+The fixed source is `7a938b7e8c78908ef340a99728348818674da298`, with provenance
+recorded in `bcc2dc9`. Its 190-file source-only API ZIP has SHA-256
+`0e8daa23dc5f62cccf0d98fcf281405e8bc47445ce4b0956606b77129b8926d0`
+and is 3,189,380 bytes. The current-source verifier passed: 1,198 files,
+1,733 feature-file records, 261 overlays and 11 public transforms. This is a
+Mac-qualified candidate; Windows qualification and activation remain separate.
+
+Phone includes private text/history beside its current v1 continuous voice
+screen. Unifying continuous voice with private turns is the next integration
+slice. No APK signing/publication, Windows store creation/upgrade, API restart,
+provider execution or production data change is part of this qualification.
