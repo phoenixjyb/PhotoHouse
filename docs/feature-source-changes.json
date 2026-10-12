@@ -12734,6 +12734,43 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "compact-private-conversation-controls-and-phone-v51-identity-20261013",
+      "source_commit": "5b00b851127ffbe9102cc65fb9bbc818b6421dd4",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "43a9670cf888b2cdcb5c4de46ecbea03548d38dcc27e1c08789c97a1e939b7dd"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "d018787be18b07f42c360aa7d83d891964a808b26c26682221eba6e3c14161ea"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "1e045d965dbd08dbc87bfd514b6b45fe3843c32ad39b7032cdbb45b12df04534"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "1e768f9f58d9ab53f523f2d3b83a608cd8ecca7167dd8cfcf6fcf2e7882fbd89"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "sha256": "cc78f0059771f40396d4acdcf557bcf155ee080602fd3a30f4ed15f037475890"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "sha256": "c8bcb6348cb76d377db57d55785c26e4938dc2700de48ec58b1e90497dd7888d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "sha256": "aacab35e859a3d62ddecbfb65deab40e44f0c1e03cf8f2cce2320a91af7b32b6"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
