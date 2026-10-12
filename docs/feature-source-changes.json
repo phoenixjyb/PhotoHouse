@@ -12325,6 +12325,19 @@
       "routes_added": true,
       "schema_changed": true,
       "generation_enabled": false
+    },
+    {
+      "feature": "private-assistant-extracted-package-qualification-record",
+      "source_commit": "6811f277caaf838f0b9675b85de4c4dd63920514",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "c0d6be7909597ae856d33c83e27836f98fda3548484644f055aaf0f767aeafb4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
