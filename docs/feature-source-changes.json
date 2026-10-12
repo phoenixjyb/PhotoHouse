@@ -12081,6 +12081,35 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "restore-user-approved-original-android-brand-and-phone-v50",
+      "source_commit": "df6809cb4b19d5f74441bdeb66e188447c6ba696",
+      "files": [
+        {
+          "path": "clients/android/android/branding/README.md",
+          "sha256": "4efab9af45f36289769eefc3d0c3c56b5d822d33213039c69513edf575fd68e3"
+        },
+        {
+          "path": "clients/android/android/branding/res/drawable-nodpi/photohouse_mark.png",
+          "sha256": "c8fc559e39c5c4d0b9902cafca47e15ac4e6cfa2cbc18d81a40d956e8a8f8909"
+        },
+        {
+          "path": "clients/android/android/branding/res/drawable/photohouse_icon_foreground.xml",
+          "sha256": "86d318f099cb803bbb165ff1fc946d68072aea12ae761ef85fd0d929e85ab52b"
+        },
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "c257875ed0697f581dc13e65486d1e8c1c66d5ee86f3160eb00ebda6f95cb068"
+        },
+        {
+          "path": "clients/android/android/tv/src/main/res/drawable/tv_banner.xml",
+          "sha256": "f8a452161a15c738a6f6aee1bcb47d9f2b939b7c48733365b2f52db08d945b9d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
