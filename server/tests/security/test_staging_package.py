@@ -22,6 +22,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/assistant_workspace_transport.py',
             'backend/app/ui/access/assistant-private-workspace.js',
             'scripts/prepare_assistant_workspace.py',
+            'scripts/qualify_private_assistant.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',

@@ -1799,3 +1799,20 @@ Phone v50/TV v30 remain the verified published packages. Private storage, these
 routes, providers, API actions and APK signing/publication were not activated by
 this source work. Portable synthetic qualification preparation is a separate
 next slice.
+
+## October 13 portable private assistant qualification
+
+`server/scripts/qualify_private_assistant.py --out <new-private-directory>`
+creates an a0-compatible synthetic main database, reviewed discovery index and
+separate schema-v2 conversation store. It exercises the actual read-only
+assistant over two invented photos, then checks exact request recovery,
+idempotent engine invocation, labels, older pages, revision conflicts, actor
+separation and fixed retention. It starts no listener and invokes no model.
+
+The CLI accepts no existing database, media, provider or service paths. Existing
+outputs, aliases, query/fragment markers and unsafe parent paths are refused.
+Reports contain aggregate synthetic results. Windows execution uses the existing
+bounded Job wrapper: 15 minutes, 2 GiB process memory, four processes and an
+8 GiB free-RAM admission floor. Native execution requires its own staging/run
+approval. Five portable safety/behavior tests passed; source-package closure is
+checked again after pinning the new script in Git.
