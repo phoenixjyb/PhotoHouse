@@ -12800,6 +12800,39 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "authorized-saved-memory-discovery-foundation-20261013",
+      "source_commit": "1c82fefa9725768d0f8fa21d9332e330ef88f839",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "5a216d9cbcb7b91ff85ed63bfe7841e9eb35b661379a994725a67058099e3bcb"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "32edd52bdc5d2511aa54a446f8a3c478e709287beaf29245cfdae60bca64c0d4"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "dd9ab02b83bb0da48480dfcb6c82989f986eb0b8f58c944f84795b96e62e2648"
+        },
+        {
+          "path": "server/backend/app/access/assistant_memory_discovery.py",
+          "sha256": "15132f2de05a0c7fbea456742b18f90db89350f07dc055fa9e56ae38dabdf388"
+        },
+        {
+          "path": "server/tests/security/test_assistant_memory_discovery.py",
+          "sha256": "99bf948c21abfd4ba699720cd8214bd1b3ea96238739d1a4c48e66e9ecd8847c"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "f844ee8b21b294439da9f64e6debebb3d603ff16cb7a83affd769cb6fda0f1df"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
