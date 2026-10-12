@@ -12833,6 +12833,23 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "compact-private-phone-management-20261013",
+      "source_commit": "f738d17d4e52f8f0bdb711dd9e58f3510efe8787",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/PrivateAssistantPanelUiTest.kt",
+          "sha256": "efe6bbefefa043bb524a4173177afb5380e4edba96a869083cfca36916d418a1"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "sha256": "5cbee82939d4cf6845ea5fe8c808ea83404557cd340be44b073b2629c27975f1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }
