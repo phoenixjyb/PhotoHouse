@@ -11,7 +11,7 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.Collections
 
-/** Private owner-supplied binding for one explicit new-book composition session. */
+/** Private owner-supplied binding for one explicit book composition session. */
 data class MemoryBookCompositionScope(
     val accountId: String,
     val credential: Bearer,
@@ -19,6 +19,10 @@ data class MemoryBookCompositionScope(
     val library: String,
     val shelfScopeId: Long,
     val ownerCanCreate: Boolean,
+    /** Exact parent selected for editing. Null keeps this binding create-only. */
+    val editableBookId: String? = null,
+    val editableBookRevision: Long? = null,
+    val editableReaderScopeId: Long? = null,
 )
 
 data class MemoryBookCompositionSelection(
@@ -27,10 +31,10 @@ data class MemoryBookCompositionSelection(
     val sourcePolicy: String?,
 )
 
-enum class MemoryBookCompositionStatus { CLOSED, LOADING, READY, SAVING, RETRY_REQUIRED, CREATED }
+enum class MemoryBookCompositionStatus { CLOSED, LOADING, READY, SAVING, RETRY_REQUIRED, CREATED, SAVED }
 enum class MemoryBookCompositionFailure {
     NETWORK, TLS, SERVICE_UNAVAILABLE, RATE_LIMITED, ACCESS_DENIED, SCOPE_CHANGED,
-    NOT_ALLOWED, INVALID_STORY, STORY_CHANGED, INVALID_INPUT, INVALID_RESPONSE, UNKNOWN,
+    NOT_ALLOWED, INVALID_STORY, STORY_CHANGED, BOOK_CHANGED, INVALID_INPUT, INVALID_RESPONSE, UNKNOWN,
 }
 
 /** Transient state only. Credentials, server request bodies and private endpoint data are excluded. */
@@ -50,11 +54,16 @@ data class MemoryBookCompositionStoreState(
     val status: MemoryBookCompositionStatus = MemoryBookCompositionStatus.CLOSED,
     val failure: MemoryBookCompositionFailure? = null,
     val canCreate: Boolean = false,
+    val canEdit: Boolean = false,
+    val hasChanges: Boolean = false,
+    val editingBookId: String? = null,
+    val editingBookRevision: Long? = null,
+    val editingReaderScopeId: Long? = null,
     val pendingRetry: Boolean = false,
     val createdBook: MemoryBook? = null,
 )
 
-/** Explicit, process-only composer for creating a memoir book from saved stories. */
+/** Explicit, process-only composer for creating or updating a memoir book. */
 class MemoryBookCompositionStore(
     private val api: PhotoHouseApi,
     private val repository: MemoryCommunityRepository,
@@ -71,11 +80,16 @@ class MemoryBookCompositionStore(
         val library: String,
         val shelfScopeId: Long,
         val ownerCanCreate: Boolean,
+        val editableBookId: String?,
+        val editableBookRevision: Long?,
+        val editableReaderScopeId: Long?,
         val actionEpoch: Long,
     )
 
     private data class Frozen(
         val fence: Fence,
+        val bookId: String?,
+        val originalRevision: Long,
         val selections: List<MemoryBookCompositionSelection>,
         val mutation: MemoryBookMutation,
     )
@@ -89,6 +103,8 @@ class MemoryBookCompositionStore(
     private var fence: Fence? = null
     private var frozen: Frozen? = null
     private var serverCanCreate = false
+    private var serverCanEdit = false
+    private var editingBase: MemoryBook? = null
 
     /** Opening is explicit and is the only way this store starts collection reads. */
     @Synchronized
@@ -102,7 +118,9 @@ class MemoryBookCompositionStore(
         frozen = null
         fence = null
         serverCanCreate = false
-        if (!binding.ownerCanCreate) {
+        serverCanEdit = false
+        editingBase = null
+        if (!binding.ownerCanCreate || binding.editableBookId != null) {
             mutableState.value = cleanState(binding.copy(actionEpoch = epoch), status = MemoryBookCompositionStatus.CLOSED,
                 failure = MemoryBookCompositionFailure.NOT_ALLOWED)
             return false
@@ -112,7 +130,31 @@ class MemoryBookCompositionStore(
         mutableState.value = cleanState(expected, status = MemoryBookCompositionStatus.LOADING,
             busy = true).copy(title = defaultTitle, language = language)
         val request = ++requestId
-        operation = scope.launch { openReads(expected, request) }
+        operation = scope.launch { openCreateReads(expected, request) }
+        return true
+    }
+
+    /** Opens a reviewed existing book after freshly reauthorizing its parent and child stories. */
+    @Synchronized
+    fun openEdit(bookId: String, revision: Long): Boolean {
+        val binding = snapshot() ?: run { close(); return false }
+        if (binding.editableBookId != bookId || binding.editableBookRevision != revision ||
+            binding.editableReaderScopeId == null || revision <= 0 ||
+            bookId != runCatching { java.util.UUID.fromString(bookId).toString() }.getOrNull()) return false
+        closeOperation()
+        epoch++
+        requestId++
+        draftRevision = 0
+        frozen = null
+        fence = null
+        serverCanCreate = false
+        serverCanEdit = false
+        editingBase = null
+        val expected = binding.copy(actionEpoch = epoch)
+        fence = expected
+        mutableState.value = cleanState(expected, status = MemoryBookCompositionStatus.LOADING, busy = true)
+        val request = ++requestId
+        operation = scope.launch { openEditReads(expected, request, bookId, revision) }
         return true
     }
 
@@ -134,7 +176,12 @@ class MemoryBookCompositionStore(
         if (mutableState.value.busy || frozen != null || mutableState.value.status != MemoryBookCompositionStatus.READY) return false
         mutableState.value = mutableState.value.copy(busy = true, failure = null, status = MemoryBookCompositionStatus.LOADING)
         val request = ++requestId
-        operation = scope.launch { openReads(expected, request) }
+        operation = scope.launch {
+            val targetId = expected.editableBookId
+            val targetRevision = expected.editableBookRevision
+            if (targetId != null && targetRevision != null) openEditReads(expected, request, targetId, targetRevision)
+            else openCreateReads(expected, request)
+        }
         return true
     }
 
@@ -225,6 +272,7 @@ class MemoryBookCompositionStore(
         val expected = activeFence(expectedScopeId, expectedEpoch) ?: return false
         val current = mutableState.value
         if (current.busy || frozen != null || !canMutate(expected) || current.draftRevision != expectedDraftRevision ||
+            (expected.editableBookId != null && !current.hasChanges) ||
             hasUnfinishedInputSafely() || !validMutationFields(current)) return false
         mutableState.value = current.copy(busy = true, failure = null, status = MemoryBookCompositionStatus.SAVING)
         val request = ++requestId
@@ -236,7 +284,7 @@ class MemoryBookCompositionStore(
     fun retry(expectedScopeId: Long, expectedEpoch: Long): Boolean {
         val expected = activeFence(expectedScopeId, expectedEpoch) ?: return false
         val pending = frozen ?: return false
-        if (mutableState.value.busy || hasUnfinishedInputSafely() || !sameFence(expected, pending.fence) || !canCreate(expected)) return false
+        if (mutableState.value.busy || hasUnfinishedInputSafely() || !sameFence(expected, pending.fence) || !canWriteTarget(expected)) return false
         mutableState.value = mutableState.value.copy(busy = true, failure = null, status = MemoryBookCompositionStatus.SAVING)
         val request = ++requestId
         operation = scope.launch { postFrozen(pending, request) }
@@ -254,10 +302,12 @@ class MemoryBookCompositionStore(
         frozen = null
         fence = null
         serverCanCreate = false
+        serverCanEdit = false
+        editingBase = null
         mutableState.value = MemoryBookCompositionStoreState(actionEpoch = epoch)
     }
 
-    private suspend fun openReads(expected: Fence, request: Long) {
+    private suspend fun openCreateReads(expected: Fence, request: Long) {
         try {
             requireCurrent(expected, request)
             repository.loadCapabilities { isCurrent(expected, request) }
@@ -274,7 +324,45 @@ class MemoryBookCompositionStore(
             requireCurrent(expected, request)
             if (page.libraryId != expected.library || page.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
             mutableState.value = mutableState.value.copy(candidatePage = page, busy = false,
-                canCreate = canCreate(expected), status = MemoryBookCompositionStatus.READY, failure = null)
+                canCreate = canCreate(expected), canEdit = false,
+                status = MemoryBookCompositionStatus.READY, failure = null)
+        } catch (failure: Throwable) { handleFailure(expected, request, failure) }
+    }
+
+    private suspend fun openEditReads(expected: Fence, request: Long, bookId: String, revision: Long) {
+        try {
+            requireCurrent(expected, request)
+            repository.loadCapabilities { isCurrent(expected, request) }
+            requireCurrent(expected, request)
+            val parent = repository.book(bookId, revision) { isCurrent(expected, request) }
+            requireCurrent(expected, request)
+            if (!parent.canEdit || parent.revision != revision || parent.id != bookId ||
+                parent.stories.isEmpty() || parent.stories.size > MAX_STORIES) {
+                fail(expected, request, MemoryBookCompositionFailure.NOT_ALLOWED)
+                return
+            }
+            val selections = mutableListOf<MemoryBookCompositionSelection>()
+            for (summary in parent.stories) {
+                requireCurrent(expected, request)
+                val story = api.savedMemoryStory(expected.credential, expected.library, summary.id, summary.revision)
+                requireCurrent(expected, request)
+                val selected = selection(story)
+                if (story.libraryId != expected.library || !matchesParentStory(summary, selected)) {
+                    fail(expected, request, MemoryBookCompositionFailure.STORY_CHANGED)
+                    return
+                }
+                selections += selected
+            }
+            val page = api.savedMemoryStories(expected.credential, expected.library, 1)
+            requireCurrent(expected, request)
+            if (page.libraryId != expected.library || page.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            editingBase = parent
+            serverCanEdit = true
+            mutableState.value = mutableState.value.copy(candidatePage = page,
+                selectedStories = immutableSelections(selections), title = parent.title,
+                introduction = parent.introduction, language = parent.language, busy = false,
+                canCreate = false, canEdit = canEdit(expected), status = MemoryBookCompositionStatus.READY,
+                failure = null)
         } catch (failure: Throwable) { handleFailure(expected, request, failure) }
     }
 
@@ -296,10 +384,41 @@ class MemoryBookCompositionStore(
                 fail(expected, request, MemoryBookCompositionFailure.INVALID_INPUT)
                 return
             }
+            if (expected.editableBookId != null) {
+                val base = editingBase ?: run {
+                    fail(expected, request, MemoryBookCompositionFailure.BOOK_CHANGED)
+                    return
+                }
+                val freshParent = try {
+                    repository.book(base.id, base.revision) { isCurrent(expected, request) }
+                } catch (failure: Throwable) {
+                    requireCurrent(expected, request)
+                    if (failure is ApiFailure &&
+                        (failure.status in setOf(404, 409) || failure.kind == FailureKind.INVALID_RESPONSE)) {
+                        fail(expected, request, MemoryBookCompositionFailure.BOOK_CHANGED)
+                        return
+                    }
+                    throw failure
+                }
+                requireCurrent(expected, request)
+                if (!sameParentSnapshot(base, freshParent)) {
+                    fail(expected, request, MemoryBookCompositionFailure.BOOK_CHANGED)
+                    return
+                }
+            }
             for (entry in selected) {
                 requireCurrent(expected, request)
-                val fresh = api.savedMemoryStory(expected.credential, expected.library,
-                    entry.summary.id, entry.summary.revision)
+                val fresh = try {
+                    api.savedMemoryStory(expected.credential, expected.library,
+                        entry.summary.id, entry.summary.revision)
+                } catch (failure: Throwable) {
+                    requireCurrent(expected, request)
+                    if (expected.editableBookId != null && failure is ApiFailure && failure.status in setOf(404, 409)) {
+                        fail(expected, request, MemoryBookCompositionFailure.STORY_CHANGED)
+                        return
+                    }
+                    throw failure
+                }
                 requireCurrent(expected, request)
                 if (!matchesSelection(fresh, expected, entry)) {
                     fail(expected, request, MemoryBookCompositionFailure.STORY_CHANGED)
@@ -307,9 +426,14 @@ class MemoryBookCompositionStore(
                 }
             }
             requireCurrent(expected, request)
+            val targetId = expected.editableBookId
+            val originalRevision = if (targetId == null) 0L else expected.editableBookRevision ?: run {
+                fail(expected, request, MemoryBookCompositionFailure.BOOK_CHANGED)
+                return
+            }
             val mutation = MemoryBookMutation(draft.title, draft.language, draft.introduction,
-                immutableIds(selected.map { it.summary.id }), revision = 0L)
-            val frozenRequest = Frozen(expected, immutableSelections(selected), mutation)
+                immutableIds(selected.map { it.summary.id }), revision = originalRevision)
+            val frozenRequest = Frozen(expected, targetId, originalRevision, immutableSelections(selected), mutation)
             frozen = frozenRequest
             mutableState.value = mutableState.value.copy(pendingRetry = true, busy = true,
                 status = MemoryBookCompositionStatus.SAVING)
@@ -320,21 +444,27 @@ class MemoryBookCompositionStore(
     private suspend fun postFrozen(pending: Frozen, request: Long) {
         try {
             requireCurrent(pending.fence, request)
-            val result = repository.saveBook(null, pending.mutation) { isCurrent(pending.fence, request) }
+            val result = repository.saveBook(pending.bookId, pending.mutation) { isCurrent(pending.fence, request) }
             requireCurrent(pending.fence, request)
             val actualStories = result.stories.map { it.id to it.revision }
             val expectedStories = pending.selections.map { it.summary.id to it.summary.revision }
-            if (result.id != runCatching { java.util.UUID.fromString(result.id).toString() }.getOrNull() ||
-                !result.canEdit || result.revision != 1L || result.title != pending.mutation.title ||
+            val matchingStorySnapshots = result.stories.size == pending.selections.size &&
+                result.stories.zip(pending.selections).all { (summary, selected) -> matchesParentStory(summary, selected) }
+            val validResultId = pending.bookId?.let { result.id == it }
+                ?: (result.id == runCatching { java.util.UUID.fromString(result.id).toString() }.getOrNull())
+            if (!validResultId || !result.canEdit || result.revision != pending.originalRevision + 1 || result.title != pending.mutation.title ||
                 result.introduction != pending.mutation.introduction || result.language != pending.mutation.language ||
-                result.stories.map { it.id } != pending.mutation.storyIds || actualStories != expectedStories) {
+                result.stories.map { it.id } != pending.mutation.storyIds || actualStories != expectedStories ||
+                !matchingStorySnapshots) {
                 fail(pending.fence, request, MemoryBookCompositionFailure.INVALID_RESPONSE, retry = true)
                 return
             }
             if (frozen !== pending) return
             frozen = null
+            editingBase = result
             mutableState.value = mutableState.value.copy(busy = false, pendingRetry = false,
-                status = MemoryBookCompositionStatus.CREATED, failure = null, createdBook = result)
+                status = if (pending.bookId == null) MemoryBookCompositionStatus.CREATED else MemoryBookCompositionStatus.SAVED,
+                failure = null, createdBook = result, canEdit = result.canEdit)
         } catch (failure: Throwable) {
             handleFailure(pending.fence, request, failure, retry = true)
         }
@@ -360,11 +490,31 @@ class MemoryBookCompositionStore(
             story.theme == selected.summary.theme && story.language == selected.summary.language &&
             story.items.size == selected.summary.itemCount && story.chapters.size == selected.summary.chapterCount
 
+    private fun matchesParentStory(summary: MemoryBookStorySummary, selected: MemoryBookCompositionSelection): Boolean =
+        summary.id == selected.summary.id && summary.revision == selected.summary.revision &&
+            summary.title == selected.summary.title && summary.itemCount == selected.summary.itemCount &&
+            summary.coverAssetId == selected.summary.coverAssetId
+
+    private fun sameParentSnapshot(expected: MemoryBook, actual: MemoryBook): Boolean =
+        actual.id == expected.id && actual.revision == expected.revision && actual.canEdit &&
+            actual.title == expected.title && actual.introduction == expected.introduction &&
+            actual.language == expected.language && actual.stories == expected.stories
+
     private fun commitDraft(expected: Fence, next: MemoryBookCompositionStoreState) {
         if (!isCurrent(expected, null) || frozen != null) return
         draftRevision++
         mutableState.value = next.copy(actionEpoch = expected.actionEpoch, draftRevision = draftRevision,
-            failure = null, status = MemoryBookCompositionStatus.READY, canCreate = canCreate(expected))
+            failure = null, status = MemoryBookCompositionStatus.READY,
+            canCreate = canCreate(expected), canEdit = canEdit(expected),
+            hasChanges = editHasChanges(expected, next))
+    }
+
+    private fun editHasChanges(expected: Fence, value: MemoryBookCompositionStoreState): Boolean {
+        if (expected.editableBookId == null) return false
+        val base = editingBase ?: return false
+        return value.title != base.title || value.introduction != base.introduction ||
+            value.language != base.language ||
+            value.selectedStories.map { it.summary.id } != base.stories.map { it.id }
     }
 
     private fun validMutationFields(value: MemoryBookCompositionStoreState): Boolean =
@@ -383,19 +533,29 @@ class MemoryBookCompositionStore(
         } catch (_: Exception) { false }
     }
 
-    private fun canMutate(expected: Fence) = canCreate(expected) &&
+    private fun canWriteTarget(expected: Fence) =
+        if (expected.editableBookId == null) canCreate(expected) else canEdit(expected)
+
+    private fun canMutate(expected: Fence) = canWriteTarget(expected) &&
         mutableState.value.status == MemoryBookCompositionStatus.READY
 
     private fun hasUnfinishedInputSafely(): Boolean = runCatching(hasUnfinishedInput).getOrDefault(true)
 
     private fun canCreate(expected: Fence) = expected.ownerCanCreate && serverCanCreate && isCurrent(expected, null)
 
+    private fun canEdit(expected: Fence) = expected.editableBookId != null && expected.editableBookRevision != null &&
+        serverCanEdit && isCurrent(expected, null)
+
     private fun snapshot(): Fence? {
         val value = currentScope() ?: return null
         if (value.accountId.isBlank() || value.accountId.length > 256 || value.generation < 0 ||
-            value.shelfScopeId < 0 || !PhoneDiscoveryWire.validLibrary(value.library)) return null
+            value.shelfScopeId < 0 || !PhoneDiscoveryWire.validLibrary(value.library) ||
+            (value.editableBookId == null) != (value.editableBookRevision == null) ||
+            (value.editableBookId == null) != (value.editableReaderScopeId == null) ||
+            value.editableBookRevision?.let { it <= 0 } == true) return null
         return Fence(value.accountId, value.credential, value.generation, value.library,
-            value.shelfScopeId, value.ownerCanCreate, epoch)
+            value.shelfScopeId, value.ownerCanCreate, value.editableBookId, value.editableBookRevision,
+            value.editableReaderScopeId, epoch)
     }
 
     private fun activeFence(scopeId: Long, expectedEpoch: Long): Fence? = fence?.takeIf {
@@ -408,12 +568,16 @@ class MemoryBookCompositionStore(
         return fence === expected && expected.actionEpoch == epoch && actual.accountId == expected.accountId &&
             actual.credential === expected.credential && actual.generation == expected.generation &&
             actual.library == expected.library && actual.shelfScopeId == expected.shelfScopeId &&
-            actual.ownerCanCreate && expected.ownerCanCreate
+            actual.ownerCanCreate == expected.ownerCanCreate && actual.editableBookId == expected.editableBookId &&
+            actual.editableBookRevision == expected.editableBookRevision &&
+            actual.editableReaderScopeId == expected.editableReaderScopeId
     }
 
     private fun sameFence(left: Fence, right: Fence) = left.accountId == right.accountId &&
         left.credential === right.credential && left.generation == right.generation &&
         left.library == right.library && left.shelfScopeId == right.shelfScopeId &&
+        left.editableBookId == right.editableBookId && left.editableBookRevision == right.editableBookRevision &&
+        left.editableReaderScopeId == right.editableReaderScopeId &&
         left.actionEpoch == right.actionEpoch
 
     private fun requireCurrent(expected: Fence, request: Long) {
@@ -424,7 +588,9 @@ class MemoryBookCompositionStore(
                            busy: Boolean = false, failure: MemoryBookCompositionFailure? = null) =
         MemoryBookCompositionStoreState(accountId = expected.accountId, library = expected.library,
             generation = expected.generation, shelfScopeId = expected.shelfScopeId,
-            actionEpoch = expected.actionEpoch, status = status, busy = busy, failure = failure)
+            actionEpoch = expected.actionEpoch, status = status, busy = busy, failure = failure,
+            editingBookId = expected.editableBookId, editingBookRevision = expected.editableBookRevision,
+            editingReaderScopeId = expected.editableReaderScopeId)
 
     private fun finishBusy(expected: Fence, request: Long) {
         if (isCurrent(expected, request)) mutableState.value = mutableState.value.copy(busy = false)
@@ -434,11 +600,17 @@ class MemoryBookCompositionStore(
         if (!isCurrent(expected, request)) return
         mutableState.value = mutableState.value.copy(busy = false, failure = failure,
             status = if (retry && frozen != null) MemoryBookCompositionStatus.RETRY_REQUIRED else MemoryBookCompositionStatus.READY,
-            pendingRetry = frozen != null, canCreate = canCreate(expected))
+            pendingRetry = frozen != null, canCreate = canCreate(expected), canEdit = canEdit(expected))
     }
 
     private fun handleFailure(expected: Fence, request: Long, failure: Throwable, retry: Boolean = false) {
         if (failure is CancellationException || !isCurrent(expected, request)) return
+        if (expected.editableBookId != null && failure is ApiFailure &&
+            failure.status in setOf(404, 409)) {
+            if (failure.status == 409 && frozen != null) frozen = null
+            fail(expected, request, MemoryBookCompositionFailure.BOOK_CHANGED)
+            return
+        }
         val code = when (failure) {
             is ApiFailure -> when {
                 failure.status in setOf(401, 403) -> MemoryBookCompositionFailure.ACCESS_DENIED
@@ -459,6 +631,7 @@ class MemoryBookCompositionStore(
             closeOperation()
             frozen = null
             serverCanCreate = false
+            serverCanEdit = false
             val prior = mutableState.value
             mutableState.value = cleanState(expected, MemoryBookCompositionStatus.CLOSED,
                 failure = code).copy(actionEpoch = expected.actionEpoch, draftRevision = prior.draftRevision)
@@ -467,7 +640,7 @@ class MemoryBookCompositionStore(
         }
         mutableState.value = mutableState.value.copy(busy = false, failure = code,
             status = if (retry && frozen != null) MemoryBookCompositionStatus.RETRY_REQUIRED else MemoryBookCompositionStatus.READY,
-            pendingRetry = frozen != null, canCreate = canCreate(expected))
+            pendingRetry = frozen != null, canCreate = canCreate(expected), canEdit = canEdit(expected))
     }
 
     @Synchronized

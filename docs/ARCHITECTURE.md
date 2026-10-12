@@ -209,8 +209,16 @@ helper, created only by the explicit dictation action. Its account/library/shelf
 composer-epoch fence also applies before microphone capture and after ASR.
 Reviewed words append to the latest accepted introduction only on Add; unresolved
 voice input blocks Save. The helper is never a retained family-audio attachment.
-A verified new book is opened through a fresh protected
-parent read; child content loads only after explicit selection.
+Saved-book editing adds the rendered parent ID/revision and reader request to
+that scope. A fresh parent grants edit permission independently of collection
+creation permission; every child is reauthorized before the draft is populated.
+The first update rechecks the reviewed parent and child snapshots. An uncertain
+update replays the same book ID, base revision and mutation without refetching a
+possibly superseded parent. Conflicts retain the transient draft for review.
+Unfinished reader work blocks entry, and detached reader actions are inert while
+the composer overlays it. A verified new or edited book is opened through a
+fresh protected parent read; the shelf replaces the edited revision in place.
+Child content loads only after explicit selection.
 
 The phone memoir shelf displays opening excerpts and protected cover thumbnails
 for at most eight books on the current page. Sequential cover reads use the

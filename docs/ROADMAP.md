@@ -476,11 +476,22 @@ opening narration. [Development evidence](DEVELOPMENT.md) records accepted
 source pins, generated flows and complete-profile results, including corrected
 failures. These features do not enable a Windows capability or publish an APK.
 
-Next delivery work is to pin and qualify the compatible Windows/API/worker
-release, resolve its existing live-data activation gates, and prepare a private
-v47 phone release for review. Then validate owner/member/revoked access and a
-family journey: dictate, edit, save, reopen, arrange stories and explicitly
-listen. Provider story quality and pronunciation require their own evaluation.
-Further feature work should use that feedback to prioritize reviewed related
-moments and collaborative chapter editing rather than expand unqualified
-provider or service changes.
+On October 12, the protected API/Web release `c6b1401` completed native and
+independent HTTPS readback. The live schema remained `a0c9d2e4f817`; five upload
+workers were restored and observed running. Phone v47 was signed with the
+existing certificate, published to HTTPS OTA and verified by complete native and
+independent downloads. TV OTA remained v30. This delivery did not activate AI
+generation, editorial editions, title suggestions or memory grouping. Physical
+phone/family acceptance and the deferred member/TV checks remain separate.
+
+The next source slice extends the phone composer to **edit a saved memoir**:
+add/remove/reorder readable saved stories, revise its title, language and reviewed
+spoken opening, and save back to the same parent. Fresh parent/child checks,
+revision conflicts, uncertain-response replay and reader scope guards preserve
+manual review. See [the composer and edit contract](PHONE_MEMOIR_COMPOSITION.md).
+This local slice requires a later signed release before it reaches the phone.
+
+Next product work is reviewed related-moment suggestions and collaborative
+chapter editing, using family feedback from the dictate → edit → save → reopen
+journey. Qualify local narrative processing and pronunciation separately before
+activating them for family material.

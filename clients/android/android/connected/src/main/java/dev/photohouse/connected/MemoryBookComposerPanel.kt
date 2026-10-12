@@ -73,15 +73,15 @@ internal fun MemoryBookComposerPanel(
 
     fun editorCurrent(): Boolean {
         val current = latestState.value
-        return actionCurrent() && current.canCreate && !current.busy && !current.pendingRetry && current.status !in setOf(
-            MemoryBookCompositionStatus.SAVING, MemoryBookCompositionStatus.RETRY_REQUIRED, MemoryBookCompositionStatus.CREATED,
+        return actionCurrent() && (current.canCreate || current.canEdit) && !current.busy && !current.pendingRetry && current.status !in setOf(
+            MemoryBookCompositionStatus.SAVING, MemoryBookCompositionStatus.RETRY_REQUIRED, MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED,
         )
     }
 
     val editingFrozen = state.busy || state.pendingRetry || state.status in setOf(
-        MemoryBookCompositionStatus.SAVING, MemoryBookCompositionStatus.RETRY_REQUIRED, MemoryBookCompositionStatus.CREATED,
+        MemoryBookCompositionStatus.SAVING, MemoryBookCompositionStatus.RETRY_REQUIRED, MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED,
     )
-    val editingEnabled = state.canCreate && !editingFrozen
+    val editingEnabled = (state.canCreate || state.canEdit) && !editingFrozen
     val dictationUnfinished = dictationCoordinator?.hasUnfinishedInput == true
     var introExpanded by remember(accountId, library, scopeId, epoch) { mutableStateOf(false) }
     var advancedExpanded by remember(accountId, library, scopeId, epoch) { mutableStateOf(false) }
@@ -129,7 +129,7 @@ internal fun MemoryBookComposerPanel(
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(t("Create a family memoir", "创建家庭回忆册"), style = MaterialTheme.typography.headlineSmall)
+                    Text(if (state.editingBookId != null) t("Edit family memoir", "编辑家庭回忆册") else t("Create a family memoir", "创建家庭回忆册"), style = MaterialTheme.typography.headlineSmall)
                     Text(t("Choose saved stories to bring together.", "选择已保存的家庭故事，汇集成册。"),
                         style = MaterialTheme.typography.bodyMedium)
                 }
@@ -151,8 +151,8 @@ internal fun MemoryBookComposerPanel(
                     modifier = Modifier.fillMaxWidth().testTag("memory-book-compose-failure")
                         .semantics { liveRegion = LiveRegionMode.Polite })
             }
-            if (state.failure != null && !state.busy && !state.pendingRetry &&
-                state.status !in setOf(MemoryBookCompositionStatus.CLOSED, MemoryBookCompositionStatus.CREATED)) {
+            if (state.failure != null && state.failure != MemoryBookCompositionFailure.BOOK_CHANGED && !state.busy && !state.pendingRetry &&
+                state.status !in setOf(MemoryBookCompositionStatus.CLOSED, MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED)) {
                 val failedPage = state.candidatePage
                 OutlinedButton(onClick = attachedComposerAction({
                     if (actionCurrent() && scopeId != null && !latestState.value.busy) {
@@ -187,6 +187,7 @@ internal fun MemoryBookComposerPanel(
             }, enabled = editingEnabled && dictationHelper == null), enabled = editingEnabled && dictationHelper == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-compose-intro-toggle")) {
                 Text(if (introExpanded) t("Hide optional introduction", "收起可选简介")
+                    else if (state.introduction.isNotBlank()) t("Edit introduction", "编辑简介")
                     else t("Add an optional introduction", "添加可选简介"))
             }
             if (introExpanded) {
@@ -417,7 +418,8 @@ internal fun MemoryBookComposerPanel(
             }
 
             val renderedDraftRevision = state.draftRevision
-            val canSaveText = titleAccepted && introAccepted && !dictationUnfinished
+            val canSaveText = titleAccepted && introAccepted && !dictationUnfinished &&
+                (state.editingBookId == null || state.hasChanges)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = attachedComposerAction({
                     val current = latestState.value
@@ -426,17 +428,18 @@ internal fun MemoryBookComposerPanel(
                     val editorsAccepted = currentTitle.composition == null && currentTitle.text.isNotBlank() &&
                         currentTitle.text == current.title && currentIntro.composition == null &&
                         currentIntro.text == current.introduction && !latestTitleRejected.value && !latestIntroRejected.value
-                    if (actionCurrent() && scopeId != null && current.canCreate && !current.busy && !current.pendingRetry &&
+                    if (actionCurrent() && scopeId != null && (current.canCreate || current.canEdit) && !current.busy && !current.pendingRetry &&
                         dictationCoordinator?.hasUnfinishedInput != true &&
                         current.status == MemoryBookCompositionStatus.READY && current.selectedStories.isNotEmpty() && editorsAccepted &&
+                        (current.editingBookId == null || current.hasChanges) &&
                         current.draftRevision == renderedDraftRevision)
                         compositionStore.save(scopeId, epoch, renderedDraftRevision)
-                }, enabled = actionCurrent() && state.canCreate && !state.busy && !state.pendingRetry && canSaveText &&
+                }, enabled = actionCurrent() && (state.canCreate || state.canEdit) && !state.busy && !state.pendingRetry && canSaveText &&
                     state.status == MemoryBookCompositionStatus.READY && state.selectedStories.isNotEmpty()),
-                    enabled = actionCurrent() && state.canCreate && !state.busy && !state.pendingRetry && canSaveText &&
+                    enabled = actionCurrent() && (state.canCreate || state.canEdit) && !state.busy && !state.pendingRetry && canSaveText &&
                     state.status == MemoryBookCompositionStatus.READY && state.selectedStories.isNotEmpty(),
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-book-compose-save")) {
-                    Text(t("Save memoir", "保存回忆册"))
+                    Text(if (state.editingBookId != null) t("Save changes", "保存修改") else t("Save memoir", "保存回忆册"))
                 }
                 if (state.pendingRetry || state.status == MemoryBookCompositionStatus.RETRY_REQUIRED) {
                     OutlinedButton(onClick = attachedComposerAction({
@@ -474,6 +477,7 @@ private fun compositionStatus(state: MemoryBookCompositionStoreState, zh: Boolea
         MemoryBookCompositionStatus.SAVING -> t("Checking selected stories and saving this memoir…", "正在核对所选故事并保存回忆册…")
         MemoryBookCompositionStatus.RETRY_REQUIRED -> t("The save result is uncertain. Retry the same save to check it safely.", "保存结果尚不确定。请重试同一项保存以安全核对。")
         MemoryBookCompositionStatus.CREATED -> t("Memoir saved.", "回忆册已保存。")
+        MemoryBookCompositionStatus.SAVED -> t("Memoir changes saved.", "回忆册修改已保存。")
     }
 }
 
@@ -497,9 +501,10 @@ private fun compositionFailure(failure: MemoryBookCompositionFailure, zh: Boolea
     MemoryBookCompositionFailure.RATE_LIMITED -> if (zh) "操作过于频繁，请稍后再试。你的选择仍已保留。" else "Too many attempts. Wait before trying again. Your selections are kept."
     MemoryBookCompositionFailure.ACCESS_DENIED -> if (zh) "此家庭库的访问权限已变化。" else "Access to this family library has changed."
     MemoryBookCompositionFailure.SCOPE_CHANGED -> if (zh) "账户或家庭库已变化，请重新打开回忆册创建器。" else "The account or library changed. Reopen the memoir composer."
-    MemoryBookCompositionFailure.NOT_ALLOWED -> if (zh) "当前账户没有创建回忆册的权限。" else "This account cannot create a memoir."
+    MemoryBookCompositionFailure.NOT_ALLOWED -> if (zh) "当前账户没有保存此回忆册的权限。" else "This account cannot save this memoir."
     MemoryBookCompositionFailure.INVALID_STORY -> if (zh) "所选故事已不可用。你的其他选择仍已保留。" else "A selected story is no longer available. Your other choices are kept."
     MemoryBookCompositionFailure.STORY_CHANGED -> if (zh) "故事内容或来源已变化。请重新选择并核对。" else "A story or its sources changed. Select it again and review the list."
+    MemoryBookCompositionFailure.BOOK_CHANGED -> if (zh) "回忆册或编辑权限已变化。你的草稿仍已保留；关闭后重新打开，核对最新内容。" else "This memoir or its edit permission changed. Your draft is kept; close and reopen to review the latest version."
     MemoryBookCompositionFailure.INVALID_INPUT -> if (zh) "请检查标题、简介和所选故事。" else "Check the title, introduction, and selected stories."
     MemoryBookCompositionFailure.INVALID_RESPONSE -> if (zh) "服务器返回的回忆册无法确认。" else "The saved memoir could not be confirmed from the server response."
     MemoryBookCompositionFailure.UNKNOWN -> if (zh) "无法完成此操作。你的内容仍已保留。" else "This action could not be completed. Your content is kept."

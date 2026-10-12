@@ -1,5 +1,27 @@
 # Development and public release qualification
 
+## Saved memoir editing (October 12)
+
+The phone saved-book editor passed 822 live-core tests and 17 phone JVM tests,
+unconfigured phone debug/test assembly, and phone lint. Six generated API 36
+journeys passed with English and Chinese at 150% text: new memoir creation,
+reviewed introduction voice input, and saved-book editing. The edit journeys
+exercise permission without create authority, untouched cancellation, detached
+controls, remove/add/reorder, a committed save with a lost response, exact retry,
+fresh reopening, and the updated shelf revision. One language closes the saved
+editor; the other explicitly opens its saved result. Both return to the same book.
+
+Core checks also cover stale reader actions, unsent chat and voice barriers,
+parent/child conflict, authorization denial cleanup, exact returned summaries,
+and unchanged or reverted edits. Enlarged-text renders of both edit journeys
+were inspected. The initial edit instrumentation failure came from reusing a
+Ready-only wait helper for Closed/Retry-required/Saved states; a general state
+wait corrected that fixture error before the complete passing rerun.
+
+These checks use generated protected-library data and no model or live server.
+They do not sign or publish an APK, establish physical-device acceptance, or
+activate a capability. See [the composer/edit contract](PHONE_MEMOIR_COMPOSITION.md).
+
 ## Phone memory group checks (October 11)
 
 The shared-memory phone editor passed 652 live-core and 17 phone JVM tests,

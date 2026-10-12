@@ -17,7 +17,9 @@ import org.junit.Test
 class MemoryBookCompositionStoreTest {
     private val one = "11111111-1111-4111-8111-111111111111"
     private val two = "22222222-2222-4222-8222-222222222222"
+    private val three = "33333333-3333-4333-8333-333333333333"
     private val newBook = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    private val editBook = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     private fun bearer(seed: Char = 'a') = Bearer.from(SessionToken(86400, seed.toString().repeat(43), "Bearer"))
     private fun asset(id: String) = Asset(id, "image", 800, 600, null, "2024-05-01", "/assets/$id/thumbnail?library=family-a")
     private fun story(id: String, revision: Long = 1, selectionRevision: String = id.take(1).repeat(64)) = SavedMemoryStory(
@@ -31,6 +33,9 @@ class MemoryBookCompositionStoreTest {
     private fun bookPage(canCreate: Boolean = true) = """{"version":1,"library_id":"family-a","page":1,"page_size":8,"has_more":false,"can_create":$canCreate,"items":[]}""".toByteArray()
     private fun bookResponse(ids: List<String>, title: String, intro: String, language: String) =
         """{"version":1,"type":"memoir","id":"$newBook","revision":"1","can_edit":true,"title":"$title","introduction":"$intro","language":"$language","stories":[${ids.mapIndexed { index, id -> """{"id":"$id","title":"Story ${id.take(1)}","revision":"1","item_count":1,"cover_asset_id":"1"}""" }.joinToString(",")}] }""".toByteArray()
+    private fun parentResponse(id: String, revision: Long, canEdit: Boolean, ids: List<String>, title: String, intro: String, language: String,
+                               storyTitleOverride: String? = null) =
+        """{"version":1,"type":"memoir","id":"$id","revision":"$revision","can_edit":$canEdit,"title":"$title","introduction":"$intro","language":"$language","stories":[${ids.map { storyId -> """{"id":"$storyId","title":"${storyTitleOverride ?: "Story ${storyId.take(1)}"}","revision":"1","item_count":1,"cover_asset_id":"1"}""" }.joinToString(",")}] }""".toByteArray()
     private fun capabilities() = """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
 
     private inner class FakeApi : PhotoHouseApi, MemoryCommunityApi {
@@ -44,6 +49,18 @@ class MemoryBookCompositionStoreTest {
         var listFailure: Exception? = null
         var candidateSummaries: List<SavedMemoryStorySummary> = listOf(summary(one), summary(two))
         var bookCanCreate = true
+        var bookCanEdit = true
+        var bookRevision = 5L
+        var bookStories = listOf(one, two)
+        var bookTitle = "Existing memoir"
+        var bookIntroduction = "Original introduction"
+        var bookLanguage = "en"
+        var responseStoryTitleOverride: String? = null
+        var bookFailure: Exception? = null
+        var bookDetailStarted: CompletableDeferred<Unit>? = null
+        var bookDetailGate: CompletableDeferred<Unit>? = null
+        val bookDetailCalls = mutableListOf<String>()
+        val saveTargets = mutableListOf<String?>()
         var detailStarted: CompletableDeferred<Unit>? = null
         var listCalls = mutableListOf<Int>()
         var detailCalls = mutableListOf<Pair<String, Long>>()
@@ -96,20 +113,35 @@ class MemoryBookCompositionStoreTest {
             bookPageFailure?.let { throw it }
             return bookPage(bookCanCreate)
         }
+        override suspend fun getBook(token: Bearer, library: String, bookId: String): ByteArray {
+            bookDetailCalls += bookId
+            bookDetailStarted?.complete(Unit)
+            bookDetailGate?.let { withContext(NonCancellable) { it.await() } }
+            bookFailure?.let { throw it }
+            return parentResponse(bookId, bookRevision, bookCanEdit, bookStories,
+                bookTitle, bookIntroduction, bookLanguage)
+        }
         override suspend fun saveBook(token: Bearer, library: String, bookId: String?, json: String): ByteArray {
             saved += json
+            saveTargets += bookId
             saveGate?.await()
             saveFailure?.let { saveFailure = null; throw it }
             val request = kotlinx.serialization.json.Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("story_ids").jsonPrimitive.content.split(',')
-            return bookResponse(ids, request.getValue("title").jsonPrimitive.content,
-                request.getValue("introduction").jsonPrimitive.content, request.getValue("language").jsonPrimitive.content)
+            val revision = request.getValue("revision").jsonPrimitive.content.toLong()
+            return parentResponse(bookId ?: newBook, revision + 1, true, ids,
+                request.getValue("title").jsonPrimitive.content,
+                request.getValue("introduction").jsonPrimitive.content,
+                request.getValue("language").jsonPrimitive.content, responseStoryTitleOverride)
         }
     }
 
     private fun makeScope(token: Bearer = bearer(), id: String = "account-a", generation: Long = 1,
-                          library: String = "family-a", shelf: Long = 7, ownerCanCreate: Boolean = true) =
-        MemoryBookCompositionScope(id, token, generation, library, shelf, ownerCanCreate)
+                          library: String = "family-a", shelf: Long = 7, ownerCanCreate: Boolean = true,
+                          editableBookId: String? = null, editableBookRevision: Long? = null,
+                          editableReaderScopeId: Long? = null) =
+        MemoryBookCompositionScope(id, token, generation, library, shelf, ownerCanCreate,
+            editableBookId, editableBookRevision, editableReaderScopeId)
 
     private suspend fun setup(api: FakeApi, scope: kotlinx.coroutines.CoroutineScope,
                               current: () -> MemoryBookCompositionScope?,
@@ -254,6 +286,171 @@ class MemoryBookCompositionStoreTest {
         assertEquals(2, api.saved.size)
         assertEquals(frozenBody, api.saved.last())
         assertEquals(MemoryBookCompositionStatus.CREATED, store.state.value.status)
+    }
+
+    @Test fun editReordersAddsRemovesAndSavesToSameParentAtNextRevisionWithoutCreatePermission() = runTest {
+        val api = FakeApi()
+        api.bookStories = listOf(one, two)
+        api.candidateSummaries = listOf(summary(one), summary(two), summary(three))
+        var current = makeScope(ownerCanCreate = false, editableBookId = editBook,
+            editableBookRevision = 5, editableReaderScopeId = 91)
+        val store = setup(api, this, { current })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent()
+        val opened = store.state.value
+        assertEquals(MemoryBookCompositionStatus.READY, opened.status)
+        assertFalse(opened.canCreate)
+        assertTrue(opened.canEdit)
+        assertEquals(editBook, opened.editingBookId)
+        assertEquals(5L, opened.editingBookRevision)
+        assertEquals(91L, opened.editingReaderScopeId)
+        assertFalse(opened.hasChanges)
+        assertEquals("Existing memoir", opened.title)
+        assertEquals(listOf(one, two), opened.selectedStories.map { it.summary.id })
+        assertEquals(listOf(editBook), api.bookDetailCalls)
+
+        assertTrue(store.toggleStory(two, 1, 7, opened.actionEpoch))
+        assertEquals(listOf(one), store.state.value.selectedStories.map { it.summary.id })
+        assertTrue(store.toggleStory(three, 1, 7, opened.actionEpoch)); runCurrent()
+        assertTrue(store.reorderStories(listOf(one, three), listOf(three, one), 7, opened.actionEpoch))
+        assertTrue(store.updateTitle("Updated memoir", 7, opened.actionEpoch))
+        assertTrue(store.updateIntroduction("Revised family notes", 7, opened.actionEpoch))
+        assertTrue(store.updateLanguage("zh", 7, opened.actionEpoch))
+        assertTrue(store.save(7, opened.actionEpoch, store.state.value.draftRevision)); runCurrent()
+
+        assertEquals(listOf(editBook), api.saveTargets)
+        assertEquals(5L, kotlinx.serialization.json.Json.parseToJsonElement(api.saved.single())
+            .jsonObject.getValue("revision").jsonPrimitive.content.toLong())
+        assertEquals(MemoryBookCompositionStatus.SAVED, store.state.value.status)
+        assertEquals(editBook, store.state.value.createdBook?.id)
+        assertEquals(6L, store.state.value.createdBook?.revision)
+        assertEquals(listOf(three, one), store.state.value.createdBook?.stories?.map { it.id })
+        assertFalse(store.updateTitle("After save", 7, opened.actionEpoch))
+        assertFalse(store.save(7, opened.actionEpoch, store.state.value.draftRevision))
+        assertEquals(1, api.saved.size)
+    }
+
+    @Test fun changedOrRevokedParentAndChangedChildPreserveTheReviewedDraft() = runTest {
+        suspend fun opened(api: FakeApi, current: () -> MemoryBookCompositionScope?) =
+            setup(api, this, current).also { assertTrue(it.openEdit(editBook, 5)); runCurrent() }
+
+        run {
+            val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+                editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+            val store = opened(api) { current }
+            api.bookRevision = 6
+            assertTrue(store.updateTitle("Keep this draft", 7, store.state.value.actionEpoch))
+            assertTrue(store.save(7, store.state.value.actionEpoch, store.state.value.draftRevision)); runCurrent()
+            assertEquals(MemoryBookCompositionFailure.BOOK_CHANGED, store.state.value.failure)
+            assertEquals("Keep this draft", store.state.value.title)
+            assertEquals(MemoryBookCompositionStatus.READY, store.state.value.status)
+            assertTrue(api.saved.isEmpty())
+        }
+        run {
+            val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+                editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+            val store = opened(api) { current }
+            api.bookCanEdit = false
+            assertTrue(store.updateTitle("Revised after permission change", 7, store.state.value.actionEpoch))
+            assertTrue(store.save(7, store.state.value.actionEpoch, store.state.value.draftRevision)); runCurrent()
+            assertEquals(MemoryBookCompositionFailure.BOOK_CHANGED, store.state.value.failure)
+            assertEquals(MemoryBookCompositionStatus.READY, store.state.value.status)
+            assertTrue(store.state.value.canEdit)
+            assertTrue(api.saved.isEmpty())
+        }
+        run {
+            val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+                editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+            val store = opened(api) { current }
+            api.currentSelectionRevision = "f".repeat(64)
+            assertTrue(store.updateTitle("Revised after story change", 7, store.state.value.actionEpoch))
+            assertTrue(store.save(7, store.state.value.actionEpoch, store.state.value.draftRevision)); runCurrent()
+            assertEquals(MemoryBookCompositionFailure.STORY_CHANGED, store.state.value.failure)
+            assertEquals(MemoryBookCompositionStatus.READY, store.state.value.status)
+            assertEquals("Revised after story change", store.state.value.title)
+            assertTrue(api.saved.isEmpty())
+        }
+    }
+
+    @Test fun editRetryReusesTheSameTargetRevisionAndMutation() = runTest {
+        val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+            editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+        val store = setup(api, this, { current })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent()
+        val epoch = store.state.value.actionEpoch
+        assertTrue(store.updateTitle("Retry this memoir", 7, epoch))
+        api.saveFailure = ApiFailure(FailureKind.OFFLINE)
+        assertTrue(store.save(7, epoch, store.state.value.draftRevision)); runCurrent()
+        assertEquals(MemoryBookCompositionStatus.RETRY_REQUIRED, store.state.value.status)
+        val body = api.saved.single()
+        assertEquals(editBook, api.saveTargets.single())
+        assertTrue(store.retry(7, epoch)); runCurrent()
+        assertEquals(listOf(editBook, editBook), api.saveTargets)
+        assertEquals(listOf(body, body), api.saved)
+        assertEquals(MemoryBookCompositionStatus.SAVED, store.state.value.status)
+    }
+
+    @Test fun revertedEditHasNoChangesAndCannotAdvanceParentRevision() = runTest {
+        val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+            editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+        val store = setup(api, this, { current })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent()
+        val epoch = store.state.value.actionEpoch
+        assertTrue(store.updateTitle("Temporary title", 7, epoch))
+        assertTrue(store.state.value.hasChanges)
+        assertTrue(store.updateTitle("Existing memoir", 7, epoch))
+        assertFalse(store.state.value.hasChanges)
+        assertFalse(store.save(7, epoch, store.state.value.draftRevision))
+        assertTrue(api.saved.isEmpty())
+        assertEquals(5L, api.bookRevision)
+        assertEquals(MemoryBookCompositionStatus.READY, store.state.value.status)
+    }
+
+    @Test fun childAuthorizationRevocationUsesExistingDenialCleanup() = runTest {
+        val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+            editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+        var denied = 0
+        val store = setup(api, this, { current }, onDenied = { denied++ })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent()
+        val epoch = store.state.value.actionEpoch
+        assertTrue(store.updateTitle("Private draft", 7, epoch))
+        api.detailFailure = ApiFailure(FailureKind.HTTP, 403)
+        assertTrue(store.save(7, epoch, store.state.value.draftRevision)); runCurrent()
+        assertEquals(MemoryBookCompositionStatus.CLOSED, store.state.value.status)
+        assertEquals(MemoryBookCompositionFailure.ACCESS_DENIED, store.state.value.failure)
+        assertEquals("", store.state.value.title)
+        assertEquals(1, denied)
+        assertTrue(api.saved.isEmpty())
+    }
+
+    @Test fun saveResponseMustMatchReviewedChildTitlesAndItemCounts() = runTest {
+        val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+            editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+        val store = setup(api, this, { current })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent()
+        val epoch = store.state.value.actionEpoch
+        assertTrue(store.updateTitle("Reviewed update", 7, epoch))
+        api.responseStoryTitleOverride = "Different story title"
+        assertTrue(store.save(7, epoch, store.state.value.draftRevision)); runCurrent()
+        assertEquals(MemoryBookCompositionStatus.RETRY_REQUIRED, store.state.value.status)
+        assertEquals(MemoryBookCompositionFailure.INVALID_RESPONSE, store.state.value.failure)
+        assertEquals(editBook, api.saveTargets.single())
+        assertEquals("5", kotlinx.serialization.json.Json.parseToJsonElement(api.saved.single())
+            .jsonObject.getValue("revision").jsonPrimitive.content)
+        assertTrue(store.state.value.pendingRetry)
+    }
+
+    @Test fun replacedReaderScopeCannotAcceptAnOldParentRead() = runTest {
+        val api = FakeApi(); var current = makeScope(ownerCanCreate = false,
+            editableBookId = editBook, editableBookRevision = 5, editableReaderScopeId = 91)
+        val started = CompletableDeferred<Unit>(); val gate = CompletableDeferred<Unit>()
+        api.bookDetailStarted = started; api.bookDetailGate = gate
+        val store = setup(api, this, { current })
+        assertTrue(store.openEdit(editBook, 5)); runCurrent(); started.await()
+        current = current.copy(editableReaderScopeId = 92)
+        gate.complete(Unit); runCurrent()
+        assertEquals(MemoryBookCompositionStatus.LOADING, store.state.value.status)
+        assertTrue(store.state.value.selectedStories.isEmpty())
+        assertEquals("", store.state.value.title)
     }
 
     @Test fun scopeChangeBeforePostAndLateResponseAreInert() = runTest {

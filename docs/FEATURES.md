@@ -30,6 +30,7 @@ This matrix records the source migration baseline. Live installations and physic
 | Story/memoir chat history | Phone direct latest-page action and scope/lifetime guards on all history controls preserve unsent text | [Navigation contract](PHONE_MEMORY_CHAT_NAVIGATION.md); four bilingual 150% simulator journeys pass at `7d7b1ef`; signed delivery remains separate |
 | Full conversation continuation | Backend distinguishes the 128-turn cap; Web and phone keep old history and transfer retained words into a reviewed new conversation using one retry identity | [Continuation contract](MEMORY_CHAT_CONTINUATION.md); generated browser and bilingual 150% simulator checks pass; served Web, signed phone and family conversation acceptance remain separate |
 | Phone memoir composition | Collect readable saved stories, review their order and optional introduction, save with exact retry, and explicitly open the fresh book | [Composer contract](PHONE_MEMOIR_COMPOSITION.md); source `e157679` passed 161 focused core cases and four bilingual enlarged-text composer journeys, including reviewed voice introduction; six shared dictation journeys also passed; no APK publication or live activation |
+| Saved phone memoir editing | Edit an authorized existing book, add/remove/reorder readable stories, revise book fields and reviewed spoken opening; preserve conflicts and replay uncertain saves exactly | [Edit contract](PHONE_MEMOIR_COMPOSITION.md); 822 core and 17 phone JVM checks, builds/lint and six bilingual enlarged-text generated journeys pass; source only, outside published v47 |
 | Visual phone memoir shelf | Protected cover thumbnails or themed fallback, opening excerpts, honest media-entry totals and explicit reading actions | Source `61847c7`: 125 scoped core cases, two bilingual 150% shelf journeys and nine affected reader/composer journeys passed; release delivery remains separate |
 | Reviewed memoir introduction voice | Phone composer and Web editor preserve the latest typed opening, review dictation before insertion and block save during unresolved voice input | [Introduction contract](MEMOIR_INTRODUCTION_DICTATION.md); phone accepted locally; Web source `bd8f6b6` passed Node contract checks; the completed-recording correction is `cd87ab2`; final complete-profile evidence is in Development; served/signed and family voice quality remain separate |
 | Assistant result compatibility | Phone accepts protected seven-field result assets and optional validated hints; result cards label filename/received dates | [Response contract](ASSISTANT_RESULT_COMPATIBILITY.md); parser, protected transport and bilingual emulator checks pass at `c566ded`; served/device evidence remains separate |
@@ -54,6 +55,21 @@ This matrix records the source migration baseline. Live installations and physic
 | TV library recovery | Disabled stale library choices, explicit localized retry preserving page/filters, and remote focus restoration | [Recovery contract](TV_LIBRARY_RECOVERY.md); the generated large-text remote journey passes; TV v30 signing/publication and physical TV acceptance remain separate gates |
 | Windows CPU portability | Explicit generated database/runtime/source-package profile and a separate hosted Windows job | Repaired cohort passes 65 tests and 25 subtests on macOS and hosted Windows at `12c10e9`; the installed household runtime retains its own gate |
 | Maintainability | Unified curated source, portable API/Android checks, synthetic demo, dependency/asset inventory, default-read-only b1 application tool and five hosted source jobs | Exact release archive review; installed-runtime and device evidence remain separate |
+
+## October 12 delivery and source follow-up
+
+The API/Web source `c6b1401` is served and phone v47 is published to HTTPS OTA,
+with native and independent full readbacks. The live schema stayed at a0; five
+upload workers were observed running after restoration. TV OTA stayed v30.
+These receipts do not establish physical-device or family acceptance, and did
+not activate AI generation, editions, title suggestions or grouping.
+
+The subsequent local Android slice adds saved memoir editing through the
+existing protected save contract: parent-specific edit permission, add/remove/
+reorder saved stories, revised book fields, reviewed opening dictation, conflict
+preservation and exact uncertain-save replay. See
+[the edit contract](PHONE_MEMOIR_COMPOSITION.md). This feature is not in the
+published v47 APK; a new signed release remains its delivery gate.
 
 ## Next product slices
 

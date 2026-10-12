@@ -1,8 +1,8 @@
-# Phone memoir composition from saved stories
+# Phone memoir composition and saved-book editing
 
 The phone memoir composer is an explicit way to collect existing saved stories
-into a new memoir book. It does not edit the selected stories or generate story
-content. Optional introduction dictation is available only through its explicit
+into a new memoir book, or revise an existing memoir that the current reader
+may edit. It preserves the selected stories and their original content. Optional introduction dictation is available only through its explicit
 voice controls; opening the composer does not start recording, transcription, or
 other model work.
 
@@ -22,6 +22,42 @@ Saved-story candidates must be readable in the same library. A candidate’s
 summary `canEdit` flag does not decide whether it can be collected: the memoir
 operation is authorized separately, and selected stories can belong to other
 family contributors. Collection preserves each saved story as-is.
+
+## Editing a saved memoir
+
+The saved-book reader shows **Edit memoir / 编辑回忆册** only for a parent
+advertising `canEdit`. The action is bound to the rendered account, library,
+reader request, book revision and ordered children. Unsent conversation words,
+recording/transcription, pending AI work, source audio and unfinished editorial
+work must be settled before entry. Detached reader controls cannot open an edit
+or navigate while its composer is displayed.
+
+Opening an edit reauthorizes the parent and freshly reads every selected story.
+Only then does it populate the saved title, introduction, language and ordered
+story selections. This uses parent edit permission independently of shelf
+creation permission. Existing introduction dictation remains explicit:
+Record → Stop and transcribe → Review → Add → Save. An untouched edit can be
+closed immediately; changed words and selection changes require the existing
+discard confirmation. Drafts remain transient and clear on backgrounding.
+
+Users can remove or add readable saved stories, move them up or down, and revise
+the book fields. An unchanged or reverted edit has no save action. Before the
+first update, the store rechecks the exact base parent and all selected story
+snapshots. A changed parent or source prevents the update and retains the draft;
+there is no automatic overwrite or rebase. Parent conflict copy asks the user to
+close and reopen to review the latest version.
+
+Updates send the same book ID and base revision through the existing protected
+save contract. An uncertain response freezes those values and the mutation ID;
+retry replays the identical request without rereading the superseded parent.
+This also recovers a request that committed before its response was lost. The
+verified response must match the edited content, next revision and ordered child
+snapshots. **Open saved memoir**, or closing a successfully saved edit, reads
+the saved parent afresh and updates that book's shelf revision; it creates no
+duplicate shelf entry. Cancelling an unsaved edit returns to the original reader.
+
+This is Android source work. It adds no route, schema, provider activation or
+TV change. Its signed release and family acceptance are separate delivery gates.
 
 ## Visual shelf and transient covers
 
@@ -129,3 +165,14 @@ provider's recognition quality or physical-device acceptance. A source change
 or passing local test is not evidence of release signing, installation, a live
 service update, or family/device acceptance. Those remain separate delivery
 gates, and this work does not deploy or change Windows runtime state.
+
+## Saved-edit qualification (October 12)
+
+The saved-edit slice passed all 822 live-core tests, 17 phone JVM tests, phone
+debug/test builds and lint. Six generated API 36 journeys passed at 150% text
+in English and Chinese, including unchanged cancellation, detached controls,
+remove/add/reorder, a committed update whose response was lost, exact retry,
+fresh saved-book reading and shelf revision replacement. The Chinese edit case
+closes the saved editor; the English case uses Open saved memoir. Enlarged-text
+edit renders were inspected. These are source/emulator checks; this edit feature
+is not part of the already published v47 APK.

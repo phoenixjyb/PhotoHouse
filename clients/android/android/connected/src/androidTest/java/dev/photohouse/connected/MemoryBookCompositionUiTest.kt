@@ -47,6 +47,97 @@ class MemoryBookCompositionUiTest {
     @Test fun englishVoiceIntroductionRequiresReviewAndKeepsBothTextsAt150Percent() = voiceIntroductionJourney(zh = false)
     @Test fun chineseVoiceIntroductionRequiresReviewAndKeepsBothTextsAt150Percent() = voiceIntroductionJourney(zh = true)
 
+    @Test fun englishOwnerEditsSameMemoirAndRetriesCommittedSaveAt150Percent() = editJourney(zh = false)
+    @Test fun chineseOwnerEditsSameMemoirAndRetriesCommittedSaveAt150Percent() = editJourney(zh = true)
+
+    private fun editJourney(zh: Boolean) {
+        val api = CompositionApi(editExisting = true)
+        val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true)
+        var keyboardController: SoftwareKeyboardController? = null
+        rule.setContent {
+            val density = LocalDensity.current
+            val keyboard = LocalSoftwareKeyboardController.current
+            SideEffect { keyboardController = keyboard }
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = if (zh) "zh" else "en")
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5_000) { store.state.value.library == GeneratedMemoirReaderApi.LIBRARY }
+        rule.runOnIdle { store.openMemoryBooks() }
+        rule.waitUntil(5_000) { store.state.value.memoryBooks?.result?.items?.isNotEmpty() == true }
+        rule.runOnIdle { store.openMemoryBook(GeneratedMemoirReaderApi.BOOK) }
+        rule.waitUntil(5_000) { store.state.value.memoryBooks?.selectedBook != null }
+        val originalNavigation = checkNotNull(store.captureMemoryBookReaderNavigation())
+        val detachedEdit = captureClick("memory-book-edit")
+        rule.onNodeWithTag("memory-book-edit").performScrollTo().performClick()
+        awaitCompositionState(store) { it.status == MemoryBookCompositionStatus.READY && !it.busy }
+        assertEquals(GeneratedMemoirReaderApi.BOOK, store.memoryBookCompositionState.value.editingBookId)
+        assertEquals(2L, store.memoryBookCompositionState.value.editingBookRevision)
+        assertTrue(store.memoryBookCompositionState.value.canEdit)
+        assertFalse("edit is allowed without create authority", store.memoryBookCompositionState.value.canCreate)
+        rule.onNodeWithTag("memory-book-compose-title").assertTextContains("Earlier memoir")
+        rule.onNodeWithTag("memory-book-compose-save").performScrollTo().assertIsNotEnabled()
+        rule.runOnIdle {
+            assertFalse(store.loadMemoryBookStory(originalNavigation, 0))
+            assertFalse(store.startSavedMemoryBookEdit(originalNavigation))
+        }
+        // An untouched edit closes immediately. Its detached entry cannot reopen the editor.
+        rule.onNodeWithTag("memory-book-compose-close").performScrollTo().performClick()
+        awaitCompositionState(store) { it.status == MemoryBookCompositionStatus.CLOSED }
+        rule.runOnIdle { assertTrue(detachedEdit()) }
+        assertEquals(MemoryBookCompositionStatus.CLOSED, store.memoryBookCompositionState.value.status)
+        rule.onNodeWithTag("memory-book-edit").performScrollTo().performClick()
+        awaitCompositionState(store) { it.status == MemoryBookCompositionStatus.READY && !it.busy }
+        rule.onNodeWithTag("memory-book-compose-remove-${GeneratedMemoirReaderApi.FIRST}").performScrollTo().performClick()
+        awaitCompositionState(store) { it.selectedStories.size == 1 }
+        rule.onNodeWithTag("memory-book-compose-story-${GeneratedMemoirReaderApi.FIRST}").performScrollTo().performClick()
+        awaitCompositionState(store) { it.selectedStories.map { entry -> entry.summary.id } ==
+            listOf(GeneratedMemoirReaderApi.SECOND, GeneratedMemoirReaderApi.FIRST) }
+        // Reorder twice: restore original, then keep the reviewed new order.
+        rule.onNodeWithTag("memory-book-compose-up-${GeneratedMemoirReaderApi.FIRST}").performScrollTo().performClick()
+        awaitCompositionState(store) { it.selectedStories.first().summary.id == GeneratedMemoirReaderApi.FIRST }
+        rule.onNodeWithTag("memory-book-compose-up-${GeneratedMemoirReaderApi.SECOND}").performScrollTo().performClick()
+        awaitCompositionState(store) { it.selectedStories.first().summary.id == GeneratedMemoirReaderApi.SECOND }
+        val title = if (zh) "家人的花园回忆" else "Our garden memories"
+        val intro = if (zh) "回家的路与花园的一天，按家人的讲述来读。" else "Read the way home and our garden day through the family’s words."
+        rule.onNodeWithTag("memory-book-compose-title").performScrollTo().performTextReplacement(title)
+        rule.onNodeWithTag("memory-book-compose-intro-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("memory-book-compose-intro").performScrollTo().performTextReplacement(intro)
+        awaitCompositionState(store) { it.title == title && it.introduction == intro }
+        rule.runOnIdle { keyboardController?.hide() }
+        rule.waitForIdle()
+        rule.onNodeWithTag("memory-book-compose-selected-${GeneratedMemoirReaderApi.SECOND}").performScrollTo()
+        captureComposer(if (zh) "edit-zh" else "edit-en")
+        api.failNextSave = true
+        rule.onNodeWithTag("memory-book-compose-save").performScrollTo().performClick()
+        awaitCompositionState(store) { it.status == MemoryBookCompositionStatus.RETRY_REQUIRED && !it.busy }
+        val parentReadsBeforeRetry = api.getBookIds.size
+        rule.onNodeWithTag("memory-book-compose-retry").performScrollTo().performClick()
+        awaitCompositionState(store) { it.status == MemoryBookCompositionStatus.SAVED && !it.busy }
+        assertEquals(2, api.savedRequests.size)
+        assertEquals(listOf(GeneratedMemoirReaderApi.BOOK, GeneratedMemoirReaderApi.BOOK), api.savedRequests.map { it.bookId })
+        assertEquals(api.savedRequests[0].body, api.savedRequests[1].body)
+        assertEquals("retry must not read the superseded parent revision", parentReadsBeforeRetry, api.getBookIds.size)
+        assertEquals("3", api.savedRevision())
+        if (zh) rule.onNodeWithTag("memory-book-compose-close").performScrollTo().performClick()
+        else rule.onNodeWithTag("memory-book-compose-open-saved").performScrollTo().performClick()
+        rule.waitUntil(5_000) { store.state.value.memoryBooks?.selectedBook?.revision == 3L }
+        val saved = checkNotNull(store.state.value.memoryBooks?.selectedBook)
+        assertEquals(GeneratedMemoirReaderApi.BOOK, saved.id)
+        assertEquals(title, saved.title)
+        assertEquals(intro, saved.introduction)
+        assertEquals(listOf(GeneratedMemoirReaderApi.SECOND, GeneratedMemoirReaderApi.FIRST), saved.stories.map { it.id })
+        rule.onNodeWithText(intro).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("memory-books-back").performClick()
+        rule.waitUntil(5_000) { store.state.value.memoryBooks?.selectedBook == null }
+        assertEquals(1, store.state.value.memoryBooks?.result?.items?.size)
+        assertEquals(3L, store.state.value.memoryBooks?.result?.items?.single()?.revision)
+        assertEquals(0, api.childWriteCalls)
+        assertEquals(0, api.queueNarrativeCalls)
+        assertEquals(0, api.transcriptionCalls)
+    }
+
     private fun journey(zh: Boolean) {
         val api = CompositionApi()
         val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true)
@@ -382,6 +473,13 @@ class MemoryBookCompositionUiTest {
         assertTrue(api.savedRequests.isEmpty())
     }
 
+    private fun awaitCompositionState(store: ConnectedStore, predicate: (MemoryBookCompositionStoreState) -> Boolean) {
+        rule.waitUntil(5_000) {
+            val state = store.memoryBookCompositionState.value
+            !state.busy && predicate(state)
+        }
+    }
+
     private fun awaitComposition(store: ConnectedStore, predicate: (MemoryBookCompositionStoreState) -> Boolean) {
         rule.waitUntil(5_000) {
             val state = store.memoryBookCompositionState.value
@@ -407,6 +505,7 @@ class MemoryBookCompositionUiTest {
         val base: GeneratedMemoirReaderApi = GeneratedMemoirReaderApi(),
         private val voiceEnabledForTest: Boolean = false,
         val transcriptForTest: String = "Synthetic recognized introduction words.",
+        private val editExisting: Boolean = false,
     ) : PhotoHouseApi by base, MemoryCommunityApi by base {
         override val protectedNativeV2Enabled = true
         override val assistantEnabled get() = voiceEnabledForTest
@@ -428,6 +527,8 @@ class MemoryBookCompositionUiTest {
         var audioContributionCalls = 0
         var childWriteCalls = 0
         private var createdBookJson: String? = null
+        private var lastAppliedBody: String? = null
+        fun savedRevision() = Json.parseToJsonElement(checkNotNull(createdBookJson)).jsonObject.getValue("revision").jsonPrimitive.content
 
         private val stories = mapOf(
             GeneratedMemoirReaderApi.FIRST to StoryRecord("Garden day / 花园的一天", 3),
@@ -473,35 +574,39 @@ class MemoryBookCompositionUiTest {
         override suspend fun listBooks(token: Bearer, library: String, page: Int): ByteArray {
             bookListPages += page
             val existing = createdBookJson
-            val items = if (existing == null) listOf(oldBookJson()) else listOf(existing, oldBookJson())
+            val items = if (existing == null) listOf(oldBookJson()) else if (editExisting) listOf(existing) else listOf(existing, oldBookJson())
             return buildJsonObject {
                 put("version", 1); put("library_id", library); put("page", page); put("page_size", 8)
-                put("has_more", false); put("can_create", true)
+                put("has_more", false); put("can_create", !editExisting)
                 putJsonArray("items") { items.forEach { add(Json.parseToJsonElement(it)) } }
             }.toString().toByteArray()
         }
 
         override suspend fun getBook(token: Bearer, library: String, bookId: String): ByteArray {
             getBookIds += bookId
-            val json = checkNotNull(createdBookJson)
-            check(bookId == CREATED_BOOK)
+            val json = if (editExisting) createdBookJson ?: oldBookJson() else checkNotNull(createdBookJson)
+            check(bookId == if (editExisting) GeneratedMemoirReaderApi.BOOK else CREATED_BOOK)
             return json.toByteArray()
         }
 
         override suspend fun saveBook(token: Bearer, library: String, bookId: String?, json: String): ByteArray {
             savedRequests += SaveRequest(bookId, json)
-            if (failNextSave) {
-                failNextSave = false
-                throw ApiFailure(FailureKind.OFFLINE)
-            }
-            check(bookId == null)
+            val fail = failNextSave
+            failNextSave = false
+            if (fail && !editExisting) throw ApiFailure(FailureKind.OFFLINE)
+            check(bookId == if (editExisting) GeneratedMemoirReaderApi.BOOK else null)
+            if (editExisting && lastAppliedBody == json) return checkNotNull(createdBookJson).toByteArray()
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("story_ids").jsonPrimitive.content.split(',')
             check(ids.isNotEmpty() && ids.distinct().size == ids.size)
             val title = request.getValue("title").jsonPrimitive.content
             val introduction = request.getValue("introduction").jsonPrimitive.content
             val language = request.getValue("language").jsonPrimitive.content
-            createdBookJson = bookJson(CREATED_BOOK, 1, true, title, introduction, language, ids)
+            check(request.getValue("revision").jsonPrimitive.content == if (editExisting) "2" else "0")
+            createdBookJson = bookJson(if (editExisting) GeneratedMemoirReaderApi.BOOK else CREATED_BOOK,
+                if (editExisting) 3 else 1, true, title, introduction, language, ids)
+            lastAppliedBody = json
+            if (fail) throw ApiFailure(FailureKind.OFFLINE)
             return checkNotNull(createdBookJson).toByteArray()
         }
 
@@ -540,7 +645,7 @@ class MemoryBookCompositionUiTest {
             error("Composition must not rewrite child stories")
         }
 
-        private fun oldBookJson() = bookJson(GeneratedMemoirReaderApi.BOOK, 2, false,
+        private fun oldBookJson() = bookJson(GeneratedMemoirReaderApi.BOOK, 2, editExisting,
             "Earlier memoir", "", "zh", listOf(GeneratedMemoirReaderApi.FIRST, GeneratedMemoirReaderApi.SECOND))
 
         private fun bookJson(

@@ -484,10 +484,14 @@ class ConnectedStore(
         val credential = token ?: return null
         val account = identity?.account_id ?: return null
         if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library ||
-            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy || reading.selectedBook != null ||
-            reading.capabilities?.enabled != true || reading.result?.canCreate != true) return null
+            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy ||
+            reading.capabilities?.enabled != true) return null
+        val parent = reading.selectedBook
+        if (parent != null && !parent.canEdit || parent == null && reading.result?.canCreate != true) return null
         return MemoryBookCompositionScope(account, credential, state.value.generation, reading.library,
-            reading.shelfScopeId, ownerCanCreate = true)
+            reading.shelfScopeId, ownerCanCreate = reading.result?.canCreate == true,
+            editableBookId = parent?.id, editableBookRevision = parent?.revision,
+            editableReaderScopeId = parent?.let { reading.readerScopeId })
     }
 
     private fun currentMemoryBookCompositionDictationScope(): MemoryBookCompositionDictationScope? {
@@ -495,7 +499,9 @@ class ConnectedStore(
         val draft = memoryBookCompositionState.value
         if (draft.accountId != current.accountId || draft.generation != current.generation ||
             draft.library != current.library || draft.shelfScopeId != current.shelfScopeId ||
-            draft.status != MemoryBookCompositionStatus.READY || !draft.canCreate || draft.pendingRetry) return null
+            draft.editingBookId != current.editableBookId || draft.editingBookRevision != current.editableBookRevision ||
+            draft.editingReaderScopeId != current.editableReaderScopeId ||
+            draft.status != MemoryBookCompositionStatus.READY || !(draft.canCreate || draft.canEdit) || draft.pendingRetry) return null
         return MemoryBookCompositionDictationScope(current.accountId, current.credential, current.generation,
             current.library, current.shelfScopeId, draft.actionEpoch, editable = true)
     }
@@ -504,9 +510,28 @@ class ConnectedStore(
                                    defaultTitle: String, language: String): Boolean {
         val current = currentMemoryBookCompositionScope() ?: return false
         if (current.accountId != account || current.generation != generation || current.library != library ||
-            current.shelfScopeId != shelfScopeId || memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
+            current.shelfScopeId != shelfScopeId || current.editableBookId != null ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
         bookCompositionDictation.clear()
         val started = bookCompositionStore?.open(defaultTitle, language) == true
+        if (started) bookShelfCovers.close()
+        return started
+    }
+
+    /** An edit begins only from this rendered parent, after every unfinished reader action is settled. */
+    fun canStartSavedMemoryBookEdit(expected: MemoryBookReaderNavigationScope): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            isCurrentMemoryBookReaderNavigation(expected) && reading.selectedBook?.canEdit == true &&
+            canSwitchMemoryBookReading(reading, allowPreviewLoading = true)
+    }
+
+    fun startSavedMemoryBookEdit(expected: MemoryBookReaderNavigationScope): Boolean {
+        if (!canStartSavedMemoryBookEdit(expected)) return false
+        state.value.memoryBooks?.companion?.dictation?.close()
+        bookNarrativeDictation.clear()
+        bookCompositionDictation.clear()
+        val started = bookCompositionStore?.openEdit(expected.bookId, expected.bookRevision) == true
         if (started) bookShelfCovers.close()
         return started
     }
@@ -514,6 +539,10 @@ class ConnectedStore(
     fun closeMemoryBookComposition(shelfScopeId: Long, actionEpoch: Long) {
         val draft = memoryBookCompositionState.value
         if (draft.shelfScopeId != shelfScopeId || draft.actionEpoch != actionEpoch) return
+        val saved = draft.createdBook
+        if (draft.status == MemoryBookCompositionStatus.SAVED && saved != null &&
+            openComposedMemoryBook(draft.accountId.orEmpty(), draft.generation ?: -1,
+                draft.library.orEmpty(), shelfScopeId, actionEpoch, saved.id)) return
         bookCompositionDictation.clear()
         bookCompositionStore?.close(shelfScopeId, actionEpoch)
         bookShelfCovers.load()
@@ -527,10 +556,18 @@ class ConnectedStore(
         val created = composition.createdBook ?: return false
         if (current.accountId != account || current.generation != generation || current.library != library ||
             current.shelfScopeId != shelfScopeId || composition.actionEpoch != actionEpoch ||
-            composition.status != MemoryBookCompositionStatus.CREATED || composition.busy || composition.pendingRetry ||
+            composition.status !in setOf(MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED) ||
+            composition.editingBookId != current.editableBookId ||
+            composition.editingBookRevision != current.editableBookRevision ||
+            composition.editingReaderScopeId != current.editableReaderScopeId || composition.busy || composition.pendingRetry ||
             created.id != bookId) return false
         bookCompositionDictation.clear()
         bookCompositionStore?.close(shelfScopeId, actionEpoch)
+        val reading = state.value.memoryBooks ?: return false
+        val updatedShelf = reading.result?.let { page ->
+            page.copy(items = page.items.map { if (it.id == created.id) created else it })
+        }
+        mutable.value = state.value.copy(memoryBooks = reading.copy(result = updatedShelf))
         openMemoryBookSummary(created)
         return true
     }
@@ -2205,6 +2242,7 @@ class ConnectedStore(
     }
 
     fun closeMemoryBook() {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         clearMemoryBookEditorial()
         invalidateBookChatRequests()
         memoryBooksReaderRequest++
@@ -2240,7 +2278,8 @@ class ConnectedStore(
     fun openMemoryBookEditorial(forceReload: Boolean = false) {
         val reading = state.value.memoryBooks ?: return
         val book = reading.selectedBook ?: return
-        if (!book.canEdit || reading.library != state.value.library || !allowed() || reading.readerBusy) return
+        if (!book.canEdit || reading.library != state.value.library || !allowed() || reading.readerBusy ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         val credential = token ?: return
         val account = identity?.account_id ?: return
         val loadedKey = editorialKey(account, reading.library, book)
@@ -2435,8 +2474,10 @@ class ConnectedStore(
     }
 
 
-    fun editMemoryBookEditorial(introduction: List<EditorialSourceIdentity>, transitions: List<EditorialTransition>) =
+    fun editMemoryBookEditorial(introduction: List<EditorialSourceIdentity>, transitions: List<EditorialTransition>) {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         editorialStore.edit(introduction, transitions)
+    }
     fun saveMemoryBookEditorial() { launch { _ ->
         if (bookChatOperationActive()) return@launch
         val before = editorialStore.state.value.revision
@@ -2561,7 +2602,8 @@ class ConnectedStore(
 
     private fun bookChatOperationActive(): Boolean {
         val narrative = memoryBookNarrativeState.value
-        return memoryBookEditionState.value.hasUnfinishedWork || bookChatInteractionActive() || bookNarrativeDictation.hasUnfinishedInput || narrative.busy || narrative.pendingRequest != null ||
+        return memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
+            memoryBookEditionState.value.hasUnfinishedWork || bookChatInteractionActive() || bookNarrativeDictation.hasUnfinishedInput || narrative.busy || narrative.pendingRequest != null ||
             narrative.job?.state in setOf("queued", "running")
     }
 
@@ -2570,7 +2612,8 @@ class ConnectedStore(
         val book = reading.selectedBook ?: return null
         val credential = token ?: return null
         val accountId = identity?.account_id ?: return null
-        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library) return null
+        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
         return MemoryBookNarrativeScope(accountId, credential, reading.library, state.value.generation,
             book.id, book.revision, book.stories.map { EditorialChild(it.id, it.revision.toString()) }, bookChatEpoch)
     }
@@ -2753,7 +2796,8 @@ class ConnectedStore(
         val reading = state.value.memoryBooks ?: return false
         val book = reading.selectedBook
         val chat = reading.companion
-        return memoryCommunityAvailable && active(generation) && token === expectedToken && allowed() &&
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            memoryCommunityAvailable && active(generation) && token === expectedToken && allowed() &&
             state.value.library == library && reading.library == library &&
             book?.id == bookId && book.revision == revision && chat?.bookId == bookId && chat.bookRevision == revision &&
             bookChatEpoch == epoch
@@ -2762,7 +2806,8 @@ class ConnectedStore(
     private fun launchBookChat(action: suspend (MemoryCommunityRepository, MemoryBookChatState, () -> Boolean) -> MemoryBookChatState) {
         val beforeReading = state.value.memoryBooks ?: return
         val before = beforeReading.companion ?: return
-        if (before.busy || beforeReading.story == null || !allowed() || bookNarrativeDictation.hasUnfinishedInput) return
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
+            before.busy || beforeReading.story == null || !allowed() || bookNarrativeDictation.hasUnfinishedInput) return
         val repository = memoryCommunity ?: return
         val expectedToken = token ?: return
         val library = beforeReading.library; val generation = state.value.generation; val epoch = bookChatEpoch
@@ -2954,6 +2999,7 @@ class ConnectedStore(
     }
 
     fun updateMemoryBookChatDraft(text: String): Boolean {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
         if (text.toByteArray(Charsets.UTF_8).size > 4096 || text.any { it == '\u0000' }) return false
         val reading = state.value.memoryBooks ?: return false
         val chat = reading.companion ?: return false
@@ -3039,7 +3085,8 @@ class ConnectedStore(
 
     private fun canMutateMemoryBookChat(reading: MemoryBooksReading, chat: MemoryBookChatState): Boolean {
         val book = reading.selectedBook ?: return false
-        return memoryCommunityAvailable && memoryCommunity != null && token != null && allowed() &&
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            memoryCommunityAvailable && memoryCommunity != null && token != null && allowed() &&
             !state.value.busy && !coolingDown() && !chat.busy && reading.story != null &&
             !bookNarrativeDictation.hasUnfinishedInput && !memoryBookEditionState.value.hasUnfinishedWork &&
             editorialStore.state.value.status !in setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN) &&
@@ -3133,7 +3180,8 @@ class ConnectedStore(
     }
 
     fun memoryBookChatDictation(): MemoryDictationStore? {
-        if (!api.assistantEnabled || !memoryCommunityAvailable || bookNarrativeDictation.hasUnfinishedInput) return null
+        if (!api.assistantEnabled || !memoryCommunityAvailable || bookNarrativeDictation.hasUnfinishedInput ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
         val reading = state.value.memoryBooks ?: return null
         val chat = reading.companion ?: return null
         chat.dictation?.let { return it }
@@ -3248,6 +3296,7 @@ class ConnectedStore(
 
     private fun canSwitchMemoryBookReading(reading: MemoryBooksReading, allowPreviewLoading: Boolean = false): Boolean {
         if (!allowed() || token == null || state.value.busy || reading.busy || reading.readerBusy ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
             (reading.framesBusy && !allowPreviewLoading) ||
             reading.library != state.value.library || bookChatOperationActive() ||
             reading.companion?.let { chat -> chat.draft.isNotBlank() || chat.threadDrafts.values.any(String::isNotBlank) ||
@@ -3307,7 +3356,8 @@ class ConnectedStore(
 
     /** The scope ticket is checked before any manual navigation can mutate reader state. */
     fun isCurrentMemoryBookReaderNavigation(expected: MemoryBookReaderNavigationScope): Boolean =
-        captureMemoryBookReaderNavigation() == expected
+        memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            captureMemoryBookReaderNavigation() == expected
 
     /** Runs a rendered story action only against the book/story-list snapshot that created it. */
     fun loadMemoryBookStory(expected: MemoryBookReaderNavigationScope, index: Int): Boolean {

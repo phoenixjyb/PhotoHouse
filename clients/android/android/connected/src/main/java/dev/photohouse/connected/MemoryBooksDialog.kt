@@ -121,9 +121,12 @@ internal fun MemoryBooksDialog(
     val hasUnsentEditorialWork = editorial.dirty || frozenEditorialSave || editorial.status == MemoryBookEditorialStoreStatus.CONFLICT
     val compositionActive = composition.status != MemoryBookCompositionStatus.CLOSED &&
         composition.accountId == liveState.session?.account_id && composition.generation == liveState.generation &&
-        composition.library == reading.library && composition.shelfScopeId == reading.shelfScopeId
-    val hasUnsentCompositionWork = compositionActive && composition.status != MemoryBookCompositionStatus.CREATED &&
-        (composition.draftRevision > 0 || composition.selectedStories.isNotEmpty() || compositionVoiceUnfinished)
+        composition.library == reading.library && composition.shelfScopeId == reading.shelfScopeId &&
+        (composition.editingBookId == null || composition.editingBookId == book?.id &&
+            composition.editingBookRevision == book?.revision && composition.editingReaderScopeId == reading.readerScopeId)
+    val hasUnsentCompositionWork = compositionActive && composition.status !in setOf(MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED) &&
+        ((if (composition.editingBookId != null) composition.hasChanges else
+            composition.draftRevision > 0 || composition.selectedStories.isNotEmpty()) || compositionVoiceUnfinished)
     fun exitReader(action: () -> Unit) {
         if (compositionActive && (composition.status == MemoryBookCompositionStatus.SAVING || composition.pendingRetry)) {
             deferredReaderExit = action
@@ -191,12 +194,19 @@ internal fun MemoryBooksDialog(
                                 }
                             }
                             book != null -> {
-                                if (!keyboardVisible) TextButton(onClick = { exitReader(onBack) }, modifier = Modifier.testTag("memory-books-back")) { Text(t("‹ All books", "‹ 所有回忆册")) }
+                                if (!keyboardVisible) TextButton(onClick = attachedMemoirShelfAction { exitReader(onBack) }, modifier = Modifier.testTag("memory-books-back")) { Text(t("‹ All books", "‹ 所有回忆册")) }
                                 Text(book.title, style = if (keyboardVisible) MaterialTheme.typography.titleSmall else MaterialTheme.typography.headlineMedium,
                                     fontFamily = FontFamily.Serif, maxLines = if (keyboardVisible) 1 else 2,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(memoirReaderScroll)
                                     .testTag("memory-book-reader-scroll"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    if (book.canEdit && navigation != null) {
+                                        OutlinedButton(onClick = attachedMemoirShelfAction { store.startSavedMemoryBookEdit(navigation) },
+                                            enabled = store.canStartSavedMemoryBookEdit(navigation),
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-edit")) {
+                                            Text(t("Edit memoir", "编辑回忆册"))
+                                        }
+                                    }
                                     if (book.introduction.isNotBlank()) {
                                         Column(Modifier.fillMaxWidth().testTag("memory-book-introduction-section"),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)) {

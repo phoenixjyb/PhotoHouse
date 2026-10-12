@@ -3051,6 +3051,60 @@ class MemoryCommunityStoreTest {
         assertEquals(1, community.chatTurnPosts)
     }
 
+    @Test fun savedMemoirEditingRequiresSettledReaderAndKeepsVoiceExplicit() = runTest {
+        val api = StoryApi().apply { voiceEnabled = true }
+        val community = CommunityApi().apply { bookCanCreate = false; bookOrder = listOf(storyId) }
+        val store = newStore(api, community)
+        store.authenticate("+12025550123", "synthetic-password"); runCurrent()
+        store.openMemoryBooks(); runCurrent(); store.openMemoryBook(bookId); runCurrent()
+        val navigation = store.captureMemoryBookReaderNavigation()!!
+        assertTrue(store.canStartSavedMemoryBookEdit(navigation))
+        assertTrue(store.updateMemoryBookChatDraft("Unsent family words"))
+        assertFalse(store.canStartSavedMemoryBookEdit(navigation))
+        assertFalse(store.startSavedMemoryBookEdit(navigation))
+        assertTrue(store.updateMemoryBookChatDraft(""))
+        assertTrue(store.startSavedMemoryBookEdit(navigation)); runCurrent()
+        val composer = store.memoryBookCompositionCoordinator!!
+        val edit = composer.state.value
+        val shelfScopeId = checkNotNull(edit.shelfScopeId)
+        assertEquals(MemoryBookCompositionStatus.READY, edit.status)
+        assertEquals(bookId, edit.editingBookId)
+        assertTrue("fresh edit failed: ${edit.failure}", edit.canEdit)
+        assertFalse(edit.canCreate)
+        assertEquals("A family collection.", edit.introduction)
+        assertFalse(store.isCurrentMemoryBookReaderNavigation(navigation))
+        assertFalse(store.loadMemoryBookStory(navigation, 0))
+        store.closeMemoryBook()
+        assertEquals(bookId, store.state.value.memoryBooks?.selectedBook?.id)
+        assertEquals(MemoryBookCompositionStatus.READY, composer.state.value.status)
+        assertFalse(store.updateMemoryBookChatDraft("Detached chat words"))
+        assertFalse(store.openMemoryBookNarrativeDictation())
+        assertFalse(store.updateMemoryBookNarrativeInstructions("Detached story request"))
+        assertNull(store.memoryBookChatDictation())
+        val editorialBefore = store.memoryBookEditorialState.value
+        store.editMemoryBookEditorial(emptyList(), emptyList())
+        assertEquals(editorialBefore, store.memoryBookEditorialState.value)
+        assertEquals(0, api.voiceCapabilityReads)
+        val dictation = store.memoryBookCompositionDictationCoordinator
+        val voice = dictation.open()!!; runCurrent()
+        assertEquals(1, api.voiceCapabilityReads)
+        assertEquals(30, voice.beginRecording())
+        assertTrue(composer.updateTitle("Reviewed garden memoir", shelfScopeId, edit.actionEpoch))
+        assertFalse(composer.save(shelfScopeId, edit.actionEpoch, composer.state.value.draftRevision))
+        voice.stopRecording(instructionWav()); runCurrent()
+        assertTrue(dictation.insertTranscript(voice) { text ->
+            composer.updateIntroduction(composer.state.value.introduction + "\n" + text, shelfScopeId, edit.actionEpoch)
+        })
+        assertEquals("A family collection.\n" + api.instructionTranscript, composer.state.value.introduction)
+        assertEquals(0, community.bookSaveCalls)
+        store.closeMemoryBookComposition(shelfScopeId, edit.actionEpoch)
+        assertNull(voice.beginRecording())
+        assertEquals(MemoryBookCompositionStatus.CLOSED, composer.state.value.status)
+        assertEquals("A family collection.", store.state.value.memoryBooks?.selectedBook?.introduction)
+        assertTrue(store.isCurrentMemoryBookReaderNavigation(navigation))
+        assertTrue(api.instructionAudioBuffers.single().all { it == 0.toByte() })
+    }
+
     @Test fun composerIntroductionVoiceKeepsLatestWordsAndRequiresExplicitSave() = runTest {
         val api = StoryApi().apply { voiceEnabled = true }
         val community = CommunityApi()
