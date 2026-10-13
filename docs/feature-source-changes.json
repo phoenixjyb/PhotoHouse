@@ -13364,6 +13364,21 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "phone-v53-grounded-voice-release-identity-20261013",
+      "based_on_commit": "0aaec078d80a54f9d61f3032987a60d70c6e2158",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "c7f9819df792997474fb3318b4ec9fd3e4cf9a535eed86a66f5bf48667f1e61b",
+          "sha256": "399e3355096a440949fd403a5443dacb5089ced3f23733084d3d99acc6e9ae32"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
