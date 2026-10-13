@@ -106,7 +106,7 @@ deterministic and explicit so ordinary photo search keeps its current behavior:
 
 | Locale | Command form | Search phrase |
 | --- | --- | --- |
-| Chinese | `找回忆<phrase>` or `找回忆 <phrase>`; `搜索故事<phrase>` or `搜索故事 <phrase>`; `找回忆册<phrase>` or `找回忆册 <phrase>` | Trimmed remainder |
+| Chinese | `找回忆 <phrase>`; `搜索故事 <phrase>` or `找故事 <phrase>`; `找回忆册 <phrase>`, `找回忆录 <phrase>` or `搜索回忆录 <phrase>` (a space is optional) | Trimmed remainder |
 | English | `find saved story <phrase>`, `search saved memories for <phrase>`, `find memoir <phrase>` | Trimmed remainder |
 
 Chinese prefix matching accepts ASR output with no separating space (for
