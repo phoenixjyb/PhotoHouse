@@ -1,6 +1,19 @@
 # Product roadmap
 
-## October 13 private conversation continuation
+## October 13 grounded voice delivery
+
+API/Web source `5f92b94` is live; phone v53 is published with the original icon
+and certificate. Native full APK and independent Mac complete range verification
+passed, five upload workers were restored, and ASR/TTS remain running. TV remains
+v30. The earlier v52 package stays unpublished and preserved. See the
+[delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md) for
+the Mac single-connection download limitation and separate device acceptance.
+
+Next: verify family phone updates and actual listen → reply → listen behavior;
+then improve retrieval across saved stories and memoirs with visible evidence,
+and make the Windows release tooling portable with executable preflight checks.
+
+## Earlier October 13 private conversation continuation plan
 
 The source and runtime pins in this roadmap are dated evidence. A read-only
 native snapshot at 2026-10-13 13:00 Beijing verified phone OTA v51 and API

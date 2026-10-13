@@ -13379,6 +13379,36 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "grounded-voice-api-web-phone-v53-delivery-record-20261013",
+      "based_on_commit": "5f92b94c9ecae090e75d69d9ac6f74df2eeba75a",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md",
+          "before_sha256": null,
+          "sha256": "af899e67c97827b35b952bf91ebf951ebe3c54c0eb255d79359ebdbb0ae08d5e"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_RELIABILITY.md",
+          "before_sha256": "41610cb9379898f156c02636101d8ad728127741aae4493f4c9ee6f90fe27426",
+          "sha256": "833357f25d629f49eb6d5326bc5b1a57199d91dbbc30ac568ca04784e43355b4"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "a08f5c4397d549e273e16b6c864658629d350b9a40d455b924e9559cff1e37e0",
+          "sha256": "d71ac9cb74de8a917d6e315efa30a3f5af3083fb36699a4c612677263fe588bb"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "b0a2c69a3a51a96a8c3d25048b5e145079de250f552076befc3a7777170ad7e9",
+          "sha256": "309bb323fa84bc9e5b62f66958b811d4d46ce18a2bf78212cab41c7ad62ce815"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

@@ -1,5 +1,17 @@
 # Feature and acceptance matrix
 
+## October 13 grounded voice delivery
+
+API/Web source `5f92b94` is served and phone v53 is published on Windows HTTPS
+OTA with the original certificate and icon. Stopped-writer backup, four database
+integrity checks, served resource hashes and worker restoration passed; ASR/TTS
+remain running and TV remains v30. Native complete APK readback and independent
+Mac complete range readback match the signed file. Two Mac single-connection
+downloads timed out; phone installation and actual listening remain unverified.
+See the [v53 delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md).
+
+## Earlier source qualification records
+
 As of October 10, PRs #13–#15 are merged. The latest hosted source run passed
 API, Android, Windows private-reader, Windows CPU and seventeen generated Web
 suites. Historical counts below retain their revision-specific meaning;

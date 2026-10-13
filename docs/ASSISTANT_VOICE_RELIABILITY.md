@@ -1,5 +1,13 @@
 # Voice retrieval and playback evidence
 
+## October 13 delivery
+
+The grounded narration source is now served in API/Web release `5f92b94` and
+phone v53 is published on Windows HTTPS OTA. Native service/backup checks and
+complete APK integrity checks passed; phone installation and actual listening
+remain separate. See the [delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md).
+The v52 references and 13:00 snapshot below describe earlier preparation evidence.
+
 ## Grounded result narration
 
 The local source now supports a strictly contextual command for the current
@@ -24,10 +32,10 @@ speech reads the already stored reply. The stateless spoken reply now uses
 this bounded narration; this slice does not change schemas,
 routes, providers, or preference negotiation. It adds no LLM or mutation path.
 
-This slice has local source implementation and generated-data checks. It is
-not a runtime or physical-device acceptance claim. Its baseline is PhotoHouse
-`7f8d92b`; the existing phone v52 source
-candidate remains pinned to that revision and pending publication. A read-only
+The initial slice had local source implementation and generated-data checks,
+with runtime delivery separately recorded above. Its baseline is PhotoHouse
+`7f8d92b`; the earlier phone v52 source
+candidate is preserved at that revision and was superseded for delivery by v53. A read-only
 native snapshot at 2026-10-13 13:00 Beijing verified phone OTA v51 and API
 source `7daf740`. That dated snapshot does not mean this narration is
 deployed or currently available.
