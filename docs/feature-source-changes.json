@@ -13519,6 +13519,36 @@
       "generation_enabled": false,
       "providers_activated": false,
       "based_on_commit": "9939c82763ef56b6213da187a65c060e9713422c"
+    },
+    {
+      "feature": "phone-v54-and-web-voice-presence-delivery-evidence-20261013",
+      "based_on_commit": "52c4c8134e13459e4e353efe0755bf1c32e90df7",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V54_RELEASE_2026-10-13.md",
+          "before_sha256": null,
+          "sha256": "3f95caeb4663c4ca0dc5f787e7d7b19e72592b67c3dedc163e9b1201b79298f9"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_PRESENCE.md",
+          "before_sha256": "1b171f6fde320686922993d01c7a47884b14129375964915e02cfa13ea6a7719",
+          "sha256": "37a5e75881bfd8904c7af36b4fb5bce6338bbc6c60e3a0a911a1af53100ac503"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "a1dc18e0d1518a96cacf56482405c434d9264852bf5caf23c81504a2c3f65cd2",
+          "sha256": "1ba57875d14baccd2397623ffc60cb6474a7d4806767c02746755dccbf0b88d2"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "22511bd022a77e6d81706eb4e0f7bd9eb9b5a74432c5dc8afb255dd7e27aeeb4",
+          "sha256": "0d9cee4214daa8718b3db429dd7c006f122be2a9b88dcc8257adbe8bcda0a805"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

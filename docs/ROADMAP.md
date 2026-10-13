@@ -1,8 +1,20 @@
 # Product roadmap
 
-## October 13 grounded voice delivery
+## October 13 voice presence delivery
 
-API/Web source `5f92b94` is live; phone v53 is published with the original icon
+The [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) is served in API/Web source
+`52c4c81` and published as phone v54 with the original icon and certificate.
+Native qualification, backup, restored workers and full APK readback passed;
+TV remains v30. See the [delivery record](../clients/android/docs/PHONE_V54_RELEASE_2026-10-13.md).
+
+Next: owner phone update and actual listen → reply → listen acceptance, including
+visible microphone states, Pause/End and foreground interruption. Continue
+saved-story/memoir retrieval with visible evidence and portable release tooling
+after this device check; fixture and publication checks remain separate evidence.
+
+## Earlier October 13 grounded voice delivery
+
+API/Web source `5f92b94` was live; phone v53 was published with the original icon
 and certificate. Native full APK and independent Mac complete range verification
 passed, five upload workers were restored, and ASR/TTS remain running. TV remains
 v30. The earlier v52 package stays unpublished and preserved. See the
@@ -12,10 +24,6 @@ the Mac single-connection download limitation and separate device acceptance.
 Next: verify family phone updates and actual listen → reply → listen behavior;
 then improve retrieval across saved stories and memoirs with visible evidence,
 and make the Windows release tooling portable with executable preflight checks.
-
-The next local [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) makes waiting,
-confirmed listening, recognition, search, speech preparation, playback and pause
-visible. Its source and generated UI checks are separate from the v53 delivery.
 
 ## Earlier October 13 private conversation continuation plan
 

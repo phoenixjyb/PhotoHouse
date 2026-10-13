@@ -33,10 +33,11 @@ setting suppresses its confirmed-activity pulse. Pause/End stay visible while
 results scroll, including narrow layouts and enlarged text. Starting, resuming,
 capture limits, cancellation and actual-ended admission rules are unchanged.
 
-This is source work after the published API/phone v53 release. It adds no backend
-route, provider, schema, recording retention or runtime activation. A later
-signed phone/API delivery is required; screenshots and emulator fixtures do not
-establish microphone, speaker or physical-device acceptance.
+The API/Web source `52c4c81` is served and phone v54 is published on Windows
+HTTPS OTA. See the [delivery record](../clients/android/docs/PHONE_V54_RELEASE_2026-10-13.md).
+This release adds no backend route, provider, schema or recording retention
+change. Screenshots, emulator fixtures and live package readback do not establish
+physical microphone, speaker or family acceptance.
 
 Local evidence: the foreground Web voice regression and manual transcript
 journey pass, with phone/desktop and 150% text renders inspected. The current

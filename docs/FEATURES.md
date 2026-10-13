@@ -1,19 +1,24 @@
 # Feature and acceptance matrix
 
-## October 13 grounded voice delivery
+## October 13 voice presence delivery
 
-API/Web source `5f92b94` is served and phone v53 is published on Windows HTTPS
+API/Web source `52c4c81` is served and phone v54 is published on Windows HTTPS
+OTA. The [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) now makes idle readiness,
+confirmed listening, recognition, search, speech preparation, playback and pause
+visible. Native qualification, stopped-writer backup, worker restoration and
+complete APK verification passed. ASR/TTS/OCR are preserved; TV remains v30.
+Original certificate and icon are unchanged. Physical phone and family voice
+acceptance remain pending. See the [v54 delivery record](../clients/android/docs/PHONE_V54_RELEASE_2026-10-13.md).
+
+## Earlier October 13 grounded voice delivery
+
+API/Web source `5f92b94` was served and phone v53 was published on Windows HTTPS
 OTA with the original certificate and icon. Stopped-writer backup, four database
 integrity checks, served resource hashes and worker restoration passed; ASR/TTS
 remain running and TV remains v30. Native complete APK readback and independent
 Mac complete range readback match the signed file. Two Mac single-connection
 downloads timed out; phone installation and actual listening remain unverified.
 See the [v53 delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md).
-
-The next source-only [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) adds a
-visible waiting state, confirmed microphone/playback states, preparation cues
-and restrained motion with accessible text. Web and emulator checks pass;
-this follow-up is outside the published v53 package.
 
 ## Earlier source qualification records
 
