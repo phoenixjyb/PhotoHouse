@@ -513,6 +513,26 @@ def run(output):
                     story_title not in tts.calls[-1][0] and story['id'] not in tts.calls[-1][0],
                     'synthetic_memory_story_speech_failed')
 
+            reading_capability = client.get(
+                BASE + '/saved-memory-reading-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(reading_capability.status_code == 200 and
+                    reading_capability.json() == {'version': 1, 'available': True},
+                    'synthetic_memory_reading_capability_failed')
+            opening_speech_id = str(uuid.uuid4())
+            story_opening_audio = client.post(
+                f'{BASE}/threads/{memory_thread_id}/requests/{story_request_id}/memory-cards/0/speech',
+                headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': opening_speech_id,
+                         'X-PhotoHouse-Parent-Request-Id': story_request_id},
+                json={'library_id': LIBRARY, 'expected_revision': 1})
+            opening_receipt = app.state.assistant_journal.get(opening_speech_id, OWNER, LIBRARY)
+            _assert(story_opening_audio.status_code == 200 and
+                    story_opening_audio.content == tts.audio and
+                    tts.calls[-1] == ('A synthetic amber picnic beside the lake.', 'en') and
+                    opening_receipt['status'] == 'succeeded' and
+                    opening_receipt['input_text'] is None and opening_receipt['recognized_text'] is None,
+                    'synthetic_memory_story_opening_speech_failed')
+
             phase = 'saved_memory_memoir_cards_and_speech'
             memoir_request_id = str(uuid.uuid4())
             memoir_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',
@@ -543,6 +563,15 @@ def run(output):
                     tts.calls[-1] == (memoir_result['reply'], 'en') and
                     memoir_title not in tts.calls[-1][0] and memoir['id'] not in tts.calls[-1][0],
                     'synthetic_memory_memoir_speech_failed')
+
+            memoir_opening_audio = client.post(
+                f'{BASE}/threads/{memory_thread_id}/requests/{memoir_request_id}/memory-cards/0/speech',
+                headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': str(uuid.uuid4()),
+                         'X-PhotoHouse-Parent-Request-Id': memoir_request_id},
+                json={'library_id': LIBRARY, 'expected_revision': 2})
+            _assert(memoir_opening_audio.status_code == 200 and memoir_opening_audio.content == tts.audio and
+                    tts.calls[-1] == ('A synthetic amber memoir opening.', 'en'),
+                    'synthetic_memory_memoir_opening_speech_failed')
 
             phase = 'saved_memory_parented_followups'
             followup_capability = client.get(

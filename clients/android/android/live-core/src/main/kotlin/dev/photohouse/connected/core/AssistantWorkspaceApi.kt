@@ -144,6 +144,13 @@ interface AssistantWorkspaceApi {
         SavedMemoryReaderCapabilities(1, false)
     suspend fun savedMemorySpeechCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
+    /** Optional source-opening speech capability, independent from generic reply speech. */
+    suspend fun savedMemoryReadingCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
+        SavedMemoryReaderCapabilities(1, false)
+    /** Synthesizes the original opening for one card in the latest fresh memory-card result. */
+    suspend fun speakSavedMemoryOpening(token: Bearer, library: String, threadId: String, turnId: String,
+                                        ordinal: Int, expectedRevision: Long, speechRequestId: String): AssistantSpeechResult =
+        throw ApiFailure(FailureKind.HTTP, 503)
     suspend fun savedMemoryReader(
         token: Bearer, library: String, threadId: String, turnId: String, ordinal: Int,
         expectedRevision: Long,

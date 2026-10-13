@@ -6,6 +6,7 @@ Readback revalidates current source authorization and never replays effects.
 import asyncio
 import json
 import re
+import unicodedata
 import uuid
 from urllib.parse import parse_qsl
 
@@ -700,6 +701,30 @@ async def saved_memory_speech_capabilities(request: Request):
     return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
 
 
+@router.get('/assistant/workspace/v1/saved-memory-reading-capabilities')
+async def saved_memory_reading_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    available = False
+    try:
+        _saved_memory_enabled(request)
+        access, engine = assistant_engine._engine(request)
+        if engine is not None:
+            token, _mode = credentials_from_request(request, allow_query=True)
+            await _call(_workspace(request), 'get_preferences', account)
+            await run_in_threadpool(_memory_readers_available,
+                                    _memory_runtime(request, allow_query=True), token, library)
+            available = await _reply_speech_available(request, account)
+    except AccessDenied:
+        raise
+    except Exception:
+        available = False
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
 def _validate_saved_speech_references(access, token, library, cards):
     if type(cards) is not list or not 1 <= len(cards) <= 12:
         raise WorkspaceInvalid()
@@ -727,6 +752,17 @@ def _validate_saved_speech_references(access, token, library, cards):
                                   current['revision'], ref['revision'])
         if connection.execute('PRAGMA data_version').fetchone()[0] != version:
             raise TransportError(409, 'Saved memory changed; refresh before reading')
+
+
+def _validate_saved_speech_references_for_reading(access, token, library, cards):
+    """Map unexpected current-source storage failures to a safe speech error."""
+    try:
+        return _validate_saved_speech_references(access, token, library, cards)
+    except (AccessDenied, TransportError, WorkspaceInvalid, WorkspaceStoreConflict,
+            WorkspaceStoreMissing, WorkspaceStoreUnavailable, AssistantSpeechUnavailable):
+        raise
+    except Exception:
+        raise AssistantSpeechUnavailable() from None
 
 
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
@@ -965,6 +1001,151 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
 router.add_api_route(
     '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/speech',
     reply_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
+
+
+def _saved_memory_reading_text(access, token, library, reference):
+    """Return the bounded saved story opening or memoir introduction verbatim."""
+    try:
+        envelope = _saved_memory_reader(access, token, library, reference)
+    except (AccessDenied, TransportError, WorkspaceInvalid, WorkspaceStoreConflict,
+            WorkspaceStoreMissing, WorkspaceStoreUnavailable, AssistantSpeechUnavailable):
+        raise
+    except Exception:
+        raise AssistantSpeechUnavailable() from None
+    if (type(envelope) is not dict or set(envelope) != {'version', 'kind', 'reader'} or
+            envelope.get('version') != 1 or envelope.get('kind') != reference.get('type') or
+            type(envelope.get('reader')) is not dict):
+        raise AssistantSpeechUnavailable()
+    reader = envelope['reader']
+    if reader.get('id') != reference.get('id'):
+        raise AssistantSpeechUnavailable()
+    if envelope['kind'] == 'story':
+        chapters = reader.get('chapters')
+        if type(chapters) is not list or not chapters or type(chapters[0]) is not dict:
+            raise AssistantSpeechUnavailable()
+        text = chapters[0].get('narration')
+    elif envelope['kind'] == 'memoir':
+        if reader.get('type') != 'memoir':
+            raise AssistantSpeechUnavailable()
+        text = reader.get('introduction')
+    else:
+        raise AssistantSpeechUnavailable()
+    if type(text) is not str or not text.strip():
+        raise AssistantSpeechUnavailable()
+    try:
+        text.encode('utf-8')
+    except UnicodeError:
+        raise AssistantSpeechUnavailable() from None
+    for char in text:
+        if char in '\n\t\u200c\u200d' or unicodedata.category(char) in {'Zs', 'Zl', 'Zp'}:
+            continue
+        if not char.isprintable():
+            raise AssistantSpeechUnavailable()
+
+    clipped = []
+    encoded_size = 0
+    for char in text:
+        if len(clipped) >= 240:
+            break
+        try:
+            char_size = len(char.encode('utf-8'))
+        except UnicodeError:
+            raise AssistantSpeechUnavailable() from None
+        if encoded_size + char_size > 600:
+            break
+        clipped.append(char)
+        encoded_size += char_size
+    result = ''.join(clipped)
+    if not result.strip():
+        raise AssistantSpeechUnavailable()
+    return result
+
+
+async def saved_memory_reading_speech(request: Request, thread_id: str,
+                                      turn_id: str, ordinal: str):
+    body = await _body(request, {'library_id', 'expected_revision'})
+    library = _library(body['library_id'])
+    expected_revision = _revision(body['expected_revision'])
+    selected_thread = _thread_id(thread_id)
+    selected_turn = _thread_id(turn_id)
+    if (type(ordinal) is not str or
+            re.fullmatch(r'(?:0|[1-9][0-9]*)', ordinal) is None or
+            len(ordinal) > 2 or int(ordinal) > MAX_MEMORY_READER_ORDINAL):
+        raise WorkspaceInvalid()
+    selected_ordinal = int(ordinal)
+    store, journal, tts = _reply_speech_dependencies(request)
+    _saved_memory_enabled(request)
+
+    token, _mode = credentials_from_request(request)
+    account = await _principal(request, library)
+    speech_id = _single(request, 'x-photohouse-request-id')
+    parent_id = _single(request, 'x-photohouse-parent-request-id')
+    try:
+        speech_id = assistant_engine.request_id(speech_id)
+        parent_id = assistant_engine.request_id(parent_id)
+    except ValueError:
+        raise WorkspaceInvalid() from None
+    if speech_id == selected_turn or parent_id != selected_turn:
+        raise WorkspaceInvalid()
+
+    turn = await _call(store, 'get_turn', account, library, selected_thread, selected_turn)
+    if (turn.get('status') != 'completed' or type(turn.get('result_summary')) is not dict or
+            turn.get('result_summary', {}).get('kind') != 'results' or
+            turn.get('result_summary', {}).get('effect') is not None):
+        raise WorkspaceStoreConflict()
+    current = await _call(store, 'get_thread', account, library, selected_thread)
+    if (current['thread']['revision'] != expected_revision or
+            turn.get('revision') != expected_revision):
+        raise WorkspaceStoreConflict()
+    refs = await run_in_threadpool(_saved_memory_followup_parent, store, account,
+        library, selected_thread, selected_turn, expected_revision)
+    if selected_ordinal >= len(refs):
+        raise WorkspaceStoreMissing()
+
+    access, engine = assistant_engine._engine(request)
+    if engine is None:
+        raise WorkspaceStoreUnavailable()
+    _saved_memory_enabled(request)
+    await run_in_threadpool(_validate_saved_speech_references_for_reading,
+                            _memory_runtime(request), token, library, refs)
+    source_text = await run_in_threadpool(_saved_memory_reading_text,
+        _memory_runtime(request), token, library, refs[selected_ordinal])
+    source_bytes = source_text.encode('utf-8')
+
+    await assistant_engine._begin(request, access, token, library, 'speech')
+    await assistant_engine._stage(request, 'validated')
+    await assistant_engine._stage(request, 'provider_started')
+    audio = await run_in_threadpool(tts.synthesize, source_text,
+                                    assistant_engine._language(source_text))
+    if not valid_reply_wav(audio):
+        raise AssistantSpeechUnavailable()
+    await assistant_engine._stage(request, 'provider_completed')
+
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    _saved_memory_enabled(request)
+    latest_store, latest_journal, latest_tts = _reply_speech_dependencies(request)
+    if latest_store is not store or latest_journal is not journal or latest_tts is not tts:
+        raise WorkspaceStoreConflict()
+    latest_turn = await _call(store, 'get_turn', account, library, selected_thread, selected_turn)
+    latest_refs = await run_in_threadpool(_saved_memory_followup_parent, store,
+        account, library, selected_thread, selected_turn, expected_revision)
+    if (latest_turn.get('status') != 'completed' or
+            latest_turn.get('revision') != expected_revision or latest_refs != refs):
+        raise WorkspaceStoreConflict()
+    await run_in_threadpool(_validate_saved_speech_references_for_reading,
+                            _memory_runtime(request), token, library, latest_refs)
+    latest_text = await run_in_threadpool(_saved_memory_reading_text,
+        _memory_runtime(request), token, library, latest_refs[selected_ordinal])
+    if latest_text.encode('utf-8') != source_bytes:
+        raise WorkspaceStoreConflict()
+    return Response(content=audio, media_type='audio/wav',
+                    headers=dict(PRIVACY_HEADERS, **assistant_engine._playback_headers(request)))
+
+
+router.add_api_route(
+    '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}/speech',
+    saved_memory_reading_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
 
 
 @router.get('/assistant/workspace/v1/capabilities')

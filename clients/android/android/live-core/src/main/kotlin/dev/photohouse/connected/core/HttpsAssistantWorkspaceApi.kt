@@ -317,6 +317,93 @@ class HttpsAssistantWorkspaceApi internal constructor(
         }
     }
 
+    override suspend fun savedMemoryReadingCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities {
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/saved-memory-reading-capabilities", library),
+                AssistantWorkspaceWire::savedMemoryReaderCapabilities)
+        } catch (failure: ApiFailure) {
+            when (failure.status) {
+                404, 503 -> SavedMemoryReaderCapabilities(1, false)
+                403 -> {
+                    // Only a valid base response for the same scope proves legacy absence.
+                    capabilities(token, library)
+                    SavedMemoryReaderCapabilities(1, false)
+                }
+                else -> throw failure
+            }
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override suspend fun speakSavedMemoryOpening(token: Bearer, library: String, threadId: String, turnId: String,
+                                                ordinal: Int, expectedRevision: Long,
+                                                speechRequestId: String): AssistantSpeechResult {
+        if (!assistantWorkspaceEnabled || !AssistantWorkspaceWire.validUuid4(threadId) ||
+            !AssistantWorkspaceWire.validUuid4(turnId) || ordinal !in 0..11 || expectedRevision !in 1 until Long.MAX_VALUE ||
+            !AssistantWorkspaceWire.validUuid4(speechRequestId) || speechRequestId == turnId)
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        val bodyText = AssistantWorkspaceWire.replySpeechRequest(library, expectedRevision, turnId, speechRequestId)
+        val requestBytes = bodyText.toByteArray(Charsets.UTF_8)
+        val path = "/assistant/workspace/v1/threads/$threadId/requests/$turnId/memory-cards/$ordinal/speech"
+        val request = try {
+            Request.Builder().url(url(path)).header("Authorization", token.header()).header("Accept", "audio/wav")
+                .header("Cache-Control", "no-store").header("Accept-Encoding", "identity")
+                .header("X-PhotoHouse-Request-Id", speechRequestId)
+                .header("X-PhotoHouse-Parent-Request-Id", turnId)
+                .post(ownedBody(requestBytes)).build()
+        } catch (e: Exception) {
+            requestBytes.fill(0)
+            if (e is ApiFailure) throw e
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        }
+        return suspendCancellableCoroutine { continuation ->
+            val call = speechClient.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    requestBytes.fill(0)
+                    if (continuation.isActive) continuation.resumeWithException(
+                        ApiFailure(if (e is SSLException) FailureKind.TLS else FailureKind.OFFLINE))
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    var audioBytes: ByteArray? = null
+                    var transferred = false
+                    try {
+                        val packet = response.use { r ->
+                            if (r.code != 200) throw ApiFailure(FailureKind.HTTP, r.code,
+                                if (r.code == 429 || r.code in 502..504) retryAfterMillis(r.header("Retry-After")) else 0)
+                            val noStore = r.headers.values("Cache-Control").singleOrNull()?.split(',')?.map { it.trim().lowercase() }
+                                ?.contains("no-store") == true
+                            if (r.headers.values("Content-Type").size != 1 || r.headers.values("Content-Encoding").size > 1 ||
+                                r.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase() != "audio/wav" ||
+                                r.header("Content-Encoding")?.lowercase() !in setOf(null, "identity") || !noStore)
+                                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            val responseBody = r.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                            if (responseBody.contentLength() > 2 * 1024 * 1024) throw ApiFailure(FailureKind.TOO_LARGE)
+                            Packet(readBounded(responseBody, call, 2 * 1024 * 1024), assistantResponseHeaders(r.headers))
+                        }
+                        audioBytes = packet.bytes
+                        val receipt = AssistantWire.speechRequestReceipt(packet.assistantHeaders, speechRequestId)
+                        if (receipt.tracking != "enabled" || receipt.status != "succeeded") throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                        AssistantWorkspaceWire.replySpeechAudio(packet.bytes)
+                        if (continuation.isActive) {
+                            val audio = AssistantSpeechResult(packet.bytes, receipt)
+                            transferred = true
+                            continuation.resume(audio) { audio.bytes.fill(0) }
+                        }
+                    } catch (e: Exception) {
+                        if (continuation.isActive) continuation.resumeWithException(
+                            e as? ApiFailure ?: ApiFailure(FailureKind.INVALID_RESPONSE))
+                    } finally {
+                        if (!transferred) audioBytes?.fill(0)
+                        requestBytes.fill(0)
+                    }
+                }
+            })
+        }
+    }
+
     override suspend fun savedMemoryReader(
         token: Bearer, library: String, threadId: String, turnId: String, ordinal: Int,
         expectedRevision: Long,

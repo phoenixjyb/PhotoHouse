@@ -289,6 +289,7 @@ data class AssistantClientState(
     val context: kotlinx.serialization.json.JsonObject? = null, val busy: Boolean = false,
     val transcribing: Boolean = false, val transcript: AssistantTranscript? = null,
     val speechBusy: Boolean = false, val speechAudio: ProtectedAnnotationAudio? = null,
+    val speechMemoryOpeningOrdinal: Int? = null,
     val pendingTurn: AssistantPendingTurn? = null,
     val lastRequestReceipt: AssistantRequestReceipt? = null, val receiptDetail: AssistantReceipt? = null,
     val confirmedTranscriptRequestId: String? = null,
@@ -378,6 +379,7 @@ class ConnectedStore(
 
     private var assistantSpeechJob: Job? = null
     private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
+    private var assistantSpeechMemoryReference: MemoryOpeningSpeechReference? = null
     private data class AssistantPlaybackOwner(val requestId: String, val accountId: String, val library: String,
                                              val generation: Long, val credential: Bearer, var reported: Boolean = false)
     private val assistantPlaybackOwners = java.util.WeakHashMap<ProtectedAnnotationAudio, AssistantPlaybackOwner>()
@@ -407,11 +409,16 @@ class ConnectedStore(
             val current = state.value.assistant ?: return@collect
             val selected = current.privateThreadId ?: return@collect
             val speakingReply = assistantSpeechReplyReference
-            if (current.speechBusy && speakingReply != null && privateReplySpeechReference() != speakingReply) {
+            val speakingMemory = assistantSpeechMemoryReference
+            if ((current.speechBusy || current.speechAudio != null) &&
+                (speakingReply != null && privateReplySpeechReference() != speakingReply ||
+                    speakingMemory != null && memoryOpeningSpeechReference(speakingMemory.ordinal) != speakingMemory)) {
                 assistantSpeechRequest++
-                assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
-                current.speechAudio?.close()
+                assistantSpeechJob?.cancel(); assistantSpeechJob = null
+                assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null
+                current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
                 mutable.value = state.value.copy(assistant = current.copy(speechBusy = false, speechAudio = null,
+                    speechMemoryOpeningOrdinal = null,
                     failure = LiveProblem(Message.DISCOVERY_CHANGED)))
             }
             if (workspace.accountId == state.value.session?.account_id && workspace.libraryId == current.library &&
@@ -424,10 +431,11 @@ class ConnectedStore(
                 current.failure?.message == Message.DISCOVERY_CHANGED) return@collect
             assistantTurnRequest++; assistantTranscriptRequest++; assistantSpeechRequest++
             assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+            assistantSpeechMemoryReference = null
             current.speechAudio?.close()
             mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null,
                 pendingTurn = null, busy = false, transcript = null, transcribing = false,
-                confirmedTranscriptRequestId = null, speechAudio = null, speechBusy = false,
+                confirmedTranscriptRequestId = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null,
                 lastRequestReceipt = null, receiptDetail = null, receiptChecking = false,
                 privateRequestStatus = null, failure = LiveProblem(Message.DISCOVERY_CHANGED)))
         } }
@@ -724,6 +732,7 @@ class ConnectedStore(
         savedMemoryContributionChapterEpoch++
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
         assistantTurnRequest++
         assistantTranscriptRequest++
         val nextGeneration = previous.generation + 1
@@ -745,7 +754,7 @@ class ConnectedStore(
             storageFailed = runCatching { persistence?.clear() }.isFailure
             token = null; identity = null; deadline = 0; expiryJob?.cancel(); expiryJob = null }
         val assistant = previous.assistant?.takeIf { keepIdentity && !cover && previous.library == it.library }
-            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, pendingTurn = null,
+            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, pendingTurn = null,
                 privateThreadId = null, privateRequestStatus = null,
                 turns = if (it.privateThreadId != null) emptyList() else it.turns,
                 context = if (it.privateThreadId != null) null else it.context) }
@@ -4798,7 +4807,7 @@ class ConnectedStore(
         assistantTurnRequest++
         assistantTranscriptRequest++
         mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null, failure = null, busy = false,
-            speechAudio = null, speechBusy = false, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
+            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
             receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, pendingTurn = null))
     }
     /** Stop local voice work, retaining uncertain submitted requests for read-only recovery. */
@@ -4808,6 +4817,7 @@ class ConnectedStore(
         assistantTranscriptRequest++
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
         if (current.busy) assistantTurnRequest++
         if (current.privateThreadId != null) current.pendingTurn?.let {
             assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
@@ -4815,7 +4825,7 @@ class ConnectedStore(
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         mutable.value = state.value.copy(assistant = current.copy(
             transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
-            speechBusy = false, speechAudio = null, busy = false,
+            speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, busy = false,
         ))
     }
     fun clearAssistantSpeech() {
@@ -4824,10 +4834,133 @@ class ConnectedStore(
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
-        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false))
+        assistantSpeechMemoryReference = null
+        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
+    }
+    fun clearAssistantMemoryOpeningSpeech() {
+        if (state.value.assistant?.speechMemoryOpeningOrdinal != null) clearAssistantSpeech()
     }
     private data class PrivateReplySpeechReference(val threadId: String, val turnId: String,
                                                   val revision: Long, val kind: String, val reply: String)
+    private data class MemoryOpeningSpeechReference(
+        val accountId: String, val library: String, val generation: Long, val threadId: String,
+        val turnId: String, val revision: Long, val ordinal: Int,
+        val card: AssistantSavedMemoryCard, val contextDigest: String,
+        val references: List<AssistantSavedMemoryReference>,
+    )
+
+    private fun memoryOpeningSpeechReference(ordinal: Int): MemoryOpeningSpeechReference? {
+        val live = state.value
+        val assistant = live.assistant ?: return null
+        val workspace = assistantWorkspaceState.value
+        val detail = workspace.detail ?: return null
+        val turn = workspace.currentTurn ?: return null
+        val result = turn.result ?: return null
+        val context = result.savedMemoryContext ?: return null
+        val refs = context.references
+        if (ordinal !in 0..11 || ordinal !in result.memoryCards.indices || !allowed() || live.covered ||
+            assistant.library != live.library || assistant.generation != live.generation ||
+            assistant.privateThreadId != detail.thread.threadId ||
+            workspace.accountId != live.session?.account_id || workspace.libraryId != assistant.library ||
+            workspace.generation != assistant.generation || !workspace.savedMemoryCardsAvailable ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } != true ||
+            !workspace.savedMemoryReadingAvailable || workspace.busy || workspace.pendingTurn != null ||
+            workspace.historyRefreshRequired || assistant.busy || assistant.pendingTurn != null ||
+            turn.status != AssistantWorkspaceRequestStatus.COMPLETED || turn.recovered ||
+            turn.threadId != detail.thread.threadId || turn.revision != detail.thread.revision || turn.revision <= 0 ||
+            !AssistantWorkspaceWire.validUuid4(turn.requestId) || result.kind != "memory_cards" || result.effect != null ||
+            assistant.turns.lastOrNull()?.let { it.localRequestId == turn.requestId && !it.turn.recovered &&
+                it.turn.kind == result.kind && it.turn.memoryCards == result.memoryCards } != true ||
+            result.memoryCards.isEmpty() || context.libraryId != assistant.library ||
+            refs.size != result.memoryCards.size || !Regex("[0-9a-f]{64}").matches(context.sourceRevision) ||
+            refs.indices.any { index ->
+                val card = result.memoryCards[index]
+                refs[index] != AssistantSavedMemoryReference(card.kind, card.id, card.revision, card.sourceRevision)
+            }) return null
+        val card = result.memoryCards[ordinal]
+        return MemoryOpeningSpeechReference(live.session?.account_id ?: return null, assistant.library,
+            assistant.generation, detail.thread.threadId, turn.requestId, turn.revision, ordinal, card,
+            context.sourceRevision, refs.toList())
+    }
+
+    fun canReadAssistantMemoryOpening(ordinal: Int): Boolean =
+        api.assistantEnabled && assistantWorkspaceTransport != null && memoryOpeningSpeechReference(ordinal) != null
+
+    /** One-shot speech for the saved opening bound to the latest fresh card result. */
+    fun loadAssistantMemoryOpening(
+        ordinal: Int,
+        expectedParentTurnId: String? = null,
+        expectedRevision: Long? = null,
+    ): Boolean {
+        if (state.value.assistant?.speechBusy == true) return false
+        val anchor = memoryOpeningSpeechReference(ordinal) ?: return false
+        if ((expectedParentTurnId == null) != (expectedRevision == null) ||
+            expectedParentTurnId != null && (anchor.turnId != expectedParentTurnId || anchor.revision != expectedRevision)) return false
+        val current = state.value.assistant ?: return false
+        val credential = token ?: return false
+        val workspaceApi = assistantWorkspaceTransport ?: return false
+        if (!api.assistantEnabled || !allowed() || current.library != anchor.library || current.generation != anchor.generation)
+            return false
+        val requestId = UUID.randomUUID().toString()
+        if (!AssistantWorkspaceWire.validUuid4(requestId) || requestId == anchor.turnId) return false
+        assistantSpeechRequest++
+        val request = assistantSpeechRequest
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null
+        assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = anchor
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = ordinal,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            var bytes: ByteArray? = null
+            try {
+                if (memoryOpeningSpeechReference(ordinal) != anchor) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = workspaceApi.speakSavedMemoryOpening(credential, anchor.library, anchor.threadId,
+                    anchor.turnId, anchor.ordinal, anchor.revision, requestId)
+                bytes = speech.bytes
+                val received = speech.bytes
+                if (!active(anchor.generation) || state.value.covered || state.value.library != anchor.library ||
+                    token !== credential || request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal) != anchor) {
+                    received.fill(0); return@launch
+                }
+                val latest = state.value.assistant?.takeIf { it.library == anchor.library && it.generation == anchor.generation }
+                    ?: run { received.fill(0); return@launch }
+                val audio = ProtectedAnnotationAudio(received); bytes = null
+                if (speech.receipt.playbackTracking && speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") {
+                    state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                        assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, anchor.library,
+                            anchor.generation, credential)
+                    } }
+                }
+                mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false, speechAudio = audio,
+                    speechMemoryOpeningOrdinal = ordinal, lastRequestReceipt = speech.receipt, failure = null))
+                if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded")
+                    reportAssistantOutcome(anchor.library, anchor.generation, credential, requestId, "displayed")
+            } catch (e: CancellationException) { bytes?.fill(0); throw e }
+            catch (e: Exception) {
+                bytes?.fill(0)
+                if (!active(anchor.generation) || state.value.library != anchor.library || token !== credential ||
+                    request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal) != anchor) return@launch
+                if (assistantSpeechMemoryReference == anchor) assistantSpeechMemoryReference = null
+                if (e is ApiFailure && e.status in listOf(401, 403)) readFailure(e, anchor.generation, credential) { }
+                else state.value.assistant?.let { latest ->
+                    mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false,
+                        speechMemoryOpeningOrdinal = null,
+                        lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
+            }
+        }
+        assistantSpeechJob = job
+        requests += job
+        job.invokeOnCompletion {
+            requests.remove(job)
+            if (assistantSpeechJob === job) assistantSpeechJob = null
+        }
+        job.start()
+        return true
+    }
 
     /** Capability presence is separate from an eligible fresh reply; never fall back on an over-limit reply. */
     fun privateReplySpeechEnabled(): Boolean {
@@ -4901,8 +5034,9 @@ class ConnectedStore(
         val requestId = java.util.UUID.randomUUID().toString()
         val request = ++assistantSpeechRequest
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
-        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, speechMemoryOpeningOrdinal = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
         val job = scope.launch(start = CoroutineStart.LAZY) {
             var bytes: ByteArray? = null
             try {
@@ -4940,7 +5074,7 @@ class ConnectedStore(
         assistantSpeechReplyReference = privateReply
         requests += job
         job.invokeOnCompletion { requests.remove(job); if (assistantSpeechJob === job) {
-            assistantSpeechJob = null; assistantSpeechReplyReference = null
+            assistantSpeechJob = null; assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null
         } }
         job.start()
         return true
@@ -5051,7 +5185,8 @@ class ConnectedStore(
         current.speechAudio?.close()
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
-        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null, speechAudio = null, speechBusy = false))
+        assistantSpeechMemoryReference = null
+        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
         launch { activeGeneration ->
             try {
                 val result = api.assistantTurn(credential, library, text, context, requestId, parentId)
@@ -5125,11 +5260,12 @@ class ConnectedStore(
         current.speechAudio?.close()
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
         val request = ++assistantTurnRequest
         mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
             lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), privateRequestStatus = "pending",
             receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null,
-            failure = null, speechAudio = null, speechBusy = false))
+            failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
         awaitPrivateAssistantTurn(current, pending, request, checking = false)
         return true
     }
@@ -5695,6 +5831,7 @@ class ConnectedStore(
             state.value.assistant?.speechAudio?.close()
             assistantTranscriptRequest++; assistantSpeechRequest++; assistantTurnRequest++
             assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+            assistantSpeechMemoryReference = null
             mutable.value = state.value.copy(assistant = null)
             if (token === credential) {
                 clearSavedStoryReaderPositions(identity?.account_id)

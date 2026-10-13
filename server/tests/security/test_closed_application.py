@@ -56,7 +56,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 159)
+                self.assertEqual(len(main.app.routes), 162)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -171,8 +171,10 @@ class ClosedApplicationTests(unittest.TestCase):
         expected |= {
             ('GET', '/assistant/workspace/v1/capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+            ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
+            ('GET', '/assistant/workspace/v1/saved-memory-reading-capabilities'),
             ('GET', '/assistant/workspace/v1/threads'),
             ('POST', '/assistant/workspace/v1/threads'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}'),
@@ -185,12 +187,13 @@ class ClosedApplicationTests(unittest.TestCase):
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/history'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/speech'),
+            ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}/speech'),
             ('GET', '/ui/assistant-private-workspace.js'),
         }
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 159)
+        self.assertEqual(len(actual), 162)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

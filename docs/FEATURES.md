@@ -1,16 +1,24 @@
 # Feature and acceptance matrix
 
-## Next local source: saved-memory conversational followups
+## Next local source: saved-memory opening speech
+
+[Read opening](ASSISTANT_SAVED_MEMORY_READING.md) is an explicit action on fresh
+assistant story/memoir cards. It reads the saved first-chapter narration or memoir
+introduction with local TTS, rechecks all sources after synthesis, and exposes
+preparing/playback/Stop in Web and phone. It ends voice and capture first; late,
+recovered and old-scope output cannot start playback. Phone v57 is reserved.
+Local tests and enlarged renders pass; this source is not deployed or published.
+
+## Fixed v56 candidate: saved-memory conversational followups
 
 [Followups](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md) let current saved-memory results
 answer “介绍这些回忆”, “第二段回忆讲了什么” and “有哪些章节”. Web and phone
 show ordered source cards and draft-only suggestions. Typed and foreground voice
 requests bind the same current completed result; old history stays inert.
 Source wording is transient, generic replies retain the existing private policy,
-and no model or schema change is introduced. Phone v56 is [locally built and verified](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
+and no model or schema change is introduced. Phone v56 is [built and qualified on Windows](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
 
-This source is outside published v55. Next delivery gate: fixed package/native
-qualification, API/Web switch and original-certificate phone publication, followed
+This source is outside published v55. Native package qualification passed. Next delivery gate: API/Web switch and original-certificate phone publication, followed
 by family voice/reader acceptance. Later work: richer grounded conversational
 narration and evidence-backed story quality, with separately qualified providers.
 

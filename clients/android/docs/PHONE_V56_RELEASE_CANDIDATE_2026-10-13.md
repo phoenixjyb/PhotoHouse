@@ -1,6 +1,7 @@
 # Phone v56 and saved-memory followup candidate
 
-Status: locally built and verified; not signed, not published, and not deployed.
+Status: built locally and qualified on Windows; not signed, not published, and
+not deployed.
 The served API/Web and phone OTA remain the separately verified v55 release.
 
 ## Fixed identity
@@ -41,16 +42,28 @@ localized suggested questions only populate a draft after ending voice.
 
 ## Delivery gates
 
-The next prepared operation stages this exact source archive and a bounded
-controller in fresh private Windows candidate directories, then runs synthetic
-qualification only: five minutes, 2 GiB job memory, eight processes, and an
-8 GiB free-RAM admission floor. No real database, listener, provider, worker,
-service/task change or APK publication is included. Authority was requested;
-execution has not happened in this candidate record.
+The approved offline operation staged this exact archive in fresh private Windows
+candidate directories and passed native qualification: 195 source files and
+11 synthetic scenario groups. The child was bounded to five minutes, 2 GiB,
+eight processes and an 8 GiB free-RAM admission floor. No real database,
+listener, model/provider, worker, service/task change or publication occurred.
 
-After native qualification, prepare and authorize the exact API/Web switch and
-original-certificate phone signing/publication. Keep schema `a0c9d2e4f817`,
-ASR/TTS/OCR and existing TV feed unchanged unless separately authorized.
+An initial SSH handshake reset happened before any Windows command. Read-only
+absence reconciliation and a shared connection allowed the staged operation to
+complete. Large read-only parser payloads later needed explicit input framing;
+the first EOF-based transport timed out. No maintenance operation was replayed.
+All eight exact API controller scripts then parsed natively without staging.
+
+The prepared API/Web switch/rollback plan passed thirteen local controller
+checks. Phone signing/publication preparation passed twenty-two synthetic
+controller checks and pins the exact new API entry/config, so it refuses phone
+publication before the fixed API switch succeeds. A separate complete-operation
+authority request covers service fencing, fresh stopped-writer backup, guarded
+API switch/recovery, original-certificate signing and HTTPS OTA readback. That
+live operation is not yet executed in this record.
+
+Keep schema `a0c9d2e4f817`, original media, models, ASR/TTS/OCR and TV unchanged.
+The later backend opening-speech foundation is outside this fixed candidate.
 Physical foreground voice, source reader and owner/member acceptance remain open.
 
 ## Test after delivery

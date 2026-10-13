@@ -4,6 +4,7 @@ from dataclasses import asdict
 import io
 import json
 from pathlib import Path
+import sqlite3
 import sys
 import time
 import uuid
@@ -17,7 +18,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from fastapi.testclient import TestClient
 from test_library_reads import LibraryReadTests
 from app.access.assistant_journal import initialize as initialize_journal
-from app.access.assistant_speech import LocalAssistantTts
+from app.access.assistant_speech import LocalAssistantAsr, LocalAssistantTts
 from app.access.assistant_workspace_store import initialize_v2
 from app.access.runtime import RuntimeConfiguration
 
@@ -133,6 +134,9 @@ app = runtime(assistant=True, workspace=workspace_path, reply_speech=True).build
     clock=lambda: fixture.now)
 fake_tts = FakeLocalTts()
 app.state.assistant_tts = fake_tts
+# Advertise the existing foreground capture controls for the lifecycle check.
+# This route is never called in this journey; browser capture ends before submit.
+app.state.assistant_asr = LocalAssistantAsr(url='http://127.0.0.1:11390/api/asr', model='synthetic-browser-check')
 client = TestClient(app, base_url='https://photohouse.test',
     client=('192.0.2.27', 23464))
 fixture.addCleanup(client.close)
@@ -166,6 +170,13 @@ try:
         if message.get('command') == 'reply-speech-on':
             client.app.state.assistant_reply_speech_enabled = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if message.get('command') == 'speech-journal':
+            with sqlite3.connect(root / 'assistant-journal.sqlite') as db:
+                rows = db.execute('''SELECT request_id,parent_request_id,operation,input_text,recognized_text
+                    FROM requests WHERE operation='speech' ORDER BY created_at,request_id''').fetchall()
+            print(json.dumps({'id': message['id'], 'ok': True, 'rows': [dict(zip(
+                ('request_id','parent_request_id','operation','input_text','recognized_text'), row)) for row in rows]}), flush=True)
             continue
         if message.get('command') == 'tts-calls':
             print(json.dumps({'id': message['id'], 'ok': True, 'calls': fake_tts.calls}), flush=True)

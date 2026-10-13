@@ -98,7 +98,9 @@ internal fun AssistantScreen(
     privateReplySpeechAvailable: Boolean = false,
     savedMemoryWorkspace: AssistantWorkspaceState? = null,
     onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
+    onReadSavedMemoryOpening: ((Int) -> Unit)? = null,
     onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
+    showMemoryOpeningPlayback: Boolean = true,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
@@ -450,6 +452,25 @@ internal fun AssistantScreen(
                                                         t("Open saved story", "打开已保存的故事") else t("Open memoir", "打开回忆录"))
                                                 }
                                             }
+                                            if (onReadSavedMemoryOpening != null) {
+                                                TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
+                                                    enabled = savedMemoryWorkspace.savedMemoryReadingAvailable &&
+                                                        !assistant.speechBusy &&
+                                                        savedMemoryWorkspace.memoryReaderOrdinal != ordinal &&
+                                                        savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy,
+                                                    modifier = Modifier.heightIn(min = 48.dp)
+                                                        .testTag("assistant-read-memory-opening-$ordinal")) {
+                                                    Text(if (assistant.speechBusy && assistant.speechMemoryOpeningOrdinal == ordinal)
+                                                        t("Preparing opening…", "正在准备开篇语音…")
+                                                    else if (assistant.speechAudio != null && assistant.speechMemoryOpeningOrdinal == ordinal)
+                                                        t("Opening ready", "开篇语音已准备好")
+                                                    else t("Read opening", "朗读开篇"))
+                                                }
+                                                if (assistant.speechBusy && assistant.speechMemoryOpeningOrdinal == ordinal) TextButton(
+                                                    onClick = onStopSpeech,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-opening-$ordinal"),
+                                                ) { Text(t("Stop", "停止")) }
+                                            }
                                             if (savedMemoryWorkspace.memoryReaderErrorOrdinal == ordinal) {
                                                 Text(t("Could not open this memory.", "无法打开这段回忆。"),
                                                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -611,13 +632,25 @@ internal fun AssistantScreen(
                     if (privateReplySpeechEnabled && latest?.reply?.toByteArray(Charsets.UTF_8)?.size?.let { it > 600 } == true)
                         Text(t("This reply is long. Read the complete text here.", "这条回复较长，可在这里阅读完整文字。"),
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-reply-speech-unavailable"))
-                    if (privateReplySpeechAvailable || !privateReplySpeechEnabled && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty()) {
+                    val openingSpeech = assistant.speechMemoryOpeningOrdinal != null
+                    if (openingSpeech && assistant.speechBusy) Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-memory-opening-loading"))
+                        TextButton(onClick = onStopSpeech, modifier = Modifier.testTag("assistant-stop-memory-opening-playback")) {
+                            Text(t("Stop", "停止"))
+                        }
+                    }
+                    if (!openingSpeech && (privateReplySpeechAvailable ||
+                        !privateReplySpeechEnabled && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty())) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                             if (assistant.speechBusy) LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-speech-loading"))
                             Button(onClick = onPlaySpeech, enabled = !assistant.speechBusy,
                                 modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken results", "播报结果")) }
                         }
-                    assistant.speechAudio?.let { audio -> AssistantSpeechPlayback(audio, zh, onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) } }
+                    }
+                    if (!openingSpeech || showMemoryOpeningPlayback) assistant.speechAudio?.let { audio ->
+                        AssistantSpeechPlayback(audio, zh, openingSpeech,
+                            onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
                     }
                     OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) draft = it },
                         modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy && voiceSessionState == null,
@@ -702,7 +735,8 @@ private fun isHumanReadableContextLabel(value: String): Boolean {
 
 @Composable
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, onStop: () -> Unit,
+internal fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, memoryOpening: Boolean = false,
+                                    onStop: () -> Unit,
                                     onOutcome: (String) -> Unit) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val context = LocalContext.current
@@ -739,7 +773,8 @@ private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.testTag("assistant-speech-playback")) {
         TextButton(onClick = { if (!reported) { reported = true; onOutcome("cancelled") }; player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
-        if (playing) Text(t("Speaking the results…", "正在播报结果…"), style = MaterialTheme.typography.bodySmall)
+        if (playing) Text(if (memoryOpening) t("Reading the saved opening…", "正在朗读保存的开篇…")
+            else t("Speaking the results…", "正在播报结果…"), style = MaterialTheme.typography.bodySmall)
         if (failed) Text(t("Speech could not play.", "语音无法播放。"), color = MaterialTheme.colorScheme.error)
     }
 }

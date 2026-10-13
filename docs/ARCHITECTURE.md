@@ -566,3 +566,17 @@ retention or story mutation is added. Draft suggestions end foreground voice;
 explicit sends and reader opening keep their existing controls. Optional-probe
 403 fallback rechecks the base capability, so older closed routes remain
 compatible without ignoring a current authorization failure.
+
+
+## Explicit saved-memory opening speech
+
+The [opening-speech contract](ASSISTANT_SAVED_MEMORY_READING.md) adds a separate
+optional capability and ordinal speech route. The server resolves current story
+first-chapter narration or memoir introduction from stored canonical references,
+without replaying a search or accepting caller text. All sources and parent
+state are rechecked after local synthesis; selected saved wording stays transient. This
+source is outside fixed v56. Web and phone offer a one-shot card action, end
+voice/capture before speech, fence the rendered parent and current scope, and
+discard audio after cancellation or source/capability changes. Fresh-display
+client guards complement server ownership checks; recovered history cannot
+trigger playback. The private panel and central phone workspace share one player.

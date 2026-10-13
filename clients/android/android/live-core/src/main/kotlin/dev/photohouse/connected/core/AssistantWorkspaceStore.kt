@@ -23,6 +23,25 @@ data class AssistantWorkspaceScope(
     val foregroundAllowed: Boolean,
 )
 
+/** Guards a delayed UI callback against an older card occupying the same ordinal. */
+fun isCurrentFreshMemoryOpeningSelection(
+    renderedTurn: AssistantWorkspaceTurn?,
+    ordinal: Int,
+    renderedCard: AssistantSavedMemoryCard?,
+    liveTurn: AssistantWorkspaceTurn?,
+    liveDetail: AssistantWorkspaceThreadDetail?,
+): Boolean {
+    val result = renderedTurn?.result ?: return false
+    val card = result.memoryCards.getOrNull(ordinal) ?: return false
+    val thread = liveDetail?.thread ?: return false
+    return renderedTurn.status == AssistantWorkspaceRequestStatus.COMPLETED && !renderedTurn.recovered &&
+        renderedTurn.version == 1 && ordinal in 0..11 && renderedCard == card &&
+        result.kind == "memory_cards" && result.effect == null &&
+        result.savedMemoryContext?.libraryId == thread.libraryId &&
+        liveTurn == renderedTurn && renderedTurn.threadId == thread.threadId &&
+        renderedTurn.revision > 0 && renderedTurn.revision == thread.revision
+}
+
 enum class AssistantWorkspaceError {
     UNAVAILABLE, ACCESS_DENIED, INVALID_REQUEST, CONTEXT_CHANGED,
     NETWORK, INVALID_RESPONSE, TURN_FAILED, TURN_INTERRUPTED, UNKNOWN,
@@ -45,6 +64,7 @@ data class AssistantWorkspaceState(
     val savedMemoryCardsAvailable: Boolean = false,
     val savedMemoryReaderAvailable: Boolean = false,
     val savedMemorySpeechAvailable: Boolean = false,
+    val savedMemoryReadingAvailable: Boolean = false,
     val savedMemoryFollowupAvailable: Boolean = false,
     val memoryFollowupDraftParent: AssistantSavedMemoryParent? = null,
     val threads: AssistantWorkspaceThreadList? = null,
@@ -138,7 +158,7 @@ class AssistantWorkspaceStore(
         val scope = requireScope()
         requireEnabled()
         mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = false, savedMemoryReaderAvailable = false,
-            savedMemorySpeechAvailable = false, savedMemoryFollowupAvailable = false, memoryFollowupDraftParent = null)
+            savedMemorySpeechAvailable = false, savedMemoryReadingAvailable = false, savedMemoryFollowupAvailable = false, memoryFollowupDraftParent = null)
         val value = api.capabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(
@@ -155,7 +175,8 @@ class AssistantWorkspaceStore(
     fun refreshSavedMemoryCardsCapabilities(): Boolean = launchAction {
         val scope = requireScope()
         requireEnabled()
-        mutableState.value = mutableState.value.copy(savedMemoryFollowupAvailable = false, memoryFollowupDraftParent = null)
+        mutableState.value = mutableState.value.copy(savedMemoryFollowupAvailable = false,
+            savedMemoryReadingAvailable = false, memoryFollowupDraftParent = null)
         val value = api.savedMemoryCardsCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = value.available)
@@ -174,6 +195,7 @@ class AssistantWorkspaceStore(
     fun refreshSavedMemoryReaderCapabilities(): Boolean = launchAction {
         val scope = requireScope()
         requireEnabled()
+        mutableState.value = mutableState.value.copy(savedMemoryReadingAvailable = false)
         val value = api.savedMemoryReaderCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(savedMemoryReaderAvailable = value.available)
@@ -182,9 +204,19 @@ class AssistantWorkspaceStore(
     fun refreshSavedMemorySpeechCapabilities(): Boolean = launchAction {
         val scope = requireScope()
         requireEnabled()
+        mutableState.value = mutableState.value.copy(savedMemoryReadingAvailable = false)
         val value = api.savedMemorySpeechCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(savedMemorySpeechAvailable = value.available)
+    }
+
+    fun refreshSavedMemoryReadingCapabilities(): Boolean = launchAction {
+        val scope = requireScope()
+        requireEnabled()
+        mutableState.value = mutableState.value.copy(savedMemoryReadingAvailable = false)
+        val value = api.savedMemoryReadingCapabilities(scope.bearer, scope.libraryId)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(savedMemoryReadingAvailable = value.version == 1 && value.available)
     }
 
     /** Explicit open from the latest fresh, negotiated card result only. */

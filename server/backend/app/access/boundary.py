@@ -180,6 +180,7 @@ class ClosedBoundary:
                 ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-reading-capabilities'),
                 ('GET', '/assistant/workspace/v1/threads'),
                 ('POST', '/assistant/workspace/v1/threads'),
                 ('GET', '/assistant/workspace/v1/preferences'),
@@ -191,6 +192,8 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
             return True
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
+            return True
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/memory-cards/(?:0|[1-9][0-9]*)/speech', path):
             return True
         if method == 'GET' and re.fullmatch(
                 r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'

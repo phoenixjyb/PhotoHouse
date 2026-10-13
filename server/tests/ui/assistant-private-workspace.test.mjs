@@ -16,6 +16,7 @@ const savedMemoryCapabilities=available=>({version:1,available});
 const savedMemorySpeechCapabilities=available=>({version:1,available});
 const savedMemoryReaderCapabilities=available=>({version:1,available});
 const savedMemoryFollowupCapabilities=available=>({version:1,available});
+const savedMemoryReadingCapabilities=available=>({version:1,available});
 const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
 const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
 const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
@@ -944,4 +945,84 @@ test('memory result grammar is exact, bounded and accepted only for negotiated f
     memoryResult({memory_cards:[memoryResult().memory_cards[0],memoryResult().memory_cards[0]],total:2,has_more:false,context:{...memoryResult().context,references:[{...memoryBinding},{...memoryBinding}]}})
   ];
   for(const value of invalid)assert.throws(()=>validateResult(value,library,false,true),error=>error.code==='invalid_response');
+});
+
+test('saved-memory opening probe uses the exact optional capability grammar and scoped fallback',async()=>{
+  const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);if(path.includes('/saved-memory-reading-capabilities'))return savedMemoryReadingCapabilities(true);throw Error(`unexpected ${path}`);});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();assert.equal(h.controller.state().savedMemoryReadingAvailable,false);
+  assert.equal(await h.controller.savedMemoryReadingCapabilities(),true);
+  const probe=h.calls.at(-1);assert.equal(probe.method,'GET');assert.match(probe.path,/^\/assistant\/workspace\/v1\/saved-memory-reading-capabilities\?library_id=library-a$/);
+  for(const response of [{version:1,available:true,extra:false},{version:'1',available:true},{version:1,available:'yes'}]){
+    const malformed=harness(async(path)=>path.includes('/saved-memory-reading-capabilities')?response:path.includes('/saved-memory-speech-capabilities')?savedMemorySpeechCapabilities(true):path.includes('/saved-memory-capabilities')?savedMemoryCapabilities(true):workspaceCaps({reply_speech:true}));
+    await malformed.controller.capabilities();await malformed.controller.savedMemoryCapabilities();assert.equal(await malformed.controller.savedMemoryReadingCapabilities(),false);
+  }
+  let baseReads=0;const fallback=harness(async(path)=>{if(path.includes('/capabilities?')){baseReads++;return workspaceCaps({reply_speech:true});}if(path.includes('/saved-memory-reading-capabilities'))throw Object.assign(new Error('unknown optional route'),{status:403});if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);throw Error(`unexpected ${path}`);});
+  await fallback.controller.capabilities();await fallback.controller.savedMemoryCapabilities();assert.equal(await fallback.controller.savedMemoryReadingCapabilities(),false);
+  assert.equal(baseReads,2);assert.equal(fallback.controller.state().locked,false);assert.equal(fallback.controller.state().savedMemoryAvailable,true);
+});
+
+async function preparedMemoryOpening({handler,ids=[threadId,requestId,'33333333-3333-4333-8333-333333333333'],speechHeaders,autoSpeechResponse=true}={}){
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-reading-capabilities'))return savedMemoryReadingCapabilities(true);
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),request_id:options.body.request_id,result:memoryResult()};
+    if(path.includes('/memory-cards/0/speech'))return handler?handler(path,options):fakeWav();
+    if(path===`/assistant/workspace/v1/threads/${threadId}?library_id=${library}`)return detail(1,1);
+    throw Error(`unexpected ${path}`);
+  },{ids,speechHeaders,autoSpeechResponse});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReadingCapabilities();await h.controller.create();await h.controller.send('search saved memories');
+  return h;
+}
+
+test('explicit fresh card opening speech posts only bound identities and validates private audio',async()=>{
+  const h=await preparedMemoryOpening();assert.equal(h.controller.state().savedMemoryReadingReady,true);
+  const audio=await h.controller.speakMemoryOpening(0);assert.equal(audio instanceof Blob,true);
+  const call=h.calls.at(-1);assert.equal(call.path,`/assistant/workspace/v1/threads/${threadId}/requests/${requestId}/memory-cards/0/speech`);
+  assert.deepEqual(call.body,{library_id:library,expected_revision:1});
+  assert.deepEqual(call.extraHeaders,{'X-PhotoHouse-Request-Id':'33333333-3333-4333-8333-333333333333','X-PhotoHouse-Parent-Request-Id':requestId});
+  assert.equal(call.responseType,'blob');assert.equal(Object.hasOwn(call.body,'text'),false);assert.equal(Object.hasOwn(call.body,'title'),false);
+  assert.equal(h.controller.state().openingMemorySpeechOrdinal,null);
+  for(const headers of [{'X-PhotoHouse-Tracking':'disabled'},{'X-PhotoHouse-Receipt-Status':'failed'},{'Cache-Control':'private, no-cache'},{'Content-Type':'application/json'}]){
+    const bad=await preparedMemoryOpening({speechHeaders:headers});
+    await assert.rejects(bad.controller.speakMemoryOpening(0),error=>error.code==='invalid_response');
+  }
+  const missing=await preparedMemoryOpening({autoSpeechResponse:false});await assert.rejects(missing.controller.speakMemoryOpening(0),error=>error.code==='invalid_response');
+});
+
+test('opening speech loses late bytes after a new turn, Stop, history read, or scope change',async()=>{
+  for(const interrupt of ['turn','stop','history','scope']){
+    const gate=deferred(),started=deferred();
+    const h=await preparedMemoryOpening({handler:async()=>{started.resolve();await gate.promise;return fakeWav();},ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444']});
+    const opening=h.controller.speakMemoryOpening(0);await started.promise;
+    if(interrupt==='turn')await h.controller.send('another search');
+    else if(interrupt==='stop')h.controller.discardSpeechSource();
+    else if(interrupt==='history')await h.controller.read(threadId,{hydrate:false});
+    else h.setScope({account:'account-b',library:'library-b',generation:2});
+    gate.resolve();await assert.rejects(opening);
+    if(interrupt==='turn')assert.equal(h.controller.state().currentResult.kind,'memory_cards');
+    if(interrupt==='scope')assert.equal(h.controller.state().currentResult,null);
+  }
+});
+
+test('reading probe revocation and authorization denial clear active opening capability',async()=>{
+  const gate=deferred(),started=deferred();let readingAvailable=true;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-reading-capabilities'))return savedMemoryReadingCapabilities(readingAvailable);
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    if(path.includes('/memory-cards/0/speech')){started.resolve();await gate.promise;return fakeWav();}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333']});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReadingCapabilities();await h.controller.create();await h.controller.send('search saved memories');
+  const pending=h.controller.speakMemoryOpening(0);await started.promise;readingAvailable=false;
+  assert.equal(await h.controller.savedMemoryReadingCapabilities(),false);assert.equal(h.calls.find(call=>call.path.includes('/memory-cards/0/speech')).signal.aborted,true);
+  gate.resolve();await assert.rejects(pending);assert.equal(h.controller.state().savedMemoryReadingReady,false);
+  const denied=await preparedMemoryOpening({handler:async()=>{throw Object.assign(new Error('authorization lost'),{status:403});}});
+  await assert.rejects(denied.controller.speakMemoryOpening(0),error=>error.code==='access_denied');assert.equal(denied.controller.state().locked,true);
 });

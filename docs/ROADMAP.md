@@ -1,16 +1,30 @@
 # Product roadmap
 
-## Next local source: saved-memory conversational followups
+## Next source: explicit saved-memory opening speech
+
+The [implemented source](ASSISTANT_SAVED_MEMORY_READING.md) resolves current
+story openings and memoir introductions for bounded local TTS, revalidating the
+full source cohort before and after synthesis. Private replies keep generic
+wording. It is outside fixed v56. Web and phone now provide explicit one-shot
+controls with Stop, fresh-result guards and no automatic listening restart;
+phone v57 is reserved. Local acceptance is recorded in Development.
+
+Next: qualify and deliver this source after v56, then add a separately reviewed
+voice intent for reading the selected opening. Full-chapter/multi-chapter
+listening needs bounded segments, current citations, progress and cancellation;
+source-grounded conversational storytelling also needs family quality review.
+
+## Fixed v56 candidate: saved-memory conversational followups
 
 [Followups](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md) let current saved-memory results
 answer “介绍这些回忆”, “第二段回忆讲了什么” and “有哪些章节”. Web and phone
 show ordered source cards and draft-only suggestions. Typed and foreground voice
 requests bind the same current completed result; old history stays inert.
 Source wording is transient, generic replies retain the existing private policy,
-and no model or schema change is introduced. Phone v56 is [locally built and verified](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
+and no model or schema change is introduced. Phone v56 is [built and qualified on Windows](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
 
-This source is outside published v55. Next delivery gate: fixed package/native
-qualification, API/Web switch and original-certificate phone publication, followed
+This source is outside published v55. Native qualification passed; next delivery gate: authorized
+API/Web switch and original-certificate phone publication, followed
 by family voice/reader acceptance. Later work: richer grounded conversational
 narration and evidence-backed story quality, with separately qualified providers.
 

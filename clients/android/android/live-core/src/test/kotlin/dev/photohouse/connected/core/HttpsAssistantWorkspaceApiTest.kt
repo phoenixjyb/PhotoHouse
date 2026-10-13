@@ -158,6 +158,12 @@ class HttpsAssistantWorkspaceApiTest {
             assertFalse(api.savedMemorySpeechCapabilities(token, "family-a").available)
             assertEquals("/assistant/workspace/v1/saved-memory-speech-capabilities?library_id=family-a", f.server.takeRequest().path)
 
+            f.server.enqueue(response("""{"version":1,"available":true}"""))
+            assertTrue(api.savedMemoryReadingCapabilities(token, "family-a").available)
+            val reading = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-reading-capabilities?library_id=family-a", reading.path)
+            assertProtected(reading)
+
             f.server.enqueue(response(envelope("completed", result()), 200))
             api.submitTurn(token, "family-a", thread, request, 0, "find saved story lake", null, true)
             val post = f.server.takeRequest()
@@ -244,6 +250,50 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
             assertEquals("7", body.getValue("expected_revision").jsonPrimitive.content)
             assertEquals(1, f.server.requestCount)
+        }
+    }
+
+    @Test fun savedMemoryOpeningSpeechUsesSeparateRouteAndExactBody() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            val audioBytes = wav()
+            f.server.enqueue(speechResponse(audioBytes))
+            val result = api.speakSavedMemoryOpening(token, "family-a", thread, request, 3, 7, speechRequest)
+            assertEquals(speechRequest, result.receipt.requestId)
+            assertArrayEquals(audioBytes, result.bytes)
+            result.bytes.fill(0)
+            val sent = f.server.takeRequest()
+            assertEquals("POST", sent.method)
+            assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request/memory-cards/3/speech", sent.path)
+            assertEquals(token.header(), sent.getHeader("Authorization"))
+            assertEquals("audio/wav", sent.getHeader("Accept"))
+            assertEquals("no-store", sent.getHeader("Cache-Control"))
+            assertEquals("identity", sent.getHeader("Accept-Encoding"))
+            assertEquals(speechRequest, sent.getHeader("X-PhotoHouse-Request-Id"))
+            assertEquals(request, sent.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
+            assertEquals(setOf("library_id", "expected_revision"), body.keys)
+            assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
+            assertEquals("7", body.getValue("expected_revision").jsonPrimitive.content)
+        }
+    }
+
+    @Test fun legacyMemoryReading403NeedsValidSameScopeBaseAndRealDenialPropagates() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":true,"preferences_applied":false,"server_owned_turns":true,"applied_preferences":[],"reply_speech":true}"""))
+            assertFalse(api.savedMemoryReadingCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/saved-memory-reading-capabilities?library_id=family-a", f.server.takeRequest().path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", f.server.takeRequest().path)
+
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("{}", 403))
+            try { api.savedMemoryReadingCapabilities(token, "family-a"); fail("base authorization denial was hidden") }
+            catch (error: ApiFailure) { assertEquals(403, error.status) }
+            assertEquals("/assistant/workspace/v1/saved-memory-reading-capabilities?library_id=family-a", f.server.takeRequest().path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", f.server.takeRequest().path)
+            assertEquals(4, f.server.requestCount)
         }
     }
 

@@ -2137,3 +2137,63 @@ independently passed all eleven synthetic scenario groups on macOS. Thirteen
 profile dispatcher tests and current source-ledger verification also passed.
 Native Windows qualification, live switch, signing/publication and family
 acceptance remain separate gates. The pinned candidate is not the served v55.
+
+
+## October 14 native v56 qualification and later opening-speech source
+
+The fixed `043c938` backend package passed native Windows qualification: 195
+files and eleven generated scenario groups, with five-minute/2 GiB/eight-process
+bounds and an 8 GiB free-RAM admission floor. Eight related tasks and preserved
+ASR/TTS/OCR were verified before qualification, with 48.8 GiB free RAM. Original
+data, service/task state and model/provider activation were untouched. SSH
+handshake resets were reconciled before command execution. Native read-only
+parsing of eight API controller scripts passed using an explicitly framed input
+transport after an EOF-based transport timeout; no maintenance was replayed.
+Thirteen API controller checks and twenty-two phone delivery-controller checks
+passed. Live switch/signing/publication are separately authorized gates.
+
+The later [opening-speech implementation](ASSISTANT_SAVED_MEMORY_READING.md)
+includes backend, Web and phone source, outside v56. The closed-app route inventory now also records
+the existing followup-capability route, which the older pinned fixture omitted,
+plus the two new opening-speech routes. The fixed v56 candidate's narrow
+assistant/package/native qualification and the later source's complete route
+inventory checks are distinct evidence; no full hosted CI result is claimed.
+
+
+### Explicit saved-memory opening playback acceptance
+
+The server suite has **16 opening-specific cases**. Fixture TestCase imports use
+module aliases so discovery does not repeat unrelated tests. The membership-loss
+case commits a valid revoked membership and checks the exact authorization error;
+it does not mistake a fixture/schema failure for access enforcement. Exact saved
+Unicode spacing is preserved, including nonbreaking and Unicode line separators,
+within both 240-code-point and 600-byte limits. Empty sources remain unavailable.
+
+The assistant discovery cohort ran **196 tests: 195 passed and one skipped**; the affected
+closed-application/import cohort passed **27**, and disposable qualifier tests
+passed **six**. The eleven qualification scenario groups now include exact saved
+story/memoir opening speech and assert that source wording is absent from receipt
+input/transcript fields. These overlapping scopes are not added together.
+
+Web transport checks passed **63 tests**; generated browser checks passed **18
+checkpoints**, including actual-play readiness, Stop, replacement-parent and old
+player ownership. Manual capture and delayed microphone permission are cancelled
+before reading; Stop during delayed audio-context cleanup invalidates the request,
+and late cleanup cannot stop a replacement player. Explicit capture cancels the
+opening player so synthesized narration cannot enter the microphone. Desktop Chinese and 150% phone-width playback renders were
+inspected. Android focused core checks passed **70 tests** (26 voice/store, 24 workspace,
+15 HTTPS API and five connected coordinator cases); connected UI logic passed
+**17**. Debug QA build/lint and the final v57 emulator fixture passed **four**
+cases. These are generated fixtures, with no account or family data. The current-conversation summary was
+stacked so the English management action cannot squeeze the metadata into a
+narrow column at 150% text. Original icon and fixed v56 artifacts are unchanged.
+
+Phone v57 is reserved as `0.57-memory-opening`. No physical phone, live server,
+release signing or OTA acceptance is implied by these synthetic/emulator checks.
+
+The affected shared capture regression passed **seven generated browser checks**,
+including real mouse hold/release, delayed permission, explicit cancellation,
+old-account startup, stale processor/resume, abort and visibility changes. The
+WAV encoder and shared reservation check also passed. No external origin was
+contacted. The package-builder cohort passed six cases, and seven source-verifier
+checks passed. Final source-ledger verification covers 1,235 files.

@@ -45,6 +45,8 @@ import dev.photohouse.connected.core.AssistantWorkspaceError
 import dev.photohouse.connected.core.AssistantWorkspacePreference
 import dev.photohouse.connected.core.AssistantWorkspaceRequestStatus
 import dev.photohouse.connected.core.AssistantWorkspaceState
+import dev.photohouse.connected.core.AssistantClientState
+import dev.photohouse.connected.core.ProtectedAnnotationAudio
 import java.time.Instant
 
 /** Local UI for the opt-in, account-private conversation workspace. */
@@ -70,6 +72,10 @@ internal fun PrivateAssistantPanel(
     onLoadOlder: ((String, Long, Long) -> Unit)? = null,
     onReloadHistory: ((String, Long) -> Unit)? = null,
     onOpenSavedMemoryCard: (Int) -> Unit = {},
+    onReadSavedMemoryOpening: (Int) -> Unit = {},
+    assistant: AssistantClientState? = null,
+    onStopMemoryOpening: () -> Unit = {},
+    onMemoryOpeningPlaybackOutcome: (ProtectedAnnotationAudio, String) -> Unit = { _, _ -> },
     onSavedMemoryFollowupDraft: (String) -> Boolean = { false },
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -141,18 +147,35 @@ internal fun PrivateAssistantPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("private-assistant-retention"),
             )
+            assistant?.let { currentAssistant ->
+                if (currentAssistant.speechBusy && currentAssistant.speechMemoryOpeningOrdinal != null) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(t("Preparing saved opening…", "正在准备保存的开篇语音…"),
+                            Modifier.weight(1f).testTag("private-assistant-memory-opening-preparing"),
+                            style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = onStopMemoryOpening, modifier = Modifier.testTag("private-assistant-memory-opening-stop")) {
+                            Text(t("Stop", "停止"))
+                        }
+                    }
+                }
+                currentAssistant.speechAudio?.takeIf { currentAssistant.speechMemoryOpeningOrdinal != null }?.let { audio ->
+                    AssistantSpeechPlayback(audio, zh, memoryOpening = true, onStopMemoryOpening) { outcome ->
+                        onMemoryOpeningPlaybackOutcome(audio, outcome)
+                    }
+                }
+            }
 
             if (detail != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth().testTag("private-assistant-current-summary"),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Column(
+                        Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(t("Current conversation", "当前对话"), style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(detail.thread.label ?: t("Private conversation", "私人对话"),
@@ -169,7 +192,7 @@ internal fun PrivateAssistantPanel(
                         OutlinedButton(
                             onClick = { managementExpanded = !managementExpanded },
                             enabled = historyReady && !managementForcedOpen,
-                            modifier = Modifier.padding(end = 8.dp).heightIn(min = 48.dp)
+                            modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)
                                 .semantics { stateDescription = if (managementVisible) t("Expanded", "已展开") else t("Collapsed", "已收起") }
                                 .testTag("private-assistant-manage-toggle"),
                         ) {
@@ -413,6 +436,18 @@ internal fun PrivateAssistantPanel(
                                                 ) {
                                                     Text(if (card.kind == "story") t("Open saved story", "打开已保存故事")
                                                         else t("Open memoir", "打开回忆录"))
+                                                }
+                                                TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
+                                                    enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                        state.savedMemoryReadingAvailable &&
+                                                        assistant?.speechBusy != true,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                                        .testTag("private-assistant-read-memory-opening-$ordinal")) {
+                                                    Text(if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechBusy)
+                                                        t("Preparing opening…", "正在准备开篇语音…")
+                                                    else if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechAudio != null)
+                                                        t("Opening ready", "开篇语音已准备好")
+                                                    else t("Read opening", "朗读开篇"))
                                                 }
                                                 if (state.memoryReaderOrdinal == ordinal) Text(
                                                     t("Opening…", "正在打开…"), style = MaterialTheme.typography.bodySmall,
