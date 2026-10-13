@@ -17,7 +17,9 @@ from starlette.concurrency import run_in_threadpool
 from . import assistant as assistant_engine
 from . import discovery as discovery_engine
 from .assistant_journal import Journal, JournalUnavailable, JournalConflict, JournalMissing
-from .assistant_saved_memory_tool import AssistantSavedMemoryTool
+from .assistant_saved_memory_tool import AssistantSavedMemoryTool, _language as _memory_language
+from .assistant_memory_followup import (AssistantMemoryFollowupTool,
+                                        parse_saved_memory_followup)
 from .assistant_memory_discovery import AssistantMemoryDiscovery
 
 from .assistant_workspace_store import (AssistantWorkspaceStore,
@@ -491,6 +493,50 @@ def _saved_memory_reader(access, token, library, reference):
     return envelope
 
 
+def _saved_memory_followup_parent(store, account, library, thread_id,
+                                  request_id, revision):
+    """Bind a followup to the exact latest completed display cohort."""
+    thread = store.get_thread(account, library, thread_id)
+    if (thread.get('thread', {}).get('revision') != revision or
+            thread.get('latest_request_id') != request_id):
+        raise WorkspaceStoreConflict()
+    turn = store.get_turn(account, library, thread_id, request_id)
+    if turn.get('status') != 'completed' or turn.get('revision') != revision:
+        raise WorkspaceStoreConflict()
+    exchanges = [item for item in thread.get('exchanges', [])
+                 if item.get('request_id') == request_id]
+    if len(exchanges) != 1 or exchanges[0].get('revision') != revision:
+        raise WorkspaceStoreConflict()
+    cards = exchanges[0].get('cards')
+    if type(cards) is not list or len(cards) > MAX_MEMORY_READER_ORDINAL + 1:
+        raise WorkspaceStoreMissing()
+    seen = set()
+    for card in cards:
+        if (type(card) is not dict or set(card) !=
+                {'type', 'id', 'revision', 'fingerprint'} or
+                type(card.get('type')) is not str or
+                card.get('type') not in {'story', 'memoir'} or
+                type(card.get('id')) is not str or
+                type(card.get('revision')) is not str or
+                card.get('revision') != card.get('fingerprint') or
+                re.fullmatch(r'[0-9a-f]{64}', card['revision']) is None):
+            raise WorkspaceStoreMissing()
+        try:
+            _thread_id(card['id'])
+        except WorkspaceInvalid:
+            raise WorkspaceStoreMissing() from None
+        identity = (card['type'], card['id'])
+        if identity in seen:
+            raise WorkspaceStoreMissing()
+        seen.add(identity)
+    return cards
+
+
+def _memory_followup(access, token, library, locale, mode, cards, ordinal):
+    return AssistantMemoryFollowupTool().run(access, token, library, locale,
+                                             mode, cards, ordinal)
+
+
 def _reader_expected_revision(value):
     if (type(value) is not str or
             re.fullmatch(r'[1-9][0-9]{0,18}', value) is None or
@@ -512,6 +558,30 @@ async def saved_memory_capabilities(request: Request):
         if engine is not None:
             token, _mode = credentials_from_request(request, allow_query=True)
             await run_in_threadpool(_memory_readers_available, _memory_runtime(request, allow_query=True), token, library)
+            available = True
+    except AccessDenied:
+        raise
+    except Exception:
+        available = False
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
+@router.get('/assistant/workspace/v1/saved-memory-followup-capabilities')
+async def saved_memory_followup_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    available = False
+    try:
+        _saved_memory_enabled(request)
+        await _call(_workspace(request), 'get_preferences', account)
+        access, engine = assistant_engine._engine(request)
+        if engine is not None:
+            token, _mode = credentials_from_request(request, allow_query=True)
+            await run_in_threadpool(_memory_readers_available,
+                _memory_runtime(request, allow_query=True), token, library)
             available = True
     except AccessDenied:
         raise
@@ -661,13 +731,26 @@ def _validate_saved_speech_references(access, token, library, cards):
 
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
 async def create_turn(request: Request, thread_id: str):
-    body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts'},
+    body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts', 'memory_parent'},
                        required={'library_id', 'request_id', 'expected_revision', 'text'},
                        maximum=20 * 1024)
     memory_opt_in = 'accepts' in body
     library, selected = _library(body['library_id']), _thread_id(thread_id)
     ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
     words = _turn_text(body['text'])
+    parent = None
+    if 'memory_parent' in body:
+        raw_parent = body['memory_parent']
+        if (type(raw_parent) is not dict or
+                set(raw_parent) != {'request_id', 'revision'}):
+            raise WorkspaceInvalid()
+        parent_id = _thread_id(raw_parent['request_id'])
+        parent_revision = raw_parent['revision']
+        if (type(parent_revision) is not int or not 1 <= parent_revision <= MAX_REVISION):
+            raise WorkspaceInvalid()
+        parent = {'request_id': parent_id, 'revision': parent_revision}
+        if parent_revision != revision:
+            raise WorkspaceStoreConflict()
     account = await _principal(request, library)
     token, _mode = credentials_from_request(request)
     access, engine = assistant_engine._engine(request)
@@ -676,9 +759,9 @@ async def create_turn(request: Request, thread_id: str):
     header_id = _single(request, 'x-photohouse-request-id')
     if header_id is not None and header_id != ident:
         raise WorkspaceInvalid()
-    parent = _single(request, 'x-photohouse-parent-request-id')
-    if parent is not None:
-        _thread_id(parent)
+    journal_parent = _single(request, 'x-photohouse-parent-request-id')
+    if journal_parent is not None:
+        _thread_id(journal_parent)
     store = _workspace(request)
     # Negotiation changes never reinterpret a previously owned request. Keep
     # the store's original text/revision collision checks on this GET-like path.
@@ -686,6 +769,8 @@ async def create_turn(request: Request, thread_id: str):
                         revision, words, existing_only=True)
     if prior is not None:
         return await _turn_envelope(request, account, library, prior, recovered=True)
+    if parent is not None and not memory_opt_in:
+        raise WorkspaceInvalid()
     if memory_opt_in:
         if type(body['accepts']) is not list or body['accepts'] != ['saved_memory_cards_v1']:
             raise WorkspaceInvalid()
@@ -697,16 +782,32 @@ async def create_turn(request: Request, thread_id: str):
     committed = False
     journal_started = False
     journal = None
+    anchored_cards = None
     try:
         journal = _journal(request)
         if journal is not None:
-            await run_in_threadpool(journal.begin, account, library, 'turn', ident, parent, words)
+            await run_in_threadpool(journal.begin, account, library, 'turn', ident, journal_parent, words)
             journal_started = True
             await run_in_threadpool(journal.stage, ident, 'action_started')
         preferences = await _call(store, 'get_preferences', account)
         memory_access = _memory_runtime(request) if memory_opt_in else None
-        memory_outcome = (await run_in_threadpool(_memory_command, memory_access, token, library,
-                           words, preferences['locale']) if memory_opt_in else None)
+        followup = parse_saved_memory_followup(words) if memory_opt_in else None
+        if followup is not None:
+            followup_locale = _memory_language(words, preferences['locale'])
+            if parent is None:
+                memory_outcome = await run_in_threadpool(_memory_followup,
+                    memory_access, token, library, followup_locale,
+                    followup.mode, [], followup.ordinal)
+            else:
+                cards = await run_in_threadpool(_saved_memory_followup_parent,
+                    store, account, library, selected, parent['request_id'], revision)
+                anchored_cards = cards
+                memory_outcome = await run_in_threadpool(_memory_followup,
+                    memory_access, token, library, followup_locale,
+                    followup.mode, cards, followup.ordinal)
+        else:
+            memory_outcome = (await run_in_threadpool(_memory_command, memory_access, token, library,
+                               words, preferences['locale']) if memory_opt_in else None)
         if memory_outcome is None:
             result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
                 words, row['context'], access.clock, language=preferences['locale'])
@@ -724,6 +825,11 @@ async def create_turn(request: Request, thread_id: str):
                                     memory_outcome)
         if await _principal(request, library) != account:
             raise AccessDenied()
+        if followup is not None and parent is not None:
+            latest_cards = await run_in_threadpool(_saved_memory_followup_parent,
+                store, account, library, selected, parent['request_id'], revision)
+            if latest_cards != anchored_cards:
+                raise WorkspaceStoreConflict()
         row = await _call(store, 'complete_turn', account, library, selected, ident,
                           lease, summary, cards, [ident] if journal_started else [])
         committed = row['status'] == 'completed'

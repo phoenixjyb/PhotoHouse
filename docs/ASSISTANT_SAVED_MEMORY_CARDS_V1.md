@@ -1,11 +1,10 @@
 # Private assistant saved-memory cards
 
-Status: saved-memory discovery and Web cards were included in the earlier API
-release. The next local source adds phone card negotiation and explicit Web/phone
-reader handoff. Reader capability is separate from search and speech capability;
-an older server preserves cards while leaving reader actions unavailable.
-The new reader implementation is outside the published v54 package. Runtime,
-signing and family acceptance remain separate gates.
+Status: saved-memory search and explicit Web/phone reader handoff were delivered
+in API/Web source `c65528a` and phone v55. Reader capability remains separate from
+search and speech capability. The later local [conversational followups](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md)
+are outside that release. Runtime, signing and family acceptance have separate
+[delivery evidence](../clients/android/docs/PHONE_V55_RELEASE_2026-10-13.md).
 
 ## Existing protected foundation
 
@@ -71,7 +70,8 @@ Recovered summaries remain non-actionable. Qualified source and generated-browse
 [Development](DEVELOPMENT.md); they do not prove live or family acceptance.
 
 The existing turn request remains byte-for-byte unchanged unless a capable
-client opts in. Extend its strict body with one optional field:
+client opts in. The search opt-in adds `accepts` to its strict body. The later followup
+contract separately negotiates `memory_parent`:
 
 ```json
 {
@@ -89,8 +89,9 @@ currently be true. An existing matching request is recovered before applying
 new negotiation or current feature availability.
 The existing 1024-byte input, 20 KiB JSON and three-second request bounds
 remain. The POST request ID and parent receipt correlation keep their current
-idempotency and scope rules. No client context, source ID, revision, card,
-excerpt, effect or result is accepted.
+idempotency and scope rules. No client result context, source ID, source revision, card, excerpt, effect
+or result is accepted. The later negotiated followup carries only an owned
+completed request ID and thread revision, as specified in its separate contract.
 
 Negotiation is not a new idempotency-key component in this slice: the current
 `begin_turn` replay key is account/library/request ID, with thread ID, input text

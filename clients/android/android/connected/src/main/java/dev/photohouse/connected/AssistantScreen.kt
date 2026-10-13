@@ -57,6 +57,23 @@ internal fun assistantDraftWithTranscript(draft: String, transcript: String): St
     return combined.takeIf(::assistantDraftWithinLimits)
 }
 
+internal fun memoryFollowupPrompt(ordinal: Int, mode: Int, zh: Boolean): String {
+    val n = ordinal + 1
+    if (mode == 2) return if (zh) "介绍这些回忆" else "introduce these memories"
+    if (zh) return when (mode) {
+        0 -> "第${n}段回忆讲了什么"
+        else -> "第${n}段回忆有哪些章节"
+    }
+    val words = listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth")
+    val named = words.getOrNull(ordinal) ?: "$n${ordinalSuffix(n)}"
+    return if (mode == 0) "what is the $named saved memory about" else "what chapters does the $named saved memory have"
+}
+
+private fun ordinalSuffix(value: Int): String = when (value % 100) {
+    11, 12, 13 -> "th"
+    else -> when (value % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
+}
+
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun AssistantScreen(
@@ -81,6 +98,7 @@ internal fun AssistantScreen(
     privateReplySpeechAvailable: Boolean = false,
     savedMemoryWorkspace: AssistantWorkspaceState? = null,
     onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
+    onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
@@ -396,11 +414,32 @@ internal fun AssistantScreen(
                             Card(Modifier.fillMaxWidth().testTag("assistant-saved-memory-cards"), shape = RoundedCornerShape(18.dp)) {
                                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleMedium)
+                                    if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
+                                        AssistChip(onClick = { val prompt = memoryFollowupPrompt(0, 2, zh)
+                                            if (onSavedMemoryFollowupDraft(prompt)) draft = prompt },
+                                            label = { Text(memoryFollowupPrompt(0, 2, zh)) },
+                                            modifier = Modifier.testTag("assistant-memory-followup-all"))
+                                    }
                                     cards.forEachIndexed { ordinal, card ->
                                         Column(Modifier.fillMaxWidth().testTag("assistant-saved-memory-card-$ordinal"),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             Text(card.title, style = MaterialTheme.typography.titleSmall)
+                                            Text(if (zh) "${if (card.kind == "story") "已保存故事" else "已保存回忆录"} · 第${ordinal + 1}段"
+                                                else "${if (card.kind == "story") "Saved story" else "Saved memoir"} · Memory ${ordinal + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             Text(card.excerpt, style = MaterialTheme.typography.bodyMedium)
+                                            if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
+                                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    listOf(memoryFollowupPrompt(ordinal, 0, zh), memoryFollowupPrompt(ordinal, 1, zh))
+                                                        .forEachIndexed { promptIndex, prompt ->
+                                                            AssistChip(onClick = { if (onSavedMemoryFollowupDraft(prompt)) draft = prompt },
+                                                                label = { Text(prompt) },
+                                                                modifier = Modifier.testTag("assistant-memory-followup-$ordinal-$promptIndex"))
+                                                        }
+                                                }
+                                            }
                                             if (onOpenSavedMemoryCard != null) {
                                                 TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
                                                     enabled = savedMemoryWorkspace.savedMemoryReaderAvailable &&

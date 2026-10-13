@@ -15,6 +15,7 @@ const workspaceCaps=(overrides={})=>({version:1,available:true,threads:true,pref
 const savedMemoryCapabilities=available=>({version:1,available});
 const savedMemorySpeechCapabilities=available=>({version:1,available});
 const savedMemoryReaderCapabilities=available=>({version:1,available});
+const savedMemoryFollowupCapabilities=available=>({version:1,available});
 const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
 const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
 const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
@@ -584,6 +585,131 @@ test('saved-memory probe is scope fenced and stale capability is cleared on base
   await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),false);
   assert.equal(await current.controller.savedMemoryCapabilities(),false,'a feature probe cannot override known base capability loss');
   baseAvailable=true;await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),true);current.controller.close();assert.equal(current.controller.state().savedMemoryAvailable,false);
+});
+
+test('saved-memory followup probe is independent, exact, and optional',async()=>{
+  for(const status of [404,503]){
+    const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);throw Object.assign(new Error('optional route unavailable'),{status});});
+    await h.controller.capabilities();await h.controller.savedMemoryCapabilities();
+    assert.equal(await h.controller.savedMemoryFollowupCapabilities(),false);assert.equal(h.controller.state().savedMemoryAvailable,true);
+    assert.equal(h.controller.state().savedMemoryFollowupAvailable,false);
+  }
+  for(const answer of [undefined,{version:1,available:'yes'},{version:1,available:true,extra:true}]){
+    const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);return answer;});
+    await h.controller.capabilities();await h.controller.savedMemoryCapabilities();assert.equal(await h.controller.savedMemoryFollowupCapabilities(),false);
+  }
+  const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);return savedMemoryFollowupCapabilities(true);});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();assert.equal(await h.controller.savedMemoryFollowupCapabilities(),true);
+  assert.equal(h.calls.at(-1).method,'GET');assert.match(h.calls.at(-1).path,/saved-memory-followup-capabilities\?library_id=library-a$/);
+});
+
+test('an optional followup 403 is rechecked against base capabilities before preserving private state',async()=>{
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-reader-capabilities'))return savedMemoryReaderCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))throw Object.assign(new Error('unknown optional route'),{status:403});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),request_id:options.body.request_id,result:memoryResult()};
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReaderCapabilities();
+  await h.controller.create();await h.controller.send('find saved memories');const result=h.controller.state().currentResult;
+  assert.equal(h.controller.state().savedMemoryReaderReady,true);assert.equal(h.controller.state().speechReady,true);
+  assert.equal(await h.controller.savedMemoryFollowupCapabilities(),false);
+  assert.equal(h.calls.filter(call=>call.path.includes('/capabilities?')).length,2,'403 revalidates the existing base route');
+  assert.equal(h.controller.state().locked,false);assert.equal(h.controller.state().currentResult,result);
+  assert.equal(h.controller.state().savedMemoryAvailable,true);assert.equal(h.controller.state().savedMemoryReaderReady,true);
+  assert.equal(h.controller.state().speechReady,true,'optional route denial preserves explicit reply speech');
+});
+
+test('an optional followup 403 revokes private state when base capability revalidation is denied',async()=>{
+  let baseReads=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?')){baseReads++;if(baseReads===1)return workspaceCaps();throw Object.assign(new Error('authorization lost'),{status:401});}
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))throw Object.assign(new Error('unknown optional route'),{status:403});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.create();
+  await assert.rejects(h.controller.savedMemoryFollowupCapabilities(),error=>error.code==='access_denied');
+  assert.equal(baseReads,2);assert.equal(h.controller.state().locked,true);assert.equal(h.controller.state().activeThread,null);
+});
+
+test('a late 403 base recheck cannot bind followup support across a scope change',async()=>{
+  const gate=deferred(),started=deferred();let baseReads=0;
+  const h=harness(async(path)=>{
+    if(path.includes('/capabilities?')){baseReads++;if(baseReads===1)return workspaceCaps();started.resolve();await gate.promise;return workspaceCaps();}
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))throw Object.assign(new Error('unknown optional route'),{status:403});
+    throw Error(`unexpected ${path}`);
+  });
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();
+  const probe=h.controller.savedMemoryFollowupCapabilities();await started.promise;
+  h.setScope({account:'account-b',library:'library-b',generation:2});gate.resolve();
+  await assert.rejects(probe,error=>error.code==='scope_changed');
+  assert.equal(h.controller.state().account,'account-b');assert.equal(h.controller.state().savedMemoryFollowupAvailable,false);
+});
+
+test('fresh saved-memory followup sends exact parent after End and refreshes the current anchor',async()=>{
+  let turns=0;
+  const second='33333333-3333-4333-8333-333333333333';
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))return savedMemoryFollowupCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turns++;return {...envelope('completed',false,turns),request_id:options.body.request_id,result:memoryResult()};}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,second]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryFollowupCapabilities();
+  await h.controller.create();await h.controller.send('find saved memories');
+  assert.equal(h.controller.state().savedMemoryFollowupReady,true);
+  h.controller.discardSpeechSource();assert.equal(h.controller.state().savedMemoryFollowupReady,true,'End only revokes speech, not the explicit text followup anchor');
+  await h.controller.send('what is the first saved memory about');
+  const followup=h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1);
+  assert.deepEqual(followup.body,{library_id:library,request_id:second,expected_revision:1,text:'what is the first saved memory about',accepts:['saved_memory_cards_v1'],memory_parent:{request_id:requestId,revision:1}});
+  assert.equal(h.controller.state().savedMemoryFollowupReady,true,'a fresh cards result owns a new followup anchor');
+});
+
+test('saved-memory parent is omitted after media result or history reload',async()=>{
+  let turns=0;const ids=[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555'];
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))return savedMemoryFollowupCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turns++;return {...envelope('completed',false,turns),request_id:options.body.request_id,result:turns===1?memoryResult():result};}
+    if(path===`/assistant/workspace/v1/threads/${threadId}?library_id=${library}`)return detail(1,3);
+    throw Error(`unexpected ${path}`);
+  },{ids});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();assert.equal(await h.controller.savedMemoryFollowupCapabilities(),true);
+  await h.controller.create();await h.controller.send('find saved memories');assert.equal(h.controller.state().savedMemoryFollowupReady,true);
+  await h.controller.send('show photos');assert.deepEqual(h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1).body.memory_parent,{request_id:requestId,revision:1});
+  assert.equal(h.controller.state().currentResult.kind,'results');assert.equal(h.controller.state().savedMemoryFollowupReady,false);
+  await h.controller.send('show another photo');assert.equal(Object.hasOwn(h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1).body,'memory_parent'),false,'a media result cannot seed a memory parent');
+  await h.controller.read(threadId,{hydrate:false});assert.equal(h.controller.state().currentResult,null);
+  await h.controller.send('continue search');assert.equal(Object.hasOwn(h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1).body,'memory_parent'),false,'history reload cannot seed a memory parent');
+});
+
+test('clarification and recovered completions never seed saved-memory parents',async()=>{
+  let turns=0;const ids=[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444'];
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-followup-capabilities'))return savedMemoryFollowupCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turns++;if(turns===1)return {...envelope('completed',false,1),request_id:options.body.request_id,result:memoryClarification()};throw Error('lost response');}
+    if(path.includes(`/requests/${ids[2]}`))return {...envelope('completed',true,2),request_id:ids[2],result};
+    throw Error(`unexpected ${path}`);
+  },{ids});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryFollowupCapabilities();await h.controller.create();
+  await h.controller.send('find a saved memory');assert.equal(h.controller.state().savedMemoryFollowupReady,false);
+  await assert.rejects(h.controller.send('introduce these memories'));
+  assert.equal(Object.hasOwn(h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1).body,'memory_parent'),false,'clarification has no source cohort');
+  await h.controller.recover(threadId,ids[2]);assert.equal(h.controller.state().currentResult.kind,'results');
+  await assert.rejects(h.controller.send('what is the first saved memory about'));
+  assert.equal(Object.hasOwn(h.calls.filter(call=>call.method==='POST'&&call.path.endsWith('/turns')).at(-1).body,'memory_parent'),false,'a recovered completion has no fresh display anchor');
 });
 
 test('saved-memory reader probe is optional and preserves fresh cards when unavailable',async()=>{

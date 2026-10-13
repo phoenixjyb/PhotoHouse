@@ -2090,3 +2090,39 @@ then passed. The Gradle instrumentation task removed its target app and cache;
 QA debug/test APKs were reinstalled only on the designated emulator for direct
 instrumentation and capture. No physical phone, provider or Windows service was
 changed. These changes are outside the already-published v54 artifact.
+
+
+## October 13 saved-memory followup integration
+
+The [followup contract](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md) binds typed and
+foreground voice requests to the latest fresh saved-memory display. Generic
+replies and current source excerpts/outlines retain the existing card grammar.
+Clients negotiate separately, preserve older closed-route behavior with a base
+capability recheck, and insert suggestions as drafts after ending voice.
+
+Current checks:
+
+- Assistant security discovery: 180 tests, one external-adapter skip. Exact
+  parser, ownership, parent/current-source drift, hidden access, malformed
+  storage, generic-only recovery and locale selection are covered.
+- Six portable qualification tests passed. The eleven existing synthetic
+  scenario groups now include a separate search → overview → outline → reader
+  → inert recovery chain. Only generated databases/media are used.
+- Web controller: 59 checks. Generated browser journey: thirteen checkpoints,
+  including source-bound ordinal followups, draft-only controls, stale scope,
+  literal XSS fixtures, recovery and older-route fallback. Chinese desktop and
+  390px/150% memoir card renders were inspected.
+- Android: 57 focused JVM checks (24 store, 13 HTTPS and 20 voice), plus fifteen
+  earlier wire checks; these cohorts overlap earlier wider checks and are not
+  summed. Post-review Kotlin compilation passed. Four generated emulator cases
+  and Chinese/English 150% private-panel renders passed and were inspected.
+  Later English ordinal-label polish and the v56 identity are local source;
+  package checks remain a separate step.
+- The package allowlist includes the new followup module. API profile selection
+  includes its parser test and the existing reader suite; immutable packaged
+  import/qualification checks must run against the new committed source.
+
+Phone v56 is reserved as `0.56-memory-followups`, without signing or publication.
+The already published v55 release remains pinned to `c65528a`; source, runtime
+and physical device acceptance stay separate. See the
+[v55 delivery record](../clients/android/docs/PHONE_V55_RELEASE_2026-10-13.md).

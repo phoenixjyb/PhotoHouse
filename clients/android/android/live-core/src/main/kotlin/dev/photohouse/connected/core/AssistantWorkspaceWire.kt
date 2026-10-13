@@ -376,14 +376,21 @@ object AssistantWorkspaceWire {
             ((bytes[offset + 2].toLong() and 0xff) shl 16) or ((bytes[offset + 3].toLong() and 0xff) shl 24)
 
     fun turnRequest(library: String, requestId: String, expectedRevision: Long, text: String,
-                    acceptSavedMemoryCards: Boolean = false): String {
+                    acceptSavedMemoryCards: Boolean = false,
+                    memoryParent: AssistantSavedMemoryParent? = null): String {
         if (!PhoneDiscoveryWire.validLibrary(library) || !validUuid4(requestId) || expectedRevision !in 0..REVISION_MAX) throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (memoryParent != null && (!acceptSavedMemoryCards || !validUuid4(memoryParent.requestId) ||
+                memoryParent.revision !in 1..REVISION_MAX))
+            throw ApiFailure(FailureKind.INVALID_INPUT)
         val textBytes = strictUtf8(text)
         if (text.isBlank() || textBytes.size !in 1..1024 || text.any { (it < ' ' && it !in "\n\t") || it == '\u007f' })
             throw ApiFailure(FailureKind.INVALID_INPUT)
         return buildJsonObject {
             put("library_id", library); put("request_id", requestId); put("expected_revision", expectedRevision); put("text", text)
             if (acceptSavedMemoryCards) put("accepts", buildJsonArray { add("saved_memory_cards_v1") })
+            memoryParent?.let { parent -> put("memory_parent", buildJsonObject {
+                put("request_id", parent.requestId); put("revision", parent.revision)
+            }) }
         }
             .toString().also { if (it.toByteArray(Charsets.UTF_8).size > 20 * 1024) throw ApiFailure(FailureKind.INVALID_INPUT) }
     }

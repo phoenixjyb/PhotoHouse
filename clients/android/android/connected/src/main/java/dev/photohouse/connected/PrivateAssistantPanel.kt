@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +70,7 @@ internal fun PrivateAssistantPanel(
     onLoadOlder: ((String, Long, Long) -> Unit)? = null,
     onReloadHistory: ((String, Long) -> Unit)? = null,
     onOpenSavedMemoryCard: (Int) -> Unit = {},
+    onSavedMemoryFollowupDraft: (String) -> Boolean = { false },
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val capabilities = state.capabilities
@@ -373,15 +375,35 @@ internal fun PrivateAssistantPanel(
                         }
 
                         currentTurn?.takeIf { it.status == AssistantWorkspaceRequestStatus.COMPLETED }?.result?.let { result ->
-                            if (currentTurn.recovered.not() && result.memoryCards.isNotEmpty()) {
+                            val freshMemoryResult = state.savedMemoryCardsAvailable && !currentTurn.recovered && result.kind == "memory_cards" &&
+                                result.memoryCards.isNotEmpty() && currentTurn.threadId == detail.thread.threadId &&
+                                currentTurn.revision == detail.thread.revision && result.savedMemoryContext?.libraryId == state.libraryId
+                            if (freshMemoryResult) {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("private-assistant-memory-cards")) {
                                     Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleSmall)
+                                    if (state.savedMemoryFollowupAvailable) AssistChip(
+                                        onClick = { onSavedMemoryFollowupDraft(memoryFollowupPrompt(0, 2, zh)) },
+                                        label = { Text(memoryFollowupPrompt(0, 2, zh)) },
+                                        modifier = Modifier.testTag("private-assistant-memory-followup-all"),
+                                    )
                                     result.memoryCards.forEachIndexed { ordinal, card ->
                                         Card(Modifier.fillMaxWidth().testTag("private-assistant-memory-card-$ordinal"),
                                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                                             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 Text(card.title, style = MaterialTheme.typography.titleMedium)
+                                                Text(if (zh) "${if (card.kind == "story") "已保存故事" else "已保存回忆录"} · 第${ordinal + 1}段"
+                                                    else "${if (card.kind == "story") "Saved story" else "Saved memoir"} · Memory ${ordinal + 1}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 Text(card.excerpt, style = MaterialTheme.typography.bodyLarge)
+                                                if (state.savedMemoryFollowupAvailable) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    (0..1).forEach { promptIndex ->
+                                                        val prompt = memoryFollowupPrompt(ordinal, promptIndex, zh)
+                                                        AssistChip(onClick = { onSavedMemoryFollowupDraft(prompt) }, label = { Text(prompt) },
+                                                            modifier = Modifier.testTag("private-assistant-memory-followup-$ordinal-$promptIndex"))
+                                                    }
+                                                }
                                                 OutlinedButton(
                                                     onClick = { onOpenSavedMemoryCard(ordinal) },
                                                     enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&

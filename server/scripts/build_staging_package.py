@@ -32,6 +32,7 @@ FILES = (
     'backend/app/access/assistant_workspace_transport.py',
     'backend/app/access/assistant_memory_discovery.py',
     'backend/app/access/assistant_memory_intent.py',
+    'backend/app/access/assistant_memory_followup.py',
     'backend/app/access/assistant_saved_memory_tool.py',
     'backend/app/access/assistant_speech.py',
     'backend/app/access/asset_tombstones.py',

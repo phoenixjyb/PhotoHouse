@@ -42,6 +42,22 @@ class AssistantWorkspaceWireTest {
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
     }
 
+    @Test fun memoryFollowupParentIsAnExactOptionalPositiveRevisionObject() {
+        val parent = AssistantSavedMemoryParent(request, 7)
+        val legacy = AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 7, "find saved memories")
+        val followup = AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 8,
+            "what is the first saved memory about", true, parent)
+        val oldObject = kotlinx.serialization.json.Json.parseToJsonElement(legacy).jsonObject
+        val newObject = kotlinx.serialization.json.Json.parseToJsonElement(followup).jsonObject
+        assertFalse(oldObject.containsKey("memory_parent"))
+        assertEquals(setOf("request_id", "revision"), newObject.getValue("memory_parent").jsonObject.keys)
+        assertEquals(request, newObject.getValue("memory_parent").jsonObject.getValue("request_id").jsonPrimitive.content)
+        assertEquals("7", newObject.getValue("memory_parent").jsonObject.getValue("revision").jsonPrimitive.content)
+        invalidInput { AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 8, "valid", true, parent.copy(revision = 0)) }
+        invalidInput { AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 8, "valid", true, parent.copy(revision = Long.MAX_VALUE)) }
+        invalidInput { AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 8, "valid", true, parent.copy(requestId = "bad")) }
+    }
+
     @Test fun savedMemoryCardTextAndRevisionMatchServerBounds() {
         val largest = savedMemoryResult().replace("\"revision\":\"2\"", "\"revision\":\"9223372036854775806\"")
         val accepted = AssistantWorkspaceWire.turn(turn(largest, recovered = false, error = "null").toByteArray(),

@@ -61,6 +61,8 @@ class AssistantWorkspaceStoreTest {
         var historyCalls = 0
         var savedMemoryReaderAvailable = false
         var savedMemoryCardsAvailable = false
+        var savedMemoryFollowupAvailable = false
+        var submittedMemoryParent: AssistantSavedMemoryParent? = null
         var readerCalls = 0
         var acceptSavedMemoryCardsSent = false
         var readerHandler: suspend () -> SavedMemoryReaderPayload = { error("reader not configured") }
@@ -85,6 +87,8 @@ class AssistantWorkspaceStoreTest {
             SavedMemoryReaderCapabilities(1, savedMemoryReaderAvailable)
         override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryCardsAvailable)
+        override suspend fun savedMemoryFollowupCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemoryFollowupAvailable)
         override suspend fun savedMemoryReader(token: Bearer, library: String, threadId: String, turnId: String,
                                                ordinal: Int, expectedRevision: Long): SavedMemoryReaderPayload {
             readerCalls++; return readerHandler()
@@ -128,13 +132,21 @@ class AssistantWorkspaceStoreTest {
             submittedRequestId = requestId
             submittedParentRequestId = parentRequestId
             submittedText = text
-            return submitHandler(threadId, expectedRevision, text)
+            return submitHandler(threadId, expectedRevision, text).copy(requestId = requestId)
         }
         override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                         expectedRevision: Long, text: String, parentRequestId: String?,
                                         acceptSavedMemoryCards: Boolean): AssistantWorkspaceTurn {
             acceptSavedMemoryCardsSent = acceptSavedMemoryCards
+            submittedMemoryParent = null
             return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId)
+        }
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                                        memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn {
+            acceptSavedMemoryCardsSent = acceptSavedMemoryCards
+            submittedMemoryParent = memoryParent
+            return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId).copy(requestId = requestId)
         }
         override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
             getCalls++; return getHandler(threadId, requestId)
@@ -397,10 +409,99 @@ class AssistantWorkspaceStoreTest {
         val store = AssistantWorkspaceStore(api, backgroundScope, { scope() })
         store.refreshCapabilities(); runCurrent()
         store.refreshSavedMemoryCardsCapabilities(); runCurrent()
+        store.refreshSavedMemoryFollowupCapabilities(); runCurrent()
         store.refreshSavedMemoryReaderCapabilities(); runCurrent()
 
         assertTrue(store.state.value.savedMemoryCardsAvailable)
+        assertFalse(store.state.value.savedMemoryFollowupAvailable)
         assertFalse(store.state.value.savedMemoryReaderAvailable)
+    }
+
+    @Test fun memoryFollowupUsesLatestFreshCompletionForTypedAndManuallyEditedDrafts() = runTest {
+        val api = FakeApi().apply {
+            savedMemoryCardsAvailable = true
+            savedMemoryFollowupAvailable = true
+        }
+        var completionRevision = 0L
+        val card = AssistantSavedMemoryCard("story", uuid(11), "2", "e".repeat(64), "Garden day", "A short excerpt.")
+        api.submitHandler = { threadId, _, requestId -> completionRevision++
+            AssistantWorkspaceTurn(1, threadId, requestId, AssistantWorkspaceRequestStatus.COMPLETED,
+                completionRevision, false, null, AssistantTurn("memory_cards", "Found a memory.", null, null,
+                    emptyList(), 1, false, null, memoryCards = listOf(card), savedMemoryContext =
+                    AssistantSavedMemoryContext("family-a", "f".repeat(64), listOf(AssistantSavedMemoryReference(
+                        card.kind, card.id, card.revision, card.sourceRevision)))))
+        }
+        api.readHandler = { detail(it, revision = completionRevision) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() }, uuidFactory = { uuid(9) })
+        store.refreshCapabilities(); runCurrent()
+        store.refreshSavedMemoryCardsCapabilities(); runCurrent()
+        store.refreshSavedMemoryFollowupCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+        store.setDraft("Find saved memories")
+        assertTrue(store.sendTurn()); runCurrent()
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(8))); runCurrent()
+        assertEquals(AssistantSavedMemoryParent(uuid(9), 1), api.submittedMemoryParent)
+        assertTrue(store.setSavedMemoryFollowupDraft("what is the first saved memory about"))
+        assertEquals(AssistantSavedMemoryParent(uuid(8), 2), store.state.value.memoryFollowupDraftParent)
+        store.setDraft("A manually edited draft")
+        assertNull(store.state.value.memoryFollowupDraftParent)
+        assertTrue(store.sendTurn(uuid(10)))
+        runCurrent()
+        assertEquals(AssistantSavedMemoryParent(uuid(8), 2), api.submittedMemoryParent)
+        assertTrue(api.acceptSavedMemoryCardsSent)
+        assertNull(store.state.value.memoryFollowupDraftParent)
+    }
+
+    @Test fun memoryFollowupOmitsParentWithoutCapabilityForRecoveredTurnsAndAfterThreadChange() = runTest {
+        val api = FakeApi().apply { savedMemoryCardsAvailable = true }
+        val card = AssistantSavedMemoryCard("story", uuid(11), "2", "e".repeat(64), "Garden day", "Excerpt.")
+        var revision = 0L
+        var recovered = false
+        var memoryResult = true
+        api.submitHandler = { id, _, _ ->
+            revision++
+            AssistantWorkspaceTurn(1, id, uuid(9), AssistantWorkspaceRequestStatus.COMPLETED, revision,
+                recovered, null, if (memoryResult) AssistantTurn("memory_cards", "Found a memory.", null, null,
+                    emptyList(), 1, false, null, memoryCards = listOf(card), savedMemoryContext =
+                    AssistantSavedMemoryContext("family-a", "f".repeat(64), listOf(AssistantSavedMemoryReference(
+                        card.kind, card.id, card.revision, card.sourceRevision)))) else AssistantTurn("results",
+                    "No saved memories.", null, null, emptyList(), 0, false, null))
+        }
+        api.readHandler = { id -> detail(id, if (id == uuid(2)) 0 else revision) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() }, uuidFactory = { uuid(9) })
+        store.refreshCapabilities(); runCurrent()
+        store.refreshSavedMemoryCardsCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+
+        store.setDraft("Find saved memories")
+        assertTrue(store.sendTurn(uuid(7))); runCurrent()
+        api.savedMemoryFollowupAvailable = false
+        store.refreshSavedMemoryFollowupCapabilities(); runCurrent()
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(8))); runCurrent()
+        assertNull(api.submittedMemoryParent)
+
+        api.savedMemoryFollowupAvailable = true
+        store.refreshSavedMemoryFollowupCapabilities(); runCurrent()
+        recovered = true
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(10))); runCurrent()
+        assertEquals(AssistantSavedMemoryParent(uuid(8), 2), api.submittedMemoryParent)
+        assertTrue(store.state.value.currentTurn!!.recovered)
+        recovered = false
+        memoryResult = false
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(12))); runCurrent()
+        assertNull(api.submittedMemoryParent)
+
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(14))); runCurrent()
+        assertNull(api.submittedMemoryParent)
+        assertTrue(store.openThread(uuid(2))); runCurrent()
+        store.setDraft("what is the first saved memory about")
+        assertTrue(store.sendTurn(uuid(13))); runCurrent()
+        assertNull(api.submittedMemoryParent)
     }
 
     @Test fun readerHandoffMustStillBeCurrentAndCanOnlyBeConsumedOnce() = runTest {

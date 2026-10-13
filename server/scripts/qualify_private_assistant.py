@@ -544,6 +544,68 @@ def run(output):
                     memoir_title not in tts.calls[-1][0] and memoir['id'] not in tts.calls[-1][0],
                     'synthetic_memory_memoir_speech_failed')
 
+            phase = 'saved_memory_parented_followups'
+            followup_capability = client.get(
+                BASE + '/saved-memory-followup-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(followup_capability.status_code == 200 and
+                    followup_capability.json() == {'version': 1, 'available': True},
+                    'synthetic_saved_memory_followup_capability_failed')
+            followup_thread = client.post(BASE + '/threads', headers=_auth(TOKEN),
+                                          json={'library_id': LIBRARY})
+            _assert(followup_thread.status_code == 201,
+                    'synthetic_followup_thread_create_failed')
+            followup_thread_id = followup_thread.json()['thread']['thread_id']
+            followup_search_id = str(uuid.uuid4())
+            followup_search = client.post(f'{BASE}/threads/{followup_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': followup_search_id, 'expected_revision': 0,
+                    'text': 'find saved story amber', 'accepts': ['saved_memory_cards_v1']})
+            _assert(followup_search.status_code == 200 and
+                    [card['id'] for card in followup_search.json()['result']['memory_cards']] == [story['id']],
+                    'synthetic_followup_search_failed')
+            previous_id = followup_search_id
+            for expected_revision, words in ((1, 'introduce these memories'),
+                                              (2, 'what chapters does it have')):
+                request_id = str(uuid.uuid4())
+                response = client.post(f'{BASE}/threads/{followup_thread_id}/turns',
+                    headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                        'request_id': request_id, 'expected_revision': expected_revision,
+                        'text': words, 'accepts': ['saved_memory_cards_v1'],
+                        'memory_parent': {'request_id': previous_id, 'revision': expected_revision}})
+                _assert(response.status_code == 200, 'synthetic_memory_followup_failed')
+                result = response.json()['result']
+                _assert(result['kind'] == 'memory_cards' and result['total'] == 1 and
+                        result['has_more'] is False and result['effect'] is None and
+                        [card['id'] for card in result['memory_cards']] == [story['id']] and
+                        story_title not in result['reply'] and
+                        'A synthetic amber picnic beside the lake.' not in result['reply'],
+                        'synthetic_memory_followup_projection_invalid')
+                if expected_revision == 2:
+                    _assert(result['memory_cards'][0]['excerpt'].startswith('Chapters:\n1. '),
+                            'synthetic_memory_followup_outline_missing')
+                previous_id = request_id
+            followup_reader = client.get(
+                f'{BASE}/threads/{followup_thread_id}/requests/{previous_id}/memory-cards/0'
+                f'?library_id={LIBRARY}&expected_revision=3', headers=_auth(TOKEN))
+            _assert(followup_reader.status_code == 200 and
+                    followup_reader.json()['reader']['id'] == story['id'],
+                    'synthetic_memory_followup_reader_failed')
+            followup_recovery = client.get(
+                f'{BASE}/threads/{followup_thread_id}/requests/{previous_id}?library_id={LIBRARY}',
+                headers=_auth(TOKEN))
+            _assert(followup_recovery.status_code == 200 and
+                    followup_recovery.json()['recovered'] is True and
+                    'memory_cards' not in followup_recovery.json()['result'] and
+                    story_title not in followup_recovery.text,
+                    'synthetic_memory_followup_recovery_not_inert')
+            removed_followup_thread = client.request('DELETE',
+                f'{BASE}/threads/{followup_thread_id}', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'expected_revision': 3})
+            _assert(removed_followup_thread.status_code == 200 and
+                    removed_followup_thread.json()['deleted'] is True,
+                    'synthetic_followup_thread_cleanup_failed')
+
             phase = 'saved_memory_source_drift_during_speech'
             drift_request_id = str(uuid.uuid4())
             drift_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',

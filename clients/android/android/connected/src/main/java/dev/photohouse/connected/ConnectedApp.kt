@@ -154,6 +154,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (assistantOpen && !state.covered && state.session != null && privateAssistant != null) {
             if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
         }
     }
@@ -161,6 +162,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (privateAssistantOpen && privateAssistant != null) {
             if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemorySpeechCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshThreads()) {
@@ -708,6 +710,21 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 privateAssistant.openSavedMemoryCard(ordinal)
                             }
                         },
+                        onSavedMemoryFollowupDraft = { text ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val liveWorkspace = privateAssistant.state.value
+                            if (current() && privateAssistantState.savedMemoryFollowupAvailable &&
+                                renderedTurn?.status == AssistantWorkspaceRequestStatus.COMPLETED && !renderedTurn.recovered &&
+                                renderedTurn.result?.let { it.kind == "memory_cards" && it.memoryCards.isNotEmpty() &&
+                                    it.savedMemoryContext?.libraryId == privateAssistantState.libraryId } == true &&
+                                renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                                renderedTurn.revision == privateAssistantState.detail?.thread?.revision &&
+                                liveWorkspace.currentTurn == renderedTurn && liveWorkspace.detail?.thread == privateAssistantState.detail?.thread &&
+                                liveWorkspace.savedMemoryFollowupAvailable) {
+                                voice?.end?.invoke()
+                                privateAssistant.setSavedMemoryFollowupDraft(text)
+                            } else false
+                        },
                         onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
                             privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
                             privateAssistantOpen=false;assistantOpen=false;store.openAssetById(id)
@@ -749,6 +766,23 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                             assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false
                             privateAssistant?.openSavedMemoryCard(ordinal)
                         }
+                    },
+                    onSavedMemoryFollowupDraft = { text ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val rendered = privateAssistantState.savedMemoryCardsAvailable &&
+                            privateAssistantState.savedMemoryFollowupAvailable &&
+                            renderedTurn?.status == AssistantWorkspaceRequestStatus.COMPLETED && !renderedTurn.recovered &&
+                            renderedTurn.result?.let { it.kind == "memory_cards" && it.memoryCards.isNotEmpty() &&
+                                it.savedMemoryContext?.libraryId == privateAssistantState.libraryId } == true &&
+                            renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                            renderedTurn.revision == privateAssistantState.detail?.thread?.revision
+                        val liveWorkspace = privateAssistant?.state?.value
+                        if (assistantScopeCurrent() && rendered && liveWorkspace?.currentTurn == renderedTurn &&
+                            liveWorkspace?.detail?.thread == privateAssistantState.detail?.thread &&
+                            liveWorkspace?.savedMemoryFollowupAvailable == true) {
+                            voice?.end?.invoke()
+                            privateAssistant?.setSavedMemoryFollowupDraft(text) == true
+                        } else false
                     },
                     onPrivateConversations = if(privateAssistantState.capabilities?.let { it.available && it.threads } == true) ({
                         if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();

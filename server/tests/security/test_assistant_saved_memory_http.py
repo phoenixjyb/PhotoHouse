@@ -114,11 +114,13 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
         return response.json()['thread']
 
     def turn(self, thread_id, *, request_id=None, revision=0, text='find photos',
-             accepts=None, token=None):
+             accepts=None, token=None, memory_parent=None):
         body = {'library_id': 'family-a', 'request_id': request_id or new_id(),
                 'expected_revision': revision, 'text': text}
         if accepts is not None:
             body['accepts'] = accepts
+        if memory_parent is not None:
+            body['memory_parent'] = memory_parent
         return self.request('POST', f'/threads/{thread_id}/turns', body=body, token=token)
 
     def capabilities(self, *, token=None, path='/saved-memory-capabilities?library_id=family-a'):
@@ -145,6 +147,9 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(set(response.json()), {'version', 'available'})
         self.assertEqual(response.json(), {'version': 1, 'available': True})
+        followup = self.capabilities(path='/saved-memory-followup-capabilities?library_id=family-a')
+        self.assertEqual(followup.status_code, 200, followup.text)
+        self.assertEqual(followup.json(), {'version': 1, 'available': True})
         speech = self.request('GET', '/saved-memory-speech-capabilities?library_id=family-a')
         self.assertEqual(speech.json(), {'version': 1, 'available': True})
         self.app.state.assistant_reply_speech_enabled = False
@@ -238,6 +243,262 @@ class AssistantSavedMemoryHttpTests(unittest.TestCase):
         self.assertNotIn(memoir['id'], history.text)
         kinds = {item['type'] for exchange in history.json()['exchanges'] for item in exchange['cards']}
         self.assertTrue({'story', 'memoir'} <= kinds)
+
+    def test_followups_reuse_latest_ordered_cards_and_keep_source_text_transient(self):
+        stories = [
+            self.helper._save_story('A picnic memory', 'FIRST SOURCE NARRATION'),
+            self.helper._save_story('B picnic memory', 'SECOND SOURCE NARRATION'),
+            self.helper._save_story('C picnic memory', 'THIRD SOURCE NARRATION'),
+        ]
+        self.enable()
+        thread = self.thread()
+        search_id = new_id()
+        searched = self.turn(thread['thread_id'], request_id=search_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(searched.status_code, 200, searched.text)
+        initial = searched.json()['result']
+        ids = [card['id'] for card in initial['memory_cards']]
+        self.assertEqual(len(ids), 3)
+
+        overview_id = new_id()
+        overview = self.turn(thread['thread_id'], request_id=overview_id, revision=1,
+            text='introduce these memories', accepts=ACCEPTS,
+            memory_parent={'request_id': search_id, 'revision': 1})
+        self.assertEqual(overview.status_code, 200, overview.text)
+        overview_result = overview.json()['result']
+        self.assertEqual([card['id'] for card in overview_result['memory_cards']], ids)
+        self.assertEqual(overview_result['total'], len(ids))
+        self.assertFalse(overview_result['has_more'])
+        self.assertNotIn(stories[0]['title'], overview_result['reply'])
+
+        preview_id = new_id()
+        preview = self.turn(thread['thread_id'], request_id=preview_id, revision=2,
+            text='what is the second saved memory about', accepts=ACCEPTS,
+            memory_parent={'request_id': overview_id, 'revision': 2})
+        self.assertEqual(preview.status_code, 200, preview.text)
+        preview_result = preview.json()['result']
+        self.assertEqual([card['id'] for card in preview_result['memory_cards']], ids)
+        selected = preview_result['memory_cards'][1]
+        self.assertIn('SECOND SOURCE NARRATION', selected['excerpt'])
+        self.assertEqual(preview_result['memory_cards'][0]['id'], ids[0])
+        self.assertEqual(preview_result['memory_cards'][2]['id'], ids[2])
+
+        outline_id = new_id()
+        outline = self.turn(thread['thread_id'], request_id=outline_id, revision=3,
+            text='第二段回忆有哪些章节', accepts=ACCEPTS,
+            memory_parent={'request_id': preview_id, 'revision': 3})
+        self.assertEqual(outline.status_code, 200, outline.text)
+        outline_result = outline.json()['result']
+        self.assertEqual([card['id'] for card in outline_result['memory_cards']], ids)
+        self.assertIn('章节目录', outline_result['memory_cards'][1]['excerpt'])
+
+        with self.workspace.connection() as db:
+            summaries = db.execute('SELECT result_summary FROM turn_requests').fetchall()
+            replies = db.execute('SELECT reply FROM exchanges').fetchall()
+            contexts = db.execute('SELECT context_json FROM thread_context').fetchall()
+        persisted = json.dumps({
+            'summaries': [row['result_summary'] for row in summaries],
+            'replies': [row['reply'] for row in replies],
+            'contexts': [row['context_json'] for row in contexts],
+        }, ensure_ascii=False)
+        for source in ('A picnic memory', 'B picnic memory', 'C picnic memory',
+                       'FIRST SOURCE NARRATION', 'SECOND SOURCE NARRATION',
+                       'THIRD SOURCE NARRATION'):
+            self.assertNotIn(source, persisted)
+
+    def test_followup_requires_well_formed_parent_and_latest_exact_revision(self):
+        self.helper._save_story('One picnic memory', 'A source narration.')
+        self.enable()
+        thread = self.thread()
+        malformed = self.turn(thread['thread_id'], revision=0,
+            text='introduce these memories', accepts=ACCEPTS,
+            memory_parent={'request_id': new_id(), 'revision': True})
+        self.assertEqual(malformed.status_code, 400, malformed.text)
+        searched_id = new_id()
+        searched = self.turn(thread['thread_id'], request_id=searched_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(searched.status_code, 200, searched.text)
+        missing_negotiation = self.turn(thread['thread_id'], revision=1,
+            text='introduce these memories',
+            memory_parent={'request_id': searched_id, 'revision': 1})
+        self.assertEqual(missing_negotiation.status_code, 400, missing_negotiation.text)
+        self.assertEqual(self.workspace.get_thread(self.account, 'family-a',
+            thread['thread_id'])['thread']['revision'], 1)
+        followup_id = new_id()
+        followup_text = 'introduce these memories'
+        completed = self.turn(thread['thread_id'], request_id=followup_id, revision=1,
+            text=followup_text, accepts=ACCEPTS,
+            memory_parent={'request_id': searched_id, 'revision': 1})
+        self.assertEqual(completed.status_code, 200, completed.text)
+        recovered = self.turn(thread['thread_id'], request_id=followup_id, revision=1,
+            text=followup_text, memory_parent={'request_id': searched_id, 'revision': 1})
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertNotIn('memory_cards', recovered.json()['result'])
+        stale = self.turn(thread['thread_id'], revision=1,
+            text='introduce these memories', accepts=ACCEPTS,
+            memory_parent={'request_id': searched_id, 'revision': 2})
+        self.assertEqual(stale.status_code, 409, stale.text)
+        history = self.workspace.get_thread(self.account, 'family-a', thread['thread_id'])
+        self.assertEqual(history['thread']['revision'], 2)
+        self.assertEqual(len(history['exchanges']), 2)
+
+    def test_followup_locale_autodetects_chinese_and_honors_saved_override(self):
+        self.helper._save_story('One picnic memory', 'The original first chapter.')
+        self.enable()
+        self.assertIsNone(self.workspace.get_preferences(self.account)['locale'])
+        thread = self.thread()
+        search_id = new_id()
+        search = self.turn(thread['thread_id'], request_id=search_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(search.status_code, 200, search.text)
+        chinese_id = new_id()
+        chinese = self.turn(thread['thread_id'], request_id=chinese_id, revision=1,
+            text='第一段回忆讲了什么', accepts=ACCEPTS,
+            memory_parent={'request_id': search_id, 'revision': 1})
+        self.assertEqual(chinese.status_code, 200, chinese.text)
+        self.assertIn('原文摘录', chinese.json()['result']['reply'])
+
+        self.workspace.update_preferences(self.account, 0, {'locale': 'en'})
+        english_id = new_id()
+        english = self.turn(thread['thread_id'], request_id=english_id, revision=2,
+            text='有哪些章节', accepts=ACCEPTS,
+            memory_parent={'request_id': chinese_id, 'revision': 2})
+        self.assertEqual(english.status_code, 200, english.text)
+        self.assertIn('Chapter outline', english.json()['result']['reply'])
+
+    def test_parent_cohort_is_rechecked_after_source_validation_before_commit(self):
+        self.helper._save_story('One picnic memory', 'Original source narration.')
+        self.enable()
+        thread = self.thread()
+        parent_id = new_id()
+        search = self.turn(thread['thread_id'], request_id=parent_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(search.status_code, 200, search.text)
+        validator = workspace_transport._validate_memory_outcome
+
+        def mutate_parent_after_validation(*args):
+            result = validator(*args)
+            with self.workspace.connection() as db:
+                db.execute('UPDATE exchanges SET card_refs=? WHERE request_id=?',
+                           ('[]', parent_id))
+                db.commit()
+            return result
+
+        with patch.object(workspace_transport, '_validate_memory_outcome',
+                          side_effect=mutate_parent_after_validation):
+            followup = self.turn(thread['thread_id'], revision=1,
+                text='introduce these memories', accepts=ACCEPTS,
+                memory_parent={'request_id': parent_id, 'revision': 1})
+        self.assertEqual(followup.status_code, 409, followup.text)
+        state = self.workspace.get_thread(self.account, 'family-a', thread['thread_id'])
+        self.assertEqual(state['thread']['revision'], 1)
+        self.assertEqual(len(state['exchanges']), 1)
+
+    def test_unanchored_ambiguous_and_out_of_range_followups_clarify_without_borrowing(self):
+        for index in range(3):
+            self.helper._save_story(f'{index} picnic memory', f'Source narration {index}.')
+        self.enable()
+        thread = self.thread()
+        unanchored = self.turn(thread['thread_id'], text='introduce these memories',
+            accepts=ACCEPTS)
+        self.assertEqual(unanchored.status_code, 200, unanchored.text)
+        self.assertEqual(unanchored.json()['result']['kind'], 'clarification')
+        self.assertEqual(unanchored.json()['result']['memory_cards'], [])
+        self.assertIn('Search', unanchored.json()['result']['reply'])
+
+        search_id = new_id()
+        search = self.turn(thread['thread_id'], request_id=search_id, revision=1,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(search.status_code, 200, search.text)
+        self.assertEqual(len(search.json()['result']['memory_cards']), 3)
+        ambiguous = self.turn(thread['thread_id'], revision=2,
+            text='有哪些章节', accepts=ACCEPTS,
+            memory_parent={'request_id': search_id, 'revision': 2})
+        self.assertEqual(ambiguous.status_code, 200, ambiguous.text)
+        self.assertEqual(ambiguous.json()['result']['kind'], 'clarification')
+        self.assertEqual(ambiguous.json()['result']['memory_cards'], [])
+        self.assertNotIn('Source narration', ambiguous.text)
+
+        other_thread = self.thread()
+        other_search_id = new_id()
+        other_search = self.turn(other_thread['thread_id'], request_id=other_search_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(other_search.status_code, 200, other_search.text)
+        out_of_range = self.turn(other_thread['thread_id'], revision=1,
+            text='第4段回忆讲了什么', accepts=ACCEPTS,
+            memory_parent={'request_id': other_search_id, 'revision': 1})
+        self.assertEqual(out_of_range.status_code, 200, out_of_range.text)
+        self.assertEqual(out_of_range.json()['result']['kind'], 'clarification')
+        self.assertEqual(out_of_range.json()['result']['memory_cards'], [])
+        self.assertNotIn('Source narration', out_of_range.text)
+
+    def test_followup_tts_speaks_only_persisted_generic_reply(self):
+        self.helper._save_story('Private picnic source title', 'PRIVATE SOURCE NARRATION')
+        self.enable()
+        thread = self.thread()
+        source_id = new_id()
+        source = self.turn(thread['thread_id'], request_id=source_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(source.status_code, 200, source.text)
+        followup_id = new_id()
+        followup = self.turn(thread['thread_id'], request_id=followup_id, revision=1,
+            text='introduce these memories', accepts=ACCEPTS,
+            memory_parent={'request_id': source_id, 'revision': 1})
+        self.assertEqual(followup.status_code, 200, followup.text)
+        self.tts.calls.clear()
+        speech = self.request('POST',
+            f"/threads/{thread['thread_id']}/requests/{followup_id}/speech",
+            body={'library_id': 'family-a', 'expected_revision': 2},
+            headers={'X-PhotoHouse-Request-Id': new_id(),
+                     'X-PhotoHouse-Parent-Request-Id': followup_id})
+        self.assertEqual(speech.status_code, 200, speech.text)
+        self.assertEqual(self.tts.calls, [(followup.json()['result']['reply'], 'en')])
+        self.assertNotIn('PRIVATE SOURCE NARRATION', self.tts.calls[0][0])
+        self.assertNotIn('Private picnic source title', self.tts.calls[0][0])
+
+    def test_followup_source_change_is_rejected_and_old_anchor_is_ignored_by_fresh_search(self):
+        story = self.helper._save_story('Current picnic memory', 'Original source narration.')
+        self.enable()
+        thread = self.thread()
+        parent_id = new_id()
+        search = self.turn(thread['thread_id'], request_id=parent_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(search.status_code, 200, search.text)
+        body = self.helper.fixture.body()
+        body.update(revision='1', title='Edited picnic memory')
+        changed = self.helper.fixture.save(body, story['id'])
+        self.assertEqual(changed.status_code, 200, changed.text)
+        stale_followup = self.turn(thread['thread_id'], revision=1,
+            text='introduce these memories', accepts=ACCEPTS,
+            memory_parent={'request_id': parent_id, 'revision': 1})
+        self.assertEqual(stale_followup.status_code, 409, stale_followup.text)
+
+        refreshed_id = new_id()
+        refreshed = self.turn(thread['thread_id'], request_id=refreshed_id, revision=1,
+            text='find saved story edited', accepts=ACCEPTS,
+            memory_parent={'request_id': parent_id, 'revision': 1})
+        self.assertEqual(refreshed.status_code, 200, refreshed.text)
+        self.assertEqual(refreshed.json()['result']['memory_cards'][0]['title'],
+                         'Edited picnic memory')
+
+    def test_unexpected_reader_schema_failure_is_unavailable_not_hidden_as_missing(self):
+        self.helper._save_story('One picnic memory', 'Original source narration.')
+        self.enable()
+        thread = self.thread()
+        parent_id = new_id()
+        search = self.turn(thread['thread_id'], request_id=parent_id,
+            text='find saved story picnic', accepts=ACCEPTS)
+        self.assertEqual(search.status_code, 200, search.text)
+        with patch.object(AssistantMemoryDiscovery, 'read_reference',
+                          side_effect=ValueError('unexpected reader shape')):
+            followup = self.turn(thread['thread_id'], revision=1,
+                text='introduce these memories', accepts=ACCEPTS,
+                memory_parent={'request_id': parent_id, 'revision': 1})
+        self.assertEqual(followup.status_code, 503, followup.text)
+        self.assertNotIn('unexpected reader shape', followup.text)
+        state = self.workspace.get_thread(self.account, 'family-a', thread['thread_id'])
+        self.assertEqual(state['thread']['revision'], 1)
 
     def test_same_id_negotiation_replay_is_readback_even_when_feature_is_disabled(self):
         self._seed_story_and_memoir()

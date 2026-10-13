@@ -139,6 +139,15 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("/assistant/workspace/v1/saved-memory-capabilities?library_id=family-a", cardsProbe.path)
             assertProtected(cardsProbe)
 
+            f.server.enqueue(response("""{"version":1,"available":true}"""))
+            assertTrue(api.savedMemoryFollowupCapabilities(token, "family-a").available)
+            val followupProbe = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-followup-capabilities?library_id=family-a", followupProbe.path)
+            assertProtected(followupProbe)
+            f.server.enqueue(response("{}", 404))
+            assertFalse(api.savedMemoryFollowupCapabilities(token, "family-a").available)
+            f.server.takeRequest()
+
             f.server.enqueue(response("{}", 404))
             assertFalse(api.savedMemoryReaderCapabilities(token, "family-a").available)
             val readerProbe = f.server.takeRequest()
@@ -153,7 +162,21 @@ class HttpsAssistantWorkspaceApiTest {
             api.submitTurn(token, "family-a", thread, request, 0, "find saved story lake", null, true)
             val post = f.server.takeRequest()
             val body = Json.parseToJsonElement(post.body.readUtf8()).jsonObject
+            assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts"), body.keys)
             assertEquals(listOf("saved_memory_cards_v1"), body.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+
+            f.server.enqueue(response(envelope("completed", result()).replace(request, speechRequest)))
+            api.submitTurn(token, "family-a", thread, speechRequest, 1, "what is the first saved memory about", request, true,
+                AssistantSavedMemoryParent(request, 1))
+            val followup = f.server.takeRequest()
+            assertEquals("POST", followup.method)
+            assertProtected(followup)
+            assertEquals(request, followup.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            val followupBody = Json.parseToJsonElement(followup.body.readUtf8()).jsonObject
+            assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts", "memory_parent"), followupBody.keys)
+            assertEquals(setOf("request_id", "revision"), followupBody.getValue("memory_parent").jsonObject.keys)
+            assertEquals(request, followupBody.getValue("memory_parent").jsonObject.getValue("request_id").jsonPrimitive.content)
+            assertEquals("1", followupBody.getValue("memory_parent").jsonObject.getValue("revision").jsonPrimitive.content)
 
             f.server.enqueue(response("{}", 404))
             assertEquals(FailureKind.HTTP, runCatching {
@@ -165,6 +188,33 @@ class HttpsAssistantWorkspaceApiTest {
             assertProtected(reader)
             assertNull(reader.requestUrl!!.queryParameter("source_revision"))
             assertNull(reader.requestUrl!!.queryParameter("id"))
+        }
+    }
+
+    @Test fun legacyFollowup403RequiresSameScopeBaseCapabilityRevalidation() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":true,"preferences_applied":false,"server_owned_turns":true,"applied_preferences":[]}"""))
+            assertFalse(api.savedMemoryFollowupCapabilities(token, "family-a").available)
+            val followup = f.server.takeRequest()
+            val base = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-followup-capabilities?library_id=family-a", followup.path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", base.path)
+            assertProtected(followup); assertProtected(base)
+
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("{}", 401))
+            try {
+                api.savedMemoryFollowupCapabilities(token, "family-a")
+                fail("base authorization failure was hidden")
+            } catch (failure: ApiFailure) {
+                assertEquals(401, failure.status)
+            }
+            assertEquals("/assistant/workspace/v1/saved-memory-followup-capabilities?library_id=family-a", f.server.takeRequest().path)
+            val deniedBase = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", deniedBase.path)
+            assertProtected(deniedBase)
         }
     }
 

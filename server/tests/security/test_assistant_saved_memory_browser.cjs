@@ -7,7 +7,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_MODULE_PATH||'playwright-core');
 const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-saved-memory-assistant-'));
-fs.mkdirSync(artifacts,{recursive:true});console.log('ARTIFACTS_DIR '+artifacts);
+fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700);console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'../.venv/bin/python'),
   [path.join(__dirname,'assistant_saved_memory_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
 let serial=0,readyResolve,readyReject,fixtureInfo;const pending=new Map();
@@ -22,6 +22,7 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Saved-memory browser bri
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const requests=[],errors=[],external=[],checks=[];
 let probeMode='live',speechProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null;
+let followupProbeMode='live';
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const deferredGate=()=>{let arrive,release;const reached=new Promise(resolve=>{arrive=resolve;}),waiting=new Promise(resolve=>{release=resolve;});return {reached,arrive,release,waiting};};
@@ -31,6 +32,7 @@ const cards=()=>page.locator('#assistant-results .assistant-memory-card');
 const routeMemoryPath='/assistant/workspace/v1/saved-memory-capabilities';
 const routeMemorySpeechPath='/assistant/workspace/v1/saved-memory-speech-capabilities';
 const routeMemoryReaderPath='/assistant/workspace/v1/saved-memory-reader-capabilities';
+const routeMemoryFollowupPath='/assistant/workspace/v1/saved-memory-followup-capabilities';
 const readerCalls=()=>requests.filter(item=>item.method==='GET'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\//.test(item.path));
 const speechCalls=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/speech$/.test(item.path));
 async function installTransport(target){
@@ -49,6 +51,10 @@ async function installTransport(target){
       await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
     }
     if(item.method==='GET'&&url.pathname===routeMemoryReaderPath&&readerProbeMode==='missing'){
+      item.syntheticMissingProbe=true;item.status=404;
+      await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
+    }
+    if(item.method==='GET'&&url.pathname===routeMemoryFollowupPath&&followupProbeMode==='missing'){
       item.syntheticMissingProbe=true;item.status=404;
       await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
     }
@@ -100,6 +106,7 @@ const callCommand=async command=>{const response=await rpc({command});assert.equ
 const probeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryPath));
 const speechProbeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemorySpeechPath));
 const readerProbeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryReaderPath));
+const followupProbeReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryFollowupPath));
 const fakeTtsCalls=async()=>{const response=await rpc({command:'tts-calls'});assert.equal(response.ok,true);return response.calls;};
 async function waitForTurnCount(before){
   const deadline=Date.now()+10000;
@@ -177,6 +184,10 @@ async function reloadAndLogin(){
   while(!readerProbeReads().some(item=>item.response?.available===true)&&Date.now()<readerProbeDeadline)await page.waitForTimeout(20);
   const readerProbeEntry=readerProbeReads().find(item=>item.response?.available===true);
   assert(readerProbeEntry,'separate saved-memory full-reader probe reports available');
+  const followupProbeDeadline=Date.now()+10000;
+  while(!followupProbeReads().some(item=>item.response?.available===true)&&Date.now()<followupProbeDeadline)await page.waitForTimeout(20);
+  const followupProbeEntry=followupProbeReads().find(item=>item.response?.available===true);
+  assert(followupProbeEntry,'separate saved-memory followup probe reports available');
   const policyCard=page.locator('#saved-memory-list article').filter({hasText:'来源审阅回忆录重开检查'});
   await policyCard.waitFor({state:'visible',timeout:10000});
   await policyCard.locator('.saved-memory-copy button').click();
@@ -192,7 +203,8 @@ async function reloadAndLogin(){
   const preferencesEntry=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/preferences?'));
   assert(baseEntry&&listEntry&&preferencesEntry&&probeEntry&&requests.indexOf(baseEntry)<requests.indexOf(listEntry)&&
     requests.indexOf(listEntry)<requests.indexOf(preferencesEntry)&&requests.indexOf(preferencesEntry)<requests.indexOf(probeEntry)&&
-    requests.indexOf(probeEntry)<requests.indexOf(speechProbeEntry)&&requests.indexOf(speechProbeEntry)<requests.indexOf(readerProbeEntry),
+    requests.indexOf(probeEntry)<requests.indexOf(speechProbeEntry)&&requests.indexOf(speechProbeEntry)<requests.indexOf(readerProbeEntry)&&
+    requests.indexOf(readerProbeEntry)<requests.indexOf(followupProbeEntry),
     'optional probes follow base capabilities, list and preferences for the current library');
   pass('Member workspace reads a separate current-library saved-memory probe without changing base capabilities');
 
@@ -206,11 +218,14 @@ async function reloadAndLogin(){
   const storyTurn=await submit(storyQuery);
   await cards().waitFor({state:'visible',timeout:10000});
   const storyCard=cards().first();
+  await storyCard.screenshot({path:path.join(artifacts,'assistant-saved-memory-card-desktop-zh.png')});
+  await page.screenshot({path:path.join(artifacts,'assistant-saved-memory-desktop-zh.png'),fullPage:true});
   assert.equal(await cards().count(),1,'kind-filtered story command renders exactly its matching story');
   assert.equal(await storyCard.locator('.assistant-memory-kind').innerText(),'已保存的故事');
   assert.equal(await storyCard.locator('h3').innerText(),fixtureInfo.story_title);
   assert.equal(await storyCard.locator('.assistant-memory-excerpt').innerText(),fixtureInfo.story_excerpt);
-  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),1,'only the explicit full-reader action is interactive');
+  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),3,'the card exposes only the explicit reader and two draft-only followups');
+  assert.equal(await storyCard.locator('.assistant-memory-followup').count(),2,'ordinal followup chips are attached to the current source card');
   assert.match(await storyCard.locator('.assistant-memory-open').innerText(),/打开已保存的故事|Open saved story/);
   assert.equal(await page.evaluate(()=>window.__savedMemoryXss),0,'hostile source text executes no markup');
   assert.equal(storyTurn.body&&JSON.parse(storyTurn.body).text,storyQuery,'fresh story request is recorded');
@@ -296,6 +311,39 @@ async function reloadAndLogin(){
   await page.locator('#story-reader-close').click();await page.locator('#story-reader').waitFor({state:'hidden'});
   await page.locator('#memory-assistant').click();await page.locator('#assistant-private').waitFor({state:'visible',timeout:10000});
 
+  // Draft chips stay local until Send. The overview, outline and preview each
+  // advance the revision while retaining the exact visible source cohort.
+  const beforeAllStories=turns().length,allStories=await submit('搜索故事 双故事');
+  assert.equal(cards().count?await cards().count():0,allStories.response.result.memory_cards.length);
+  assert(allStories.response.result.memory_cards.length>=2,`unfiltered story search exposes the second saved memory: ${JSON.stringify(allStories.response.result)}`);
+  const displayedIds=allStories.response.result.memory_cards.map(card=>card.id),allStoriesParent=JSON.parse(allStories.body);
+  const overviewChip=page.locator('.assistant-memory-followups .assistant-memory-followup').first();
+  await overviewChip.click();
+  assert.equal(turns().length,beforeAllStories+1,'overview tap fills a draft without sending');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'介绍这些回忆');
+  const overview=await submit('介绍这些回忆');
+  assert.deepEqual(JSON.parse(overview.body).memory_parent,{request_id:allStoriesParent.request_id,revision:allStories.response.revision});
+  assert.deepEqual(overview.response.result.memory_cards.map(card=>card.id),displayedIds,'overview retains the complete current display cohort');
+  assert.equal(overview.response.result.kind,'memory_cards');assert(overview.response.revision>allStories.response.revision);
+  const secondCard=cards().nth(1),outlineChip=secondCard.locator('.assistant-memory-followup').nth(1);
+  await outlineChip.click();assert.equal(await page.locator('#assistant-text').inputValue(),'第2段回忆有哪些章节');
+  const beforeOutline=turns().length;assert.equal(beforeOutline,beforeAllStories+2,'outline tap remains draft-only');
+  const outline=await submit('第2段回忆有哪些章节');
+  assert.deepEqual(JSON.parse(outline.body).memory_parent,{request_id:JSON.parse(overview.body).request_id,revision:overview.response.revision});
+  assert.deepEqual(outline.response.result.memory_cards.map(card=>card.id),displayedIds);
+  assert(outline.response.revision>overview.response.revision);assert.match(outline.response.result.memory_cards[1].excerpt,/章节目录|Chapters:/);
+  const previewChip=cards().nth(1).locator('.assistant-memory-followup').first();await previewChip.click();
+  assert.equal(await page.locator('#assistant-text').inputValue(),'第2段回忆讲了什么');
+  const preview=await submit('第2段回忆讲了什么');
+  assert.deepEqual(JSON.parse(preview.body).memory_parent,{request_id:JSON.parse(outline.body).request_id,revision:outline.response.revision});
+  assert.deepEqual(preview.response.result.memory_cards.map(card=>card.id),displayedIds);
+  assert(preview.response.revision>outline.response.revision);assert.equal(preview.response.result.memory_cards.length,displayedIds.length);
+  assert.match(preview.response.result.memory_cards[1].excerpt,/双故事/,'preview refreshes its excerpt from the current source');
+  const ambiguous=await submit('第3段回忆有哪些章节');
+  assert.deepEqual(JSON.parse(ambiguous.body).memory_parent,{request_id:JSON.parse(preview.body).request_id,revision:preview.response.revision});
+  assert.equal(ambiguous.response.result.kind,'clarification');assert.deepEqual(ambiguous.response.result.memory_cards,[],'out-of-range ordinal is refused without inventing a source');
+  pass('Saved-memory chips only draft; overview, second outline, preview and refusal use the exact latest source revision');
+
   // A memoir-specific command proves the kind filter and the accessible card
   // layout at a phone-equivalent width and 150% font size.
   await page.setViewportSize({width:390,height:844});
@@ -308,7 +356,7 @@ async function reloadAndLogin(){
   assert.equal(await memoirCard.locator('.assistant-memory-kind').innerText(),'已保存的回忆录');
   assert.equal(await memoirCard.locator('h3').innerText(),fixtureInfo.memoir_title);
   assert.equal(await memoirCard.locator('.assistant-memory-excerpt').innerText(),'野餐之后，我们记下了家人一起度过的时光。');
-  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),1);
+  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),3);
   assert.match(await memoirCard.locator('.assistant-memory-open').innerText(),/打开回忆录|Open memoir/);
   assert(await memoirCard.locator('.assistant-memory-open').isVisible(),'explicit memoir reader action is visible on the card');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'390px page has no horizontal overflow at 150% font size');
@@ -422,7 +470,22 @@ async function reloadAndLogin(){
   assert.equal(JSON.parse(readerFallbackTurn.body).accepts?.[0],'saved_memory_cards_v1');
   pass('Missing optional reader capability preserves cards and the legacy handoff boundary');
 
-  await callCommand('reply-speech-on');readerProbeMode='live';speechProbeMode='live';await reloadAndLogin();
+  followupProbeMode='missing';readerProbeMode='live';speechProbeMode='live';await reloadAndLogin();
+  const followupFallbackDeadline=Date.now()+10000;
+  while(!followupProbeReads().some(item=>item.syntheticMissingProbe)&&Date.now()<followupFallbackDeadline)await page.waitForTimeout(20);
+  assert(followupProbeReads().some(item=>item.syntheticMissingProbe),'old server followup probe returns its simulated 404');
+  assert(readerProbeReads().some(item=>item.response?.available===true),'reader capability remains available without followup capability');
+  assert(speechProbeReads().some(item=>item.response?.available===true),'reply speech capability remains available without followup capability');
+  await ensureThread();const noFollowupTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  const oldShapeBody=JSON.parse(noFollowupTurn.body);
+  assert.deepEqual(Object.keys(oldShapeBody).sort(),['accepts','expected_revision','library_id','request_id','text']);
+  assert.equal(await cards().count(),1,'missing followup route preserves memory cards');
+  assert.equal(await cards().first().locator('.assistant-memory-open').count(),1,'missing followup route preserves the full reader');
+  assert(await page.locator('#assistant-play').isVisible(),'missing followup route preserves explicit reply speech');
+  assert.equal(await cards().first().locator('.assistant-memory-followup').count(),0,'old server exposes no followup chips');
+  pass('Missing optional followup probe preserves the prior turn body, cards, reader and speech');
+
+  await callCommand('reply-speech-on');readerProbeMode='live';speechProbeMode='live';followupProbeMode='live';await reloadAndLogin();
   const liveReaderDeadline=Date.now()+10000;
   while(!readerProbeReads().some(item=>item.response?.available===true)&&Date.now()<liveReaderDeadline)await page.waitForTimeout(20);
   await ensureThread();const scopeTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
@@ -445,6 +508,7 @@ async function reloadAndLogin(){
   console.log(`CHECKPOINTS ${checks.length}`);
 })().catch(async error=>{console.error(error.stack||error);if(page)try{console.error('BROWSER_STATE',JSON.stringify({url:page.url(),errors,authVisible:await page.locator('#auth').isVisible(),assetCount:await page.locator('#grid .asset').count()}));}catch{}process.exitCode=1;}).finally(async()=>{
   try{await page?.close();await context?.close();await browser?.close();}catch{}
+  try{for(const name of fs.readdirSync(artifacts)){const item=path.join(artifacts,name);if(fs.statSync(item).isFile())fs.chmodSync(item,0o600);}fs.chmodSync(artifacts,0o700);}catch{}
   try{bridge.stdin.write('{"command":"quit"}\n');bridge.stdin.end();}catch{}
   if(bridge.exitCode===null)bridge.kill();
 });

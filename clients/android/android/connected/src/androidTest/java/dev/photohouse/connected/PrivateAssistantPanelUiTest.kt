@@ -44,6 +44,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 /** Synthetic private workspace UI. No store, network, recorder, or inference provider is used. */
 @RunWith(AndroidJUnit4::class)
@@ -100,6 +101,7 @@ class PrivateAssistantPanelUiTest {
         threadLabel: String? = null,
         historyRefreshRequired: Boolean = false,
         includeFreshMemoryCard: Boolean = false,
+        includeMemoryFollowup: Boolean = false,
     ): AssistantWorkspaceState {
         val detailRevision = (exchanges.maxOfOrNull { it.revision } ?: 0L) + if (pending) 1 else 0
         val detailThread = thread(exchanges.size + if (pending) 1 else 0, detailRevision, threadLabel)
@@ -123,6 +125,7 @@ class PrivateAssistantPanelUiTest {
             continuationEnabled = assistantCapabilities.serverOwnedTurns,
             historyRefreshRequired = historyRefreshRequired,
             savedMemoryCardsAvailable = includeFreshMemoryCard,
+            savedMemoryFollowupAvailable = includeMemoryFollowup,
             currentTurn = if (includeFreshMemoryCard) {
                 val card = AssistantSavedMemoryCard("story", "123e4567-e89b-42d3-a456-426614174103", "2",
                     "a".repeat(64), "Garden day", "The family walked beside the lake and shared a picnic.")
@@ -140,6 +143,7 @@ class PrivateAssistantPanelUiTest {
         val locales = mutableListOf<String?>()
         val openedAssets = mutableListOf<String>()
         val openedMemoryCards = mutableListOf<Int>()
+        val memoryFollowupDrafts = mutableListOf<String>()
         var sends = 0
         var recoveries = 0
         var deletes = 0
@@ -190,6 +194,7 @@ class PrivateAssistantPanelUiTest {
                         onDismiss = { callbacks.dismissals++ },
                         onOpenAsset = { callbacks.openedAssets += it },
                         onOpenSavedMemoryCard = { callbacks.openedMemoryCards += it },
+                        onSavedMemoryFollowupDraft = { callbacks.memoryFollowupDrafts += it; true },
                         onAbandonPending = onAbandonPending,
                         onContinueVoice = onContinueVoice,
                         onContinueText = onContinueText,
@@ -209,6 +214,13 @@ class PrivateAssistantPanelUiTest {
         rule.waitForIdle()
     }
 
+    private fun saveMemoryFollowupScreenshot(name: String) {
+        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+        val file = File(rule.activity.cacheDir, name)
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
+
     @Test
     fun freshSavedMemoryCardHasExplicitLocalizedOpenActionAtLargeText() {
         val uiState = mutableStateOf(state(includeFreshMemoryCard = true))
@@ -226,6 +238,43 @@ class PrivateAssistantPanelUiTest {
         rule.onNodeWithTag("private-assistant-memory-error-0").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("private-assistant-memory-retry-0").performScrollTo().assertIsEnabled().performClick()
         assertEquals(listOf(0, 0), callbacks.openedMemoryCards)
+    }
+
+    @Test fun freshSavedMemoryCardShowsLocalizedFollowupChipsAndPreservesOrdinal() {
+        val uiState = mutableStateOf(state(includeFreshMemoryCard = true, includeMemoryFollowup = true))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, fontScale = 1.5f)
+        rule.onNodeWithTag("private-assistant-memory-followup-all").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-memory-followup-0-0").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(listOf("第1段回忆讲了什么"), callbacks.memoryFollowupDrafts)
+        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(listOf("第1段回忆讲了什么", "第1段回忆有哪些章节"), callbacks.memoryFollowupDrafts)
+        rule.onNodeWithText("已保存故事 · 第1段").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun followupChipsStayHiddenWithoutFreshCapabilityOrForRecoveredMemory() {
+        val uiState = mutableStateOf(state(includeFreshMemoryCard = true))
+        show(uiState, zh = true, Callbacks(), fontScale = 1.5f)
+        rule.onNodeWithTag("private-assistant-memory-followup-all").assertDoesNotExist()
+        uiState.value = state(includeFreshMemoryCard = true, includeMemoryFollowup = true).copy(
+            currentTurn = state(includeFreshMemoryCard = true, includeMemoryFollowup = true).currentTurn?.copy(recovered = true))
+        rule.waitForIdle()
+        rule.onNodeWithTag("private-assistant-memory-followup-all").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-memory-cards").assertDoesNotExist()
+    }
+
+    @Test fun captureFreshCardFollowupScreenshotZhAtLargeText() {
+        show(mutableStateOf(state(includeFreshMemoryCard = true, includeMemoryFollowup = true)), zh = true,
+            callbacks = Callbacks(), fontScale = 1.5f)
+        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed()
+        saveMemoryFollowupScreenshot("saved-memory-followup-zh.png")
+    }
+
+    @Test fun captureFreshCardFollowupScreenshotEnAtLargeText() {
+        show(mutableStateOf(state(includeFreshMemoryCard = true, includeMemoryFollowup = true)), zh = false,
+            callbacks = Callbacks(), fontScale = 1.5f)
+        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed()
+        saveMemoryFollowupScreenshot("saved-memory-followup-en.png")
     }
 
     private fun openManagement() {

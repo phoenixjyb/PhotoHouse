@@ -82,7 +82,7 @@ if preview.status_code != 200:
     raise RuntimeError('Could not seed synthetic saved story')
 draft = preview.json()
 draft['chapters'][0]['narration'] = (
-    '野餐时，全家在湖边散步，留下了这段合成回忆。'
+    '野餐时，全家在湖边散步，留下了这段双故事合成回忆。'
     '<img src=x onerror=window.__savedMemoryXss=2>'
 )
 story_body = {
@@ -101,7 +101,7 @@ story_id = saved_story.json()['id']
 profiled_chapters = [chapter | {
     'asset_ids': list(chapter.get('asset_ids') or [item['id'] for item in draft['items']]),
     'evidence_ids': [],
-    'narration': '来源审阅策略检查内容，仅用于现有故事阅读器重开。',
+    'narration': '双故事来源审阅策略检查内容，仅用于现有故事阅读器重开。',
 } for chapter in draft['chapters']]
 profiled_body = story_body | {
     'title': '来源审阅回忆录重开检查',

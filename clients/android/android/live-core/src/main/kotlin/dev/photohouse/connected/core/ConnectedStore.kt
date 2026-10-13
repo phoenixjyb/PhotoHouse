@@ -5119,7 +5119,8 @@ class ConnectedStore(
         val requestId = UUID.randomUUID().toString()
         val pending = AssistantPendingTurn(identity?.account_id ?: return false, current.library, current.generation,
             text, null, current.confirmedTranscriptRequestId, requestId)
-        coordinator.setDraft(text)
+        val workspaceDraft = coordinator.state.value
+        if (workspaceDraft.memoryFollowupDraftParent == null || workspaceDraft.draft != text) coordinator.setDraft(text)
         if (!coordinator.sendTurn(requestId, pending.parentRequestId)) return false
         current.speechAudio?.close()
         assistantSpeechRequest++

@@ -61,6 +61,31 @@ class ConnectedPrivateAssistantVoiceTest {
         fixture.driver.close()
     }
 
+    @Test fun spokenFollowupAfterFreshSavedMemorySearchCarriesMemoryParent() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemoryFollowupAvailable = true
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemoryFollowupCapabilities()); runCurrent()
+        fixture.workspaceApi.resultFactory = ::savedMemoryResult
+        assertTrue(fixture.store.sendAssistantText("Find saved memories")); runCurrent()
+        val memoryRequest = fixture.workspaceApi.requestIds.last()
+        val memoryRevision = fixture.workspaceApi.revision
+
+        fixture.photoApi.transcriptText = "what is the first saved memory about"
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(2, fixture.workspaceApi.submitCalls)
+        assertEquals(memoryRequest, fixture.workspaceApi.memoryParents.last()?.requestId)
+        assertEquals(memoryRevision, fixture.workspaceApi.memoryParents.last()?.revision)
+        assertEquals(fixture.photoApi.transcriptionIds.single(), fixture.workspaceApi.parentIds.last())
+        assertEquals(fixture.photoApi.transcriptionTexts.single(), fixture.workspaceApi.texts.last())
+        fixture.driver.close()
+    }
+
     @Test fun recoveredPrivateTurnPausesBeforeSpeechNavigationOrRelistening() = runTest {
         val fixture = fixture(activatePrivate = true, replySpeech = true)
         fixture.workspaceApi.submitHandler = { _, _, _, _ -> throw ApiFailure(FailureKind.OFFLINE) }
@@ -640,10 +665,11 @@ class ConnectedPrivateAssistantVoiceTest {
         var speechCalls = 0
         val transcriptionIds = mutableListOf<String>()
         val transcriptionTexts = mutableListOf<String>()
+        var transcriptText = "find the beach"
         override suspend fun assistantCapabilities(token: Bearer, library: String) = AssistantCapabilities(true, true, true, true, 30)
         override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
             transcriptionIds += requestId
-            val transcript = "find the beach"
+            val transcript = transcriptText
             transcriptionTexts += transcript
             return AssistantTranscript(transcript, "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
         }
@@ -686,11 +712,14 @@ class ConnectedPrivateAssistantVoiceTest {
         val requestIds = mutableListOf<String>()
         val parentIds = mutableListOf<String?>()
         val texts = mutableListOf<String>()
+        val memoryParents = mutableListOf<AssistantSavedMemoryParent?>()
         val speechThreadIds = mutableListOf<String>()
         val speechTurnIds = mutableListOf<String>()
         val speechRevisions = mutableListOf<Long>()
         val speechRequestIds = mutableListOf<String>()
         var resultFactory: (String) -> AssistantTurn = ::result
+        var savedMemoryCardsAvailable = false
+        var savedMemoryFollowupAvailable = false
         var speechHandler: suspend (String, String, String, Long, String) -> AssistantSpeechResult =
             { _, _, _, _, request -> AssistantSpeechResult(syntheticAnnotationWav(), AssistantRequestReceipt(request, "enabled", "succeeded")) }
         var submitHandler: suspend (String, String, Long, String) -> AssistantWorkspaceTurn = { id, request, expected, _ ->
@@ -712,9 +741,16 @@ class ConnectedPrivateAssistantVoiceTest {
             submitTurn(token, library, threadId, requestId, expectedRevision, text, null)
         override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                         expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn {
+            return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId, false, null)
+        }
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?,
+                                        acceptSavedMemoryCards: Boolean,
+                                        memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn {
             submitCalls++
             requestIds += requestId
             parentIds += parentRequestId
+            memoryParents += memoryParent
             texts += text
             return submitHandler(threadId, requestId, expectedRevision, text)
         }
@@ -732,6 +768,10 @@ class ConnectedPrivateAssistantVoiceTest {
             speechRequestIds += speechRequestId
             return speechHandler(library, threadId, turnId, expectedRevision, speechRequestId)
         }
+        override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemoryCardsAvailable)
+        override suspend fun savedMemoryFollowupCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemoryFollowupAvailable)
 
         fun completed(id: String, request: String, resultRevision: Long, recovered: Boolean) = AssistantWorkspaceTurn(
             version = 1, threadId = id, requestId = request, status = AssistantWorkspaceRequestStatus.COMPLETED,
@@ -751,6 +791,15 @@ class ConnectedPrivateAssistantVoiceTest {
             items = listOf(testAsset()), total = 1, hasMore = false, effect = null,
             receipt = AssistantRequestReceipt(requestId, "enabled", "succeeded"),
         )
+
+        private fun savedMemoryResult(requestId: String): AssistantTurn {
+            val card = AssistantSavedMemoryCard("story", "33333333-3333-4333-8333-333333333333", "2",
+                "e".repeat(64), "Garden day", "A short excerpt.")
+            return AssistantTurn("memory_cards", "Found a memory.", null, null, emptyList(), 1, false, null,
+                receipt = AssistantRequestReceipt(requestId, "enabled", "succeeded"), memoryCards = listOf(card),
+                savedMemoryContext = AssistantSavedMemoryContext("family", "f".repeat(64), listOf(
+                    AssistantSavedMemoryReference(card.kind, card.id, card.revision, card.sourceRevision))))
+        }
 
         private fun serverReply(requestId: String, kind: String, reply: String,
                                 noResults: Boolean = false) = AssistantTurn(

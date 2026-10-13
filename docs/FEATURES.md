@@ -1,17 +1,28 @@
 # Feature and acceptance matrix
 
-## Next local source: assistant saved-memory reading
+## Next local source: saved-memory conversational followups
 
-The [saved-memory handoff](ASSISTANT_SAVED_MEMORY_CARDS_V1.md#reader-handoff)
-connects current search cards to full stories and memoir readers on Web and
-phone. Search, reader and speech probes remain separate; explicit Open stops
-voice before a revision-bound read. Current permissions and story/child evidence
-are rechecked. Historical replies remain inert. Chinese searches also accept
-“找回忆录”, “搜索回忆录” and “找故事”.
+[Followups](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md) let current saved-memory results
+answer “介绍这些回忆”, “第二段回忆讲了什么” and “有哪些章节”. Web and phone
+show ordered source cards and draft-only suggestions. Typed and foreground voice
+requests bind the same current completed result; old history stays inert.
+Source wording is transient, generic replies retain the existing private policy,
+and no model or schema change is introduced. Phone v56 identity is reserved.
 
-This source is outside phone v54 and its API release. Next delivery gate: fixed
-candidate build, native synthetic qualification, guarded API/Web switch and
-original-certificate phone publication. Owner device testing remains separate.
+This source is outside published v55. Next delivery gate: fixed package/native
+qualification, API/Web switch and original-certificate phone publication, followed
+by family voice/reader acceptance. Later work: richer grounded conversational
+narration and evidence-backed story quality, with separately qualified providers.
+
+## October 13 saved-memory reader delivery
+
+API/Web source `c65528a` is served and phone v55 is published on Windows HTTPS
+OTA with the original icon and certificate. Fresh search cards explicitly open
+protected story/memoir readers after stopping voice and revalidating sources.
+Native qualification, backup, eight running tasks, preserved ASR/TTS/OCR and
+complete APK verification passed. TV remains v30. See the
+[delivery record](../clients/android/docs/PHONE_V55_RELEASE_2026-10-13.md).
+Physical owner/member and phone voice acceptance remain open.
 
 ## October 13 voice presence delivery
 

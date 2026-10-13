@@ -177,6 +177,7 @@ class ClosedBoundary:
         if (method, path) in {
                 ('GET', '/assistant/workspace/v1/capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
                 ('GET', '/assistant/workspace/v1/threads'),

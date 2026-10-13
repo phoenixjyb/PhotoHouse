@@ -539,13 +539,30 @@ current story/memoir source before and after synthesis. Web shows scoped immutab
 text cards without media hydration. A separate optional speech probe enables
 their short generic replies; original card and base probes remain compatible.
 Late responses and audio are fenced on feature loss, and playback stops before
-another foreground capture can start. The next local source adds phone cards and explicit Web/phone reader navigation.
+another foreground capture can start. Phone cards and explicit Web/phone reader navigation were delivered in v55.
 A separate optional reader probe preserves search compatibility. The ordinal GET
 resolves stored completed-turn references, revalidates current source digests and
 owner/revision chains, and returns existing reader detail. Clients stop foreground
 voice before a tap-triggered read and fence late handoffs by scope and fresh turn.
-This implementation is outside the published v54 package. The
+The published v55 source is `c65528a`. The
 [saved-memory card contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) requires separate
 feature negotiation, current-source revalidation and explicit reader handoff.
 Recovered history remains non-actionable. No inference, automatic story mutation
 or background propagation is performed.
+
+
+## Saved-memory conversational followups
+
+The [followup contract](ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md) adds a separate
+optional probe and a request/revision parent anchor to existing opted-in turns.
+Clients bind fresh displayed cards, regardless of typed, suggested or spoken
+input. The server owns and rechecks the latest completed parent, rehydrates
+current authorized source readers and returns the same ordered card grammar.
+No client source context grants authority. Outline and original-excerpt views
+remain bounded; history/recovery is generic and cannot restore actions.
+
+This local source is outside the published v55 API/phone. No provider, schema,
+retention or story mutation is added. Draft suggestions end foreground voice;
+explicit sends and reader opening keep their existing controls. Optional-probe
+403 fallback rechecks the base capability, so older closed routes remain
+compatible without ignoring a current authorization failure.

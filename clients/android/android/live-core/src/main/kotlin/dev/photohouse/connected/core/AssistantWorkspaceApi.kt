@@ -83,6 +83,7 @@ data class AssistantWorkspaceTurn(
 data class AssistantWorkspaceDeletedThread(val threadId: String, val deleted: Boolean)
 
 data class SavedMemoryReaderCapabilities(val version: Int, val available: Boolean)
+data class AssistantSavedMemoryParent(val requestId: String, val revision: Long)
 sealed interface SavedMemoryReaderPayload {
     data class Story(val value: SavedMemoryStory) : SavedMemoryReaderPayload
     data class Memoir(val value: MemoryBook) : SavedMemoryReaderPayload
@@ -123,6 +124,11 @@ interface AssistantWorkspaceApi {
                            expectedRevision: Long, text: String, parentRequestId: String?,
                            acceptSavedMemoryCards: Boolean): AssistantWorkspaceTurn =
         submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId)
+    /** New opt-in contract; old adapters keep their original request bytes and behavior. */
+    suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                           expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                           memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn =
+        submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId, acceptSavedMemoryCards)
     suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Synthesizes only the server-owned reply for an exact completed private turn. */
     suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
@@ -133,6 +139,8 @@ interface AssistantWorkspaceApi {
         SavedMemoryReaderCapabilities(1, false)
     /** Older servers/adapters keep the new search result disabled unless this exact probe is available. */
     suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
+        SavedMemoryReaderCapabilities(1, false)
+    suspend fun savedMemoryFollowupCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
     suspend fun savedMemorySpeechCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
