@@ -32,6 +32,8 @@ MAX_BODY = 2048
 MAX_QUERY = 1024
 MAX_REVISION = (1 << 63) - 2
 MAX_RESPONSE_BYTES = 240 * 1024
+MAX_MEMORY_READER_RESPONSE_BYTES = 1024 * 1024
+MAX_MEMORY_READER_ORDINAL = 11
 
 
 class WorkspaceInvalid(ValueError):
@@ -437,6 +439,66 @@ def _memory_readers_available(access, token, library):
         reader.books.list(token, library, 1)
 
 
+def _saved_memory_reader(access, token, library, reference):
+    """Resolve one opaque stored card to its current authorized detail."""
+    if (type(reference) is not dict or
+            set(reference) != {'type', 'id', 'revision', 'fingerprint'} or
+            reference.get('type') not in {'story', 'memoir'} or
+            type(reference.get('id')) is not str or
+            type(reference.get('revision')) is not str or
+            type(reference.get('fingerprint')) is not str or
+            reference['revision'] != reference['fingerprint'] or
+            re.fullmatch(r'[0-9a-f]{64}', reference['revision']) is None):
+        raise WorkspaceStoreMissing()
+    try:
+        ident = _thread_id(reference['id'])
+    except WorkspaceInvalid:
+        raise WorkspaceStoreMissing() from None
+
+    with access.connection_factory() as connection:
+        domain = AccessService(connection, clock=access.clock,
+                               memory_groups_enabled=access.memory_groups_enabled)
+        domain.library_principal(token, library)
+        try:
+            source_version = connection.execute('PRAGMA data_version').fetchone()[0]
+            reader = AssistantMemoryDiscovery(domain)
+            source_type = reference['type']
+            detail_reader = reader.stories if source_type == 'story' else reader.books
+            # Stored assistant refs intentionally retain only the source digest.
+            # Discover the current numeric revision through the authorized reader.
+            detail = detail_reader.get(token, library, ident)
+            current_revision = detail.get('revision')
+            if (type(current_revision) is not str or
+                    re.fullmatch(r'[1-9][0-9]{0,18}', current_revision) is None or
+                    int(current_revision) > MAX_REVISION):
+                raise WorkspaceStoreMissing()
+            payload = reader.read_reference(token, library, source_type, ident,
+                                            current_revision, reference['revision'])
+            if connection.execute('PRAGMA data_version').fetchone()[0] != source_version:
+                raise TransportError(409, 'Saved memory changed; refresh before reading')
+        except AccessDenied:
+            # Missing, moved, withdrawn and foreign source objects share one
+            # opaque response at this transport boundary.
+            raise WorkspaceStoreMissing() from None
+        except TransportError as exc:
+            if exc.status in (400, 401, 403, 404):
+                raise WorkspaceStoreMissing() from None
+            raise
+
+    envelope = {'version': 1, 'kind': source_type, 'reader': payload}
+    if _json_size(envelope) > MAX_MEMORY_READER_RESPONSE_BYTES:
+        raise WorkspaceStoreUnavailable()
+    return envelope
+
+
+def _reader_expected_revision(value):
+    if (type(value) is not str or
+            re.fullmatch(r'[1-9][0-9]{0,18}', value) is None or
+            int(value) > MAX_REVISION):
+        raise WorkspaceInvalid()
+    return int(value)
+
+
 @router.get('/assistant/workspace/v1/saved-memory-capabilities')
 async def saved_memory_capabilities(request: Request):
     query = _query(request, {'library_id'}, {'library_id'})
@@ -458,6 +520,92 @@ async def saved_memory_capabilities(request: Request):
     if await _principal(request, library) != account:
         raise AccessDenied()
     return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
+@router.get('/assistant/workspace/v1/saved-memory-reader-capabilities')
+async def saved_memory_reader_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    available = False
+    try:
+        _saved_memory_enabled(request)
+        await _call(_workspace(request), 'get_preferences', account)
+        access, engine = assistant_engine._engine(request)
+        if engine is not None:
+            token, _mode = credentials_from_request(request, allow_query=True)
+            await run_in_threadpool(_memory_readers_available,
+                                    _memory_runtime(request, allow_query=True),
+                                    token, library)
+            available = True
+    except AccessDenied:
+        raise
+    except Exception:
+        available = False
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
+
+
+@router.get('/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}')
+async def read_saved_memory_card(request: Request, thread_id: str,
+                                 turn_id: str, ordinal: str):
+    query = _query(request, {'library_id', 'expected_revision'},
+                   {'library_id', 'expected_revision'})
+    library = _library(query['library_id'])
+    expected_revision = _reader_expected_revision(query['expected_revision'])
+    selected_thread = _thread_id(thread_id)
+    selected_turn = _thread_id(turn_id)
+    if (type(ordinal) is not str or
+            re.fullmatch(r'(?:0|[1-9][0-9]*)', ordinal) is None or
+            int(ordinal) > MAX_MEMORY_READER_ORDINAL):
+        raise WorkspaceInvalid()
+    selected_ordinal = int(ordinal)
+
+    account = await _principal(request, library)
+    _saved_memory_enabled(request)
+    store = _workspace(request)
+    turn = await _call(store, 'get_turn', account, library,
+                       selected_thread, selected_turn)
+    current = await _call(store, 'get_thread', account, library, selected_thread)
+    if (turn.get('status') != 'completed' or
+            turn.get('revision') != expected_revision or
+            current['thread'].get('revision') != expected_revision):
+        raise WorkspaceStoreConflict()
+    exchange = next((item for item in current['exchanges']
+                     if item.get('request_id') == selected_turn), None)
+    if exchange is None or exchange.get('revision') != expected_revision:
+        raise WorkspaceStoreConflict()
+    cards = exchange.get('cards')
+    if (type(cards) is not list or not cards or len(cards) > 12 or
+            any(type(card) is not dict or card.get('type') not in {'story', 'memoir'}
+                for card in cards)):
+        raise WorkspaceStoreMissing()
+    if selected_ordinal >= len(cards):
+        raise WorkspaceStoreMissing()
+
+    token, _mode = credentials_from_request(request, allow_query=True)
+    access = _memory_runtime(request, allow_query=True)
+    result = await run_in_threadpool(_saved_memory_reader, access, token, library,
+                                     cards[selected_ordinal])
+
+    # Revalidate the full owner and revision chain after reading source detail.
+    _saved_memory_enabled(request)
+    latest_turn = await _call(store, 'get_turn', account, library,
+                              selected_thread, selected_turn)
+    latest_thread = await _call(store, 'get_thread', account, library, selected_thread)
+    latest_exchange = next((item for item in latest_thread['exchanges']
+                            if item.get('request_id') == selected_turn), None)
+    if (latest_turn.get('status') != 'completed' or
+            latest_turn.get('revision') != expected_revision or
+            latest_thread['thread'].get('revision') != expected_revision or
+            latest_exchange is None or
+            latest_exchange.get('revision') != expected_revision or
+            latest_exchange.get('cards') != cards):
+        raise WorkspaceStoreConflict()
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse(result, headers=PRIVACY_HEADERS)
 
 
 @router.get('/assistant/workspace/v1/saved-memory-speech-capabilities')

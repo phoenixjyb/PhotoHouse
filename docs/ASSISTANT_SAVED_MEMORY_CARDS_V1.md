@@ -1,10 +1,11 @@
 # Private assistant saved-memory cards
 
-Status: locally implemented discovery, explicit-command parser, result tool and
-negotiated default-off backend transport, plus scoped Web card presentation.
-Phone cards and reader handoff remain proposed. Typed-source reply speech is
-implemented locally with a separate optional capability probe. No Windows
-activation or signed client delivery is claimed.
+Status: saved-memory discovery and Web cards were included in the earlier API
+release. The next local source adds phone card negotiation and explicit Web/phone
+reader handoff. Reader capability is separate from search and speech capability;
+an older server preserves cards while leaving reader actions unavailable.
+The new reader implementation is outside the published v54 package. Runtime,
+signing and family acceptance remain separate gates.
 
 ## Existing protected foundation
 
@@ -64,9 +65,9 @@ The Web client checks this separate probe after the ordinary private workspace
 loads. Missing, disabled or malformed probes preserve the legacy request body;
 access denial clears private state. New account/library generations, base
 capability loss and a newer feature probe fence late card responses. Fresh cards
-are immutable plain-text projections and bypass media hydration. They have no
-open button or stored actionable context. The phone SDK has not adopted this
-extension yet. Qualified source and generated-browser evidence are recorded in
+are immutable plain-text projections and bypass media hydration. Their original body and excerpts stay transient. Phone now adopts the same
+negotiated card grammar; a separate reader probe enables explicit opening.
+Recovered summaries remain non-actionable. Qualified source and generated-browser evidence are recorded in
 [Development](DEVELOPMENT.md); they do not prove live or family acceptance.
 
 The existing turn request remains byte-for-byte unchanged unless a capable
@@ -251,45 +252,49 @@ and rollback path; it must not silently widen the current v2 JSON grammar.
 
 ## Reader handoff
 
-Only a fresh card response displays an explicit **Open saved story** or **Open
-memoir** control. Clicking it ends the current automatic voice progression and
-calls a client handoff callback bound to the same authenticated account,
-library, foreground generation and parent turn/card ordinal. The client sends
-no title, excerpt, source digest or source revision as authority. The proposed
-protected revision-bound handoff service resolves the card from that completed
-turn's stored `story` / `memoir` reference, checks current library membership,
-hydrates through the authorized current reader, recomputes the source digest,
-and returns reader data only on an exact digest match. It applies the discovery
-`PRAGMA data_version` drift guard through the completed read. For memoirs it
-must include current child selection/evidence revisions; the existing memoir
-GET's numeric parent revision alone is insufficient. If this exact handoff
-service is not implemented, card opening remains disabled; a client GET that
-checks only an ID and numeric revision is not safe. A stale source digest,
-moved/deleted child, membership change or changed scope aborts the handoff and
-requires a fresh search or reader refresh. No card click invokes the private
-turn endpoint or a write endpoint.
+Web and phone expose explicit **Open saved story** / **Open memoir** controls
+only for the current fresh completed result when the optional reader probe is
+available:
 
-One proposed route shape is
-`GET /assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}?library_id=...`.
-The ordinal is zero-based and indexes the ordered typed references stored on
-that completed exchange; it is not a source ID. The server checks the completed
-turn and current account/library membership, resolves only a stored `story` or
-`memoir` reference, and obtains the full reader projection through the existing
-authorized reader service. It recomputes the same source digest and checks
-`PRAGMA data_version` before returning the reader projection. Missing, foreign,
-or withdrawn references use the existing hidden-not-found behavior; changed
-source digest or snapshot drift returns conflict. The client sends no revision
-or digest, so it cannot widen the set of readable objects.
+`GET /assistant/workspace/v1/saved-memory-reader-capabilities?library_id=...`
 
-Android has protected reader APIs, but the current private assistant panel only
-exposes an asset-open callback. `openSavedMemoryStory` also expects a summary in
-the saved-story shelf; `openMemoryBook` expects a book summary in the book shelf.
-The integration therefore needs a scope-guarded central handoff method that
-fetches the exact current reference through the existing repository and opens
-the existing reader state. Web has the protected memory endpoints, but its
-private assistant result renderer presents media and saved-memory cards, while its
-Web reader handoff for memoirs is not wired. Its assistant can display saved
-memory cards, but still needs the explicit protected callback to open a reader.
+It returns exactly `{version: 1, available: <boolean>}`. Missing, disabled or
+malformed availability does not disable saved-memory card search. No base
+capability field is added. A tap ends foreground voice progression and stops
+reply playback before starting the protected GET:
+
+`GET /assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}?library_id=...&expected_revision=...`
+
+Thread and turn IDs are canonical UUIDv4 values. Ordinal is canonical decimal
+0–11; expected revision is the positive completion revision. Extra and duplicate
+query fields are refused. The client sends no source ID, source revision or
+digest as authority. The result is exactly:
+
+```json
+{"version": 1, "kind": "story", "reader": {"...": "existing reader detail"}}
+```
+
+`kind` is `story` or `memoir`; the full reader envelope is capped at 1 MiB.
+The server resolves only the stored typed reference at the selected ordinal,
+checks account/library ownership, completed turn and current thread/exchange
+revision, and rehydrates through existing authorized readers. The stored digest
+is not a numeric reader revision: the current numeric revision comes from the
+authorized detail, then `AssistantMemoryDiscovery.read_reference` verifies both.
+Memoir validation includes ordered child story revisions and current selection/
+evidence digests. One `PRAGMA data_version` guard covers the source read. Feature,
+principal and the completed owner/revision chain are checked again afterward.
+Missing, foreign, moved or withdrawn references share hidden 404 responses;
+changed source or thread revisions return conflict. No provider or write runs.
+
+Clients bind the handoff to the account, library, foreground generation, fresh
+turn/revision and card kind/identity. Web validates the full detail with existing
+story/book checks and mounts the existing reader without another unbound ID
+fetch. Phone performs strict wire validation, checks the current coordinator
+handoff again before installation, and opens its existing reader without a shelf
+entry. Explicit pending/error controls preserve conversation drafts. New turns,
+thread selection/recovery, dismissal or account/library changes invalidate late
+callbacks. Reader opening does not authorize listening, playback or story edits.
+Historical/recovered summaries never hydrate a card or open a reader.
 
 Voice speaks only the short server-owned reply under the existing private
 receipt rules. A separate optional

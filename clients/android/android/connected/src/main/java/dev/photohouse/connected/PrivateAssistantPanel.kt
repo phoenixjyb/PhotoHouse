@@ -68,6 +68,7 @@ internal fun PrivateAssistantPanel(
     onContinueText: ((String, Long) -> Unit)? = null,
     onLoadOlder: ((String, Long, Long) -> Unit)? = null,
     onReloadHistory: ((String, Long) -> Unit)? = null,
+    onOpenSavedMemoryCard: (Int) -> Unit = {},
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val capabilities = state.capabilities
@@ -79,6 +80,7 @@ internal fun PrivateAssistantPanel(
     val draftBytes = state.draft.toByteArray(Charsets.UTF_8).size
     val draftValid = state.draft.isNotBlank() && draftBytes in 1..1024
     val detail = state.detail
+    val currentTurn = state.currentTurn
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     var showDeleteDialog by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
@@ -370,7 +372,45 @@ internal fun PrivateAssistantPanel(
                             }
                         }
 
-                        state.currentTurn?.takeIf { it.status == AssistantWorkspaceRequestStatus.COMPLETED }?.result?.let { result ->
+                        currentTurn?.takeIf { it.status == AssistantWorkspaceRequestStatus.COMPLETED }?.result?.let { result ->
+                            if (currentTurn.recovered.not() && result.memoryCards.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("private-assistant-memory-cards")) {
+                                    Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleSmall)
+                                    result.memoryCards.forEachIndexed { ordinal, card ->
+                                        Card(Modifier.fillMaxWidth().testTag("private-assistant-memory-card-$ordinal"),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                                            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Text(card.title, style = MaterialTheme.typography.titleMedium)
+                                                Text(card.excerpt, style = MaterialTheme.typography.bodyLarge)
+                                                OutlinedButton(
+                                                    onClick = { onOpenSavedMemoryCard(ordinal) },
+                                                    enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                        state.savedMemoryReaderAvailable && state.memoryReaderOrdinal != ordinal,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                                        .testTag("private-assistant-open-memory-$ordinal"),
+                                                ) {
+                                                    Text(if (card.kind == "story") t("Open saved story", "打开已保存故事")
+                                                        else t("Open memoir", "打开回忆录"))
+                                                }
+                                                if (state.memoryReaderOrdinal == ordinal) Text(
+                                                    t("Opening…", "正在打开…"), style = MaterialTheme.typography.bodySmall,
+                                                    modifier = Modifier.testTag("private-assistant-memory-opening-$ordinal"))
+                                                if (state.memoryReaderErrorOrdinal == ordinal && state.memoryReaderHandoff == null) {
+                                                    Text(t("Could not open this memory. Retry from this card.", "无法打开这段回忆。请从此卡片重试。"),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        modifier = Modifier.testTag("private-assistant-memory-error-$ordinal"))
+                                                    TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
+                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null,
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-memory-retry-$ordinal")) {
+                                                        Text(t("Retry", "重试"))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if (result.items.isNotEmpty()) {
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("private-assistant-grounded-results")) {
                                     Text(t("Available results · open only when you choose", "可查看的结果 · 仅在你选择时打开"),

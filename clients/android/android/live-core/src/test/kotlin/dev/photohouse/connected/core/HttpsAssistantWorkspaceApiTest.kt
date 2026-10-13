@@ -4,6 +4,7 @@ import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -126,6 +127,44 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request?library_id=family-a", get.path)
             assertProtected(get)
             assertEquals(2, f.server.requestCount)
+        }
+    }
+
+    @Test fun savedMemoryNegotiationAndReaderRequestUseOptionalProtectedRoutes() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(response("""{"version":1,"available":true}"""))
+            assertTrue(api.savedMemoryCardsCapabilities(token, "family-a").available)
+            val cardsProbe = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-capabilities?library_id=family-a", cardsProbe.path)
+            assertProtected(cardsProbe)
+
+            f.server.enqueue(response("{}", 404))
+            assertFalse(api.savedMemoryReaderCapabilities(token, "family-a").available)
+            val readerProbe = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-reader-capabilities?library_id=family-a", readerProbe.path)
+            assertProtected(readerProbe)
+
+            f.server.enqueue(response("""{"version":1,"available":false}"""))
+            assertFalse(api.savedMemorySpeechCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/saved-memory-speech-capabilities?library_id=family-a", f.server.takeRequest().path)
+
+            f.server.enqueue(response(envelope("completed", result()), 200))
+            api.submitTurn(token, "family-a", thread, request, 0, "find saved story lake", null, true)
+            val post = f.server.takeRequest()
+            val body = Json.parseToJsonElement(post.body.readUtf8()).jsonObject
+            assertEquals(listOf("saved_memory_cards_v1"), body.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+
+            f.server.enqueue(response("{}", 404))
+            assertEquals(FailureKind.HTTP, runCatching {
+                runBlocking { api.savedMemoryReader(token, "family-a", thread, request, 0, 1) }
+            }.exceptionOrNull().let { (it as ApiFailure).kind })
+            val reader = f.server.takeRequest()
+            assertEquals("GET", reader.method)
+            assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request/memory-cards/0?library_id=family-a&expected_revision=1", reader.path)
+            assertProtected(reader)
+            assertNull(reader.requestUrl!!.queryParameter("source_revision"))
+            assertNull(reader.requestUrl!!.queryParameter("id"))
         }
     }
 

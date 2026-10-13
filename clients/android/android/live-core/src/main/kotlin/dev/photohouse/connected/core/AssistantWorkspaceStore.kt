@@ -41,6 +41,9 @@ data class AssistantWorkspaceState(
     val libraryId: String? = null,
     val generation: Long? = null,
     val capabilities: AssistantWorkspaceCapabilities? = null,
+    val savedMemoryCardsAvailable: Boolean = false,
+    val savedMemoryReaderAvailable: Boolean = false,
+    val savedMemorySpeechAvailable: Boolean = false,
     val threads: AssistantWorkspaceThreadList? = null,
     val detail: AssistantWorkspaceThreadDetail? = null,
     val currentTurn: AssistantWorkspaceTurn? = null,
@@ -56,6 +59,10 @@ data class AssistantWorkspaceState(
     val continuationEnabled: Boolean = false,
     val busy: Boolean = false,
     val historyRefreshRequired: Boolean = false,
+    val memoryReaderHandoff: AssistantMemoryReaderHandoff? = null,
+    val memoryReaderOrdinal: Int? = null,
+    val memoryReaderError: AssistantWorkspaceError? = null,
+    val memoryReaderErrorOrdinal: Int? = null,
 )
 
 /**
@@ -104,6 +111,7 @@ class AssistantWorkspaceStore(
     fun refreshCapabilities(): Boolean = launchAction {
         val scope = requireScope()
         requireEnabled()
+        mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = false, savedMemoryReaderAvailable = false, savedMemorySpeechAvailable = false)
         val value = api.capabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(
@@ -111,7 +119,118 @@ class AssistantWorkspaceStore(
             unsupportedPreferences = AssistantWorkspacePreference.entries.toSet() -
                 if ("locale" in value.appliedPreferences) setOf(AssistantWorkspacePreference.LOCALE) else emptySet(),
             error = if (value.available && value.threads) null else AssistantWorkspaceError.UNAVAILABLE,
+            savedMemoryCardsAvailable = if (value.available && value.threads) mutableState.value.savedMemoryCardsAvailable else false,
+            savedMemoryReaderAvailable = if (value.available && value.threads) mutableState.value.savedMemoryReaderAvailable else false,
         )
+    }
+
+    /** Capability probe controls whether new searches may negotiate fresh saved-memory cards. */
+    fun refreshSavedMemoryCardsCapabilities(): Boolean = launchAction {
+        val scope = requireScope()
+        requireEnabled()
+        val value = api.savedMemoryCardsCapabilities(scope.bearer, scope.libraryId)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = value.available)
+    }
+
+    /** Separate reader probe controls only explicit Open actions. */
+    fun refreshSavedMemoryReaderCapabilities(): Boolean = launchAction {
+        val scope = requireScope()
+        requireEnabled()
+        val value = api.savedMemoryReaderCapabilities(scope.bearer, scope.libraryId)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(savedMemoryReaderAvailable = value.available)
+    }
+
+    fun refreshSavedMemorySpeechCapabilities(): Boolean = launchAction {
+        val scope = requireScope()
+        requireEnabled()
+        val value = api.savedMemorySpeechCapabilities(scope.bearer, scope.libraryId)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(savedMemorySpeechAvailable = value.available)
+    }
+
+    /** Explicit open from the latest fresh, negotiated card result only. */
+    fun openSavedMemoryCard(ordinal: Int): Boolean = launchAction {
+        val scope = requireUsableCapabilities()
+        val current = mutableState.value
+        val detail = current.detail ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        val turn = current.currentTurn ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        val result = turn.result ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (!current.savedMemoryCardsAvailable || !current.savedMemoryReaderAvailable || turn.status != AssistantWorkspaceRequestStatus.COMPLETED || turn.recovered ||
+            result.kind != "memory_cards" || turn.threadId != detail.thread.threadId || turn.revision != detail.thread.revision ||
+            ordinal !in result.memoryCards.indices || result.savedMemoryContext?.libraryId != scope.libraryId)
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        val request = ordinal to result.memoryCards[ordinal]
+        mutableState.value = current.copy(memoryReaderHandoff = null, memoryReaderOrdinal = ordinal,
+            memoryReaderError = null, memoryReaderErrorOrdinal = null)
+        val payload = try {
+            api.savedMemoryReader(scope.bearer, scope.libraryId, turn.threadId, turn.requestId, ordinal, turn.revision)
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (error: Exception) {
+            if (isCurrent(scope)) mutableState.value = mutableState.value.copy(
+                memoryReaderOrdinal = null, memoryReaderError = safeError(error), memoryReaderErrorOrdinal = ordinal,
+            )
+            return@launchAction
+        }
+        requireCurrent(scope)
+        val latest = mutableState.value
+        val latestTurn = latest.currentTurn
+        val latestCard = latestTurn?.result?.memoryCards?.getOrNull(ordinal)
+        if (latest.memoryReaderOrdinal != ordinal || latest.detail?.thread?.threadId != turn.threadId ||
+            latestTurn?.requestId != turn.requestId || latestTurn.revision != turn.revision ||
+            latestCard != request.second || latestTurn.recovered || latestTurn.status != AssistantWorkspaceRequestStatus.COMPLETED)
+            throw CancellationException("Saved memory card scope changed")
+        val matches = when (payload) {
+            is SavedMemoryReaderPayload.Story -> request.second.kind == "story" && payload.value.id == request.second.id &&
+                payload.value.revision.toString() == request.second.revision
+            is SavedMemoryReaderPayload.Memoir -> request.second.kind == "memoir" && payload.value.id == request.second.id &&
+                payload.value.revision.toString() == request.second.revision
+        }
+        if (!matches) {
+            mutableState.value = latest.copy(memoryReaderOrdinal = null,
+                memoryReaderError = AssistantWorkspaceError.INVALID_RESPONSE, memoryReaderErrorOrdinal = ordinal)
+            return@launchAction
+        }
+        mutableState.value = latest.copy(memoryReaderHandoff = AssistantMemoryReaderHandoff(
+            turn.threadId, turn.requestId, turn.revision, ordinal, request.second, payload),
+            memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
+    }
+
+    /** Screen dismissal fences a pending GET without touching the conversation draft or turn request. */
+    fun invalidateSavedMemoryReader() {
+        synchronized(guard) {
+            val current = mutableState.value
+            if (current.memoryReaderOrdinal == null && current.memoryReaderHandoff == null) return
+            operationNonce++
+            activeJob?.cancel(CancellationException("Saved memory reader screen closed"))
+            activeJob = null
+            mutableState.value = current.copy(busy = false, memoryReaderHandoff = null,
+                memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
+        }
+    }
+
+    /** Atomically consumes only the handoff still owned by the latest fresh completed turn. */
+    fun consumeMemoryReaderHandoff(handoff: AssistantMemoryReaderHandoff): Boolean = synchronized(guard) {
+        val current = mutableState.value
+        val scope = usableScope()
+        val turn = current.currentTurn
+        val card = turn?.result?.memoryCards?.getOrNull(handoff.ordinal)
+        val reference = turn?.result?.savedMemoryContext?.references?.getOrNull(handoff.ordinal)
+        val valid = !closed && scope?.foregroundAllowed == true && sameScope(scopeKey, scope) &&
+            current.accountId == scope.accountId && current.libraryId == scope.libraryId && current.generation == scope.generation &&
+            current.memoryReaderHandoff == handoff && current.savedMemoryCardsAvailable &&
+            current.savedMemoryReaderAvailable && current.pendingTurn == null && !current.busy &&
+            current.detail?.thread?.let { it.threadId == handoff.threadId && it.revision == handoff.completionRevision } == true &&
+            turn?.let { it.threadId == handoff.threadId && it.requestId == handoff.turnId &&
+                it.revision == handoff.completionRevision && it.status == AssistantWorkspaceRequestStatus.COMPLETED &&
+                !it.recovered && it.result?.kind == "memory_cards" } == true && card == handoff.card &&
+            current.libraryId == turn?.result?.savedMemoryContext?.libraryId && reference?.let {
+                it.kind == handoff.card.kind && it.id == handoff.card.id && it.revision == handoff.card.revision &&
+                    it.sourceRevision == handoff.card.sourceRevision
+            } == true
+        if (valid) mutableState.value = current.copy(memoryReaderHandoff = null)
+        valid
     }
 
     fun refreshThreads(): Boolean = launchAction {
@@ -145,6 +264,7 @@ class AssistantWorkspaceStore(
                 pendingCreationId = null,
                 detail = AssistantWorkspaceThreadDetail(1, created.thread, emptyList()),
                 currentTurn = null, uncertain = false, continuationEnabled = true, error = null, historyRefreshRequired = false,
+                memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
                 threads = mutableState.value.threads?.let { list ->
                     list.copy(threads = (list.threads.filterNot { it.threadId == clientId } + created.thread).sortedByDescending { it.updatedAt })
                 },
@@ -177,6 +297,7 @@ class AssistantWorkspaceStore(
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(pendingCreationId = null, detail = detail,
             currentTurn = null, uncertain = false, continuationEnabled = detail.thread.revision == 0L,
+            memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
             historyRefreshRequired = false,
             error = if (detail.thread.revision == 0L) null else AssistantWorkspaceError.CONTEXT_CHANGED)
     }
@@ -191,6 +312,7 @@ class AssistantWorkspaceStore(
             detail = detail, currentTurn = null, pendingCreationId = null,
             uncertain = false, continuationEnabled = mutableState.value.capabilities?.serverOwnedTurns == true, error = null,
             historyRefreshRequired = false,
+            memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
         )
         val latest = detail.latestRequestId
         if (latest != null && mutableState.value.capabilities?.serverOwnedTurns == true) {
@@ -254,13 +376,15 @@ class AssistantWorkspaceStore(
             val request = requestId ?: runCatching(uuidFactory).getOrNull() ?: return false
             if (!AssistantWorkspaceWire.validUuid4(request) ||
                 parentRequestId != null && !AssistantWorkspaceWire.validUuid4(parentRequestId)) return false
-            try { AssistantWorkspaceWire.turnRequest(scope.libraryId, request, detail.thread.revision, text) }
+            val acceptMemoryCards = current.savedMemoryCardsAvailable
+            try { AssistantWorkspaceWire.turnRequest(scope.libraryId, request, detail.thread.revision, text, acceptMemoryCards) }
             catch (_: ApiFailure) { return false }
             val pending = AssistantWorkspacePendingTurn(
                 detail.thread.threadId, request, detail.thread.revision, text, parentRequestId,
             )
-            mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null)
-            launchReservedTurn(scope, pending, detail)
+            mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null,
+                memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
+            launchReservedTurn(scope, pending, detail, acceptMemoryCards)
             return true
         }
     }
@@ -284,6 +408,7 @@ class AssistantWorkspaceStore(
         scope: AssistantWorkspaceScope,
         pending: AssistantWorkspacePendingTurn,
         detail: AssistantWorkspaceThreadDetail,
+        acceptSavedMemoryCards: Boolean = false,
     ) {
         operationNonce++
         activeOperationNonce = operationNonce
@@ -294,7 +419,7 @@ class AssistantWorkspaceStore(
                 yield()
                 actionMutex.withLock {
                     requireCurrent(scope)
-                    submitReservedTurn(scope, pending, detail)
+                    submitReservedTurn(scope, pending, detail, acceptSavedMemoryCards)
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
@@ -318,10 +443,11 @@ class AssistantWorkspaceStore(
         scope: AssistantWorkspaceScope,
         pending: AssistantWorkspacePendingTurn,
         detail: AssistantWorkspaceThreadDetail,
+        acceptSavedMemoryCards: Boolean,
     ) {
         val turn = try {
             api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
-                pending.expectedRevision, pending.text, pending.parentRequestId)
+                pending.expectedRevision, pending.text, pending.parentRequestId, acceptSavedMemoryCards)
         } catch (cancel: CancellationException) { throw cancel }
         catch (postFailure: Exception) {
             requireCurrent(scope)
@@ -379,6 +505,7 @@ class AssistantWorkspaceStore(
             mutableState.value = mutableState.value.copy(
                 detail = null, currentTurn = null, draft = "", pendingCreationId = null, historyRefreshRequired = false,
                 pendingTurn = null, uncertain = false, continuationEnabled = false, error = null,
+                memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
                 threads = mutableState.value.threads?.let { list -> list.copy(threads = list.threads.filterNot { it.threadId == deleted.threadId }) },
             )
         }

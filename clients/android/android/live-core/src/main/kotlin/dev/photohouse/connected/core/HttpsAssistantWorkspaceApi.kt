@@ -71,6 +71,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
         successCodes: Set<Int> = setOf(200),
         extraQuery: Map<String, String> = emptyMap(),
         extraHeaders: Map<String, String> = emptyMap(),
+        responseLimit: Int = AssistantWorkspaceWire.RESPONSE_LIMIT,
     ): Packet {
         if (!assistantWorkspaceEnabled) throw ApiFailure(FailureKind.INVALID_INPUT)
         require(method in setOf("GET", "POST", "PUT", "DELETE"))
@@ -115,8 +116,8 @@ class HttpsAssistantWorkspaceApi internal constructor(
                                 !noStore)
                                 throw ApiFailure(FailureKind.INVALID_RESPONSE)
                             val body = r.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
-                            if (body.contentLength() > AssistantWorkspaceWire.RESPONSE_LIMIT) throw ApiFailure(FailureKind.TOO_LARGE)
-                            val responseBytes = readBounded(body, call)
+                            if (body.contentLength() > responseLimit) throw ApiFailure(FailureKind.TOO_LARGE)
+                            val responseBytes = readBounded(body, call, responseLimit)
                             try { Packet(responseBytes, assistantResponseHeaders(r.headers)) }
                             catch (e: Exception) { responseBytes.fill(0); throw e }
                         }
@@ -220,15 +221,23 @@ class HttpsAssistantWorkspaceApi internal constructor(
 
     override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                     expectedRevision: Long, text: String, parentRequestId: String?): AssistantWorkspaceTurn {
+        return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+            acceptSavedMemoryCards = false)
+    }
+
+    override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                    expectedRevision: Long, text: String, parentRequestId: String?,
+                                    acceptSavedMemoryCards: Boolean): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId))
         require(parentRequestId == null || AssistantWire.validRequestId(parentRequestId))
-        val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text)
+        val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text, acceptSavedMemoryCards)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
             extraHeaders = buildMap {
                 put("X-PhotoHouse-Request-Id", requestId)
                 parentRequestId?.let { put("X-PhotoHouse-Parent-Request-Id", it) }
             })
-        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false) }
+        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false,
+            acceptSavedMemoryCards = acceptSavedMemoryCards) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
@@ -239,6 +248,49 @@ class HttpsAssistantWorkspaceApi internal constructor(
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
+    }
+
+    override suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities {
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/saved-memory-reader-capabilities", library),
+                AssistantWorkspaceWire::savedMemoryReaderCapabilities)
+        } catch (failure: ApiFailure) {
+            if (failure.status == 404 || failure.status == 503) SavedMemoryReaderCapabilities(1, false)
+            else throw failure
+        }
+    }
+
+    override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities {
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/saved-memory-capabilities", library),
+                AssistantWorkspaceWire::savedMemoryReaderCapabilities)
+        } catch (failure: ApiFailure) {
+            if (failure.status == 404 || failure.status == 503) SavedMemoryReaderCapabilities(1, false)
+            else throw failure
+        }
+    }
+
+    override suspend fun savedMemorySpeechCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities {
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/saved-memory-speech-capabilities", library),
+                AssistantWorkspaceWire::savedMemoryReaderCapabilities)
+        } catch (failure: ApiFailure) {
+            if (failure.status == 404 || failure.status == 503) SavedMemoryReaderCapabilities(1, false)
+            else throw failure
+        }
+    }
+
+    override suspend fun savedMemoryReader(
+        token: Bearer, library: String, threadId: String, turnId: String, ordinal: Int,
+        expectedRevision: Long,
+    ): SavedMemoryReaderPayload {
+        if (!AssistantWorkspaceWire.validUuid4(threadId) || !AssistantWorkspaceWire.validUuid4(turnId) ||
+            ordinal !in 0..11 || expectedRevision !in 1 until Long.MAX_VALUE) throw ApiFailure(FailureKind.INVALID_INPUT)
+        val path = "/assistant/workspace/v1/threads/$threadId/requests/$turnId/memory-cards/$ordinal"
+        return decoded(send(token, path, library, extraQuery = mapOf("expected_revision" to expectedRevision.toString()),
+            responseLimit = 1024 * 1024)) {
+            AssistantWorkspaceWire.savedMemoryReader(it, library)
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

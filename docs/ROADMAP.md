@@ -1,5 +1,18 @@
 # Product roadmap
 
+## Next local source: assistant saved-memory reading
+
+The [saved-memory handoff](ASSISTANT_SAVED_MEMORY_CARDS_V1.md#reader-handoff)
+connects current search cards to full stories and memoir readers on Web and
+phone. Search, reader and speech probes remain separate; explicit Open stops
+voice before a revision-bound read. Current permissions and story/child evidence
+are rechecked. Historical replies remain inert. Chinese searches also accept
+“找回忆录”, “搜索回忆录” and “找故事”.
+
+This source is outside phone v54 and its API release. Next delivery gate: fixed
+candidate build, native synthetic qualification, guarded API/Web switch and
+original-certificate phone publication. Owner device testing remains separate.
+
 ## October 13 voice presence delivery
 
 The [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) is served in API/Web source

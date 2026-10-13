@@ -14,6 +14,7 @@ const envelope=(status='completed',recovered=false,revision=1)=>({version:1,thre
 const workspaceCaps=(overrides={})=>({version:1,available:true,threads:true,preferences:true,preferences_applied:false,server_owned_turns:true,...overrides});
 const savedMemoryCapabilities=available=>({version:1,available});
 const savedMemorySpeechCapabilities=available=>({version:1,available});
+const savedMemoryReaderCapabilities=available=>({version:1,available});
 const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
 const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
 const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
@@ -583,6 +584,62 @@ test('saved-memory probe is scope fenced and stale capability is cleared on base
   await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),false);
   assert.equal(await current.controller.savedMemoryCapabilities(),false,'a feature probe cannot override known base capability loss');
   baseAvailable=true;await current.controller.capabilities();assert.equal(await current.controller.savedMemoryCapabilities(),true);current.controller.close();assert.equal(current.controller.state().savedMemoryAvailable,false);
+});
+
+test('saved-memory reader probe is optional and preserves fresh cards when unavailable',async()=>{
+  const h=harness(async(path)=>{if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);if(path.includes('/saved-memory-reader-capabilities'))throw Object.assign(new Error('old server'),{status:404});if(path.endsWith('/threads')&&h.controller.state().pendingCreation)return {version:1,thread:thread()};if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};throw Error(`unexpected ${path}`);},{ids:[threadId,requestId]});
+  await h.controller.capabilities();assert.equal(await h.controller.savedMemoryCapabilities(),true);assert.equal(await h.controller.savedMemoryReaderCapabilities(),false);
+  await h.controller.create();await h.controller.send('find saved memories');
+  assert.equal(h.controller.state().currentResult.kind,'memory_cards');assert.equal(h.controller.state().savedMemoryReaderAvailable,false);
+  assert.equal(h.calls.some(call=>call.path.includes('/memory-cards/')),false);
+});
+
+test('saved-memory reader GET is bound to a fresh card, exact revision and current scope',async()=>{
+  const reader={version:1,id:memoryBinding.id,revision:memoryBinding.revision,type:'story',title:'Saved story'};
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);if(path.includes('/saved-memory-reader-capabilities'))return savedMemoryReaderCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    if(path===`/assistant/workspace/v1/threads/${threadId}?library_id=library-a`)return detail(1,1);
+    if(path.includes('/memory-cards/0?'))return {version:1,kind:'story',reader};throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId]});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();assert.equal(await h.controller.savedMemoryReaderCapabilities(),true);await h.controller.create();await h.controller.send('find saved memories');
+  const result=h.controller.state().currentResult,postCount=h.calls.filter(call=>call.method==='POST').length;
+  const handoff=await h.controller.openMemoryCard(0,(kind,value)=>kind==='story'&&value.id===memoryBinding.id);
+  assert.equal(handoff.kind,'story');assert.equal(handoff.reader,reader);assert.equal(handoff.card.id,memoryBinding.id);
+  assert.equal(h.calls.at(-1).method,'GET');assert.match(h.calls.at(-1).path,new RegExp(`/threads/${threadId}/requests/${requestId}/memory-cards/0\\?library_id=library-a&expected_revision=1`));
+  assert.equal(h.calls.filter(call=>call.method==='POST').length,postCount);assert.equal(h.controller.state().currentResult,result);
+  await assert.rejects(h.controller.openMemoryCard(1,()=>true),error=>error.code==='invalid_input');
+  h.controller.setDraft('keep typed draft');
+  await h.controller.read(threadId,{hydrate:false});assert.equal(h.controller.state().currentResult,null);
+  await assert.rejects(h.controller.openMemoryCard(0,()=>true),error=>error.code==='invalid_input');
+  assert.equal(h.controller.state().draft,'keep typed draft');
+});
+
+test('late reader handoffs cannot outlive a new turn or account and library scope',async()=>{
+  const gate=deferred(),started=deferred();let turns=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);if(path.includes('/saved-memory-reader-capabilities'))return savedMemoryReaderCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turns++;return turns===1?{...envelope('completed',false,1),result:memoryResult()}:{...envelope('completed',false,2),request_id:options.body.request_id,result};}
+    if(path.includes('/memory-cards/0?')){started.resolve();await gate.promise;return {version:1,kind:'story',reader:{id:memoryBinding.id,revision:memoryBinding.revision,type:'story'}};}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'44444444-4444-4444-8444-444444444444']});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReaderCapabilities();await h.controller.create();await h.controller.send('find saved memories');
+  const opening=h.controller.openMemoryCard(0,()=>true);await started.promise;await h.controller.send('show photos');gate.resolve();
+  await assert.rejects(opening,error=>error.code==='scope_changed');assert.equal(h.controller.state().currentResult.kind,'results');
+  assert.equal(h.controller.state().openingMemoryCard,false);
+  const delayed=deferred(),arrived=deferred();
+  const scoped=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);if(path.includes('/saved-memory-reader-capabilities'))return savedMemoryReaderCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:memoryResult()};
+    if(path.includes('/memory-cards/0?')){arrived.resolve();await delayed.promise;return {version:1,kind:'story',reader:{id:memoryBinding.id,revision:memoryBinding.revision,type:'story'}};}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId]});
+  await scoped.controller.capabilities();await scoped.controller.savedMemoryCapabilities();await scoped.controller.savedMemoryReaderCapabilities();await scoped.controller.create();await scoped.controller.send('find saved memories');
+  const stale=scoped.controller.openMemoryCard(0,()=>true);await arrived.promise;scoped.setScope({account:'account-b',library:'library-b',generation:2});delayed.resolve();
+  await assert.rejects(stale,error=>error.code==='scope_changed');assert.equal(scoped.controller.state().currentResult,null);assert.equal(scoped.controller.state().savedMemoryReaderReady,false);
 });
 
 test('legacy requests remain byte-shape unchanged and no capability probe is implicit',async()=>{

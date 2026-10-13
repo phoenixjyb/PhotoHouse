@@ -177,6 +177,7 @@ class ClosedBoundary:
         if (method, path) in {
                 ('GET', '/assistant/workspace/v1/capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
                 ('GET', '/assistant/workspace/v1/threads'),
                 ('POST', '/assistant/workspace/v1/threads'),
@@ -189,6 +190,11 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
             return True
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
+            return True
+        if method == 'GET' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+                r'/requests/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+                r'/memory-cards/(?:0|[1-9]|1[01])', path):
             return True
         if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/history', path):
             return True

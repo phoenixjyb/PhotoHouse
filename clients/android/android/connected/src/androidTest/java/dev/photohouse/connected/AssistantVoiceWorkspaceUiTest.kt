@@ -101,6 +101,63 @@ class AssistantVoiceWorkspaceUiTest {
     @Test fun chineseVoiceControlsAndUnsentDraftAt150Percent() = journey(true)
     @Test fun englishVoiceControlsAndUnsentDraftAt150Percent() = journey(false)
 
+    @Test fun freshSavedMemoryCardHasExplicitReaderActionAtLargeTextZh() = freshMemoryCardRender(true,
+        "saved-memory-card-zh-150.png")
+
+    @Test fun freshSavedMemoryCardHasExplicitReaderActionAtLargeTextEn() = freshMemoryCardRender(false,
+        "saved-memory-card-en-150.png")
+
+    private fun freshMemoryCardRender(zh: Boolean, screenshotName: String) {
+        val threadId = "123e4567-e89b-42d3-a456-426614174000"
+        val turnId = "123e4567-e89b-42d3-a456-426614174001"
+        val card = AssistantSavedMemoryCard("memoir", "123e4567-e89b-42d3-a456-426614174002", "2",
+            "a".repeat(64), "Family year", "A short family excerpt.")
+        val currentTurn = AssistantWorkspaceTurn(1, threadId, turnId, AssistantWorkspaceRequestStatus.COMPLETED,
+            2, false, null, AssistantTurn("memory_cards", "Found a memoir.", null, null, emptyList(), 1, false, null,
+                memoryCards = listOf(card), savedMemoryContext = AssistantSavedMemoryContext("synthetic-library",
+                    "b".repeat(64), listOf(AssistantSavedMemoryReference(card.kind, card.id, card.revision, card.sourceRevision)))))
+        val workspace = AssistantWorkspaceState(accountId = "synthetic-account", libraryId = "synthetic-library", generation = 1,
+            savedMemoryCardsAvailable = true, savedMemoryReaderAvailable = true,
+            detail = AssistantWorkspaceThreadDetail(1, AssistantWorkspaceThreadSummary(threadId, "synthetic-library",
+                "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", "2026-11-01T00:00:00Z", 2), emptyList()),
+            currentTurn = currentTurn)
+        var opened = -1
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(AssistantClientState("synthetic-library", 1), zh, onBack = {}, previews = emptyMap(),
+                        onRetryCapabilities = {}, onSend = { true }, onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {},
+                        onRecord = {}, onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                        onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {}, savedMemoryWorkspace = workspace,
+                        onOpenSavedMemoryCard = { opened = it })
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-saved-memory-cards").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Family year").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("assistant-open-saved-memory-0").performScrollTo()
+            .assertTextContains(if (zh) "打开回忆录" else "Open memoir")
+        saveMemoryReaderRender(screenshotName)
+        rule.onNodeWithTag("assistant-open-saved-memory-0").performClick()
+        assertEquals(0, opened)
+    }
+
+    private fun saveMemoryReaderRender(name: String) {
+        rule.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val folder = instrumentation.targetContext.externalCacheDir?.resolve("saved-memory-reader")
+            ?: error("External app cache is unavailable")
+        check(folder.exists() || folder.mkdirs())
+        try {
+            java.io.File(folder, name).outputStream().use { stream ->
+                check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
+            }
+        } finally { bitmap.recycle() }
+    }
+
     @Test fun uncertainTurnDoesNotOfferResume() {
         rule.setContent { PhotoHouseTheme {
             AssistantVoiceSessionPanel(AssistantVoiceSessionUiState(AssistantVoiceSessionStage.PAUSED,

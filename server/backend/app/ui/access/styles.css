@@ -615,8 +615,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-book-introduction{white-space:pre-wrap;line-height:1.9;max-width:66ch;color:var(--muted)}
 .memory-book-toc{list-style:decimal-leading-zero;padding-left:32px;margin:32px 0}
 .memory-book-toc li{padding:10px 0;color:var(--accent)}
-.memory-book-toc button{display:flex;align-items:center;gap:18px;width:100%;text-align:left;background:#fffdf9;border-radius:14px;font-size:17px;min-height:68px}
-.memory-book-toc img{width:68px;height:68px;object-fit:cover;border-radius:10px}
+.memory-book-toc button{display:flex;align-items:center;gap:18px;width:100%;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;background:#fffdf9;border-radius:14px;font-size:17px;min-height:68px}
+.memory-book-toc img{flex:0 0 68px;width:68px;height:68px;object-fit:cover;border-radius:10px}
 .memory-book-reading{margin:28px 0;padding:24px;background:#fffdf9;border:1px solid var(--line);border-radius:18px;min-width:0}
 .memory-book-reading h3,.memory-book-reading h4{font-family:Georgia,"Songti SC",serif;font-weight:500;line-height:1.6;overflow-wrap:anywhere}
 .memory-book-reading h3{font-size:26px}.memory-book-reading h4{font-size:20px}

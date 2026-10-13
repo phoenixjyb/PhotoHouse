@@ -33,6 +33,12 @@ import dev.photohouse.connected.core.AssistantWorkspaceState
 import dev.photohouse.connected.core.AssistantWorkspaceThreadDetail
 import dev.photohouse.connected.core.AssistantWorkspaceThreadList
 import dev.photohouse.connected.core.AssistantWorkspaceThreadSummary
+import dev.photohouse.connected.core.AssistantSavedMemoryCard
+import dev.photohouse.connected.core.AssistantSavedMemoryContext
+import dev.photohouse.connected.core.AssistantSavedMemoryReference
+import dev.photohouse.connected.core.AssistantWorkspaceRequestStatus
+import dev.photohouse.connected.core.AssistantWorkspaceTurn
+import dev.photohouse.connected.core.AssistantTurn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -93,6 +99,7 @@ class PrivateAssistantPanelUiTest {
         hasOlderExchanges: Boolean = false,
         threadLabel: String? = null,
         historyRefreshRequired: Boolean = false,
+        includeFreshMemoryCard: Boolean = false,
     ): AssistantWorkspaceState {
         val detailRevision = (exchanges.maxOfOrNull { it.revision } ?: 0L) + if (pending) 1 else 0
         val detailThread = thread(exchanges.size + if (pending) 1 else 0, detailRevision, threadLabel)
@@ -115,6 +122,15 @@ class PrivateAssistantPanelUiTest {
             unsupportedPreferences = emptySet(),
             continuationEnabled = assistantCapabilities.serverOwnedTurns,
             historyRefreshRequired = historyRefreshRequired,
+            savedMemoryCardsAvailable = includeFreshMemoryCard,
+            currentTurn = if (includeFreshMemoryCard) {
+                val card = AssistantSavedMemoryCard("story", "123e4567-e89b-42d3-a456-426614174103", "2",
+                    "a".repeat(64), "Garden day", "The family walked beside the lake and shared a picnic.")
+                AssistantWorkspaceTurn(1, threadId, requestId, AssistantWorkspaceRequestStatus.COMPLETED, detailRevision,
+                    false, null, AssistantTurn("memory_cards", "Found one saved memory.", null, null, emptyList(), 1, false, null,
+                        memoryCards = listOf(card), savedMemoryContext = AssistantSavedMemoryContext(libraryId, "b".repeat(64),
+                            listOf(AssistantSavedMemoryReference(card.kind, card.id, card.revision, card.sourceRevision)))))
+            } else null,
         )
     }
 
@@ -123,6 +139,7 @@ class PrivateAssistantPanelUiTest {
         val openedThreads = mutableListOf<Pair<String, Long>>()
         val locales = mutableListOf<String?>()
         val openedAssets = mutableListOf<String>()
+        val openedMemoryCards = mutableListOf<Int>()
         var sends = 0
         var recoveries = 0
         var deletes = 0
@@ -172,6 +189,7 @@ class PrivateAssistantPanelUiTest {
                         onSetLocale = { callbacks.locales += it },
                         onDismiss = { callbacks.dismissals++ },
                         onOpenAsset = { callbacks.openedAssets += it },
+                        onOpenSavedMemoryCard = { callbacks.openedMemoryCards += it },
                         onAbandonPending = onAbandonPending,
                         onContinueVoice = onContinueVoice,
                         onContinueText = onContinueText,
@@ -189,6 +207,25 @@ class PrivateAssistantPanelUiTest {
             }
         }
         rule.waitForIdle()
+    }
+
+    @Test
+    fun freshSavedMemoryCardHasExplicitLocalizedOpenActionAtLargeText() {
+        val uiState = mutableStateOf(state(includeFreshMemoryCard = true))
+        val callbacks = Callbacks()
+        show(uiState, zh = true, callbacks, fontScale = 2f)
+
+        rule.onNodeWithTag("private-assistant-memory-cards").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Garden day").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-open-memory-0").performScrollTo().assertIsDisplayed().assertIsEnabled()
+        rule.onNodeWithText("打开已保存故事").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-open-memory-0").performClick()
+        assertEquals(listOf(0), callbacks.openedMemoryCards)
+
+        uiState.value = uiState.value.copy(memoryReaderOrdinal = null, memoryReaderErrorOrdinal = 0)
+        rule.onNodeWithTag("private-assistant-memory-error-0").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-memory-retry-0").performScrollTo().assertIsEnabled().performClick()
+        assertEquals(listOf(0, 0), callbacks.openedMemoryCards)
     }
 
     private fun openManagement() {

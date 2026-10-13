@@ -13,6 +13,14 @@ from app.access.assistant_memory_intent import (SavedMemoryIntent,
 
 
 class AssistantMemoryIntentTests(unittest.TestCase):
+    def test_current_chinese_reader_names_search_the_exact_saved_kind(self):
+        for command in ('找回忆录 春节。', '搜索回忆录「春节」'):
+            with self.subTest(command=command):
+                self.assertEqual(parse_saved_memory_command(command), SavedMemoryIntent('memoir', '春节'))
+        self.assertEqual(parse_saved_memory_command('找故事 野餐！'), SavedMemoryIntent('story', '野餐'))
+        self.assertEqual(parse_saved_memory_command('找回忆录'), SavedMemoryIntent('memoir', ''))
+        self.assertEqual(parse_saved_memory_command('找故事 删除'), SavedMemoryIntent('story', '删除'))
+
     def test_chinese_prefixes_accept_asr_spacing_and_trim_outer_whitespace(self):
         self.assertEqual(parse_saved_memory_command('  找回忆野餐  '),
                          SavedMemoryIntent(None, '野餐'))

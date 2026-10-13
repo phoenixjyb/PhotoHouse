@@ -79,6 +79,8 @@ internal fun AssistantScreen(
     onPrivateConversations: (() -> Unit)? = null,
     privateReplySpeechEnabled: Boolean = false,
     privateReplySpeechAvailable: Boolean = false,
+    savedMemoryWorkspace: AssistantWorkspaceState? = null,
+    onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
@@ -382,6 +384,49 @@ internal fun AssistantScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp)
                             .nestedScroll(userScrollGuard).testTag("assistant-turns"),
                         verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    val freshMemoryTurn = savedMemoryWorkspace?.currentTurn?.takeIf { turn ->
+                        val workspace = savedMemoryWorkspace
+                        workspace.savedMemoryCardsAvailable && turn.status == AssistantWorkspaceRequestStatus.COMPLETED &&
+                            !turn.recovered && turn.result?.kind == "memory_cards" &&
+                            workspace.detail?.thread?.let { it.threadId == turn.threadId && it.revision == turn.revision } == true &&
+                            turn.result?.savedMemoryContext?.libraryId == workspace.libraryId
+                    }
+                    freshMemoryTurn?.result?.memoryCards?.takeIf { it.isNotEmpty() }?.let { cards ->
+                        item(key = "assistant-fresh-saved-memory-cards-${freshMemoryTurn.requestId}") {
+                            Card(Modifier.fillMaxWidth().testTag("assistant-saved-memory-cards"), shape = RoundedCornerShape(18.dp)) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleMedium)
+                                    cards.forEachIndexed { ordinal, card ->
+                                        Column(Modifier.fillMaxWidth().testTag("assistant-saved-memory-card-$ordinal"),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text(card.title, style = MaterialTheme.typography.titleSmall)
+                                            Text(card.excerpt, style = MaterialTheme.typography.bodyMedium)
+                                            if (onOpenSavedMemoryCard != null) {
+                                                TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
+                                                    enabled = savedMemoryWorkspace.savedMemoryReaderAvailable &&
+                                                        savedMemoryWorkspace.memoryReaderOrdinal != ordinal,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-open-saved-memory-$ordinal")) {
+                                                    Text(if (savedMemoryWorkspace.memoryReaderOrdinal == ordinal)
+                                                        t("Opening…", "正在打开…") else if (card.kind == "story")
+                                                        t("Open saved story", "打开已保存的故事") else t("Open memoir", "打开回忆录"))
+                                                }
+                                            }
+                                            if (savedMemoryWorkspace.memoryReaderErrorOrdinal == ordinal) {
+                                                Text(t("Could not open this memory.", "无法打开这段回忆。"),
+                                                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                                TextButton(onClick = { onOpenSavedMemoryCard?.invoke(ordinal) },
+                                                    enabled = savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-retry-saved-memory-$ordinal")) {
+                                                    Text(t("Try again", "重试"))
+                                                }
+                                            }
+                                        }
+                                        if (ordinal != cards.lastIndex) HorizontalDivider()
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if (exchanges.isEmpty() && pending == null) item(key = "assistant-intro") {
                         Card(Modifier.fillMaxWidth().testTag("assistant-intro"), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

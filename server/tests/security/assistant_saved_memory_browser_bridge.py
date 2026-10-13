@@ -98,6 +98,22 @@ saved_story = seed_client.post('/memory-stories?library=family-a',
 if saved_story.status_code != 200:
     raise RuntimeError('Could not seed synthetic saved story')
 story_id = saved_story.json()['id']
+profiled_chapters = [chapter | {
+    'asset_ids': list(chapter.get('asset_ids') or [item['id'] for item in draft['items']]),
+    'evidence_ids': [],
+    'narration': '来源审阅策略检查内容，仅用于现有故事阅读器重开。',
+} for chapter in draft['chapters']]
+profiled_body = story_body | {
+    'title': '来源审阅回忆录重开检查',
+    'chapters': json.dumps(profiled_chapters, ensure_ascii=False),
+    'source_policy': 'chapter_sources_v1',
+    'mutation_id': str(uuid.uuid4()),
+}
+profiled_story = seed_client.post('/memory-stories?library=family-a&source_review=1',
+    headers=owner_headers, json=profiled_body)
+if profiled_story.status_code != 200:
+    raise RuntimeError('Could not seed synthetic source-reviewed saved story')
+profiled_story_id = profiled_story.json()['id']
 memoir_title = '夏日回忆册 <img src=x onerror=window.__savedMemoryXss=3>'
 saved_memoir = seed_client.post('/memory-community/v1/books?library=family-a',
     headers=owner_headers, json={
@@ -124,7 +140,7 @@ fixture.client = client
 fixture.client.headers['Sec-Fetch-Site'] = 'same-origin'
 
 try:
-    print(json.dumps({'ready': True, 'story_id': story_id, 'memoir_id': memoir_id,
+    print(json.dumps({'ready': True, 'story_id': story_id, 'profiled_story_id': profiled_story_id, 'memoir_id': memoir_id,
         'story_title': story_body['title'], 'story_excerpt': draft['chapters'][0]['narration'],
         'memoir_title': memoir_title}, ensure_ascii=False), flush=True)
     for line in sys.stdin:

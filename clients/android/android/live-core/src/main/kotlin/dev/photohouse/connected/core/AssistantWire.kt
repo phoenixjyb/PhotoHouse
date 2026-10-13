@@ -8,6 +8,16 @@ import java.nio.charset.CodingErrorAction
 
 data class AssistantCapabilities(val enabled: Boolean, val text: Boolean, val transcribe: Boolean, val speech: Boolean, val maxAudioSeconds: Int)
 data class AssistantEffect(val type: String, val assetId: String)
+data class AssistantSavedMemoryCard(
+    val kind: String, val id: String, val revision: String, val sourceRevision: String,
+    val title: String, val excerpt: String,
+)
+data class AssistantSavedMemoryContext(
+    val libraryId: String, val sourceRevision: String, val references: List<AssistantSavedMemoryReference>,
+)
+data class AssistantSavedMemoryReference(
+    val kind: String, val id: String, val revision: String, val sourceRevision: String,
+)
 data class AssistantTurn(
     val kind: String,
     val reply: String,
@@ -19,6 +29,8 @@ data class AssistantTurn(
     val effect: AssistantEffect?, val receipt: AssistantRequestReceipt? = null,
     /** Local recovery marker; never accepted as an extra wire field. */
     val recovered: Boolean = false,
+    val memoryCards: List<AssistantSavedMemoryCard> = emptyList(),
+    val savedMemoryContext: AssistantSavedMemoryContext? = null,
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,

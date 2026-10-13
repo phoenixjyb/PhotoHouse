@@ -151,12 +151,33 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val privateAssistant = store?.assistantWorkspaceCoordinator
     val privateAssistantState = store?.assistantWorkspaceState?.collectAsState()?.value ?: AssistantWorkspaceState()
     LaunchedEffect(assistantOpen, state.generation, state.library) {
-        if (assistantOpen && !state.covered && state.session != null) privateAssistant?.refreshCapabilities()
+        if (assistantOpen && !state.covered && state.session != null && privateAssistant != null) {
+            if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
+        }
     }
     LaunchedEffect(privateAssistantOpen) {
-        if (privateAssistantOpen && privateAssistant != null && privateAssistant.refreshThreads()) {
-            privateAssistant.state.first { !it.busy }
-            privateAssistant.refreshPreferences()
+        if (privateAssistantOpen && privateAssistant != null) {
+            if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySpeechCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshThreads()) {
+                privateAssistant.state.first { !it.busy }
+                privateAssistant.refreshPreferences()
+            }
+        }
+    }
+    LaunchedEffect(privateAssistantState.memoryReaderHandoff, state.generation, state.library, state.session?.account_id) {
+        val handoff = privateAssistantState.memoryReaderHandoff ?: return@LaunchedEffect
+        val live = store?.state?.value ?: return@LaunchedEffect
+        val inForeground = (privateAssistantOpen || assistantOpen) && !live.covered && live.generation == state.generation &&
+            live.library == state.library && live.session?.account_id == state.session?.account_id
+        if (inForeground && store.openAssistantMemoryReader(handoff, state.session?.account_id.orEmpty(),
+                state.library.orEmpty(), state.generation)) {
+            privateAssistantOpen = false
+            assistantOpen = false
         }
     }
     var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
@@ -576,9 +597,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 return@Surface
             }
             if (assistantOpen && state.library != null && !state.covered && store != null) {
+                val voice = rememberAssistantVoiceControls(store, state, words.zh) { id, requestId ->
+                    if (assistantOpen && requestId != handledAssistantExchangeId) {
+                        handledAssistantExchangeId = requestId
+                        store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id)
+                    }
+                }
                 if (privateAssistantOpen && privateAssistant != null) {
                     val current: () -> Boolean = { val live=store.state.value
-                        assistantOpen && !live.covered && live.generation == state.generation &&
+                        assistantOpen && privateAssistantOpen && !live.covered && live.generation == state.generation &&
                             live.library == state.library && live.session?.account_id == state.session?.account_id }
                     val renderedAndLiveThreadCurrent: (String, Long) -> Boolean = { threadId, revision ->
                         val rendered = privateAssistantState.detail?.thread
@@ -669,18 +696,23 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                         onReloadHistory = { threadId, revision ->
                             if (renderedAndLiveThreadCurrent(threadId, revision)) privateAssistant.openThread(threadId)
                         },
-                        onDismiss = { privateAssistantOpen=false },
+                        onDismiss = { privateAssistant.invalidateSavedMemoryReader(); privateAssistantOpen=false },
+                        onOpenSavedMemoryCard = { ordinal ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            if (current() && renderedCard != null && renderedTurn.status == AssistantWorkspaceRequestStatus.COMPLETED &&
+                                !renderedTurn.recovered && renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                                renderedTurn.revision == privateAssistantState.detail?.thread?.revision &&
+                                privateAssistant.state.value.currentTurn == renderedTurn) {
+                                voice?.end?.invoke()
+                                privateAssistant.openSavedMemoryCard(ordinal)
+                            }
+                        },
                         onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
                             privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
                             privateAssistantOpen=false;assistantOpen=false;store.openAssetById(id)
                         } })
                     return@Surface
-                }
-                val voice = rememberAssistantVoiceControls(store, state, words.zh) { id, requestId ->
-                    if (assistantOpen && requestId != handledAssistantExchangeId) {
-                        handledAssistantExchangeId = requestId
-                        store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id)
-                    }
                 }
                 val assistantScopeCurrent: () -> Boolean = {
                     val live = store.state.value
@@ -705,6 +737,19 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     privateReplySpeechEnabled = store.privateReplySpeechEnabled(),
                     privateReplySpeechAvailable = store.privateReplySpeechEnabled() &&
                         (state.assistant?.speechBusy == true || state.assistant?.speechAudio != null || store.canReadAssistantReply()),
+                    savedMemoryWorkspace = privateAssistantState,
+                    onOpenSavedMemoryCard = { ordinal ->
+                        val fresh = privateAssistant?.state?.value
+                        val turn = fresh?.currentTurn
+                        val card = turn?.result?.memoryCards?.getOrNull(ordinal)
+                        if (assistantScopeCurrent() && fresh?.savedMemoryCardsAvailable == true && card != null &&
+                            turn.status == AssistantWorkspaceRequestStatus.COMPLETED && !turn.recovered &&
+                            fresh.detail?.thread?.let { it.threadId == turn.threadId && it.revision == turn.revision } == true) {
+                            voice?.end?.invoke()
+                            assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false
+                            privateAssistant?.openSavedMemoryCard(ordinal)
+                        }
+                    },
                     onPrivateConversations = if(privateAssistantState.capabilities?.let { it.available && it.threads } == true) ({
                         if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();
                             assistantPermissionContext=null;assistantPendingCapture?.capture?.discard();assistantPendingCapture=null;
@@ -718,7 +763,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     }) },
                     onPauseVoiceSession = voice?.pause, onResumeVoiceSession = voice?.resume,
                     onEndVoiceSession = voice?.end, onFinishVoiceTurn = voice?.finishTurn,
-                    onBack = { voice?.end?.invoke(); store.clearAssistantSpeech(); assistantOpen = false },
+                    onBack = { voice?.end?.invoke(); privateAssistant?.invalidateSavedMemoryReader(); store.clearAssistantSpeech(); assistantOpen = false },
                     onRetryCapabilities = { if (manualAssistantAction()) store.loadAssistantCapabilities() },
                     onSend = { text -> manualAssistantAction() && store.sendAssistantText(text) }, onClear = { if (assistantScopeCurrent()) {
                         voice?.end?.invoke()

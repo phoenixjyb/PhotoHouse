@@ -450,6 +450,13 @@ def run(output):
                     speech_capability.json() == {'version': 1, 'available': True},
                     'synthetic_saved_memory_capability_failed')
 
+            reader_capability = client.get(
+                BASE + '/saved-memory-reader-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(reader_capability.status_code == 200 and
+                    reader_capability.json() == {'version': 1, 'available': True},
+                    'synthetic_saved_memory_reader_capability_failed')
+
             memory_thread = client.post(BASE + '/threads', headers=_auth(TOKEN),
                                         json={'library_id': LIBRARY})
             _assert(memory_thread.status_code == 201, 'synthetic_memory_thread_create_failed')
@@ -465,6 +472,19 @@ def run(output):
                     [card.get('id') for card in story_result.get('memory_cards', [])] == [story['id']] and
                     story_result.get('effect') is None and story_result.get('items') == [],
                     'synthetic_memory_story_cards_invalid')
+
+            story_reader_path = (f'{BASE}/threads/{memory_thread_id}/requests/'
+                                 f'{story_request_id}/memory-cards/0?library_id={LIBRARY}&expected_revision=1')
+            story_reader = client.get(story_reader_path, headers=_auth(TOKEN))
+            _assert(story_reader.status_code == 200 and
+                    set(story_reader.json()) == {'version', 'kind', 'reader'} and
+                    story_reader.json()['kind'] == 'story' and
+                    story_reader.json()['reader']['id'] == story['id'] and
+                    story_reader.json()['reader']['chapters'][0]['narration'] ==
+                    'A synthetic amber picnic beside the lake.' and
+                    'no-store' in story_reader.headers.get('cache-control', '') and
+                    client.get(story_reader_path, headers=_auth(OTHER_TOKEN)).status_code == 404,
+                    'synthetic_saved_story_reader_handoff_failed')
 
             story_recovery = client.get(
                 f'{BASE}/threads/{memory_thread_id}/requests/{story_request_id}?library_id={LIBRARY}',
@@ -505,6 +525,14 @@ def run(output):
                     [card.get('id') for card in memoir_result.get('memory_cards', [])] == [memoir['id']] and
                     memoir_result.get('effect') is None and memoir_result.get('items') == [],
                     'synthetic_memory_memoir_cards_invalid')
+            memoir_reader = client.get(
+                f'{BASE}/threads/{memory_thread_id}/requests/{memoir_request_id}/memory-cards/0'
+                f'?library_id={LIBRARY}&expected_revision=2', headers=_auth(TOKEN))
+            _assert(memoir_reader.status_code == 200 and memoir_reader.json()['kind'] == 'memoir' and
+                    memoir_reader.json()['reader']['id'] == memoir['id'] and
+                    memoir_reader.json()['reader']['stories'][0]['id'] == story['id'] and
+                    client.get(story_reader_path, headers=_auth(TOKEN)).status_code == 409,
+                    'synthetic_saved_memoir_reader_handoff_failed')
             memoir_speech_id = str(uuid.uuid4())
             memoir_audio = client.post(
                 f'{BASE}/threads/{memory_thread_id}/requests/{memoir_request_id}/speech',
@@ -542,6 +570,11 @@ def run(output):
             _assert(drift_audio.status_code == 409 and drift_audio.content != tts.audio and
                     len(tts.calls) == calls_before_drift + 1,
                     'synthetic_memory_source_drift_audio_not_withheld')
+            drift_reader = client.get(
+                f'{BASE}/threads/{memory_thread_id}/requests/{drift_request_id}/memory-cards/0'
+                f'?library_id={LIBRARY}&expected_revision=3', headers=_auth(TOKEN))
+            _assert(drift_reader.status_code == 409 and 'reader' not in drift_reader.json(),
+                    'synthetic_saved_reader_source_drift_not_withheld')
             removed_memory_thread = client.request('DELETE',
                 f'{BASE}/threads/{memory_thread_id}', headers=_auth(TOKEN),
                 json={'library_id': LIBRARY, 'expected_revision': 3})

@@ -53,6 +53,12 @@ class ConnectedStoreAssistantWorkspaceTest {
 
     private class WorkspaceApi : AssistantWorkspaceApi {
         override val assistantWorkspaceEnabled = true
+        private val threadId = "11111111-1111-4111-8111-111111111111"
+        private val turnId = "22222222-2222-4222-8222-222222222222"
+        private val cardId = "33333333-3333-4333-8333-333333333333"
+        private var revision = 0L
+        private val memoryCard = AssistantSavedMemoryCard("memoir", cardId, "2", "a".repeat(64),
+            "Family memoir", "A saved family story.")
         var capabilitiesCalls = 0
         var listCalls = 0
         var listGate: CompletableDeferred<Unit>? = null
@@ -82,6 +88,30 @@ class ConnectedStoreAssistantWorkspaceTest {
                 throw cancel
             }
             return AssistantWorkspaceThreadList(1, emptyList())
+        }
+
+        override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String) = SavedMemoryReaderCapabilities(1, true)
+        override suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String) = SavedMemoryReaderCapabilities(1, true)
+        override suspend fun readThread(token: Bearer, library: String, threadId: String) = detail(library, revision)
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?,
+                                        acceptSavedMemoryCards: Boolean): AssistantWorkspaceTurn {
+            revision = expectedRevision + 1
+            return AssistantWorkspaceTurn(1, threadId, requestId, AssistantWorkspaceRequestStatus.COMPLETED, revision,
+                false, null, AssistantTurn("memory_cards", "Found a saved memory.", null, null, emptyList(), 1, false, null,
+                    memoryCards = listOf(memoryCard), savedMemoryContext = AssistantSavedMemoryContext(library,
+                        "b".repeat(64), listOf(AssistantSavedMemoryReference(memoryCard.kind, memoryCard.id,
+                            memoryCard.revision, memoryCard.sourceRevision)))))
+        }
+        override suspend fun savedMemoryReader(token: Bearer, library: String, threadId: String, turnId: String,
+                                               ordinal: Int, expectedRevision: Long): SavedMemoryReaderPayload =
+            SavedMemoryReaderPayload.Memoir(MemoryBook(cardId, 2, false, "Family memoir", "", "en",
+                listOf(MemoryBookStorySummary("44444444-4444-4444-8444-444444444444", "A chapter", 3, 1, "1"))))
+
+        private fun detail(library: String, revision: Long): AssistantWorkspaceThreadDetail {
+            val thread = AssistantWorkspaceThreadSummary(threadId, library, "2026-10-01T00:00:00Z",
+                "2026-10-02T00:00:00Z", "2026-11-01T00:00:00Z", revision)
+            return AssistantWorkspaceThreadDetail(1, thread, emptyList())
         }
     }
 
@@ -147,6 +177,26 @@ class ConnectedStoreAssistantWorkspaceTest {
         assertEquals("", secondState.draft)
         assertEquals("family", workspace.capabilityScopes.single().second)
         assertEquals("account-a", api.currentSession.account_id)
+    }
+
+    @Test fun assistantReaderHandoffOpensMemoirWithoutLoadingTheShelf() = runTest {
+        val (store) = authenticatedStore()
+        store.selectLibrary("family"); runCurrent()
+        val coordinator = requireNotNull(store.assistantWorkspaceCoordinator)
+        assertNull(store.state.value.memoryBooks)
+        assertNull(store.state.value.savedMemoryStories)
+        coordinator.refreshCapabilities(); runCurrent()
+        coordinator.refreshSavedMemoryCardsCapabilities(); runCurrent()
+        coordinator.refreshSavedMemoryReaderCapabilities(); runCurrent()
+        coordinator.openThread("11111111-1111-4111-8111-111111111111"); runCurrent()
+        coordinator.setDraft("Find a saved memoir")
+        coordinator.sendTurn(); runCurrent()
+        coordinator.openSavedMemoryCard(0); runCurrent()
+        val handoff = requireNotNull(coordinator.state.value.memoryReaderHandoff)
+
+        assertTrue(store.openAssistantMemoryReader(handoff, "account-a", "family", store.state.value.generation))
+        assertNull(store.state.value.savedMemoryStories)
+        assertEquals("33333333-3333-4333-8333-333333333333", store.state.value.memoryBooks?.selectedBook?.id)
     }
 
     @Test fun backgroundForegroundErasesPrivateStateAndCancelsLateWorkspaceGet() = runTest {

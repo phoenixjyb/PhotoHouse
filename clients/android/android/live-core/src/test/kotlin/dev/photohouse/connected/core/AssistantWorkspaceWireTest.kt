@@ -3,6 +3,7 @@ package dev.photohouse.connected.core
 import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
@@ -18,6 +19,57 @@ class AssistantWorkspaceWireTest {
 
     private fun result(kind: String = "results", effect: String = "null") =
         """{"version":1,"kind":"$kind","reply":"Found one.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1},"filters":{},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}],"total":1,"has_more":false,"effect":$effect}"""
+
+    private fun savedMemoryResult(kind: String = "story", contextId: String = "11111111-1111-4111-8111-111111111111") =
+        """{"version":1,"kind":"memory_cards","reply":"Found a saved memory.","context":{"kind":"saved_memory","library_id":"family-a","source_revision":"${"a".repeat(64)}","references":[{"kind":"$kind","id":"11111111-1111-4111-8111-111111111111","revision":"2","source_revision":"${"b".repeat(64)}"}]},"filters":null,"items":[],"total":1,"has_more":false,"effect":null,"memory_cards":[{"kind":"$kind","id":"$contextId","revision":"2","source_revision":"${"b".repeat(64)}","title":"Garden day","excerpt":"The family walked by the lake."}]}"""
+
+    @Test fun savedMemoryCardsRequireFreshNegotiatedTurnAndExactReferenceBindings() {
+        val fresh = AssistantWorkspaceWire.turn(turn(savedMemoryResult(), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, acceptSavedMemoryCards = true)
+        val freshResult = fresh.result!!
+        val card = freshResult.memoryCards.single()
+        assertEquals("story", card.kind)
+        assertEquals("Garden day", card.title)
+        assertEquals(64, card.sourceRevision.length)
+        assertEquals("family-a", freshResult.savedMemoryContext!!.libraryId)
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult(), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false) }
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult(), recovered = true).toByteArray(),
+            "family-a", thread, request, fromGet = true, acceptSavedMemoryCards = true) }
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult(contextId = "22222222-2222-4222-8222-222222222222"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult().replace("\"revision\":\"2\"", "\"revision\":2"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
+    }
+
+    @Test fun savedMemoryCardTextAndRevisionMatchServerBounds() {
+        val largest = savedMemoryResult().replace("\"revision\":\"2\"", "\"revision\":\"9223372036854775806\"")
+        val accepted = AssistantWorkspaceWire.turn(turn(largest, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, acceptSavedMemoryCards = true)
+        assertEquals("9223372036854775806", accepted.result!!.memoryCards.single().revision)
+        val tabbedExcerpt = savedMemoryResult().replace("The family walked by the lake.", "The family\\twalked by the lake.")
+        assertEquals(1, AssistantWorkspaceWire.turn(turn(tabbedExcerpt, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, acceptSavedMemoryCards = true).result!!.memoryCards.size)
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult().replace("\"revision\":\"2\"", "\"revision\":\"9223372036854775807\""),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult().replace("Garden day", ""), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, false, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(savedMemoryResult().replace("The family walked by the lake.", "bad\\u202e text"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
+    }
+
+    @Test fun savedMemoryReaderEnvelopeReusesTheStrictMemoirDetailParser() {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val child = "22222222-2222-4222-8222-222222222222"
+        val reader = """{"version":1,"type":"memoir","id":"$id","revision":"2","can_edit":false,"title":"Family year","introduction":"A year together.","language":"en","stories":[{"id":"$child","title":"Summer","revision":"3","item_count":1,"cover_asset_id":"1"}]}"""
+        val envelope = """{"version":1,"kind":"memoir","reader":$reader}"""
+        val decoded = AssistantWorkspaceWire.savedMemoryReader(envelope.toByteArray(), "family-a") as SavedMemoryReaderPayload.Memoir
+        assertEquals(id, decoded.value.id)
+        assertEquals(2L, decoded.value.revision)
+        assertEquals(child, decoded.value.stories.single().id)
+        invalid { AssistantWorkspaceWire.savedMemoryReader(envelope.replace("memoir", "story").toByteArray(), "family-a") }
+        invalid { AssistantWorkspaceWire.savedMemoryReader(envelope.replace("\"revision\":\"2\"", "\"revision\":2").toByteArray(), "family-a") }
+    }
 
     @Test fun enforcesScopeCorrelationAndRecoveredEffectSuppression() {
         val valid = AssistantWorkspaceWire.turn(turn(result()).toByteArray(), "family-a", thread, request, fromGet = true)
@@ -165,6 +217,11 @@ class AssistantWorkspaceWireTest {
         assertTrue(body.contains("\"library_id\":\"family-a\""))
         assertTrue(body.contains("\"request_id\":\"$request\""))
         assertFalse(body.contains("context")); assertFalse(body.contains("reply")); assertFalse(body.contains("cards"))
+        val optedIn = kotlinx.serialization.json.Json.parseToJsonElement(
+            AssistantWorkspaceWire.turnRequest("family-a", request, 3, "find saved story lake", true),
+        ).jsonObject
+        assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts"), optedIn.keys)
+        assertEquals("saved_memory_cards_v1", optedIn.getValue("accepts").jsonArray.single().jsonPrimitive.content)
         invalidInput { AssistantWorkspaceWire.turnRequest("family-a", request, 0, "x".repeat(1025)) }
         invalidInput { AssistantWorkspaceWire.turnRequest("family-a", request, 0, "bad\u007ftext") }
         invalidInput { AssistantWorkspaceWire.createThreadRequest("family-a", thread.replace("4", "1")) }

@@ -12,6 +12,9 @@ from .assistant_workspace_store import MAX_INPUT_BYTES, _text
 
 _CHINESE_PREFIXES = (
     ('找回忆册', 'memoir'),
+    ('找回忆录', 'memoir'),
+    ('搜索回忆录', 'memoir'),
+    ('找故事', 'story'),
     ('搜索故事', 'story'),
     ('找回忆', None),
 )

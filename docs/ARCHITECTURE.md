@@ -539,7 +539,12 @@ current story/memoir source before and after synthesis. Web shows scoped immutab
 text cards without media hydration. A separate optional speech probe enables
 their short generic replies; original card and base probes remain compatible.
 Late responses and audio are fenced on feature loss, and playback stops before
-another foreground capture can start. Phone cards and reader navigation remain outstanding. The
+another foreground capture can start. The next local source adds phone cards and explicit Web/phone reader navigation.
+A separate optional reader probe preserves search compatibility. The ordinal GET
+resolves stored completed-turn references, revalidates current source digests and
+owner/revision chains, and returns existing reader detail. Clients stop foreground
+voice before a tap-triggered read and fence late handoffs by scope and fresh turn.
+This implementation is outside the published v54 package. The
 [saved-memory card contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) requires separate
 feature negotiation, current-source revalidation and explicit reader handoff.
 Recovered history remains non-actionable. No inference, automatic story mutation

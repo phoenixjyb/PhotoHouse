@@ -347,8 +347,9 @@ class AssistantVoiceSessionStore(
             return
         }
         val privateReplySpeech = sessionPrivateReplySpeechEnabled == true
+        val savedMemorySpeech = turn.kind != "memory_cards" || store.assistantWorkspaceState.value.savedMemorySpeechAvailable
         // An enabled private reply path never silently degrades to a count or truncates the reply.
-        if (turn.effect != null || if (privateReplySpeech) !store.canReadAssistantReply()
+        if (!savedMemorySpeech || turn.effect != null || if (privateReplySpeech) !store.canReadAssistantReply()
             else turn.kind != "results" || turn.items.isEmpty()) {
             reviewCompletedRequest(binding)
             return

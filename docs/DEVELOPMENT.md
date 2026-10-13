@@ -2057,3 +2057,36 @@ The dated native read-only observation still reported phone OTA v51 and
 TV v30, and no service switch, release signing or publication happened during
 this development slice. Consult [voice reliability](ASSISTANT_VOICE_RELIABILITY.md)
 for its scope and [the roadmap](ROADMAP.md) for subsequent delivery gates.
+
+## October 13 assistant saved-memory reader source
+
+The next source connects fresh saved-memory cards to protected story/memoir
+readers on Web and phone. Separate card, reader and speech probes preserve
+older-server behavior. Scope, completed-turn revision, typed references and
+current source digests are revalidated; opening stops foreground voice first.
+
+Checks for this slice:
+
+- Assistant security suite: 166 tests, one external-adapter skip. The reader HTTP
+  suite contributes nine tests; the reader/saved-card/closed-boundary cohort
+  passed 51 overlapping checks. Fourteen intent parser cases include the current
+  Chinese reader names.
+- Six portable qualification-controller tests pass. Its existing eleven generated
+  scenarios now also exercise full story/memoir handoff, hidden foreign access,
+  superseded parent revisions and stale-source refusal. No network/model/family
+  database is used.
+- Web controller: 52 checks; generated browser journey: eleven checkpoints.
+  Includes separate-probe fallback, story/memoir opening, source-policy shelf
+  reopening and late old-scope responses during a replacement turn.
+- Android focused core: 72 checks. Debug and instrumentation Kotlin compilation
+  passed; two central-card large-text QA emulator fixtures passed in Chinese and
+  English on the existing API 36 emulator. Fixture captures were inspected.
+- Web story reader, memoir reader and the 390px/150% memoir card were inspected.
+  Long memoir table-of-contents titles now wrap in a narrow layout.
+
+The initial Android report-writing attempt was unsuccessful; a later serial
+compile found and fixed a Character-category comparison error. Focused checks
+then passed. The Gradle instrumentation task removed its target app and cache;
+QA debug/test APKs were reinstalled only on the designated emulator for direct
+instrumentation and capture. No physical phone, provider or Windows service was
+changed. These changes are outside the already-published v54 artifact.

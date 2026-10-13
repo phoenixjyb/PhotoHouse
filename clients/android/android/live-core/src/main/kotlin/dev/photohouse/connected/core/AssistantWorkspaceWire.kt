@@ -11,6 +11,10 @@ import java.util.UUID
 object AssistantWorkspaceWire {
     const val RESPONSE_LIMIT = 256 * 1024
     private const val REVISION_MAX = Long.MAX_VALUE - 1
+    private const val SAVED_MEMORY_RESPONSE_LIMIT = 240 * 1024
+    private const val SAVED_MEMORY_READER_ENVELOPE_LIMIT = 1024 * 1024
+    private const val SAVED_MEMORY_STORY_LIMIT = 256 * 1024
+    private const val SAVED_MEMORY_BOOK_LIMIT = 512 * 1024
     private val ERROR_CODES = setOf("assistant_unavailable", "context_changed", "request_cancelled", "access_denied",
         "invalid_request", "storage_unavailable", "turn_interrupted")
     private val CARD_TYPES = setOf("media", "album", "story", "memoir", "timeline", "unavailable")
@@ -49,6 +53,71 @@ object AssistantWorkspaceWire {
         ByteArray(buffer.remaining()).also(buffer::get)
     } catch (_: Exception) { throw ApiFailure(FailureKind.INVALID_INPUT) }
 
+    private fun memoryText(value: JsonElement?, maxCodePoints: Int, maxBytes: Int, multiline: Boolean = false): String {
+        val p = value as? JsonPrimitive ?: bad(); check(p.isString)
+        val text = p.content
+        check(text.codePointCount(0, text.length) <= maxCodePoints)
+        var offset = 0
+        while (offset < text.length) {
+            val cp = text.codePointAt(offset)
+            val allowedWhitespace = multiline && (cp == '\n'.code || cp == '\t'.code)
+            val allowedJoiner = cp == 0x200c || cp == 0x200d
+            val type = Character.getType(cp)
+            val forbidden = type == Character.CONTROL.toInt() || type == Character.FORMAT.toInt() ||
+                type == Character.SURROGATE.toInt() || type == Character.PRIVATE_USE.toInt() ||
+                type == Character.UNASSIGNED.toInt()
+            check(allowedWhitespace || allowedJoiner || !forbidden)
+            offset += Character.charCount(cp)
+        }
+        check(text.isNotBlank())
+        val bytes = strictUtf8(text)
+        try { check(bytes.size <= maxBytes) } finally { bytes.fill(0) }
+        return text
+    }
+
+    private fun memoryReference(value: JsonElement): AssistantSavedMemoryReference {
+        val o = value.obj(setOf("kind", "id", "revision", "source_revision"))
+        val kind = o.getValue("kind").str(16); check(kind in setOf("story", "memoir"))
+        val id = uuid(o.getValue("id"))
+        val revision = o.getValue("revision").str(19)
+        check(revision.matches(Regex("[1-9][0-9]{0,18}")) && revision.toLongOrNull()?.let { it <= REVISION_MAX } == true)
+        val digest = o.getValue("source_revision").str(64); check(digest.matches(Regex("[0-9a-f]{64}")))
+        return AssistantSavedMemoryReference(kind, id, revision, digest)
+    }
+
+    private fun savedMemoryResult(raw: JsonObject, library: String): AssistantTurn {
+        val o = raw.obj(setOf("version", "kind", "reply", "context", "filters", "items", "total", "has_more", "effect", "memory_cards"))
+        check(o.getValue("version").count(1) == 1)
+        val kind = o.getValue("kind").str(32)
+        val reply = memoryText(o["reply"], 4000, 8192)
+        check(o["filters"] == JsonNull && o.getValue("items").array(0).isEmpty() && o["effect"] == JsonNull)
+        val total = o.getValue("total").count(256)
+        val hasMore = o.getValue("has_more").bool()
+        val cardValues = o.getValue("memory_cards").array(12)
+        if (kind == "clarification") {
+            check(o["context"] == JsonNull && total == 0 && !hasMore && cardValues.isEmpty())
+            return AssistantTurn(kind, reply, null, null, emptyList(), 0, false, null)
+        }
+        check(kind == "memory_cards")
+        val context = o.getValue("context").obj(setOf("kind", "library_id", "source_revision", "references"))
+        check(context.getValue("kind").str(32) == "saved_memory" && context.getValue("library_id").str(256) == library)
+        val contextDigest = context.getValue("source_revision").str(64)
+        check(contextDigest.matches(Regex("[0-9a-f]{64}")))
+        val refs = context.getValue("references").array(12).map(::memoryReference)
+        check(refs.size == cardValues.size && cardValues.size == minOf(total, 12) && hasMore == (total > cardValues.size))
+        val cards = cardValues.mapIndexed { index, value ->
+            val c = value.obj(setOf("kind", "id", "revision", "source_revision", "title", "excerpt"))
+            val binding = memoryReference(JsonObject(mapOf("kind" to c.getValue("kind"), "id" to c.getValue("id"),
+                "revision" to c.getValue("revision"), "source_revision" to c.getValue("source_revision"))))
+            check(binding == refs[index])
+            AssistantSavedMemoryCard(binding.kind, binding.id, binding.revision, binding.sourceRevision,
+                memoryText(c["title"], 640, 640), memoryText(c["excerpt"], 240, 960, multiline = true))
+        }
+        check(cards.map { it.kind to it.id }.distinct().size == cards.size)
+        return AssistantTurn(kind, reply, null, null, emptyList(), total, hasMore, null,
+            memoryCards = cards, savedMemoryContext = AssistantSavedMemoryContext(library, contextDigest, refs))
+    }
+
     private fun parseThread(value: JsonElement, library: String, includeLabel: Boolean = false): AssistantWorkspaceThreadSummary {
         val optional = buildSet { add("exchange_count"); if (includeLabel) add("label") }
         val o = value.obj(setOf("thread_id", "library_id", "created_at", "updated_at", "expires_at", "revision"), optional)
@@ -81,6 +150,41 @@ object AssistantWorkspaceWire {
             o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet(),
             o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false,
             o["reply_speech"]?.bool() ?: false)
+    }
+
+    fun savedMemoryReaderCapabilities(bytes: ByteArray): SavedMemoryReaderCapabilities = guarded {
+        check(bytes.size in 1..4096)
+        val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available"))
+        check(o.getValue("version").count(1) == 1)
+        SavedMemoryReaderCapabilities(1, o.getValue("available").bool())
+    }
+
+    fun savedMemoryReader(bytes: ByteArray, library: String): SavedMemoryReaderPayload = guarded {
+        check(bytes.size in 1..SAVED_MEMORY_READER_ENVELOPE_LIMIT &&
+            PhoneDiscoveryWire.validLibrary(library))
+        val o = DiscoveryJson.parse(bytes, SAVED_MEMORY_READER_ENVELOPE_LIMIT, 12000)
+            .obj(setOf("version", "kind", "reader"))
+        check(o.getValue("version").count(1) == 1)
+        val kind = o.getValue("kind").str(16); check(kind in setOf("story", "memoir"))
+        val readerBytes = o.getValue("reader").toString().toByteArray(Charsets.UTF_8)
+        try {
+            when (kind) {
+                "story" -> {
+                    check(readerBytes.size in 1..SAVED_MEMORY_STORY_LIMIT)
+                    val reader = DiscoveryJson.parse(readerBytes, SAVED_MEMORY_STORY_LIMIT, 1200) as? JsonObject ?: bad()
+                    val id = reader["id"]?.let { (it as? JsonPrimitive)?.content } ?: bad()
+                    check(AssistantWorkspaceWire.validUuid4(id))
+                    val story = ProtectedMemoryStoriesWire.detail(readerBytes, library, id, 1)
+                    SavedMemoryReaderPayload.Story(story)
+                }
+                "memoir" -> {
+                    check(readerBytes.size in 1..SAVED_MEMORY_BOOK_LIMIT)
+                    val memoir = ProtectedMemoryCommunityWire.bookDetail(readerBytes)
+                    SavedMemoryReaderPayload.Memoir(memoir)
+                }
+                else -> bad()
+            }
+        } finally { readerBytes.fill(0) }
     }
 
     fun threadList(bytes: ByteArray, library: String, includeLabels: Boolean = false): AssistantWorkspaceThreadList = guarded {
@@ -271,16 +375,26 @@ object AssistantWorkspaceWire {
         (bytes[offset].toLong() and 0xff) or ((bytes[offset + 1].toLong() and 0xff) shl 8) or
             ((bytes[offset + 2].toLong() and 0xff) shl 16) or ((bytes[offset + 3].toLong() and 0xff) shl 24)
 
-    fun turnRequest(library: String, requestId: String, expectedRevision: Long, text: String): String {
+    fun turnRequest(library: String, requestId: String, expectedRevision: Long, text: String,
+                    acceptSavedMemoryCards: Boolean = false): String {
         if (!PhoneDiscoveryWire.validLibrary(library) || !validUuid4(requestId) || expectedRevision !in 0..REVISION_MAX) throw ApiFailure(FailureKind.INVALID_INPUT)
         val textBytes = strictUtf8(text)
         if (text.isBlank() || textBytes.size !in 1..1024 || text.any { (it < ' ' && it !in "\n\t") || it == '\u007f' })
             throw ApiFailure(FailureKind.INVALID_INPUT)
-        return buildJsonObject { put("library_id", library); put("request_id", requestId); put("expected_revision", expectedRevision); put("text", text) }
+        return buildJsonObject {
+            put("library_id", library); put("request_id", requestId); put("expected_revision", expectedRevision); put("text", text)
+            if (acceptSavedMemoryCards) put("accepts", buildJsonArray { add("saved_memory_cards_v1") })
+        }
             .toString().also { if (it.toByteArray(Charsets.UTF_8).size > 20 * 1024) throw ApiFailure(FailureKind.INVALID_INPUT) }
     }
 
-    private fun validateResult(bytes: ByteArray, library: String, recovered: Boolean): AssistantTurn {
+    private fun validateResult(bytes: ByteArray, library: String, recovered: Boolean,
+                               acceptSavedMemoryCards: Boolean): AssistantTurn {
+        val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
+        if ("memory_cards" in raw || raw["kind"]?.let { (it as? JsonPrimitive)?.content } == "memory_cards") {
+            check(bytes.size in 1..SAVED_MEMORY_RESPONSE_LIMIT && acceptSavedMemoryCards && !recovered)
+            return savedMemoryResult(raw, library)
+        }
         val result = AssistantWire.response(bytes, library)
         val json = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
         val context = json.getValue("context").let { if (it == JsonNull) null else it as? JsonObject ?: bad() }
@@ -365,7 +479,7 @@ object AssistantWorkspaceWire {
     }
 
     fun turn(bytes: ByteArray, library: String, threadId: String, requestId: String,
-             fromGet: Boolean): AssistantWorkspaceTurn = guarded {
+             fromGet: Boolean, acceptSavedMemoryCards: Boolean = false): AssistantWorkspaceTurn = guarded {
         check(bytes.size in 1..RESPONSE_LIMIT && PhoneDiscoveryWire.validLibrary(library) && validUuid4(threadId) && validUuid4(requestId))
         val o = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(setOf("version", "thread_id", "request_id", "status", "revision", "recovered", "error", "result"))
         check(o.getValue("version").count(1) == 1)
@@ -386,7 +500,7 @@ object AssistantWorkspaceWire {
               else rawResult == JsonNull)
         check(if (status == AssistantWorkspaceRequestStatus.FAILED || status == AssistantWorkspaceRequestStatus.INTERRUPTED)
             error in ERROR_CODES else error == null)
-        val result = if (rawResult == JsonNull) null else validateResult(rawResult.toString().toByteArray(Charsets.UTF_8), library, recovered)
+        val result = if (rawResult == JsonNull) null else validateResult(rawResult.toString().toByteArray(Charsets.UTF_8), library, recovered, acceptSavedMemoryCards)
         AssistantWorkspaceTurn(1, threadId, requestId, status, revision, recovered, error, result)
     }
 }

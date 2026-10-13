@@ -56,7 +56,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 157)
+                self.assertEqual(len(main.app.routes), 159)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -171,6 +171,7 @@ class ClosedApplicationTests(unittest.TestCase):
         expected |= {
             ('GET', '/assistant/workspace/v1/capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+            ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
             ('GET', '/assistant/workspace/v1/threads'),
             ('POST', '/assistant/workspace/v1/threads'),
@@ -181,6 +182,7 @@ class ClosedApplicationTests(unittest.TestCase):
             ('POST', '/assistant/workspace/v1/preferences/reset'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/turns'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}'),
+            ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/history'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/speech'),
             ('GET', '/ui/assistant-private-workspace.js'),
@@ -188,7 +190,7 @@ class ClosedApplicationTests(unittest.TestCase):
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 157)
+        self.assertEqual(len(actual), 159)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)
@@ -208,6 +210,14 @@ class ClosedApplicationTests(unittest.TestCase):
                       .replace('{member_id}', '11111111-1111-4111-8111-111111111111'))
             sample = re.sub(r'\{[^}]+\}', '1', sample)
             self.assertTrue(ClosedBoundary.allowed(method, sample))
+        thread = '11111111-1111-4111-8111-111111111111'
+        turn = '22222222-2222-4222-8222-222222222222'
+        for ordinal in ('0', '9', '10', '11'):
+            self.assertTrue(ClosedBoundary.allowed('GET',
+                f'/assistant/workspace/v1/threads/{thread}/requests/{turn}/memory-cards/{ordinal}'))
+        for ordinal in ('00', '12', '-1'):
+            self.assertFalse(ClosedBoundary.allowed('GET',
+                f'/assistant/workspace/v1/threads/{thread}/requests/{turn}/memory-cards/{ordinal}'))
 
     def test_every_retired_route_is_denied_or_replaced_by_a_protected_route(self):
         inventory = json.loads((ROOT / 'docs/security/route_capabilities.json').read_text())

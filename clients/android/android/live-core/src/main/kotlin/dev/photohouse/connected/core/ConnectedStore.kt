@@ -1551,6 +1551,51 @@ class ConnectedStore(
         readAuthorizedSavedMemoryStory(summary)
     }
 
+    /** Installs the detail returned by the exact assistant reference handoff into the ordinary story reader. */
+    fun openAssistantMemoryReader(handoff: AssistantMemoryReaderHandoff,
+                                  expectedAccount: String, expectedLibrary: String, expectedGeneration: Long): Boolean {
+        val live = state.value
+        val scope = currentAssistantWorkspaceScope()
+        if (!allowed() || scope?.foregroundAllowed != true || live.busy || live.library != expectedLibrary ||
+            live.generation != expectedGeneration || scope.accountId != expectedAccount || scope.libraryId != expectedLibrary ||
+            scope.generation != expectedGeneration || identity?.account_id != expectedAccount || token == null ||
+            assistantWorkspaceCoordinator?.consumeMemoryReaderHandoff(handoff) != true) return false
+        when (val payload = handoff.payload) {
+            is SavedMemoryReaderPayload.Story -> {
+                val story = payload.value
+                if (handoff.card.kind != "story" || story.id != handoff.card.id ||
+                    story.revision.toString() != handoff.card.revision || story.libraryId != expectedLibrary ||
+                    story.items.isEmpty() || story.chapters.isEmpty()) return false
+                closeMemoryBooks()
+                closeSavedMemoryStories()
+                val detailRequest = ++savedMemoryDetailRequest
+                val readerEpoch = ++savedMemoryReaderEpoch
+                val summary = SavedMemoryStorySummary(story.id, story.title, story.theme, story.language, story.revision,
+                    story.items.first().asset.id, story.items.size, story.chapters.size, story.updatedAt, story.canEdit)
+                mutable.value = state.value.copy(savedMemoryStories = SavedMemoryStoriesReading(
+                    library = expectedLibrary, detail = story, selectedSummary = summary,
+                    selectedChapter = 0, selectedAssetId = story.chapters.first().assetIds.firstOrNull(),
+                ))
+                loadSavedMemoryChapterFrames(0)
+                initializeMemoryCommunity(story.id)
+                loadSavedMemoryStoryContributionReferences(story, token!!, expectedGeneration, detailRequest, readerEpoch)
+                return true
+            }
+            is SavedMemoryReaderPayload.Memoir -> {
+                val book = payload.value
+                if (handoff.card.kind != "memoir" || book.id != handoff.card.id ||
+                    book.revision.toString() != handoff.card.revision || book.stories.isEmpty()) return false
+                closeSavedMemoryStories()
+                closeMemoryBooks()
+                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(
+                    library = expectedLibrary, selectedBook = book, storyIndex = null,
+                ))
+                loadMemoryBookStory(0)
+                return true
+            }
+        }
+    }
+
     private fun readAuthorizedSavedMemoryStory(summary: SavedMemoryStorySummary, wholeStoryContribution: Boolean = false) {
         clearMemoryCommunity(clearState = true)
         val reading = state.value.savedMemoryStories ?: return
