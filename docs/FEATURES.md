@@ -16,9 +16,14 @@ checks do not update the hosted or household release records above.
 
 This matrix records the source migration baseline. Live installations and physical devices have their own acceptance records.
 
-Phone v50 is delivered on HTTPS OTA with the original artwork and clearer update
-messages. Native verification and an independent complete download passed; phone
-installation remains a separate gate. See the [delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
+The October 12 phone v50 delivery record documents HTTPS OTA publication, native
+verification and an independent complete download; phone installation was a
+separate gate at that time. A read-only native snapshot at 2026-10-13 13:00
+Beijing later verified phone OTA v51 and API source `7daf740`. The existing phone
+v52 source candidate is pinned to `7f8d92b` and pending publication. The new
+grounded narration implementation is outside that immutable candidate, with
+local qualification and delivery gates recorded below. These dated receipts
+do not establish its live delivery. See the [v50 delivery record](../clients/android/docs/PHONE_V50_RELEASE_CANDIDATE_2026-10-12.md).
 
 | Area | Implemented baseline | Remaining gate or next improvement |
 |---|---|---|
@@ -29,7 +34,7 @@ installation remains a separate gate. See the [delivery record](../clients/andro
 | Phone | Reviewed voice memory, chapter source linking, family-memory home card, draft guards, v40 assistant recovery, OTA client, manual memoir arrangement, first-message previews, scoped conversation restoration, original-source inspection, explicit chapter/reply narration pause-resume, grouped-story creation, profile-derived optional bylines and explicit same-day media candidates | [Candidate picker evidence](../clients/android/docs/ANDROID_RELATED_MOMENTS_2026-10-09.md) records local checks separately from release package, live service and family acceptance; server/client delivery and enabled b1 service remain separate gates |
 | Web | Chinese default, session recovery, story workspace, pending assistant recovery, explicit transcript review, bounded current-page assistant turn trail, manual memoir editor/reader, opt-in first-message previews, scoped conversation restoration, explicit narration controls and original/derived source inspection; generated-data Web profiles have revision-specific results below | Conversation navigation has 23 checkpoint groups; the full community journey has its own result. Earlier 16/17/20/22 counts remain historical. These and the source-inspection/narration journeys are synthetic browser evidence; b1 service defaults off, with no household migration or live owner/member acceptance |
 | TV | Named libraries, OTA, paced viewing | Latest installed projector navigation and playback |
-| Voice assistant | ASR input, explicit submission, receipts/context, pending-turn recovery, optional TTS, scoped story/memoir conversation navigation and current-reply clarification cues in Web and phone | Served Web and signed phone delivery; provider and family conversation quality qualification |
+| Voice assistant | ASR input, explicit submission, receipts/context, pending-turn recovery, optional TTS, scoped story/memoir conversation navigation and current-reply clarification cues in Web and phone | [Grounded result narration](ASSISTANT_VOICE_RELIABILITY.md#grounded-result-narration) is limited to three current ordered cards, card kind and valid recorded `taken_at` date, with unknown dates explicit; preserve the v1 envelope/context and validate again after TTS. Source implementation, provider quality and family/device delivery remain separate gates |
 | Conversation reading | Bounded Web and phone exchange lists preserve older reading positions and offer a localized jump to the latest activity | [Trail contract](ASSISTANT_TURN_TRAIL.md); generated phone scroll/keyboard journeys pass; exact installed delivery remains separate |
 | Story/memoir chat history | Phone direct latest-page action and scope/lifetime guards on all history controls preserve unsent text | [Navigation contract](PHONE_MEMORY_CHAT_NAVIGATION.md); four bilingual 150% simulator journeys pass at `7d7b1ef`; signed delivery remains separate |
 | Full conversation continuation | Backend distinguishes the 128-turn cap; Web and phone keep old history and transfer retained words into a reviewed new conversation using one retry identity | [Continuation contract](MEMORY_CHAT_CONTINUATION.md); generated browser and bilingual 150% simulator checks pass; served Web, signed phone and family conversation acceptance remain separate |

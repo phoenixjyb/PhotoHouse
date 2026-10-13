@@ -13284,6 +13284,86 @@
       "routes_added": true,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "grounded-result-narration-and-optional-asr-test-boundary-20261013",
+      "based_on_commit": "7f8d92b166572b41fa4680965a9dd8346c5e0042",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "48dafc260cff2164b900fa5a2b75f5e3354721b3da484d558b1b6b7fd3ad5698",
+          "sha256": "e17c4e3e32b8e638972ef41d07cab65e81620fe1428e4a35b8719b7b08a35fbd"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "beaa411c18fcd550523fd6523f9a4fd58170d9d89edc4a24e8772fa5e78b9cb4",
+          "sha256": "33b783d1a7ad3686afabc48ddcf1d22d7a1658bdcc16395010f26ec72c1fd976"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_RELIABILITY.md",
+          "before_sha256": "ff24a4e260bc6363b768c198501e6d0e0236e09d143f593651b595485cb6ac8f",
+          "sha256": "41610cb9379898f156c02636101d8ad728127741aae4493f4c9ee6f90fe27426"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "efab56f34caa5d65a4ecf6cd9b59ba3e8faa3db63fcb3647f4815ea8f7c9b625",
+          "sha256": "ac502081788a62a0d52b9fd78ffecbe6fa2e6246fe967281df9e4321e28440b8"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ecbb1dc423a040d2453b7f2aa79263cb1a603633c2c58ba065f70427deb2c343",
+          "sha256": "a08f5c4397d549e273e16b6c864658629d350b9a40d455b924e9559cff1e37e0"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "84dcb1be386a4d2ab20ed8851941336a8b4d41cf0137439f633be5c8e5b62e22",
+          "sha256": "b0a2c69a3a51a96a8c3d25048b5e145079de250f552076befc3a7777170ad7e9"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "c27263139d4846ab64bc7e784c78d254a5b457c14aa2bbcf369aab374407c68d",
+          "sha256": "b833d99514f625a5e9dc22145cca14d3473350f0776cf61dc0078b1dbe175b80"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "fa3e0cb9ce32c5b343b9cedcdb065c5c3325c87e93b4c209e12aebda4961402e",
+          "sha256": "a820fb9be7cf39df1473f7108cf0a97728e02c425c55427f965cdbe7fa83935b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_asr_service.py",
+          "before_sha256": "f117ebe16416572188dfba05f49eec41d7d78383ba5276a8d6b494e2a314fc63",
+          "sha256": "e3a4d0b04133f73feaf3807bbfab6425a564f98369394133f39e4b6fc6bd220d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_http.py",
+          "before_sha256": "c2889df1d6846f1953d5c61dfad2db56af6b6049718de73496e09ce928dfd648",
+          "sha256": "02f110d611a87c1f2497e53b4f3a693692191987b29a7f076eadfb530b716a35"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_overview.py",
+          "before_sha256": null,
+          "sha256": "3a14b6ed305a5faefe96fb1e7ad18f2555c18ed2be30b62b845212b1888e0719"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "c12f1cd13fcf027985354545bfd855493f64bcbb10536ae22ea63afcaad5879d",
+          "sha256": "4260fb71bbc02204c913253687b4a9efbe99264a39700a307dd743ae2bae3b41"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_reply_speech.py",
+          "before_sha256": "87a3086a7ff491ed164849ac133ac8a369be2078e3c0528daf5a3674accecf85",
+          "sha256": "defeaa597ab2fb5ae3fa0b65df7976a46180bf524f39b745b797b22f781b9d3c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "4aec51feb438d4de706c26cf6fdd07d8c8dc4e9a6612fe7db1d39774753c87b8",
+          "sha256": "563003ce0df94159d604f6c1abff20eefb046f8a9236445211c1c6222eb277dd"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

@@ -205,13 +205,17 @@ class AssistantWorkspaceReplySpeechTests(unittest.TestCase):
         self.assertEqual(spoken.headers['cache-control'], 'no-store')
         self.assertEqual(spoken.headers['X-PhotoHouse-Request-Id'], speech_id)
         self.assertEqual(spoken.headers['X-PhotoHouse-Receipt-Status'], 'succeeded')
-        self.assertEqual(self.tts.calls, [('Found 2 results.', 'en')])
+        self.assertEqual(self.tts.calls, [(
+            'Found 2 results. In the current list: '
+            'Result 1 is a photo, recorded date December 1, 2025. '
+            'Result 2 is a photo, recorded date January 2, 2026. '
+            'Say "open the first result" to view it.', 'en')])
 
         duplicate_id, duplicate = self.speak(thread_id, turn_id, request_id=speech_id)
         self.assertEqual(duplicate_id, first_id)
         self.assertEqual(duplicate.status_code, 409)
         self.assertEqual(duplicate.json()['error'], 'request_conflict')
-        self.assertEqual(self.tts.calls, [('Found 2 results.', 'en')])
+        self.assertEqual(len(self.tts.calls), 1)
         receipt = self.journal.inspect(ident=speech_id, include_input=True)['items'][0]
         self.assertEqual((receipt['operation'], receipt['parent_request_id'], receipt['status']),
                          ('speech', turn_id, 'succeeded'))

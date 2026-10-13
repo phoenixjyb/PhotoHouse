@@ -148,7 +148,7 @@ internal fun AssistantScreen(
             Text(t("Find a moment, then keep the conversation going.", "一起找回一个瞬间，再慢慢聊下去。"),
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("assistant-intro-description"))
-            Text(t("Ask about photos and videos. Open a result to see its source.", "可以询问照片和视频，打开结果查看来源。"),
+            Text(t("Ask about photos and videos. Open a result to see its source. After a search, ask “describe these results” for a brief overview.", "可以询问照片和视频，打开结果查看来源。搜索后，可以问“介绍这些结果”来听简要概览。"),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp).testTag("assistant-usage-description"))
         }
@@ -510,7 +510,7 @@ internal fun AssistantScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                             if (assistant.speechBusy) LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-speech-loading"))
                             Button(onClick = onPlaySpeech, enabled = !assistant.speechBusy,
-                                modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken result count", "播放结果数量语音")) }
+                                modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken results", "播报结果")) }
                         }
                     assistant.speechAudio?.let { audio -> AssistantSpeechPlayback(audio, zh, onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) } }
                     }
@@ -638,7 +638,7 @@ private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.testTag("assistant-speech-playback")) {
         TextButton(onClick = { if (!reported) { reported = true; onOutcome("cancelled") }; player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
-        if (playing) Text(t("Speaking the result count…", "正在播报结果数量…"), style = MaterialTheme.typography.bodySmall)
+        if (playing) Text(t("Speaking the results…", "正在播报结果…"), style = MaterialTheme.typography.bodySmall)
         if (failed) Text(t("Speech could not play.", "语音无法播放。"), color = MaterialTheme.colorScheme.error)
     }
 }

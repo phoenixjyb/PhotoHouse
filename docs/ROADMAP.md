@@ -2,6 +2,13 @@
 
 ## October 13 private conversation continuation
 
+The source and runtime pins in this roadmap are dated evidence. A read-only
+native snapshot at 2026-10-13 13:00 Beijing verified phone OTA v51 and API
+source `7daf740`; it does not show the new local narration as deployed.
+The existing phone v52 candidate remains pinned to source `7f8d92b` and pending
+publication. The local narration implementation described below is outside
+that immutable candidate; its delivery remains pending.
+
 The [server-owned turn contract](PRIVATE_ASSISTANT_TURNS_V1.md) now has local
 implementation for an isolated schema-v2 request ledger, revision-bound search
 context, account/library ownership, idempotent request recovery, fixed retention
@@ -11,7 +18,9 @@ coordinator are wired behind the existing assistant capability, with a separate
 private conversation panel. Explicit “继续聊天” and “在这个对话中语音聊”
 continue the same private thread through central text or foreground voice;
 recoveries pause without replaying audio or navigation. Installed v50 remains
-the earlier v1 voice experience until a separately delivered update.
+the package version in the earlier delivery note; a later read-only snapshot
+verified phone OTA v51. These dated package records are separate from the current
+source candidate.
 
 [Conversation labels and older-history paging](PRIVATE_ASSISTANT_HISTORY_V1.md)
 now add explicit full-text page reads at a fixed thread revision, ephemeral
@@ -20,7 +29,9 @@ Concurrent updates require explicit reload without losing a draft.
 
 Current qualification and delivery gates are recorded in Development. These
 changes do not publish an APK, create a Windows conversation database, or change
-the live API. Phone v50 and TV v30 remain the last verified published packages.
+the live API. In the dated native snapshot above, phone OTA v51 was verified;
+TV v30 remains the last recorded TV package. Neither statement is a live check
+performed by this roadmap update.
 The phone management panel now starts compact, preserves readable history and
 explicit text/voice continuation, and expands management locally; the generated
 19-case 150% simulator cohort and a focused composer-limit rerun passed. This UI
@@ -31,8 +42,11 @@ The next slices are:
 
 1. Complete the private conversation release-package/native qualification,
    preserving account/background erasure and v1 compatibility.
-2. Extend grounded spoken replies and deliberate media-open behavior; current
-   speech reads result counts and unsupported replies pause for review.
+2. Qualify and deliver the implemented bounded narration of current ordered
+   results under the [voice reliability contract](ASSISTANT_VOICE_RELIABILITY.md).
+   Local source now supports result introductions and recorded-date follow-ups,
+   with source revalidation after TTS and no schema, route, provider or
+   preference-negotiation change. Native listening and family feedback remain.
 3. Prepare explicit Windows private-store provisioning and an exact API/phone
    release with rollback; runtime activation and publication retain their gates.
 4. Add grounded story/album/memoir tools and richer spoken replies only after
@@ -581,6 +595,12 @@ activating them for family material.
 
 
 ## October 13 assistant continuation and delivery priorities
+
+This section records the October 13 local-source plan. The immutable phone v52
+candidate is source `7f8d92b` and remains pending publication; the edits in this
+working source are for a later candidate. The native state listed above is a
+read-only 13:00 Beijing snapshot, not evidence that these local features are
+currently deployed.
 
 The [voice reliability slice](ASSISTANT_VOICE_RELIABILITY.md) adds protected
 explicit-number retrieval, safe ASR failure categories and opt-in terminal

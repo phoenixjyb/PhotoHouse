@@ -407,10 +407,15 @@ Pause/End/background/audio-focus loss invalidate outstanding progression. An
 uncertain submitted request remains available for receipt inspection, with no
 automatic resubmission. Idle voice controls do not cancel manual requests.
 
-The initial adapter uses the protected v1 ASR/search/result-count TTS services.
-This adapter provides continuous voice retrieval. With the v1 count-only
-capability, empty, clarifying and unsupported replies pause and remain visible.
-The optional private reply speech path below broadens that spoken interaction. Typed tools,
+The initial adapter used the protected v1 ASR/search/result-count TTS services.
+The local [grounded result narration](ASSISTANT_VOICE_RELIABILITY.md#grounded-result-narration)
+source now describes at most three current ordered cards, using only their kind
+and validated recorded `taken_at` date. Strict contextual follow-ups preserve
+the current selection; missing context requests a search first. Stateless speech
+rechecks membership and source context after synthesis before returning audio.
+The v1 envelope remains unchanged. Empty, clarifying and unsupported replies
+still pause and remain visible on that path. The optional private reply speech
+path below broadens that spoken interaction. Typed tools,
 owned durable conversations/preferences and grounded local understanding are
 separate backend layers. Personal thread storage must be deliberately initialized
 and admitted, distinct from audit receipts and family story/audio storage. Existing
@@ -495,8 +500,10 @@ The foreground phone/Web loop may speak a fresh result, empty result or
 clarification, then listen after actual audio completion. Unsupported requests
 speak help and pause for review. Recovery never triggers speech or navigation.
 Client scope/cancellation fences discard late audio. This source flag does not
-activate the Windows provider or private database, and retains v1 count speech
-when the new capability is absent.
+activate the Windows provider or private database. When the new capability is
+absent, clients retain the v1 result-speech path; its content depends on the
+deployed server revision. Local narration checks do not establish native TTS
+quality, delivery or physical-device acceptance.
 
 ## Saved memory retrieval foundation
 

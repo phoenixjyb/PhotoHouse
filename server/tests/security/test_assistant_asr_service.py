@@ -1,5 +1,6 @@
 """The WSL adapter accepts transient, authenticated WAV bytes only."""
 import io
+import importlib.util
 from pathlib import Path
 import sys
 import tempfile
@@ -9,9 +10,16 @@ import wave
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from assistant_asr_service import create_app, MAX_WAV_BYTES
+if importlib.util.find_spec('assistant_asr_service') is None:
+    # This WSL/GPU adapter is deliberately outside the curated CPU source
+    # export. Broad unittest discovery must report the optional boundary;
+    # an available adapter with broken dependencies must still fail import.
+    create_app = MAX_WAV_BYTES = None
+else:
+    from assistant_asr_service import create_app, MAX_WAV_BYTES
 
 
+@unittest.skipIf(create_app is None, 'External WSL ASR adapter is outside the curated CPU source profile')
 class AssistantAsrServiceTests(unittest.TestCase):
     def test_private_raw_wav_without_job_file(self):
         with tempfile.TemporaryDirectory() as root:

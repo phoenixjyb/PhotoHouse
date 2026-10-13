@@ -32,6 +32,7 @@ from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime
 
 MAX_BODY = 20 * 1024
 PAGE_SIZE = 20
+MAX_REPLY_BYTES = 600
 ORDINALS = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
             '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
 CHINESE_MONTHS = dict(ORDINALS, 十一=11, 十二=12)
@@ -319,6 +320,67 @@ def _asset_number(words):
     return match.group(3), (match.group(1) or match.group(2)) in ('打开', '查看', '看', 'open', 'show')
 
 
+def _describe_results(words):
+    # Complete, read-only follow-ups only. Additional instructions are not
+    # discarded, and a missing context never becomes an unrestricted search.
+    normalized = re.sub(r'\s+', ' ', words.strip().casefold()).rstrip('。.!！?？')
+    english = normalized.removeprefix('please ')
+    if english in {'describe these results', 'tell me about these results',
+                   'when were these photos taken', 'when were these videos taken',
+                   'what date were these photos taken', 'what date were these videos taken',
+                   'what dates are recorded for these results'}:
+        return True
+    chinese = re.sub(r'\s+', '', normalized).removeprefix('请')
+    return chinese in {'介绍这些结果', '介绍一下这些结果', '介绍当前结果',
+                       '介绍这些照片', '介绍一下这些照片', '介绍这些视频', '介绍一下这些视频',
+                       '讲讲这些结果', '说说这些结果', '这些照片是什么时候拍的',
+                       '这些照片是哪天拍的', '这些视频是哪天拍的',
+                       '这些视频是什么时候拍的', '这些照片是什么时候的', '这些结果是什么时候的'}
+
+
+def _result_overview(result, language):
+    """Speak only bounded metadata from the current authorized card order.
+
+    Discovery cards do not contain filename/upload date hints, captions or
+    stories. A recorded date is therefore never inferred from those sources,
+    nor converted into the client's unspecified timezone.
+    """
+    total, items = result['total'], result['items']
+    zh = language == 'zh'
+    if not items:
+        return ('没有找到匹配的照片或视频。可以调整查找条件。' if zh else
+                'No matching photos or videos were found. Try adjusting the search.')
+    prefix = (f'找到 {total} 项。当前列表前{min(3, len(items))}项：' if zh else
+              f'Found {total} {"result" if total == 1 else "results"}. In the current list: ')
+    opening = next((i for i, item in enumerate(items[:3], 1)
+                    if item.get('kind') in ('image', 'video')), None)
+    if opening is None:
+        suffix = '可以继续补充查找条件。' if zh else 'You can refine the search.'
+    else:
+        suffix = (f'可以说“打开第{opening}项”查看。' if zh else
+                  f'Say "open the {("first", "second", "third")[opening - 1]} result" to view it.')
+    clauses = []
+    months = ('January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December')
+    for ordinal, item in enumerate(items[:3], 1):
+        kind = ({'image': '照片', 'video': '视频'}.get(item.get('kind'), '素材') if zh else
+                {'image': 'a photo', 'video': 'a video'}.get(item.get('kind'), 'an item'))
+        day = d.taken_day(item.get('taken_at'))
+        if day is None:
+            dated = '日期未记录' if zh else 'date not recorded'
+        else:
+            year, month, date_day = map(int, day.split('-'))
+            dated = (f'日期记录为 {year}年{month}月{date_day}日' if zh else
+                     f'recorded date {months[month - 1]} {date_day}, {year}')
+        clause = (f'第{ordinal}项是{kind}，{dated}。' if zh else
+                  f'Result {ordinal} is {kind}, {dated}. ')
+        candidate = prefix + ''.join(clauses) + clause + suffix
+        if len(candidate.encode('utf-8')) > MAX_REPLY_BYTES:
+            break
+        clauses.append(clause)
+    return prefix + ''.join(clauses) + suffix
+
+
 def _date_filter(words, now):
     normalized = words.casefold()
     match = re.search(r'(?<!\d)(20\d{2})[年/.-](1[0-2]|0?[1-9])(?:月)?(?!\d)', normalized)
@@ -425,6 +487,16 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     if previous is not None:
         previous = _context(previous, library)
         existing = _context_result(engine, token, library, previous)
+    if _describe_results(words):
+        if existing is None:
+            return {'version': 1, 'kind': 'clarification',
+                    'reply': ('请先查找照片或视频，再说“介绍这些结果”。' if lang == 'zh' else
+                              'Search for photos or videos first, then say "describe these results".'),
+                    'context': None, 'filters': None, 'items': [], 'total': 0,
+                    'has_more': False, 'effect': None}
+        return {'version': 1, 'kind': 'results', 'reply': _result_overview(existing, lang),
+                'context': previous, 'filters': previous['filters'], 'items': existing['items'],
+                'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
     numbered = _asset_number(words)
     if numbered is not None:
         asset_id, opens = numbered
@@ -522,8 +594,7 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     context = {'library_id': library, 'binding': result['binding'],
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}
-    reply = (f'找到 {result["total"]} 项。' if lang == 'zh' else
-             f'Found {result["total"]} results.')
+    reply = _result_overview(result, lang)
     return {'version': 1, 'kind': 'results', 'reply': reply, 'context': context,
             'filters': filters, 'items': result['items'], 'total': result['total'],
             'has_more': result['has_more'], 'effect': None}
@@ -610,12 +681,12 @@ async def speech(request: Request):
     context = _context(payload['context'], library)
     result = await run_in_threadpool(_context_result, engine, token, library, context)
     language = payload['language']
-    words = (f'找到 {result["total"]} 项。' if language == 'zh' else
-             f'Found {result["total"]} results.')
+    words = _result_overview(result, language)
     await _stage(request, 'validated')
     await _stage(request, 'provider_started')
     audio = await run_in_threadpool(tts.synthesize, words, language)
     await run_in_threadpool(engine.authorize, token, library)
+    await run_in_threadpool(_context_result, engine, token, library, context)
     await _stage(request, 'provider_completed')
     return Response(content=audio, media_type='audio/wav', headers=_playback_headers(request))
 

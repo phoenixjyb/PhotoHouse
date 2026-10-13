@@ -229,7 +229,11 @@ class AssistantHttpTests(unittest.TestCase):
             wav.writeframes(b'\0\0' * 1600)
         def provider(request):
             self.assertEqual(request.url.host, '127.0.0.1')
-            self.assertEqual(parse_qs(request.content.decode())['text'], ['Found 2 results.'])
+            self.assertEqual(parse_qs(request.content.decode())['text'], [
+                'Found 2 results. In the current list: '
+                'Result 1 is a photo, recorded date December 1, 2025. '
+                'Result 2 is a photo, recorded date January 2, 2026. '
+                'Say "open the first result" to view it.'])
             return httpx.Response(200, json={'success': True,
                 'audio_base64': __import__('base64').b64encode(original.getvalue()).decode()})
         self.app.state.assistant_tts = LocalAssistantTts(

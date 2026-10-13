@@ -2017,3 +2017,43 @@ before the older title-browser script, then stopped because its default
 already-installed `PLAYWRIGHT_MODULE=playwright-core`. All 23 configured suites
 therefore have passing cohort evidence, but no new single complete Web invocation
 is claimed. The next complete command should set that module explicitly.
+
+
+## October 13 current-card voice narration
+
+The development source after `7f8d92b` supports contextual “介绍这些结果” /
+“describe these results” and recorded-date follow-ups, plus bounded ordinary
+search and speech overviews. Only the first three current ordered card kinds
+and validated `taken_at` dates are narrated; filename/receipt hints, captions
+and scene/story claims are not inferred. The ordinary speech endpoint repeats
+source/context validation after synthesis before returning any audio.
+
+Local checks use generated data and optional provider fakes:
+
+```sh
+PYTHONPATH=server/scripts:server/backend .venv/bin/python -m unittest discover -s server/tests/security -p 'test_assistant_*.py' -q
+PH_BROWSER_PYTHON="$PWD/.venv/bin/python" PLAYWRIGHT_MODULE=playwright-core node server/tests/security/test_assistant_voice_session_browser.cjs
+python3 tools/verify_current_source.py
+```
+
+The assistant cohort collected 156 tests: 155 passed and the external WSL
+ASR adapter test was explicitly skipped because its implementation is outside
+the curated CPU source export. A present adapter with broken dependencies
+still fails import; the skip is not ASR service acceptance. Nine focused
+narration cases are included in the cohort. The Web voice regression passes,
+with desktop and 390px/150% generated narration-layout renders inspected.
+Android connected debug Kotlin compilation and empty-origin QA/test APK
+assembly passed with JDK 17 and the existing SDK. These checks do not qualify
+Windows native TTS duration/listening or a physical phone.
+
+The emulator QA package also passed one bilingual, 150% text ASR no-input
+fixture test in 3.129 seconds; both localized renders were inspected. That
+fixture checks transcript/error presentation, not acoustic ASR, TTS or the
+new narration's Android layout. No physical phone was attached for this check.
+
+The already prepared phone v52 and Windows candidate remain pinned to
+`7f8d92b`; these new source changes are outside that immutable candidate.
+The dated native read-only observation still reported phone OTA v51 and
+TV v30, and no service switch, release signing or publication happened during
+this development slice. Consult [voice reliability](ASSISTANT_VOICE_RELIABILITY.md)
+for its scope and [the roadmap](ROADMAP.md) for subsequent delivery gates.

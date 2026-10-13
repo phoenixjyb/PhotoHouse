@@ -1,5 +1,37 @@
 # Voice retrieval and playback evidence
 
+## Grounded result narration
+
+The local source now supports a strictly contextual command for the current
+ordered discovery results: “介绍这些结果” / “describe these results”, with
+“介绍一下这些照片” as a Chinese alias. Date questions such as “这些照片是
+哪天拍的？” / “这些照片是什么时候拍的？” and “what date were these photos
+taken?” use the same current-result context. These phrases select narration;
+they do not authorize opening media, changing data, calling a model, or invoking
+another tool.
+
+Narration is built from at most the first three cards in the current ordered
+snapshot. For each card it may state only the card kind and a valid recorded
+`taken_at` calendar date. It calls the date a “日期记录” / “recorded date” and
+never presents it as a confirmed capture date or download date. A missing or
+invalid `taken_at` is described as unknown. The generated text is limited to
+600 UTF-8 bytes.
+
+The command preserves the existing v1 response envelope and context shape.
+Speech for a fresh voice request uses narration from that same current snapshot
+and revalidates the context after TTS before returning audio. Durable workspace
+speech reads the already stored reply. The stateless spoken reply now uses
+this bounded narration; this slice does not change schemas,
+routes, providers, or preference negotiation. It adds no LLM or mutation path.
+
+This slice has local source implementation and generated-data checks. It is
+not a runtime or physical-device acceptance claim. Its baseline is PhotoHouse
+`7f8d92b`; the existing phone v52 source
+candidate remains pinned to that revision and pending publication. A read-only
+native snapshot at 2026-10-13 13:00 Beijing verified phone OTA v51 and API
+source `7daf740`. That dated snapshot does not mean this narration is
+deployed or currently available.
+
 ## Explicit asset numbers
 
 The assistant accepts commands such as `打开编号101`, `查找编号101`,
