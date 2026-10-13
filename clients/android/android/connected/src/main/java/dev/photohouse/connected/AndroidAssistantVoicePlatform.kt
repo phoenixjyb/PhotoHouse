@@ -44,7 +44,9 @@ private class AndroidAssistantVoicePlatform(context: Context, private val onFocu
     private var audio: ProtectedAnnotationAudio? = null
     private var audioClosed: (() -> Unit)? = null
 
-    override suspend fun capture(maxSeconds: Int): ByteArray? = withContext(Dispatchers.Main.immediate) {
+    override suspend fun capture(maxSeconds: Int): ByteArray? = capture(maxSeconds) {}
+
+    override suspend fun capture(maxSeconds: Int, onStarted: () -> Unit): ByteArray? = withContext(Dispatchers.Main.immediate) {
         // Pause can finish a blocking AudioRecord read asynchronously. An
         // immediate explicit Resume must wait for that owner to release focus.
         captureFinished?.await()
@@ -56,7 +58,7 @@ private class AndroidAssistantVoicePlatform(context: Context, private val onFocu
         val finished = CompletableDeferred<Unit>()
         captureFinished = finished
         try {
-            val wav = withContext(Dispatchers.IO) { current.record() }
+            val wav = withContext(Dispatchers.IO) { current.record(onStarted) }
             if (wav != null && current.consumeForUpload()) wav
             else { wav?.fill(0); null }
         } finally {
@@ -70,7 +72,9 @@ private class AndroidAssistantVoicePlatform(context: Context, private val onFocu
 
     override fun finishCapture() { capture?.stop() }
 
-    override suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean = withContext(Dispatchers.Main.immediate) {
+    override suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean = playSpeech(audio) {}
+
+    override suspend fun playSpeech(audio: ProtectedAnnotationAudio, onStarted: () -> Unit): Boolean = withContext(Dispatchers.Main.immediate) {
         check(capture == null && player == null)
         suspendCancellableCoroutine { continuation ->
             val current = ExoPlayer.Builder(context).build()
@@ -81,6 +85,9 @@ private class AndroidAssistantVoicePlatform(context: Context, private val onFocu
             audioClosed = closed
             audio.onClose(closed)
             current.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (player === current && isPlaying) onStarted()
+                }
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (player === current && playbackState == Player.STATE_ENDED) finishPlayback(true)
                 }

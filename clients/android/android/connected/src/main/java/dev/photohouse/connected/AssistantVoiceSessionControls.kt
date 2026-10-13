@@ -80,24 +80,33 @@ internal fun rememberAssistantVoiceControls(
         VoiceSessionStopReason.UNCERTAIN_REQUEST -> if (zh) "结果尚不确定，请先查询回执；不会自动重发。" else "The outcome is uncertain. Check the receipt; no request is resent."
         VoiceSessionStopReason.BACKGROUNDED, VoiceSessionStopReason.CONTEXT_CHANGED -> if (zh) "离开前台或切换资料库后，聆听已停止。" else "Listening stopped when the foreground context changed."
         VoiceSessionStopReason.AUDIO_FOCUS_LOST -> if (zh) "音频被其他应用使用，已停止聆听。" else "Another app took audio focus; listening stopped."
-        VoiceSessionStopReason.EMPTY_TRANSCRIPT, VoiceSessionStopReason.CAPTURE_FAILED -> if (zh) "未听清这句话。准备好后可继续。" else "No usable speech was captured. Resume when ready."
+        VoiceSessionStopReason.EMPTY_TRANSCRIPT, VoiceSessionStopReason.CAPTURE_FAILED -> if (zh) "没有收到可用语音。准备好后可继续。" else "No usable speech was captured. Resume when ready."
         VoiceSessionStopReason.TRANSCRIPTION_FAILED, VoiceSessionStopReason.REQUEST_FAILED, VoiceSessionStopReason.SPEECH_FAILED ->
             if (zh) "本轮未能完成，已暂停；请查看回复或回执。" else "This turn could not finish. Review its reply or receipt before continuing."
-        else -> if (voice.phase == VoiceSessionPhase.SPEAKING) {
-            if (store.privateReplySpeechEnabled()) {
-                if (zh) "正在播报助手回复；播放完成前不会聆听。" else "Reading the assistant reply; listening stays off during playback."
-            } else if (zh) "正在播报当前结果数量；完成后会继续聆听。" else "Reading the current result count; listening resumes after playback."
-        } else null
+        else -> when (voice.phase) {
+            VoiceSessionPhase.LISTENING -> if (voice.captureStarted) {
+                if (zh) "请说出想查找的内容。麦克风已开启。" else "Say what you would like to find. Microphone is on."
+            } else if (zh) "正在开启麦克风；出现“正在聆听”后再开始说话。" else "The microphone is opening. Speak when Listening appears."
+            VoiceSessionPhase.TRANSCRIBING -> if (zh) "麦克风已关闭，正在识别你刚才说的话。" else "Microphone off. Recognizing what you said."
+            VoiceSessionPhase.REQUESTING -> if (zh) "麦克风已关闭，正在查找相关回忆。" else "Microphone off. Searching for matching memories."
+            VoiceSessionPhase.SPEAKING -> if (voice.playbackStarted) {
+                if (store.privateReplySpeechEnabled()) {
+                    if (zh) "麦克风已关闭，正在播报助手回复。" else "Microphone off. Playing the assistant reply."
+                } else if (zh) "麦克风已关闭，正在播报当前查找结果。" else "Microphone off. Reading the current search results."
+            } else if (zh) "麦克风已关闭，正在准备语音回复。" else "Microphone off. Preparing the spoken reply."
+            else -> null
+        }
     }
     val session = when (voice.phase) {
         VoiceSessionPhase.IDLE, VoiceSessionPhase.ENDED -> null
         else -> AssistantVoiceSessionUiState(when (voice.phase) {
-            VoiceSessionPhase.LISTENING -> AssistantVoiceSessionStage.LISTENING
+            VoiceSessionPhase.LISTENING -> if (voice.captureStarted) AssistantVoiceSessionStage.LISTENING else AssistantVoiceSessionStage.OPENING_MIC
             VoiceSessionPhase.TRANSCRIBING -> AssistantVoiceSessionStage.TRANSCRIBING
             VoiceSessionPhase.REQUESTING -> AssistantVoiceSessionStage.FINDING
-            VoiceSessionPhase.SPEAKING -> AssistantVoiceSessionStage.SPEAKING
+            VoiceSessionPhase.SPEAKING -> if (voice.playbackStarted) AssistantVoiceSessionStage.SPEAKING else AssistantVoiceSessionStage.PREPARING_REPLY
             else -> AssistantVoiceSessionStage.PAUSED
-        }, detail, canResume = available && live.assistant?.pendingTurn == null)
+        }, detail, canResume = available && live.assistant?.pendingTurn == null,
+            microphoneActive = voice.phase == VoiceSessionPhase.LISTENING && voice.captureStarted)
     }
     return AssistantVoiceControls(session,
         start = if (!available) null else ({

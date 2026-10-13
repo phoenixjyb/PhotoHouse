@@ -16,8 +16,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Platform-owned foreground capture and actual speech playback; no implementation is implied here. */
 interface AssistantVoiceSessionPlatform {
     suspend fun capture(maxSeconds: Int): ByteArray?
+    /** Observation callback is optional; legacy platform implementations remain truthful by default. */
+    suspend fun capture(maxSeconds: Int, onStarted: () -> Unit): ByteArray? = capture(maxSeconds)
     /** Returns true only after playback has actually completed. */
     suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean
+    /** Observation callback is optional; legacy implementations do not imply playback began. */
+    suspend fun playSpeech(audio: ProtectedAnnotationAudio, onStarted: () -> Unit): Boolean = playSpeech(audio)
     fun stopAudio()
     /** Requests the current capture to finish and return its bounded recording. */
     fun finishCapture()
@@ -42,6 +46,8 @@ class AssistantVoiceSessionStore(
 
     private var operationJob: Job? = null
     private var activeCapture: VoiceSessionBinding? = null
+    private var observedCaptureBinding: VoiceSessionBinding? = null
+    private var observedPlaybackBinding: VoiceSessionBinding? = null
     private var ownedTranscriptRequestId: String? = null
     private var ownedTurnRequestId: String? = null
     private var ownedSpeechRequestId: String? = null
@@ -219,6 +225,26 @@ class AssistantVoiceSessionStore(
             current.sessionGeneration == binding.sessionGeneration && current.operationGeneration == binding.operationGeneration
     }
 
+    /** Publish a platform fact only while its exact operation still owns the foreground scope. */
+    private fun observePlatformStart(binding: VoiceSessionBinding, phase: VoiceSessionPhase) = synchronized(lock) {
+        if (closed || !foregroundNow() || !scopeMatches(store.state.value)) return@synchronized
+        if (sessionPrivateReplySpeechEnabled?.let { it != store.privateReplySpeechEnabled() } == true) return@synchronized
+        val current = controller.state
+        if (current.phase != phase || current.scope != binding.scope ||
+            current.sessionGeneration != binding.sessionGeneration || current.operationGeneration != binding.operationGeneration) return@synchronized
+        if (phase == VoiceSessionPhase.LISTENING) {
+            observedCaptureBinding = binding
+            observedPlaybackBinding = null
+        } else if (phase == VoiceSessionPhase.SPEAKING) {
+            observedPlaybackBinding = binding
+            observedCaptureBinding = null
+        } else return@synchronized
+        mutableState.value = current.copy(
+            captureStarted = observedCaptureBinding == binding,
+            playbackStarted = observedPlaybackBinding == binding,
+        )
+    }
+
     private fun startCapture(binding: VoiceSessionBinding) {
         synchronized(lock) { activeCapture = binding }
         launchOperation(binding) {
@@ -226,7 +252,7 @@ class AssistantVoiceSessionStore(
             val maxSeconds = store.state.value.assistant?.capabilities?.maxAudioSeconds?.takeIf { it in 1..30 }
                 ?: run { fail(binding); return@launchOperation }
             val wav = withTimeoutOrNull((maxSeconds + CAPTURE_GRACE_SECONDS) * 1_000L) {
-                platform.capture(maxSeconds)
+                platform.capture(maxSeconds) { observePlatformStart(binding, VoiceSessionPhase.LISTENING) }
             }
             if (wav == null) { fail(binding); return@launchOperation }
             if (!bindingCurrent(binding, VoiceSessionPhase.LISTENING)) { wav.fill(0); return@launchOperation }
@@ -362,7 +388,9 @@ class AssistantVoiceSessionStore(
         if (audio == null) { completeSpeech(binding, success = false); return }
         var success = false
         try {
-            success = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { platform.playSpeech(audio) } == true
+            success = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                platform.playSpeech(audio) { observePlatformStart(binding, VoiceSessionPhase.SPEAKING) }
+            } == true
             store.reportAssistantPlaybackOutcome(audio, if (success) "completed" else "failed")
         } catch (cancelled: CancellationException) {
             store.reportAssistantPlaybackOutcome(audio, "cancelled")

@@ -92,7 +92,14 @@
           <div id="assistant-voice" class="assistant-voice" hidden>
             <span id="assistant-voice-session-placeholder" hidden></span>
             <div id="assistant-voice-session" class="assistant-voice-session" hidden>
-              <p id="assistant-voice-session-status" role="status" aria-live="polite"></p>
+              <div class="assistant-voice-presence">
+                <div class="assistant-voice-orb" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="assistant-voice-presence-copy">
+                  <strong id="assistant-voice-title"></strong>
+                  <span id="assistant-voice-mic-state" class="assistant-voice-mic-state"></span>
+                  <p id="assistant-voice-session-status" role="status" aria-live="polite" aria-atomic="true"></p>
+                </div>
+              </div>
               <button id="assistant-voice-start" class="primary" type="button" data-i18n="assistantVoiceStart">开始语音查找</button>
               <button id="assistant-voice-pause" class="quiet" type="button" hidden data-i18n="assistantVoicePause">暂停</button>
               <button id="assistant-voice-resume" class="quiet" type="button" hidden data-i18n="assistantVoiceResume">继续</button>

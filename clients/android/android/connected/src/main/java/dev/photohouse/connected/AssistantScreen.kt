@@ -179,6 +179,11 @@ internal fun AssistantScreen(
             )
         }
         val assistant = state
+        val voiceEntry = onStartVoiceSession?.takeIf {
+            assistant != null && voiceSessionState == null && assistant.pendingTurn == null &&
+                !assistant.busy && !assistant.transcribing && assistant.transcript == null &&
+                !assistant.speechBusy && assistant.speechAudio == null && !recording
+        }
         assistant?.takeIf { it.pendingTurn == null && it.privateThreadId == null }?.lastRequestReceipt?.let { receipt ->
             val receiptStatus = assistant.receiptDetail?.status ?: receipt.status ?: receipt.tracking
             val statusLabel = when (receiptStatus) {
@@ -357,6 +362,22 @@ internal fun AssistantScreen(
                             onEnd = onEndVoiceSession!!, onFinishTurn = onFinishVoiceTurn,
                         )
                     }
+                    if (voiceSessionState == null && voiceEntry != null && !assistant.busy &&
+                        assistant.pendingTurn == null && !assistant.transcribing && !recording &&
+                        !assistant.speechBusy && assistant.speechAudio == null) {
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()
+                                .testTag("assistant-voice-ready")) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(t("Ready when you are", "准备好了，等你开始"),
+                                    style = MaterialTheme.typography.titleSmall)
+                                Text(t("Microphone off · Tap voice to begin", "麦克风关闭 · 点击语音按钮开始"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag("assistant-voice-ready-microphone"))
+                            }
+                        }
+                    }
                     LazyColumn(state = listState,
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp)
                             .nestedScroll(userScrollGuard).testTag("assistant-turns"),
@@ -527,10 +548,6 @@ internal fun AssistantScreen(
                     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val canTranscribe = voiceSessionState == null && assistant.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true
-                        val voiceEntry = onStartVoiceSession?.takeIf {
-                            assistant.pendingTurn == null && !assistant.busy && !assistant.transcribing &&
-                                assistant.transcript == null && !assistant.speechBusy && assistant.speechAudio == null && !recording
-                        }
                         voiceEntry?.let { startVoice ->
                             OutlinedButton(onClick = { keyboard?.hide(); focusManager.clearFocus(); startVoice() },
                                 enabled = assistant.pendingTurn == null && !assistant.busy && !assistant.transcribing && assistant.transcript == null &&

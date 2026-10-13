@@ -45,7 +45,7 @@ internal class AnnotationAudioRecorder {
         val wasDiscarded get() = lifecycle.wasDiscarded
         fun consumeForUpload(): Boolean = lifecycle.consumeForUpload()
 
-        fun record(): ByteArray? {
+        fun record(onStarted: () -> Unit = {}): ByteArray? {
             if (!lifecycle.claim()) return null
             val rate = 16_000
             val maxPcmBytes = rate * 2 * maxSeconds
@@ -63,6 +63,7 @@ internal class AnnotationAudioRecorder {
                     recorder = created
                     require(created.state == AudioRecord.STATE_INITIALIZED) { "Microphone recording is unavailable" }
                     if (!lifecycle.start { created.startRecording() }) return null
+                    onStarted()
                     while (lifecycle.isRunning && pcm.size() < maxPcmBytes) {
                         val count = created.read(buffer, 0, minOf(buffer.size, maxPcmBytes - pcm.size()))
                         if (count < 0) {

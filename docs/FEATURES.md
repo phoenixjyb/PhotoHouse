@@ -10,6 +10,11 @@ Mac complete range readback match the signed file. Two Mac single-connection
 downloads timed out; phone installation and actual listening remain unverified.
 See the [v53 delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md).
 
+The next source-only [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) adds a
+visible waiting state, confirmed microphone/playback states, preparation cues
+and restrained motion with accessible text. Web and emulator checks pass;
+this follow-up is outside the published v53 package.
+
 ## Earlier source qualification records
 
 As of October 10, PRs #13–#15 are merged. The latest hosted source run passed

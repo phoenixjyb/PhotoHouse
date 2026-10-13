@@ -47,6 +47,83 @@ class AssistantVoiceSessionStoreTest {
         assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
     }
 
+    @Test fun actualPlatformStartFactsAreOverlaidAndLateCaptureCallbackIsIgnored() = runTest {
+        val fixture = fixture()
+        fixture.platform.autoCaptureStarted = false
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        val lateCaptureStarted = fixture.platform.captureStartedCallbacks.single()
+        assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.captureStarted)
+        assertFalse(fixture.driver.state.value.playbackStarted)
+
+        lateCaptureStarted()
+        assertTrue(fixture.driver.state.value.captureStarted)
+        assertFalse(fixture.driver.state.value.playbackStarted)
+        assertTrue(fixture.driver.pause())
+        assertFalse(fixture.driver.state.value.captureStarted)
+        lateCaptureStarted()
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.captureStarted)
+        assertFalse(fixture.driver.state.value.playbackStarted)
+
+        assertTrue(fixture.driver.resume())
+        runCurrent()
+        val resumedCaptureStarted = fixture.platform.captureStartedCallbacks.last()
+        lateCaptureStarted()
+        assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.captureStarted)
+        resumedCaptureStarted()
+        assertTrue(fixture.driver.state.value.captureStarted)
+        fixture.driver.close()
+    }
+
+    @Test fun platformStartCallbackIsIgnoredAfterForegroundOrVoiceScopeChanges() = runTest {
+        val backgrounded = fixture()
+        backgrounded.platform.autoCaptureStarted = false
+        assertTrue(backgrounded.driver.start())
+        runCurrent()
+        val startedAfterBackground = backgrounded.platform.captureStartedCallbacks.single()
+        backgrounded.platform.foreground = false
+        startedAfterBackground()
+        assertFalse(backgrounded.driver.state.value.captureStarted)
+        backgrounded.driver.close()
+
+        val changedScope = fixture()
+        changedScope.platform.autoCaptureStarted = false
+        assertTrue(changedScope.driver.start())
+        runCurrent()
+        val startedAfterScopeChange = changedScope.platform.captureStartedCallbacks.single()
+        changedScope.store.selectLibrary("second")
+        runCurrent()
+        startedAfterScopeChange()
+        assertEquals(VoiceSessionPhase.ENDED, changedScope.driver.state.value.phase)
+        assertFalse(changedScope.driver.state.value.captureStarted)
+        changedScope.driver.close()
+    }
+
+    @Test fun playbackPreparationAndLatePlaybackCallbackRemainTruthful() = runTest {
+        val fixture = fixture()
+        fixture.platform.autoPlaybackStarted = false
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        val latePlaybackStarted = fixture.platform.playbackStartedCallbacks.single()
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.playbackStarted)
+        assertFalse(fixture.driver.state.value.captureStarted)
+
+        latePlaybackStarted()
+        assertTrue(fixture.driver.state.value.playbackStarted)
+        assertTrue(fixture.driver.end())
+        assertFalse(fixture.driver.state.value.playbackStarted)
+        latePlaybackStarted()
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.playbackStarted)
+        fixture.driver.close()
+    }
+
     @Test fun pausingDuringTranscriptionFencesLateTranscriptAndDoesNotStartAnotherCapture() = runTest {
         val fixture = fixture()
         val gate = CompletableDeferred<Unit>()
@@ -57,6 +134,9 @@ class AssistantVoiceSessionStoreTest {
         runCurrent()
         assertEquals(1, fixture.api.transcriptionCalls)
         assertTrue(fixture.store.state.value.assistant!!.transcribing)
+        assertEquals(VoiceSessionPhase.TRANSCRIBING, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.state.value.captureStarted)
+        assertFalse(fixture.driver.state.value.playbackStarted)
 
         assertTrue(fixture.driver.pause())
         assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
@@ -298,7 +378,7 @@ class AssistantVoiceSessionStoreTest {
         val live = store.state.value
         val scope = VoiceSessionScope(checkNotNull(live.session).account_id, checkNotNull(live.library), live.generation)
         val platform = FakePlatform()
-        val driver = AssistantVoiceSessionStore(store, scope, backgroundScope, platform, "en", { true })
+        val driver = AssistantVoiceSessionStore(store, scope, backgroundScope, platform, "en", { platform.foreground })
         return Fixture(api, store, scope, platform, driver)
     }
 
@@ -317,12 +397,30 @@ class AssistantVoiceSessionStoreTest {
         var captureCalls = 0
         var speechCalls = 0
         var stopCalls = 0
+        var autoCaptureStarted = true
+        var autoPlaybackStarted = true
+        var foreground = true
+        val captureStartedCallbacks = mutableListOf<() -> Unit>()
+        val playbackStartedCallbacks = mutableListOf<() -> Unit>()
         override suspend fun capture(maxSeconds: Int): ByteArray? {
             captureCalls++
             return captures.receive()
         }
+        override suspend fun capture(maxSeconds: Int, onStarted: () -> Unit): ByteArray? {
+            captureCalls++
+            captureStartedCallbacks += onStarted
+            if (autoCaptureStarted) onStarted()
+            return captures.receive()
+        }
         override suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean {
             speechCalls++
+            speechStarted.send(Unit)
+            return speechResults.receive()
+        }
+        override suspend fun playSpeech(audio: ProtectedAnnotationAudio, onStarted: () -> Unit): Boolean {
+            speechCalls++
+            playbackStartedCallbacks += onStarted
+            if (autoPlaybackStarted) onStarted()
             speechStarted.send(Unit)
             return speechResults.receive()
         }

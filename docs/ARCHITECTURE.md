@@ -407,6 +407,12 @@ Pause/End/background/audio-focus loss invalidate outstanding progression. An
 uncertain submitted request remains available for receipt inspection, with no
 automatic resubmission. Idle voice controls do not cancel manual requests.
 
+The [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) keeps phase transitions
+separate from platform start observations. Phone recorder/player callbacks and
+Web capture/player readiness determine when the UI can say it is listening or
+speaking. Stale callbacks cannot change the current account/library session's
+status. These observations grant no permission and do not admit the next turn.
+
 The initial adapter used the protected v1 ASR/search/result-count TTS services.
 The local [grounded result narration](ASSISTANT_VOICE_RELIABILITY.md#grounded-result-narration)
 source now describes at most three current ordered cards, using only their kind

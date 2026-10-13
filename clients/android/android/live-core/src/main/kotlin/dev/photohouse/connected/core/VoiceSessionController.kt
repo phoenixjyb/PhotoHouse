@@ -32,6 +32,10 @@ data class VoiceSessionState(
     val reason: VoiceSessionStopReason? = null,
     val replyText: String? = null,
     val reviewRequired: Boolean = false,
+    /** Observation only: the platform confirmed AudioRecord.startRecording succeeded. */
+    val captureStarted: Boolean = false,
+    /** Observation only: the platform confirmed speech playback actually began. */
+    val playbackStarted: Boolean = false,
 ) {
     val microphoneActive: Boolean get() = phase == VoiceSessionPhase.LISTENING
     val speechActive: Boolean get() = phase == VoiceSessionPhase.SPEAKING
@@ -126,7 +130,8 @@ class VoiceSessionController {
     fun captureCompleted(binding: VoiceSessionBinding): VoiceSessionTransition {
         if (!matches(binding, VoiceSessionPhase.LISTENING)) return rejected()
         val next = rotateBinding()
-        state = state.copy(phase = VoiceSessionPhase.TRANSCRIBING, operationGeneration = next.operationGeneration)
+        state = state.copy(phase = VoiceSessionPhase.TRANSCRIBING, operationGeneration = next.operationGeneration,
+            captureStarted = false, playbackStarted = false)
         return accepted(VoiceSessionEffect.StopCapture(binding), VoiceSessionEffect.Transcribe(next))
     }
 
@@ -145,7 +150,8 @@ class VoiceSessionController {
             return pauseInternal(VoiceSessionStopReason.TRANSCRIPT_TOO_LONG)
         }
         val next = rotateBinding()
-        state = state.copy(phase = VoiceSessionPhase.REQUESTING, operationGeneration = next.operationGeneration)
+        state = state.copy(phase = VoiceSessionPhase.REQUESTING, operationGeneration = next.operationGeneration,
+            captureStarted = false, playbackStarted = false)
         return accepted(VoiceSessionEffect.SubmitReadOnlyRequest(next, text))
     }
 
@@ -168,6 +174,8 @@ class VoiceSessionController {
             operationGeneration = next.operationGeneration,
             replyText = reply.text,
             reviewRequired = reply.disposition == VoiceReplyDisposition.REVIEW_REQUIRED,
+            captureStarted = false,
+            playbackStarted = false,
         )
         val effects = buildList {
             if (reply.disposition == VoiceReplyDisposition.REVIEW_REQUIRED) {
@@ -190,6 +198,8 @@ class VoiceSessionController {
             operationGeneration = next.operationGeneration,
             replyText = null,
             reviewRequired = false,
+            captureStarted = false,
+            playbackStarted = false,
         )
         return accepted(VoiceSessionEffect.StartCapture(next))
     }
@@ -248,6 +258,8 @@ class VoiceSessionController {
             reason = VoiceSessionStopReason.REVIEW_REQUIRED,
             replyText = null,
             reviewRequired = true,
+            captureStarted = false,
+            playbackStarted = false,
         )
         return VoiceSessionTransition(state)
     }
@@ -269,6 +281,8 @@ class VoiceSessionController {
             reason = reason,
             replyText = null,
             reviewRequired = state.reviewRequired && preserveReview,
+            captureStarted = false,
+            playbackStarted = false,
         )
         val effects = buildList {
             if (wasCapturing) add(VoiceSessionEffect.StopCapture(old))

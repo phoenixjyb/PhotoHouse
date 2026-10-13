@@ -13,6 +13,10 @@ Next: verify family phone updates and actual listen → reply → listen behavio
 then improve retrieval across saved stories and memoirs with visible evidence,
 and make the Windows release tooling portable with executable preflight checks.
 
+The next local [voice presence UI](ASSISTANT_VOICE_PRESENCE.md) makes waiting,
+confirmed listening, recognition, search, speech preparation, playback and pause
+visible. Its source and generated UI checks are separate from the v53 delivery.
+
 ## Earlier October 13 private conversation continuation plan
 
 The source and runtime pins in this roadmap are dated evidence. A read-only

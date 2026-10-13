@@ -13409,6 +13409,101 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "truthful-voice-presence-ui-and-platform-start-observations-20261013",
+      "based_on_commit": "9d8a04c79d506732f408c848d7a6d4952294c2f8",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": "90812ef13a7b099f095a7c5bb9142207c13a0e49ac5256dfe5f7b4b89b5846be",
+          "sha256": "19177dc3ccb552c64a3c278818c54ffe63b1b39a4014fc949043604a49e2cebd"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AndroidAssistantVoicePlatform.kt",
+          "before_sha256": "6eca393946017939ac0b94d2379593c60da6d3c51db2b95ae6ac815342529d3c",
+          "sha256": "62328fc56d07cbf3d89472857e5a60fa93e98163dab8679a6d3066b3e8e807be"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AnnotationAudioRecorder.kt",
+          "before_sha256": "a212006f23a0e6626a0ce278fef72d8e3e763f1f46c75ae70082799e4f1b9b7b",
+          "sha256": "0ceda1d9882679c49a35f65904a04d4f78f06977acab3cb74dddd72cd45a2b21"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "e17c4e3e32b8e638972ef41d07cab65e81620fe1428e4a35b8719b7b08a35fbd",
+          "sha256": "a1caf3e3e56edb728cfc90f85333c5867e6733481767eb565bbea3e946c623b3"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": "3ef4b3efbbc02585c51e80017d4168d395526b34da1ce96d886365028fd70351",
+          "sha256": "7e0bfb466f0a2059f7a66172256e2e961cecbdecb2b9a23c2fdf5c88d0e29906"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": "94608d2d52e57e0c2b210f6831efee9d4f4d908bbc9c3972040a50ce48cbc461",
+          "sha256": "2417709e7b6d0aadbbef40d264259d37f5adaa739dfde863c0eef676ae0a3b73"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "before_sha256": "e64a394b8484149d13cccf8299a73c0b52b6324f3272c7df2269ea3903fafe48",
+          "sha256": "f508ecfdf2c5ae19b8865361c7d72e8fae68ad2ee8f469f4c3f11f8f6c84bae3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionController.kt",
+          "before_sha256": "02010af8833bde7ce47405434f4ba70e2413d3ebf5dcdabb598ac135dbfbdb35",
+          "sha256": "5c016dd293314aa7cb4f5e23ab141f83282179cdd6651eda6b153499683176f6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStoreTest.kt",
+          "before_sha256": "72e4871ed84a74718d3d4f0e9ab691278bdb6c05792932f74fd8fbcacac6adb3",
+          "sha256": "03b3ac7097a473b0c21d2740f0916b10fc215393f765493a2003d115775c9597"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "33b783d1a7ad3686afabc48ddcf1d22d7a1658bdcc16395010f26ec72c1fd976",
+          "sha256": "abc397ff6e6f350b40f1fbbf894c9b921b9f609e45ad1c3e5e02cb3682590926"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_PRESENCE.md",
+          "before_sha256": null,
+          "sha256": "1b171f6fde320686922993d01c7a47884b14129375964915e02cfa13ea6a7719"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "d71ac9cb74de8a917d6e315efa30a3f5af3083fb36699a4c612677263fe588bb",
+          "sha256": "a1dc18e0d1518a96cacf56482405c434d9264852bf5caf23c81504a2c3f65cd2"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "309bb323fa84bc9e5b62f66958b811d4d46ce18a2bf78212cab41c7ad62ce815",
+          "sha256": "22511bd022a77e6d81706eb4e0f7bd9eb9b5a74432c5dc8afb255dd7e27aeeb4"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "a820fb9be7cf39df1473f7108cf0a97728e02c425c55427f965cdbe7fa83935b",
+          "sha256": "1d2005d89207ffb9d69911fda9257c644876a63dca7fa47da0699c2a12d67ec6"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "1e768f9f58d9ab53f523f2d3b83a608cd8ecca7167dd8cfcf6fcf2e7882fbd89",
+          "sha256": "b927d0186045f4941497a969cf56586b8c26960c73ad3282179508c389ebcab3"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "515410001e93320508ab90b9d09f1e8c976bc9d79ac7f5302ae3aeec94a3a247",
+          "sha256": "206646b1e537473f7161a756c2b9e4a8a7a3bae45ce75f09bbe5d13d1f46f1eb"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "4260fb71bbc02204c913253687b4a9efbe99264a39700a307dd743ae2bae3b41",
+          "sha256": "6566d9983b83c6ce1da07bcfb2bcd8483f36b7f9690aff9a053789cb360e16d4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
