@@ -215,6 +215,34 @@ class Journal:
                 db.execute("UPDATE requests SET status='interrupted',updated_at=?,error_code='server_interrupted' WHERE status='received'", (now,))
             return removed
 
+    def playback(self, ident, identity, library, outcome):
+        """First terminal client playback report; never implies audible delivery.
+
+        Keep this separate from the v1 client_outcome enum so old strict clients
+        can still recover their receipts. Events expire with the owning request.
+        """
+        request_id(ident)
+        if outcome not in ('completed', 'failed', 'cancelled'):
+            raise ValueError('Invalid playback outcome')
+        now = int(self.clock())
+        stage = 'client_playback_' + outcome
+        with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('''SELECT status,operation FROM requests WHERE request_id=?
+                AND account_id=? AND library_id=? AND expires_at>?''',
+                (ident, identity, library, now)).fetchone()
+            if row is None:
+                raise JournalMissing()
+            if row['operation'] != 'speech' or row['status'] != 'succeeded':
+                raise JournalConflict()
+            previous = db.execute("SELECT stage FROM events WHERE request_id=? AND stage IN "
+                "('client_playback_completed','client_playback_failed','client_playback_cancelled')",
+                (ident,)).fetchone()
+            if previous is not None and previous['stage'] != stage:
+                raise JournalConflict()
+            db.execute('INSERT OR IGNORE INTO events VALUES (?,?,?)', (ident, stage, now))
+        return dict(version=1, request_id=ident, playback_outcome=outcome)
+
     def inspect(self, *, limit=20, include_input=False, ident=None):
         if ident is not None:
             request_id(ident)

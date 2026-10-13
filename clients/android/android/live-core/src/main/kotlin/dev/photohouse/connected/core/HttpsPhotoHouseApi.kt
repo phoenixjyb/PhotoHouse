@@ -46,6 +46,20 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         .build()
     private val uploadClient = this.client.newBuilder().callTimeout(2, TimeUnit.MINUTES).writeTimeout(30, TimeUnit.SECONDS).build()
     private val assistantAsrClient = this.client.newBuilder().readTimeout(50, TimeUnit.SECONDS).callTimeout(55, TimeUnit.SECONDS).build()
+    private fun smallAssistantErrorBody(response: Response): ByteArray {
+        val body = response.body ?: return ByteArray(0)
+        if (body.contentLength() > 4096) return ByteArray(0)
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(1024)
+        return try {
+            body.byteStream().use { input -> while (true) {
+                val count = input.read(buffer); if (count < 0) break
+                if (output.size() + count > 4096) { output.toByteArray().fill(0); return ByteArray(0) }
+                output.write(buffer, 0, count)
+            } }
+            output.toByteArray()
+        } finally { buffer.fill(0) }
+    }
     // Completion hashes the full original on the server. A lost reply is reconciled
     // by GET on explicit resume, using the same idempotent transfer ledger.
     private val completionClient = this.client.newBuilder()
@@ -54,8 +68,9 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
                               val etag: String? = null, val cacheControl: String? = null, val contentEncoding: String? = null,
                               val assistantHeaders: Map<String, String> = emptyMap())
     @Volatile private var dateHintsAvailable: Boolean? = null
-    private fun assistantResponseHeaders(headers: Headers): Map<String, String> {
-        val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status")
+    private fun assistantResponseHeaders(headers: Headers, includePlaybackTracking: Boolean = false): Map<String, String> {
+        val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status") +
+            if (includePlaybackTracking) listOf("X-PhotoHouse-Playback-Tracking") else emptyList()
         return names.mapNotNull { name ->
             val values = headers.values(name)
             if (values.size > 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
@@ -564,7 +579,12 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val p = response.use { r ->
-                            if (r.code !in 200..299) throw ApiFailure(FailureKind.HTTP, r.code)
+                            if (r.code !in 200..299) {
+                                val errorBytes = if (r.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase() == "application/json")
+                                    smallAssistantErrorBody(r) else ByteArray(0)
+                                val code = try { AssistantWire.asrErrorCode(errorBytes, r.code) } finally { errorBytes.fill(0) }
+                                throw ApiFailure(FailureKind.HTTP, r.code, assistantErrorCode = code)
+                            }
                             val type = r.header("Content-Type")
                             if (type?.substringBefore(';')?.trim()?.lowercase() != "application/json") throw ApiFailure(FailureKind.INVALID_RESPONSE)
                             Packet(r.code, type, r.body?.byteStream()?.use { stream ->
@@ -615,14 +635,14 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
                                 if (output.size() + count > 2 * 1024 * 1024) throw ApiFailure(FailureKind.TOO_LARGE)
                                 output.write(buffer, 0, count)
                             } }
-                            AssistantWire.speechAudio(output.toByteArray()) to assistantResponseHeaders(r.headers)
+                            AssistantWire.speechAudio(output.toByteArray()) to assistantResponseHeaders(r.headers, includePlaybackTracking = true)
                         }
                         if (continuation.isActive) continuation.resume(audio)
                     } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(e) }
                 }
             })
         }
-        return AssistantSpeechResult(result.first, AssistantWire.requestReceipt(result.second, requestId))
+        return AssistantSpeechResult(result.first, AssistantWire.speechRequestReceipt(result.second, requestId))
     }
     override suspend fun assistantReceipt(token: Bearer, library: String, requestId: String): AssistantReceipt {
         require(assistantEnabled && PhoneDiscoveryWire.validLibrary(library) && AssistantWire.validRequestId(requestId))
@@ -642,6 +662,14 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         if (response.keys != setOf("version", "request_id", "client_outcome") ||
             response["version"]?.jsonPrimitive?.intOrNull != 1 || response["request_id"]?.jsonPrimitive?.content != requestId ||
             response["client_outcome"]?.jsonPrimitive?.content != outcome) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+    }
+    override suspend fun assistantPlaybackOutcome(token: Bearer, library: String, requestId: String, outcome: String) {
+        require(assistantEnabled && PhoneDiscoveryWire.validLibrary(library) && AssistantWire.validRequestId(requestId) && outcome in setOf("completed", "failed", "cancelled"))
+        val body = buildJsonObject { put("library_id", library); put("outcome", outcome) }.toString()
+        val target = origin.url.newBuilder().addPathSegments("assistant/v1/receipts").addPathSegment(requestId).addPathSegment("playback").build()
+        val result = packet(target, token, body, limit = 2048, requestLimit = 1024)
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        AssistantWire.playbackOutcome(result.bytes, requestId, outcome)
     }
     override suspend fun familyTags(token: Bearer, library: String, page: Int, query: String): FamilyTagsPage {
         require(familyTagsEnabled && protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && page in 1..100000 && FamilyTagsWire.validQuery(query))

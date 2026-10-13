@@ -1,5 +1,34 @@
 # Development and public release qualification
 
+## Voice reliability qualification (October 13)
+
+The [voice reliability contract](ASSISTANT_VOICE_RELIABILITY.md) passed the
+complete API profile: 1,363 tests and 807 subchecks, plus the generated demo.
+The later narrow ASR hardening rerun passed 18 checks, covering malformed Unicode
+and rejecting arbitrary diagnostic categories. The synthetic private assistant
+qualification now covers 11 scenarios, including explicit-number contexts,
+terminal playback reports and durable safe recognition failures.
+
+Phone checks passed 39 focused JVM tests with no failures or skips. A generated
+API 36 simulator test checked the localized no-input error row in English and
+Chinese at 150% text; both app renders were inspected. An earlier System UI ANR
+interrupted one attach attempt; its evidence was retained. After dismissal, the
+test passed and a separate accessibility read confirmed the QA landing choices.
+Secure ordinary-page screenshots are not evidence of a blank UI.
+
+The Web voice browser journey passed manual and continuous playback, absent
+capability compatibility, all safe ASR categories, and a manual A-stop/B-start
+race: late completion/error from A cannot report success for B. Each manual
+attempt owns a new player and revokes its Blob URL on cleanup. The transcript
+review browser journey also passed, preserving typed drafts, exact ASR parent
+identity and old-account fences. Desktop/phone large-text status renders were
+inspected.
+
+These checks use generated data and synthetic speech. They do not establish
+Windows candidate qualification, a signed phone release, live switching or
+human listening. The phone version is reserved as v52; delivery uses separate
+immutable artifact and operator receipts.
+
 ## Saved memoir editing (October 12)
 
 The phone saved-book editor passed 822 live-core tests and 17 phone JVM tests,

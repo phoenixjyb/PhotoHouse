@@ -300,6 +300,14 @@ Original family notes are kept until an authorized owner deletes them. Text,
 raw audio, derived transcript and polished wording remain distinguishable.
 Assistant troubleshooting records keep recognized text, submitted commands and
 processing status for thirty days; they do not retain assistant recordings.
+
+[Voice reliability](ASSISTANT_VOICE_RELIABILITY.md) adds an internal exact-ID
+lookup in the authorized discovery snapshot, safe ASR error codes and separate
+terminal playback events. Singleton lookup contexts retain the existing opaque
+fingerprint shape; recovery rehydrates current authorized cards without replaying
+navigation. Player events extend the journal event table rather than its strict
+legacy receipt envelope. The optional response header admits reporting only on
+servers that implement the new endpoint; absent reports remain unknown.
 Original deletion uses an external journal and verified recovery procedure.
 Operators must preserve that journal when restoring or changing a deployment.
 

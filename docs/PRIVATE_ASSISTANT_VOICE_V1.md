@@ -42,6 +42,10 @@ identity instead of creating another conversation.
 
 ## Acceptance
 
+See [voice retrieval and playback evidence](ASSISTANT_VOICE_RELIABILITY.md) for
+explicit asset-number commands, safe recognition errors and the opt-in playback
+event protocol. Synthesis completion and player completion are distinct.
+
 - Preserve one synchronous identity across capture, submission and recovery.
 - Keep the existing v1 route when no private conversation has been selected.
 - Bind selected private context to account, library, generation and thread.

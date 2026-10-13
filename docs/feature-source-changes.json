@@ -13127,6 +13127,163 @@
       "routes_added": false,
       "schema_changed": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "voice-reliability-numbered-assets-asr-playback-20261013",
+      "based_on_commit": "743ed3aa4599fa30b0437c6d9e04f9ad7fe04978",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "c7f9819df792997474fb3318b4ec9fd3e4cf9a535eed86a66f5bf48667f1e61b"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantTranscriptUiTest.kt",
+          "sha256": "5b110cd821f38adbb06d278284124f40abe741e410b35d4ab487b2df87eedd06"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "sha256": "48dafc260cff2164b900fa5a2b75f5e3354721b3da484d558b1b6b7fd3ad5698"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "b0ec3e49b8391cdf1b35385635e086680d2fe33a512d970fc1d805c653a46058"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "sha256": "e64a394b8484149d13cccf8299a73c0b52b6324f3272c7df2269ea3903fafe48"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWire.kt",
+          "sha256": "91ef12f045212ea7e1e61e9684a5f0b21e4db201107f2a68c2d6840fd94fdd7f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "sha256": "24ed9287977d65e297006b423fb7a00d117f7d4a09f80efb083d65fe8c3ff0d2"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApi.kt",
+          "sha256": "b323776b7245a5bddbc35464bf1b630afa14b718770c61232c9a74b381988524"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "sha256": "85e5b58198b2325ff480469af9a0f89dc1646a1f6834fb8c73cff4a9b4a4ab39"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "sha256": "f3acbd6834fb3adffb62668225e51a387620f6e6d9b8a735e26be6226eb08db5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantTransportTest.kt",
+          "sha256": "d0b9b7a62fd7d2f0bb6051d1af5a323d3e0b8b43efc4fe0c6f26a11fe6bc98ba"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStoreTest.kt",
+          "sha256": "72e4871ed84a74718d3d4f0e9ab691278bdb6c05792932f74fd8fbcacac6adb3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWireTest.kt",
+          "sha256": "b8a3d7cac0d75ceb2367131543c229900bb7e03b7c9e4802c68bf6f724834e1c"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "beaa411c18fcd550523fd6523f9a4fd58170d9d89edc4a24e8772fa5e78b9cb4"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_RELIABILITY.md",
+          "sha256": "ff24a4e260bc6363b768c198501e6d0e0236e09d143f593651b595485cb6ac8f"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "efab56f34caa5d65a4ecf6cd9b59ba3e8faa3db63fcb3647f4815ea8f7c9b625"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "ecbb1dc423a040d2453b7f2aa79263cb1a603633c2c58ba065f70427deb2c343"
+        },
+        {
+          "path": "docs/PRIVATE_ASSISTANT_VOICE_V1.md",
+          "sha256": "0892bce77132795c482721ba3a7b92f876f774b0bdaa7f0089aaddee9f1e4dfb"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "84dcb1be386a4d2ab20ed8851941336a8b4d41cf0137439f633be5c8e5b62e22"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "c27263139d4846ab64bc7e784c78d254a5b457c14aa2bbcf369aab374407c68d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_journal.py",
+          "sha256": "869b15562a69db77b27ef592998515eaea10fe2f33f1248ea7089a51977e945f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_speech.py",
+          "sha256": "188299296a58a741a1c703a5bf90d3a6b10edb2f642974e16a8dcba88474a209"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "24ee84e026281becebdad0d310122578d43d9063312c6a0b00906aa5317b92d5"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "5003909440f180a7f4f2eae305c42f83f010f4489ff8cdfb0964eeed0fcbc93c"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "sha256": "405a41f8e0a6de35224afb7952164c686facb6c0da202f0f1f15ade689dc9c60"
+        },
+        {
+          "path": "server/backend/app/access/discovery_transport.py",
+          "sha256": "7762e74bdb112eec415db91f9ae922064d49bba1e5b4d2545ade145c3763812b"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "fa3e0cb9ce32c5b343b9cedcdb065c5c3325c87e93b4c209e12aebda4961402e"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "dffe967f38d9eb9b146228523732d21b89ceb871cc9f284d1ed28ad1fc668498"
+        },
+        {
+          "path": "server/scripts/qualify_private_assistant.py",
+          "sha256": "aaa582d923133e2b734254be29baa38808bfb4f7204cee1214877f63ad88e83b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_asr_errors.py",
+          "sha256": "4329ddf51d52645c5e052ff929e8eb73edade035e758bacdc31a202cc1182031"
+        },
+        {
+          "path": "server/tests/security/test_assistant_asset_number.py",
+          "sha256": "a458002cc08046c49108b4220b90d53e5872e939ded397053f2f11921d963d6b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_http.py",
+          "sha256": "c2889df1d6846f1953d5c61dfad2db56af6b6049718de73496e09ce928dfd648"
+        },
+        {
+          "path": "server/tests/security/test_assistant_playback_receipts.py",
+          "sha256": "414ae1d151deef641d573b7fa8fba344bd589ba3af44716528c39d66f2622f5a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "sha256": "c12f1cd13fcf027985354545bfd855493f64bcbb10536ae22ea63afcaad5879d"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "1e059a7f3efdff3dd8b128b57749bc314d8487ff1cdd776feeab2114949428ca"
+        },
+        {
+          "path": "server/tests/security/test_qualify_private_assistant.py",
+          "sha256": "aeb7df334abc59d32bbf3cf73b26edd8dcc506668acf20a7cb9090344f350050"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "4aec51feb438d4de706c26cf6fdd07d8c8dc4e9a6612fe7db1d39774753c87b8"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false
     }
   ]
 }

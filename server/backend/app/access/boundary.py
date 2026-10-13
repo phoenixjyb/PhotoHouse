@@ -169,7 +169,7 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/discovery/v1/search', path):
             return True
         if ((method == 'GET' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}', path))
-                or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/outcome', path))):
+                or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/(?:outcome|playback)', path))):
             return True
         if (method, path) in {('GET', '/assistant/v1/capabilities'), ('POST', '/assistant/v1/turns'),
                               ('POST', '/assistant/v1/transcribe'), ('POST', '/assistant/v1/speech')}:

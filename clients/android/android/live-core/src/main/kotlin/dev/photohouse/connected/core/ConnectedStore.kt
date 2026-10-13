@@ -17,7 +17,7 @@ private const val MEMORY_BOOK_CHAPTER_ASSET_LIMIT = 8
 enum class GalleryMedia(val wire: String) { ALL("all"), PHOTOS("image"), VIDEOS("video"), PREPARED_VIDEOS("prepared_video");
     val assetKind get() = if (this == PREPARED_VIDEOS) "video" else wire
 }
-enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, MEMORY_CONVERSATION_FULL, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE }
+enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, MEMORY_CONVERSATION_FULL, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE, ASSISTANT_ASR_NO_INPUT, ASSISTANT_ASR_BUSY, ASSISTANT_ASR_TIMEOUT, ASSISTANT_ASR_INVALID, ASSISTANT_ASR_UNAVAILABLE }
 data class LiveProblem(val message: Message, val retryAtMillis: Long = 0, val playbackFailure: VideoPlaybackFailure? = null)
 /** Only the current page's IDs, never a persistent or cross-library history. */
 data class PhotoNavigation(val page: Int, val assetIds: List<String>, val index: Int, val discovery: PhoneDiscoveryState? = null, val media: GalleryMedia = GalleryMedia.ALL, val videoIds: Set<String> = emptySet())
@@ -378,6 +378,9 @@ class ConnectedStore(
 
     private var assistantSpeechJob: Job? = null
     private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
+    private data class AssistantPlaybackOwner(val requestId: String, val accountId: String, val library: String,
+                                             val generation: Long, val credential: Bearer, var reported: Boolean = false)
+    private val assistantPlaybackOwners = java.util.WeakHashMap<ProtectedAnnotationAudio, AssistantPlaybackOwner>()
     private val assistantWorkspaceTransport = assistantWorkspaceApi?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
     private var assistantSpeechRequest = 0L
     private var assistantTurnRequest = 0L
@@ -4745,7 +4748,7 @@ class ConnectedStore(
         // Private conversation switches go through the explicit workspace controls.
         if (current.privateThreadId != null) return
         if (current.library != state.value.library || current.generation != state.value.generation) return
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         assistantSpeechRequest++
         assistantTurnRequest++
         assistantTranscriptRequest++
@@ -4764,7 +4767,7 @@ class ConnectedStore(
         if (current.privateThreadId != null) current.pendingTurn?.let {
             assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
         }
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         mutable.value = state.value.copy(assistant = current.copy(
             transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
             speechBusy = false, speechAudio = null, busy = false,
@@ -4773,7 +4776,7 @@ class ConnectedStore(
     fun clearAssistantSpeech() {
         val current = state.value.assistant ?: return
         if (current.library != state.value.library || current.generation != state.value.generation) return
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false))
@@ -4818,6 +4821,31 @@ class ConnectedStore(
         return current.context != null && latest?.kind == "results" && latest.items.isNotEmpty()
     }
 
+    /** Records playback only while this exact speech result still owns the account/library generation. */
+    fun reportAssistantPlaybackOutcome(audio: ProtectedAnnotationAudio, outcome: String): Boolean {
+        if (outcome !in setOf("completed", "failed", "cancelled")) return false
+        val live = state.value
+        val assistant = live.assistant ?: return false
+        val receipt = assistant.lastRequestReceipt ?: return false
+        if (!api.assistantEnabled || !allowed() || live.covered || assistant.speechAudio !== audio ||
+            assistant.library != live.library || assistant.generation != live.generation || !receipt.playbackTracking ||
+            !AssistantWire.validRequestId(receipt.requestId)) return false
+        val owner = synchronized(assistantPlaybackOwners) { assistantPlaybackOwners[audio] } ?: return false
+        if (owner.reported || owner.requestId != receipt.requestId || owner.library != assistant.library ||
+            owner.generation != assistant.generation || owner.accountId != live.session?.account_id || token !== owner.credential) return false
+        synchronized(assistantPlaybackOwners) {
+            if (assistantPlaybackOwners[audio] !== owner || owner.reported) return false
+            owner.reported = true
+        }
+        scope.launch {
+            val latest = state.value
+            if (!latest.covered && latest.generation == owner.generation && latest.library == owner.library &&
+                latest.session?.account_id == owner.accountId && token === owner.credential)
+                runCatching { api.assistantPlaybackOutcome(owner.credential, owner.library, owner.requestId, outcome) }
+        }
+        return true
+    }
+
     fun loadAssistantSpeech(language: String): Boolean {
         if (language !in setOf("zh", "en") || !canReadAssistantReply()) return false
         val current = state.value.assistant ?: return false
@@ -4828,7 +4856,7 @@ class ConnectedStore(
         val requestId = java.util.UUID.randomUUID().toString()
         val request = ++assistantSpeechRequest
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
         val job = scope.launch(start = CoroutineStart.LAZY) {
             var bytes: ByteArray? = null
@@ -4844,6 +4872,11 @@ class ConnectedStore(
                     privateReply != null && privateReplySpeechReference() != privateReply) { received.fill(0); return@launch }
                 val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: run { received.fill(0); return@launch }
                 val audio = ProtectedAnnotationAudio(received); bytes = null
+                if (speech.receipt.playbackTracking && speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") {
+                    state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                        assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, library, generation, credential)
+                    } }
+                }
                 mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, speechAudio = audio, lastRequestReceipt = speech.receipt, failure = null))
                 if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") reportAssistantOutcome(library, generation, credential, requestId, "displayed")
             } catch (e: CancellationException) { bytes?.fill(0); throw e }
@@ -5743,6 +5776,11 @@ class ConnectedStore(
         if (error is IllegalArgumentException) return LiveProblem(Message.INVALID_INPUT)
         if (error !is ApiFailure) return LiveProblem(Message.INVALID_RESPONSE)
         val message = when {
+            error.assistantErrorCode == "speech_no_input" -> Message.ASSISTANT_ASR_NO_INPUT
+            error.assistantErrorCode == "speech_busy" -> Message.ASSISTANT_ASR_BUSY
+            error.assistantErrorCode == "speech_unavailable" -> Message.ASSISTANT_ASR_UNAVAILABLE
+            error.assistantErrorCode == "speech_timeout" -> Message.ASSISTANT_ASR_TIMEOUT
+            error.assistantErrorCode == "speech_invalid_response" -> Message.ASSISTANT_ASR_INVALID
             error.kind == FailureKind.TOO_LARGE -> Message.TOO_LARGE
             error.status == 404 -> Message.MEDIA_UNAVAILABLE
             error.kind == FailureKind.TLS -> Message.TLS_ERROR

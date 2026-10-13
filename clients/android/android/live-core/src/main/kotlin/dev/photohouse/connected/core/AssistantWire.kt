@@ -25,7 +25,7 @@ data class AssistantTranscript(
     /** Client-local UI identity; never serialized or accepted as server correlation. */
     val localRequestId: String = "",
 )
-data class AssistantRequestReceipt(val requestId: String, val tracking: String, val status: String?)
+data class AssistantRequestReceipt(val requestId: String, val tracking: String, val status: String?, val playbackTracking: Boolean = false)
 data class AssistantSpeechResult(val bytes: ByteArray, val receipt: AssistantRequestReceipt)
 data class AssistantReceipt(
     val requestId: String, val operation: String, val parentRequestId: String?, val status: String,
@@ -71,6 +71,34 @@ object AssistantWire {
         }
         return AssistantRequestReceipt(sentId, tracking, status)
     }
+    fun speechRequestReceipt(headers: Map<String, String>, sentId: String): AssistantRequestReceipt {
+        val receipt = requestReceipt(headers, sentId)
+        val playback = headers["X-PhotoHouse-Playback-Tracking"] ?: return receipt
+        if (playback !in setOf("enabled", "disabled")) bad()
+        return receipt.copy(playbackTracking = playback == "enabled")
+    }
+    fun playbackOutcome(bytes: ByteArray, expectedId: String, expectedOutcome: String) = guarded {
+        check(bytes.size in 1..2048 && validRequestId(expectedId) && expectedOutcome in setOf("completed", "failed", "cancelled"))
+        val o = DiscoveryJson.parse(bytes, 2048).obj("version", "request_id", "playback_outcome")
+        check(o.getValue("version").int(1) == 1)
+        check(o.getValue("request_id").str(36) == expectedId && validRequestId(expectedId))
+        check(o.getValue("playback_outcome").str(16) == expectedOutcome)
+    }
+    /** Extracts only known local ASR categories; provider text and unknown response fields are discarded. */
+    fun asrErrorCode(bytes: ByteArray, status: Int): String? = runCatching {
+        check(bytes.size in 1..4096)
+        val o = DiscoveryJson.parse(bytes, 4096).obj("error", "detail")
+        val code = o.getValue("error").str(64)
+        o.getValue("detail").str(256)
+        val expectedStatus = when (code) {
+            "speech_no_input" -> 422
+            "speech_busy", "speech_unavailable" -> 503
+            "speech_timeout" -> 504
+            "speech_invalid_response" -> 502
+            else -> return@runCatching null
+        }
+        code.takeIf { expectedStatus == status }
+    }.getOrNull()
     fun receipt(bytes: ByteArray, expectedId: String): AssistantReceipt = guarded {
         check(bytes.size in 1..16 * 1024 && validRequestId(expectedId))
         val o = DiscoveryJson.parse(bytes).obj("version", "request_id", "operation", "parent_request_id", "status", "created_at", "updated_at", "expires_at", "http_status", "error_code", "input_text", "recognized_text", "result_kind", "result_total", "client_outcome")

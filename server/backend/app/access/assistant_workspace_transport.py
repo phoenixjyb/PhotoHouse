@@ -303,11 +303,7 @@ def _turn_result(engine, token, library, summary, *, recovered):
     items = []
     if context is not None:
         context = assistant_engine._context(context, library)
-        found = assistant_engine._search(engine, token, library, context['binding'],
-                                         context['filters'], context['fingerprint'])
-        if ([item['id'] for item in found['items']] != context['visible_ids'] or
-                found['total'] != context['total']):
-            raise assistant_engine.AssistantChanged()
+        found = assistant_engine._context_result(engine, token, library, context)
         items = found['items']
     result['items'] = items
     if recovered:
@@ -708,7 +704,8 @@ async def reply_speech(request: Request, thread_id: str, turn_id: str):
         # Close source drift that occurred while local synthesis was running.
         await run_in_threadpool(_turn_result, engine, token,
                                 library, summary, recovered=True)
-    return Response(content=audio, media_type='audio/wav', headers=PRIVACY_HEADERS)
+    return Response(content=audio, media_type='audio/wav',
+                    headers=dict(PRIVACY_HEADERS, **assistant_engine._playback_headers(request)))
 
 
 router.add_api_route(

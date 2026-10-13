@@ -25,7 +25,8 @@ from .service import AccessDenied, AccessService
 from .assistant_journal import (Journal, JournalUnavailable, JournalConflict,
                                 JournalMissing, request_id)
 from .assistant_speech import (LocalAssistantAsr, LocalAssistantTts, valid_wav,
-                               MAX_WAV_BYTES, MAX_AUDIO_SECONDS, AssistantSpeechUnavailable)
+                               MAX_WAV_BYTES, MAX_AUDIO_SECONDS, AssistantSpeechUnavailable,
+                               AssistantAsrFailure)
 from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime,
                         _single, credentials_from_request)
 
@@ -80,6 +81,8 @@ class AssistantRoute(APIRoute):
             except d.DiscoveryBusy:
                 response = failure(429, 'assistant_busy', 'Assistant busy')
                 response.headers['Retry-After'] = '2'
+            except AssistantAsrFailure as error:
+                response = failure(error.status, error.code, 'Local transcription could not complete')
             except AssistantSpeechUnavailable:
                 response = failure(503, 'speech_unavailable', 'Local speech service unavailable')
             except JournalUnavailable:
@@ -220,7 +223,8 @@ def _bounded(value, depth=0, count=None):
         raise AssistantInvalid()
 
 
-async def _body(request, fields=frozenset({'library_id', 'text', 'context'})):
+async def _body(request, fields=frozenset({'library_id', 'text', 'context'}), *,
+                outcome_values=('displayed', 'open_requested', 'failed', 'cancelled')):
     if request.scope.get('query_string') or _single(request, 'content-encoding') is not None:
         raise AssistantInvalid()
     if (_single(request, 'content-type') or '').split(';')[0].strip().lower() != 'application/json':
@@ -262,7 +266,7 @@ async def _body(request, fields=frozenset({'library_id', 'text', 'context'})):
             raise AssistantInvalid()
         if 'language' in fields and result['language'] not in ('zh', 'en'):
             raise AssistantInvalid()
-        if 'outcome' in fields and result['outcome'] not in ('displayed','open_requested','failed','cancelled'):
+        if 'outcome' in fields and result['outcome'] not in outcome_values:
             raise AssistantInvalid()
         return result
     except (ValueError, UnicodeError, RecursionError):
@@ -302,6 +306,17 @@ def _ordinal(words):
         return None
     raw = match.group(1)
     return ORDINALS.get(raw, int(raw) if raw.isdecimal() else None)
+
+
+def _asset_number(words):
+    """An explicit ID marker avoids confusing asset IDs with result ordinals."""
+    compact = re.sub(r'\s+', '', words.strip().casefold()).rstrip('。.!！?？')
+    match = re.fullmatch(
+        r'(?:(?:请)?(打开|查看|看|查找|搜索|找)(?:照片|图片|视频|素材)?(?:编号|号码)|'
+        r'(open|show|find|search)(?:photo|video|asset)?(?:number|id|#))([1-9][0-9]{0,18})', compact)
+    if not match or int(match.group(3)) > (1 << 63) - 1:
+        return None
+    return match.group(3), (match.group(1) or match.group(2)) in ('打开', '查看', '看', 'open', 'show')
 
 
 def _date_filter(words, now):
@@ -367,10 +382,7 @@ def _facets(engine, token, library, facet, binding):
     return result
 
 
-def _search(engine, token, library, binding, filters, fingerprint=None):
-    result = engine.call('search', token, library, lambda: False,
-                         {'binding': binding, 'filters': filters, 'page': 1,
-                          'page_size': PAGE_SIZE, 'fingerprint': fingerprint})
+def _normalize_cards(result):
     # Mirror discovery_transport's external card normalization; native clients
     # must not receive invalid dimensions from old imported metadata.
     for item in result['items']:
@@ -385,17 +397,55 @@ def _search(engine, token, library, binding, filters, fingerprint=None):
     return result
 
 
+def _search(engine, token, library, binding, filters, fingerprint=None):
+    return _normalize_cards(engine.call('search', token, library, lambda: False,
+                            {'binding': binding, 'filters': filters, 'page': 1,
+                             'page_size': PAGE_SIZE, 'fingerprint': fingerprint}))
+
+
+def _context_result(engine, token, library, context):
+    # Singleton lookup contexts use the same bounded wire shape as search. The
+    # fingerprint binds the explicit ID and current session/membership/source.
+    ids = context['visible_ids']
+    if (context['filters'] == {} and context['total'] == 1 and len(ids) == 1
+            and context['fingerprint'] == d.assistant_asset_fingerprint(context['binding'], ids[0])):
+        result = _normalize_cards(engine.call('assistant_asset', token, library, lambda: False,
+            {'asset_id': ids[0], 'binding': context['binding'], 'fingerprint': context['fingerprint']}))
+    else:
+        result = _search(engine, token, library, context['binding'], context['filters'], context['fingerprint'])
+    if [item['id'] for item in result['items']] != ids or result['total'] != context['total']:
+        raise AssistantChanged()
+    return result
+
+
 def _turn(engine, token, library, words, previous, clock, *, language=None):
     lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
     existing = None
     if previous is not None:
         previous = _context(previous, library)
-        existing = _search(engine, token, library, previous['binding'],
-                           previous['filters'], previous['fingerprint'])
-        if ([item['id'] for item in existing['items']] != previous['visible_ids']
-                or existing['total'] != previous['total']):
-            raise AssistantChanged()
+        existing = _context_result(engine, token, library, previous)
+    numbered = _asset_number(words)
+    if numbered is not None:
+        asset_id, opens = numbered
+        first = engine.call('facets', token, library, lambda: False,
+                            {'facet': 'people', 'page': 1, 'page_size': 1})
+        found = _normalize_cards(engine.call('assistant_asset', token, library, lambda: False,
+            {'asset_id': asset_id, 'binding': first['binding']}))
+        if not found['items']:
+            return {'version': 1, 'kind': 'clarification',
+                    'reply': ('当前相册库中没有可访问的这个编号。请确认编号和相册库。' if lang == 'zh' else
+                              'This number is not available in the current library. Check the number and library.'),
+                    'context': previous, 'filters': previous['filters'] if previous else None,
+                    'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
+                    'has_more': existing['has_more'] if existing else False, 'effect': None}
+        context = {'library_id': library, 'binding': found['binding'], 'fingerprint': found['fingerprint'],
+                   'filters': {}, 'visible_ids': [asset_id], 'total': 1}
+        reply = ((f'打开编号 {asset_id}。' if opens else f'找到编号 {asset_id}。') if lang == 'zh' else
+                 (f'Opening asset {asset_id}.' if opens else f'Found asset {asset_id}.'))
+        return {'version': 1, 'kind': 'open' if opens else 'results', 'reply': reply,
+                'context': context, 'filters': {}, 'items': found['items'], 'total': 1, 'has_more': False,
+                'effect': {'type': 'open_asset', 'asset_id': asset_id} if opens else None}
     ordinal = _ordinal(words)
     if ordinal is not None:
         if existing is None or ordinal > len(existing['items']):
@@ -415,8 +465,8 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
     if not (refine or search):
-        reply = ('请说“找照片”、“找去年九月的视频”或“打开第二个”。' if lang == 'zh' else
-                 'Try “find photos”, “find videos from last year”, or “open the second result”.')
+        reply = ('请说“找照片”、“找去年九月的视频”、“打开第二个”或“打开编号123”。' if lang == 'zh' else
+                 'Try “find photos”, “find videos from last year”, “open the second result”, or “open asset id 123”.')
         return {'version': 1, 'kind': 'unsupported', 'reply': reply, 'context': previous,
                 'filters': previous['filters'] if previous else None,
                 'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
@@ -558,11 +608,7 @@ async def speech(request: Request):
     if engine is None or not isinstance(tts, LocalAssistantTts):
         raise AssistantSpeechUnavailable()
     context = _context(payload['context'], library)
-    result = await run_in_threadpool(_search, engine, token, library, context['binding'],
-                                     context['filters'], context['fingerprint'])
-    if ([item['id'] for item in result['items']] != context['visible_ids']
-            or result['total'] != context['total']):
-        raise AssistantChanged()
+    result = await run_in_threadpool(_context_result, engine, token, library, context)
     language = payload['language']
     words = (f'找到 {result["total"]} 项。' if language == 'zh' else
              f'Found {result["total"]} results.')
@@ -571,7 +617,12 @@ async def speech(request: Request):
     audio = await run_in_threadpool(tts.synthesize, words, language)
     await run_in_threadpool(engine.authorize, token, library)
     await _stage(request, 'provider_completed')
-    return Response(content=audio, media_type='audio/wav')
+    return Response(content=audio, media_type='audio/wav', headers=_playback_headers(request))
+
+
+def _playback_headers(request):
+    return {'X-PhotoHouse-Playback-Tracking': 'enabled'} if getattr(
+        request.state, 'assistant_request_id', None) is not None else {}
 
 
 async def _receipt_author(request, token, library, ident):
@@ -604,3 +655,14 @@ async def receipt_outcome(request: Request, ident: str):
     library = payload['library_id']
     journal, identity = await _receipt_author(request, token, library, ident)
     return await run_in_threadpool(journal.outcome, ident, identity, library, payload['outcome'])
+
+
+@router.post('/assistant/v1/receipts/{ident}/playback')
+async def receipt_playback(request: Request, ident: str):
+    token, _ = credentials_from_request(request)
+    payload = await _body(request, frozenset({'library_id', 'outcome'}),
+                          outcome_values=('completed', 'failed', 'cancelled'))
+    outcome = payload['outcome']
+    library = payload['library_id']
+    journal, identity = await _receipt_author(request, token, library, ident)
+    return await run_in_threadpool(journal.playback, ident, identity, library, outcome)

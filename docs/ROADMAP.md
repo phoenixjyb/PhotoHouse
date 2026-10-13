@@ -582,6 +582,13 @@ activating them for family material.
 
 ## October 13 assistant continuation and delivery priorities
 
+The [voice reliability slice](ASSISTANT_VOICE_RELIABILITY.md) adds protected
+explicit-number retrieval, safe ASR failure categories and opt-in terminal
+playback events. It preserves the v1 context and receipt envelopes. Its source
+qualification and next phone/API delivery are separate from the installed v51
+and already activated providers. A playback event is client evidence; human
+listening remains a separate acceptance step.
+
 1. Qualify the local private conversation, older-history and protected reply
    speech candidate across server, Web and phone. Preserve explicit session
    consent, exact request recovery and individual history ownership.

@@ -35,6 +35,7 @@ class AssistantVoiceSessionStoreTest {
 
         fixture.platform.speechResults.send(true)
         runCurrent()
+        assertEquals("completed", fixture.api.playbackOutcomes.single().second)
         assertEquals(2, fixture.platform.captureCalls)
         fixture.platform.speechStarted.receive()
         assertEquals(2, fixture.api.assistantTurnCalls)
@@ -102,6 +103,20 @@ class AssistantVoiceSessionStoreTest {
         assertEquals(0, captured.sumOf { it.toInt() and 0xff })
     }
 
+    @Test fun recognizedAsrNoInputStopsTheVoiceTurnWithoutSubmittingAnEmptyQuery() = runTest {
+        val fixture = fixture()
+        fixture.api.transcriptionFailure = ApiFailure(FailureKind.HTTP, 422, assistantErrorCode = "speech_no_input")
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(Message.ASSISTANT_ASR_NO_INPUT, fixture.store.state.value.assistant?.failure?.message)
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertEquals(0, fixture.api.assistantTurnCalls)
+        assertNull(fixture.store.state.value.assistant?.transcript)
+    }
+
     @Test fun forbiddenSpeechStopsWithoutPlaybackOrRelisteningAndClearsAudioState() = runTest {
         val fixture = fixture()
         fixture.api.speechFailure = ApiFailure(FailureKind.HTTP, status = 403)
@@ -134,6 +149,61 @@ class AssistantVoiceSessionStoreTest {
         assertEquals(1, fixture.platform.captureCalls)
         assertEquals(1, fixture.api.assistantTurnCalls)
         assertEquals(1, fixture.platform.speechCalls)
+        assertEquals("failed", fixture.api.playbackOutcomes.single().second)
+    }
+
+    @Test fun endingDuringPlaybackReportsCancellationOnlyForTheOwnedSpeech() = runTest {
+        val fixture = fixture()
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        val requestId = fixture.store.state.value.assistant!!.lastRequestReceipt!!.requestId
+
+        assertTrue(fixture.driver.end())
+        runCurrent()
+
+        assertEquals(listOf(requestId to "cancelled"), fixture.api.playbackOutcomes)
+        assertNull(fixture.store.state.value.assistant!!.speechAudio)
+    }
+
+    @Test fun staleAudioCallbackAfterLibraryChangeDoesNotReportPlayback() = runTest {
+        val fixture = fixture()
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        val audio = fixture.store.state.value.assistant!!.speechAudio!!
+
+        fixture.store.selectLibrary("second")
+        runCurrent()
+        assertFalse(fixture.store.reportAssistantPlaybackOutcome(audio, "completed"))
+        assertTrue(fixture.api.playbackOutcomes.isEmpty())
+    }
+
+    @Test fun manualPlaybackReportsOnceAndDoesNothingWithoutServerCapability() = runTest {
+        val fixture = fixture()
+        assertTrue(fixture.store.sendAssistantText("find the beach"))
+        runCurrent()
+        assertTrue(fixture.store.loadAssistantSpeech("en"))
+        runCurrent()
+        val audio = fixture.store.state.value.assistant!!.speechAudio!!
+        val requestId = fixture.store.state.value.assistant!!.lastRequestReceipt!!.requestId
+        assertTrue(fixture.store.reportAssistantPlaybackOutcome(audio, "completed"))
+        assertFalse(fixture.store.reportAssistantPlaybackOutcome(audio, "failed"))
+        runCurrent()
+        assertEquals(listOf(requestId to "completed"), fixture.api.playbackOutcomes)
+
+        fixture.store.clearAssistantSpeech()
+        fixture.api.playbackTracking = false
+        assertTrue(fixture.store.sendAssistantText("find the beach"))
+        runCurrent()
+        assertTrue(fixture.store.loadAssistantSpeech("en"))
+        runCurrent()
+        val unsupportedAudio = fixture.store.state.value.assistant!!.speechAudio!!
+        assertFalse(fixture.store.reportAssistantPlaybackOutcome(unsupportedAudio, "completed"))
+        runCurrent()
+        assertEquals(1, fixture.api.playbackOutcomes.size)
     }
 
     @Test fun alreadyCompletedApiCallsAreBoundByTheirNewRequestIds() = runTest {
@@ -265,6 +335,8 @@ class AssistantVoiceSessionStoreTest {
         var transcriptionCalls = 0
         var assistantTurnCalls = 0
         var speechCalls = 0
+        var playbackTracking = true
+        val playbackOutcomes = mutableListOf<Pair<String, String>>()
         var responseKind = "results"
         var responseItems = listOf(testAsset())
         val transcriptionIds = mutableListOf<String>()
@@ -302,7 +374,10 @@ class AssistantVoiceSessionStoreTest {
             speechCalls++
             speechFailure?.let { throw it }
             val data = syntheticAnnotationWav()
-            return AssistantSpeechResult(data, AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+            return AssistantSpeechResult(data, AssistantRequestReceipt(requestId, "enabled", "succeeded", playbackTracking = playbackTracking))
+        }
+        override suspend fun assistantPlaybackOutcome(token: Bearer, library: String, requestId: String, outcome: String) {
+            playbackOutcomes += requestId to outcome
         }
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)

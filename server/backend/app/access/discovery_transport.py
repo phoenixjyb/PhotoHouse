@@ -42,7 +42,11 @@ class DiscoveryRuntime:
         with self.access.connection_factory() as connection:
             service = d.DiscoveryReads(AccessService(connection, clock=self.access.clock), self.provider, self.budget)
             # Fixed dispatch, never a caller-selected service method.
-            method = service.facets if operation == 'facets' else service.search
+            methods = {'facets': service.facets, 'search': service.search,
+                       'assistant_asset': service.assistant_asset}
+            if operation not in methods:
+                raise d.DiscoveryInvalid()
+            method = methods[operation]
             return method(token, library, cancelled=cancelled, **values)
 
 

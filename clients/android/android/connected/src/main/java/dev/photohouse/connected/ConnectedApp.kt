@@ -92,6 +92,11 @@ internal class Words(val zh: Boolean) {
         Message.VIDEO_BUSY -> t("Video playback is busy. Wait a moment before trying again.", "视频播放繁忙，请稍候重试。")
         Message.PLAYBACK_UNAVAILABLE -> t("Video playback is temporarily unavailable. Your album is still available.", "视频播放暂不可用，仍可继续浏览相册。")
         Message.MEDIA_UNAVAILABLE -> t("This media is unavailable.", "此媒体不可用。")
+        Message.ASSISTANT_ASR_NO_INPUT -> t("No words were recognized. Please speak clearly and try again.", "没有识别到内容，请说清楚后重试。")
+        Message.ASSISTANT_ASR_BUSY -> t("Speech recognition is busy. Please wait a moment and try again.", "语音识别正忙，请稍等片刻后重试。")
+        Message.ASSISTANT_ASR_UNAVAILABLE -> t("Speech recognition is temporarily unavailable. Please try again later.", "语音识别服务暂不可用，请稍后重试。")
+        Message.ASSISTANT_ASR_TIMEOUT -> t("Speech recognition took too long. Please try again.", "语音识别等待超时，请重试。")
+        Message.ASSISTANT_ASR_INVALID -> t("Speech recognition returned an invalid response. Please try again later.", "语音识别响应无效，请稍后重试。")
     }
     fun membership(m: Membership) = when {
         m.available -> t("Available", "可访问")
@@ -746,7 +751,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     onClearTranscript = store::clearAssistantTranscript,
                     onUseTranscript = store::takeAssistantTranscriptForDraft,
                     onPlaySpeech = { if (manualAssistantAction()) store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
-                    onStopSpeech = store::clearAssistantSpeech)
+                    onStopSpeech = store::clearAssistantSpeech,
+                    onPlaybackOutcome = store::reportAssistantPlaybackOutcome)
                 return@Surface
             }
             LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("connected-screen"), state = scroll,

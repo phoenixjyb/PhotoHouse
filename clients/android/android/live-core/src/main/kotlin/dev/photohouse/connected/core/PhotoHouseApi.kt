@@ -26,8 +26,18 @@ class ApiFailure(
     val status: Int? = null,
     val retryAfterMillis: Long = 0,
     val errorCode: ApiErrorCode? = null,
+    val assistantErrorCode: String? = null,
 ) : Exception("PhotoHouse request failed") {
-    init { require(errorCode == null || kind == FailureKind.HTTP && status == 429) }
+    init {
+        require(errorCode == null || kind == FailureKind.HTTP && status == 429)
+        require(assistantErrorCode == null || kind == FailureKind.HTTP && when (assistantErrorCode) {
+            "speech_no_input" -> status == 422
+            "speech_busy", "speech_unavailable" -> status == 503
+            "speech_timeout" -> status == 504
+            "speech_invalid_response" -> status == 502
+            else -> false
+        })
+    }
 }
 
 interface PhotoHouseApi {
@@ -79,6 +89,7 @@ interface PhotoHouseApi {
     suspend fun assistantSpeech(token: Bearer, library: String, context: kotlinx.serialization.json.JsonObject?, language: String, requestId: String, parentRequestId: String?): AssistantSpeechResult = AssistantSpeechResult(assistantSpeech(token, library, context, language), AssistantRequestReceipt(requestId, "unknown", null))
     suspend fun assistantReceipt(token: Bearer, library: String, requestId: String): AssistantReceipt = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun assistantOutcome(token: Bearer, library: String, requestId: String, outcome: String): Unit = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun assistantPlaybackOutcome(token: Bearer, library: String, requestId: String, outcome: String): Unit = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun facets(token: Bearer, library: String, facet: PhoneFacet, page: Int = 1, binding: String? = null): PhoneFacetPage = throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Location-only facet query; legacy adapters may serve no-query pages but must reject unsupported queries. */
     suspend fun placeFacets(token: Bearer, library: String, page: Int = 1, query: String = "", binding: String? = null): PhoneFacetPage {

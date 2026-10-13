@@ -259,7 +259,8 @@ class AssistantHttpTests(unittest.TestCase):
         response = self.client.post('/assistant/v1/transcribe', content=output.getvalue(),
             headers=dict(self.auth, **{'Content-Type': 'audio/wav',
                                        'X-PhotoHouse-Library-Id': 'family-a'}))
-        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()['error'], 'speech_invalid_response')
         self.assertNotIn('xxxxxxxx', response.text)
 
 

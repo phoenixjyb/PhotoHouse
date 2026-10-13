@@ -38,7 +38,8 @@ class HttpsAssistantWorkspaceApi internal constructor(
     }
 
     private fun assistantResponseHeaders(headers: Headers): Map<String, String> {
-        val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status")
+        val names = listOf("X-PhotoHouse-Tracking", "X-PhotoHouse-Request-Id", "X-PhotoHouse-Receipt-Status",
+            "X-PhotoHouse-Playback-Tracking")
         return names.mapNotNull { name ->
             val values = headers.values(name)
             if (values.size > 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
@@ -290,7 +291,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
                             Packet(readBounded(responseBody, call, 2 * 1024 * 1024), headers)
                         }
                         replyBytes = packet.bytes
-                        val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, speechRequestId)
+                        val receipt = AssistantWire.speechRequestReceipt(packet.assistantHeaders, speechRequestId)
                         if (receipt.tracking != "enabled" || receipt.status != "succeeded") {
                             throw ApiFailure(FailureKind.INVALID_RESPONSE)
                         }

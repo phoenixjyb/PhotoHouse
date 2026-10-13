@@ -68,6 +68,7 @@ internal fun AssistantScreen(
     recording: Boolean, recordError: Boolean, onClearTranscript: () -> Unit,
     onUseTranscript: (AssistantTranscript) -> String? = { null },
     onPlaySpeech: () -> Unit, onStopSpeech: () -> Unit,
+    onPlaybackOutcome: (ProtectedAnnotationAudio, String) -> Unit = { _, _ -> },
     libraryLabel: String? = null, accountLabel: String? = null,
     voiceSessionState: AssistantVoiceSessionUiState? = null,
     onStartVoiceSession: (() -> Unit)? = null,
@@ -365,7 +366,7 @@ internal fun AssistantScreen(
                             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(t("What would you like to find?", "今天想找哪段回忆？"), style = MaterialTheme.typography.titleMedium,
                                     fontFamily = FontFamily.Serif, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text(if (voiceSessionState != null) t("Say what you would like to see, such as videos from last year.", "说说想看什么，例如：找去年的视频。") else t("Pick a starting point, then edit it before sending.", "选一个开始方向，修改好再发送。"),
+                                Text(if (voiceSessionState != null) t("Say what you would like to see, such as videos from last year or item number 123.", "说说想看什么，例如：找去年的视频，或打开编号 123。") else t("Pick a starting point, then edit it before sending.", "选一个开始方向，修改好再发送。"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 if (voiceSessionState == null) listOf(
                                     t("Find videos from last year", "找去年的视频"),
@@ -413,8 +414,8 @@ internal fun AssistantScreen(
                             }
                         } }
                     }
-                    assistant.failure?.let { _ -> item(key = "assistant-turn-error") {
-                        Text(t("This request could not be completed. Try again when the service is available.", "暂时无法完成这次请求，服务恢复后可以重试。"),
+                    assistant.failure?.let { failure -> item(key = "assistant-turn-error") {
+                        Text(Words(zh).message(failure.message),
                             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-turn-error"))
                     } }
                     pending?.let { pendingTurn -> item(key = "assistant-turn-${pendingTurn.requestId}") {
@@ -511,7 +512,7 @@ internal fun AssistantScreen(
                             Button(onClick = onPlaySpeech, enabled = !assistant.speechBusy,
                                 modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken result count", "播放结果数量语音")) }
                         }
-                    assistant.speechAudio?.let { AssistantSpeechPlayback(it, zh, onStopSpeech) }
+                    assistant.speechAudio?.let { audio -> AssistantSpeechPlayback(audio, zh, onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) } }
                     }
                     OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) draft = it },
                         modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy && voiceSessionState == null,
@@ -600,17 +601,25 @@ private fun isHumanReadableContextLabel(value: String): Boolean {
 
 @Composable
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, onStop: () -> Unit) {
+private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, onStop: () -> Unit,
+                                    onOutcome: (String) -> Unit) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val context = LocalContext.current
     val player = remember(audio) { ExoPlayer.Builder(context).build() }
     var playing by remember(audio) { mutableStateOf(false) }
     var failed by remember(audio) { mutableStateOf(false) }
+    var reported by remember(audio) { mutableStateOf(false) }
     DisposableEffect(audio, player) {
         var attached = true
         val listener = object : Player.Listener {
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) { if (attached) playing = playWhenReady }
-            override fun onPlayerError(error: PlaybackException) { if (attached) failed = true }
+            override fun onPlayerError(error: PlaybackException) {
+                if (attached) failed = true
+                if (attached && !reported) { reported = true; onOutcome("failed") }
+            }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (attached && playbackState == Player.STATE_ENDED && !reported) { reported = true; onOutcome("completed") }
+            }
         }
         val closeListener: () -> Unit = { Handler(Looper.getMainLooper()).post { if (attached) { runCatching { player.stop() }; playing = false } } }
         player.addListener(listener)
@@ -620,11 +629,15 @@ private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean
         player.playWhenReady = true
         player.prepare()
         audio.onClose(closeListener)
-        onDispose { attached = false; audio.removeOnClose(closeListener); player.removeListener(listener); player.release() }
+        onDispose {
+            if (!reported) { reported = true; onOutcome("cancelled") }
+            attached = false
+            audio.removeOnClose(closeListener); player.removeListener(listener); player.release()
+        }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.testTag("assistant-speech-playback")) {
-        TextButton(onClick = { player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
+        TextButton(onClick = { if (!reported) { reported = true; onOutcome("cancelled") }; player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
         if (playing) Text(t("Speaking the result count…", "正在播报结果数量…"), style = MaterialTheme.typography.bodySmall)
         if (failed) Text(t("Speech could not play.", "语音无法播放。"), color = MaterialTheme.colorScheme.error)
     }

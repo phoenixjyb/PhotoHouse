@@ -37,6 +37,9 @@ CASES = (
     'migrated_synthetic_runtime_and_generated_discovery_index',
     'private_thread_create_turn_and_idempotent_recovery',
     'saved_reply_speech_parent_receipt_and_duplicate_refusal',
+    'explicit_asset_number_current_library_and_opaque_context',
+    'playback_terminal_events_preserve_legacy_receipts',
+    'safe_asr_failures_are_journaled_without_audio',
     'negotiated_saved_story_memoir_and_strict_legacy_recovery',
     'saved_memory_reply_speech_revalidates_sources_after_synthesis',
     'opt_in_unicode_label_and_paged_history',
@@ -375,6 +378,59 @@ def run(output):
                     journal_record['status'] == 'succeeded' and
                     journal_record['input_text'] is None and journal_record['recognized_text'] is None,
                     'synthetic_speech_journal_failed')
+
+            phase = 'playback_terminal_event'
+            _assert(spoken.headers.get('X-PhotoHouse-Playback-Tracking') == 'enabled',
+                    'synthetic_playback_tracking_not_advertised')
+            playback_url = '/assistant/v1/receipts/' + speech_id + '/playback'
+            for _ in range(2):
+                playback = client.post(playback_url, headers=_auth(TOKEN),
+                    json={'library_id': LIBRARY, 'outcome': 'completed'})
+                _assert(playback.status_code == 200 and playback.json() ==
+                        dict(version=1, request_id=speech_id, playback_outcome='completed'),
+                        'synthetic_playback_report_failed')
+            _assert(client.post(playback_url, headers=_auth(OTHER_TOKEN),
+                    json={'library_id': LIBRARY, 'outcome': 'completed'}).status_code == 404 and
+                    client.post(playback_url, headers=_auth(TOKEN),
+                    json={'library_id': LIBRARY, 'outcome': 'cancelled'}).status_code == 409 and
+                    app.state.assistant_journal.get(speech_id, OWNER, LIBRARY) == journal_record,
+                    'synthetic_playback_scope_or_legacy_receipt_changed')
+
+            phase = 'explicit_asset_number'
+            numbered = client.post('/assistant/v1/turns', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'text': 'open asset id 1', 'context': None})
+            _assert(numbered.status_code == 200 and numbered.json()['effect'] ==
+                    {'type': 'open_asset', 'asset_id': '1'} and
+                    [item['id'] for item in numbered.json()['items']] == ['1'],
+                    'synthetic_numbered_asset_failed')
+            followup = client.post('/assistant/v1/turns', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'text': 'open the first result',
+                      'context': numbered.json()['context']})
+            _assert(followup.status_code == 200 and followup.json()['effect']['asset_id'] == '1',
+                    'synthetic_numbered_context_failed')
+
+            phase = 'safe_asr_failure'
+            from app.access.assistant_speech import LocalAssistantAsr, AssistantAsrFailure
+            class SyntheticFailedAsr(LocalAssistantAsr):
+                def __init__(self, code, status):
+                    self.code, self.status = code, status
+                def transcribe(self, payload):
+                    raise AssistantAsrFailure(self.code, self.status)
+            for code, status in (('speech_no_input', 422), ('speech_busy', 503),
+                                 ('speech_timeout', 504), ('speech_invalid_response', 502),
+                                 ('speech_unavailable', 503)):
+                app.state.assistant_asr = SyntheticFailedAsr(code, status)
+                failed_id = str(uuid.uuid4())
+                failed = client.post('/assistant/v1/transcribe', content=tts.audio,
+                    headers={**_auth(TOKEN), 'Content-Type': 'audio/wav',
+                             'X-PhotoHouse-Library-Id': LIBRARY,
+                             'X-PhotoHouse-Request-Id': failed_id})
+                saved = app.state.assistant_journal.get(failed_id, OWNER, LIBRARY)
+                _assert(failed.status_code == status and failed.json()['error'] == code and
+                        saved['status'] == 'failed' and saved['error_code'] == code and
+                        saved['recognized_text'] is None, 'synthetic_asr_category_failed')
+            app.state.assistant_asr = None
+            _assert(tts.audio not in journal_path.read_bytes(), 'synthetic_audio_was_retained')
 
             phase = 'saved_memory_cards_and_recovery'
             story_title = 'Synthetic Amber Story'

@@ -44,7 +44,7 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         output = self.parent / 'fresh-output'
         result = qualification.run(output)
         self.assertEqual(result, qualification._report(os.name == 'nt'))
-        self.assertEqual(len(result['cases_passed']), 8)
+        self.assertEqual(len(result['cases_passed']), 11)
         self.assertIn('negotiated_saved_story_memoir_and_strict_legacy_recovery',
                       result['cases_passed'])
         self.assertIn('saved_memory_reply_speech_revalidates_sources_after_synthesis',

@@ -13,6 +13,31 @@ class AssistantWireTest {
         assertTrue(runCatching { AssistantWire.requestReceipt(mapOf("X-PhotoHouse-Tracking" to "enabled", "X-PhotoHouse-Request-Id" to "123e4567-e89b-12d3-a456-426614174000", "X-PhotoHouse-Receipt-Status" to "succeeded"), id) }.isFailure)
         assertTrue(runCatching { AssistantWire.requestReceipt(mapOf("X-PhotoHouse-Tracking" to "enabled", "X-PhotoHouse-Request-Id" to id, "X-PhotoHouse-Receipt-Status" to "unknown"), id) }.isFailure)
     }
+    @Test fun playbackCapabilityIsSpeechOnlyAndStrictWhenPresent() {
+        val id = "123e4567-e89b-42d3-a456-426614174000"
+        assertFalse(AssistantWire.speechRequestReceipt(emptyMap(), id).playbackTracking)
+        assertTrue(AssistantWire.speechRequestReceipt(mapOf("X-PhotoHouse-Playback-Tracking" to "enabled"), id).playbackTracking)
+        assertFalse(AssistantWire.speechRequestReceipt(mapOf("X-PhotoHouse-Playback-Tracking" to "disabled"), id).playbackTracking)
+        assertTrue(runCatching { AssistantWire.speechRequestReceipt(mapOf("X-PhotoHouse-Playback-Tracking" to "true"), id) }.isFailure)
+        assertFalse(AssistantWire.requestReceipt(mapOf("X-PhotoHouse-Playback-Tracking" to "enabled"), id).playbackTracking)
+    }
+    @Test fun playbackOutcomeResponseIsStrictAndBoundToTheExpectedRequestAndOutcome() {
+        val id = "123e4567-e89b-42d3-a456-426614174000"
+        AssistantWire.playbackOutcome("""{"version":1,"request_id":"$id","playback_outcome":"completed"}""".toByteArray(), id, "completed")
+        assertTrue(runCatching { AssistantWire.playbackOutcome("""{"version":1,"request_id":"$id","playback_outcome":"failed","extra":1}""".toByteArray(), id, "failed") }.isFailure)
+        assertTrue(runCatching { AssistantWire.playbackOutcome("""{"version":1,"request_id":"123e4567-e89b-42d3-a456-426614174001","playback_outcome":"failed"}""".toByteArray(), id, "failed") }.isFailure)
+    }
+    @Test fun asrErrorsExposeOnlyKnownCodesWithTheirExpectedStatus() {
+        val errors = mapOf("speech_no_input" to 422, "speech_busy" to 503,
+            "speech_timeout" to 504, "speech_invalid_response" to 502)
+        errors.forEach { (code, status) ->
+            val body = """{"error":"$code","detail":"Local transcription could not complete"}""".toByteArray()
+            assertEquals(code, AssistantWire.asrErrorCode(body, status))
+            assertNull(AssistantWire.asrErrorCode(body, status + 1))
+        }
+        assertNull(AssistantWire.asrErrorCode("""{"error":"speech_no_input","detail":"x","provider":"private"}""".toByteArray(), 422))
+        assertNull(AssistantWire.asrErrorCode("""{"error":"speech_no_input","detail":"x"}""".toByteArray(), 400))
+    }
     @Test fun pendingAndInterruptedReceiptsAcceptNullHttpStatusWithoutClaimingCompletion() {
         val id = "123e4567-e89b-42d3-a456-426614174000"
         val body = """{"version":1,"request_id":"$id","operation":"transcribe","parent_request_id":null,"status":"received","created_at":"2026-09-30T00:00:00Z","updated_at":"2026-09-30T00:00:00Z","expires_at":"2026-10-30T00:00:00Z","http_status":null,"error_code":null,"input_text":null,"recognized_text":null,"result_kind":null,"result_total":null,"client_outcome":null}"""

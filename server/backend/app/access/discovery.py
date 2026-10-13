@@ -278,6 +278,11 @@ def current_caption(rows):
     except DiscoveryInvalid: return None
 
 
+def assistant_asset_fingerprint(binding, asset_id):
+    return digest({'binding': binding, 'asset_id': asset_id,
+                   'purpose': 'assistant-asset-lookup-v1'})
+
+
 class DiscoveryReads:
     def __init__(self, access: AccessService, provider, budget: ReadBudget):
         if not isinstance(access,AccessService) or not isinstance(budget,ReadBudget): raise ValueError('Explicit access and shared budget required')
@@ -383,6 +388,27 @@ class DiscoveryReads:
                     'pinned_person_ids':list(pins),'pinned_people':[people[pid] for pid in pins],
                     'facet':facet,'page':page,'page_size':page_size,'total':len(items),'has_more':offset+page_size<len(items),'items':items[offset:offset+page_size]}
         return self._run(token,library,binding,action,cancelled)
+
+    def assistant_asset(self, token, library, *, asset_id, binding, fingerprint=None, cancelled=lambda:False):
+        """Exact ID lookup inside the same authorized, current discovery snapshot.
+
+        This is an internal assistant operation, not a new public search facet.
+        Its opaque fingerprint lets existing clients retain the ordinary context
+        shape while recovery can distinguish a singleton from the first page.
+        """
+        identifier(asset_id)
+        def action(index, facts, context, member, check):
+            require(binding is not None)
+            expected = assistant_asset_fingerprint(context, asset_id)
+            if fingerprint is not None and fingerprint != expected:
+                raise DiscoveryChanged()
+            assets, _, _, _ = facts
+            item = assets.get(asset_id)
+            return {'library_id': library, 'binding': context, 'fingerprint': expected,
+                    'page': 1, 'page_size': 20, 'total': int(item is not None),
+                    'has_more': False, 'originals_allowed': bool(member['originals']),
+                    'items': [item] if item is not None else []}
+        return self._run(token, library, binding, action, cancelled)
 
     def search(self, token, library, *, binding, filters, page=1, page_size=50, fingerprint=None, cancelled=lambda:False):
         def action(index,facts,context,member,check):

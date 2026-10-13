@@ -4624,6 +4624,20 @@
    ],
    "current_control": "Exact closed-boundary handler and protected query; saved-memory and reply-speech opt-ins, healthy private retention, scoped readers, journal and local TTS adapter. No provider request during probe.",
    "gap": "Local synthetic qualification only; Windows activation and family pronunciation remain separate gates."
+  },
+  {
+   "source": "backend/app/access/assistant.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/assistant/v1/receipts/{ident}/playback",
+   "handler": "receipt_playback",
+   "surface": "photohouse",
+   "capabilities": [
+    "library.read"
+   ],
+   "scope": "Current approved library membership AND original authenticated request author; own unexpired succeeded speech receipt only.",
+   "current_control": "Closed UUIDv4 path; same-origin cookie CSRF; bounded terminal outcome; first event wins with idempotent repeats; separate journal events preserve legacy receipt envelopes.",
+   "gap": "Source candidate; native qualification, live activation and physical playback acceptance remain separate."
   }
  ]
 }

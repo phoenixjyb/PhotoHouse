@@ -330,6 +330,13 @@ CI template calls it after the Android build. No hosted run is claimed.
 
 ## Central personal assistant (approved development)
 
+The [voice reliability contract](ASSISTANT_VOICE_RELIABILITY.md) adds exact
+asset-number lookup/open inside the current library, distinct safe ASR errors,
+and negotiated completion/failure/cancellation events for both manual and
+continuous reply playback. Navigation-free recovery and older v1 receipt
+compatibility remain enforced. This next source candidate is separate from
+the installed phone and active server release.
+
 The approved [拾光助手 design](PERSONAL_ASSISTANT.md) brings typed chat and an
 opt-in foreground voice session into one phone/Web workspace. The initial slice
 reuses protected photo/video retrieval, visual results and result-count speech;

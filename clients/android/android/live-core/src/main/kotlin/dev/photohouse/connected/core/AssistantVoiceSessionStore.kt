@@ -363,10 +363,13 @@ class AssistantVoiceSessionStore(
         var success = false
         try {
             success = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { platform.playSpeech(audio) } == true
+            store.reportAssistantPlaybackOutcome(audio, if (success) "completed" else "failed")
         } catch (cancelled: CancellationException) {
+            store.reportAssistantPlaybackOutcome(audio, "cancelled")
             throw cancelled
         } catch (_: Exception) {
             success = false
+            store.reportAssistantPlaybackOutcome(audio, "failed")
         } finally {
             if (!success) runCatching { platform.stopAudio() }
             audio.close()

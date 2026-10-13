@@ -144,6 +144,17 @@ class AssistantTransportTest {
         }
     }
 
+    @Test fun transcriptionFailureCarriesOnlyRecognizedCategoryWithoutProviderDetail() = runBlocking {
+        Fixture().use { f ->
+            f.enqueue("""{"error":"speech_no_input","detail":"Local transcription could not complete"}""", 422)
+            val wav = ByteArray(16046).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
+            val failure = runCatching { f.api.assistantTranscribe(token, "family-a", wav) }.exceptionOrNull() as ApiFailure
+            assertEquals(422, failure.status)
+            assertEquals("speech_no_input", failure.assistantErrorCode)
+            assertEquals("POST", f.server.takeRequest().method)
+        }
+    }
+
     @Test fun speechPostsResultContextAndReturnsProtectedRawWav() = runBlocking {
         Fixture().use { f ->
             val wav = ByteArray(46).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
@@ -160,5 +171,44 @@ class AssistantTransportTest {
             assertEquals(context, json.getValue("context")); assertEquals("zh", json.getValue("language").jsonPrimitive.content)
             assertNull(req.getHeader("X-PhotoHouse-Library-Id")); assertEquals("no-store", req.getHeader("Cache-Control"))
         }
+    }
+
+    @Test fun speechPlaybackCapabilityComesOnlyFromItsResponseHeader() = runBlocking {
+        Fixture().use { f ->
+            val id = "123e4567-e89b-42d3-a456-426614174000"
+            val wav = ByteArray(46).also { "RIFF".toByteArray().copyInto(it); "WAVE".toByteArray().copyInto(it, 8) }
+            f.server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "audio/wav")
+                .setHeader("Cache-Control", "no-store").setHeader("X-PhotoHouse-Playback-Tracking", "enabled")
+                .setBody(okio.Buffer().write(wav)))
+            val result = f.api.assistantSpeech(token, "family-a", JsonObject(mapOf("revision" to JsonPrimitive("r1"))), "en", id, null)
+            assertTrue(result.receipt.playbackTracking)
+            f.server.takeRequest()
+
+            f.server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "audio/wav")
+                .setHeader("Cache-Control", "no-store").setBody(okio.Buffer().write(wav)))
+            val unsupported = f.api.assistantSpeech(token, "family-a", JsonObject(mapOf("revision" to JsonPrimitive("r1"))), "en", id, null)
+            assertFalse(unsupported.receipt.playbackTracking)
+            f.server.takeRequest()
+        }
+        Unit
+    }
+
+    @Test fun playbackOutcomePostsScopedJsonAndValidatesTheExactResponse() = runBlocking {
+        Fixture().use { f ->
+            val id = "123e4567-e89b-42d3-a456-426614174000"
+            f.enqueue("""{"version":1,"request_id":"$id","playback_outcome":"completed"}""")
+            f.api.assistantPlaybackOutcome(token, "family-a", id, "completed")
+            val request = f.server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/assistant/v1/receipts/$id/playback", request.path)
+            assertEquals(token.header(), request.getHeader("Authorization"))
+            assertEquals("no-store", request.getHeader("Cache-Control"))
+            assertEquals(Json.parseToJsonElement("""{"library_id":"family-a","outcome":"completed"}"""), Json.parseToJsonElement(request.body.readUtf8()))
+
+            f.enqueue("""{"version":1,"request_id":"$id","playback_outcome":"failed"}""")
+            assertTrue(runCatching { f.api.assistantPlaybackOutcome(token, "family-a", id, "completed") }.isFailure)
+            f.server.takeRequest()
+        }
+        Unit
     }
 }
