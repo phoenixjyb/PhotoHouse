@@ -2116,8 +2116,9 @@ Current checks:
   earlier wire checks; these cohorts overlap earlier wider checks and are not
   summed. Post-review Kotlin compilation passed. Four generated emulator cases
   and Chinese/English 150% private-panel renders passed and were inspected.
-  Later English ordinal-label polish and the v56 identity are local source;
-  package checks remain a separate step.
+  The later fixed `043c938` QA/test builds and four-case direct instrumentation
+  rerun also passed after English ordinal-label polish and the v56 identity.
+  Both final enlarged-text captures were inspected.
 - The package allowlist includes the new followup module. API profile selection
   includes its parser test and the existing reader suite; immutable packaged
   import/qualification checks must run against the new committed source.
@@ -2126,3 +2127,13 @@ Phone v56 is reserved as `0.56-memory-followups`, without signing or publication
 The already published v55 release remains pinned to `c65528a`; source, runtime
 and physical device acceptance stay separate. See the
 [v55 delivery record](../clients/android/docs/PHONE_V55_RELEASE_2026-10-13.md).
+
+
+The [fixed v56 candidate](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md)
+passed release build/lint, native Android package/unsigned-state inspection,
+seventeen embedded configuration-field comparisons and original mark pixel
+verification. Six immutable package tests passed; the extracted 195-file archive
+independently passed all eleven synthetic scenario groups on macOS. Thirteen
+profile dispatcher tests and current source-ledger verification also passed.
+Native Windows qualification, live switch, signing/publication and family
+acceptance remain separate gates. The pinned candidate is not the served v55.

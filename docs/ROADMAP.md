@@ -7,7 +7,7 @@ answer “介绍这些回忆”, “第二段回忆讲了什么” and “有哪
 show ordered source cards and draft-only suggestions. Typed and foreground voice
 requests bind the same current completed result; old history stays inert.
 Source wording is transient, generic replies retain the existing private policy,
-and no model or schema change is introduced. Phone v56 identity is reserved.
+and no model or schema change is introduced. Phone v56 is [locally built and verified](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
 
 This source is outside published v55. Next delivery gate: fixed package/native
 qualification, API/Web switch and original-certificate phone publication, followed

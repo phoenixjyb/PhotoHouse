@@ -13944,6 +13944,36 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "fixed-phone-v56-local-package-and-followup-verification-record-20261013",
+      "based_on_commit": "043c9386621a9ccc9bc74a7f868733bc0f725d53",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md",
+          "before_sha256": null,
+          "sha256": "c6206395bee4e3c85e0aa93c4c1bcf7e34bc17381e23ff990bcbfe887f65708c"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "ec39f93f57afd6bbd1f846494f1f27397b53b586c2286b27c0dbcd8683a40605",
+          "sha256": "faa1cce769ccfbbabec56394e3d9540d913f0c8c903559081e3eb2b5cf00fe9d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7e5b032384481e98be645942b20ded8a8564ced13d0d3b68c96429a22af3b902",
+          "sha256": "ca9a016b17ae7994ce3e08bb45c314a2e81cbca6356a51500dff1d0a5e8d3a86"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "7651e601efac85fed4dc19eb046f89a99ae5ccb4303de9dfebb260606944ed26",
+          "sha256": "ae1f9ee8b599fda518c1fb89dde6e865d5baa32037a9f67b6b253ab5eb532362"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
