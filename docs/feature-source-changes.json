@@ -13504,6 +13504,21 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "phone-v54-voice-presence-release-identity-20261013",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "399e3355096a440949fd403a5443dacb5089ced3f23733084d3d99acc6e9ae32",
+          "sha256": "6db53cd9deffef67c827e46d15a6144fbf7131f1ea4eb77f919fc0faed58943a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false,
+      "based_on_commit": "9939c82763ef56b6213da187a65c060e9713422c"
     }
   ]
 }
