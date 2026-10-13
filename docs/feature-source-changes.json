@@ -14129,6 +14129,36 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "fixed-v57-local-unsigned-artifact-and-extracted-qualification-record-20261014",
+      "based_on_commit": "4b69844e29c9ffc83980da23634c28ca73e4efbe",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "d54d10b9c20fe94759036e19beb2d32144d3ceb0083ae8d578bf4f5019b3d76f"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "340ab5967e4b5d096180a13918426227ebe4b5de8e0d20db83af9c26e424243d",
+          "sha256": "5e128020a02d0ffb53b8b32028a967f0e9337b93ef09816b47f887487a7fdd7b"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4b27a062e566f16585672421f9be1104e02be6e473cd58f324b66b2ac7f018e7",
+          "sha256": "bb616adaed35f06f6b7c9a9de1436ffab75cab9c2983ab441f7f37f31a5f566c"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bb7d5a451be3de27405309fb5d6fb0509617c4719a7f9178e68ee22cfd4730dd",
+          "sha256": "0b307b6305bb379d41ce2db846998bc8886b496c288c46c6f58eb85fbac911f7"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

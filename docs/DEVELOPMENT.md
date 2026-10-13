@@ -2196,4 +2196,12 @@ including real mouse hold/release, delayed permission, explicit cancellation,
 old-account startup, stale processor/resume, abort and visibility changes. The
 WAV encoder and shared reservation check also passed. No external origin was
 contacted. The package-builder cohort passed six cases, and seven source-verifier
-checks passed. Final source-ledger verification covers 1,235 files.
+checks passed. Implementation source-ledger verification covers 1,235 files.
+
+
+The [fixed phone v57 candidate](../clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md)
+is prepared from `4b69844`. The 195-file source-only ZIP was hash-verified after
+extraction and passed all eleven generated qualification groups locally. The
+unsigned phone release build/lint and 17-field private-profile verification pass;
+the original packaged artwork pixels match. Native Windows qualification,
+original-certificate signing, publication and family/device acceptance are open.

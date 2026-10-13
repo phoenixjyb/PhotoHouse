@@ -6,7 +6,7 @@
 assistant story/memoir cards. It reads the saved first-chapter narration or memoir
 introduction with local TTS, rechecks all sources after synthesis, and exposes
 preparing/playback/Stop in Web and phone. It ends voice and capture first; late,
-recovered and old-scope output cannot start playback. Phone v57 is reserved.
+recovered and old-scope output cannot start playback. Phone v57 is [built locally](../clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md).
 Local tests and enlarged renders pass; this source is not deployed or published.
 
 ## Fixed v56 candidate: saved-memory conversational followups

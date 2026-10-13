@@ -7,7 +7,7 @@ story openings and memoir introductions for bounded local TTS, revalidating the
 full source cohort before and after synthesis. Private replies keep generic
 wording. It is outside fixed v56. Web and phone now provide explicit one-shot
 controls with Stop, fresh-result guards and no automatic listening restart;
-phone v57 is reserved. Local acceptance is recorded in Development.
+phone v57 is [built locally](../clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md). Local acceptance is recorded in Development.
 
 Next: qualify and deliver this source after v56, then add a separately reviewed
 voice intent for reading the selected opening. Full-chapter/multi-chapter
