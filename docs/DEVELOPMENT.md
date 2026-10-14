@@ -2519,3 +2519,10 @@ before its deliberate non-composer shortcut event. The focused Edge journey
 passes with the original rejection, privacy and scope assertions preserved.
 This changes fixture synchronization only; complete Web qualification is still
 reported separately.
+
+The following full run reached the transcript fixture's account-change case.
+Its new account's access restoration had not finished when capture was clicked;
+the microphone was correctly disabled. The fixture now waits for the visible
+mic control to be enabled after sign-in, then performs the original explicit
+capture. The focused transcript journey passes, including the late old-account
+reply fence and current-account pending-transcription controls.

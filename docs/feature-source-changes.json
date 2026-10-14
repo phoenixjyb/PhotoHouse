@@ -15907,6 +15907,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "transcript-fixture-waits-for-new-account-voice-readiness",
+      "source_commit": "3f74d5785332ed2df37581059c1482347e905221",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": "a16356747d769f1955ea65a67d0b599a8d970db711ec89afbce7145f400b62a7",
+          "sha256": "849ff2bc1af7de5f8f1ba9438027a99e7f202ecb1f3f258900ca77af8cd0be79"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "b7ad3085c98022cc5485f929d98c3bbcfedc3eaa8e0ee325e7a3bc3a0e459d87",
+          "sha256": "8b1f97c0235c3c71fc14e4221fd38edacbc5cabb7aa9d9cbf28bbe476bc56346"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

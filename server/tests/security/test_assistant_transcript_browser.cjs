@@ -216,6 +216,7 @@ let browser,context,page;
   nextAsr={text:'old account late result',language:'en',tracking:'enabled',gate:gate()};const staleGate=nextAsr.gate;
   await record();await staleGate.arrived;await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});
   await signIn('+12025550101');await openAssistant();
+  await page.waitForFunction(()=>{const mic=document.getElementById('assistant-mic');return !!mic&&!mic.hidden&&!mic.disabled;},{},{timeout:10000});
   const currentGate=gate();nextAsr={text:'current account transcription',language:'en',tracking:'enabled',gate:currentGate};
   await record();await currentGate.arrived;await page.locator('#assistant-text').fill('typed during current ASR');
   assert.equal(await page.locator('#assistant-send').isDisabled(),true,'current scope ASR blocks its send control');
