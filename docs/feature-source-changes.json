@@ -15928,6 +15928,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "story-save-fixture-binds-followup-reference-receipts",
+      "source_commit": "4be61d493faabbc4dc5b920e14dfeb1cf9f7680d",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "42b738cbd491fcdd9e1e211a1b6274333a27b9112b23201cd0d995d8cb735125",
+          "sha256": "dcb78f63bceeacf57f189b4274cc3b7ec6d0213829a526f88d804de2963ac533"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "8b1f97c0235c3c71fc14e4221fd38edacbc5cabb7aa9d9cbf28bbe476bc56346",
+          "sha256": "05b6cbbbe6f6cbca115be752cee63f2dadbd89235b7cee4061dac1a6c775a85e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

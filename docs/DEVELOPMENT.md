@@ -2526,3 +2526,12 @@ the microphone was correctly disabled. The fixture now waits for the visible
 mic control to be enabled after sign-in, then performs the original explicit
 capture. The focused transcript journey passes, including the late old-account
 reply fence and current-account pending-transcription controls.
+
+The final story-workspace fixture also needed exact follow-up responses for its
+two mocked successful saves. Because those synthetic IDs were not persisted by
+the mocked POST, their contribution-reference GETs otherwise reached the backend
+and correctly produced an authorization failure, clearing the workspace. Exact
+ID/library/revision empty-reference receipts now complete that fixture contract.
+All 27 focused story-workspace checkpoints pass with the original save/retry,
+reopen, source-selection and dictation assertions intact. No product save or
+authorization behavior changed.
