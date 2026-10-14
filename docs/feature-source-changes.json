@@ -15437,6 +15437,27 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "voice-browser-fixture-awaits-active-capture",
+      "source_commit": "b3b5ea54c5c1ee5f360167c0b919ed9904c60da4",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "0d73efed56a6f47330ad6ba519d0560548c1094dd3da93654bdc3f5365733a52",
+          "sha256": "8863dbe08ec434ec0895fab1760cc24ec2fb6d305b39dc294e0826298687d049"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "75e4f8d7fac7168f684bf2e43a2f4845590068aed87feb35d86f9abeec917dae",
+          "sha256": "ea687325927bf1e3e94d56a0ac4940f26b0bcea09ab77029c9ab8fe052e88b74"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

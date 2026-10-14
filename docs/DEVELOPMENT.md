@@ -117,6 +117,15 @@ journey passes; the complete Web profile is rerun separately. No product change
 is inferred from that intermittent failure.
 
 
+The next complete Web invocation stopped at the final English timing loop: the
+fixture counted entry into `getUserMedia()` before capture setup finished. The
+synthetic utterance helper now waits for active microphone state, visible Stop
+and the installed audio processor before feeding frames. The affected Edge
+journey passes with completion/timing assertions unchanged; Chinese 150% and
+English desktop controls were inspected. This is a harness readiness fix, not
+evidence of a new live speech service or physical recording result.
+
+
 ## Oral-history intake foundation (October 14)
 
 The [internal intake contract](ORAL_HISTORY_INTAKE_FOUNDATION.md) passed 18 focused
