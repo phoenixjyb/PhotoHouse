@@ -14484,6 +14484,41 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-memory-phone-v58-OTA-delivery-and-tested-voice-tutorial-20261014",
+      "based_on_commit": "e3a8fcc5b5527b6a41918f145184984176cf64af",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "dfa5faf466ba9f40e538c7222bfd9196973292891856b79630933da2fc62ad1e",
+          "sha256": "2c428c926712d9761ceab985445f8ddd39afb085582bc3b6132eb42a325b2684"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "519c5acb64182cc30d2a579c762262d0e33749d2072d2d5b4d84695dc9545bed",
+          "sha256": "270daed0a85faa797de2d2a7232436638c6d3278ab297ba040e3449449d83c6f"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": "fdd9f8de728821b7533bf0445512fbdf9f14aad7502b980d4fd302caaf549fba",
+          "sha256": "b67c81e23b46b862f60ed7b5391fa6fe0e34d21e92a1e96906589c4b3b07f87c"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "53bda25db1db6fa2150c06ff5390b0cf7d0a544d3dd6f49265a96a107824fe44"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "46d0ce4bfdd7b3673d11a6d0012aac7efe0881d86fad24be449a0baf9fba4de5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

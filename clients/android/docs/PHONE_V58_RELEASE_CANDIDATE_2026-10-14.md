@@ -1,8 +1,9 @@
 # Phone v58 contextual memory actions candidate
 
-Status: native Windows offline qualification and API/Web deployment passed.
-Original-certificate signing and phone v58 OTA publication remain pending; the
-phone OTA baseline stays v57 and TV OTA stays v30.
+Status: signed and published after native qualification and API/Web deployment.
+See the [delivery record](PHONE_V58_RELEASE_2026-10-14.md) and
+[Chinese test guide](PHONE_V58_TEST_GUIDE_ZH.md). TV OTA stays v30.
+The unsigned qualification below is retained as artifact history.
 
 ## Fixed source and artifacts
 
@@ -45,8 +46,8 @@ service acceptance; it does not establish physical phone/family acceptance.
 ## Behavior and acceptance
 
 Fresh saved-story and memoir results can be addressed by ordinal. In an approved
-foreground voice session, “打开第二个” opens the second current card and ends voice
-before navigation; “读第一个的开篇” reads its saved opening, then listens again only
+foreground voice session, “打开第二个故事” opens the second current card and ends voice
+before navigation; “朗读第一个故事的开篇” reads its saved opening, then listens again only
 after confirmed successful playback. Typed commands expose explicit action
 buttons. Ambiguous or out-of-range commands retain the full ordered cohort and
 ask for a choice. The whole cohort and source ownership are revalidated; recovered
@@ -58,12 +59,12 @@ subchecks plus its generated no-listener demo. Native candidate qualification is
 synthetic qualification establish hosted CI, live deployment or physical family
 acceptance.
 
-After delivery, test on a signed-in phone and Web session:
+For physical acceptance, test on a signed-in phone and Web session:
 
 1. Search for saved memories in a library with at least two stories or memoirs.
-2. Start foreground voice, say “打开第二个”, and verify the correct reader opens
+2. Start foreground voice, say “打开第二个故事”, and verify the correct reader opens
    with listening ended. A typed request should require the visible action button.
-3. Start a fresh session and say “读第一个的开篇”. Check the saved wording,
+3. Start a fresh session and say “朗读第一个故事的开篇”. Check the saved wording,
    preparation/speaking states and that listening resumes only after sound ends.
 4. Press Pause/End while preparation or playback is active. Confirm no delayed
    sound, navigation or microphone restart. Repeat after a library/account change.

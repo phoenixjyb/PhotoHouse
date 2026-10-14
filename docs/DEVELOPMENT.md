@@ -46,8 +46,12 @@ for the new action capability. The separately authorized v58 API/Web deployment
 completed with a verified stopped-writer backup, exact served-byte checks,
 anonymous denials, preserved startup trigger and restoration of all five upload
 workers. An independent post-switch check passed. Schema a0 and configuration
-bytes are unchanged; phone OTA stays v57 and TV OTA v30.
-Phone v58 signing/publication and physical phone/TV acceptance remain pending.
+bytes are unchanged. [Phone v58 delivery](../clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md)
+subsequently passed original-certificate signing, native publication and complete
+Windows HTTPS APK readback. Sixteen local delivery checks and five native script
+parses passed. Independent Mac trusted HTTPS first/last range checks match; its
+additional full transfer timed out and is not counted as a pass. TV OTA stays v30.
+Physical phone/TV and family listening acceptance remain pending.
 Half-duplex turn taking remains in place; whole chapters,
 streaming/latency changes and speaking interruption are later stages.
 

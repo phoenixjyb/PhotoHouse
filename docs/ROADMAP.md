@@ -1,14 +1,14 @@
 # Product roadmap
 
-## Qualified candidate: conversational story actions
+## October 14 delivered: conversational story actions
 
 The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) connects voice, chat,
 current numbered story cards and protected readers. Local work adds negotiated
 “读第二个故事” and “打开第一个故事” actions, ambiguity that retains the displayed
 list, and cancellation guards. The [fixed v58 candidate](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md)
 passed Windows synthetic qualification and its API/Web source is now deployed.
-Phone OTA stays v57 and TV OTA v30. Phone v58 signing/publication and physical
-acceptance remain pending.
+[Phone v58 is signed and published](../clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md);
+TV OTA stays v30. Physical installation and family acceptance remain pending.
 
 Following priorities are chapter progress/continuation, measured latency and
 qualified speaking interruption, then grounded storytelling and family quality
@@ -17,8 +17,8 @@ qualification and operation gates.
 
 ## October 14 delivered: saved-memory opening speech and followups
 
-API/Web source 4b69844 is served and phone **v57** is signed and published on
-Windows HTTPS OTA. It includes v56 followups and explicit **朗读开篇** with
+The earlier delivery served API/Web source 4b69844 and published phone **v57**
+on Windows HTTPS OTA; it is superseded by v58 above. It includes v56 followups and explicit **朗读开篇** with
 preparation/playback/Stop, fresh-source guards, microphone interruption and
 enlarged-text layout fixes. Original icon/certificate and TV v30 are preserved.
 Native qualification, stopped-writer backup, guarded recovery, eight running
