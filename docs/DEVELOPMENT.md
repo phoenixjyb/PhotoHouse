@@ -2542,3 +2542,10 @@ new account's restoration still correctly disabled capture. The focused seven
 checkpoint Edge journey passes with the delayed old-account stream and pending
 new-account controls preserved. These synchronization repairs do not weaken
 production voice gates or convert incomplete full runs into successful receipts.
+
+The optional saved-memory opening/section 403 fixtures now wait for the later
+exact-library base-capability response to complete with HTTP 200 and preserved
+server-owned turns, then require the complete unlocked controller state. Both
+original optional-feature fallback journeys remain intact. A settled flag is
+asserted after the bounded wait, so timeout or an incomplete capability refresh
+cannot pass. The focused 27-checkpoint Edge journey passes.

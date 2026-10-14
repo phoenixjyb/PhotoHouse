@@ -15970,6 +15970,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "optional-capability-fixture-waits-for-completed-scope-recheck",
+      "source_commit": "0881e01e599056848195b97231095dac5d8a1243",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "11c49bb4a3355c5d4258f09424effb383036714c9645a0a27f0d300ecbb08139",
+          "sha256": "a35f797f6d96c15bf8c418014da6546200312d2e159dfa8380be24a6e21dd19e"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "391e8edc728a412795c36ec2526cfd09f73b845e33e0522ad61891af29a89998",
+          "sha256": "2206d5ff245ec3d7b1691a6cb895f05e8b3270425f2988f26526b41423867221"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

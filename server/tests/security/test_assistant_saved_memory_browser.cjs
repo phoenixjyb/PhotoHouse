@@ -141,6 +141,34 @@ const followupProbeReads=()=>currentPageRequests().filter(item=>item.method==='G
 const readingProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryReadingPath));
 const segmentReadingProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemorySegmentReadingPath));
 const actionProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryActionPath));
+async function waitForOptional403Recheck(probeReads,featureStateKey,label){
+  const deadline=Date.now()+10000;
+  const expectedPath='/assistant/workspace/v1/capabilities?library_id=family-a';
+  let probe=null,recheck=null,state=null,settled=false;
+  while(Date.now()<deadline){
+    probe=probeReads().find(item=>item.status===403);
+    if(probe){
+      const probeIndex=requests.indexOf(probe);
+      recheck=baseCapabilityReads().find(item=>requests.indexOf(item)>probeIndex&&item.path===expectedPath&&item.status===200&&item.response?.available===true&&item.response?.server_owned_turns===true);
+      if(recheck){
+        state=await page.evaluate(()=>window.__privateAssistantController.state());
+        settled=state.capabilities?.available===true&&state.capabilities?.server_owned_turns===true&&state.capabilities?.reply_speech===true&&state.savedMemoryAvailable===true&&state.savedMemorySpeechAvailable===true&&state[featureStateKey]===false&&!state.locked;
+        if(settled)break;
+      }
+    }
+    await page.waitForTimeout(20);
+  }
+  assert(probe,`${label}: optional route returned its simulated 403`);
+  assert(recheck,`${label}: a later exact-library base capability request completed successfully`);
+  assert.equal(recheck.path,expectedPath,`${label}: recheck is for the current library`);
+  assert.equal(recheck.status,200,`${label}: base capability recheck succeeded`);
+  assert.equal(recheck.response?.available,true,`${label}: base capability response remains available`);
+  assert.equal(recheck.response?.server_owned_turns,true,`${label}: base capability response preserves server-owned turns`);
+  assert(settled,`${label}: base and saved-memory capabilities settle in the current unlocked scope`);
+  assert.equal(state.locked,false,`${label}: the current scope remains unlocked`);
+  assert.equal(state[featureStateKey],false,`${label}: only the optional capability remains unavailable`);
+  return {probe,recheck};
+}
 const fakeTtsCalls=async()=>{const response=await rpc({command:'tts-calls'});assert.equal(response.ok,true);return response.calls;};
 async function waitForTurnCount(before){
   const deadline=Date.now()+10000;
@@ -906,8 +934,7 @@ async function reloadAndLogin(){
   const deniedReadingDeadline=Date.now()+10000;
   while(!readingProbeReads().some(item=>item.syntheticMissingProbe&&item.status===403)&&Date.now()<deniedReadingDeadline)await page.waitForTimeout(20);
   assert(readingProbeReads().some(item=>item.syntheticMissingProbe&&item.status===403),'unknown-route 403 is simulated for the optional opening probe');
-  assert.equal(await page.evaluate(()=>window.__privateAssistantController.state().locked),false,'403 fallback keeps the same authorized base scope unlocked');
-  assert(baseCapabilityReads().length>=2,'optional 403 rechecks the existing base capability route');
+  await waitForOptional403Recheck(readingProbeReads,'savedMemoryReadingAvailable','optional opening probe 403');
   await ensureThread();const deniedReadingTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
   assert.equal(await cards().first().locator('.assistant-memory-opening').count(),0,'unknown optional route 403 hides only the opening action');
   assert.equal(await cards().first().locator('.assistant-memory-open').count(),1,'403 fallback preserves the separate saved reader');
@@ -926,9 +953,7 @@ async function reloadAndLogin(){
   segmentReadingProbeMode='forbidden';await reloadAndLogin();
   const deniedSegmentDeadline=Date.now()+10000;while(!segmentReadingProbeReads().some(item=>item.status===403)&&Date.now()<deniedSegmentDeadline)await page.waitForTimeout(20);
   assert(segmentReadingProbeReads().some(item=>item.status===403),'unknown-route 403 is simulated for the section-reading probe');
-  assert.equal(await page.evaluate(()=>window.__privateAssistantController.state().locked),false,'optional section-reading 403 does not lock or revoke the current workspace');
-  const segmentBaseRecheckDeadline=Date.now()+10000;while(baseCapabilityReads().length<2&&Date.now()<segmentBaseRecheckDeadline)await page.waitForTimeout(20);
-  assert(baseCapabilityReads().length>=2,'optional section-reading 403 rechecks the existing base capability route');
+  await waitForOptional403Recheck(segmentReadingProbeReads,'savedMemorySegmentReadingAvailable','optional section-reading probe 403');
   await ensureThread();const deniedSegmentTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
   assert.equal(await cards().first().locator('.assistant-memory-segment-reading').count(),0,'optional 403 leaves section narration unavailable');
   assert.equal(await cards().first().locator('.assistant-memory-opening').count(),1,'optional 403 leaves the independent opening action available');
