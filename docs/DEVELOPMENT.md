@@ -27,7 +27,13 @@ corrected to scope capability probes to the current reload and wait for current
 controller readiness, rather than matching earlier page responses; the final
 complete journey passed without extending that timeout.
 
-The broader API profile and Windows qualification were not run in this slice.
+The later release preparation ran the full API profile: **1,426 tests and
+862 subchecks passed**, plus the generated no-listener demo. Two initially stale
+closed-route assertions were updated for the reviewed action capability (163
+registered routes). The portable qualifier now exercises contextual actions in
+its existing eleven scenario groups, and a failure-injection test confirms the
+action dispatch gate is checked; 47 qualifier/closure/dispatcher tests and
+20 subchecks passed. Native Windows qualification remains pending.
 No live API switch, schema migration, signing, publication or physical phone/TV
 acceptance is claimed. Half-duplex turn taking remains in place; whole chapters,
 streaming/latency changes and speaking interruption are later stages.

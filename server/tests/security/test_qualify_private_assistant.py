@@ -62,6 +62,20 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         self.assertTrue((output / 'assistant-workspace.sqlite').is_file())
         self.assertTrue((output / 'discovery-index.json').is_file())
 
+    def test_generated_runtime_fails_if_contextual_action_parser_stops_dispatching(self):
+        sys.path.insert(0, str(ROOT / 'backend'))
+        from app.access import assistant_workspace_transport as transport
+
+        output = self.parent / 'action-parser-failure'
+        with patch.object(transport, 'parse_saved_memory_action', return_value=None):
+            with self.assertRaisesRegex(
+                    RuntimeError, 'synthetic_memory_read_action_cohort_or_order_invalid'):
+                qualification.run(output)
+        failure = json.loads((output / 'qualification-failure.json').read_text(encoding='ascii'))
+        self.assertEqual(failure, {'status': 'failed', 'synthetic_only': True,
+            'phase': 'saved_memory_contextual_actions', 'exception_class': 'RuntimeError',
+            'winerror': None})
+
     def test_output_must_be_new_absolute_direct_private_local_path(self):
         with self.assertRaises(ValueError):
             qualification._validate_output(Path('relative-output'))

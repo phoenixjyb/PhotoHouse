@@ -14379,6 +14379,41 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-memory-actions-portable-qualification-and-complete-route-inventory-20261014",
+      "based_on_commit": "7ff0a8e7666f9af8f8320889bfde31429be61e0c",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "8ad2c9d8d219735d1b41263765b3febbc3ccc9ce35cb04503533f9448576eb9d",
+          "sha256": "7e6d9ff2278356384c47a4eb990ae69a49f77ba89667effc8c313c3d819a96b9"
+        },
+        {
+          "path": "server/scripts/qualify_private_assistant.py",
+          "before_sha256": "a70625f47cfd7f7d764452b1d25691cff869c0129874fe9e7df7e73028a240ed",
+          "sha256": "645e07add10f4cb50b5664cc0774dfb26cee0a72fcfcc7ca7f111515aef0ca36"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "7f63e56f4ef2d41f51926ecc0d7628df2abe08423e215f2a59d8fc9ba12d038f",
+          "sha256": "e5daf18c3f30a7783c930e1c9226748942f013a68614526facf295fa84394be4"
+        },
+        {
+          "path": "server/tests/security/test_qualify_private_assistant.py",
+          "before_sha256": "aeb7df334abc59d32bbf3cf73b26edd8dcc506668acf20a7cb9090344f350050",
+          "sha256": "83a69b4dc2c9ce217cb4ab388d333333eed82795f1cc11b51bcece43a87a3cbc"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d6fccff38cb9f43e8789258268a04b395189abf2e4cb41e3d47e32945417b083",
+          "sha256": "97993b16e89215a3992862e45c6d1e1e89b0e032d0b361e1bd6753490c66e677"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

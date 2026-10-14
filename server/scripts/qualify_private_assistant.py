@@ -635,6 +635,174 @@ def run(output):
                     removed_followup_thread.json()['deleted'] is True,
                     'synthetic_followup_thread_cleanup_failed')
 
+            phase = 'saved_memory_contextual_actions'
+            action_capability = client.get(
+                BASE + '/saved-memory-action-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(action_capability.status_code == 200 and
+                    action_capability.json() == {'version': 1, 'available': True} and
+                    'no-store' in action_capability.headers.get('cache-control', ''),
+                    'synthetic_saved_memory_action_capability_failed')
+            action_story_title = 'Synthetic Amber Action Story'
+            action_story_text = 'A synthetic amber action-story opening beside the river.'
+            action_story = _save_synthetic_story(client, action_story_title, action_story_text)
+            action_thread_response = client.post(BASE + '/threads', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY})
+            _assert(action_thread_response.status_code == 201,
+                    'synthetic_memory_action_thread_create_failed')
+            action_thread_id = action_thread_response.json()['thread']['thread_id']
+            action_accepts = ['saved_memory_cards_v1', 'saved_memory_actions_v1']
+            action_search_id = str(uuid.uuid4())
+            action_search = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': action_search_id, 'expected_revision': 0,
+                    'text': 'find saved story amber', 'accepts': action_accepts})
+            _assert(action_search.status_code == 200,
+                    'synthetic_memory_action_search_failed')
+            action_search_result = action_search.json().get('result')
+            action_cards = (action_search_result.get('memory_cards', [])
+                            if type(action_search_result) is dict else [])
+            expected_action_story_ids = {story['id'], action_story['id']}
+            _assert(type(action_search_result) is dict and
+                    action_search_result.get('kind') == 'memory_cards' and
+                    len(action_cards) == 2 and
+                    {card.get('id') for card in action_cards} == expected_action_story_ids and
+                    all(card.get('kind') == 'story' for card in action_cards) and
+                    action_search_result.get('effect') is None and
+                    action_search_result.get('items') == [],
+                    'synthetic_memory_action_generated_cohort_invalid')
+
+            read_action_id = str(uuid.uuid4())
+            read_action = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': read_action_id, 'expected_revision': 1,
+                    'text': '读第一篇回忆', 'accepts': action_accepts,
+                    'memory_parent': {'request_id': action_search_id, 'revision': 1}})
+            _assert(read_action.status_code == 200,
+                    'synthetic_memory_read_action_failed')
+            read_action_result = read_action.json().get('result')
+            _assert(type(read_action_result) is dict and
+                    read_action_result.get('memory_action') ==
+                    {'type': 'read_opening', 'ordinal': 0} and
+                    [card.get('id') for card in read_action_result.get('memory_cards', [])] ==
+                    [card.get('id') for card in action_cards] and
+                    read_action_result.get('context', {}).get('references') ==
+                    [{key: card[key] for key in ('kind', 'id', 'revision', 'source_revision')}
+                     for card in action_cards] and read_action_result.get('effect') is None,
+                    'synthetic_memory_read_action_cohort_or_order_invalid')
+            selected_story_text = (action_story_text if action_cards[0]['id'] == action_story['id']
+                                   else 'A synthetic amber picnic beside the lake.')
+            read_opening_id = str(uuid.uuid4())
+            read_opening = client.post(
+                f'{BASE}/threads/{action_thread_id}/requests/{read_action_id}/memory-cards/0/speech',
+                headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': read_opening_id,
+                         'X-PhotoHouse-Parent-Request-Id': read_action_id},
+                json={'library_id': LIBRARY, 'expected_revision': 2})
+            opening_action_receipt = app.state.assistant_journal.get(
+                read_opening_id, OWNER, LIBRARY)
+            _assert(read_opening.status_code == 200 and
+                    read_opening.content == tts.audio and
+                    tts.calls[-1] == (selected_story_text, 'en') and
+                    opening_action_receipt['status'] == 'succeeded' and
+                    opening_action_receipt['input_text'] is None and
+                    opening_action_receipt['recognized_text'] is None,
+                    'synthetic_memory_action_opening_speech_or_receipt_failed')
+
+            open_action_id = str(uuid.uuid4())
+            open_action = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': open_action_id, 'expected_revision': 2,
+                    'text': '打开第二个故事', 'accepts': action_accepts,
+                    'memory_parent': {'request_id': read_action_id, 'revision': 2}})
+            _assert(open_action.status_code == 200,
+                    'synthetic_memory_open_action_failed')
+            open_action_result = open_action.json().get('result')
+            _assert(type(open_action_result) is dict and
+                    open_action_result.get('memory_action') == {'type': 'open', 'ordinal': 1} and
+                    [card.get('id') for card in open_action_result.get('memory_cards', [])] ==
+                    [card.get('id') for card in action_cards],
+                    'synthetic_memory_open_action_cohort_invalid')
+            open_reader = client.get(
+                f'{BASE}/threads/{action_thread_id}/requests/{open_action_id}/memory-cards/1'
+                f'?library_id={LIBRARY}&expected_revision=3', headers=_auth(TOKEN))
+            opened_story = action_story if action_cards[1]['id'] == action_story['id'] else story
+            opened_story_text = (action_story_text if opened_story['id'] == action_story['id']
+                                 else 'A synthetic amber picnic beside the lake.')
+            _assert(open_reader.status_code == 200 and
+                    open_reader.json().get('kind') == 'story' and
+                    open_reader.json().get('reader', {}).get('id') == opened_story['id'] and
+                    open_reader.json().get('reader', {}).get('chapters', [{}])[0].get('narration') ==
+                    opened_story_text,
+                    'synthetic_memory_open_action_reader_failed')
+
+            action_recovery = client.get(
+                f'{BASE}/threads/{action_thread_id}/requests/{read_action_id}?library_id={LIBRARY}',
+                headers=_auth(TOKEN))
+            recovered_action_result = (action_recovery.json().get('result')
+                                       if action_recovery.status_code == 200 else None)
+            with workspace.connection() as db:
+                action_summaries = json.dumps([row['result_summary'] for row in db.execute(
+                    'SELECT result_summary FROM turn_requests WHERE request_id IN (?, ?) '
+                    'ORDER BY request_id', (read_action_id, open_action_id))])
+            _assert(action_recovery.status_code == 200 and
+                    action_recovery.json().get('recovered') is True and
+                    type(recovered_action_result) is dict and
+                    'memory_action' not in recovered_action_result and
+                    action_story_title not in action_recovery.text and
+                    action_story_text not in action_recovery.text and
+                    'memory_action' not in action_summaries and
+                    action_story_title not in action_summaries and
+                    action_story_text not in action_summaries,
+                    'synthetic_memory_action_recovery_persisted_private_action_or_source')
+
+            ambiguous_action_id = str(uuid.uuid4())
+            ambiguous_action = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': ambiguous_action_id, 'expected_revision': 3,
+                    'text': '读这个故事', 'accepts': action_accepts,
+                    'memory_parent': {'request_id': open_action_id, 'revision': 3}})
+            _assert(ambiguous_action.status_code == 200,
+                    'synthetic_memory_ambiguous_action_failed')
+            ambiguous_result = ambiguous_action.json().get('result')
+            _assert(type(ambiguous_result) is dict and
+                    'memory_action' not in ambiguous_result and
+                    [card.get('id') for card in ambiguous_result.get('memory_cards', [])] ==
+                    [card.get('id') for card in action_cards] and
+                    ambiguous_result.get('context', {}).get('references') ==
+                    [{key: card[key] for key in ('kind', 'id', 'revision', 'source_revision')}
+                     for card in action_cards],
+                    'synthetic_memory_ambiguous_action_did_not_clarify_with_cohort')
+            out_of_range_action = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': str(uuid.uuid4()), 'expected_revision': 4,
+                    'text': '打开第99个故事', 'accepts': action_accepts,
+                    'memory_parent': {'request_id': ambiguous_action_id, 'revision': 4}})
+            _assert(out_of_range_action.status_code == 200,
+                    'synthetic_memory_out_of_range_action_failed')
+            out_of_range_result = out_of_range_action.json().get('result')
+            _assert(type(out_of_range_result) is dict and
+                    'memory_action' not in out_of_range_result and
+                    [card.get('id') for card in out_of_range_result.get('memory_cards', [])] ==
+                    [card.get('id') for card in action_cards],
+                    'synthetic_memory_out_of_range_action_not_refused')
+            missing_context_action = client.post(f'{BASE}/threads/{action_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': str(uuid.uuid4()), 'expected_revision': 5,
+                    'text': '读第一篇回忆', 'accepts': action_accepts})
+            _assert(missing_context_action.status_code == 200,
+                    'synthetic_memory_missing_context_action_failed')
+            missing_context_result = missing_context_action.json().get('result')
+            _assert(type(missing_context_result) is dict and
+                    missing_context_result.get('kind') == 'clarification' and
+                    'memory_action' not in missing_context_result,
+                    'synthetic_memory_missing_context_action_not_refused')
+            removed_action_thread = client.request('DELETE',
+                f'{BASE}/threads/{action_thread_id}', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'expected_revision': 6})
+            _assert(removed_action_thread.status_code == 200 and
+                    removed_action_thread.json().get('deleted') is True,
+                    'synthetic_memory_action_thread_cleanup_failed')
+
             phase = 'saved_memory_source_drift_during_speech'
             drift_request_id = str(uuid.uuid4())
             drift_turn = client.post(f'{BASE}/threads/{memory_thread_id}/turns',
