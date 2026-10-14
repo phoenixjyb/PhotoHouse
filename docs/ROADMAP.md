@@ -1,15 +1,30 @@
 # Product roadmap
 
-## Next source: explicit saved-memory opening speech
+## October 14 delivered: saved-memory opening speech and followups
+
+API/Web source 4b69844 is served and phone **v57** is signed and published on
+Windows HTTPS OTA. It includes v56 followups and explicit **朗读开篇** with
+preparation/playback/Stop, fresh-source guards, microphone interruption and
+enlarged-text layout fixes. Original icon/certificate and TV v30 are preserved.
+Native qualification, stopped-writer backup, guarded recovery, eight running
+tasks and independent complete HTTPS APK verification passed. See the
+[delivery record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md).
+
+Next priorities: family phone/member voice acceptance, an explicit voice intent
+for reading the selected opening, then bounded full-chapter/multi-chapter
+listening with progress, citations and cancellation. Evaluate grounded story
+quality separately from release and service health.
+
+## Opening-speech source and prior qualification
 
 The [implemented source](ASSISTANT_SAVED_MEMORY_READING.md) resolves current
 story openings and memoir introductions for bounded local TTS, revalidating the
 full source cohort before and after synthesis. Private replies keep generic
 wording. It is outside fixed v56. Web and phone now provide explicit one-shot
 controls with Stop, fresh-result guards and no automatic listening restart;
-phone v57 is [built locally](../clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md). Local acceptance is recorded in Development.
+phone v57 is [delivered](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md). Local acceptance is recorded in Development.
 
-Next: qualify and deliver this source after v56, then add a separately reviewed
+Next: complete family acceptance for delivered v57, then add a separately reviewed
 voice intent for reading the selected opening. Full-chapter/multi-chapter
 listening needs bounded segments, current citations, progress and cancellation;
 source-grounded conversational storytelling also needs family quality review.
@@ -23,14 +38,13 @@ requests bind the same current completed result; old history stays inert.
 Source wording is transient, generic replies retain the existing private policy,
 and no model or schema change is introduced. Phone v56 is [built and qualified on Windows](../clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md).
 
-This source is outside published v55. Native qualification passed; next delivery gate: authorized
-API/Web switch and original-certificate phone publication, followed
-by family voice/reader acceptance. Later work: richer grounded conversational
+This fixed candidate followed v55 and is now included in v57. Family voice/reader
+acceptance remains open. Later work: richer grounded conversational
 narration and evidence-backed story quality, with separately qualified providers.
 
 ## October 13 saved-memory reader delivery
 
-API/Web source `c65528a` is served and phone v55 is published on Windows HTTPS
+API/Web source `c65528a` was served and phone v55 was published on Windows HTTPS
 OTA with the original icon and certificate. Fresh search cards explicitly open
 protected story/memoir readers after stopping voice and revalidating sources.
 Native qualification, backup, eight running tasks, preserved ASR/TTS/OCR and

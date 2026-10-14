@@ -1,9 +1,9 @@
 # Explicit saved-memory opening speech
 
-Status: backend, Web and phone source implemented, outside the fixed v56
-candidate `043c938`. Phone v57 is reserved for this source. Local contract,
-browser and emulator checks are recorded in [Development](DEVELOPMENT.md).
-No live deployment, release signing, publication or provider activation is included.
+Status: delivered in API/Web source 4b69844 and phone v57; see the
+[release record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md).
+Source, package, Windows runtime and HTTPS publication checks are complete.
+Physical owner/member and listening acceptance remain separate.
 
 ## What will be read
 
@@ -80,7 +80,6 @@ Backend synthetic checks cover health, story/memoir selection, Unicode bounds,
 empty source, malformed bodies/ordinals, ownership/current parent, cohort drift,
 source/child edits during synthesis, provider replacement, privacy and duplicate
 request handling. Web and phone transport/playback/cancellation tests pass;
-Chinese/English enlarged renders have been inspected. Fixed-package/native
-release qualification, deployment and physical microphone/speaker acceptance
-remain separate gates. Voice-requested opening narration, full-chapter speech
+Chinese/English enlarged renders have been inspected. Fixed-package/native release qualification and deployment are recorded in the
+release report. Physical microphone/speaker acceptance remains open. Voice-requested opening narration, full-chapter speech
 and multi-chapter listening are later roadmap items.

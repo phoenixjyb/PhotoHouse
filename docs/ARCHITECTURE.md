@@ -580,3 +580,15 @@ voice/capture before speech, fence the rendered parent and current scope, and
 discard audio after cancellation or source/capability changes. Fresh-display
 client guards complement server ownership checks; recovered history cannot
 trigger playback. The private panel and central phone workspace share one player.
+
+
+## Release launcher qualification
+
+A source-package smoke check and a compiled launcher are distinct from execution
+of the deployed launcher's validation path. Before switching, validate the exact
+manifest count, source hashes, configuration/dependency identity, accepted
+delivery closure and read-only database schema through the actual launcher.
+Normal and rollback receipts must match their pinned configurations, including
+providers already enabled on the old release. The
+[v57 recovery record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md)
+documents the count/receipt correction and listener-free staging gate.

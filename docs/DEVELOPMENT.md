@@ -2205,3 +2205,27 @@ extraction and passed all eleven generated qualification groups locally. The
 unsigned phone release build/lint and 17-field private-profile verification pass;
 the original packaged artwork pixels match. Native Windows qualification,
 original-certificate signing, publication and family/device acceptance are open.
+
+
+## October 14 API/Web and phone v57 delivery
+
+User publication authority covered staging/native qualification, stopped-writer
+backup, the API switch and guarded recovery/worker restoration, followed by
+original-certificate signing, phone-only OTA publication and full verification.
+The [delivery record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md)
+contains the fixed package/APK identities and family test steps.
+
+The first attempt exposed an inherited 194-file launcher guard against the
+195-file package and a rollback speech-state assumption. The previous API passed
+readback; five unchanged workers were restored before correction. A fresh
+candidate executes full listener-free launcher validation before service control
+and binds rollback speech to the unchanged enabled configuration. Fifteen local
+API controller checks and eight native parser checks passed. Accepted source:
+4b69844; schema/configuration are unchanged. Two fresh stopped-writer backup
+records are preserved; no production database restore was used.
+
+Twenty-three phone delivery checks passed. Signed APK v57 was verified natively
+and through independent complete Mac HTTPS readback; TV v30's feed response is
+unchanged. Final observation: eight required tasks running/enabled, ASR/TTS/OCR
+identities preserved, about 47.6 GiB free RAM. Physical phone installation and
+family listening acceptance remain next.

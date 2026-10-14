@@ -77,3 +77,10 @@ Physical foreground voice, source reader and owner/member acceptance remain open
    draft, without sending until you confirm.
 5. Change library or reopen old history: previous result actions and voice
    progression must not resume. A changed source requires a fresh search.
+
+
+## Superseded by v57 delivery
+
+v56 was not published separately. Its followup source is included in the
+[published v57/API release](PHONE_V57_RELEASE_2026-10-14.md); retain this document
+as the fixed v56 qualification record.

@@ -14159,6 +14159,56 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "api-web-phone-v57-delivery-and-launcher-recovery-record-20261014",
+      "based_on_commit": "7f177e8c5d6918afc96fb848a3b1ed5162b22c09",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V56_RELEASE_CANDIDATE_2026-10-13.md",
+          "before_sha256": "26189055a428451f9b6661c254b56497ea636ad62cd1ad8048c2881b41f9c479",
+          "sha256": "51b0c7fcbe156bffe0b3a441a45300131990b6479c9ccc51cae2a46f75cc3aad"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "0ec531f0ae15b160809e9f01a6b4184a75d42bab688d233fc6f6a8613ee28e3c"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V57_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": "d54d10b9c20fe94759036e19beb2d32144d3ceb0083ae8d578bf4f5019b3d76f",
+          "sha256": "b9220c44caa068ce60dee173e5110ea67d921cebae7535ace6ee832cc87a28fb"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "9bac70fe9e9cdd8c81a7b604aaafb9f262af641faf55f54bae2503b8c4bfdaa6",
+          "sha256": "2334863eed5690def2e848bdaba615c2554c5a19c4cc3c368a2d5d9577fe7c5e"
+        },
+        {
+          "path": "docs/ASSISTANT_SAVED_MEMORY_READING.md",
+          "before_sha256": "1b54b0af915d6d9305529b6c82b8cf7bbae437ffe8d1cf7e24999056833199da",
+          "sha256": "7065a8d384bc6966c8a76e57a935eed6c5f126e4541f369a9e45fa71521a15a5"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5e128020a02d0ffb53b8b32028a967f0e9337b93ef09816b47f887487a7fdd7b",
+          "sha256": "6df979bb13075c9112d4e5b2471c5285e388e8bcaf1b2a416f4e2eff20e49d12"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "bb616adaed35f06f6b7c9a9de1436ffab75cab9c2983ab441f7f37f31a5f566c",
+          "sha256": "f0cad85cad168e70ee5959379218ccb116640f6c53eac268493a08739498efd5"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "0b307b6305bb379d41ce2db846998bc8886b496c288c46c6f58eb85fbac911f7",
+          "sha256": "53b950594910a6dec168f9d9d9ff21ce46768bcd31526ca5078caf1bd7b1854d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

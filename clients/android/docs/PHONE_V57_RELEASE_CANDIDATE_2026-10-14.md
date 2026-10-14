@@ -1,10 +1,12 @@
 # Phone v57 saved-memory opening playback candidate
 
-Status: prepared locally, unsigned and unpublished. Backend/Web/Android source is
-fixed at `4b69844e29c9ffc83980da23634c28ca73e4efbe`. This candidate is separate
-from v56 (`043c938`), whose native qualification passed and whose live operation
-requires its own authority. No live task, database, original media or provider
-was changed by preparing v57.
+Status: now signed and published; see the
+[delivery record](PHONE_V57_RELEASE_2026-10-14.md). The evidence below preserves
+earlier unsigned qualification. Backend/Web/Android source is fixed at
+`4b69844e29c9ffc83980da23634c28ca73e4efbe`.
+v56 was qualified separately and superseded by this delivery. Preparing the
+candidate did not change live services or data; later deployment is recorded
+in the linked release report.
 
 ## Changes
 
@@ -54,8 +56,8 @@ route, qualifier, package and source-ledger checks. No hosted CI is claimed.
 
 ## Delivery and family acceptance
 
-Next gates are native Windows qualification, a separately authorized API/Web
-switch, original-certificate signing and phone OTA publication. No schema or
+Native Windows qualification, the authorized API/Web switch, original-certificate
+signing and phone OTA publication are completed in the linked delivery record. No schema or
 model change is required. No physical Samsung installation or listening quality
 acceptance has been performed for v57.
 
