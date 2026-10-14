@@ -16,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.animation.animateColorAsState
@@ -62,6 +63,9 @@ internal fun AssistantVoiceSessionPanel(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEnd: () -> Unit,
+    onCheckReceipt: (() -> Unit)? = null,
+    checkReceiptEnabled: Boolean = true,
+    receiptChecking: Boolean = false,
     onFinishTurn: (() -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -144,6 +148,15 @@ internal fun AssistantVoiceSessionPanel(
                 if (state.stage == AssistantVoiceSessionStage.PAUSED) {
                     Button(onClick = onResume, enabled = state.canResume, modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-voice-resume")) {
                         Text(t("Resume", "继续"))
+                    }
+                    if (!state.canResume && onCheckReceipt != null) {
+                        OutlinedButton(
+                            onClick = onCheckReceipt,
+                            enabled = checkReceiptEnabled,
+                            modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-voice-check-receipt"),
+                        ) {
+                            Text(if (receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
+                        }
                     }
                 } else {
                     Button(onClick = onPause, modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-voice-pause")) {

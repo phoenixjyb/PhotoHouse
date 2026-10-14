@@ -99,6 +99,10 @@ V4 journal prefix replay with generated fixtures. Next qualify a journal/schema
 upgrade, production admission and permanent erasure before exposing the long
 recording transport. See [withdrawal](ORAL_HISTORY_WITHDRAWAL.md).
 
+The source now includes the internal V3→V4 upgrade primitive with writer-fence
+and final revalidation tests. It does not yet include an operator controller,
+native upgrade qualification or live migration.
+
 Reader polish now includes visible Web source-check/retry state and ephemeral
 phone manual-narration segment progress. Assistant full-chapter continuation and
 physical audio quality remain open; see [reader UX](READER_PROGRESS_AND_SOURCES.md).

@@ -59,8 +59,8 @@ let browser,context,page;
     if(entry.method==='POST'&&url.pathname==='/assistant/v1/transcribe'){
       const requestId=entry.headers['x-photohouse-request-id'],mode=nextAsr||{text:'synthetic transcript',language:'en',tracking:'enabled'};nextAsr=null;
       if(mode.gate){mode.gate.arrive();await mode.gate.released;}
-      const body=mode.malformed?{version:1,text:mode.text||'bad result',language:'invalid'}:{version:1,text:mode.text,language:mode.language||'en'};
-      try{await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store',...responseHeaders(requestId,mode.tracking||'enabled')},body:JSON.stringify(body)});}
+      const body=mode.error?{detail:'Synthetic transcription error',error:mode.error}:mode.malformed?{version:1,text:mode.text||'bad result',language:'invalid'}:{version:1,text:mode.text,language:mode.language||'en'};
+      try{await route.fulfill({status:mode.error?(mode.status||503):200,contentType:'application/json',headers:{'cache-control':'no-store',...responseHeaders(requestId,mode.tracking||'enabled')},body:JSON.stringify(body)});}
       catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}
       finally{mode.gate?.finish();activeGates.delete(mode.gate);}
       return;
@@ -90,6 +90,7 @@ let browser,context,page;
   const openAssistant=async()=>{await page.locator('#assistant-panel').evaluate(panel=>{panel.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});};
   const submitText=async text=>{const expected=Math.min(await page.locator('#assistant-turn-trail-list > li').count()+1,8),response=page.waitForResponse(value=>value.url().endsWith('/assistant/v1/turns'));await page.locator('#assistant-text').fill(text);await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-form').evaluate(form=>form.requestSubmit());await response;await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===count,expected);await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,`Synthetic reply ${nextTurn}`);};
   const record=async()=>{const previous=transcriptions().length;await page.locator('#assistant-mic').evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});await page.locator('#assistant-stop').click();return previous+1;};
+  const keyboardRecord=async()=>{const previous=transcriptions().length;await page.locator('#assistant-mic').focus();await page.keyboard.press('Space');await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-stop','keyboard can reach the visible Stop control');await page.keyboard.press('Enter');return previous+1;};
   const waitReview=async()=>await page.locator('#assistant-transcript-review').waitFor({state:'visible'});
   const scaleText150=()=>page.locator('#assistant-panel').evaluate(root=>{
     const nodes=[root,...root.querySelectorAll('*')].filter(node=>node.tagName==='TEXTAREA'||[...node.childNodes].some(child=>child.nodeType===Node.TEXT_NODE&&child.textContent.trim()));
@@ -103,6 +104,27 @@ let browser,context,page;
   for(let index=0;index<8;index++)await submitText(`先前的问题 ${index+1}`);
   const list=page.locator('#assistant-turn-trail-list');assert(await list.evaluate(node=>node.scrollHeight>node.clientHeight),'seeded conversation makes the turn region scrollable');
   await list.evaluate(node=>node.scrollTop=120);const trailScrollBefore=await list.evaluate(node=>node.scrollTop);
+
+  const focusSuccess=gate();nextAsr={text:'键盘录音的识别结果',language:'zh',tracking:'enabled',gate:focusSuccess};const focusTurnsBefore=turns().length;
+  await keyboardRecord();await focusSuccess.arrived;assert.equal(await page.evaluate(()=>document.activeElement.id),'','hiding the focused Stop control leaves focus for guarded recovery');
+  focusSuccess.release();await focusSuccess.finished;await waitReview();
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-transcript','focused Stop transfers focus to the editable transcript after current manual ASR succeeds');
+  assert.equal(turns().length,focusTurnsBefore,'successful transcription does not submit a turn');
+  const focusScale=await scaleText150();await page.locator('#assistant-transcript-review').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest'}));
+  let focusLayout=await layout();assert.equal(focusLayout.width,390);assert(focusLayout.pageWidth<=390,`keyboard transcript review fits 390px at large text: ${JSON.stringify(focusLayout)}`);assert(await textScaleValid(focusScale),'keyboard transcript review stays readable at 150% text size');
+  const focusCapture=path.join(artifacts,'assistant-focus-recovery-zh-390px-text150.png');await page.screenshot({path:focusCapture,fullPage:false});fs.chmodSync(focusCapture,0o600);await restoreTextScale(focusScale);
+  await page.locator('#assistant-discard-transcript').click();
+  console.log('PASS keyboard Stop focus moves to current editable Chinese transcript; no turn submitted; 390px/150% layout captured');
+
+  const focusError=gate();nextAsr={error:'speech_unavailable',status:503,gate:focusError};const errorTranscriptions=transcriptions().length,errorTurns=turns().length;
+  await keyboardRecord();await focusError.arrived;focusError.release();await focusError.finished;
+  await page.waitForFunction(()=>document.getElementById('assistant-status').textContent.includes('请稍后重试'));
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-mic','current manual ASR error returns focus to the explicit retry button');
+  assert.equal(transcriptions().length,errorTranscriptions+1);assert.equal(turns().length,errorTurns,'failed transcription does not submit or retry automatically');
+  const getUserMediaBeforeRetry=await page.evaluate(()=>window.__phGetUserMediaCalls);await page.keyboard.press('Space');
+  await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});assert.equal(await page.evaluate(()=>window.__phGetUserMediaCalls),getUserMediaBeforeRetry+1,'retry capture starts only after explicit keyboard activation');
+  await page.locator('#assistant-recording-cancel').click();assert.equal(transcriptions().length,errorTranscriptions+1,'explicitly canceled retry does not submit another transcription');
+  console.log('PASS manual ASR error focuses explicit mic retry; keyboard activation is required; no auto action');
 
   const held=gate();nextAsr={text:'识别出来的家人原话',language:'zh',tracking:'enabled',gate:held};
   await page.locator('#assistant-text').fill('发送前的手动文字');
@@ -197,8 +219,10 @@ let browser,context,page;
   const currentGate=gate();nextAsr={text:'current account transcription',language:'en',tracking:'enabled',gate:currentGate};
   await record();await currentGate.arrived;await page.locator('#assistant-text').fill('typed during current ASR');
   assert.equal(await page.locator('#assistant-send').isDisabled(),true,'current scope ASR blocks its send control');
+  const focusBeforeStale=await page.evaluate(()=>document.activeElement.id);assert.equal(focusBeforeStale,'assistant-text');
   staleGate.release();await staleGate.finished;await page.waitForTimeout(50);
   assert.equal(await page.locator('#assistant-transcript-review').isVisible(),false,'late old ASR cannot enter the new account review');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),focusBeforeStale,'late old-scope ASR cannot steal focus from the current account');
   assert.equal(await page.locator('#assistant-text').inputValue(),'typed during current ASR','old attempt cleanup preserves current composer text');
   assert.equal(await page.locator('#assistant-send').isDisabled(),true,'old attempt cleanup cannot enable send during current transcription');
   currentGate.release();await currentGate.finished;await waitReview();
@@ -212,5 +236,6 @@ let browser,context,page;
   console.log('EN_LAYOUT '+JSON.stringify(englishLayout));console.log('ZH_LAYOUT '+JSON.stringify(chineseLayout));
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;}).finally(async()=>{
   for(const value of activeGates){value.release();}
+  try{await page?.unrouteAll({behavior:'ignoreErrors'});}catch{}
   if(browser)await browser.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();
 });

@@ -38,3 +38,17 @@ The focused Android instrumentation class passed 18 tests on the reused API 36
 phone emulator; Kotlin compilation and debug lint passed. Chinese active,
 paused and resumed states were inspected at 150% text. Tests use fake TTS/focus;
 real voices, headset routing, speaker echo and signed delivery remain separate.
+
+## Voice recovery actions
+
+The phone's paused, uncertain voice session now offers **查询回执 / Check receipt**
+in the session card when a pending turn exists. Resume stays disabled and End
+remains visible. Receipt queries use the existing callback; they do not resend
+the question. A query in progress disables the action and shows its real state.
+
+For Web manual recording, keyboard focus on Stop is handed to the editable
+transcript after a successful current-scope transcription, or to the explicit
+microphone retry control after an error. Moving focus elsewhere suppresses this
+handoff, as does changing account/library or replacing the attempt. Recognition
+does not submit a turn or restart capture automatically. Continuous voice
+session behavior is unchanged.

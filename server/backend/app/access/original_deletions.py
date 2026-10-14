@@ -532,6 +532,88 @@ class OriginalDeletionJournal:
         finally:
             ledger.close()
 
+    def upgrade_oral_format(self, primary_db, *, expected_head, precommit_guard=None):
+        """Internal offline V3→V4 primitive; no automatic migration or adoption.
+
+        Caller owns the primary write transaction, writer quiescence and paired
+        backups. Require the exact empty recording schema before adding support.
+        Every legacy digest and primary marker stays unchanged. No CLI is exposed.
+        """
+        if not primary_db.in_transaction:
+            raise OriginalDeletionError('Upgrade requires a primary write transaction')
+        _primary_file(primary_db, self.path)
+        # A deferred transaction is not a write fence, especially under WAL.
+        # Establish ownership before reading schema, marker or empty source tables.
+        try:
+            if primary_db.execute(f'UPDATE {_MARKER} SET applied_seq=applied_seq WHERE id=1').rowcount != 1:
+                raise OriginalDeletionError('Recording upgrade requires a bound primary')
+        except sqlite3.Error:
+            raise OriginalDeletionError('Recording upgrade requires primary writer ownership') from None
+        from .oral_history_schema import SESSION, SECTION, MUTATION, assert_schema
+        try:
+            assert_schema(primary_db)
+        except ValueError:
+            raise OriginalDeletionError('Recording schema required for journal upgrade') from None
+        marker = self._primary_marker(primary_db)
+        def recheck_primary(*, empty):
+            if not primary_db.in_transaction:
+                raise OriginalDeletionError('Recording upgrade lost primary writer ownership')
+            try:
+                assert_schema(primary_db)
+            except ValueError:
+                raise OriginalDeletionError('Recording schema changed during upgrade') from None
+            if self._primary_marker(primary_db) != marker:
+                raise OriginalDeletionError('Primary marker changed during upgrade')
+            if empty:
+                for table in (SESSION, SECTION, MUTATION):
+                    if primary_db.execute('SELECT 1 FROM '+table+' LIMIT 1').fetchone():
+                        raise OriginalDeletionError('Recording history changed during upgrade')
+            self._verify_applied_assets(primary_db, ledger, marker[0])
+        ledger = self._connect()
+        try:
+            ledger.execute('BEGIN IMMEDIATE')
+            meta, _ = self._meta(ledger)
+            head = (self.namespace, meta['head_seq'], meta['head_digest'])
+            if head != expected_head or marker != head[1:]:
+                raise OriginalDeletionError('Journal changed after reviewed plan')
+            if meta['format'] not in {_FORMAT_V3, _FORMAT_V4}:
+                raise OriginalDeletionError('Recording upgrade requires journal version 3')
+            if meta['format'] == _FORMAT_V4:
+                self._verify_applied_recordings(primary_db, ledger, meta['head_seq'])
+                if precommit_guard is not None:
+                    precommit_guard(primary_db)
+                recheck_primary(empty=False)
+                self._verify_applied_recordings(primary_db, ledger, meta['head_seq'])
+                ledger.commit()
+                return head
+            for table in (SESSION, SECTION, MUTATION):
+                if primary_db.execute('SELECT 1 FROM '+table+' LIMIT 1').fetchone():
+                    raise OriginalDeletionError('Recording history prevents journal upgrade')
+            self._verify_applied_assets(primary_db, ledger, meta['head_seq'])
+            names = list(_RECORD_COLUMNS) + ['family_binding_json', 'asset_binding_json']
+            ledger.execute('DROP INDEX ix_deletions_library_seq')
+            ledger.execute('ALTER TABLE deletions RENAME TO legacy_deletions')
+            ledger.execute(_deletions_ddl(4))
+            columns = ','.join(names)
+            ledger.execute('INSERT INTO deletions ('+columns+') SELECT '+columns+' FROM legacy_deletions')
+            ledger.execute('DROP TABLE legacy_deletions')
+            ledger.execute('CREATE INDEX ix_deletions_library_seq ON deletions(library_id,seq)')
+            ledger.execute("CREATE INDEX ix_deletions_recording_object ON deletions(object_id) WHERE collection='oral_history'")
+            ledger.execute('UPDATE journal_meta SET format=? WHERE id=1', (_FORMAT_V4,))
+            checked, _ = self._meta(ledger)
+            if (self.namespace, checked['head_seq'], checked['head_digest']) != head:
+                raise OriginalDeletionError('Deletion journal upgrade changed history')
+            if precommit_guard is not None:
+                precommit_guard(primary_db)
+            recheck_primary(empty=True)
+            ledger.commit()
+            return head
+        except BaseException:
+            ledger.rollback()
+            raise
+        finally:
+            ledger.close()
+
     def require_oral_format(self):
         ledger=self._connect()
         try:

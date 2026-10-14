@@ -197,3 +197,99 @@ class RecordingWithdrawalTests(unittest.TestCase):
             closed=self.f.intake.close(self.f.member,'family-a',record['session_id'],request_id=str(uuid.uuid4()),expected_revision=record['revision'],cancel=cancel)
             receipt=self.withdraw(closed);self.assertEqual(receipt['state'],'withdrawn');self.denied_source(record)
         self.assertEqual(self.journal.head()[1],2)
+
+    def legacy(self,version=3):
+        journal=OriginalDeletionJournal.initialize(self.root/f'upgrade-v{version}.sqlite',self.journal.namespace,format_version=version)
+        self.journal=journal;self.attach();return journal
+
+    def test_v3_upgrade_preserves_populated_legacy_history_and_primary_marker(self):
+        from app.access import original_deletions as journal_module
+        journal=self.legacy()
+        entry={'seq':1,'collection':'upload','library_id':'family-a','object_id':str(uuid.uuid4()),
+            'original_kind':'text','original_sha256':'a'*64,'batch':'b'*32,'asset_id':None,
+            'story_id':None,'occurred_at':1,'prev_digest':journal_module._genesis(journal.namespace),
+            'family_binding_json':None,'asset_binding_json':None}
+        entry['digest']=journal_module._record_digest(entry['prev_digest'],entry)
+        with closing(journal._connect()) as ledger:
+            ledger.execute('BEGIN IMMEDIATE')
+            names=list(journal_module._RECORD_COLUMNS)+['family_binding_json','asset_binding_json']
+            ledger.execute('INSERT INTO deletions ('+','.join(names)+') VALUES ('+','.join('?' for _ in names)+')',tuple(entry[n] for n in names))
+            ledger.execute('UPDATE journal_meta SET head_seq=1,head_digest=? WHERE id=1',(entry['digest'],));ledger.commit()
+        self.db.execute('UPDATE access_original_deletion_state SET applied_seq=1,applied_digest=?',(entry['digest'],));self.db.commit()
+        before=journal.head();self.db.execute('BEGIN IMMEDIATE')
+        self.assertEqual(journal.upgrade_oral_format(self.db,expected_head=before),before);self.db.commit()
+        self.assertEqual(journal.head(),before);journal.require_oral_format()
+        with closing(journal._connect()) as ledger:
+            stored=dict(ledger.execute('SELECT * FROM deletions WHERE seq=1').fetchone())
+            for key,value in entry.items():self.assertEqual(stored[key],value)
+            self.assertIsNone(stored['oral_binding_json'])
+        # The upgraded ledger is usable for a new retained-source withdrawal.
+        record=self.add(self.record());self.withdraw(record);self.denied_source(record)
+        self.db.execute('BEGIN IMMEDIATE');head=journal.head()
+        self.assertEqual(journal.upgrade_oral_format(self.db,expected_head=head),head);self.db.commit()
+
+    def test_upgrade_requires_owned_transaction_current_head_and_v3(self):
+        for version in (1,2,3):
+            journal=self.legacy(version);head=journal.head()
+            with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=head)
+            self.db.execute('BEGIN IMMEDIATE')
+            with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=(head[0],1,'a'*64))
+            if version!=3:
+                with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=head)
+            self.db.rollback();self.assertEqual(journal.head(),head)
+
+    def test_upgrade_refuses_existing_recordings_and_preserves_v3_bytes(self):
+        journal=self.legacy();self.record();before=journal.path.read_bytes();head=journal.head()
+        self.db.execute('BEGIN IMMEDIATE')
+        with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=head)
+        self.db.rollback();self.assertEqual(journal.path.read_bytes(),before)
+
+    def test_upgrade_guard_failure_does_not_change_schema_or_head(self):
+        journal=self.legacy();before=journal.path.read_bytes();head=journal.head()
+        self.db.execute('BEGIN IMMEDIATE')
+        def refuse(db):raise OriginalDeletionError('Synthetic offline guard refusal')
+        with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=head,precommit_guard=refuse)
+        self.db.rollback();self.assertEqual(journal.path.read_bytes(),before)
+
+    def test_upgrade_ddl_failure_rolls_back_the_journal(self):
+        from app.access import original_deletions as journal_module
+        journal=self.legacy();before=journal.path.read_bytes();head=journal.head()
+        self.db.execute('BEGIN IMMEDIATE')
+        with patch.object(journal_module,'_deletions_ddl',return_value='INVALID GENERATED SQL'):
+            with self.assertRaises(sqlite3.Error):journal.upgrade_oral_format(self.db,expected_head=head)
+        self.db.rollback();self.assertEqual(journal.path.read_bytes(),before);self.assertEqual(journal.head(),head)
+
+    def test_deferred_wal_upgrade_serializes_a_concurrent_recording_writer(self):
+        journal=self.legacy();self.db.execute('PRAGMA journal_mode=WAL')
+        other=self.f.connect();self.addCleanup(other.close);other.execute('PRAGMA busy_timeout=0')
+        intake=OralHistoryIntake(AccessService(other,clock=lambda:fixture_module.foundation.NOW),enabled=True)
+        blocked=[]
+        def probe(db):
+            with self.assertRaises(sqlite3.OperationalError):intake.create(self.f.member,'family-a',self.f.body())
+            blocked.append(True)
+        # A deferred transaction is upgraded to a real write fence before admission reads.
+        self.db.execute('BEGIN');head=journal.head()
+        self.assertEqual(journal.upgrade_oral_format(self.db,expected_head=head,precommit_guard=probe),head)
+        self.assertEqual(blocked,[True]);self.assertEqual(self.db.execute(f'SELECT count(*) FROM {SESSION}').fetchone()[0],0)
+        self.db.commit()
+        created=intake.create(self.f.member,'family-a',self.f.body());self.assertEqual(created['state'],'open')
+
+    def test_final_guard_mutation_cannot_commit_an_unreviewed_upgrade(self):
+        for mutation in ('marker','schema','recording','commit'):
+            with self.subTest(mutation=mutation):
+                before=self.backup('guard-primary.sqlite')
+                journal=OriginalDeletionJournal.initialize(self.root/f'guard-{mutation}.sqlite',self.journal.namespace,format_version=3)
+                original=journal.path.read_bytes();head=journal.head()
+                def guard(db):
+                    if mutation=='marker':db.execute('UPDATE access_original_deletion_state SET applied_seq=1,applied_digest=?',('a'*64,))
+                    elif mutation=='schema':db.execute('ALTER TABLE '+SESSION+' ADD COLUMN unexpected TEXT')
+                    elif mutation=='recording':db.execute(f'''INSERT INTO {SESSION}
+                        (id,library_id,author_id,title,subject_label,narrator_label,language,processing_consent,
+                         state,revision,section_count,total_bytes,total_frames,manifest_sha256,created_at)
+                        VALUES (?,'family-a',?,'Generated guard row','','','zh',0,'open',1,0,0,0,?,1)''',
+                        (str(uuid.uuid4()),self.f.actor,'a'*64))
+                    else:db.commit()
+                self.db.execute('BEGIN IMMEDIATE')
+                with self.assertRaises(OriginalDeletionError):journal.upgrade_oral_format(self.db,expected_head=head,precommit_guard=guard)
+                self.db.rollback();self.assertEqual(journal.path.read_bytes(),original)
+                self.restore(before)

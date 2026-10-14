@@ -15,6 +15,33 @@ to that record, not every later release. Do not sum overlapping checks or treat
 local evidence as current hosted CI, runtime/model quality or device acceptance.
 The October 14 documentation audit did not rebuild applications.
 
+## Reader and voice recovery qualification (October 15)
+
+The first local source round (`a3527fb`) adds visible Web memoir source-check
+status/retry, phone manual narration segment progress, and the internal
+[recording withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md). Web reader checks
+passed 13 checkpoints/115 generated requests with no page errors. Phone reader
+instrumentation passed 18 tests on the reused API 36 emulator, with compile and
+debug lint and inspected Chinese 150% active/pause/resume renders.
+
+The following round adds a direct phone receipt query in a paused uncertain
+voice session and guarded Web keyboard focus after manual transcription. The
+phone's focused class passed six tests, compilation and lint; Chinese/English
+150% renders were inspected. Web synthetic transcription success, error, explicit
+retry, changed-focus and stale-scope checks passed; Chinese 390-pixel/150% focus
+recovery was inspected. These checks use fake speech and generated content.
+
+The internal V3→V4 upgrade/withdrawal cohort passed 21 tests and nine subchecks,
+including populated legacy digest preservation, rollback, deferred WAL writer
+serialization and final guard mutation refusal. It has no operator CLI or live
+upgrade/migration. The initial full API invocation reached two expected archive
+failures because the package allowlist included an uncommitted new source file;
+the committed-source package suite then passed all six tests. Complete final
+profile evidence will be recorded separately after the next source freeze.
+
+No Windows service, model, database, task, signed APK or OTA feed was changed by
+these local rounds. Local visual results remain separate from family acceptance.
+
 
 ## Oral-history intake foundation (October 14)
 

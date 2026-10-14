@@ -168,6 +168,71 @@ class AssistantVoiceWorkspaceUiTest {
         rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
     }
 
+    @Test fun uncertainVoiceSessionOffersReceiptCheckAt150PercentInBothLanguages() {
+        val assistant = mutableStateOf(AssistantClientState(
+            "synthetic-library", 1,
+            capabilities = AssistantCapabilities(true, true, true, true, 30),
+            pendingTurn = AssistantPendingTurn(
+                accountId = "synthetic-account", library = "synthetic-library", generation = 1,
+                text = "Find the vacation photos", context = null, parentRequestId = null,
+                requestId = "synthetic-uncertain-request",
+            ),
+        ))
+        val voice = mutableStateOf(AssistantVoiceSessionUiState(
+            AssistantVoiceSessionStage.PAUSED,
+            "请先查询现有回执，再继续；不会重新发送请求。",
+            canResume = false,
+        ))
+        val zh = mutableStateOf(true)
+        var receiptChecks = 0
+        var resumed = 0
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(
+                        assistant.value, zh.value, onBack = {}, previews = emptyMap(),
+                        onRetryCapabilities = {}, onSend = { false }, onClear = {},
+                        onOpen = { _, _ -> }, onCheckReceipt = {
+                            receiptChecks++
+                            assistant.value = assistant.value.copy(receiptChecking = true)
+                        },
+                        onRecord = {}, onStopRecording = {}, onCancelRecording = {}, recording = false,
+                        recordError = false, onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {},
+                        voiceSessionState = voice.value,
+                        onPauseVoiceSession = {}, onResumeVoiceSession = { resumed++ }, onEndVoiceSession = {},
+                    )
+                }
+            }
+        }
+
+        rule.onNodeWithTag("assistant-voice-check-receipt").assertIsDisplayed().assertTextEquals("查询回执")
+        rule.onNodeWithTag("assistant-voice-resume").assertIsDisplayed().assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        saveRender("assistant-voice-uncertain-receipt-zh-150.png")
+        rule.onNodeWithTag("assistant-voice-check-receipt").performClick()
+        assertEquals(1, receiptChecks)
+        assertEquals("uncertain voice requests cannot be resumed", 0, resumed)
+        rule.onNodeWithTag("assistant-voice-check-receipt").assertTextEquals("正在查询回执…")
+        rule.onNodeWithTag("assistant-voice-check-receipt").assertIsNotEnabled()
+
+        rule.runOnIdle {
+            assistant.value = assistant.value.copy(receiptChecking = false)
+            zh.value = false
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-check-receipt").assertIsDisplayed().assertTextEquals("Check receipt")
+        rule.onNodeWithTag("assistant-voice-resume").assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        saveRender("assistant-voice-uncertain-receipt-en-150.png")
+
+        rule.runOnIdle { assistant.value = assistant.value.copy(pendingTurn = null) }
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-check-receipt").assertDoesNotExist()
+        rule.onNodeWithTag("assistant-voice-resume").assertIsNotEnabled()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+    }
+
     private fun saveRender(name: String) {
         rule.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -183,10 +248,16 @@ class AssistantVoiceWorkspaceUiTest {
         }
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         val context = instrumentation.targetContext
-        val folder = context.getExternalFilesDir("assistant-voice-qa")!!
-        folder.mkdirs()
+        val values = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/PhotoHouseAssistantVoiceRecovery")
+        }
+        val uri = checkNotNull(context.contentResolver.insert(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
         try {
-            java.io.File(folder, name).outputStream().use { stream ->
+            context.contentResolver.openOutputStream(uri).use { stream ->
+                checkNotNull(stream)
                 check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
             }
         } finally { bitmap.recycle() }

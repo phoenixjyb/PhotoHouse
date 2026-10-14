@@ -33,9 +33,20 @@ narrator label or narrative text. Identifiers and hashes are still private
 metadata and belong outside public source.
 
 Existing V1–V3 formats and digest domains remain supported. They refuse recording
-withdrawal. There is no V3→V4 upgrader in this increment. Binding a fresh journal
+withdrawal. A later October 15 source increment adds an internal V3→V4 upgrade
+primitive, with no operator CLI or production qualification. Binding a fresh journal
 requires empty original stores and an absent or exact, empty recording schema;
 partial tables and retained recording history refuse adoption.
+
+The primitive establishes a primary write fence even for a caller's deferred
+transaction, requires an exact empty recording schema and current marker/head,
+and preserves every legacy record/digest. Provisional V4 DDL is rolled back on
+failure. The final guard is followed by schema, emptiness, marker and applied
+asset checks before committing. An already-V4 retry verifies applied recording
+withdrawals. The caller still owns stopped writers, paired backups, primary
+commit and post-error journal readback; a journal commit can survive a later
+primary rollback because the primary marker is unchanged. This is not an
+automatic capability upgrade on startup.
 
 ## Restore safety
 
@@ -60,7 +71,7 @@ corrupt raw audio, partial schema and legacy-format refusal. They use no family
 recordings or model inference. The API and memoir check profiles include them;
 source packages include the three recording modules without enabling them.
 
-Next: a reviewed V4 upgrade and schema admission plan, permanent erasure with
+Next: an operator-qualified V4 upgrade and schema admission plan, permanent erasure with
 backup replay, then protected section transport and a client recorder showing
 saved/pending/retrying states. Speech processing, linking to family stories and
 editorial stitching need their own consent, revision and provenance checks.

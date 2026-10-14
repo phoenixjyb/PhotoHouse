@@ -382,6 +382,9 @@ internal fun AssistantScreen(
                             state = voiceSessionState!!, zh = zh,
                             onPause = onPauseVoiceSession!!, onResume = onResumeVoiceSession!!,
                             onEnd = onEndVoiceSession!!, onFinishTurn = onFinishVoiceTurn,
+                            onCheckReceipt = onCheckReceipt.takeIf { assistant.pendingTurn != null },
+                            checkReceiptEnabled = !assistant.receiptChecking && assistant.lastRequestReceipt?.tracking != "disabled",
+                            receiptChecking = assistant.receiptChecking,
                         )
                     }
                     if (voiceSessionState == null && voiceEntry != null && !assistant.busy &&

@@ -9,6 +9,7 @@
   let memoryGroupGalleryItems=[];
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
   const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
+  let assistantFocusRevision=0;
   const assistantRecoveryKey='photohouse.assistant.turn-recovery.v1',assistantRecoveryMaxChars=512;
   const words = {
     en: {manageMembers:'Review library members',revokeHelp:'Revoking access stops future requests to this library. Files already downloaded cannot be recalled.',revoke:'Revoke access',confirmRevoke:'Confirm revocation',cancel:'Cancel',confirmFor:'Revoke library access for',revoked:'Access revoked.',conflict:'Membership changed. Review the refreshed list before trying again.',owner:'Owner',viewer:'Viewer',contributor:'Contributor',approved:'Approved',requested:'Requested',rejected:'Rejected',unavailableMember:'Currently unavailable',memberRevoked:'Revoked',tagline:'A place for our memories',eyebrow:'YOUR FAMILY, TOGETHER',welcome:'The moments we keep close.',intro:'A private home for family photos. Sign in, or join with the invitation your library owner sent you.',signIn:'Sign in',join:'Join with an invitation',phone:'Phone number',phoneHelp:'Include the country code. Your phone number is your sign-in name.',password:'Password',passwordHelp:'Choose a passphrase of 8–128 characters.',invitation:'Invitation code',inviteHelp:'Use the code sent for this phone number. An accepted invitation opens that library.',help:'Need an invitation or help signing in? Contact your library owner.',yourLibrary:'YOUR FAMILY LIBRARY',gallery:'Little moments. Lasting memories.',signOut:'Sign out',libraryLabel:'Library',refresh:'Refresh',previous:'Previous',next:'Next',anotherInvite:'Have an invitation to another library?',accept:'Accept invitation',inviteSomeone:'Invite someone to this library',ownerHelp:'Create a code for their phone number, then send it privately. They join as a viewer. Original downloads are not included.',createInvite:'Create invitation',sendCode:'Send this code privately. It expires in 24 hours.',cancelInvite:'Cancel this invitation',close:'Close',download:'Download original',captionNote:'Generated descriptions may be inaccurate. Original downloads require separate permission.',footer:'PhotoHouse · Shared by invitation',checking:'Checking your session…',loading:'Loading your library…',denied:'Access could not be confirmed. Check your details or contact your library owner.',unavailable:'PhotoHouse is unavailable. Please try again later.',limited:'Too many attempts. Please wait before trying again.',changed:'Your access changed. Refresh or contact your library owner.',noLibrary:'No library is currently available. Ask your owner for an invitation.',noPhotos:'No photos are available in this library yet.',signedOut:'You are signed out.',logoutFailed:'Sign out could not be completed. Your photos are hidden; try Sign out again.',accepted:'Invitation accepted.',cancelled:'Invitation cancelled.',noCaptions:'No description is available yet.',edited:'Family description',generated:'Generated description',moreCaptions:'Only the first 20 descriptions are shown.',truncated:'Description shortened.',photo:'Photo',video:'Video',other:'Media',previewMissing:'Preview unavailable',working:'Please wait…',invalidPhone:'Include an explicit country code, for example +86.',invalidPassword:'Choose a passphrase of 8–128 characters.',page:'Page',of:'of',photos:'items'},
@@ -823,6 +824,7 @@
     finally{for(const part of parts)part.fill(0);try{await reader.cancel();}catch{}}
   }
   function currentAssistantTranscription(attempt){return assistantState.transcriptionAttempt===attempt&&assistantBindingCurrent(attempt?.binding)&&(!Number.isSafeInteger(attempt?.voiceToken)||currentAssistantVoice(attempt.voiceToken,attempt.binding));}
+  function recoverAssistantTranscriptionFocus(attempt,target){if(attempt.focusRecovery&&assistantFocusRevision===attempt.focusRevision&&currentAssistantTranscription(attempt))$(target).focus();}
   function currentAssistantCapture(attempt){return assistantState.captureAttempt===attempt&&assistantBindingCurrent(attempt?.binding);}
   function renderAssistantTranscriptLanguage(){
     const key=assistantState.transcriptLanguage==='zh'?'Zh':assistantState.transcriptLanguage==='en'?'En':assistantState.transcriptLanguage==='mixed'?'Mixed':'Unknown';
@@ -851,10 +853,10 @@
       throw error;
     } finally {state.controllers.delete(controller);if(assistantState.transcriptionController===controller)assistantState.transcriptionController=null;}
   }
-  async function transcribeAssistantRecording(file,binding,voiceToken=null) {
+  async function transcribeAssistantRecording(file,binding,voiceToken=null,focusRecovery=null) {
     if(assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy||assistantState.transcriptReviewPending||!assistantBindingCurrent(binding))return;
     if(Number.isSafeInteger(voiceToken)&&!currentAssistantVoice(voiceToken,binding))return;
-    const attempt={binding,voiceToken};assistantState.transcriptionAttempt=attempt;assistantState.transcribing=true;syncAssistantControls();$('assistant-status').textContent=t('assistantTranscribing');
+    const attempt={binding,voiceToken,focusRecovery:Boolean(focusRecovery),focusRevision:focusRecovery?.focusRevision};assistantState.transcriptionAttempt=attempt;assistantState.transcribing=true;syncAssistantControls();$('assistant-status').textContent=t('assistantTranscribing');
     try {
       const result=await requestAssistantTranscription(file,binding,attempt);
       if(!currentAssistantTranscription(attempt)||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy)return;
@@ -864,13 +866,14 @@
         assistantState.transcribing=false;assistantState.transcriptionAttempt=null;assistantState.voiceSession.phase='requesting';$('assistant-status').textContent=t('assistantVoiceWorking');syncAssistantControls();void submitAssistant(null,text,voiceToken);return;
       }
       assistantState.transcriptReviewBinding={...binding};assistantState.transcriptReviewPending=true;assistantState.transcriptLanguage=result.language;
-      $('assistant-transcript').value=result.text;$('assistant-transcript-review').hidden=false;renderAssistantTranscriptLanguage();$('assistant-status').textContent=t('assistantTranscriptReady');reportAssistantOutcome(assistantState.receipt,'displayed');
+      $('assistant-transcript').value=result.text;$('assistant-transcript-review').hidden=false;renderAssistantTranscriptLanguage();$('assistant-status').textContent=t('assistantTranscriptReady');reportAssistantOutcome(assistantState.receipt,'displayed');recoverAssistantTranscriptionFocus(attempt,'assistant-transcript');
     } catch(error) {
       if(error.name==='AbortError'||!currentAssistantTranscription(attempt))return;
       const asrKey=assistantAsrErrorKey(error),statusKey=asrKey&&!Number.isSafeInteger(voiceToken)?`${asrKey}Manual`:asrKey;
       $('assistant-status').textContent=statusKey?t(statusKey):error.message==='Invalid assistant recording'||error.message==='Invalid transcription response'?t('assistantTranscriptError'):t(assistantErrorKey(error));
+      if(!Number.isSafeInteger(voiceToken)&&attempt.focusRecovery)attempt.focusTarget='assistant-mic';
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice(asrKey||'assistantVoiceError');
-    } finally {if(assistantState.transcriptionAttempt===attempt){assistantState.transcribing=false;assistantState.transcriptionAttempt=null;syncAssistantControls();}}
+    } finally {if(assistantState.transcriptionAttempt===attempt){assistantState.transcribing=false;syncAssistantControls();if(attempt.focusTarget)recoverAssistantTranscriptionFocus(attempt,attempt.focusTarget);assistantState.transcriptionAttempt=null;}}
   }
   function acceptAssistantTranscript(){
     const binding=assistantState.transcriptReviewBinding;
@@ -1026,7 +1029,7 @@
         if(assistantState.capture===finishedCapture)assistantState.capture=null;
         if(annotationState.capture===finishedCapture)annotationState.capture=null;
         $('assistant-mic').setAttribute('aria-pressed','false');$('assistant-stop').hidden=true;$('assistant-recording-cancel').hidden=true;
-        void transcribeAssistantRecording(file,binding);
+        void transcribeAssistantRecording(file,binding,null,attempt.focusRecovery);
         if(!assistantState.captureStarting&&assistantState.captureAttempt===attempt)assistantState.captureAttempt=null;
       },30,{isCurrent:()=>currentAssistantCapture(attempt),signal:attempt.controller.signal});
       if(!currentAssistantCapture(attempt)){void capture.stop(false);return;}
@@ -1038,7 +1041,7 @@
   }
   function finishAssistantCapture(keep) {
     if(!assistantState.capture){const attempt=assistantState.captureAttempt;if(assistantState.captureStarting||attempt){assistantState.releaseRequested=keep;assistantState.cancelRequested=!keep;attempt?.controller?.abort();$('assistant-status').textContent=t(keep?'assistantCaptureNotStarted':'assistantCancelled');syncAssistantControls();return attempt?.done||Promise.resolve();}return Promise.resolve();}
-    const capture=assistantState.capture,attempt=assistantState.captureAttempt;assistantState.capture=null;$('assistant-mic').setAttribute('aria-pressed','false');$('assistant-stop').hidden=true;$('assistant-recording-cancel').hidden=true;
+    const capture=assistantState.capture,attempt=assistantState.captureAttempt;if(keep&&document.activeElement===$('assistant-stop'))attempt.focusRecovery={focusRevision:assistantFocusRevision};assistantState.capture=null;$('assistant-mic').setAttribute('aria-pressed','false');$('assistant-stop').hidden=true;$('assistant-recording-cancel').hidden=true;
     if(!keep)$('assistant-status').textContent=t('assistantCancelled');
     const stopped=capture.stop(keep);
     if(!keep&&assistantState.captureAttempt===attempt)assistantState.captureAttempt=null;
@@ -3433,6 +3436,7 @@
   $('assistant-text').addEventListener('input',()=>{if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){try{privateAssistant.setDraft($('assistant-text').value);}catch{}}syncAssistantControls();});
   $('assistant-clear').addEventListener('click',()=>{if(state.locked)return;if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){if(privateAssistant.state().pendingTurn||privateAssistant.state().pendingCreation){$('assistant-private-status').textContent=t('assistantPrivateUnknown');return;}void newPrivateConversation();return;}if(assistantState.receipt?.recovered&&!assistantState.receipt.recoveryCleared){acknowledgeAssistantRecovery();return;}if(assistantState.pendingTurn){$('assistant-text').value='';syncAssistantControls();return;}clearAssistantRecoveryPointer();resetAssistant();});
   $('assistant-cancel').addEventListener('click',()=>{if(!assistantState.busy)return;if(assistantState.pendingTurn){assistantState.pendingTurn.receipt.cancelled=true;renderAssistantPending();}$('assistant-status').textContent=t('assistantPendingCancelled');assistantState.controller?.abort();});
+  document.addEventListener('focusin',()=>{assistantFocusRevision++;},true);
   $('assistant-mic').addEventListener('pointerdown',event=>{if(!event.isPrimary||assistantState.capture||assistantState.captureStarting)return;event.preventDefault();assistantState.pressPointerId=event.pointerId;assistantState.ignoreMicClick=true;try{$('assistant-mic').setPointerCapture(event.pointerId);}catch{}void startAssistantCapture();});
   $('assistant-mic').addEventListener('pointerup',event=>{if(event.pointerId!==assistantState.pressPointerId)return;assistantState.pressPointerId=null;finishAssistantCapture(true);setTimeout(()=>{assistantState.ignoreMicClick=false;},0);});
   $('assistant-mic').addEventListener('pointercancel',event=>{if(event.pointerId!==assistantState.pressPointerId)return;assistantState.pressPointerId=null;finishAssistantCapture(false);setTimeout(()=>{assistantState.ignoreMicClick=false;},0);});

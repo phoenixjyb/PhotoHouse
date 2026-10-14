@@ -14925,6 +14925,73 @@
       "alembic_head_changed": false,
       "providers_activated": false,
       "generation_enabled": false
+    },
+    {
+      "feature": "voice-recovery-actions-and-offline-recording-journal-upgrade",
+      "source_commit": "a3527fb6bfc24df5b7fe0f3c1a5b3ceac8da7007",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": "69d083bc29ef06eff74b87319b015667b6cc484c78b646659a5c84bbbcb3e734",
+          "sha256": "ca9cf94b534d775ba0e3f809dcd9196f4ea384049dbe95cc2be3253fe3708dd8"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "a88afe9229ebe2a050515fcae358a3586f64c467277f6879b368dab8068da577",
+          "sha256": "21f0573955b28e3b70a0ac067bd635bb64af90867416afe94620db08894b90ea"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": "2417709e7b6d0aadbbef40d264259d37f5adaa739dfde863c0eef676ae0a3b73",
+          "sha256": "eb313cb3d7109c05d6b69e3f0cbacd660fb3dec141af58541ceba002cabdcc5d"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "abf6f72abfb97dc951fb268f0c97ad07a998766b500ec29af3d1c32b0e2b1569",
+          "sha256": "bd75791d730a841df0a2e5aaeaf75ada1fc7b5cb2b6c677e47be5b4feb33324a"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_WITHDRAWAL.md",
+          "before_sha256": "e9f8c530d10ce470be411445c35c1ee67768a6bad28ba086a8b6a63c32e787ad",
+          "sha256": "a7996b01c4126bf9488362b046ccf4f5ac7618b1dca33d80004f0d9fc48a1d1b"
+        },
+        {
+          "path": "docs/READER_PROGRESS_AND_SOURCES.md",
+          "before_sha256": "9b587d18a46d0d2a701de5ab149312106f0b56c75ed8237149a4397746b27cdb",
+          "sha256": "b9c708a8c6933849a70674c156be27fa9dcc839026d028c1e554ada146835e27"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9f5c9b70ca45fc1e64e92941b14d9f9671a3f73ad26b1877fe59f84e0c6a8709",
+          "sha256": "af2dbaabf5c3ddd47850d3764db6bee6140502e3b20d1a39e42f31c32ff61da2"
+        },
+        {
+          "path": "server/backend/app/access/original_deletions.py",
+          "before_sha256": "fc3b8e67072d37be6e9f99a1e1c8c8737841fdf665d9d82295fca8d1c408cb1d",
+          "sha256": "676ec70eb32a647b01e716189abddf92da3a3c3c5e29425da3f01ae4b4c1d84d"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "72d63670626e280dc10d4454ca276c2940412d49003cd6a88e411bbb3fe68375",
+          "sha256": "6ccc864a8e03bd5876b57e780be5fbaf260fd20cb6316264f3798d494cbd34c3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": "cf27d1618ca2f35bfeaa1347e76c093228b30c1c9c5a91066fa2ea611ab6901d",
+          "sha256": "a16356747d769f1955ea65a67d0b599a8d970db711ec89afbce7145f400b62a7"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_withdrawal.py",
+          "before_sha256": "591c0bb122f76cf62ef712effedd7b2407cce89663b82b5b8938e35339be2c65",
+          "sha256": "23fe0ad667638199153ddc2242076478025c599c419a4773a8daa01faa3c915f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
