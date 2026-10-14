@@ -33,7 +33,10 @@ closed-route assertions were updated for the reviewed action capability (163
 registered routes). The portable qualifier now exercises contextual actions in
 its existing eleven scenario groups, and a failure-injection test confirms the
 action dispatch gate is checked; 47 qualifier/closure/dispatcher tests and
-20 subchecks passed. Native Windows qualification remains pending.
+20 subchecks passed. The [fixed v58 phone/API candidate](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md)
+now records the configured unsigned APK, preserved icon, exact API archive and
+matching Android subtree across the two build revisions. Native Windows
+qualification remains pending.
 No live API switch, schema migration, signing, publication or physical phone/TV
 acceptance is claimed. Half-duplex turn taking remains in place; whole chapters,
 streaming/latency changes and speaking interruption are later stages.

@@ -14414,6 +14414,26 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-memory-v58-fixed-local-release-candidate-20261014",
+      "based_on_commit": "8bc60e816e321c5a6ea4e8ca7b1ecf797b236138",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "7e6d9ff2278356384c47a4eb990ae69a49f77ba89667effc8c313c3d819a96b9",
+          "sha256": "5b2c7df90084692e576aa00c36d64f20937e7831064e41e4b1751eb765c1a817"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "b9f6ab81d1941ee6f549c1d6c06f853824a338e44aff63fea4d0ed8022aa53ed"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
