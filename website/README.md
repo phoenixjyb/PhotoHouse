@@ -4,6 +4,17 @@ This is a Chinese-first, static project introduction. It is plain HTML and CSS,
 with original CSS/SVG illustration and the existing licensed PhotoHouse mark. It uses no JavaScript, external images,
 runtime services, forms, downloads, or build dependencies.
 
+## Published introduction
+
+[Open PhotoHouse](https://photohouse-family-memories.yanbophx.chatgpt.site).
+The private preview was verified and then made public at the owner's request.
+[Delivery record](RELEASE_2026-10-14.md) separates local layout checks, hosted
+readback and audience status. Development remains in this monorepo; the hosting
+repository is an immutable deployment mirror.
+
+Any static host can serve `dist/`; no application server or private configuration
+is needed. Keep hosting credentials and deployment-specific state outside Git.
+
 ## Preview locally
 
 From the repository root, run:

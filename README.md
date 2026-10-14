@@ -89,6 +89,7 @@ Web 可选的 Node/Playwright/Chromium 合成检查见[Web 开发](docs/WEB_DEVE
 
 ## 项目介绍与家庭记忆中心
 
-[介绍网站源码](website/README.md)用插画和虚构示例解释 PhotoHouse 的目的与功能。
+[打开项目介绍网站](https://photohouse-family-memories.yanbophx.chatgpt.site)，
+或查看[网站源码](website/README.md)。网站用插画和虚构示例解释 PhotoHouse 的目的与功能。
 [家庭记忆中心设计](docs/FAMILY_MEMORY_HUB.md)规划长篇口述、亲属与事件线索、多人补充及
 有来源的章节与回忆录；长录音和自动合写仍需后续开发与验收。

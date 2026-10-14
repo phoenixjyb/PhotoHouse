@@ -14679,6 +14679,36 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "introduction-site-private-preview-and-authorized-public-delivery-20261014",
+      "based_on_commit": "bd552a9685784266e5a70ecd47e13e98ee48ab57",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "c0da9b32a7e795df2d15f7584dcf8efb8b8309bd5783fe0df74ce94b640dd2a6",
+          "sha256": "89a3882b7c905925995ee7e71ffc054e4b059fd7f7b45a938fb4193fbfc40ee8"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "520ce53c78bc8899e57bad360cfa97ca7889a5821b686848a897736cd162911d",
+          "sha256": "dd395aa13f229d3d678251841b094f09a99d76bbb3ec09c7b6a459330249dc76"
+        },
+        {
+          "path": "website/README.md",
+          "before_sha256": "5e9a899e44d561b7278f1f507f879ce2e2eca7ce4106a48c5cdea7299663b96d",
+          "sha256": "20b413b7a0911029696a8313e2c62ab50eebff6d66d404898cb9fdd1700c95fc"
+        },
+        {
+          "path": "website/RELEASE_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "4b36627f7d33cc30efd27286f847c420ce70650529eb9909083a7505f33c2d17"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

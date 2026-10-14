@@ -13,6 +13,7 @@ snapshot; refresh runtime evidence before the next operation.
 | Primary database | `a0c9d2e4f817` verified by the deployment; no migration | Optional later schema/feature activation and paired recovery qualification |
 | Phone | v58 / `0.58-contextual-memory-actions`, signed and published to Windows HTTPS OTA | v58 physical installation and family listening acceptance |
 | TV | v30 / `0.30-library-recovery` OTA manifest verified unchanged | Physical projector/library/playback check; Home TV task awaits interactive desktop session |
+| Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 | Public source | Monorepo is the development home; this review checks local source and retained receipts | Remote branch/CI freshness was not verified: GitHub CLI authentication returned HTTP 401 and the anonymous API check was unavailable |
 
 [Phone/API delivery](../clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md)
