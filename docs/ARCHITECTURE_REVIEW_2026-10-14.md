@@ -91,9 +91,11 @@ the microphone off. Focused held-restore voice/recovery journeys pass. Phone
 composer text is hoisted only within the live assistant host so My conversations
 round trips preserve it without persistent storage or automatic submission.
 Complete integrated profiles and delivery remain separate gates.
-The generated oral-history qualification now covers four content-free groups
-and ten cases with `experimental_fixture_schema=true`, guarded V3/V4 journal
-replay, withdrawal and retained source bytes. It does not qualify production
+The generated oral-history qualification now covers five content-free groups
+and twelve cases with `experimental_fixture_schema=true`, guarded V3/V4 journal
+replay, withdrawal, populated legacy history, interrupted paired commits and
+retained source bytes. The frozen v59 package remains four groups / ten cases.
+This does not qualify production
 admission, transport or erasure.
 
 The API source-package plan is now 201 files. Earlier dated records that say

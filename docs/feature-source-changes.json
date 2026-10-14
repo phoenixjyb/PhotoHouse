@@ -16304,6 +16304,57 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "v60-artifact-record-and-independent-browser-fixture-review",
+      "source_commit": "53e3954725197906771b6dd6ca470a0d1d58da9d",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "1072f87ebb7c3cb0a0c1a4355e4accdf132ad0619c52b04534adb557d6a6c9de"
+        },
+        {
+          "path": "docs/ARCHITECTURE_REVIEW_2026-10-14.md",
+          "before_sha256": "5bac0dbeabca371080f5bf7b0433382760a0e6e9748f93b02ac68cb15196cca0",
+          "sha256": "6f80bc33e33f481d939d888cd042c097b4372de984bec3a9cf1668b609d2e6a4"
+        },
+        {
+          "path": "docs/ASSISTANT_FLUID_EXPERIENCE.md",
+          "before_sha256": "10d3c3ae63bf358994a2aa5ef63db74c728619d29f2e6361718cacfb5bacc5da",
+          "sha256": "42801f1c5ef9461bf2e4e643ee749f460f409fabd099b314963ee6da290a6185"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5fd32468dafed7eb925a1fc62cd4f70be75a3b029ba20dfd101392bed077460d",
+          "sha256": "39e5bea2a6d3c0a9efbd9875e2c7251ae6085912ef08e1a954970763b7fa30f0"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "32b727de20921724a067157202fdad3894f17341a5a3b494986c259867de1a29",
+          "sha256": "7f5b5298e9245b9fcca87da1606bfa3882ab669763943202c0b731f25156f364"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "c3630087d9a289928b1d99614611de85a84e8d5496cae9cbfafd320cee02c53f",
+          "sha256": "3884cb061b80b384a52523515cfe2d2ca6d66e3ae201619c7db11665647fa9c8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "4a4f97380c84a2849d67b1a27c03e298fd0cea8b619893b2605d0d810c8d4b71",
+          "sha256": "2a1ec517a81f11b58f82a6fc93e275dd45eeb00a2dcc0b2de76db2370fc39c1b"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "dcb78f63bceeacf57f189b4274cc3b7ec6d0213829a526f88d804de2963ac533",
+          "sha256": "6d170346916986a634a7083066916f1feb79c3d4453ffbe0b8e709083db30d65"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

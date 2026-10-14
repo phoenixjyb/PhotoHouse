@@ -2606,7 +2606,7 @@ the reader viewport increases by about 125 dp / 94 dp and all navigation targets
 measure 48 dp. Existing guarded story/chapter callbacks and explicit fetches are
 retained.
 
-The next generated oral-history runner appends populated-V3 preservation and
+This generated oral-history increment appended populated-V3 preservation and
 journal-commit/primary-rollback/reopen/replay cases: five groups / twelve cases,
 with 49 focused tests passing and all production capabilities still unavailable.
 This does not change the frozen v59 four-group/ten-case native proposal. Initial
@@ -2633,3 +2633,32 @@ trial now distinguish original photo memories, saved stories and memoirs.
 
 Full integrated profiles and exact immutable v60 package identities follow the
 source freeze; focused results alone do not qualify a release.
+
+
+### October 15 v60 immutable local candidates
+
+Artifact source `53e3954` passed the complete API profile: **1,495 tests /
+915 subchecks** plus the no-listener generated demo, with unchanged inputs.
+The complete Android JVM/lint/debug-build profile and separate configured offline
+release assembly/lint passed. The v60 unsigned APK retains the original icon
+pixels and all 17 private profile fields; it has not been signed or published.
+The [candidate record](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md)
+binds exact APK, Android subtree, 201-file ZIP and manifest identities. The
+extracted archive passed twelve assistant groups and five experimental oral-history
+groups / twelve cases on Mac; this is not native Windows qualification.
+
+The first full Web run at this source failed a synthetic 150% memoir fixture:
+it modified inherited styles while computing descendant sizes and reused the
+already-scaled dialog for the English journey. The repair snapshots all computed
+values first and restores original inline styles before reuse. Its 29-check
+focused Edge journey passes with the strict bilingual viewport and speech
+lifecycle assertions retained. The measured root is 16 px / 24.8 px before,
+24 px / 37.2 px while enlarged, and 16 px / 24.8 px after restoration. The full
+failed receipt remains retained; a new complete Web invocation follows this
+fixture-only review freeze.
+
+A 06:17 Beijing read-only Windows inventory matches all 66 earlier task XML/enabled
+identities and the incumbent configuration hash. Eight identified task processes
+remain owned and running; Home TV remains a separate interactive-logon dependency.
+The 06:20 resource sample reports about 53 GiB free system RAM and an idle RTX3090.
+No production database was opened and no model, task or service was changed.

@@ -31,7 +31,7 @@ acceptance remain in the trial above.
 
 The frozen v59 source now has complete local API, Android and Web qualification;
 the conditional native/API/phone delivery proposal is prepared. Its family trial
-remains ahead of broader autonomous narration. A separate next UI slice adds
+remains ahead of broader autonomous narration. The current local v60 increment adds
 [temporary reading-size controls](READER_TEXT_SIZE.md) for story and memoir prose,
 while keeping the current chapter and contribution drafts.
 
@@ -133,17 +133,21 @@ introduction uses fictional examples/cartoon illustrations, never family media.
 **Source progress:** the [intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md)
 implements bounded ordered WAV sections and exact receipts with generated
 reopen/concurrency/rollback evidence. It stays internal and default-off; no
-transport, migration or recorder is delivered. Next is withdrawal/journal replay
-and admission, then a client pilot that clearly distinguishes saved and retrying.
+transport, migration or recorder is delivered. Withdrawal, journal replay and the
+internal V3→V4 writer-fenced upgrade primitive are implemented and tested. The
+remaining sequence is operator/native upgrade qualification, production admission
+and erasure, then a client pilot that clearly distinguishes saved and retrying.
 
 October 15 source work implements author-only retained-source withdrawal and
-V4 journal prefix replay with generated fixtures. Next qualify a journal/schema
-upgrade, production admission and permanent erasure before exposing the long
+V4 journal prefix replay with generated fixtures. Qualify an operator upgrade
+controller, native admission and permanent erasure before exposing the long
 recording transport. See [withdrawal](ORAL_HISTORY_WITHDRAWAL.md).
 
 The source now includes the internal V3→V4 upgrade primitive with writer-fence
-and final revalidation tests, plus a [four-group generated rehearsal](ORAL_HISTORY_QUALIFICATION.md)
-covering durable section receipts, withdrawal and older-prefix replay. It does
+and final revalidation tests, plus a [five-group / twelve-case generated rehearsal](ORAL_HISTORY_QUALIFICATION.md)
+covering durable section receipts, populated legacy preservation, withdrawal,
+older-prefix replay and interrupted paired commits. The frozen v59 archive
+retains its four-group / ten-case proposal. It does
 not yet include an operator upgrade controller, native upgrade qualification or
 live migration.
 

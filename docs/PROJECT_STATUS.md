@@ -3,8 +3,9 @@
 Reviewed **2026-10-15**. The frozen v59 candidate is source `816b9b5`;
 its complete Web qualification uses fixture-only review commit `8d0e425` with
 identical packaged runtime files. The read-only Windows task/process snapshot
-was refreshed at **04:41 Beijing (20:41 UTC on October 14)**; GPU resources were
-sampled at 04:47. Runtime and local source remain separate evidence. The v59
+was refreshed at **06:17 Beijing (22:17 UTC on October 14)**; resources were
+sampled at 06:20. All 66 task XML/enabled identities and the incumbent config
+hash remain unchanged from 04:41. Runtime and local source remain separate evidence. The v59
 conditional delivery proposal awaits this operation's approval; no overnight
 service switch, signing or publication has occurred.
 
@@ -101,7 +102,7 @@ Complete the prepared conditional v59 qualification → API/Web switch → phone
 OTA sequence only after its operation approval. Preserve the original signer,
 fresh stopped-writer backup, worker restoration, unchanged schema/configuration
 and guarded recovery. Then run the family trial with both owner and member
-accounts. The next local UI slice adds temporary prose-size controls for story
+accounts. The current local v60 source increment adds temporary prose-size controls for story
 and memoir readers; it is outside the fixed v59 artifacts.
 
 The latest resource sample observed about 53 GiB free system RAM; the RTX 3090

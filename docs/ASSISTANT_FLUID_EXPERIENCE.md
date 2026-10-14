@@ -2,6 +2,11 @@
 
 ## Goal and delivery boundary
 
+> This is the original v57-based interaction design. The maintained
+> [Project Status](PROJECT_STATUS.md) records the later live release. October 15
+> local source adds [explicit first-section narration](ASSISTANT_SEGMENT_READING.md);
+> later chapters, voice-requested continuation and barge-in remain future work.
+
 拾光助手 should feel like a companion who understands the current conversation
 and the memories on screen. Voice, text, source cards and readers belong to one
 journey. Personal preferences belong to the account; a family story remains a
