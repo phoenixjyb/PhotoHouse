@@ -2549,3 +2549,46 @@ server-owned turns, then require the complete unlocked controller state. Both
 original optional-feature fallback journeys remain intact. A settled flag is
 asserted after the bounded wait, so timeout or an incomplete capability refresh
 cannot pass. The focused 27-checkpoint Edge journey passes.
+
+
+### October 15 v59 local qualification freeze
+
+The immutable artifact source is `816b9b5`. Its complete API profile passed
+**1,495 tests / 915 subchecks** plus the generated no-listener demo; its complete
+Android JVM/lint/debug-build profile also passed. Both invocation receipts bind
+unchanged inputs. Configured unsigned phone v59 assembly/lint, embedded profile
+checks and original icon-pixel verification passed separately.
+
+The complete Web profile subsequently passed in Edge at `8d0e425`, with an
+unchanged-input receipt. All 201 packaged API/runtime files and the complete
+Android subtree at that review commit match the immutable source. Earlier failed
+full runs and their precise fixture repairs remain above; they are not counted
+as successful qualification.
+
+The exact extracted archive passed twelve assistant scenario groups and four
+experimental oral-history groups / ten cases on Mac. Guarded native qualification,
+API backup/cutover/worker recovery and original-certificate phone OTA operations
+are prepared privately and await their conditional operation approval. Read-only
+Windows parsing and pure in-memory report/ACL checks are preparation evidence,
+not execution of the candidate on Windows. No model, production database, service
+change, signing, publication or family listening was performed by this freeze.
+
+### October 15 reading comfort source increment
+
+The next local source increment reserves phone v60 and adds temporary prose-size
+controls. It remains outside the fixed v59 archive/APK. Smaller, standard and
+larger settings resize narrative prose without replacing the reader, changing
+its selected chapter, restarting speech or submitting a draft.
+
+API 36 emulator journeys passed eight saved-story and two memoir cases; main
+and instrumentation Kotlin compilation and debug lint passed. The Chinese and
+English readers were rendered and inspected at 150% text. Focused Edge story,
+editorial memoir, source-reference and editable community journeys cover actual
+prose size, accessible selection/targets, retained navigation/scroll and a real
+unsent memoir instruction. The read-only fixture remains disabled. The existing
+160 px second-frame mobile rule remains intact; its regression assertion caught
+and prevented an accidental CSS deletion during this slice.
+
+These generated checks do not grant deployment, signing, publication or physical
+family acceptance. Complete integrated profiles will bind this source increment
+separately from the v59 qualification freeze above.

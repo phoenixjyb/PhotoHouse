@@ -1,9 +1,12 @@
 # Current project status
 
-Reviewed **2026-10-14**, against source `86a154e`, the v58 delivery receipts and a
-read-only Windows snapshot at **19:44 Beijing (11:44 UTC)**. Documentation edits
-are separate from the immutable deployed artifacts. This page is a dated status
-snapshot; refresh runtime evidence before the next operation.
+Reviewed **2026-10-15**. The frozen v59 candidate is source `816b9b5`;
+its complete Web qualification uses fixture-only review commit `8d0e425` with
+identical packaged runtime files. The read-only Windows task/process snapshot
+was refreshed at **04:41 Beijing (20:41 UTC on October 14)**; GPU resources were
+sampled at 04:47. Runtime and local source remain separate evidence. The v59
+conditional delivery proposal awaits this operation's approval; no overnight
+service switch, signing or publication has occurred.
 
 ## Delivery and acceptance
 
@@ -14,7 +17,8 @@ snapshot; refresh runtime evidence before the next operation.
 | Phone | v58 / `0.58-contextual-memory-actions`, signed and published to Windows HTTPS OTA | v58 physical installation and family listening acceptance |
 | TV | v30 / `0.30-library-recovery` OTA manifest verified unchanged | Physical projector/library/playback check; Home TV task awaits interactive desktop session |
 | Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | Monorepo is the development home; this review checks local source and retained receipts | Remote branch/CI freshness was not verified: GitHub CLI authentication returned HTTP 401 and the anonymous API check was unavailable |
+| Public source | Monorepo is the development home; overnight commits, source overlays and local checks are retained | Remote refs and hosted CI were not refreshed in this round; the earlier authentication failure remains historical evidence |
+| Frozen next candidate | v59 API/Web source `816b9b5`, 201 files; unsigned phone v59, original icon pixels verified; API/Android/Web complete profiles pass | Explicit conditional approval, native generated qualification, guarded API delivery, original-certificate signing and phone OTA readback |
 
 [Phone/API delivery](../clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md)
 records exact artifact hashes and source provenance. Native Windows verification
@@ -55,29 +59,56 @@ this audit. Retain failure rows and resume unfinished items; use the
 [recovery planner](VIDEO_SOURCE_RECOVERY.md) before any separately authorized
 repair. No source file or failed record was replaced or reset here.
 
-## Current source qualification
+## Current local qualification
 
-- Full API profile at the v58 qualification revision: 1,426 tests and 862
-  subchecks, plus the generated no-listener demo.
-- Exact source ZIP: eleven synthetic qualification groups passed on Mac and
-  native Windows under the reviewed resource limits.
-- Android and Web feature tests, large-text emulator/browser checks and release
-  assembly/lint are recorded in the [candidate](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md).
-- Phone delivery: 16 local operation checks, five generated native script parses,
-  original-certificate signing and native/HTTPS publication checks passed.
+- API at the immutable v59 source `816b9b5`: **1,495 tests / 915 subchecks**
+  plus the generated no-listener demo; unchanged-input invocation receipt.
+- Android at that same source: complete JVM, lint and unconfigured debug-build
+  profile passed with an unchanged-input receipt. Configured unsigned release
+  assembly/lint and original-icon/profile verification passed separately.
+- Full Web at `8d0e425`: all selected Node/browser suites passed in Edge with an
+  unchanged-input receipt. The intermediate failed runs remain recorded; their
+  fixture readiness/response repairs retained the original assertions.
+- Every one of the 201 packaged runtime files matches the later Web review
+  commit. Its complete Android subtree also matches the frozen phone source.
+  Later reading-comfort work is a separate next-version source increment.
+- The exact extracted API archive passed twelve assistant scenario groups and
+  four experimental oral-history groups / ten cases on Mac. This is generated
+  fixture evidence; the matching bounded Windows execution is still pending.
+- Portable tooling passed 158 standard-library tests; source-overlay and local
+  documentation-link checks passed. No hosted CI result is claimed.
 
-These scopes overlap and are not summed. No new full application build or hosted
-CI run is implied by documentation/link checks. [Development](DEVELOPMENT.md)
-retains dated qualification history; [Features](FEATURES.md) is the capability
-matrix and [Roadmap](ROADMAP.md) is the active priority list.
+These scopes overlap and are not summed. The [v59 phone/Web trial](../clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md)
+is ready for use after delivery. Physical phone/member voice, Chinese listening
+quality and deferred projector acceptance remain open. Earlier v58 delivery
+qualification remains in its [candidate record](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md).
 
-## Next decision
+## Next delivery and development
 
-Complete the [v58 family test](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md),
-then implement bounded assistant chapter continuation/progress. In parallel,
-prepare a small grounded story/grouping quality pilot and portable release/recovery
-tooling. New models, schema changes, service controls and public publication keep
-separate qualification and operation authority.
+Complete the prepared conditional v59 qualification → API/Web switch → phone
+OTA sequence only after its operation approval. Preserve the original signer,
+fresh stopped-writer backup, worker restoration, unchanged schema/configuration
+and guarded recovery. Then run the family trial with both owner and member
+accounts. The next local UI slice adds temporary prose-size controls for story
+and memoir readers; it is outside the fixed v59 artifacts.
+
+The latest resource sample observed about 53 GiB free system RAM; the RTX 3090
+reported 0 MiB used at 0% utilization, and the P2000 about 81 MiB used. A single
+idle sample does not establish loaded providers, queue completion or speech
+quality. No model inference or production database was opened for these samples.
+
+Prepare a grounded story/grouping quality pilot and portable release/recovery
+tooling after closing delivery and family-feedback gaps. New providers,
+schema/feature activation and TV publication retain their own qualification and
+operation scope.
+
+## Earlier progress notes
+
+The notes below retain intermediate package counts and then-pending work.
+The current qualification and delivery sections above supersede those dates.
+
+<details>
+<summary>Expand the earlier October 15 source increments</summary>
 
 ## Later source increment: oral-history intake
 
@@ -208,3 +239,5 @@ changes, same-thread revision refresh and zero turn/transcription/capture side
 effects. The transient holder clears with account/library/protection scope or
 assistant-host closure. This does not add persistence or silently choose a
 conversation for an unsent request.
+
+</details>

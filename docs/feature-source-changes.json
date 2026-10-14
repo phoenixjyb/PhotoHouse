@@ -15991,6 +15991,127 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "local-story-memoir-reading-size-and-current-qualification-docs",
+      "source_commit": "8d0e425b61daefe2552f7417ccbd10cf34e3c415",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "8524e090610cfa678300c1d25d709778be477abb11ac09c9917a49177574b9e5",
+          "sha256": "95bc4bdc412c7ed0a522bb5d47d1c6715e13a7371e041466eb019041e4a50605"
+        },
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "8acc6a4dd03afaa4a5ea4427adf352c8a71fa527246fbb78b8e9904c8332b5c5",
+          "sha256": "916c9c78867e4cfcb42a7ec13b8fccc2842cedd84625b41a34219c50bab0d43e"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderContentsUiTest.kt",
+          "before_sha256": "feccddcc2bce297882816058efbb6cd12b5d40c6132bb544b9b279d1115982ef",
+          "sha256": "107dd27d4480e9cad85508531920728a89e76b49f412b2c9ad919968f7f656a9"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedMemoryReaderNavigationUiTest.kt",
+          "before_sha256": "e7c04e5024fe47a7b5a3b380449676870d910e1b5b63bda24f34f04b23c5c9d2",
+          "sha256": "f0dbf589f657e114b584c6b2609b39874d7042a0add6a23b8cf92ec207042e1f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "ce3abab459c4e3b21180221ffb298f4560417c5b4b9404ae824d825a88a6bc66",
+          "sha256": "b316603f7d70a5489a1a357fc4ad3a786fdfabbefabaabc952d3d446d7be1f21"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ReaderTextSizeControls.kt",
+          "before_sha256": null,
+          "sha256": "d3c10c5cd02e1429d5e6c49b6a5625829890a13af92bddd8828bb505c7a05d60"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/SavedMemoryStoriesDialog.kt",
+          "before_sha256": "2aa1dd0b59ea9512c249100f3e68e6f8fb81d4d6da6274740d9cadd017b22d7c",
+          "sha256": "830cf76628999accff5cf269304d0b637eccb56f70bb09bd9f93a7a6bfe80b3a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md",
+          "before_sha256": "629ab5d5bc95509069b99fc5f31d04db3d653beb55988b1eeb7a85bedc08a230",
+          "sha256": "e2e2757b633c657a356bc28d4945cc9211293112d766496c4b6d8e46e75ef0bc"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "64fb9edcafcfb451a21832326fcbbaf6219366a4a3aef69859dd5fc10f78bcfb",
+          "sha256": "7493565508fe0ad1bade04e71efb8d54803b81a1991155932e535ebc9d1f4659"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2206d5ff245ec3d7b1691a6cb895f05e8b3270425f2988f26526b41423867221",
+          "sha256": "403d1d4f95291433c6ef4bb90b94208d783f30b649f87c5ea42550f49c075db9"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b67e5bd16793f5a4d8fe3c53ff6fe364e2c0c05899c130c4ac513fdb3bfbc7b7",
+          "sha256": "def6f7e4a1a703ff312b92ad9a635260094946b7a9e8d2eb61c9e3f93f3ce7f6"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "511da7aec7ab54c464916fb0ef51a2606d5b734fc164c65479b8d457c7be1d8e",
+          "sha256": "b835b6883b66763df880a69ae12c4de27b026ff052ff8d7b3e9c65726c57cc2e"
+        },
+        {
+          "path": "docs/READER_TEXT_SIZE.md",
+          "before_sha256": null,
+          "sha256": "fe6028ce3b8a82c5bc9141323553035f8ca9965234b82457ad6911a2a0c5d25d"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "18e6ffd3cce68f2f805dd415108d8151bf2e245a055d4171d5573938137e1c69",
+          "sha256": "d797eeabcc3d0ee8717edc4c1fafcfde6836f664f38042f125bb7adac01927f4"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "d02bf8fae472381e9cc5386ec6c28e445972e2071534ec8d4d533ecf6c58c956",
+          "sha256": "1ed6693c81a1ccb2221ede2f7aca75b699481be37ea922f558dd0e7fc7d2cc42"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "9f279a115d904261c954b6640f3b673204d111e4682a046a944a75be0dfe429d",
+          "sha256": "8225d0975350b6253a48bb8f394530db7f73d3c6d3718b794f73b150e79c2c63"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "ca8601ca337d2d3485496cce8e3b6de38531b15df7e746c4e3ac1afdaf56c7df",
+          "sha256": "3e2049594c7f2992f9b640fd3979324e3804365781067b119dce8bd7250d03ea"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "5d648e8ae5b0e54f022fd5f1e0214b6d66d3f935f5901de129751d0bd280163d",
+          "sha256": "1780efadba5b84e05a4793c01c680ad474ba0891c1bb62f9ed85b01113b8c386"
+        },
+        {
+          "path": "server/tests/security/test_memoir_source_refs_browser.cjs",
+          "before_sha256": "fcdf9d93847b2b790aa7d494da8adf6105607447e0eda70d145ebc6771daa5b8",
+          "sha256": "3e7fd24b69daa57190c02738bad5247addc19a3bf8db61faa3056c09cc1b40d3"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
+          "before_sha256": "d560063c2d86cfe3194a224a11009430943e7d1a6728167b4f7e3dd700e0c5b1",
+          "sha256": "feda23d5815be621f2b8b1f32d4cbb824b9277f81151c2e9a89027b7379e426d"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "ee207f42e9b4eeb3d72bce19ac07d0c25d0e02682750b2308a3725e08c451378",
+          "sha256": "2d2ac57c902cf761e341b2ac8faec99d9ea9fe3add8de4f78498cfbb523173b1"
+        },
+        {
+          "path": "server/tests/security/test_story_reader_frames_browser.cjs",
+          "before_sha256": "ec8941ada65eff114cbd49f8f85441f109c4bdce5e89c59ef956a75329260ae3",
+          "sha256": "217da3d84d9eceeeb7956c3df6aef0c626c5bc6964bbb1253e1667273520edb0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

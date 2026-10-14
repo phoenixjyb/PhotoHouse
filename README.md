@@ -7,9 +7,13 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 
 ## 现在在哪里
 
-截至 **2026-10-14**：API/Web v58 对应源码已部署，手机 **v58** 已签名并发布到
+截至 **2026-10-15** 的只读核对：API/Web v58 对应源码已部署，手机 **v58** 已签名并发布到
 Windows HTTPS OTA，TV OTA 保持 **v30**。原图标和签名保留。手机安装、家庭实际
 语音体验与投影仪检查仍需验证；发布成功不等于这些体验已验收。
+
+下一份 v59 候选已完成本地 API、Android 和完整 Web 检查，等待本次 Windows
+验证、服务切换和签名发布授权；[v59 验收清单](clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md)
+区分已保存首章／引言分段朗读、连续语音、恢复和实体设备听感。
 
 [当前状态](docs/PROJECT_STATUS.md)记录源码、运行配置及验收边界，
 [v58 试用说明](clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md)给出已核对的语音短句。

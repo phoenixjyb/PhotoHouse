@@ -292,10 +292,38 @@ class SavedMemoryReaderNavigationUiTest {
                 visibleLabel.right <= visibleButton.right && visibleLabel.bottom <= visibleButton.bottom)
     }
 
+    private fun selectSavedStoryTextSize(preset: String, visibleLabel: String) {
+        val option = rule.onNodeWithTag("saved-memory-reader-size-$preset").performScrollTo()
+        option.assertTextContains(visibleLabel)
+        assertTrue("reader text-size option must have a 48dp touch target",
+            (option.getUnclippedBoundsInRoot().bottom - option.getUnclippedBoundsInRoot().top).value >= 48f)
+        option.performClick()
+        option.assertIsSelected()
+    }
+
+    private fun savedStoryProseHeight(tag: String): Float {
+        val bounds = rule.onNodeWithTag(tag).performScrollTo().getUnclippedBoundsInRoot()
+        return (bounds.bottom - bounds.top).value
+    }
+
     @Test fun englishReaderAtLargeTextKeepsFooterSeparatedAndNavigationExplicit() {
         openReader(zh = false)
         assertEquals("the store's initial read supplies the first chapter hero", 1, api.previewCalls)
         assertTrue("opening a story must not emit a frame-selection callback", selectedFrames.isEmpty())
+        rule.onNodeWithTag("saved-memory-reader-size-default").assertIsSelected()
+        val defaultNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        selectSavedStoryTextSize("smaller", "Smaller")
+        val smallerNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        selectSavedStoryTextSize("default", "Default")
+        selectSavedStoryTextSize("larger", "Larger")
+        val largerNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        assertTrue("smaller preset reduces narration line height", smallerNarrationHeight < defaultNarrationHeight)
+        assertTrue("larger preset increases narration line height", largerNarrationHeight > defaultNarrationHeight)
+        rule.onNodeWithTag("saved-memory-reader-size-controls").performScrollTo()
+        capture("saved-memory-reader-size-en-larger-150.png")
+        assertEquals("font controls must not load media", 1, api.previewCalls)
+        assertTrue("font controls must not change selection or open media",
+            selectedFrames.isEmpty() && selectedChapters.isEmpty() && openedAssets.isEmpty())
 
         scrollReaderUntilFrameVisible("2")
         rule.onNodeWithTag("saved-memory-frame-2").performClick().assertIsSelected()
@@ -334,6 +362,20 @@ class SavedMemoryReaderNavigationUiTest {
 
     @Test fun chineseReaderAtLargeTextShowsChapterStatusAndFramePosition() {
         openReader(zh = true)
+        rule.onNodeWithTag("saved-memory-reader-size-default").assertIsSelected()
+        val defaultNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        selectSavedStoryTextSize("smaller", "较小")
+        val smallerNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        selectSavedStoryTextSize("default", "标准")
+        selectSavedStoryTextSize("larger", "较大")
+        val largerNarrationHeight = savedStoryProseHeight("saved-memory-narration")
+        assertTrue("小字号应缩小正文行高", smallerNarrationHeight < defaultNarrationHeight)
+        assertTrue("大字号应增大正文行高", largerNarrationHeight > defaultNarrationHeight)
+        rule.onNodeWithTag("saved-memory-reader-size-controls").performScrollTo()
+        capture("saved-memory-reader-size-zh-larger-150.png")
+        assertEquals("字号控制不应读取媒体", 1, api.previewCalls)
+        assertTrue("字号控制不应导航章节、片段或原图",
+            selectedFrames.isEmpty() && selectedChapters.isEmpty() && openedAssets.isEmpty())
         scrollReaderUntilFrameVisible("1")
         rule.onNodeWithTag("saved-memory-chapter-position").assertTextContains("第 1/4 章")
         rule.onNodeWithTag("saved-memory-frame-position").assertTextContains("片段 1/2")
@@ -358,6 +400,7 @@ class SavedMemoryReaderNavigationUiTest {
 
     @Test fun frameSelectionResetsWhenRevisionAssetOrderLibraryOrAccountChanges() {
         openReader(zh = false)
+        selectSavedStoryTextSize("larger", "Larger")
         scrollReaderUntilFrameVisible("2")
         rule.onNodeWithTag("saved-memory-frame-2").performClick().assertIsSelected()
         assertEquals(listOf("2"), selectedFrames)
@@ -366,6 +409,7 @@ class SavedMemoryReaderNavigationUiTest {
         api.firstChapterAssetIds = listOf("2", "1")
         reopenStory()
         rule.onNodeWithTag("saved-memory-frame-2").assertIsSelected()
+        rule.onNodeWithTag("saved-memory-reader-size-default").assertIsSelected()
 
         // Even if a server accidentally leaves revision unchanged, the ordered current chapter IDs are part of the UI key.
         api.firstChapterAssetIds = listOf("1", "2")
@@ -376,6 +420,7 @@ class SavedMemoryReaderNavigationUiTest {
         rule.waitUntil(10_000) { store.state.value.library == "library-b" && !store.state.value.busy }
         reopenStory()
         rule.onNodeWithTag("saved-memory-frame-1").assertIsSelected()
+        rule.onNodeWithTag("saved-memory-reader-size-default").assertIsSelected()
 
         rule.runOnUiThread { store.logout() }
         rule.waitUntil(10_000) { store.state.value.session == null }
@@ -387,6 +432,7 @@ class SavedMemoryReaderNavigationUiTest {
         rule.runOnUiThread { store.openSavedMemoryStory(api.summary) }
         rule.waitUntil(10_000) { store.state.value.savedMemoryStories?.detail != null && !store.state.value.savedMemoryStories!!.framesBusy }
         rule.onNodeWithTag("saved-memory-frame-1").assertIsSelected()
+        rule.onNodeWithTag("saved-memory-reader-size-default").assertIsSelected()
     }
 
     @Test fun missingCurrentStoryAssetCannotKeepAStaleSelectedFrameOrHero() {

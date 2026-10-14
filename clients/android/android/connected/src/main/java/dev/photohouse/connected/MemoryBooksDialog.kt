@@ -49,6 +49,10 @@ internal fun MemoryBooksDialog(
     val index = reading.storyIndex
     val story = reading.story
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
+    var readerTextSize by remember(
+        liveState.session?.account_id, liveState.generation, reading.library, book?.id, book?.revision,
+        book?.stories?.map { it.id to it.revision },
+    ) { mutableStateOf(ReaderTextSizePreset.DEFAULT) }
     // Capture rendered values, not whichever reader happens to be current when a callback runs.
     val navigation = book?.let { selectedBook ->
         liveState.session?.account_id?.let { account ->
@@ -200,6 +204,12 @@ internal fun MemoryBooksDialog(
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(memoirReaderScroll)
                                     .testTag("memory-book-reader-scroll"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    ReaderTextSizeControls(
+                                        selected = readerTextSize,
+                                        zh = zh,
+                                        tagPrefix = "memory-book-reader-size",
+                                        onSelect = { readerTextSize = it },
+                                    )
                                     if (book.canEdit && navigation != null) {
                                         OutlinedButton(onClick = attachedMemoirShelfAction { store.startSavedMemoryBookEdit(navigation) },
                                             enabled = store.canStartSavedMemoryBookEdit(navigation),
@@ -210,7 +220,7 @@ internal fun MemoryBooksDialog(
                                     if (book.introduction.isNotBlank()) {
                                         Column(Modifier.fillMaxWidth().testTag("memory-book-introduction-section"),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Text(book.introduction, style = MaterialTheme.typography.bodyLarge)
+                                            Text(book.introduction, style = readerProseStyle(MaterialTheme.typography.bodyLarge, readerTextSize))
                                             MemoryBookIntroductionNarration(
                                                 scope = MemoryBookIntroductionNarrationScope(
                                                     accountId = liveState.session?.account_id.orEmpty(),
@@ -281,7 +291,8 @@ internal fun MemoryBooksDialog(
                                                 else Text(if (reading.heroUnavailable) t("Preview unavailable", "预览不可用") else t("Select a moment", "选择一个片段"))
                                             }
                                             Text(chapter.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("memory-book-chapter-title"))
-                                            Text(chapter.narration, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("memory-book-story-text"))
+                                            Text(chapter.narration, style = readerProseStyle(MaterialTheme.typography.bodyLarge, readerTextSize),
+                                                modifier = Modifier.testTag("memory-book-story-text"))
                                             ChapterSourceReferences(
                                                 chapterSourceReferences(chapter, story), zh, sourcesExpanded,
                                                 { sourcesExpanded = it }, "memory-book-sources",

@@ -466,6 +466,15 @@ editable draft only when existing draft, dictation and pending-send guards allow
 it. No cue starts recording, submits a message or applies a proposal.
 
 
+### Reader presentation state
+
+The next [reading-size controls](READER_TEXT_SIZE.md) are ephemeral client
+presentation state. A reader-owned preset scales narrative prose while preserving
+system text scaling. Chapter/frame and same-memoir child navigation retain the
+choice; reader/source/account/library replacement resets it. It does not create a
+server preference, modify a story or refresh speech. Existing source bindings,
+contribution drafts and narration ownership remain the authority for their actions.
+
 ## Approved central assistant and foreground session
 
 [拾光助手](PERSONAL_ASSISTANT.md) is the shared phone/Web entry for conversational

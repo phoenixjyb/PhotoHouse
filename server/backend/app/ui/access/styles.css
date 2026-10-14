@@ -429,13 +429,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-reader>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
 .story-reader-brand{font:italic 1.2rem Georgia,serif;letter-spacing:.05em}
 .story-reader .quiet{background:#ffffff0d;border-color:#ffffff25;color:#f3eee4}
+.reader-font-presets{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.25rem 0 1rem;min-width:0}
+.reader-font-presets>span{font-size:.95rem;line-height:1.5}
+.reader-font-presets button{min-width:48px;min-height:48px;padding:.55rem .8rem;white-space:normal;overflow-wrap:anywhere}
+.reader-font-presets button[aria-pressed=true]{border-color:#cbb695;background:#cbb695;color:#18211e}
+.story-reader .reader-font-presets button[aria-pressed=true]{color:#18211e}
 .story-reader-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(250px,1fr);gap:3rem;align-items:center}
 .story-reader-stage{position:relative;display:grid;place-items:center;min-height:250px;background:#0e1512;border-radius:12px;overflow:hidden;aspect-ratio:4/3}
 .story-reader-stage img{width:100%;height:100%;max-height:65vh;object-fit:contain}
 .story-reader-prose{min-width:0;padding:.5rem 0}
 .story-reader .eyebrow{color:#cbb695;font-size:.75rem;letter-spacing:.15em}
 .story-reader-prose h2{font:400 clamp(1.7rem,2.8vw,2.7rem)/1.4 Georgia,"Songti SC",serif;margin:1rem 0}
-.story-reader-prose #story-reader-text{white-space:pre-wrap;font:400 1.1rem/2 Georgia,"Songti SC",serif;overflow-wrap:anywhere;max-height:50vh;overflow:auto}
+.story-reader-prose #story-reader-text{white-space:pre-wrap;font:400 calc(1.1rem * var(--reader-font-scale,1))/2 Georgia,"Songti SC",serif;overflow-wrap:anywhere;max-height:50vh;overflow:auto}
 .story-reader-sources{margin:1rem 0;padding:.8rem 1rem;border:1px solid #ffffff25;border-radius:10px;color:#e5dfd4;line-height:1.7;overflow-wrap:anywhere}
 .story-reader-sources summary{cursor:pointer;font-weight:600;min-height:44px;padding:.45rem .1rem;display:list-item}
 .story-reader-sources-note{color:#c5c2b8;font-size:.85rem;margin:.5rem 0}
@@ -464,7 +469,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:600px){
   .memory-navigation{gap:1.3rem}.memory-home{grid-template-columns:1fr;margin-bottom:1.5rem}.memory-home-art{min-height:200px;order:-1}.memory-home-copy h2{max-width:none;font-size:2rem}.memory-home-copy{padding:1.5rem}.memory-theme{min-height:85px;font-size:.8rem;padding:.8rem}
   .library-shell #album-list{grid-template-columns:1fr}.story-workspace{padding:1.1rem;width:calc(100vw - 16px);border-radius:16px}.story-workspace-layout{grid-template-columns:1fr}.story-selection{grid-template-columns:repeat(4,minmax(0,1fr))}.story-selection-panel>.fine{margin:.4rem 0}.story-workspace-fields{grid-template-columns:1fr}.story-draft-actions{bottom:-1.1rem;flex-wrap:wrap}.story-draft-actions button{flex:1;white-space:nowrap}.story-chapter-card{padding:1rem}
-  .story-reader{width:100vw;border-radius:0;padding:1rem;max-height:100dvh}.story-reader-layout{grid-template-columns:1fr;gap:.5rem}.story-reader-stage{min-height:170px;aspect-ratio:4/3}.story-reader-prose h2{font-size:1.65rem}.story-reader-prose #story-reader-text{font-size:1rem;line-height:1.9;max-height:none}.story-reader>header{margin-bottom:1rem}.story-reader-prose{padding:0 .3rem}.story-reader-chapters button{min-width:135px}.story-reader-chapters{padding-top:.8rem}
+  .story-reader{width:100vw;border-radius:0;padding:1rem;max-height:100dvh}.story-reader-layout{grid-template-columns:1fr;gap:.5rem}.story-reader-stage{min-height:170px;aspect-ratio:4/3}.story-reader-prose h2{font-size:1.65rem}.story-reader-prose #story-reader-text{font-size:calc(1rem * var(--reader-font-scale,1));line-height:1.9;max-height:none}.story-reader>header{margin-bottom:1rem}.story-reader-prose{padding:0 .3rem}.story-reader-chapters button{min-width:135px}.story-reader-chapters{padding-top:.8rem}
 }
 @media(prefers-reduced-motion:reduce){.library-shell #grid .asset{transition:none}.library-shell #grid .asset:hover{transform:none}}
 .asset span.asset-preview-fallback{display:grid;place-items:center;width:100%;height:180px;padding:.75rem;border-radius:4px;background:#eee8de;color:var(--muted);font-size:1rem;line-height:1.5;text-align:center;overflow-wrap:anywhere}
@@ -626,7 +631,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-book-reader{--memory-reader-inset:36px;width:min(1040px,94vw);max-width:1040px;padding:36px;max-height:90dvh}
 .memory-book-reader header{display:flex;justify-content:space-between;align-items:center;gap:20px}
 .memory-book-reader h2{font:500 38px/1.4 Georgia,"Songti SC",serif;margin:32px 0 18px;overflow-wrap:anywhere}
-.memory-book-introduction{white-space:pre-wrap;line-height:1.9;max-width:66ch;color:var(--muted)}
+.memory-book-introduction{white-space:pre-wrap;font-size:calc(1rem * var(--reader-font-scale,1));line-height:1.9;max-width:66ch;color:var(--muted)}
 .memory-book-toc{list-style:decimal-leading-zero;padding-left:32px;margin:32px 0}
 .memory-book-toc li{padding:10px 0;color:var(--accent)}
 .memory-book-toc button{display:flex;align-items:center;gap:18px;width:100%;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;background:#fffdf9;border-radius:14px;font-size:17px;min-height:68px}
@@ -639,13 +644,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-book-reading-frames img{width:100%;height:96px;object-fit:contain;background:#e9e4d9;border-radius:12px}
 .memory-book-reading-frames figure:first-child img{height:300px}
 .memory-book-reading-frames figcaption{min-width:0;font-size:.9rem;color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
-.memory-book-reading-prose{font:19px/2 Georgia,"Songti SC",serif;white-space:pre-wrap;overflow-wrap:anywhere;max-width:66ch}
+.memory-book-reading-prose{font:calc(19px * var(--reader-font-scale,1))/2 Georgia,"Songti SC",serif;white-space:pre-wrap;overflow-wrap:anywhere;max-width:66ch}
+.memory-book-font-presets{margin:.5rem 0 1rem;color:var(--ink)}
 .memory-book-reading-controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.memory-book-reading-controls button{min-height:44px}
 .memory-book-reader>header{position:sticky;top:calc(-1 * var(--memory-reader-inset));z-index:2;background:#fffdf9;padding-top:var(--memory-reader-inset);padding-bottom:12px;margin-top:calc(-1 * var(--memory-reader-inset))}
 .memory-book-reading{scroll-margin-top:76px}
 .memory-book-story-details{min-height:44px;color:var(--accent);background:#f6efe5;border:1px solid var(--line);border-radius:12px}
 .memory-book-story-status:empty{display:none}
-@media(max-width:540px){.memory-book-reading{padding:16px}.memory-book-reading-frames{grid-template-columns:repeat(2,minmax(0,1fr))}.memory-book-reading-frames figure:first-child img{height:220px}.memory-book-reading-frames-two figure:nth-child(2){grid-column:1/-1}.memory-book-reading-frames-two figure:nth-child(2) img{height:160px}.memory-book-reading-prose{font-size:17px}}
+@media(max-width:540px){.memory-book-reading{padding:16px}.memory-book-reading-frames{grid-template-columns:repeat(2,minmax(0,1fr))}.memory-book-reading-frames figure:first-child img{height:220px}.memory-book-reading-frames-two figure:nth-child(2){grid-column:1/-1}.memory-book-reading-frames-two figure:nth-child(2) img{height:160px}.memory-book-reading-prose{font-size:calc(17px * var(--reader-font-scale,1))}}
 @media(max-width:800px){.memory-book-list{grid-template-columns:repeat(2,minmax(0,1fr))}.memory-community{padding:20px}.memory-book-reader{--memory-reader-inset:24px;padding:24px}}
 @media(max-width:540px){.memory-book-list{grid-template-columns:1fr}.memory-community{padding:16px;border-radius:14px;margin-top:20px}.memory-community-heading{font-size:22px}.memory-community-tabs{gap:2px}.memory-community-tab{padding:9px 12px;font-size:13px}.memory-community-form,.memory-community-book-form{padding:16px}.memory-chat-bubble{max-width:94%;padding:12px 14px}.memory-community-proposal{padding:18px}.memory-book-reader{--memory-reader-inset:20px;padding:20px;width:95vw}.memory-book-reader h2{font-size:30px}.memory-book-toc{padding-left:22px}.memory-book-toc button{font-size:15px;gap:12px}.memory-book-toc img{width:52px;height:52px}}
 

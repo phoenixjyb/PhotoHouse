@@ -58,6 +58,9 @@ internal fun SavedMemoryStoriesDialog(
     val latestCompositionReading by rememberUpdatedState(reading)
     val story = reading.detail
     val readerAudio = remember(liveState.session?.account_id, reading.library, story?.id) { ReaderAudioCoordinator() }
+    var readerTextSize by remember(
+        liveState.session?.account_id, liveState.generation, reading.library, story?.id, story?.revision,
+    ) { mutableStateOf(ReaderTextSizePreset.DEFAULT) }
     val themeScrollState = key(reading.library) { rememberScrollState() }
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
     val chapterFrameItems = remember(story?.id, story?.revision, chapter?.id, chapter?.assetIds, story?.items) {
@@ -271,6 +274,12 @@ internal fun SavedMemoryStoriesDialog(
                             )
                             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds().testTag("saved-memory-reader-scroll")) {
                                 Column(Modifier.fillMaxSize().verticalScroll(readerScrollState), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    ReaderTextSizeControls(
+                                        selected = readerTextSize,
+                                        zh = zh,
+                                        tagPrefix = "saved-memory-reader-size",
+                                        onSelect = { readerTextSize = it },
+                                    )
                                     reading.resumePosition?.takeIf {
                                         store != null && it.accountId == liveState.session?.account_id &&
                                             it.libraryId == reading.library && it.storyId == story.id && it.storyRevision == story.revision
@@ -342,7 +351,8 @@ internal fun SavedMemoryStoriesDialog(
                                     }
                                     Text(chapter.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif,
                                         modifier = Modifier.testTag("saved-memory-chapter-title"))
-                                    Text(chapter.narration, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 29.sp),
+                                    Text(chapter.narration, style = readerProseStyle(
+                                        MaterialTheme.typography.bodyLarge.copy(lineHeight = 29.sp), readerTextSize),
                                         modifier = Modifier.fillMaxWidth().testTag("saved-memory-narration"))
                                     ChapterSourceReferences(
                                         chapterSourceReferences(chapter, story), zh, sourcesExpanded,

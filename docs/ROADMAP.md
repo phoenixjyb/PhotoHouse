@@ -21,13 +21,19 @@ October 15 local source work adds a collapsed Web **Last turn timing** summary
 for four client-observed stages. It appears only after confirmed playback and
 the next microphone is ready, and clears on interruption or scope change. It
 does not add a request or claim provider latency; the [timing note](VOICE_TURN_TIMING.md)
-records the synthetic browser evidence and pending phone label follow-up. Web
+records the synthetic browser evidence and completed phone label checks. Web
 gallery thumbnail failure now has an explicit localized fallback; protected
 phone previews and optional Home TV publication retain their separate access
 and delivery boundaries. Real ASR/TTS latency, physical listening and family
 acceptance remain in the trial above.
 
 ## 2. Make assistant reading and conversation fluid
+
+The frozen v59 source now has complete local API, Android and Web qualification;
+the conditional native/API/phone delivery proposal is prepared. Its family trial
+remains ahead of broader autonomous narration. A separate next UI slice adds
+[temporary reading-size controls](READER_TEXT_SIZE.md) for story and memoir prose,
+while keeping the current chapter and contribution drafts.
 
 October 15 source adds [explicit saved-section narration](ASSISTANT_SEGMENT_READING.md)
 for a story's first chapter or a memoir introduction. Each tap requests one
