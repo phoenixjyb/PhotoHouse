@@ -106,6 +106,17 @@ belongs to the preceding source revision. Package, native and family gates stay
 separate.
 
 
+The full API profile at `d57a41c` passed **1,483 tests and 913 subchecks**,
+plus the generated no-listener demo. Its full Android JVM/lint/unconfigured
+phone and TV build profile passed with identical start/end source hashes.
+The full Web run exposed an intermittent saved-source reopen assertion; two
+focused reruns confirmed the saved request, exact reopened response and checked
+first-chapter source. The fixture now waits for and validates that exact saved
+GET before retaining the unchanged strict DOM selection assertion. The focused
+journey passes; the complete Web profile is rerun separately. No product change
+is inferred from that intermittent failure.
+
+
 ## Oral-history intake foundation (October 14)
 
 The [internal intake contract](ORAL_HISTORY_INTAKE_FOUNDATION.md) passed 18 focused

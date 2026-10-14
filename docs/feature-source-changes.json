@@ -15415,6 +15415,28 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "saved-story-reopen-transport-barrier",
+      "source_commit": "d57a41c82e94be642c6404086dacdcd5a4d3059a",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "76b2fe1a7b652c04cb4ee0a896fdc9b9c3ca85a45b371ba928ef1326b9304142",
+          "sha256": "0d73efed56a6f47330ad6ba519d0560548c1094dd3da93654bdc3f5365733a52"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "47e14dcb1c31aa585903d62ce859773eb16a05f3f919b54e02744a1abfa47c78",
+          "sha256": "42b738cbd491fcdd9e1e211a1b6274333a27b9112b23201cd0d995d8cb735125"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
