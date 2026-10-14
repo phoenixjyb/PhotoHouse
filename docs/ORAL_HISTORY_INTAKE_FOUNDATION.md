@@ -70,14 +70,16 @@ future exact transcript/citation anchors without inventing current ASR output.
 No transcription, polish, title inference, story adoption or sharing occurs here,
 even with processing consent. Consent is permission metadata, not a worker claim.
 
-Existing deletion-journal transaction guards still refuse a stale primary marker.
-They do not add an oral-history tombstone, full-chain review, eraser or restore
-handler. Do not alias a recording to the existing `memory` journal collection.
-Qualified withdrawal/dependency closure and paired restore are prerequisites
-before adding this storage to an admitted production schema or accepting family
-recordings. No indefinite raw retention is silently replaced by assistant expiry.
+Existing deletion-journal transaction guards refuse a stale primary marker.
+The subsequent [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md) adds a separate
+V4 `oral_history` recording collection, author-only retained-source withdrawal,
+full-chain review and older-prefix replay. Do not alias a recording to the
+existing `memory` collection. Its generated qualification is source evidence,
+not production schema/journal admission, paired recovery or permanent erasure.
+Those remaining lifecycle gates must pass before accepting family recordings.
+No indefinite raw retention is silently replaced by assistant expiry.
 
-## Verification and next slice
+## Initial verification and current next slice
 
 The generated tests exercise reopened connections/exact retries, concurrent same
 request and competing requests, rollback on receipt/commit failure, WAV limits,
@@ -104,8 +106,12 @@ experiment, native ACL/storage check or physical-device acceptance. No model,
 GPU, family data or real recording is used. The exact API source package currently
 served on Windows does not include or activate this experimental feature.
 
-Next: define immutable recording source identity, authorized withdrawal and
-content-free journal/replay behavior, qualify compatible schema/worker admission,
-then add a bounded upload transport and local Web/phone recorder with explicit
-saved/retrying states. Later transcription/proposal workers must recheck consent,
-source/current membership and revision before accepting their output.
+Immutable recording source identity, authorized retained-source withdrawal and
+content-free V4 journal/replay behavior now have internal source implementations
+and a [versioned generated rehearsal](ORAL_HISTORY_QUALIFICATION.md). Next
+qualify the operator's journal/schema upgrade and paired restore, specify
+permanent erasure and backup retention, then add bounded protected transport and
+a local Web/phone recorder with explicit saved/retrying states. Later
+transcription/proposal workers must recheck consent, source/current membership
+and revision before accepting their output. No recorder or production admission
+is delivered by this foundation.

@@ -26,11 +26,21 @@ class QualifyOralHistoryTests(unittest.TestCase):
     def test_generated_run_exercises_all_content_free_case_groups(self):
         output = self.parent / 'generated'
         result = runner.run(output)
+        self.assertEqual(runner.CASES[:10], (
+            'fixture_a0_seeded', 'fixture_schema_installed', 'v3_journal_bound',
+            'guarded_v3_to_v4_upgrade', 'short_then_full_section_receipts',
+            'exact_retries_and_payload_conflicts', 'author_only_library_scoped_access',
+            'withdrawal_retains_source_and_content_free_ledger',
+            'stale_prefix_refused_then_replayed', 'corrupt_source_refused'))
+        self.assertEqual(runner.CASES[10:], (
+            'v3_populated_legacy_history_preserved',
+            'journal_commit_primary_rollback_replayed'))
         self.assertEqual(set(result['cases']), set(runner.CASES))
         self.assertTrue(all(result['cases'].values()))
         self.assertEqual(result['groups'], {
             'journal_upgrade_and_recovery': 3, 'private_durable_intake': 3,
-            'identity_scope_withdrawal': 3, 'source_integrity': 1})
+            'identity_scope_withdrawal': 3, 'source_integrity': 1,
+            'legacy_upgrade_and_primary_rollback': 2})
         self.assertTrue(result['experimental_fixture_schema'])
         self.assertFalse(result['production_admission_available'])
         self.assertFalse(result['production_transport_available'])

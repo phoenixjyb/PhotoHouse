@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -21,6 +22,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -96,6 +99,20 @@ class MemoryBookReaderContentsUiTest {
         assertEquals(0, api.videoCalls)
         captureReader(zh)
 
+        val storyReadsBeforeAdjacentNavigation = api.childReads
+        val previousStory = rule.onNodeWithTag("memory-book-previous").performScrollTo()
+        val nextStory = rule.onNodeWithTag("memory-book-next").performScrollTo()
+        assertTrue("previous story target remains at least 48dp", heightDp(previousStory) >= 47.5f)
+        assertTrue("next story target remains at least 48dp", heightDp(nextStory) >= 47.5f)
+        previousStory.assertIsDisplayed().assertIsEnabled().performClick()
+        awaitReader(store, storyIndex = 0)
+        assertEquals("previous story loads only after explicit selection", storyReadsBeforeAdjacentNavigation + 1, api.childReads)
+        rule.onNodeWithTag("memory-book-previous").assertIsNotEnabled()
+        rule.onNodeWithTag("memory-book-next").assertIsEnabled().performScrollTo().performClick()
+        awaitReader(store, storyIndex = 1)
+        assertEquals("next story also remains an explicit one-child read", storyReadsBeforeAdjacentNavigation + 2, api.childReads)
+        rule.onNodeWithTag("memory-book-next-chapter").assertExists()
+
         val childReadsBeforeExpand = api.childReads
         rule.onNodeWithTag("memory-book-reader-contents-toggle").performScrollTo().performClick()
         rule.onNodeWithTag("memory-book-reader-contents-story-1").assertIsSelected().assertIsNotEnabled()
@@ -111,6 +128,7 @@ class MemoryBookReaderContentsUiTest {
         awaitReader(store, storyIndex = 1, chapterIndex = 2)
         rule.onNodeWithTag("memory-book-reader-size-larger").assertIsSelected()
         rule.onNodeWithTag("memory-book-story-title").assertIsDisplayed()
+        captureNavigationProse(zh)
         assertEquals("chapter navigation reuses the already loaded child", childReadsBeforeExpand, api.childReads)
         assertEquals("chapter navigation bookmarks the selected reading position", "chapter-3",
             positions.load(GeneratedMemoirReaderApi.ACCOUNT).single().chapterId)
@@ -169,6 +187,11 @@ class MemoryBookReaderContentsUiTest {
         return (bounds.bottom - bounds.top).value
     }
 
+    private fun heightDp(node: androidx.compose.ui.test.SemanticsNodeInteraction): Float {
+        val bounds = node.getUnclippedBoundsInRoot()
+        return (bounds.bottom - bounds.top).value
+    }
+
     private fun captureReader(zh: Boolean) {
         rule.onNodeWithTag("memory-book-reader-size-controls").performScrollTo()
         rule.onNodeWithTag("memory-book-reader-size-controls").assertIsDisplayed()
@@ -187,6 +210,33 @@ class MemoryBookReaderContentsUiTest {
         try {
             context.contentResolver.openOutputStream(uri)?.use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 ?: error("Could not open memoir reader UI capture")
+        } catch (failure: Throwable) {
+            context.contentResolver.delete(uri, null, null)
+            throw failure
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    private fun captureNavigationProse(zh: Boolean) {
+        rule.onNodeWithTag("memory-book-story-text").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("memory-book-reader-scroll").performTouchInput { swipeUp() }
+        rule.onNodeWithTag("memory-book-story-text").assertIsDisplayed()
+        rule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val locale = if (zh) "zh" else "en"
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "memoir-navigation-prose-$locale-150.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/PhotoHouseReaderReview")
+        }
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Could not create compact memoir navigation UI capture")
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                ?: error("Could not open compact memoir navigation UI capture")
         } catch (failure: Throwable) {
             context.contentResolver.delete(uri, null, null)
             throw failure

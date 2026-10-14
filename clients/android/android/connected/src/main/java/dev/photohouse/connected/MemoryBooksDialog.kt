@@ -276,6 +276,7 @@ internal fun MemoryBooksDialog(
                                         story != null && chapter != null && index != null -> {
                                             Text(story.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, modifier = Modifier.bringIntoViewRequester(originalStart).testTag("memory-book-story-title"))
                                             Text(t("Story ${index + 1} of ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"))
+                                            MemoryBookStoryNavigation(reading, zh, guardedStory)
                                             navigation?.let { rendered ->
                                                 MemoryBookReaderContents(
                                                     reading, rendered,
@@ -341,7 +342,7 @@ internal fun MemoryBooksDialog(
                                                     Text(if (activeAsset?.kind == "video") t("Open video", "打开视频") else t("Open photo", "打开照片"))
                                                 }
                                             }
-                                            if (narrativeExpanded) MemoryBookOriginalNavigation(reading, zh, guardedChapter, guardedStory)
+                                            if (narrativeExpanded) MemoryBookChapterNavigation(reading, zh, guardedChapter)
                                         }
                                         else -> {
                                             reading.resumePosition?.let { position ->
@@ -365,7 +366,7 @@ internal fun MemoryBooksDialog(
                                         }
                                     }
                                 }
-                                if (!narrativeExpanded && !keyboardVisible) MemoryBookOriginalNavigation(reading, zh, guardedChapter, guardedStory)
+                                if (!narrativeExpanded && !keyboardVisible) MemoryBookChapterNavigation(reading, zh, guardedChapter)
                             }
                             else -> {
                                 if (reading.result?.canCreate == true && store.memoryBookCompositionCoordinator != null) {
@@ -856,9 +857,9 @@ private fun MemoirNavigation(
         Text(position, style = MaterialTheme.typography.labelLarge)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onPrevious, enabled = previousEnabled,
-                modifier = Modifier.weight(1f).testTag(previousTag)) { Text(previous) }
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(previousTag)) { Text(previous) }
             Button(onClick = onNext, enabled = nextEnabled,
-                modifier = Modifier.weight(1f).testTag(nextTag)) { Text(next) }
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(nextTag)) { Text(next) }
         }
     }
 }
@@ -878,13 +879,11 @@ private fun attachedMemoirShelfAction(action: () -> Unit): () -> Unit {
 
 /** Keep saved-story controls beside saved prose while the AI review panel is open. */
 @Composable
-private fun MemoryBookOriginalNavigation(
-    reading: MemoryBooksReading, zh: Boolean, onChapter: (Int) -> Unit, onStory: (Int) -> Unit,
+private fun MemoryBookChapterNavigation(
+    reading: MemoryBooksReading, zh: Boolean, onChapter: (Int) -> Unit,
 ) {
-    val book = reading.selectedBook ?: return
     val story = reading.story
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
-    val index = reading.storyIndex
     fun t(en: String, cn: String) = if (zh) cn else en
     if (story != null && chapter != null) MemoirNavigation(
         t("Chapter ${reading.selectedChapter + 1} / ${story.chapters.size}", "第 ${reading.selectedChapter + 1} / ${story.chapters.size} 章"),
@@ -893,10 +892,25 @@ private fun MemoryBookOriginalNavigation(
         !reading.framesBusy && reading.selectedChapter < story.chapters.lastIndex,
         { onChapter(reading.selectedChapter - 1) }, { onChapter(reading.selectedChapter + 1) },
         "memory-book-previous-chapter", "memory-book-next-chapter")
-    if (index != null) MemoirNavigation(
-        t("Story ${index + 1} / ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"),
-        t("Previous story", "上一则故事"), t("Next story", "下一则故事"),
-        !reading.readerBusy && index > 0, !reading.readerBusy && index < book.stories.lastIndex,
-        { onStory(index - 1) }, { onStory(index + 1) },
-        "memory-book-previous", "memory-book-next")
+}
+
+/** Keep adjacent-story actions with the story title and contents inside the reader scroll. */
+@Composable
+private fun MemoryBookStoryNavigation(
+    reading: MemoryBooksReading, zh: Boolean, onStory: (Int) -> Unit,
+) {
+    val book = reading.selectedBook ?: return
+    val index = reading.storyIndex ?: return
+    if (index !in book.stories.indices) return
+    fun t(en: String, cn: String) = if (zh) cn else en
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedButton(onClick = { onStory(index - 1) }, enabled = !reading.readerBusy && index > 0,
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-book-previous")) {
+            Text(t("Previous story", "上一则故事"))
+        }
+        Button(onClick = { onStory(index + 1) }, enabled = !reading.readerBusy && index < book.stories.lastIndex,
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-book-next")) {
+            Text(t("Next story", "下一则故事"))
+        }
+    }
 }

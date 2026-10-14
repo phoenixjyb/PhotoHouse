@@ -13,6 +13,11 @@ exact 20-second canonical PCM section, exact retries and changed-payload conflic
 and receipt/audio verification across primary close/reopen boundaries,
 author-only access, retained-source withdrawal with a content-free ledger binding,
 stale-prefix refusal and reviewed journal replay, and corrupt-source refusal.
+The next source increment also verifies a populated synthetic V3 legacy history
+survives upgrade with the same records, digest and primary marker, and verifies
+a journal-committed withdrawal after primary rollback and connection reopen.
+Ordinary access must refuse that unreplayed state; reviewed replay restores the
+exact withdrawal retry without reviving the recording.
 The raw WAV bytes remain only in the private generated SQLite database; temporary
 SQLite backups stay inside the same output directory and are removed before
 success. The runner creates no standalone audio export and includes no source bytes
@@ -31,3 +36,17 @@ It sets `experimental_fixture_schema=true` and explicitly reports production
 admission, transport, and erasure as unavailable. A pass qualifies these generated
 source contracts only. It does not admit production data, expose an HTTP route,
 qualify production schema rollout, approve a worker, or qualify live restoration.
+
+## Qualification revisions
+
+The frozen v59 archive at `816b9b5` retains its original four groups / ten cases.
+The next v60 source appends a fifth two-case group; its report has **five groups /
+twelve cases**, with the original case order and four group counts preserved.
+Accepted-before-restore and final fixture counts remain unchanged. Forty-nine
+focused qualification/intake/withdrawal tests passed locally. A successful run
+retains only the two main fixture databases and its content-free report; the
+separate legacy-upgrade scratch databases and SQLite sidecars are removed.
+
+Any future native operation must pin the matching runner, archive and revised
+report contract. The prepared v59 native controller deliberately still expects
+four groups / ten cases and must not qualify this later source by accident.

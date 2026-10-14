@@ -16112,6 +16112,82 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "compact-memoir-navigation-legacy-reader-compatibility-and-recovery-qualification",
+      "source_commit": "6d57f0f0d3abca1267bf35afd0b4e4ee6e5ed41c",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "8b7d22d30afb59571cba17c8591eb497abd8d8506ddaea9b7b4d0d4f5e1a8afb",
+          "sha256": "1f68ffdb262b10f2a37ea3d6f685328cde21b954714184006ebc384fa1660f07"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/MemoryBookReaderContentsUiTest.kt",
+          "before_sha256": "107dd27d4480e9cad85508531920728a89e76b49f412b2c9ad919968f7f656a9",
+          "sha256": "c7a385e84d7f4bb4a6d1ebc9ad4524876801ce1248501c5e525da41ef9679dfe"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryBooksDialog.kt",
+          "before_sha256": "b316603f7d70a5489a1a357fc4ad3a786fdfabbefabaabc952d3d446d7be1f21",
+          "sha256": "0fc0360977b74f14e9f9ba6e2a18265f49944dc4ab6be1584ad7225cdb648663"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "05de7ede84733d1ec85cfe677655fccb4e26e7293856a5faddf839eab473df7c"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "403d1d4f95291433c6ef4bb90b94208d783f30b649f87c5ea42550f49c075db9",
+          "sha256": "40e8ddf67e3d601a850055a6950d9eae0b2ba3293e33783c69f2554be1ede755"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "7c143d08bc95e61399c255abd7153a2a567735603c1352f424f199773f15acdc",
+          "sha256": "6ed59a5e220fd94834d7be784c54fd91cda2315f63bf24c8839cd6fef386810c"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_QUALIFICATION.md",
+          "before_sha256": "f509b411f6815c9439f94cc2ee607de98048d42f855130e991e850d1659fddc7",
+          "sha256": "dd29df1dc47eb77b1984d3519f15fbc7b5d9c86bd3ed3885e1808877c85f2a6b"
+        },
+        {
+          "path": "docs/READER_TEXT_SIZE.md",
+          "before_sha256": "fe6028ce3b8a82c5bc9141323553035f8ca9965234b82457ad6911a2a0c5d25d",
+          "sha256": "d244c8323a8f2d1abb167d24c3182d5f697465c2eae7d3caa9f728157a1efc7d"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "d797eeabcc3d0ee8717edc4c1fafcfde6836f664f38042f125bb7adac01927f4",
+          "sha256": "f52ebb83ab7ac2f36e468e642e4ad7d8ffb3916b7b12e4fa0000a762e461d27d"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "3e2049594c7f2992f9b640fd3979324e3804365781067b119dce8bd7250d03ea",
+          "sha256": "67de5068e2f5b9b5ece915eb5b30c581c67c19711d49a8e03935a2212f2d4d56"
+        },
+        {
+          "path": "server/scripts/qualify_oral_history.py",
+          "before_sha256": "4be87c2cf1943844bf8f9bb1bbd987f831a505465c83eb19da6a96fb91b75ca4",
+          "sha256": "f5f1b6fe55f36bd6bacc5ae09b7be19b2132012297a3419bdb00578a5d087ed3"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "ab3c0dd6aba25fec2f0fb3e06dc2c18e2d5c4274af7e5c6fd2df31d5e7bf8686",
+          "sha256": "0fb9ca283019b1565a0dc183de25b342fab50d8f827725e74f3bf6559e1470e3"
+        },
+        {
+          "path": "server/tests/security/test_qualify_oral_history.py",
+          "before_sha256": "c98cfe33b46d67eed02ccb4c9de459af5bf4cc45dbe2eb9a4dd677859bf8ffc5",
+          "sha256": "3117eaff88047fec6ba3a6b861515a24c356fd92eed1d7844b465b1d200d306f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

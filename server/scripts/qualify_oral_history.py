@@ -16,6 +16,7 @@ import shutil
 import sqlite3
 import sys
 import uuid
+from unittest.mock import patch
 
 SERVER = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVER / 'backend'))
@@ -38,6 +39,8 @@ CASES = (
     'exact_retries_and_payload_conflicts', 'author_only_library_scoped_access',
     'withdrawal_retains_source_and_content_free_ledger',
     'stale_prefix_refused_then_replayed', 'corrupt_source_refused',
+    'v3_populated_legacy_history_preserved',
+    'journal_commit_primary_rollback_replayed',
 )
 
 
@@ -56,7 +59,8 @@ def _validate_output(target, *, windows=None):
     if windows:
         units = lambda value: len(str(value).encode('utf-16le')) // 2
         database_names = ('main.sqlite', 'oral-journal.sqlite',
-                          'old-primary-prefix.sqlite', 'clean-after-replay.sqlite')
+                          'old-primary-prefix.sqlite', 'clean-after-replay.sqlite',
+                          'legacy-primary.sqlite', 'legacy-journal.sqlite')
         paths = [win / name for name in (REPORT, FAILURE, *database_names)]
         if (any(units(path) > 259 for path in paths)
                 or any(units(win / name) + len('-journal') > 259 for name in database_names)
@@ -128,6 +132,7 @@ def _report(native):
             'private_durable_intake': 3,
             'identity_scope_withdrawal': 3,
             'source_integrity': 1,
+            'legacy_upgrade_and_primary_rollback': 2,
         },
         'accepted_counts_before_restore': {'sessions': 1, 'sections': 2,
             'mutations': 3, 'journal_recordings': 1},
@@ -194,6 +199,88 @@ def _load_helpers():
     return fixture
 
 
+def _qualify_populated_v3_preservation(target, fixture, install_fixture_schema,
+                                       OriginalDeletionJournal):
+    """Exercise V3 populated-history upgrade in disposable generated files."""
+    primary = target / 'legacy-primary.sqlite'
+    ledger_path = target / 'legacy-journal.sqlite'
+    db = journal = None
+    try:
+        fixture._seed_main(primary)
+        _private_file(primary)
+        db = sqlite3.connect(primary, timeout=10)
+        db.execute('PRAGMA foreign_keys=ON')
+        db.execute('PRAGMA synchronous=FULL')
+        db.execute('PRAGMA secure_delete=ON')
+        db.execute('CREATE TABLE IF NOT EXISTS access_upload_annotations(id TEXT PRIMARY KEY)')
+        db.execute('BEGIN IMMEDIATE')
+        install_fixture_schema(db)
+        db.commit()
+
+        namespace = str(uuid.uuid4())
+        journal = OriginalDeletionJournal.initialize(ledger_path, namespace, format_version=3)
+        journal.bind(db)
+        from app.access import original_deletions as journal_module
+        entry = {'seq': 1, 'collection': 'upload', 'library_id': LIBRARY,
+            'object_id': str(uuid.uuid4()), 'original_kind': 'text',
+            'original_sha256': 'a' * 64, 'batch': 'b' * 32, 'asset_id': None,
+            'story_id': None, 'occurred_at': 1,
+            'prev_digest': journal_module._genesis(journal.namespace),
+            'family_binding_json': None, 'asset_binding_json': None}
+        entry['digest'] = journal_module._record_digest(entry['prev_digest'], entry)
+        with closing(journal._connect()) as ledger:
+            ledger.execute('BEGIN IMMEDIATE')
+            names = list(journal_module._RECORD_COLUMNS) + [
+                'family_binding_json', 'asset_binding_json']
+            ledger.execute('INSERT INTO deletions (' + ','.join(names) + ') VALUES (' +
+                ','.join('?' for _ in names) + ')', tuple(entry[name] for name in names))
+            ledger.execute('UPDATE journal_meta SET head_seq=1,head_digest=? WHERE id=1',
+                           (entry['digest'],))
+            ledger.commit()
+        db.execute('UPDATE access_original_deletion_state SET applied_seq=1,applied_digest=?',
+                   (entry['digest'],))
+        db.commit()
+        primary_marker_before = tuple(db.execute(
+            'SELECT applied_seq,applied_digest FROM access_original_deletion_state WHERE id=1'
+        ).fetchone())
+        before = journal.head()
+        _assert(before == (namespace, 1, entry['digest']), 'legacy_v3_head_invalid')
+        db.execute('BEGIN IMMEDIATE')
+        _assert(journal.upgrade_oral_format(db, expected_head=before) == before,
+                'legacy_v3_upgrade_changed_head')
+        db.commit()
+        journal.require_oral_format()
+        _assert(journal.head() == before, 'legacy_v3_upgrade_changed_digest')
+        primary_marker_after = tuple(db.execute(
+            'SELECT applied_seq,applied_digest FROM access_original_deletion_state WHERE id=1'
+        ).fetchone())
+        _assert(primary_marker_after == primary_marker_before == before[1:],
+                'legacy_v3_upgrade_changed_primary_marker')
+        _assert(journal.review(db)['pending_count'] == 0, 'legacy_v3_upgrade_left_pending_history')
+        with closing(journal._connect()) as ledger:
+            stored = dict(ledger.execute('SELECT * FROM deletions WHERE seq=1').fetchone())
+            _assert(all(stored.get(name) == value for name, value in entry.items()),
+                    'legacy_v3_record_changed')
+            _assert(stored.get('oral_binding_json') is None,
+                    'legacy_v3_record_adopted_as_oral_history')
+        return True
+    finally:
+        if db is not None:
+            db.close()
+        if journal is not None:
+            close = getattr(journal, 'close', None)
+            if close is not None:
+                close()
+        # Remove only the two named, exclusively generated scratch files and SQLite
+        # sidecars. The output and the main intake fixture are never traversed.
+        for path in (primary, ledger_path):
+            for suffix in ('', '-journal', '-wal', '-shm'):
+                try:
+                    Path(str(path) + suffix).unlink()
+                except FileNotFoundError:
+                    pass
+
+
 def run(output):
     target = _validate_output(Path(output))
     target.mkdir(mode=0o700)
@@ -253,6 +340,10 @@ def run(output):
         _assert(journal.upgrade_oral_format(db, expected_head=head) == head, 'v4_upgrade_head_changed')
         db.commit()
         journal.require_oral_format()
+
+        phase = 'legacy_v3_preservation'
+        _assert(_qualify_populated_v3_preservation(target, fixture, install_fixture_schema,
+            OriginalDeletionJournal), 'legacy_v3_preservation_failed')
 
         phase = 'intake_and_scope'
         db.close()
@@ -337,6 +428,35 @@ def run(output):
                 'author_cross_library_read_recording')
         raw_audio = intake.audio(AUTHOR_TOKEN, LIBRARY, created['session_id'], 1)
         withdraw_args = {'request_id': str(uuid.uuid4()), 'expected_revision': full['revision']}
+        phase = 'journal_commit_primary_rollback'
+        with patch('app.access.oral_history_withdrawal.apply_recording_tombstone',
+                   side_effect=sqlite3.OperationalError('synthetic primary failure')):
+            _expect(sqlite3.OperationalError,
+                lambda: intake.withdraw(AUTHOR_TOKEN, LIBRARY, created['session_id'],
+                    **withdraw_args), 'primary_rollback_was_not_observed')
+        _assert(journal.head()[1] == 1, 'journal_commit_missing_after_primary_rollback')
+        _assert(db.execute(f'SELECT state FROM {SESSION} WHERE id=?',
+                           (created['session_id'],)).fetchone()[0] == 'open',
+                'primary_state_changed_despite_rollback')
+        db.close()
+        db = sqlite3.connect(primary, timeout=10)
+        db.row_factory = sqlite3.Row
+        db.execute('PRAGMA foreign_keys=ON')
+        db.execute('PRAGMA synchronous=FULL')
+        db.execute('PRAGMA secure_delete=ON')
+        stale_access = AccessService(db, clock=lambda: NOW)
+        stale_access.original_deletions = journal
+        stale_intake = OralHistoryIntake(stale_access, enabled=True,
+                                         withdrawal_enabled=True, journal=journal)
+        _expect_status(503, lambda: stale_intake.status(AUTHOR_TOKEN, LIBRARY,
+            created['session_id']), 'unreplayed_journal_prefix_was_admitted')
+        _assert(journal.review(db)['pending_count'] == 1,
+                'journal_commit_primary_rollback_not_reviewable')
+        replay = journal.replay(db, expected_head=journal.head())
+        _assert(replay[-1] == 1, 'journal_commit_primary_rollback_not_replayed')
+        access = AccessService(db, clock=lambda: NOW)
+        access.original_deletions = journal
+        intake = OralHistoryIntake(access, enabled=True, withdrawal_enabled=True, journal=journal)
         withdrawn = intake.withdraw(AUTHOR_TOKEN, LIBRARY, created['session_id'], **withdraw_args)
         _assert(intake.withdraw(AUTHOR_TOKEN, LIBRARY, created['session_id'], **withdraw_args) == withdrawn,
                 'withdrawal_retry_changed_receipt')

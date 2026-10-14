@@ -2,7 +2,10 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The current source defines phone app version **58** and TV app version **30**.
+The current source reserves phone app version **60** and TV app version **31**.
+The October 15 read-only runtime snapshot still has phone **58** and TV **30**
+on OTA. The frozen unsigned phone v59 is a separately qualified candidate;
+source version numbers do not establish signing or publication.
 
 ## Projects
 
@@ -67,10 +70,20 @@ also has a separate, manually started chapter read-aloud control with its own
 pause/resume behavior. Wait for speech to finish before speaking; assistant
 streaming speech and interruption are later stages.
 
+The v59 source candidate adds explicit segmented assistant reading of a saved
+story's first chapter or a memoir introduction. Continue requires the preceding
+segment to finish playing and remains a separate tap; it does not advance to
+later chapters or open the microphone. The next v60 source adds temporary prose
+size choices in the story/memoir readers, retaining the selected chapter and
+unsent contribution text. These additions have local generated checks and their
+own later delivery/device gates.
+
 See the [v58 Chinese test guide](docs/PHONE_V58_TEST_GUIDE_ZH.md),
 [v58 release record](docs/PHONE_V58_RELEASE_2026-10-14.md),
 [assistant voice contract](../../docs/ASSISTANT_VOICE_RELIABILITY.md), and
 [fluid assistant design](../../docs/ASSISTANT_FLUID_EXPERIENCE.md).
+Candidate checks are in the [v59 guide](docs/PHONE_V59_TEST_GUIDE_ZH.md) and
+[v60 reading guide](docs/PHONE_V60_TEST_GUIDE_ZH.md).
 
 ## Release and acceptance
 

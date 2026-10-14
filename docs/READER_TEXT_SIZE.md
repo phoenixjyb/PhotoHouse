@@ -19,6 +19,17 @@ there is no saved preference or automatic network request. Preset actions keep
 the selected media, saved words, speech ownership and unsent contribution text.
 They preserve the current reader and do not submit an edit.
 
+The phone memoir reader keeps chapter navigation at the bottom and places
+adjacent-story navigation in the scrolling story area. Both retain their existing
+explicit actions and current-source guards. At 150% text, the generated reader
+viewport gained about 125 dp in English and 94 dp in Chinese; the action targets
+measure 48 dp. This is fixture geometry, not a measurement on the family phone.
+
+Web font controls are optional during module initialization. An older partial
+reader template without the new control still supports its original shelf and
+narration actions. The generated compatibility journey retained all edition-shelf
+assertions and completed with no browser errors or external requests.
+
 ## Qualification
 
 Focused generated browser and API 36 emulator verification passed. The phone's
@@ -35,4 +46,6 @@ The complete integrated profiles and any remaining delivery gates are recorded
 separately; this source increment does not replace or publish the frozen v59
 archive or APK.
 See [Development](DEVELOPMENT.md) for the final evidence and [Roadmap](ROADMAP.md)
-for delivery and physical reading acceptance.
+for delivery and physical reading acceptance. The
+[Chinese phone/Web trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
+keeps these reader checks separate from the v59 voice and assistant trial.

@@ -2592,3 +2592,23 @@ and prevented an accidental CSS deletion during this slice.
 These generated checks do not grant deployment, signing, publication or physical
 family acceptance. Complete integrated profiles will bind this source increment
 separately from the v59 qualification freeze above.
+
+The subsequent complete Web profile found that older partial reader markup
+lacked the new font group and failed module startup. Listener binding now treats
+the group as optional; the original edition-shelf journey passed with the group
+absent, 55 reader requests and no browser errors or external requests. This is a
+product compatibility repair, not a synthetic markup addition. The failed full
+receipt remains retained separately.
+
+Phone memoir navigation now keeps only chapters in the fixed footer and places
+story navigation in the scroll area. The two bilingual 150% emulator cases pass;
+the reader viewport increases by about 125 dp / 94 dp and all navigation targets
+measure 48 dp. Existing guarded story/chapter callbacks and explicit fetches are
+retained.
+
+The next generated oral-history runner appends populated-V3 preservation and
+journal-commit/primary-rollback/reopen/replay cases: five groups / twelve cases,
+with 49 focused tests passing and all production capabilities still unavailable.
+This does not change the frozen v59 four-group/ten-case native proposal. Initial
+intake docs and the Android entry README now distinguish this current source
+from historical verification and delivered versions.
