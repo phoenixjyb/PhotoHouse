@@ -1,6 +1,8 @@
 # Phone v58 contextual memory actions candidate
 
-Status: native Windows offline qualification passed. Live deployment, original-certificate signing and phone OTA publication remain pending. The current delivered baseline is v57.
+Status: native Windows offline qualification and API/Web deployment passed.
+Original-certificate signing and phone v58 OTA publication remain pending; the
+phone OTA baseline stays v57 and TV OTA stays v30.
 
 ## Fixed source and artifacts
 
@@ -29,6 +31,16 @@ and UI QA modes disabled. Signature verification rejects this unsigned APK as
 expected. The original packaged icon RGBA SHA-256 remains
 `f5e55b4fe45566cf53911d6fb1be20f357f29a8e02d4d1a1e26364dac227c673`.
 No household configuration, endpoint or signing material is included here.
+
+## API/Web delivery
+
+The separately approved operation deployed source `8bc60e8` after a fresh
+stopped-writer backup. Trusted HTTPS served-byte, icon, anonymous-denial and OTA
+checks passed; all five upload workers were restored. The independent readback
+confirmed the 30-second API startup trigger, worker definitions/running states,
+unchanged configuration bytes and schema `a0c9d2e4f817`. No migration, model
+activation, TV service change or APK publication occurred. This establishes API
+service acceptance; it does not establish physical phone/family acceptance.
 
 ## Behavior and acceptance
 

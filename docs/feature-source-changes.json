@@ -14459,6 +14459,31 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-memory-v58-api-web-live-delivery-and-preserved-startup-20261014",
+      "based_on_commit": "562ffcb9de91773d14c8ad19047b18aa31407507",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "65876467213c468f22f610b1519af9e0c1dfef859d0ac5eaa24a172e2738f02f",
+          "sha256": "dfa5faf466ba9f40e538c7222bfd9196973292891856b79630933da2fc62ad1e"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "ea306a0739c66fcd169c7d7471b28b2fab1fec82a436e94f02b073661b000956",
+          "sha256": "519c5acb64182cc30d2a579c762262d0e33749d2072d2d5b4d84695dc9545bed"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": "8deb2fd4fe3d2f833a2d5d28ec289573c470a967f167d41090f0083f52231de0",
+          "sha256": "fdd9f8de728821b7533bf0445512fbdf9f14aad7502b980d4fd302caaf549fba"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

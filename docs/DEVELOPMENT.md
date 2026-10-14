@@ -42,10 +42,13 @@ free-RAM admission floor. It opened no family database/media, called no models
 and changed no services or tasks. Eight deployment controllers also passed native
 syntax checks and a read-only bootstrap derivation; 17 local operation checks
 passed, including preservation of the API startup trigger and anonymous denial
-for the new action capability. Live v58 deployment and signing/publication remain
-pending.
-No live API switch, schema migration, signing, publication or physical phone/TV
-acceptance is claimed. Half-duplex turn taking remains in place; whole chapters,
+for the new action capability. The separately authorized v58 API/Web deployment
+completed with a verified stopped-writer backup, exact served-byte checks,
+anonymous denials, preserved startup trigger and restoration of all five upload
+workers. An independent post-switch check passed. Schema a0 and configuration
+bytes are unchanged; phone OTA stays v57 and TV OTA v30.
+Phone v58 signing/publication and physical phone/TV acceptance remain pending.
+Half-duplex turn taking remains in place; whole chapters,
 streaming/latency changes and speaking interruption are later stages.
 
 
