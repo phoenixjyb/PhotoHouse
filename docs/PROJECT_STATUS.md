@@ -1,122 +1,86 @@
 # Current project status
 
-Reviewed **2026-10-15**. The frozen v59 candidate is source `816b9b5`;
-its complete Web qualification uses fixture-only review commit `8d0e425` with
-identical packaged runtime files. The read-only Windows task/process snapshot
-was refreshed at **06:17 Beijing (22:17 UTC on October 14)**; resources were
-sampled at 06:20. All 66 task XML/enabled identities and the incumbent config
-hash remain unchanged from 04:41. Runtime and local source remain separate evidence. The v59
-conditional delivery proposal awaits this operation's approval; no overnight
-service switch, signing or publication has occurred.
+Reviewed **2026-10-15 after the v60 release**. API/Web source
+`53e3954725197906771b6dd6ca470a0d1d58da9d` is deployed, and phone
+**v60 / 0.60-reading-comfort** is signed and published on Windows HTTPS OTA.
+The API switch completed at 07:48 Beijing; independent task/backup verification
+and Mac HTTPS checks passed at 07:50. TV OTA remains v30. Physical phone
+installation and real-family acceptance are separate next steps.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `8bc60e816e321c5a6ea4e8ca7b1ecf797b236138`, 195-file archive; service running; served-byte/anonymous-denial checks passed at deployment | Real owner/member voice and UX acceptance |
-| Primary database | `a0c9d2e4f817` verified by the deployment; no migration | Optional later schema/feature activation and paired recovery qualification |
-| Phone | v58 / `0.58-contextual-memory-actions`, signed and published to Windows HTTPS OTA | v58 physical installation and family listening acceptance |
-| TV | v30 / `0.30-library-recovery` OTA manifest verified unchanged | Physical projector/library/playback check; Home TV task awaits interactive desktop session |
+| API/Web | Source `53e3954`, 201-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
+| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
+| Phone | v60 signed with original certificate/artwork, published and completely read back over trusted HTTPS | Installation and physical reading/listening trial |
+| TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
 | Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | Monorepo is the development home; overnight commits, source overlays and local checks are retained | Remote refs and hosted CI were not refreshed in this round; the earlier authentication failure remains historical evidence |
-| Frozen next candidate | v59 API/Web source `816b9b5`, 201 files; unsigned phone v59, original icon pixels verified; API/Android/Web complete profiles pass | Explicit conditional approval, native generated qualification, guarded API delivery, original-certificate signing and phone OTA readback |
+| Public source | Monorepo is the development home; exact package provenance and ordered source overlays retained | Remote refs and hosted CI not refreshed by this release |
+| Following UX | Fictional three-step first-story prototype passes responsive/large-text checks outside the v60 archive | Design review and production implementation |
 
-[Phone/API delivery](../clients/android/docs/PHONE_V58_RELEASE_2026-10-14.md)
-records exact artifact hashes and source provenance. Native Windows verification
-matched the complete signed APK over HTTPS. The independent Mac first/last range
-checks passed; its additional complete transfer timed out. Neither publication
-nor a running process is a physical-device or narrative-quality pass.
+The [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+binds exact APK/archive/certificate hashes, native qualification and delivery.
+v59 remains an unused earlier frozen proposal; it was not published.
 
-## Following local increment
+## Delivered reading and assistant increment
 
-Phone v60 / Web source adds temporary narrative text size, compact phone memoir
-navigation and explicit protected-preview recovery. Focused enlarged Chinese/
-English browser and API 36 emulator journeys pass. The generated oral-history
-qualifier now has five groups / twelve cases, including populated legacy history
-and interrupted paired-commit replay; the frozen v59 proposal retains four/ten.
-The [first-story guide](FIRST_STORY_GUIDE_ZH.md) explains why a photo memory is
-not yet a saved multi-image story. Complete API (1,495 tests / 915 subchecks),
-Android and Web profiles pass at their bound revisions.
-The immutable v60 unsigned APK and 201-file API archive are recorded in the
-[candidate record](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md)
-and [Development](DEVELOPMENT.md). This increment
-has no signing, Windows execution or publication authority attached.
+v60 includes temporary prose-size presets, compact phone memoir navigation,
+explicit current-image preview recovery, first-chapter/memoir-introduction
+assistant segments with actual-completion-gated Continue/Stop, unsent assistant
+draft recovery, visible manual reading progress and ephemeral voice-turn timing.
+The [v60 trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md) links the
+assistant scenarios. A photo memory is not automatically a saved multi-image
+story; use the [first-story guide](FIRST_STORY_GUIDE_ZH.md).
 
 ## Runtime configuration observed
 
-The public defaults remain closed or opt-in. The following describes this
-inspected installation, not the default configuration of a new checkout.
+Public defaults remain closed or opt-in. These observations describe this
+installation. This release preserved configuration bytes and enabled no provider.
 
 | Capability/configuration | Observed state | Meaning |
 | --- | --- | --- |
 | Upload review | Enabled | Per-library owner/member policy and destination checks still apply; a receipt alone is not gallery or TV publication |
 | Assistant, saved-memory cards, private reply speech | Enabled | Authenticated read-only voice/chat and fresh saved-story actions; no general administrative tool agent |
-| Private workspace, assistant receipt journal, original-deletion journal | Configured files present | Distinct stores; previous native admission/format checks remain delivery evidence, this snapshot did not open databases |
-| Memory collaboration and original contributions | Enabled | Family contributions remain separate from assistant troubleshooting history |
-| Upload annotation intake | Off | Separate from original story/memoir contribution paths |
+| Private workspace, assistant receipt journal, original-deletion journal | Present; backup integrity passed | Separate stores with distinct purposes and retention |
+| Memory collaboration and original contributions | Enabled | Family contributions remain separate from transient assistant audio and 30-day troubleshooting records |
+| Upload annotation intake | Off | Separate from original story/memoir contributions |
 | Story generation and title suggestions | Off | Implemented adapters/contracts are not a live writing/title service |
-| Memory groups and memoir editorial/editions | Off | Source and synthetic qualification exist; activation still requires compatible schema, backup/recovery, provider and UI gates |
-| Permanent family-note erasure | Off | Imported D1/journal contracts do not imply live migration or erasure activation |
+| Memory groups and memoir editorial/editions | Off | Activation still requires compatible schema, provider quality, recovery and UI gates |
+| Permanent family-note erasure | Off | Imported lifecycle contracts do not imply live migration/activation |
+| Long oral-history intake | Internal default-off prototype | Five-group/twelve-case generated qualification does not create HTTP/client intake |
 
-Runtime source and flag checks emitted no private configuration values, tokens,
-accounts, original media or model identities. No model inference, database open,
-service change or publication was performed by this documentation audit.
+## Service/task verification
 
-## Service/task snapshot
+The API, five approved-upload workers, ASR and TTS tasks were running after the
+switch. All 66 task enabled states were retained; only the API definition changed.
+The enabled 30-second API startup trigger, ASR/TTS/OCR and Home TV configuration
+were preserved. Home TV was Ready and still depends on an interactive desktop.
+Task state does not establish a warm model, successful queue processing or audio
+quality. No model inference or video-backlog recount was part of this release.
 
-API, approved CPU, face, image embedding, video embedding and video preparation
-workers, ASR, and TTS tasks were enabled and running. The API retains its enabled
-30-second startup trigger. Home TV was enabled but Ready, with an interactive
-logon dependency. Do not infer a listener, warm model, GPU placement, successful
-queue completion or audible quality from scheduled-task state alone.
+Keep original-source failure records. Resume unfinished conversions without
+re-encoding completed videos; use the [recovery planner](VIDEO_SOURCE_RECOVERY.md)
+for any separately scoped source repair.
 
-Video conversion/backlog and unrecoverable-source counts were not recounted in
-this audit. Retain failure rows and resume unfinished items; use the
-[recovery planner](VIDEO_SOURCE_RECOVERY.md) before any separately authorized
-repair. No source file or failed record was replaced or reset here.
+## Qualification and next work
 
-## Current local qualification
+- Exact artifact source `53e3954`: complete API profile, 1,495 tests / 915
+  subchecks plus generated no-listener demo; complete Android JVM/lint/debug
+  profile, configured unsigned release assembly/lint and icon/profile checks.
+- Complete Web profile at fixture-only review `2c7c924`: passed with unchanged
+  inputs; all 201 packaged runtime files and complete Android tree match `53e3954`.
+  Earlier failed fixture receipts remain recorded, not counted as passes.
+- Native Windows: twelve assistant groups and five experimental oral groups /
+  twelve cases with generated fixtures and bounded resources; no production
+  data, provider or listener during qualification.
+- Delivery: verified four-store backup, exact new Web assets/access denials,
+  five-worker restoration, original-certificate signing and full native/HTTPS
+  phone APK readback. Independent Mac manifest/UI check passed.
 
-- API at the immutable v59 source `816b9b5`: **1,495 tests / 915 subchecks**
-  plus the generated no-listener demo; unchanged-input invocation receipt.
-- Android at that same source: complete JVM, lint and unconfigured debug-build
-  profile passed with an unchanged-input receipt. Configured unsigned release
-  assembly/lint and original-icon/profile verification passed separately.
-- Full Web at `8d0e425`: all selected Node/browser suites passed in Edge with an
-  unchanged-input receipt. The intermediate failed runs remain recorded; their
-  fixture readiness/response repairs retained the original assertions.
-- Every one of the 201 packaged runtime files matches the later Web review
-  commit. Its complete Android subtree also matches the frozen phone source.
-  Later reading-comfort work is a separate next-version source increment.
-- The exact extracted API archive passed twelve assistant scenario groups and
-  four experimental oral-history groups / ten cases on Mac. This is generated
-  fixture evidence; the matching bounded Windows execution is still pending.
-- Portable tooling passed 158 standard-library tests; source-overlay and local
-  documentation-link checks passed. No hosted CI result is claimed.
-
-These scopes overlap and are not summed. The [v59 phone/Web trial](../clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md)
-is ready for use after delivery. Physical phone/member voice, Chinese listening
-quality and deferred projector acceptance remain open. Earlier v58 delivery
-qualification remains in its [candidate record](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md).
-
-## Next delivery and development
-
-Complete the prepared conditional v59 qualification → API/Web switch → phone
-OTA sequence only after its operation approval. Preserve the original signer,
-fresh stopped-writer backup, worker restoration, unchanged schema/configuration
-and guarded recovery. Then run the family trial with both owner and member
-accounts. The current local v60 source increment adds temporary prose-size controls for story
-and memoir readers; it is outside the fixed v59 artifacts.
-
-The latest resource sample observed about 53 GiB free system RAM; the RTX 3090
-reported 0 MiB used at 0% utilization, and the P2000 about 81 MiB used. A single
-idle sample does not establish loaded providers, queue completion or speech
-quality. No model inference or production database was opened for these samples.
-
-Prepare a grounded story/grouping quality pilot and portable release/recovery
-tooling after closing delivery and family-feedback gaps. New providers,
-schema/feature activation and TV publication retain their own qualification and
-operation scope.
+Next: install v60 and run owner/member reading and continuous-voice trials; then
+implement the reviewed first-story flow. Long recording intake, model quality,
+TV v31 delivery and broader narrative/grouping activation retain separate gates.
 
 ## Earlier progress notes
 

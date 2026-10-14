@@ -1,10 +1,12 @@
 # Phone v60 and Web/API local candidate — October 15
 
-This is a **local qualification record**, not a release or installation notice.
+This retains the **local qualification record at the candidate freeze**. The
+subsequent authorized native qualification, API/Web switch and signed phone v60
+OTA publication are complete; see the [release record](PHONE_V60_RELEASE_2026-10-15.md)
+and [current status](../../../docs/PROJECT_STATUS.md). Statements below about
+unperformed delivery describe the earlier freeze, not current runtime state.
 The immutable artifact source is `53e3954725197906771b6dd6ca470a0d1d58da9d`.
-The live installation remains the v58/API baseline in
-[Project Status](../../../docs/PROJECT_STATUS.md). The prior v59 conditional
-operation proposal cannot be used to substitute these v60 artifacts.
+The unused v59 proposal did not authorize or substitute these v60 artifacts.
 
 ## Changes families will see after delivery
 

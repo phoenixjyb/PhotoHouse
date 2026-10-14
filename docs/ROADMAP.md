@@ -1,23 +1,23 @@
 # Product roadmap
 
-Active priorities after the **October 14 v58 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 15 v60 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
 
 ## 1. Accept the delivered experience
 
-Run the [v58 phone/Web trial](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md)
+Run the [v60 phone/Web trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
 with owner and member accounts: fresh saved-story search, opening the right card,
-reading its saved opening, actual playback before relistening, Pause/End, account/
-library change and recovery. Complete TV v30's physical named-library and playback
+reading its saved sections, actual playback before Continue/relistening, Pause/End,
+account/library change and recovery. Complete TV v30's physical named-library and playback
 check when the desktop/projector is available.
 
 **Exit:** device version and scenario-specific observations/receipts, including
 Chinese clarity and large-text/remote usability. Source/emulator results and
 publication remain separate from family acceptance.
 
-October 15 local source work adds a collapsed Web **Last turn timing** summary
+The delivered October 15 source adds a collapsed Web **Last turn timing** summary
 for four client-observed stages. It appears only after confirmed playback and
 the next microphone is ready, and clears on interruption or scope change. It
 does not add a request or claim provider latency; the [timing note](VOICE_TURN_TIMING.md)
@@ -29,23 +29,18 @@ acceptance remain in the trial above.
 
 ## 2. Make assistant reading and conversation fluid
 
-The frozen v59 source now has complete local API, Android and Web qualification;
-the conditional native/API/phone delivery proposal is prepared. Its family trial
-remains ahead of broader autonomous narration. The current local v60 increment adds
-[temporary reading-size controls](READER_TEXT_SIZE.md) for story and memoir prose,
-while keeping the current chapter and contribution drafts.
+API/Web `53e3954` and phone v60 are delivered with complete local/native
+qualification, verified backup, worker restoration and original-certificate OTA
+readback. The [release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+records exact artifacts; family acceptance remains ahead of broader narration.
 
-The same v60 increment adds [explicit preview recovery](READER_PREVIEW_RECOVERY.md),
-compact phone memoir navigation and a [first-story guide](FIRST_STORY_GUIDE_ZH.md).
-These keep a failed image from forcing readers to restart or lose their words.
-Frozen v59 approval does not authorize substituting v60 artifacts.
-
-October 15 source adds [explicit saved-section narration](ASSISTANT_SEGMENT_READING.md)
-for a story's first chapter or a memoir introduction. Each tap requests one
-bounded server-derived segment; successful playback permits Continue and the
-last segment permits an explicit restart. Source/scope changes and Stop clear
-progress. This is a source/browser/emulator slice, with delivery and physical
-listening gates still open. It does not add hands-free chapter advancement.
+v60 includes [temporary reading-size controls](READER_TEXT_SIZE.md),
+[explicit preview recovery](READER_PREVIEW_RECOVERY.md), compact phone memoir
+navigation and a [first-story guide](FIRST_STORY_GUIDE_ZH.md). Assistant
+[saved-section narration](ASSISTANT_SEGMENT_READING.md) reads a first chapter or
+memoir introduction in explicit segments. Successful playback enables Continue;
+Stop and source/scope changes clear progress. Voice-requested continuation and
+hands-free advancement to later chapters remain future work.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.
@@ -61,8 +56,8 @@ acceptance. Scope/default behavior and legacy clients remain explicit.
 
 The later source round compacts reading controls and follow-up labels, adds
 explicit composer shortcuts, preserves user focus during delayed reload recovery
-and exposes TV preview retry directly in the gallery. Final full-profile and
-delivery evidence remains separate from the focused browser/emulator checks.
+and exposes TV preview retry directly in the gallery. These phone/Web changes are
+delivered in v60; TV preview retry remains an unpublished v31 source candidate. Physical acceptance remains separate.
 
 ## 3. Improve grounded family storytelling
 

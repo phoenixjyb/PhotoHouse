@@ -16427,6 +16427,62 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "record-authorized-v60-api-web-and-original-certificate-phone-ota-delivery",
+      "source_commit": "5e69d519b39c81774fb253799f03eb57e3c8ecde",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md",
+          "before_sha256": "e2e2757b633c657a356bc28d4945cc9211293112d766496c4b6d8e46e75ef0bc",
+          "sha256": "100be63c9d84df2adfe6fa37c0bc007bca6078bd32f6cedef4e2adc9c82115ce"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md",
+          "before_sha256": "05a507cb94ec65e5226cd98f83a80ff603dea82619c21b8b1d6c6d09589c23f8",
+          "sha256": "da3a28ca12883a7489a737e90a95309a88cbad422c5468f0455251620b421247"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "8e7d3c5037dfb440555a18ab90ebbaa3ea2ce3ccd6238b8fe7031a5a32d5708a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md",
+          "before_sha256": "b61d3a249adda8eabdd46c86eb27d0c9347b0a7b250f8a2d2970e36b380a4e25",
+          "sha256": "f67bb12035edc7f047e1944941e3c6320c372d88c3231aa6882efe1b2a826d31"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "1a51acf635316ff09c7be6e9e44b5d4f16a39bd634231a742b54647bd77af065",
+          "sha256": "0e46dc52a79baa7f41b7c3abc6957992a23636f955070cec8a4db9c56cb14554"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "0776c00d763c4536a4ec250b9fdb346b92bce6bd91c9103ded11c515d47031f5",
+          "sha256": "3761ee94f874bb8d0b851c1e916bb112b06d1583cfb8ac539b5f900e154985db"
+        },
+        {
+          "path": "docs/NEXT_SESSION_HANDOFF_2026-10-15.md",
+          "before_sha256": "9c0ac96e3994b1170e2ffe0e093c283df164672f21b2727c5a27571cde9d51c9",
+          "sha256": "0d0c5b7a94d38dbecc694c6feb58fa58f1b763d7750e59ae4818eb599469fb66"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "c6396887b93b3495227bccaf47dde5c1c04a26b33d7c0212c47433a4d8a4ebc6",
+          "sha256": "f777f32a5f9e5e7cc9cc4540f3055b22b53f4c54035f2887738245d15d48a696"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9e017de6b276120bc1d7de019a70bb40843f8dd736ce1fc2b87dc05ef9dc70a5",
+          "sha256": "5e95de293481135491464a19fcd4099e6396991a1d44be001a468f37b9c7a06c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

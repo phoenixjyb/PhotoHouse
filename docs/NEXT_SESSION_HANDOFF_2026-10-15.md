@@ -37,39 +37,40 @@ APK signature refusal are qualified separately from release signing.
 
 ## Current delivery boundary
 
-[Project Status](PROJECT_STATUS.md) records installed API/Web `8bc60e8`, phone
-OTA v58 and TV OTA v30. The 06:17 Beijing read-only inventory matched all 66
-earlier task XML/enabled identities and incumbent configuration hash; eight
-identified related task processes were running. Home TV remains dependent on
-an interactive Windows desktop. The owner Web login and three previously
-reported gallery previews decoded successfully in the live UI. No family media
-was exported for that check.
+The owner authorized release in the current session. API/Web source `53e3954`
+was switched successfully at 07:48 Beijing; phone v60 was signed with the original
+certificate and published on Windows HTTPS OTA. See the
+[release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md).
+TV OTA stays v30. The v59 proposal was not executed or published.
 
-No overnight deployment, model inference, Windows candidate staging, signing,
-OTA publication, production database mutation or task/service change has occurred. A running
-task is not queue completion, a warm provider or physical audio acceptance.
-The read-only resource query did not open production databases.
+Native qualification passed with generated fixtures: 201 source files, twelve
+assistant groups and five oral groups/twelve cases. A fresh stopped-writer
+four-store backup passed integrity checks. Served assets, anonymous access
+boundaries and both feeds passed; all five upload workers were restored.
+Independent 07:50 task evidence confirms all 66 enabled states preserved, only
+the API definition changed and the 30-second startup trigger retained. ASR, TTS,
+OCR and Home TV were preserved. Schema/configuration are unchanged. No model
+activation, migration, TV publication or video resume was part of this operation.
 
-## Delivery work to resume
+The complete signed APK passed native and trusted-HTTPS readback. A separate Mac
+trusted-HTTPS check confirmed v60 manifest and WebUI. Physical installation,
+owner/member trials, real audio quality and projector acceptance remain open.
+Home TV still needs an interactive desktop session. Do not rerun one-shot release
+controllers: inspect existing receipts and current task/feed state first.
 
-1. Recheck source/artifact and exact operation authority. The v59 conditional
-   proposal was prepared but not approved during this round. A missing response
-   grants nothing; v60 requires its own matching preparation and scope.
-2. v60 controller/runner preparation passes 18 local checks and read-only native
-   PowerShell parsing with zero errors; its separately prepared one-shot driver
-   passes 15 local guard checks and keeps authority disabled. No native fixture
-   execution is performed.
-   For the chosen immutable candidate, finish bounded native generated Windows
-   qualification before preparing live cutover. Preserve exact case/group lists,
-   privacy/resource limits, interpreter and archive hashes. A Mac fixture pass or
-   PowerShell parse does not establish native execution.
-3. Prepare guarded API cutover with fresh stopped-writer paired backups, unchanged
-   schema/configuration, original startup trigger, worker restoration and rollback.
-4. Sign the exact phone artifact with the original certificate only under the
-   covered scope; publish the correct phone feed and verify complete readback.
-   Keep TV separate. Do not bypass any of these gates with a debug APK.
-5. Run the linked owner/member trial and physical Mandarin listening. The
-   projector and member session checks remain deferred until available.
+## Work to resume
+
+1. Establish current source, task/feed identities and any later user feedback.
+   Frozen release source `53e3954` remains distinct from later documentation HEAD.
+2. Install phone v60 through OTA; follow the
+   [reading/preview trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
+   and linked assistant scenarios. Verify actual playback/Continue/Stop, retained
+   drafts, account/library fences and enlarged text on physical devices.
+3. Complete the deferred member and projector/library/playback checks when ready.
+4. Review the fictional first-story prototype, then implement the guided saved
+   story path as a new source increment. It is not in the v60 runtime package.
+5. Keep model, grouping/editorial, long recorder, erasure and later schema
+   activation behind their own qualification and explicit operation scope.
 
 ## Next product work after acceptance
 

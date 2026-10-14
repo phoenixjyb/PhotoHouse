@@ -12,27 +12,30 @@ installation, and family acceptance requires physical use.
 | Accounts, library membership, owner review and selected-member auto approval | Protected contracts and per-library policy; upload review enabled | Owner/member/device trial; existing uploads still need review |
 | Photo/video browsing, named libraries/albums, dates and prepared playback | Phone/Web protected readers; Web failed thumbnails show a localized in-card fallback while preserving the label and explicit open action; Home TV uses its separate published catalog; filename/receipt hints remain distinct from capture time | Home TV desktop/listener and physical projector check; original-source failures need independent recovery |
 | Upload queue/history folding and retry/status | Client source and delivered app; approval, preparation and visibility remain distinct | Family queue/recovery UX trial |
-| Chinese-first UI and visible voice phases | Phone v58 / Web deployed; source/browser/emulator and large-text checks recorded | Device microphone/audio-focus and user perception |
+| Chinese-first UI and visible voice phases | Phone v60 / Web deployed; source/browser/emulator and large-text checks recorded | Device microphone/audio-focus and user perception |
 | Text/audio original family contributions | Revisioned, attributed original and derivation contracts; collaboration/originals enabled | Family quality/recovery checks; not the assistant's transient audio path |
 | Upload/folder annotation intake and automatic polish/tags | Source adapters/contracts present | Separate annotation intake off; provider/queue activation and source-quality review |
 | Story/memoir composition, reviewed chapter sources, albums and reading continuity | Source supports protected composition/readers; separate manual chapter narration exists | Larger real-family story/album reading and contribution acceptance |
 | Automatic story/title proposals, memoir editorial and reviewed editions | Source and generated qualification; source/derivation/consent and CAS guards | Generation/title/editorial/edition flags off; schema, model quality, paired backup and native delivery |
 | Adjustable activity/shared-memory grouping | Manual group and time/similarity candidate contracts; source/version revalidation | Groups off; compatible schema/vector identity, withdrawal replay, native recovery and family adjustment trial |
-| Private assistant threads/history and reply-language preference | Separate owned schema-v2 store, 30-day retention, idempotent requests and GET recovery; configured in v58 installation | Family/private account continuation checks; response length and voice pace are not applied |
-| Unsent phone assistant drafts | Source preserves composition-local text through My conversations round trips; active account/library/thread and host boundaries clear it; three real-route emulator cases | Signed delivery and family navigation trial |
+| Private assistant threads/history and reply-language preference | Separate owned schema-v2 store, 30-day retention, idempotent requests and GET recovery; configured in the current installation | Family/private account continuation checks; response length and voice pace are not applied |
+| Unsent phone assistant drafts | Source preserves composition-local text through My conversations round trips; active account/library/thread and host boundaries clear it; three real-route emulator cases | Delivered in v60; family navigation trial remains |
 | Foreground continuous voice | Explicit Start authorizes read-only listen → reply → listen; Pause/End and lifecycle fences | Real ASR/TTS/echo/latency trial; half duplex remains |
 | Voice-turn timing | October 15 Web/phone source shows four ephemeral client-observed stages after a completed observed turn; default-collapsed, English/Chinese, no added data request or transcript/audio retention | Real latency and physical audio/family acceptance remain separate |
-| Saved-story search, followups, current-card opening and opening speech | Deployed Web/API and signed phone v58; full-cohort/parent/source validation; typed actions explicit | Physical v58 trial; opening limited to 240 code points / 600 UTF-8 bytes |
-| Assistant saved-section narration | [October 15 source](ASSISTANT_SEGMENT_READING.md): first story chapter or memoir introduction, explicit segments, actual-completion-gated Continue, Stop and restart | Windows/package/phone delivery and physical speech acceptance; voice-requested continuation and later chapters remain future work |
-| Story/memoir reading size | Current local phone v60 / Web source: temporary prose presets retain chapter/frame context and contribution drafts; bilingual large-text emulator/browser checks pass; system text scaling still applies | Complete local profiles and unsigned package pass; native/Web delivery and family reading trial remain |
-| Manual chapter narration segment progress | October 15 phone source shows current segment while preparing, speaking or paused; session-local | Signed delivery and physical audio acceptance; no persistent resume or assistant full-chapter speech |
-| Memoir source-check status and retry | October 15 Web source shows status outside collapsed originals and explicit read-only retry | Served delivery and family trial; linked-source checking is not fact verification |
+| Saved-story search, followups, current-card opening and opening speech | Deployed Web/API and signed phone v60; full-cohort/parent/source validation; typed actions explicit | Physical v60 trial; opening limited to 240 code points / 600 UTF-8 bytes |
+| Assistant saved-section narration | [October 15 source](ASSISTANT_SEGMENT_READING.md): first story chapter or memoir introduction, explicit segments, actual-completion-gated Continue, Stop and restart | Delivered in v60; physical speech acceptance remains; voice-requested continuation and later chapters remain future work |
+| Story/memoir reading size | Delivered phone v60 / Web: temporary prose presets retain chapter/frame context and contribution drafts; bilingual large-text emulator/browser checks pass; system text scaling still applies | Signed/served delivery verified; family reading trial remains |
+| Manual chapter narration segment progress | October 15 phone source shows current segment while preparing, speaking or paused; session-local | Delivered in v60; physical audio acceptance remains; no persistent resume or assistant full-chapter speech |
+| Memoir source-check status and retry | October 15 Web source shows status outside collapsed originals and explicit read-only retry | Served in v60; family trial remains; linked-source checking is not fact verification |
 | Long oral-history withdrawal and replay | Internal default-off V4 journal/source prototype and generated five-group / twelve-case qualification; author-only withdrawal retains raw sections and blocks revived source access | No HTTP/client/migration; operator upgrade, native admission and permanent erasure remain open |
 | Model replacement and topology | Thirteen catalogued source capabilities; explicit typed projection for four target groups | Per-provider installation/licensing/resources/native quality; face/embedding projection and orchestration remain separate |
-| Story/memoir preview recovery | Local phone v60 / Web source: explicit protected-preview retry, corrupt-cache recovery, visible loading and stale-scope fences; focused bilingual emulator/browser checks pass | Complete local profiles and unsigned package pass; native delivery and real-device recovery trial remain |
+| Story/memoir preview recovery | Delivered phone v60 / Web: explicit protected-preview retry, corrupt-cache recovery, visible loading and stale-scope fences; focused bilingual emulator/browser checks pass | Signed/served delivery verified; real-device recovery trial remains |
 | Explicit TV preview retry | TV v31 reserved in October 15 source: visible current-page failures, explicit missing-preview retry and persistent focused recovery action; three emulator cases | Signed TV delivery and physical remote/projector trial |
-| Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | Native operator qualification and live delivery remain separate |
-| OTA and recovery | Phone v58, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
+| Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | v60 native qualification and live delivery passed; future candidates retain their own gates |
+| OTA and recovery | Phone v60, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
+
+See the [v60 delivery record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+for exact artifacts, backup, worker restoration and complete HTTPS APK readback.
 
 ## Acceptance rules
 
@@ -45,7 +48,7 @@ installation, and family acceptance requires physical use.
 
 See [Architecture](ARCHITECTURE.md), [Operations](OPERATIONS.md),
 [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and the
-[v58 test guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md).
+[v60 test guide](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md).
 
 ## Oral-history intake source foundation
 

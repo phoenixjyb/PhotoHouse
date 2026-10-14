@@ -15,6 +15,31 @@ to that record, not every later release. Do not sum overlapping checks or treat
 local evidence as current hosted CI, runtime/model quality or device acceptance.
 The October 14 documentation audit did not rebuild applications.
 
+## October 15 v60 delivery closure
+
+The owner authorized release of immutable source `53e3954`. Native Windows
+qualification passed for 201 source files, twelve generated assistant groups and
+five experimental oral groups/twelve cases, within the pinned five-minute /
+2 GiB total-job / eight-process / 8 GiB free-RAM limits. It opened no production
+database/media and used no model, network or listening server. Thirty-two local
+API delivery checks, native controller parsing and 61 invalid-report refusal
+checks passed. Twenty-three local phone delivery checks passed.
+
+The guarded API/Web operation completed with a verified four-store stopped-writer
+backup, served-asset/listener/access-boundary checks and all five workers restored.
+An independent task check confirmed all 66 enabled states preserved, only the
+API action changed and the enabled 30-second startup trigger retained. Schema
+`a0c9d2e4f817` and config bytes are unchanged; no provider/model or default-off
+feature was activated. The original-certificate phone v60 APK was verified
+natively and completely over trusted HTTPS. Independent Mac HTTPS manifest/UI
+checks passed; no separate full Mac APK download was run.
+
+See the [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+for hashes and operation boundaries. Physical phone/member/projector/listening
+acceptance and hosted CI remain separate. Later documentation commits do not
+rebuild or change the immutable artifacts. Earlier unperformed-delivery statements
+below describe their original source/preparation checkpoint.
+
 ## Reader and voice recovery qualification (October 15)
 
 The first local source round (`a3527fb`) adds visible Web memoir source-check
