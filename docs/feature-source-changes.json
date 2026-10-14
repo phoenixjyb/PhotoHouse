@@ -15865,6 +15865,27 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "workspace-history-fixture-waits-for-rendered-selection",
+      "source_commit": "816b9b5e221def9321557b665679578155cb7a65",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "aacab35e859a3d62ddecbfb65deab40e44f0c1e03cf8f2cce2320a91af7b32b6",
+          "sha256": "a5f0f539ce07b3588111de4aff126ef330b113cea6f0b19efb7f2398876419f5"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "58599c7a89f75cdde4f35675c27ed87313a291a85fa27e624d017256e5b745de",
+          "sha256": "84884abc5c7588629bba54db8ab4184e8d44472910696a92e60c8b0483903c80"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

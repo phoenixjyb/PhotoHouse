@@ -2497,3 +2497,15 @@ Three actual-route emulator cases passed, including thread activation versus
 revision-only refresh and zero send/transcribe/capture side effects. Debug lint
 and instrumentation compilation passed; no geometry changed. The default local
 screen holder keeps standalone fixtures and other callers compatible.
+
+
+The frozen `816b9b5` API and Android profiles passed with unchanged-input
+receipts; API again reports **1,495 tests / 915 subchecks** plus the generated
+demo. The next full Web run stopped in its history fixture: the HTTP response
+arrived before selected-thread rendering settled. A private diagnostic observed
+the selector still disabled, the target thread not selected and no history
+rows. The fixture now waits for that exact target, management scope, enabled
+selector and twenty rendered rows before the original explicit-open assertion.
+All fifteen focused history/workspace journeys pass with their original paging,
+privacy and recovery checks. No product source changed for this synchronization
+repair; the next complete Web run remains a separate gate.

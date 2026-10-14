@@ -284,6 +284,11 @@ async function installSyntheticTransport(targetContext){
   assert.equal(threadCreates().length,seededCreates,'synthetic history seeding never creates through the browser');
   const historyDetailRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`${workspace}/threads/${historyThreadId}?`));
   await page.locator('#assistant-private-select').selectOption(historyThreadId);await historyDetailRead;
+  await page.waitForFunction(id=>{
+    const select=document.querySelector('#assistant-private-select'),management=document.querySelector('#assistant-private-management');
+    return select?.value===id&&management?.dataset.threadId===id&&!select.disabled&&
+      document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20;
+  },historyThreadId,{timeout:10000});
   await openManagement();
   const trail=page.locator('#assistant-turn-trail-list');
   await page.waitForFunction(()=>document.querySelectorAll('#assistant-turn-trail-list .assistant-turn-trail-entry').length===20);
