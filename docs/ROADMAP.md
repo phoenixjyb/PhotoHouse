@@ -88,6 +88,12 @@ qualify a multi-speaker editorial pilot before activating automatic stitching.
 Manual links and revisions remain available throughout. The separate project
 introduction uses fictional examples/cartoon illustrations, never family media.
 
+**Source progress:** the [intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md)
+implements bounded ordered WAV sections and exact receipts with generated
+reopen/concurrency/rollback evidence. It stays internal and default-off; no
+transport, migration or recorder is delivered. Next is withdrawal/journal replay
+and admission, then a client pilot that clearly distinguishes saved and retrying.
+
 **Exit:** accepted recording sections survive retry/restart; conflicting accounts
 retain their speakers; proposed prose is faithful and adopted explicitly;
 permissions and source-withdrawal/restore tests pass before family use.

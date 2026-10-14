@@ -16,6 +16,25 @@ local evidence as current hosted CI, runtime/model quality or device acceptance.
 The October 14 documentation audit did not rebuild applications.
 
 
+## Oral-history intake foundation (October 14)
+
+The [internal intake contract](ORAL_HISTORY_INTAKE_FOUNDATION.md) passed 18 focused
+tests and 15 subchecks for ordered PCM sections, exact mutation receipts,
+reopened storage, owner/member isolation, concurrency, storage/receipt/schema
+failure, cancellation, quotas and default-closed routes. The adjacent access and
+contribution cohort passed 54 tests / 31 subchecks; scopes overlap.
+
+The first `memory` profile run exposed a pre-existing order-dependent import in
+`test_family_note_identity.py`: its worker schema test depended on another test
+adding `server/scripts` to `sys.path`. It now loads the exact worker file via
+`importlib` directly. The complete final profile passed **308 tests and 163
+subchecks**, with one existing Starlette/httpx deprecation warning. No worker,
+model, runtime, database migration or phone/Web recording interface is activated.
+
+Full API/Web/Android builds, hosted CI, Windows native/storage/power-loss and
+family/device checks were not run for this source prototype. The live v58 API
+and OTA artifacts remain unchanged; current source is not a release candidate.
+
 ## Contextual voice and viewing qualification (October 14)
 
 The local [fluid assistant slice](ASSISTANT_FLUID_EXPERIENCE.md) passed 111

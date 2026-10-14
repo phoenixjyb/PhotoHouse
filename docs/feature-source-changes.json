@@ -14744,6 +14744,79 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "private-local-oral-history-section-intake-foundation-20261014",
+      "based_on_commit": "918fd5616f107b415c473595f81f19d8b9e8ca70",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "1d8b0a0ff03b215e0475bb5cf4c1766c4897212dc3c4a9c5d06262e8b4dcec59",
+          "sha256": "abf6f72abfb97dc951fb268f0c97ad07a998766b500ec29af3d1c32b0e2b1569"
+        },
+        {
+          "path": "docs/FAMILY_MEMORY_HUB.md",
+          "before_sha256": "1f2be0be09f322cdc0031af40138fa6f3dc5f827473c2d925e39b509a864a1ca",
+          "sha256": "223be9ae1a1fb8cadae7ccc2b05c1a9e2999a815df3d3a59bf6296463b07399d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "5e9014ee75f62e4e7096abc9b2e005478846f515db9fe847e61a210f9f7061e7",
+          "sha256": "342f4236fbea6cee1a5a34219f6bbd0b8c3ef1df040bee3c5c50f47b7b21739d"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": null,
+          "sha256": "8fc698a0301e5b5595432ca3fa8ed32bbe6b625b1f33ccc290f7623157577979"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "dd395aa13f229d3d678251841b094f09a99d76bbb3ec09c7b6a459330249dc76",
+          "sha256": "33f6e663e4303d05d091b47e18cfc5af6f04dee184db35326cc15dd33105d3b2"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "29647f6991b6611dc4a09b92f082c60c6b9f31c85e21222ebd86adc33882df2d",
+          "sha256": "e4cd44ae5afb14ea473f3e49423e0169e79330c31020ae37ef17be70a2b65b92"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "5fbd67d0c8d142cec8101cbc2630283976b6fb11bf775e581d4983a7b81a9624",
+          "sha256": "6f8744d89d0235cc787615ed62c9f6be10ab810ad8c6b468b4a9cb5b402c7e01"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": null,
+          "sha256": "17e25b4e31114d33fe7de24160ef0ebf438f9858bd5c2dd17e3f799f2529f882"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_schema.py",
+          "before_sha256": null,
+          "sha256": "fbac4c1d95522c4e9114f177d856b4d932c478488444c60211ebdc5100edbf77"
+        },
+        {
+          "path": "server/tests/security/test_family_note_identity.py",
+          "before_sha256": "d7f49329911c86b16e1cf5bfc463695050a4992c015b2c823b388d0e36a5eb28",
+          "sha256": "cd140095397c30bb76bd8d6c92f29fdd27bd6ff247dc66b4f2675da36d248e0c"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_intake.py",
+          "before_sha256": null,
+          "sha256": "78c140b6af3469a0c2e4cf677e90bee315ec512e66a813dad7b8c832a883078a"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "97993b16e89215a3992862e45c6d1e1e89b0e032d0b361e1bd6753490c66e677",
+          "sha256": "c403689ad8e528b41abc237284faee4004ed8e86dd89641ee8ad5e7081459a10"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "fixture_schema_added": true,
+      "generation_enabled": false,
+      "providers_activated": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false
     }
   ]
 }

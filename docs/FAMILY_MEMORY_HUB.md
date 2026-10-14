@@ -89,6 +89,14 @@ and derived bindings according to qualified dependency/restore rules.
 Public cartoons replace private media only on the introduction site; the site
 never reads the real family archive.
 
+## Implemented intake foundation
+
+The [internal oral-history intake prototype](ORAL_HISTORY_INTAKE_FOUNDATION.md)
+now provides ordered bounded WAV sections, source manifests, exact retry receipts
+and reopened-connection recovery in generated fixtures. It has no HTTP route,
+client recorder, admitted primary migration, transcription or live activation.
+Withdrawal/restore and native admission remain prerequisites for family use.
+
 ## Bounded implementation sequence
 
 1. **Domain/recovery design:** additive person/project/section schemas, consent

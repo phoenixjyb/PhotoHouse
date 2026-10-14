@@ -78,3 +78,11 @@ then implement bounded assistant chapter continuation/progress. In parallel,
 prepare a small grounded story/grouping quality pilot and portable release/recovery
 tooling. New models, schema changes, service controls and public publication keep
 separate qualification and operation authority.
+
+## Later source increment: oral-history intake
+
+The [internal recording-section foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md)
+was developed after the installation snapshot above. It has source tests only,
+no HTTP/client surface, migration or runtime configuration. Windows services,
+model/worker activity, family data and v58/TV OTA feeds were not changed. Do not
+interpret its source quota or generated-fixture installer as live admission.

@@ -38,6 +38,14 @@ See [Architecture](ARCHITECTURE.md), [Operations](OPERATIONS.md),
 [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and the
 [v58 test guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md).
 
+## Oral-history intake source foundation
+
+[Ordered local recording sections](ORAL_HISTORY_INTAKE_FOUNDATION.md) now have an
+internal opt-in store with exact receipts, private author scope, manifest checks
+and bounded quotas. Generated restart/retry/concurrency/refusal checks are source
+evidence. This is not a deployed recording interface: withdrawal/replay, admitted
+schema, transport, Web/phone capture and worker/native qualification remain open.
+
 ## Family memory hub direction
 
 [Long oral histories and multiple-relative stories](FAMILY_MEMORY_HUB.md) are

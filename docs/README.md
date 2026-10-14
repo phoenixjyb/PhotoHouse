@@ -52,3 +52,6 @@ these documents. Use the exact current operation scope and preserved rollback pl
   purpose/features, fictional family examples and cartoon illustrations.
 - [Family memory hub](FAMILY_MEMORY_HUB.md): proposed long oral histories,
   relative/event organization, attributed contributions and reviewed chapters.
+
+- [Oral-history intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md): internal
+  bounded section/receipt contract and remaining withdrawal/transport gates.
