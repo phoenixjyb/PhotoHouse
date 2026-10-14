@@ -14709,6 +14709,41 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "local-family-story-purpose-and-introduction-site-v2-20261014",
+      "based_on_commit": "74e1392306380f64ea70e7551ffa069fb3b04ddc",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "89a3882b7c905925995ee7e71ffc054e4b059fd7f7b45a938fb4193fbfc40ee8",
+          "sha256": "539ba57e357fb605a69c34b7b13f9eb1b586ac91ce9075e2bc9b88186d5e1cbb"
+        },
+        {
+          "path": "docs/FAMILY_MEMORY_HUB.md",
+          "before_sha256": "52beca0aaf4faa3a41a076464a24ce53e1feee4155bf432e5051e413952d224e",
+          "sha256": "1f2be0be09f322cdc0031af40138fa6f3dc5f827473c2d925e39b509a864a1ca"
+        },
+        {
+          "path": "website/README.md",
+          "before_sha256": "20b413b7a0911029696a8313e2c62ab50eebff6d66d404898cb9fdd1700c95fc",
+          "sha256": "d4ea0c393674f226750ae799027f5e6e48a011cfe1a97bd6465fd08da7c3c1f4"
+        },
+        {
+          "path": "website/RELEASE_2026-10-14.md",
+          "before_sha256": "4b36627f7d33cc30efd27286f847c420ce70650529eb9909083a7505f33c2d17",
+          "sha256": "725de0834c779c1e2013cd9f62331af0a3d7e2673a466fcde4a5f567bedf7fb8"
+        },
+        {
+          "path": "website/dist/index.html",
+          "before_sha256": "b9f8a4b6b346ce6f9a756534572ed86aefd177aa8580c020d444d061a9c3e943",
+          "sha256": "61d3cfe33245cd0ce19ccf87893ab235f9ede1132cefe2382b03a22130074c98"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

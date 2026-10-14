@@ -1,6 +1,7 @@
 # 拾光相册 · PhotoHouse
 
-让家人的照片、视频和背后的回忆，成为可以一起讲述、阅读和聆听的故事。
+PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家庭自己的设备或服务器，
+照片、视频、录音和文字共同承载可以讲述、阅读和聆听的故事。
 后端、Web、Android 手机与 TV 在 [PhotoHouse 主仓库](https://github.com/phoenixjyb/PhotoHouse)
 共同维护；旧应用仓库按[整合规则](docs/REPOSITORY_TRANSITION.md)保留为历史与私有运行参考。
 

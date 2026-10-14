@@ -7,10 +7,18 @@ work, not enabled features. See [current status](PROJECT_STATUS.md).
 
 ## Purpose
 
-A family should be able to keep its photographs and videos together with the
-accounts that give them meaning: an afternoon, a relationship, a move, a life.
-A relative can tell a long story, others can add what they remember, and the
-family can revisit a reviewed chapter without losing the original voices.
+PhotoHouse is a family memory hub designed for fully local deployment. Original
+images, video, audio and text belong on the family's own devices/server; configured
+local providers handle AI processing. Remote family access connects back to that
+server. The public introduction is separate and cannot read the private archive.
+Local deployment does not imply that every remote client, update or setup step
+works without a network connection.
+
+Stories are the organizing purpose. Images, video, audio and text are complementary
+ways to tell, evidence and revisit them. A relative can tell a long account,
+others can add their perspectives, and the family can cherish a reviewed chapter
+without losing original voices or source media. People, events and narratives
+provide the intended structure, with existing library permissions retained.
 The [project introduction](../website/README.md) explains this through fictional
 stories and original cartoon illustrations; it contains no household data.
 

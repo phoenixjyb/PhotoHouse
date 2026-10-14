@@ -1,6 +1,7 @@
 # PhotoHouse public introduction
 
-This is a Chinese-first, static project introduction. It is plain HTML and CSS,
+This is a Chinese-first, static project introduction centered on family-owned
+local storage/processing and stories carried by images, video, audio and text. It is plain HTML and CSS,
 with original CSS/SVG illustration and the existing licensed PhotoHouse mark. It uses no JavaScript, external images,
 runtime services, forms, downloads, or build dependencies.
 
