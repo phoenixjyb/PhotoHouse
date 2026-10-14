@@ -35,6 +35,8 @@ class AssistantVoiceSessionStore(
     private val platform: AssistantVoiceSessionPlatform,
     private val language: String,
     private val isForeground: () -> Boolean,
+    /** Process-relative monotonic elapsed time; never wall-clock time or a serialized timestamp. */
+    private val monotonicMillis: () -> Long = { (System.nanoTime() - MONOTONIC_ORIGIN_NANOS) / 1_000_000L },
     private val onOpen: (assetId: String, requestId: String?) -> Unit = { _, _ -> },
 ) : AutoCloseable {
     init { require(language in setOf("zh", "en")) }
@@ -42,6 +44,7 @@ class AssistantVoiceSessionStore(
     private val lock = Any()
     private val controller = VoiceSessionController()
     private val mutableState = MutableStateFlow(controller.state)
+    private val timingTracker = VoiceTurnTimingTracker(monotonicMillis)
     val state: StateFlow<VoiceSessionState> = mutableState.asStateFlow()
 
     private var operationJob: Job? = null
@@ -103,7 +106,7 @@ class AssistantVoiceSessionStore(
         ownedTurnRequestId = null
         ownedSpeechRequestId = null
         ownedMemoryReaderOrdinal = null
-        mutableState.value = transition.state
+        publish(transition.state)
         transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
         true
     }
@@ -118,7 +121,7 @@ class AssistantVoiceSessionStore(
         sessionMemoryActionsEnabled = store.assistantWorkspaceState.value.savedMemoryActionsAvailable
         val transition = controller.resume(voiceScope, foreground = true)
         if (!transition.accepted) return false
-        mutableState.value = transition.state
+        publish(transition.state)
         transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
         true
     }
@@ -146,7 +149,7 @@ class AssistantVoiceSessionStore(
 
     private fun stopForTransition(transition: VoiceSessionTransition) {
         if (!transition.accepted) return
-        mutableState.value = transition.state
+        publish(transition.state)
         synchronized(lock) {
             operationJob?.cancel()
             operationJob = null
@@ -166,6 +169,8 @@ class AssistantVoiceSessionStore(
             operationJob?.cancel()
             operationJob = null
             activeCapture = null
+            timingTracker.clear()
+            publish(controller.state)
         }
     }
 
@@ -253,10 +258,10 @@ class AssistantVoiceSessionStore(
             observedPlaybackBinding = binding
             observedCaptureBinding = null
         } else return@synchronized
-        mutableState.value = current.copy(
+        publish(current.copy(
             captureStarted = observedCaptureBinding == binding,
             playbackStarted = observedPlaybackBinding == binding,
-        )
+        ))
     }
 
     private fun startCapture(binding: VoiceSessionBinding) {
@@ -573,8 +578,14 @@ class AssistantVoiceSessionStore(
 
     private fun accept(transition: VoiceSessionTransition): Boolean {
         if (!transition.accepted) return false
-        mutableState.value = transition.state
+        publish(transition.state)
         return true
+    }
+
+    /** Observe every controller and platform snapshot before exposing its ephemeral timing summary. */
+    private fun publish(state: VoiceSessionState) {
+        timingTracker.observe(state)
+        mutableState.value = state.copy(clientTiming = timingTracker.latestSummary)
     }
 
     private fun launchOperation(binding: VoiceSessionBinding, block: suspend () -> Unit) {
@@ -596,6 +607,7 @@ class AssistantVoiceSessionStore(
     }
 
     private companion object {
+        val MONOTONIC_ORIGIN_NANOS: Long = System.nanoTime()
         const val STEP_TIMEOUT_MILLIS = 90_000L
         const val CAPTURE_GRACE_SECONDS = 5
         val ACTIVE_PHASES = setOf(

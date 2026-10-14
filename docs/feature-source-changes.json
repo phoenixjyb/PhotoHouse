@@ -14992,6 +14992,194 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "preview-recovery-client-turn-timing-and-private-release-profile-preparation",
+      "source_commit": "6795e579cabf422b15793ce444325f6e9ee8a01f",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": "ca9cf94b534d775ba0e3f809dcd9196f4ea384049dbe95cc2be3253fe3708dd8",
+          "sha256": "722fbf0ff6216143096cc5d38483737bf7d3528e7d2dd758b9ef5017361230ce"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/HomePhoneTest.kt",
+          "before_sha256": "20ff76f0060eb7db8b6a6d79b1792fa2113bb586fa5966736c15e05b6d13632e",
+          "sha256": "15c4ff0cfd3a71f1bac7cd714a8a7ae3bfa9e45d26915c186bfb798b365d62a7"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ProtectedJourneyTest.kt",
+          "before_sha256": "2609c9f65bc2124dd5475d14b1dff727b51ed1fb562e294fe0ccf0d3b091e71f",
+          "sha256": "49e79e4da7f95aaf39a906466557874ba19b36ad17c5657a58dc98f7cb8c9f5b"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": "7e0bfb466f0a2059f7a66172256e2e961cecbdecb2b9a23c2fdf5c88d0e29906",
+          "sha256": "d494082a529b6763fbfbba0f5f8d0f582940a822bf5dad41f191acbe58ce54f4"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": "eb313cb3d7109c05d6b69e3f0cbacd660fb3dec141af58541ceba002cabdcc5d",
+          "sha256": "84e3eecaa4598ecb2e38622ac457e44d10a80d4673eb8ece0bf8e22138f91a4d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "6d4427dda7010af0c62b23dffffc88e1126038c51075ef690ac235c9bd16ab0c",
+          "sha256": "b5684a689d885ec7516d84b599529fd1330ad4534f0d3133c2029cd01dd3505e"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/HomePhoneApp.kt",
+          "before_sha256": "c6e23113d903ef26b67d6aae721ae4f919bd497262ccbd2c355536af40b497a6",
+          "sha256": "173fff4635c43f370257e47bb81605c7bd0d04abd59e4c29f73b4daca8065369"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "before_sha256": "dbc3a00520612bfde0e12b6eff31ee344f582a1019c009f954753fc2a65a9c68",
+          "sha256": "bb717ed07d1ce278a134946e6bb6ca19393b459089f3841b08f3658598a7383f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionController.kt",
+          "before_sha256": "5c016dd293314aa7cb4f5e23ab141f83282179cdd6651eda6b153499683176f6",
+          "sha256": "5bb661c1214e8dc74db8e29e29b50e5c5547d0f967d25e85088b2e34931138e8"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceTurnTiming.kt",
+          "before_sha256": null,
+          "sha256": "51166792d8f42fed16a19704aeba85935ef2cb7739e457832f68c6b89319348d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStoreTest.kt",
+          "before_sha256": "03b3ac7097a473b0c21d2740f0916b10fc215393f765493a2003d115775c9597",
+          "sha256": "ae8baca46bdc53cb2abe5c159a2309497e72ed35673d674c82b12c1c875d1225"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceTurnTimingTest.kt",
+          "before_sha256": null,
+          "sha256": "011552c4c2a478373a032b9afbc36c65754f540f979c033af3b76b38dd23d9a3"
+        },
+        {
+          "path": "docs/ANDROID_RELEASE_PREPARATION.md",
+          "before_sha256": "dd3de2c649a743207522951032e7ff1b2b240596ad9ac38224b91e168c5ff9a4",
+          "sha256": "1b5fc62ab59e4f40dc9808215964a639654c24cc55abfd9740bf8d503e1f614c"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "bd75791d730a841df0a2e5aaeaf75ada1fc7b5cb2b6c677e47be5b4feb33324a",
+          "sha256": "5533b2a80f9b92920397e6f8f3a3c96ca59769b5affb8c6c09491f835b2102fe"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b5b41720545bc742c7f8a7e721210a23c0bd53d66f8bec7547428ed565df52fb",
+          "sha256": "ca1a1145e69f46de7f5793fa8f22eb4d49fa7d4a1588eb2e13a849a641187754"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "9c1d7249d2833fbf93d8eff314ad6a570dda697033ed728b74e9281fa931a0d6",
+          "sha256": "bcddb8a7f506a915532c09f63d5e2d147bdccbbeebe7233b9773045dd030d91d"
+        },
+        {
+          "path": "docs/READER_PROGRESS_AND_SOURCES.md",
+          "before_sha256": "b9c708a8c6933849a70674c156be27fa9dcc839026d028c1e554ada146835e27",
+          "sha256": "979031fb1f28bd8d9847bb37c489aea2ba7a49f7d75ea534e327037405d15f01"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "dcd9ed3412d03d662f89dc4183a588ac49180c30da913a56baa2971f273c21a5",
+          "sha256": "1c81d7bad4f40e4dec5b2b46c38533895708cebcaad2c0d4b36698b22bd85f56"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "af2dbaabf5c3ddd47850d3764db6bee6140502e3b20d1a39e42f31c32ff61da2",
+          "sha256": "4ddf4b7db3f8e957729bb4398fec82be70f082d289ef4e8818af59666b6452d4"
+        },
+        {
+          "path": "docs/VOICE_TURN_TIMING.md",
+          "before_sha256": null,
+          "sha256": "e6adb2128466fedbeacfc2695fd5af26668168bf3d1a8f9829b1e09d5480fe87"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "ad1162d2a966edf875805d309e62e9e68def70bf52ec6ca0ff2e5fd95a8f2066",
+          "sha256": "5c8df2f000ecbead29f067273090b3800b05251b66d5fa9209c816d80cf21e14"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "565ac21844d0a9971f668a922f3610ba2c4d8f38abb39d1d9726d9c4efd02c0f",
+          "sha256": "cc7c8bcfa346d60ab99f02079146548226a3c4d704a52266cac71fa4c41e8132"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "6ccc864a8e03bd5876b57e780be5fbaf260fd20cb6316264f3798d494cbd34c3",
+          "sha256": "dadc27fc3a9a8568825d5290b57ec652a82c7fa38a0973740418c497d1584971"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "b927d0186045f4941497a969cf56586b8c26960c73ad3282179508c389ebcab3",
+          "sha256": "47e5303e4340df4842e441ff63cb9825e79740bf4f023def8efc44036df2c891"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "3885d786c020ec28e9c432505a370acf97651157c5262a5119e5e5f6743fbc11",
+          "sha256": "daf33dc3364b18656c358cbcd72dca62c04b3176dc578733c827ec909ddcbea4"
+        },
+        {
+          "path": "server/backend/app/ui/access/voice-turn-timing.js",
+          "before_sha256": null,
+          "sha256": "ae88bac788ba845bf3b638420a802d2aef7180912145f64abba6ae864e0fc2cd"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "22d9e0ad1a6341d100c720a6dac91f7dbecdef378dc9c6a245c18c902529183c",
+          "sha256": "fbfe5cf3e16ff7316b3a3b5b6dd89b4a5f5a1d90990e4b7332432f3f94db3169"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "6566d9983b83c6ce1da07bcfb2bcd8483f36b7f9690aff9a053789cb360e16d4",
+          "sha256": "75e4f8d7fac7168f684bf2e43a2f4845590068aed87feb35d86f9abeec917dae"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "e5daf18c3f30a7783c930e1c9226748942f013a68614526facf295fa84394be4",
+          "sha256": "e41422ac92884f30a9deca8f56594ce1fe45f17877a7836f4a3f66cad1e915b6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e197711119bd71bdd429f986dfb385d4d496ca9d8e90b3119b984996039edafe",
+          "sha256": "2896f93143bcbf993185cf2c8c0f1d4bb4958404b0e1a96d0cbd4cad5ea5e0e7"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "9e0b044631e5ab040688693b4e03d4379ae61dd83da8d7e48d240bb2d5682698",
+          "sha256": "a7f5cc469bc7743c6995078e720b1cca874861bb6787b49fa423fb68f2a4bb51"
+        },
+        {
+          "path": "server/tests/ui/voice-turn-timing.test.mjs",
+          "before_sha256": null,
+          "sha256": "5d7d79ba188b36945c0059262d843b6bee5035049a653f9bbbaee9e60dfde928"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f8db0e4118351c4d4b9565440a2fc89b979f550fb53ff13ad3f27e827921ed07",
+          "sha256": "2cc01da73cceb26b1e1542f5bcde7e6b485a4eb6ef7da525c7c37fe61c7aab14"
+        },
+        {
+          "path": "tools/prepare_android_profile.py",
+          "before_sha256": null,
+          "sha256": "89ec92299d48c099de9832e68b0d166a87808d5aa19db6b9b83da49c859bfbc5"
+        },
+        {
+          "path": "tools/tests/test_prepare_android_profile.py",
+          "before_sha256": null,
+          "sha256": "87f3a697b89c26b9e139c2f620cd7045ad179a92a6a15a381de60c7774e90cbb"
+        }
+      ],
+      "routes_added": true,
+      "static_ui_asset_only": true,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

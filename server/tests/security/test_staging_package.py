@@ -25,6 +25,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/assistant_saved_memory_tool.py',
             'backend/app/access/assistant_memory_followup.py',
             'backend/app/ui/access/assistant-private-workspace.js',
+            'backend/app/ui/access/voice-turn-timing.js',
             'scripts/prepare_assistant_workspace.py',
             'scripts/qualify_private_assistant.py',
             'backend/app/access/captions.py',

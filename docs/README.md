@@ -21,6 +21,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Monorepo transition and old repository disposition | [Repository transition](REPOSITORY_TRANSITION.md) |
 | Source ownership/import provenance | [Source ledger](feature-source-changes.json), [contributing](../CONTRIBUTING.md) |
 | Reader progress and source status | [Reader UX](READER_PROGRESS_AND_SOURCES.md) |
+| Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md) |
 
 ## Document roles

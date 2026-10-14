@@ -47,6 +47,71 @@ class AssistantVoiceSessionStoreTest {
         assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
     }
 
+    @Test fun timingSummaryWaitsForObservedPlaybackCompletionAndClearsWhenPaused() = runTest {
+        var now = 100L
+        val fixture = fixture(monotonicMillis = { now })
+        fixture.platform.autoPlaybackStarted = false
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        assertNull("No completed playback means no timing summary", fixture.driver.state.value.clientTiming)
+
+        now += 25
+        fixture.platform.playbackStartedCallbacks.single().invoke()
+        assertTrue(fixture.driver.state.value.playbackStarted)
+        assertNull(fixture.driver.state.value.clientTiming)
+        now += 50
+        fixture.platform.speechResults.send(true)
+        runCurrent()
+
+        val summary = requireNotNull(fixture.driver.state.value.clientTiming)
+        assertEquals(25L, summary.speechPreparationMillis)
+        assertEquals(50L, summary.playbackMillis)
+        assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+        assertTrue(fixture.driver.pause())
+        assertNull("Pause clears the session's latest timing", fixture.driver.state.value.clientTiming)
+        assertTrue(fixture.driver.end())
+        assertNull(fixture.driver.state.value.clientTiming)
+        fixture.driver.close()
+    }
+
+    @Test fun legacyPlatformWithoutStartCallbacksDoesNotReceiveSyntheticTiming() = runTest {
+        var now = 100L
+        val fixture = fixture(monotonicMillis = { now })
+        fixture.platform.emitCallbacks = false
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        now += 500
+        fixture.platform.speechResults.send(true)
+        runCurrent()
+        assertNull("Legacy platform overloads do not prove capture or playback start", fixture.driver.state.value.clientTiming)
+        fixture.driver.end()
+        fixture.driver.close()
+    }
+
+    @Test fun closingStoreClearsPublishedTimingFromItsExposedState() = runTest {
+        var now = 100L
+        val fixture = fixture(monotonicMillis = { now })
+        fixture.platform.autoPlaybackStarted = false
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        fixture.platform.speechStarted.receive()
+        now += 20
+        fixture.platform.playbackStartedCallbacks.single().invoke()
+        now += 30
+        fixture.platform.speechResults.send(true)
+        runCurrent()
+
+        assertNotNull(fixture.driver.state.value.clientTiming)
+        fixture.driver.close()
+        assertNull(fixture.driver.state.value.clientTiming)
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+    }
+
     @Test fun actualPlatformStartFactsAreOverlaidAndLateCaptureCallbackIsIgnored() = runTest {
         val fixture = fixture()
         fixture.platform.autoCaptureStarted = false
@@ -366,7 +431,7 @@ class AssistantVoiceSessionStoreTest {
         fixture.driver.close()
     }
 
-    private suspend fun TestScope.fixture(): Fixture {
+    private suspend fun TestScope.fixture(monotonicMillis: () -> Long = { testScheduler.currentTime }): Fixture {
         val api = VoiceApi()
         val store = ConnectedStore(api, backgroundScope) { testScheduler.currentTime }
         store.authenticate("+12025550123", "synthetic-password-only")
@@ -378,7 +443,8 @@ class AssistantVoiceSessionStoreTest {
         val live = store.state.value
         val scope = VoiceSessionScope(checkNotNull(live.session).account_id, checkNotNull(live.library), live.generation)
         val platform = FakePlatform()
-        val driver = AssistantVoiceSessionStore(store, scope, backgroundScope, platform, "en", { platform.foreground })
+        val driver = AssistantVoiceSessionStore(store, scope, backgroundScope, platform, "en", { platform.foreground },
+            monotonicMillis = monotonicMillis)
         return Fixture(api, store, scope, platform, driver)
     }
 
@@ -399,6 +465,7 @@ class AssistantVoiceSessionStoreTest {
         var stopCalls = 0
         var autoCaptureStarted = true
         var autoPlaybackStarted = true
+        var emitCallbacks = true
         var foreground = true
         val captureStartedCallbacks = mutableListOf<() -> Unit>()
         val playbackStartedCallbacks = mutableListOf<() -> Unit>()
@@ -408,8 +475,10 @@ class AssistantVoiceSessionStoreTest {
         }
         override suspend fun capture(maxSeconds: Int, onStarted: () -> Unit): ByteArray? {
             captureCalls++
-            captureStartedCallbacks += onStarted
-            if (autoCaptureStarted) onStarted()
+            if (emitCallbacks) {
+                captureStartedCallbacks += onStarted
+                if (autoCaptureStarted) onStarted()
+            }
             return captures.receive()
         }
         override suspend fun playSpeech(audio: ProtectedAnnotationAudio): Boolean {
@@ -419,8 +488,10 @@ class AssistantVoiceSessionStoreTest {
         }
         override suspend fun playSpeech(audio: ProtectedAnnotationAudio, onStarted: () -> Unit): Boolean {
             speechCalls++
-            playbackStartedCallbacks += onStarted
-            if (autoPlaybackStarted) onStarted()
+            if (emitCallbacks) {
+                playbackStartedCallbacks += onStarted
+                if (autoPlaybackStarted) onStarted()
+            }
             speechStarted.send(Unit)
             return speechResults.receive()
         }

@@ -106,7 +106,8 @@ internal fun rememberAssistantVoiceControls(
             VoiceSessionPhase.SPEAKING -> if (voice.playbackStarted) AssistantVoiceSessionStage.SPEAKING else AssistantVoiceSessionStage.PREPARING_REPLY
             else -> AssistantVoiceSessionStage.PAUSED
         }, detail, canResume = available && live.assistant?.pendingTurn == null,
-            microphoneActive = voice.phase == VoiceSessionPhase.LISTENING && voice.captureStarted)
+            microphoneActive = voice.phase == VoiceSessionPhase.LISTENING && voice.captureStarted,
+            clientTiming = voice.clientTiming)
     }
     return AssistantVoiceControls(session,
         start = if (!available) null else ({

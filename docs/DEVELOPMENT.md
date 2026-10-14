@@ -37,10 +37,40 @@ serialization and final guard mutation refusal. It has no operator CLI or live
 upgrade/migration. The initial full API invocation reached two expected archive
 failures because the package allowlist included an uncommitted new source file;
 the committed-source package suite then passed all six tests. Complete final
-profile evidence will be recorded separately after the next source freeze.
+profile evidence at `6795e57` passed **1,465 tests and 886 subchecks**, plus the
+generated no-listener demo. The full Android profile passed its JVM tests, lint
+and unconfigured phone/TV debug builds. Both private invocation receipts confirm
+unchanged profile input hashes and the same start/end commit.
 
 No Windows service, model, database, task, signed APK or OTA feed was changed by
 these local rounds. Local visual results remain separate from family acceptance.
+
+The subsequent explicit Android release-profile checker passed 11 generated
+tests, including miniature pinned Git source, complete property closure,
+canonical runtime origins, feature dependencies, changed permissions, restored
+Windows-style metadata and late source mutation. This is preparation evidence,
+not a build, signature or native Windows acceptance check.
+
+The gallery journey passed **65 checks** in installed Edge, including native
+MP4 decode, playback and seeking. Cached headless Chromium lacked H.264/AAC
+codecs; its native media failure is not reported as a pass. The Edge run exposed
+a stale request consuming a one-shot failure fixture; the fixture now keeps the
+selected failures until explicit recovery and waits for lazy-image decoding.
+Application thumbnail failure creates a localized, keyboard-openable fallback
+without reassigning the failed source or fetching originals automatically.
+Optional Home phone recovery passed five class cases and the final affected
+case; protected phone recovery passed its English/Chinese 150% cases.
+
+The [last-turn timing slice](VOICE_TURN_TIMING.md) passed seven Node tracker tests,
+the generated voice browser journey and bilingual large-text renders. The
+shared Kotlin profile passed **966 tests in 84 suites** before adding the store
+integration cases; the final affected store cohort passed **19**. Phone voice
+controls passed **eight** simulator cases; the final label adjustment reran its
+two affected cases individually. These overlapping cohorts are not summed.
+Timing details reveal only four elapsed durations after a complete observed
+turn, with no extra request, persistence or provider-latency claim. The affected
+closed-application inventory/import checks passed **27 tests and 18 subchecks**;
+the new static UI helper is included in the **199-file** source closure.
 
 
 ## Oral-history intake foundation (October 14)

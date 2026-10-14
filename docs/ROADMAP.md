@@ -17,6 +17,16 @@ check when the desktop/projector is available.
 Chinese clarity and large-text/remote usability. Source/emulator results and
 publication remain separate from family acceptance.
 
+October 15 local source work adds a collapsed Web **Last turn timing** summary
+for four client-observed stages. It appears only after confirmed playback and
+the next microphone is ready, and clears on interruption or scope change. It
+does not add a request or claim provider latency; the [timing note](VOICE_TURN_TIMING.md)
+records the synthetic browser evidence and pending phone label follow-up. Web
+gallery thumbnail failure now has an explicit localized fallback; protected
+phone previews and optional Home TV publication retain their separate access
+and delivery boundaries. Real ASR/TTS latency, physical listening and family
+acceptance remain in the trial above.
+
 ## 2. Make assistant reading and conversation fluid
 
 Add bounded chapter narration/continuation with explicit progress and resume,

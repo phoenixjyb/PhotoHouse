@@ -101,3 +101,31 @@ author-only retained-source withdrawal, content-free V4 journal bindings and
 older-prefix replay. Raw WAV bytes remain retained; permanent erasure and live
 admission are not implemented. There are no new routes, migrations, live flags,
 service changes or APK/OTA publications in this increment.
+
+Source `6795e57` passed the full API profile (1,465 tests / 886 subchecks and the
+generated no-listener demo) and full Android profile, each with unchanged-input
+receipts. The next source round adds gallery recovery and explicit portable
+[release-profile preparation](ANDROID_RELEASE_PREPARATION.md#check-a-complete-private-profile).
+The installation snapshot and OTA versions above remain dated delivery evidence.
+
+## October 15 runtime refresh and product polish
+
+A read-only Windows check at **01:03 Beijing (October 14 17:03 UTC)** again
+observed API source `8bc60e8`, phone OTA v58 and TV OTA v30. The protected API,
+five approved-upload workers, ASR and TTS tasks were enabled and running; Home TV
+was enabled but Ready and still requires an interactive desktop session. This
+check did not open a database, invoke a model, recount conversion queues or
+change a task. These task states are not listener or listening-quality evidence.
+
+Later local source adds explicit phone photo-preview retries, visible Web
+gallery fallback frames and [last-turn voice timing](VOICE_TURN_TIMING.md).
+The Web gallery journey passed 65 checks in installed Edge, including native
+video decode, playback and seeking. Phone recovery checks passed in both the
+protected and optional Home modes. Voice timing uses process-local observations,
+not provider telemetry or retained transcripts. Bilingual enlarged simulator
+and browser checks passed; timing fixtures do not measure real family latency.
+
+The next delivery gate is a pinned source/API package and unsigned phone
+candidate, followed by separately authorized Windows qualification, API switch,
+original-certificate signing and OTA publication. No deployment or publication
+is included in the overnight source checks above.

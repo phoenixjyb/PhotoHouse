@@ -22,6 +22,22 @@ The focused browser suite passed 13 checkpoints with 115 generated requests and
 no page errors. Inspected renders include 390×844 Chinese at 150% text and
 English source status. Fixtures contain no family media.
 
+## Web gallery thumbnail recovery
+
+A failed photo or video thumbnail now leaves a localized **Preview unavailable /
+预览暂不可用** message in the same thumbnail area. The media label and the
+existing card action remain available, including keyboard opening. A failed
+thumbnail is not retried automatically or used to load original media; the
+existing protected viewer handles a separate explicit card action. Detached
+old-gallery errors cannot change a replacement card.
+
+The synthetic browser fixture returns 503 for photo and video thumbnails and
+checks the preserved label, keyboard action, absence of original requests and
+stale-card guard. The Edge Web profile passed 65 tests, including native codec
+playback. Chinese 390×844 at 150% and English desktop renders were inspected.
+This Web fallback does not change protected phone detail previews or optional
+Home TV's separate published catalog and explicit publication boundary.
+
 ## Phone manual chapter speech
 
 The manual chapter reader displays **朗读分段 x/y / Narration segment x of y**
@@ -52,3 +68,16 @@ microphone retry control after an error. Moving focus elsewhere suppresses this
 handoff, as does changing account/library or replacing the attempt. Recognition
 does not submit a turn or restart capture automatically. Continuous voice
 session behavior is unchanged.
+
+## Completed Web voice-turn timing
+
+The explicit foreground assistant session has a collapsed **Last turn timing /
+上轮用时** disclosure. Four client-observed values cover recognition, the
+assistant request, speech preparation and playback. They appear only after
+confirmed playback completion and the loop returns to listening. Pause, End,
+new turns, scope changes and lifecycle invalidation clear the values; failed or
+unfinished work does not publish partial timings. Opening the disclosure makes
+no request. Values stay in page memory and carry no transcript, reply, audio or
+source identifiers. They include network and local startup time, so they do not
+claim provider latency. See [voice-turn timing](VOICE_TURN_TIMING.md) for the
+source evidence and the separate Android checks.

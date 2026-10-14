@@ -10,6 +10,7 @@
   <script src="/ui/story-workspace.js" defer></script>
   <script src="/ui/memory-groups.js" defer></script>
   <script src="/ui/assistant-private-workspace.js" defer></script>
+  <script src="/ui/voice-turn-timing.js" defer></script>
   <script src="/ui/app.js" defer></script>
 </head>
 <body>
@@ -104,6 +105,11 @@
               <button id="assistant-voice-pause" class="quiet" type="button" hidden data-i18n="assistantVoicePause">暂停</button>
               <button id="assistant-voice-resume" class="quiet" type="button" hidden data-i18n="assistantVoiceResume">继续</button>
               <button id="assistant-voice-end" class="quiet" type="button" hidden data-i18n="assistantVoiceEnd">结束语音查找</button>
+              <details id="assistant-voice-timing" hidden>
+                <summary data-i18n="assistantVoiceTiming">上轮用时</summary>
+                <dl id="assistant-voice-timing-values"></dl>
+                <p class="fine" data-i18n="assistantVoiceTimingNote">客户端观测，包含网络等待和本地启动，不代表服务提供方耗时。</p>
+              </details>
             </div>
             <button id="assistant-mic" class="quiet" type="button" aria-pressed="false" data-i18n="assistantMic">按住说话</button>
             <button id="assistant-stop" class="quiet" type="button" hidden data-i18n="assistantStop">结束录音</button>

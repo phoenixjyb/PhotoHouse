@@ -1,7 +1,12 @@
 package dev.photohouse.connected
 
 import android.graphics.Bitmap
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.*
@@ -34,6 +39,7 @@ class ProtectedJourneyTest {
         var registrationCode: String? = null
         var displayCalls = 0
         var originalCalls = 0
+        var previewCalls = 0
         var failNextStories = false
         var storyCalls = 0
         var storyText = "Literal family text / 家人亲笔文字"
@@ -62,7 +68,10 @@ class ProtectedJourneyTest {
             Detail(library, false, asset)
         override suspend fun captions(token: Bearer, library: String, assetId: String) =
             Captions(library, assetId, false, emptyList())
-        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = if (previewAvailable) display else null
+        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? {
+            previewCalls++
+            return if (previewAvailable) display else null
+        }
         override suspend fun displayPhoto(token: Bearer, library: String, assetId: String): ByteArray {
             displayCalls++; return display
         }
@@ -91,9 +100,18 @@ class ProtectedJourneyTest {
         }
     }
 
-    private fun start(api: SyntheticApi, initialLanguage: String = "en"): ConnectedStore {
+    private fun start(api: SyntheticApi, initialLanguage: String = "en", fontScale: Float? = null): ConnectedStore {
         val store = ConnectedStore(api, scope)
-        rule.setContent { rootView = androidx.compose.ui.platform.LocalView.current; ConnectedApp(store, initialLanguage = initialLanguage) }
+        rule.setContent {
+            rootView = androidx.compose.ui.platform.LocalView.current
+            if (fontScale == null) ConnectedApp(store, initialLanguage = initialLanguage)
+            else {
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                    ConnectedApp(store, initialLanguage = initialLanguage)
+                }
+            }
+        }
         return store
     }
     private fun scroll(tag: String) { rule.onNodeWithTag("connected-screen").performScrollToNode(hasTestTag(tag)) }
@@ -112,6 +130,62 @@ class ProtectedJourneyTest {
         rule.onNodeWithTag("connected-screen").performScrollToNode(matcher)
         rule.onNode(matcher).performTextInput(text)
     }
+
+    private fun snapshotEvidence(name: String) {
+        rule.waitForIdle()
+        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+        val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/PhotoHouseProtectedPreviewRetry")
+        }
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Could not save synthetic protected preview evidence")
+        resolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            ?: error("Could not open synthetic protected preview evidence")
+        bitmap.recycle()
+    }
+
+    private fun assertUnavailableProtectedPreviewRetry(language: String, label: String) {
+        val api = SyntheticApi().apply { photoDeliveryEnabled = false; previewAvailable = false }
+        val store = start(api, initialLanguage = language, fontScale = 1.5f)
+        rule.runOnIdle { store.authenticate("+8612345678", "eight888") }
+        awaitLibrary(store)
+        assertEquals("synthetic-library", store.state.value.library)
+        clickTag("details-1")
+        clickTag("view-protected-preview")
+        rule.waitUntil(5000) {
+            store.state.value.problem?.message == Message.MEDIA_UNAVAILABLE &&
+                store.state.value.detail?.asset?.id == "1"
+        }
+        assertEquals("synthetic-library", store.state.value.detail?.library_id)
+        assertTrue(store.state.value.previews["1"]?.isEmpty() != false)
+        assertEquals(0, api.originalCalls)
+        assertEquals(0, api.displayCalls)
+        scroll("view-protected-preview")
+        rule.onNodeWithTag("view-protected-preview").assertTextContains(label).assertIsEnabled()
+        snapshotEvidence("protected-preview-retry-${language}-150.png")
+
+        api.previewAvailable = true
+        val previewCallsBeforeRetry = api.previewCalls
+        clickTag("view-protected-preview")
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("original-image").fetchSemanticsNodes().size == 1 }
+        assertTrue("retry should request the current library preview again", api.previewCalls > previewCallsBeforeRetry)
+        assertEquals("synthetic-library", store.state.value.library)
+        assertEquals("synthetic-library", store.state.value.detail?.library_id)
+        assertTrue(store.state.value.photoPreviewOnly)
+        assertEquals(0, api.originalCalls)
+        assertEquals(0, api.displayCalls)
+        store.background()
+        rule.waitForIdle()
+    }
+
+    @Test fun unavailableProtectedPreviewRetryIsClearInEnglishAt150Percent() =
+        assertUnavailableProtectedPreviewRetry("en", "Retry preview")
+
+    @Test fun unavailableProtectedPreviewRetryIsClearInChineseAt150Percent() =
+        assertUnavailableProtectedPreviewRetry("zh", "重试预览")
 
     @Test fun namedInvitedRegistrationValidationAndPreviewJourneyInBothLanguages() {
         val api = SyntheticApi().apply { photoDeliveryEnabled = false; previewAvailable = true }

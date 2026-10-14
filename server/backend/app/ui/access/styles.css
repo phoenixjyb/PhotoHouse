@@ -465,6 +465,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .story-reader{width:100vw;border-radius:0;padding:1rem;max-height:100dvh}.story-reader-layout{grid-template-columns:1fr;gap:.5rem}.story-reader-stage{min-height:170px;aspect-ratio:4/3}.story-reader-prose h2{font-size:1.65rem}.story-reader-prose #story-reader-text{font-size:1rem;line-height:1.9;max-height:none}.story-reader>header{margin-bottom:1rem}.story-reader-prose{padding:0 .3rem}.story-reader-chapters button{min-width:135px}.story-reader-chapters{padding-top:.8rem}
 }
 @media(prefers-reduced-motion:reduce){.library-shell #grid .asset{transition:none}.library-shell #grid .asset:hover{transform:none}}
+.asset span.asset-preview-fallback{display:grid;place-items:center;width:100%;height:180px;padding:.75rem;border-radius:4px;background:#eee8de;color:var(--muted);font-size:1rem;line-height:1.5;text-align:center;overflow-wrap:anywhere}
+#assistant-voice-timing{margin-top:.5rem;font-size:.9rem}
+#assistant-voice-timing summary{min-height:44px;display:list-item;cursor:pointer;padding:.5rem 0}
+#assistant-voice-timing-values{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.4rem 1rem;margin:.5rem 0}
+#assistant-voice-timing-values dt{overflow-wrap:anywhere}
+#assistant-voice-timing-values dd{margin:0;font-variant-numeric:tabular-nums}
+@media(max-width:750px){.asset span.asset-preview-fallback{height:150px}}
 
 .story-frame-order{display:flex;gap:.2rem;padding:.2rem .3rem;background:#fffdf9}.story-frame-order button{flex:1;border:0;font-size:.8rem;padding:.1rem .2rem;background:transparent;min-height:28px}
 

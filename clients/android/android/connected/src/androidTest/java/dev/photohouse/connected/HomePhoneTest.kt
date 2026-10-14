@@ -3,9 +3,14 @@ package dev.photohouse.connected
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.home.*
 import kotlinx.coroutines.*
@@ -30,6 +35,9 @@ class HomePhoneTest {
     private val requests=mutableListOf<Pair<Int,BrowseSelection>>()
     private var lastReader: HomeVideoReader?=null
     private var badVideo=false
+    private var failedDisplayReads=0
+    private var displayReads=0
+    private var originalReads=0
     private fun api() = object : HomeApi {
         override val catalogVersion=3
         override val browseEnabled=true
@@ -45,8 +53,14 @@ class HomePhoneTest {
             val filtered=(if(selection.availability==Availability.READY) matching.filter { it.deliveryReady() } else matching).let { if(selection.order==BrowseOrder.READY_FIRST) it.sortedByDescending { a->a.deliveryReady() } else it }
             return HomeFeed(8,"synthetic","Our home",page,2,filtered.size,page*2<filtered.size,filtered.drop((page-1)*2).take(2),3,BrowseCounts(matching.count { it.deliveryReady() },matching.size))
         }
-        override suspend fun preview(asset:HomeAsset,variant:Variant,revision:Int)=picture
-        override suspend fun original(asset:HomeAsset,revision:Int)=picture
+        override suspend fun preview(asset:HomeAsset,variant:Variant,revision:Int):ByteArray {
+            if (variant == Variant.DISPLAY) {
+                displayReads++
+                if (failedDisplayReads > 0) { failedDisplayReads--; throw HomeFailure(HomeError.OFFLINE) }
+            }
+            return picture
+        }
+        override suspend fun original(asset:HomeAsset,revision:Int):ByteArray { originalReads++; return picture }
         override fun video(asset:HomeAsset,revision:Int,failed:(Exception)->Unit):HomeVideoSource = HomeVideoReader(movies.size.toLong(),262144,
             { start,size -> if(badVideo) ByteArray(size) else movies.copyOfRange(start.toInt(),start.toInt()+size) },failed).also { lastReader=it }
     }
@@ -97,6 +111,49 @@ class HomePhoneTest {
         rule.onNodeWithTag("home-covered").assertIsDisplayed()
         assertTrue(store.state.value.grids.isEmpty());assertNull(store.state.value.feed)
     }
+    @Test fun failedPhotoPreviewOffersExplicitRetryInBothLanguagesAt150Percent() {
+        failedDisplayReads=1
+        store=HomeStore(api(),scope)
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                val density=LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(density.density,1.5f)) {
+                    HomePhoneApp(store, initialZh=false) {}
+                }
+            }
+            store.foreground()
+        }
+        rule.waitUntil { store.state.value.feed!=null }
+        clickTag("home-asset-300")
+        rule.waitUntil(10000) { store.state.value.mediaProblem==HomeError.OFFLINE }
+        rule.onNodeWithTag("home-media-error").assertExists()
+        rule.onNodeWithTag("home-photo-preview-retry").assertTextContains("Retry preview")
+        rule.onNodeWithText("Retry photo").assertDoesNotExist()
+        assertEquals("the failed display request must not read the original",0,originalReads)
+        snapshotEvidence("home-photo-preview-retry-en-150.png")
+
+        clickTag("home-photo-preview-retry")
+        rule.waitUntil(10000) { store.state.value.display!=null }
+        rule.onAllNodesWithTag("original-image").assertCountEquals(1)
+        assertEquals("retrying a display preview must not read the original",0,originalReads)
+        if (rule.onAllNodesWithTag("photo-exit-fullscreen").fetchSemanticsNodes().isNotEmpty())
+            rule.onNodeWithTag("photo-exit-fullscreen").performClick()
+        click("Close photo")
+        clickTag("home-language")
+        failedDisplayReads=1
+        clickTag("home-asset-300")
+        rule.waitUntil(10000) { store.state.value.mediaProblem==HomeError.OFFLINE }
+        rule.onNodeWithTag("home-photo-preview-retry").assertTextContains("重试预览")
+        rule.onNodeWithText("重试照片").assertDoesNotExist()
+        assertEquals(0,originalReads)
+        snapshotEvidence("home-photo-preview-retry-zh-150.png")
+
+        clickTag("home-photo-preview-retry")
+        rule.waitUntil(10000) { store.state.value.display!=null }
+        rule.onAllNodesWithTag("original-image").assertCountEquals(1)
+        assertEquals("Chinese preview recovery must not read the original",0,originalReads)
+        assertTrue("both synthetic display failures should be retried",displayReads>=4)
+    }
     @Test fun videoStreamsSeeksAndFailureStaysVisibleUntilRetry() {
         start();clickTag("home-media-video");clickTag("home-ready-only")
         clickTag("home-asset-200")
@@ -131,5 +188,23 @@ class HomePhoneTest {
         rule.waitForIdle()
         rule.runOnUiThread { val view=rule.activity.window.decorView;val b=Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888)
             view.draw(Canvas(b));File(rule.activity.filesDir,name).outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle() }
+    }
+    private fun snapshotEvidence(name:String) {
+        rule.waitForIdle()
+        rule.runOnUiThread {
+            val view=rule.activity.window.decorView
+            val bitmap=Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+            val values=ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME,name)
+                put(MediaStore.Images.Media.MIME_TYPE,"image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH,"Pictures/PhotoHousePreviewRetry")
+            }
+            val uri=rule.activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values)
+                ?: error("Could not save synthetic preview retry evidence")
+            rule.activity.contentResolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
+                ?: error("Could not open synthetic preview retry evidence")
+            bitmap.recycle()
+        }
     }
 }

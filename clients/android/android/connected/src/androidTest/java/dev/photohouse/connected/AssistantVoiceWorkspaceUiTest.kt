@@ -101,6 +101,44 @@ class AssistantVoiceWorkspaceUiTest {
     @Test fun chineseVoiceControlsAndUnsentDraftAt150Percent() = journey(true)
     @Test fun englishVoiceControlsAndUnsentDraftAt150Percent() = journey(false)
 
+    @Test fun chineseTurnTimingIsCollapsedAndKeepsPauseEndVisibleAt150Percent() = turnTimingRender(true)
+
+    @Test fun englishTurnTimingIsCollapsedAndKeepsPauseEndVisibleAt150Percent() = turnTimingRender(false)
+
+    private fun turnTimingRender(zh: Boolean) {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantVoiceSessionPanel(
+                        AssistantVoiceSessionUiState(
+                            AssistantVoiceSessionStage.SPEAKING,
+                            microphoneActive = false,
+                            clientTiming = VoiceTurnTimingSummary(1_250, 2_300, 780, 4_600),
+                        ), zh,
+                        onPause = {}, onResume = {}, onEnd = {},
+                    )
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-timing-details").assertDoesNotExist()
+        rule.onNodeWithTag("assistant-voice-timing-toggle").assertTextEquals(if (zh) "上轮用时" else "Last turn timing")
+        saveRender(if (zh) "assistant-voice-timing-collapsed-zh-150.png" else "assistant-voice-timing-collapsed-en-150.png")
+        rule.onNodeWithTag("assistant-voice-timing-toggle").performClick()
+        rule.onNodeWithTag("assistant-voice-timing-details").assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "语音识别" else "Recognition").assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "助手请求" else "Assistant request").assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "语音准备" else "Prepare speech").assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "语音播放" else "Playback").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-timing-note").assertTextContains(
+            if (zh) "客户端观测时间" else "Client-observed", substring = true)
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        saveRender(if (zh) "assistant-voice-timing-expanded-zh-150.png" else "assistant-voice-timing-expanded-en-150.png")
+    }
+
     @Test fun freshSavedMemoryCardHasExplicitReaderActionAtLargeTextZh() = freshMemoryCardRender(true,
         "saved-memory-card-zh-150.png")
 

@@ -36,6 +36,8 @@ data class VoiceSessionState(
     val captureStarted: Boolean = false,
     /** Observation only: the platform confirmed speech playback actually began. */
     val playbackStarted: Boolean = false,
+    /** Latest completed client-observed turn timing in this foreground voice session. */
+    val clientTiming: VoiceTurnTimingSummary? = null,
 ) {
     val microphoneActive: Boolean get() = phase == VoiceSessionPhase.LISTENING
     val speechActive: Boolean get() = phase == VoiceSessionPhase.SPEAKING

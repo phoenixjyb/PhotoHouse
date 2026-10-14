@@ -33,6 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.scale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import dev.photohouse.connected.core.VoiceTurnTimingSummary
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -51,6 +55,7 @@ internal data class AssistantVoiceSessionUiState(
     val detail: String? = null,
     val canResume: Boolean = true,
     val microphoneActive: Boolean = false,
+    val clientTiming: VoiceTurnTimingSummary? = null,
 )
 
 internal const val ASSISTANT_VOICE_DETAIL_MAX_CHARS = 120
@@ -69,6 +74,7 @@ internal fun AssistantVoiceSessionPanel(
     onFinishTurn: (() -> Unit)? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
+    var timingExpanded by remember(state.clientTiming) { mutableStateOf(false) }
     val status = when (state.stage) {
         AssistantVoiceSessionStage.OPENING_MIC -> t("Opening microphone", "正在开启麦克风")
         AssistantVoiceSessionStage.LISTENING -> t("Listening", "正在聆听")
@@ -167,6 +173,41 @@ internal fun AssistantVoiceSessionPanel(
                     Text(t("End", "结束"))
                 }
             }
+            state.clientTiming?.let { timing ->
+                TextButton(
+                    onClick = { timingExpanded = !timingExpanded },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-voice-timing-toggle"),
+                ) {
+                    Text(if (timingExpanded) t("Hide last turn timing", "收起上轮用时") else t("Last turn timing", "上轮用时"))
+                }
+                if (timingExpanded) {
+                    Column(Modifier.fillMaxWidth().testTag("assistant-voice-timing-details"),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TimingRow(t("Recognition", "语音识别"), timing.transcriptionMillis, ::formatVoiceDuration)
+                        TimingRow(t("Assistant request", "助手请求"), timing.requestMillis, ::formatVoiceDuration)
+                        TimingRow(t("Prepare speech", "语音准备"), timing.speechPreparationMillis, ::formatVoiceDuration)
+                        TimingRow(t("Playback", "语音播放"), timing.playbackMillis, ::formatVoiceDuration)
+                        Text(
+                            t("Client-observed; includes network wait and local startup, not provider timing.",
+                                "客户端观测时间，包含网络等待和本地启动，不代表服务提供方耗时。"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("assistant-voice-timing-note"),
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun TimingRow(label: String, durationMillis: Long, format: (Long) -> String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, modifier = Modifier.weight(1f).padding(end = 12.dp), style = MaterialTheme.typography.bodyMedium)
+        Text(format(durationMillis), style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun formatVoiceDuration(durationMillis: Long): String =
+    "${durationMillis / 1000}.${(durationMillis % 1000) / 100}s"

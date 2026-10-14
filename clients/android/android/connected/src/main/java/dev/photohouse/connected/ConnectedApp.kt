@@ -1285,8 +1285,12 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         Button(onClick = store::openDisplayPhoto, enabled = !state.busy) { Text(t("View photo", "查看照片")) }
                                     }
                                     if (detail.asset.kind == "image" && store.protectedNativeV2Enabled && !store.photoDeliveryEnabled) item {
+                                        val previewFailed = state.problem?.message == Message.MEDIA_UNAVAILABLE &&
+                                            state.previews[detail.asset.id]?.isEmpty() != false
                                         Button(onClick = store::openPreviewPhoto, enabled = !state.busy,
-                                            modifier = Modifier.testTag("view-protected-preview")) { Text(t("View preview", "查看预览")) }
+                                            modifier = Modifier.testTag("view-protected-preview")) {
+                                            Text(if (previewFailed) t("Retry preview", "重试预览") else t("View preview", "查看预览"))
+                                        }
                                         Text(t("Preview quality. Full screen and zoom do not download the original.",
                                             "预览画质。全屏与缩放不会下载原始文件。"), style = MaterialTheme.typography.bodySmall)
                                     }
