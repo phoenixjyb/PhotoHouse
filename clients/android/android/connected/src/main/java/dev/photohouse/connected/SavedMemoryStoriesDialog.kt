@@ -349,6 +349,19 @@ internal fun SavedMemoryStoriesDialog(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
+                                    if (store != null && selectedMedia != null && heroBitmap == null &&
+                                        !reading.detailBusy && !reading.framesBusy && !reading.heroBusy) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val current = currentReading() ?: return@OutlinedButton
+                                                val target = selectedFrame ?: return@OutlinedButton
+                                                if (!isCurrentChapter(current) || current.detailBusy || current.framesBusy || current.heroBusy ||
+                                                    current.selectedAssetId != target || target !in chapterFrameItems) return@OutlinedButton
+                                                store.loadSavedMemoryHero(target, forceReload = true)
+                                            },
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-retry-preview"),
+                                        ) { Text(t("Retry preview", "重试预览")) }
+                                    }
                                     Text(chapter.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif,
                                         modifier = Modifier.testTag("saved-memory-chapter-title"))
                                     Text(chapter.narration, style = readerProseStyle(

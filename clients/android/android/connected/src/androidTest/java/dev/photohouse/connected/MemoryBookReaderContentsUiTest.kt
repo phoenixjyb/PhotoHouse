@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
@@ -33,6 +34,7 @@ import dev.photohouse.connected.core.MemoryBookReaderPositionPersistence
 import dev.photohouse.connected.core.MemoryBookReaderPositions
 import dev.photohouse.connected.core.MemoryBooksReading
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -56,6 +58,8 @@ class MemoryBookReaderContentsUiTest {
 
     private fun journey(zh: Boolean) {
         val api = GeneratedMemoirReaderApi()
+        api.previewResponses += byteArrayOf(0x01, 0x02, 0x03)
+        api.previewResponses += validPreviewBytes()
         val positions = Positions()
         val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true,
             memoryBookReaderPositionPersistence = positions)
@@ -83,6 +87,55 @@ class MemoryBookReaderContentsUiTest {
         rule.waitUntil(5_000) { store.state.value.memoryBooks?.let { it.selectedBook != null && !it.readerBusy } == true }
         rule.onNodeWithTag("memory-book-entry-1").performScrollTo().performClick()
         awaitReader(store, storyIndex = 1)
+        rule.waitUntil(5_000) {
+            store.state.value.memoryBooks?.let { !it.framesBusy && !it.heroBusy && it.heroAssetId == it.selectedAssetId } == true
+        }
+
+        val retryScope = store.captureMemoryBookReaderNavigation()!!
+        val selectedChapterBeforePreviewRetry = store.state.value.memoryBooks!!.selectedChapter
+        val selectedAssetBeforePreviewRetry = store.state.value.memoryBooks!!.selectedAssetId
+        val readsBeforePreviewRetry = api.previewReads.size
+        val childReadsBeforePreviewRetry = api.childReads
+        val savedPositionBeforePreviewRetry = positions.load(GeneratedMemoirReaderApi.ACCOUNT)
+        val bookmarkWritesBeforePreviewRetry = positions.saveCalls
+        val retryPreview = rule.onNodeWithTag("memory-book-retry-preview").performScrollTo()
+        retryPreview.assertIsDisplayed().assertTextContains(if (zh) "重试预览" else "Retry preview")
+        assertTrue("retry preview target is at least 48dp", heightDp(retryPreview) >= 47.9f)
+        rule.onNodeWithTag("memory-book-reader-scroll").performTouchInput { swipeUp() }
+        retryPreview.assertIsDisplayed()
+        captureRetryPreview(zh)
+        val detachedRetry = retryPreview.fetchSemanticsNode().config[SemanticsActions.OnClick].action
+            ?: error("Retry button is missing its click action")
+        api.previewGate = CompletableDeferred()
+        retryPreview.performClick()
+        rule.waitUntil(5_000) { api.previewReads.size == readsBeforePreviewRetry + 1 }
+        rule.onNodeWithTag("memory-book-retry-preview").assertDoesNotExist()
+        assertTrue("a second retry while the first preview is busy is rejected", !store.retryMemoryBookPreview(retryScope))
+        assertEquals("busy retry does not issue another preview read", readsBeforePreviewRetry + 1, api.previewReads.size)
+        api.previewGate!!.complete(Unit)
+        rule.waitUntil(5_000) {
+            store.state.value.memoryBooks?.let { !it.heroBusy && it.hero?.isNotEmpty() == true } == true
+        }
+        assertEquals("preview retry does not reopen the selected story", childReadsBeforePreviewRetry, api.childReads)
+        assertEquals("preview retry leaves current chapter unchanged", selectedChapterBeforePreviewRetry,
+            store.state.value.memoryBooks?.selectedChapter)
+        assertEquals("preview retry leaves selected moment unchanged", selectedAssetBeforePreviewRetry,
+            store.state.value.memoryBooks?.selectedAssetId)
+        assertEquals("preview retry leaves the reading bookmark unchanged", savedPositionBeforePreviewRetry,
+            positions.load(GeneratedMemoirReaderApi.ACCOUNT))
+        assertEquals("preview retry performs no bookmark write", bookmarkWritesBeforePreviewRetry, positions.saveCalls)
+        assertEquals(0, api.originalCalls)
+        assertEquals(0, api.videoCalls)
+        rule.onNodeWithTag("memory-book-retry-preview").assertDoesNotExist()
+
+        val staleScope = store.captureMemoryBookReaderNavigation()!!
+        store.loadMemoryBookChapter(staleScope, 1)
+        awaitReader(store, storyIndex = 1, chapterIndex = 1)
+        rule.waitUntil(5_000) { store.state.value.memoryBooks?.let { !it.framesBusy && !it.heroBusy } == true }
+        val readsAfterChapterChange = api.previewReads.size
+        detachedRetry.invoke()
+        assertTrue("detached chapter scope cannot retry a different preview", !store.retryMemoryBookPreview(staleScope))
+        assertEquals(readsAfterChapterChange, api.previewReads.size)
 
         rule.onNodeWithTag("memory-book-reader-size-default").assertIsSelected()
         val childReadsAtSizeControlStart = api.childReads
@@ -192,6 +245,38 @@ class MemoryBookReaderContentsUiTest {
         return (bounds.bottom - bounds.top).value
     }
 
+    private fun validPreviewBytes(): ByteArray {
+        val bitmap = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888)
+        return java.io.ByteArrayOutputStream().use { output ->
+            try { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) } finally { bitmap.recycle() }
+            output.toByteArray()
+        }
+    }
+
+    private fun captureRetryPreview(zh: Boolean) {
+        rule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val locale = if (zh) "zh" else "en"
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "memoir-preview-retry-$locale-150.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/PhotoHouseReaderReview")
+        }
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Could not create memoir preview retry capture")
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                ?: error("Could not open memoir preview retry capture")
+        } catch (failure: Throwable) {
+            context.contentResolver.delete(uri, null, null)
+            throw failure
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
     private fun captureReader(zh: Boolean) {
         rule.onNodeWithTag("memory-book-reader-size-controls").performScrollTo()
         rule.onNodeWithTag("memory-book-reader-size-controls").assertIsDisplayed()
@@ -266,8 +351,10 @@ class MemoryBookReaderContentsUiTest {
 
     private class Positions : MemoryBookReaderPositionPersistence {
         private var rows = emptyList<MemoryBookReaderPosition>()
+        var saveCalls = 0
         override fun load(accountId: String) = rows.filter { it.accountId == accountId }
         override fun save(accountId: String, position: MemoryBookReaderPosition) {
+            saveCalls++
             rows = rows.filterNot { it.accountId == accountId } + MemoryBookReaderPositions.upsert(accountId, load(accountId), position)
         }
         override fun remove(accountId: String, libraryId: String, bookId: String) {

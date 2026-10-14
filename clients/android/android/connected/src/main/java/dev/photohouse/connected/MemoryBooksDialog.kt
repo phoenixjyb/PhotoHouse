@@ -289,7 +289,15 @@ internal fun MemoryBooksDialog(
                                             Box(Modifier.fillMaxWidth().aspectRatio(1.6f).testTag("memory-book-hero"), contentAlignment = Alignment.Center) {
                                                 if (heroBitmap != null) Image(heroBitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                                 else if (reading.heroBusy || reading.framesBusy) CircularProgressIndicator()
-                                                else Text(if (reading.heroUnavailable) t("Preview unavailable", "预览不可用") else t("Select a moment", "选择一个片段"))
+                                                else Text(if (activeAsset == null) t("Select a moment", "选择一个片段") else t("Preview unavailable", "预览不可用"))
+                                            }
+                                            if (activeAsset != null && heroBitmap == null && introductionReaderIsCurrent &&
+                                                !reading.readerBusy && !reading.framesBusy && !reading.heroBusy) {
+                                                OutlinedButton(
+                                                    onClick = { navigation?.let(store::retryMemoryBookPreview) },
+                                                    enabled = introductionReaderIsCurrent && !reading.readerBusy && !reading.framesBusy && !reading.heroBusy,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-retry-preview"),
+                                                ) { Text(t("Retry preview", "重试预览")) }
                                             }
                                             Text(chapter.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("memory-book-chapter-title"))
                                             Text(chapter.narration, style = readerProseStyle(MaterialTheme.typography.bodyLarge, readerTextSize),

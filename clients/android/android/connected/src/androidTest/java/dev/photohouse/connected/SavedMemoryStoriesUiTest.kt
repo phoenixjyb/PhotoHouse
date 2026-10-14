@@ -2,6 +2,7 @@ package dev.photohouse.connected
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -23,6 +24,7 @@ import java.io.File
 import java.io.FileOutputStream
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,6 +58,11 @@ class SavedMemoryStoriesUiTest {
         var detailError: Exception? = null
         var detailGate: CompletableDeferred<Unit>? = null
         var detailStarted = false
+        val previewReads = mutableListOf<String>()
+        val previewResponses = mutableListOf<ByteArray?>()
+        var previewGate: CompletableDeferred<Unit>? = null
+        var originalCalls = 0
+        var videoCalls = 0
         var chapterTitles: List<String>? = null
         var detailReads = 0
         val listRequests = mutableListOf<Pair<Int, String?>>()
@@ -96,8 +103,19 @@ class SavedMemoryStoriesUiTest {
         override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, asset(assetId))
         override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
         override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = syntheticJpeg.copyOf()
-        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int) = VideoChunk(start, 1, byteArrayOf(0))
-        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String) = byteArrayOf(1)
+        override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray? {
+            previewReads += asset.id
+            previewGate?.await()
+            return if (previewResponses.isEmpty()) syntheticJpeg.copyOf() else previewResponses.removeAt(0)?.copyOf()
+        }
+        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk {
+            videoCalls++
+            return VideoChunk(start, 1, byteArrayOf(0))
+        }
+        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray {
+            originalCalls++
+            return byteArrayOf(1)
+        }
         override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int) = SavedMemoryStoryPage(library, page, 8, false, false, if (page == 1) listOf(summary) else emptyList())
         override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory {
             detailStarted = true
@@ -140,6 +158,77 @@ class SavedMemoryStoriesUiTest {
                 "不应展示的润色稿", emptyList(), null, 1720000000, 1720000001) else null
             return MemoryContributionDetail(MemoryContributionReceipt(item, false, false), derivation)
         }
+
+        fun previewCopy() = syntheticJpeg.copyOf()
+    }
+
+    @Test fun savedStoryCanRetryOnlyBrokenSelectedPreviewAt150Percent() = previewRetryJourney("zh")
+    @Test fun savedStoryCanRetryOnlyBrokenSelectedPreviewAt150PercentInEnglish() = previewRetryJourney("en")
+
+    private fun previewRetryJourney(language: String) {
+        val api = Api(id, summary).apply {
+            previewResponses += byteArrayOf(0x01, 0x02, 0x03)
+            previewResponses += previewCopy()
+        }
+        val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = language)
+            }
+        }
+        rule.runOnIdle { store.authenticate("+8612345678", "synthetic-password") }
+        rule.waitUntil(5_000) { store.state.value.library == "family" }
+        rule.onNodeWithTag("open-saved-memory-stories").performScrollTo().performClick()
+        rule.waitUntil(5_000) { store.state.value.savedMemoryStories?.result != null }
+        rule.onNodeWithTag("saved-memory-story-$id").performClick()
+        rule.waitUntil(5_000) {
+            store.state.value.savedMemoryStories?.let { it.detail != null && !it.framesBusy && !it.heroBusy && it.heroAssetId != null } == true
+        }
+        val initial = store.state.value.savedMemoryStories!!
+        val selectedAssetId = initial.selectedAssetId!!
+        val detailReadsBeforeRetry = api.detailReads
+        val previewReadsBeforeRetry = api.previewReads.size
+        val label = if (language == "zh") "重试预览" else "Retry preview"
+        val retry = rule.onNodeWithTag("saved-memory-retry-preview").performScrollTo()
+        retry.assertIsDisplayed().assertTextContains(label)
+        assertEquals("malformed current hero remains selected", selectedAssetId, initial.heroAssetId)
+        assertTrue("retry preview target is at least 48dp", (retry.getUnclippedBoundsInRoot().bottom - retry.getUnclippedBoundsInRoot().top).value >= 47.9f)
+        captureToMediaStore("saved-memory-preview-retry-$language-150.png")
+
+        val detachedRetry = retry.fetchSemanticsNode().config[SemanticsActions.OnClick].action
+            ?: error("Retry button is missing its click action")
+        api.previewGate = CompletableDeferred()
+        retry.performClick()
+        rule.waitUntil(5_000) { api.previewReads.size == previewReadsBeforeRetry + 1 }
+        rule.onNodeWithTag("saved-memory-retry-preview").assertDoesNotExist()
+        store.loadSavedMemoryHero(selectedAssetId, forceReload = true)
+        assertEquals("busy duplicate retry does not issue a second request", previewReadsBeforeRetry + 1, api.previewReads.size)
+        api.previewGate!!.complete(Unit)
+        rule.waitUntil(5_000) {
+            store.state.value.savedMemoryStories?.let { !it.heroBusy && it.hero?.isNotEmpty() == true } == true
+        }
+        val recovered = store.state.value.savedMemoryStories!!
+        assertEquals("retry does not reopen saved story detail", detailReadsBeforeRetry, api.detailReads)
+        assertEquals("retry reads only the selected protected preview", listOf(selectedAssetId), api.previewReads.drop(previewReadsBeforeRetry))
+        assertEquals("selected chapter stays put", initial.selectedChapter, recovered.selectedChapter)
+        assertEquals("selected moment stays put", selectedAssetId, recovered.selectedAssetId)
+        assertEquals("private draft stays unchanged", initial.community?.chatDraft, recovered.community?.chatDraft)
+        assertEquals(0, api.originalCalls)
+        assertEquals(0, api.videoCalls)
+        rule.onNodeWithTag("saved-memory-retry-preview").assertDoesNotExist()
+
+        val staleScope = store.state.value.savedMemoryStories!!
+        store.loadSavedMemoryChapter(1)
+        rule.waitUntil(5_000) {
+            store.state.value.savedMemoryStories?.let { it.selectedChapter == 1 && !it.framesBusy && !it.heroBusy } == true
+        }
+        val readsAfterChapterChange = api.previewReads.size
+        detachedRetry.invoke()
+        assertEquals("detached retry click cannot load the previous chapter preview", readsAfterChapterChange, api.previewReads.size)
+        assertEquals("chapter transition stays selected", 1, store.state.value.savedMemoryStories?.selectedChapter)
+        assertEquals("no original or video request", 0, api.originalCalls + api.videoCalls)
+        assertEquals("fixture chapter changed from ${staleScope.selectedChapter}", 1, store.state.value.savedMemoryStories?.selectedChapter)
     }
 
     @Test fun chineseDraftReaderNavigatesAndReturnsThroughProtectedAssetDetail() {

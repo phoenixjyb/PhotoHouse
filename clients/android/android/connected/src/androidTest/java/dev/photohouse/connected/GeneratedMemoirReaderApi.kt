@@ -1,5 +1,6 @@
 package dev.photohouse.connected
 
+import kotlinx.coroutines.CompletableDeferred
 import dev.photohouse.connected.core.*
 import dev.photohouse.protocol.*
 
@@ -9,6 +10,9 @@ internal class GeneratedMemoirReaderApi : PhotoHouseApi, MemoryCommunityApi {
     var childReads = 0
     var originalCalls = 0
     var videoCalls = 0
+    val previewReads = mutableListOf<String>()
+    val previewResponses = mutableListOf<ByteArray?>()
+    var previewGate: CompletableDeferred<Unit>? = null
     private val assets = (1..12).map { Asset(it.toString(), "image", 800, 600, null, null, "/synthetic-thumbnail") }
     override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
     override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
@@ -20,6 +24,11 @@ internal class GeneratedMemoirReaderApi : PhotoHouseApi, MemoryCommunityApi {
     override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, assets.first { it.id == assetId })
     override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
     override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = null
+    override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray? {
+        previewReads += asset.id
+        previewGate?.await()
+        return if (previewResponses.isEmpty()) null else previewResponses.removeAt(0)?.copyOf()
+    }
     override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk {
         videoCalls++; error("Original playback is outside this reader fixture")
     }

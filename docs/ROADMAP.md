@@ -35,6 +35,11 @@ remains ahead of broader autonomous narration. A separate next UI slice adds
 [temporary reading-size controls](READER_TEXT_SIZE.md) for story and memoir prose,
 while keeping the current chapter and contribution drafts.
 
+The same v60 increment adds [explicit preview recovery](READER_PREVIEW_RECOVERY.md),
+compact phone memoir navigation and a [first-story guide](FIRST_STORY_GUIDE_ZH.md).
+These keep a failed image from forcing readers to restart or lose their words.
+Frozen v59 approval does not authorize substituting v60 artifacts.
+
 October 15 source adds [explicit saved-section narration](ASSISTANT_SEGMENT_READING.md)
 for a story's first chapter or a memoir introduction. Each tap requests one
 bounded server-derived segment; successful playback permits Continue and the

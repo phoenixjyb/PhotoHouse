@@ -54,6 +54,7 @@ class SavedMemoryStoriesStoreTest {
         var contributionDetailResult: MemoryContributionDetail = sourceDetail()
         val contributionDetailReads = mutableListOf<String>()
         var previewError: Exception? = null
+        val previewGates = mutableMapOf<String, CompletableDeferred<Unit>>()
         var coverGate: CompletableDeferred<Unit>? = null
         var coverStarted = false
         var listReads = 0
@@ -107,6 +108,7 @@ class SavedMemoryStoriesStoreTest {
         }
         override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray {
             previewReads += asset.id
+            previewGates[asset.id]?.let { withContext(NonCancellable) { it.await() } }
             previewError?.let { throw it }
             return byteArrayOf(4, 5, 6)
         }
@@ -254,6 +256,42 @@ class SavedMemoryStoriesStoreTest {
         store.closeSavedMemoryStories()
         assertTrue(protectedCover.all { it == 0.toByte() })
         assertNull(store.state.value.savedMemoryStories)
+    }
+
+    @Test fun selectingAnotherFrameSupersedesPendingPreviewAndForcedRetryRefusesDuplicateWhileBusy() = runTest {
+        val api = Api().apply { storyOverride = multiAssetStory() }
+        val positions = PositionPersistence()
+        val store = newStore(api, positions = positions)
+        signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals("1", store.state.value.savedMemoryStories?.selectedAssetId)
+
+        api.previewGates["2"] = CompletableDeferred()
+        store.selectSavedMemoryFrame("2"); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories?.heroBusy == true)
+        assertEquals("2", store.state.value.savedMemoryStories?.selectedAssetId)
+        val readsWhileSecondPreviewLoads = api.previewReads.size
+        store.selectSavedMemoryFrame("1"); runCurrent()
+        assertEquals("ordinary frame navigation supersedes the pending preview", "1",
+            store.state.value.savedMemoryStories?.selectedAssetId)
+        assertEquals(readsWhileSecondPreviewLoads + 1, api.previewReads.size)
+        assertEquals("1", store.state.value.savedMemoryStories?.heroAssetId)
+        api.previewGates.getValue("2").complete(Unit); runCurrent()
+        assertEquals("stale preview result cannot replace the selected asset", "1",
+            store.state.value.savedMemoryStories?.heroAssetId)
+
+        api.previewGates["1"] = CompletableDeferred()
+        store.loadSavedMemoryHero("1", forceReload = true); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories?.heroBusy == true)
+        val readsWhileForcedRetryLoads = api.previewReads.size
+        store.loadSavedMemoryHero("1", forceReload = true)
+        runCurrent()
+        assertEquals("forced retry while busy is not duplicated", readsWhileForcedRetryLoads, api.previewReads.size)
+        api.previewGates.getValue("1").complete(Unit); runCurrent()
+        assertFalse(store.state.value.savedMemoryStories?.heroBusy ?: true)
+        assertEquals(0, api.originalReads)
+        assertEquals(0, api.videoRangeReads)
     }
 
     @Test fun explicitNavigationOffersFreshPositionAndContinueRequiresAnExplicitTap() = runTest {

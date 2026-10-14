@@ -21,7 +21,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   await ready;
   browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   ctx=await browser.newContext({viewport:{width:1280,height:960},deviceScaleFactor:1.5,serviceWorkers:'block'});
-  await ctx.addInitScript(()=>{let Constructor;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>Constructor,set:value=>{Constructor=config=>{let forcedLanguage=null;const originalScope=config.scope;const instance=value({...config,scope:()=>({...originalScope(),...(forcedLanguage?{language:forcedLanguage}:{})})});window.__setStoryWorkspaceTestLanguage=language=>{forcedLanguage=language;instance.translate();};window.__storyWorkspaceTest=instance;return instance;};}});});
+  await ctx.addInitScript(()=>{let Constructor;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>Constructor,set:value=>{Constructor=config=>{let forcedLanguage=null,forcedAccount=null,forcedFallbackAsset=null;const originalScope=config.scope,originalMediaURL=config.mediaURL;const instance=value({...config,scope:()=>({...originalScope(),...(forcedLanguage?{language:forcedLanguage}:{}),...(forcedAccount?{account:forcedAccount}:{})}),mediaURL:(id,variant)=>{const raw=originalMediaURL(id,variant);if(String(id)===forcedFallbackAsset&&variant==='thumbnail'){/* Use another supported thumbnail rendition so Edge cannot reuse the already-decoded size=256 response from the gallery. */const url=new URL(raw,location.href);url.searchParams.set('size','768');return url.pathname+url.search;}return raw;}});window.__setStoryWorkspaceTestLanguage=language=>{forcedLanguage=language;instance.translate();};window.__setStoryWorkspaceTestAccount=account=>{forcedAccount=account;};window.__setPreviewRetryAsset=assetId=>{forcedFallbackAsset=assetId===null?null:String(assetId);};window.__storyWorkspaceTest=instance;return instance;};}});});
   await ctx.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
@@ -163,15 +163,101 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   }
   pass('One-frame and two-frame chapter strips render within the existing API contract');
 
-  const brokenId='1125';
-  await ctx.route(`https://photohouse.test/assets/${brokenId}/thumbnail*`,route=>route.fulfill({status:503,body:'unavailable'}));
-  await buildAndRead(['1124','1125','1126','1127']);
+  const retrySvg='<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#cbb695"/></svg>',retryRoutes=[];
+  async function retryFixture(assetId){
+    let previewCalls=0,arrivedResolve,releaseResolve;
+    const arrived=new Promise(resolve=>arrivedResolve=resolve),held=new Promise(resolve=>releaseResolve=resolve);
+    await ctx.route(new RegExp(`^https://photohouse\\.test/assets/${assetId}/thumbnail(?:\\?[^#]*)?$`),async route=>{
+      if(new URL(route.request().url()).searchParams.get('size')!=='1024'){if(previewCalls===0){await route.continue();return;}retryRoutes.push(`${assetId}:thumbnail`);await route.fulfill({status:503,headers:{'cache-control':'no-store'},body:'synthetic thumbnail failure'});return;}
+      previewCalls++;retryRoutes.push(`${assetId}:preview:${previewCalls}`);
+      if(previewCalls===1){await route.fulfill({status:503,headers:{'cache-control':'no-store'},body:'synthetic preview failure'});return;}
+      if(previewCalls===2){arrivedResolve();await held;}
+      await route.fulfill({status:200,contentType:'image/svg+xml',headers:{'cache-control':'no-store'},body:retrySvg});
+    });
+    return {arrived,release:()=>releaseResolve()};
+  }
+  let healthyHeroInitialCalls=0;await ctx.route(/^https:\/\/photohouse\.test\/assets\/1124\/thumbnail(?:\?[^#]*)?$/,async route=>{if(new URL(route.request().url()).searchParams.get('size')!=='1024'){await route.continue();return;}healthyHeroInitialCalls++;await route.fulfill({status:200,contentType:'image/svg+xml',headers:{'cache-control':'no-store'},body:retrySvg});});
+  const brokenId='1125',heroRetry=await retryFixture(brokenId),focusMoveRetry=await retryFixture('1126');
+  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  await page.evaluate(()=>window.__setPreviewRetryAsset('1125'));await buildAndRead(['1124','1125','1126','1127']);
   assert.equal(await page.locator('#story-reader-font-presets [data-reader-font-scale="1"]').getAttribute('aria-pressed'),'true','opening another story returns to Standard');
+  await page.waitForFunction(()=>{const image=document.querySelector('#story-reader-stage img');return image?.complete&&image.naturalWidth>0;});assert.equal(healthyHeroInitialCalls,1,'fresh story open requests and decodes its initial hero preview exactly once');
+  await page.locator('#story-reader-frames button[data-asset-id="1124"]').click();
+  await page.waitForFunction(()=>{const image=document.querySelector('#story-reader-stage img');return image?.complete&&image.naturalWidth>0;});
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-status').textContent(),'','healthy initial previews do not add a status announcement');
+  assert(await page.locator('#story-reader-stage img').evaluate(image=>image.complete&&image.naturalWidth>0),'explicitly selected healthy hero asset decodes');
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-retry:visible').count(),0,'healthy hero preview has no visible retry');
   const broken=page.locator(`#story-reader-frames button[data-asset-id="${brokenId}"]`);
-  await page.waitForFunction(id=>document.querySelector(`#story-reader-frames button[data-asset-id="${id}"] .story-reader-frame-fallback`),brokenId);
   await broken.click();assert.equal(await broken.getAttribute('aria-pressed'),'true','failed thumbnail leaves its frame control selectable');
-  pass('Unavailable thumbnail falls back visually while keeping selection available');
+  const heroRetryButton=page.locator('#story-reader-stage .story-reader-preview-retry');
+  await heroRetryButton.waitFor({state:'visible'});
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-status').getAttribute('role'),'status');
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-status').textContent(),'这个画面的预览暂不可用','two failed preview sources announce the localized failure');
+  assert(await page.locator('#story-reader-stage .story-reader-preview-fallback').isVisible(),'failed story preview keeps one centered visible fallback label');
+  assert(await page.locator('#story-reader-stage .story-reader-preview-status').evaluate(node=>node.classList.contains('preview-status-sr-only')&&node.getBoundingClientRect().width<=1&&node.getBoundingClientRect().height<=1&&getComputedStyle(node).clipPath==='inset(50%)'),'story failure status text remains available to assistive technology but is visually clipped');
+  assert.equal(await heroRetryButton.textContent(),'重试预览','retry is an explicit localized action');
+  assert(await heroRetryButton.evaluate(node=>node.getBoundingClientRect().width>=48&&node.getBoundingClientRect().height>=48),'story retry target meets 48px at390px/150%');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'failed story preview fits a390px viewport at150%');
+  const storyIdentityBeforeRetry=await page.evaluate(()=>({title:document.querySelector('#story-reader-title').textContent,text:document.querySelector('#story-reader-text').textContent,chapter:document.querySelector('#story-reader-chapters [aria-current=step]')?.textContent}));
+  const retryWritesBeforeExplicitAction=requests.filter(request=>['POST','PUT','PATCH','DELETE'].includes(request.method)).length;
+  await page.locator('#story-reader .story-reader-prose').screenshot({path:path.join(artifacts,'story-preview-failure-zh-390-150.png')});
+  await page.locator('#story-reader-stage').screenshot({path:path.join(artifacts,'story-preview-stage-failure-zh-390-150.png')});
+  await page.evaluate(()=>window.__setStoryWorkspaceTestLanguage('en'));
+  assert.equal(await heroRetryButton.textContent(),'Retry preview');assert.equal(await page.locator('#story-reader-stage .story-reader-preview-status').textContent(),'This frame’s preview is unavailable','story recovery labels translate while the failed image remains mounted');
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-fallback').textContent(),'This frame’s preview is unavailable');assert(await page.locator('#story-reader-stage .story-reader-preview-status').evaluate(node=>node.classList.contains('preview-status-sr-only')&&node.getBoundingClientRect().width<=1&&node.getBoundingClientRect().height<=1),'English story failure is not duplicated visually');
+  await page.locator('#story-reader-stage').screenshot({path:path.join(artifacts,'story-preview-stage-failure-en-390-150.png')});
+  await page.evaluate(()=>window.__setStoryWorkspaceTestLanguage('zh'));
+  await heroRetryButton.focus();await heroRetryButton.click();await heroRetry.arrived;
+  assert.equal(await heroRetryButton.getAttribute('aria-disabled'),'true','story retry disables duplicate actions while a response is pending');
+  await heroRetryButton.evaluate(button=>button.click());assert.equal(retryRoutes.filter(path=>path==='1125:preview:2').length,1,'busy story retry ignores duplicate activation');
+  assert.equal(await page.locator('#story-reader-stage .story-reader-preview-status').textContent(),'正在检查画面预览…','pending story retry reports checking state');
+  assert.equal(await heroRetryButton.evaluate(node=>node===document.activeElement),true,'retry retains focus while loading');
+  const storyScrollBeforeRetryCompletion=await page.locator('#story-reader').evaluate(node=>node.scrollTop);
+  heroRetry.release();
+  await page.waitForFunction(()=>document.querySelector('#story-reader-stage .story-reader-preview-status')?.textContent==='画面预览已载入。');
+  assert(await page.locator('#story-reader-stage img').evaluate(image=>image.complete&&image.naturalWidth>0),'explicit retry restores the preview image');
+  assert(await page.locator('#story-reader-stage img').evaluate(image=>image===document.activeElement),'when the retry still owns focus, focus moves to the restored image without page movement');
+  assert.equal(await heroRetryButton.isVisible(),false,'successful retry hides the retry action');
+  assert.deepEqual(await page.evaluate(()=>({title:document.querySelector('#story-reader-title').textContent,text:document.querySelector('#story-reader-text').textContent,chapter:document.querySelector('#story-reader-chapters [aria-current=step]')?.textContent})),storyIdentityBeforeRetry,'retry preserves story, chapter and wording');
+  assert.equal(await page.locator('#story-reader').evaluate(node=>node.scrollTop),storyScrollBeforeRetryCompletion,'retry completion and focus restoration do not move the reader');
+  await page.locator('#story-reader .story-reader-prose').screenshot({path:path.join(artifacts,'story-preview-recovered-zh-390-150.png')});
+  await page.locator('#story-reader-stage').screenshot({path:path.join(artifacts,'story-preview-stage-recovered-zh-390-150.png')});
+  await page.evaluate(()=>window.__setPreviewRetryAsset('1126'));await page.locator('#story-reader-frames button[data-asset-id="1126"]').click();
+  const movedFocusRetry=page.locator('#story-reader-stage .story-reader-preview-retry');await movedFocusRetry.waitFor({state:'visible'});
+  await movedFocusRetry.focus();await movedFocusRetry.click();await focusMoveRetry.arrived;
+  await page.locator('#story-reader-close').focus();focusMoveRetry.release();
+  await page.waitForFunction(()=>document.querySelector('#story-reader-stage .story-reader-preview-status')?.textContent==='画面预览已载入。');
+  assert.equal(await page.locator('#story-reader-close').evaluate(node=>node===document.activeElement),true,'retry completion preserves a newer user-directed focus target');
+  assert.equal(requests.filter(request=>['POST','PUT','PATCH','DELETE'].includes(request.method)).length,retryWritesBeforeExplicitAction,'explicit story preview retries create no writes');
+  assert(retryRoutes.every(path=>/^(?:1125|1126):(?:preview|thumbnail):?\d*$/.test(path)),'story recovery requests only selected asset previews and thumbnails');
+  assert.equal(requests.filter(request=>/\/assets\/1125\/(?:media|original|playback)(?:\?|$)/.test(request.path)).length,0,'story recovery never requests an original or video');
+  pass('Story preview failure offers explicit accessible retry, recovers in place and restores keyboard focus');
 
+  await page.locator('#story-reader-close').click();await page.locator('#story-workspace-close').click();
+  const chapterRetry=await retryFixture('1121'),accountRetry=await retryFixture('1109');
+  await page.evaluate(()=>window.__setPreviewRetryAsset('1121'));await buildAndRead(ids);const writesBeforeStaleRetryChecks=requests.filter(request=>['POST','PUT','PATCH','DELETE'].includes(request.method)).length;
+  await page.locator('#story-reader-chapters button').nth(5).click();
+  try{await page.locator('#story-reader-stage .story-reader-preview-retry').waitFor({state:'visible',timeout:10000});}catch(error){console.error('chapter retry diagnostic',JSON.stringify({routes:retryRoutes,stage:await page.locator('#story-reader-stage').innerHTML()}));throw error;}
+  const chapterRetryButton=page.locator('#story-reader-stage .story-reader-preview-retry');
+  await chapterRetryButton.click();await chapterRetry.arrived;
+  await page.locator('#story-reader-chapters button').nth(4).click();
+  await page.waitForFunction(()=>{const image=document.querySelector('#story-reader-stage img');return image?.complete&&image.naturalWidth>0;});
+  const stageAfterChapterChange=await page.locator('#story-reader-stage').innerHTML();
+  chapterRetry.release();
+  await page.waitForTimeout(50);
+  assert.equal(await page.locator('#story-reader-stage').innerHTML(),stageAfterChapterChange,'late image response from a prior chapter cannot replace the current chapter preview');
+  assert.equal(await page.locator('#story-reader-chapters button').nth(4).getAttribute('aria-current'),'step','current chapter selection survives the late response');
+  await page.evaluate(()=>window.__setPreviewRetryAsset('1109'));await page.locator('#story-reader-chapters button').nth(2).click();await page.locator('#story-reader-stage .story-reader-preview-retry').waitFor({state:'visible'});const accountRetryButton=page.locator('#story-reader-stage .story-reader-preview-retry');
+  await accountRetryButton.click();await accountRetry.arrived;
+  await page.evaluate(()=>{window.__setStoryWorkspaceTestAccount('synthetic-replacement-account');window.__storyWorkspaceTest.clear();});
+  accountRetry.release();await page.locator('#story-reader').waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>document.querySelector('#story-reader-stage')?.childElementCount??0),0,'scope clear removes pending preview recovery UI before its stale image callback returns');
+  assert(retryRoutes.every(path=>/^(?:1125|1126|1121|1109):(?:preview|thumbnail):?\d*$/.test(path)),'stale-scope recovery also stays on preview/thumbnail paths only');
+  assert.equal(requests.filter(request=>['POST','PUT','PATCH','DELETE'].includes(request.method)).length,writesBeforeStaleRetryChecks,'chapter/account retry recovery creates no writes');
+  pass('Late retry callbacks are inert after chapter or account scope changes');
+
+  await page.evaluate(()=>{window.__setStoryWorkspaceTestAccount(null);window.__setPreviewRetryAsset(null);});
+  await buildAndRead(ids);
   await page.locator('#story-reader-font-presets [data-reader-font-scale="1.25"]').click();
   await page.locator('#story-reader-close').click();await page.locator('#story-reader').waitFor({state:'hidden'});
   await page.waitForFunction(()=>document.querySelector('#story-reader-font-presets [data-reader-font-scale="1"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#story-reader').style.getPropertyValue('--reader-font-scale')==='');

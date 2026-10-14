@@ -2042,12 +2042,13 @@ class ConnectedStore(
         loadSavedMemoryHero(assetId)
     }
 
-    fun loadSavedMemoryHero(assetId: String) {
+    fun loadSavedMemoryHero(assetId: String, forceReload: Boolean = false) {
         val reading = state.value.savedMemoryStories ?: return
         val detail = reading.detail ?: return
         if (reading.framesBusy || reading.selectedChapter !in detail.chapters.indices ||
             assetId !in detail.chapters[reading.selectedChapter].assetIds || reading.library != state.value.library || !allowed()) return
-        if (reading.heroAssetId == assetId && (reading.hero != null || reading.heroBusy)) return
+        if (forceReload && (reading.heroBusy || reading.selectedAssetId != assetId)) return
+        if (reading.heroAssetId == assetId && (reading.heroBusy || (!forceReload && reading.hero != null))) return
         val asset = detail.items.firstOrNull { it.asset.id == assetId }?.asset ?: return
         val request = ++savedMemoryHeroRequest; val generation = state.value.generation
         val library = reading.library; val storyId = detail.id; val chapterIndex = reading.selectedChapter; val credential = token!!
@@ -3559,6 +3560,15 @@ class ConnectedStore(
             it.framePage == expected.framePage && it.selectedAssetId == assetId } == true
     }
 
+    /** Retries only the selected protected preview, without changing the content-free resume bookmark. */
+    fun retryMemoryBookPreview(expected: MemoryBookReaderNavigationScope): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val assetId = expected.selectedAssetId ?: return false
+        if (reading.readerBusy || reading.framesBusy || reading.heroBusy || reading.selectedAssetId != assetId) return false
+        return selectMemoryBookAssetInternal(assetId, persistPosition = false)
+    }
+
     /** Captures only a next chapter in the same freshly selected child story. */
     fun captureMemoryBookSpeechAdvance(): MemoryBookSpeechAdvanceScope? {
         val reading = state.value.memoryBooks ?: return null
@@ -3707,12 +3717,17 @@ class ConnectedStore(
     }
 
     fun selectMemoryBookAsset(assetId: String) {
-        val reading = state.value.memoryBooks ?: return
-        val story = reading.story ?: return
-        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return
+        selectMemoryBookAssetInternal(assetId, persistPosition = true)
+    }
+
+    private fun selectMemoryBookAssetInternal(assetId: String, persistPosition: Boolean): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
         val visibleAssetIds = chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT).take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
-        if (assetId !in visibleAssetIds || reading.readerBusy || reading.framesBusy || !allowed()) return
-        val asset = story.items.firstOrNull { it.asset.id == assetId }?.asset ?: return
+        if (assetId !in visibleAssetIds || reading.readerBusy || reading.framesBusy || !allowed()) return false
+        val asset = story.items.firstOrNull { it.asset.id == assetId }?.asset ?: return false
+        val credential = token ?: return false
         memoryBooksMediaRequest++
         val request = memoryBooksMediaRequest
         val generation = state.value.generation
@@ -3720,8 +3735,7 @@ class ConnectedStore(
         reading.hero?.fill(0)
         mutable.value = state.value.copy(memoryBooks = reading.copy(selectedAssetId = assetId,
             heroAssetId = null, hero = null, heroBusy = true, heroUnavailable = false))
-        saveMemoryBookResume(reading, chapter.id, assetId)
-        val credential = token ?: return
+        if (persistPosition) saveMemoryBookResume(reading, chapter.id, assetId)
         launch { activeGeneration ->
             var bytes: ByteArray? = null
             try {
@@ -3743,6 +3757,7 @@ class ConnectedStore(
                 else mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(heroBusy = false, heroUnavailable = true))
             }
         }
+        return true
     }
 
     fun loadMemoryBookFramePage(page: Int) {

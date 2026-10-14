@@ -22,6 +22,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Source ownership/import provenance | [Source ledger](feature-source-changes.json), [contributing](../CONTRIBUTING.md) |
 | Reader progress and source status | [Reader UX](READER_PROGRESS_AND_SOURCES.md) |
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
+| First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
+| Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
 | Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |

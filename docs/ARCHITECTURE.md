@@ -475,6 +475,15 @@ choice; reader/source/account/library replacement resets it. It does not create 
 server preference, modify a story or refresh speech. Existing source bindings,
 contribution drafts and narration ownership remain the authority for their actions.
 
+[Preview recovery](READER_PREVIEW_RECOVERY.md) is another presentation action,
+separate from selecting a frame or persisting a reading bookmark. It retries one
+current protected image, replaces malformed cached bytes explicitly and fences
+late callbacks to that attempt/source. Web replaces only the image area, keeping
+the reader, community editor and speech owner mounted. Ordinary fast frame
+selection may still supersede an older image request; a busy retry must not
+change that existing navigation behavior. No original-media fetch, backend task,
+automatic retry loop or server repair is implied.
+
 ## Approved central assistant and foreground session
 
 [拾光助手](PERSONAL_ASSISTANT.md) is the shared phone/Web entry for conversational

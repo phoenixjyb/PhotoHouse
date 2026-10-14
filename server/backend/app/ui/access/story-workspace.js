@@ -19,7 +19,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       read:'沉浸预览',export:'下载故事草稿',exported:'已下载草稿；这不会保存到相册库或发布到电视。',empty:'请先选择至少一个画面。',
       error:'暂时无法整理故事，请重试。',close:'返回',previous:'上一章',next:'下一章',video:'播放此视频',photo:'照片',choiceVideo:'视频',choiceFrame:'画面',
       onlyFirst:'默认选中前 24 个画面。取消一项后，可以换选这个相册里的其他画面。',selectionTotal:n=>`共 ${n} 个可选画面`,framesPrevious:'上一组画面',framesNext:'下一组画面',framesPage:(first,last,total)=>`画面 ${first}–${last} / ${total}`,clearFrames:'清空选择',startWithFrame:'设为开头',selectFirst:'选择前 24 个画面',selectionLimit:'每个故事最多 24 个画面；请先取消一项，再选择其他画面。',moveEarlier:'向前移动',moveLater:'向后移动',chooseTheme:'从一个主题开始',ready:'章节提纲已准备好，可以编辑、预览或下载。',questionTitle:'让故事更像你们',
-      previewMissing:'这个画面的预览暂不可用',selectionEmpty:'这页还没有可用的照片或视频。',leave:'草稿尚未下载，确定清除草稿并离开？'},
+      previewMissing:'这个画面的预览暂不可用',retryPreview:'重试预览',previewChecking:'正在检查画面预览…',previewReady:'画面预览已载入。',selectionEmpty:'这页还没有可用的照片或视频。',leave:'草稿尚未下载，确定清除草稿并离开？'},
     en: {everyday:'Everyday light',trip:'Somewhere together',growing_up:'Growing up',birthday:'Birthday moments',grandparents:'With grandparents',year_in_review:'A year together',
       navStories:'Memories',navMedia:'Photos & videos',navAlbums:'Albums',navAssistant:'Assistant',eyebrow:'MOMENTS, CONNECTED',homeTitle:'Memories worth slowing down for.',homeText:'Choose a few frames, add your family’s words, and give a memory a beginning, a middle and an ending.',
       create:'Shape a story',assistant:'Talk to the assistant',select:'Choose the frames',selected:'selected',selectionHelp:'Choose up to 24. Uncheck one to choose another when full. The opening frame also becomes the story cover.',
@@ -35,7 +35,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       read:'Immersive preview',export:'Download story draft',exported:'Draft downloaded; it was not saved to the library or published to TV.',empty:'Choose at least one frame first.',
       error:'The story could not be arranged. Please try again.',close:'Back',previous:'Previous chapter',next:'Next chapter',video:'Play this video',photo:'Photo',choiceVideo:'Video',choiceFrame:'Moment',
       onlyFirst:'The first 24 frames are selected. Uncheck one to choose another frame from this album.',selectionTotal:n=>`${n} available frames`,framesPrevious:'Previous frames',framesNext:'Next frames',framesPage:(first,last,total)=>`Frames ${first}–${last} / ${total}`,clearFrames:'Clear selection',startWithFrame:'Start here',selectFirst:'Select the first 24 frames',selectionLimit:'A story can contain up to 24 frames. Uncheck one before selecting another.',moveEarlier:'Move earlier',moveLater:'Move later',chooseTheme:'Start with a theme',ready:'Your outline is ready to edit, preview or download.',questionTitle:'Make the story yours',
-      previewMissing:'This frame’s preview is unavailable',selectionEmpty:'There are no available photos or videos on this page.',leave:'This draft has not been downloaded. Clear it and leave?'}
+      previewMissing:'This frame’s preview is unavailable',retryPreview:'Retry preview',previewChecking:'Checking the frame preview…',previewReady:'Frame preview loaded.',selectionEmpty:'There are no available photos or videos on this page.',leave:'This draft has not been downloaded. Clear it and leave?'}
   };
   Object.assign(labels.zh,{savedEyebrow:'家人共同留下的时光',savedHeading:'我们的故事',refresh:'刷新',moreStories:'更多故事',savedEmpty:'还没有保存的故事。选几个画面，写下你们的回忆。',savedThemeFilter:'按主题浏览已保存故事',savedThemeAll:'全部主题',savedThemeEmpty:'这个主题下还没有保存的故事。',savedThemeViewAll:'查看全部故事',savedThemeCreate:'编排一个故事',savedLoading:'正在打开故事…',savedUnavailable:'已保存故事暂不可用，请稍后重试。',saveMemory:'保存到相册库',savingMemory:'正在保存…',savedMemory:'已保存到这个相册库，可以随时回来继续。',saveFailed:'保存结果尚未确认。请重试相同保存；也可先下载保留草稿。',saveConflict:'故事或参考资料已有变化。你的文字已保留，请下载草稿或重新打开已保存版本。',reloadMemory:'重新打开已保存版本',playStory:'慢慢播放',pauseStory:'暂停播放',contribute:'补充这张照片的回忆',related:'和助手找更多片段',savedDraft:'已保存故事 · 待核实',privateHelp:'与这个相册库的家人分享，不会自动发布到电视。',savedHelp:'已保存到这个相册库。修改章节后请再次保存；家人的话和 AI 观察仍作为独立参考。',readOnly:'你可以阅读这个故事。只有作者或相册库主人可以修改。',savedMeta:'个画面',chaptersMeta:'章',retrySave:'重试相同保存',needsTitle:'请先为这段回忆起一个标题。',textTooLong:'这一章的文字超过 6000 字节，请缩短后再保存；原稿未改动。',readStory:'阅读故事',backStories:'返回故事列表',editStory:'编辑故事'});
   Object.assign(labels.en,{savedEyebrow:'MOMENTS YOUR FAMILY KEEPS',savedHeading:'Our stories',refresh:'Refresh',moreStories:'More stories',savedEmpty:'No saved stories yet. Choose a few frames and add what you remember.',savedThemeFilter:'Browse saved stories by theme',savedThemeAll:'All themes',savedThemeEmpty:'No saved stories under this theme yet.',savedThemeViewAll:'View all stories',savedThemeCreate:'Create a story',savedLoading:'Opening stories…',savedUnavailable:'Saved stories are unavailable. Please try again.',saveMemory:'Save to library',savingMemory:'Saving…',savedMemory:'Saved in this library. Come back whenever you like.',saveFailed:'The save is not confirmed. Retry the same save, or download a copy of your draft.',saveConflict:'The story or its references changed. Your words are kept; download your draft or reopen the saved version.',reloadMemory:'Reopen saved version',playStory:'Play slowly',pauseStory:'Pause',contribute:'Add a memory to this photo',related:'Find more moments with the assistant',savedDraft:'Saved story · review',privateHelp:'Shared with this library; not automatically published to TV.',savedHelp:'Saved in this library. Save again after changing chapters. Family words and AI observations remain separate references.',readOnly:'You can read this story. Only its author or a library owner can edit it.',savedMeta:'frames',chaptersMeta:'chapters',retrySave:'Retry same save',needsTitle:'Give this memory a title before saving.',textTooLong:'A chapter exceeds 6000 UTF-8 bytes. Shorten it before saving; your draft is kept.',readStory:'Read story',backStories:'Back to stories',editStory:'Edit story'});
@@ -129,6 +129,44 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const frozen = () => busy || Boolean(pendingSave) || readOnly();
   const node = (tag, value, cls) => {const el=document.createElement(tag);if(value!==undefined)el.textContent=value;if(cls)el.className=cls;return el;};
   const button = (label, action, cls='quiet') => {const el=node('button',label,cls);el.type='button';el.addEventListener('click',action);return el;};
+  function mountPreviewRetry({visual,retryHost,id,alt,isCurrent,classes,focusTarget}){
+    const status=node('p',undefined,classes.status);status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+    const retry=button(text('retryPreview'),()=>start(true),classes.retry);retry.hidden=true;retry.dataset.storyWord='retryPreview';retry.setAttribute('aria-disabled','false');
+    const fallback=node('span',text('previewMissing'),classes.fallback);fallback.setAttribute('aria-hidden','true');fallback.dataset.storyWord='previewMissing';
+    const setStatus=key=>{status.dataset.storyWord=key;status.classList.toggle('preview-status-sr-only',key==='previewMissing');status.textContent=text(key);};
+    retryHost.append(status,retry);
+    const current=()=>retry.isConnected&&retryHost.contains(retry)&&isCurrent();
+    let attempt=0,activeImage=null,busy=false;
+    function start(explicit){
+      if((explicit&&!current())||busy)return;
+      const retryHadFocus=explicit&&document.activeElement===retry;
+      const ticket=++attempt;busy=true;retry.setAttribute('aria-disabled','true');retry.hidden=!explicit;
+      if(explicit)setStatus('previewChecking');else{status.textContent='';delete status.dataset.storyWord;}
+      fallback.remove();
+      const image=node('img');image.alt=alt;image.tabIndex=-1;activeImage=image;visual.append(image);
+      let phase='preview';
+      const valid=()=>busy&&ticket===attempt&&activeImage===image&&image.isConnected&&current();
+      const fail=()=>{
+        if(!valid())return;
+        busy=false;activeImage=null;image.remove();visual.append(fallback);setStatus('previewMissing');retry.hidden=false;retry.setAttribute('aria-disabled','false');
+      };
+      image.addEventListener('error',()=>{
+        if(!valid())return;
+        if(phase==='preview'){phase='thumbnail';image.src=mediaURL(id,'thumbnail');return;}
+        fail();
+      });
+      image.addEventListener('load',()=>{
+        if(!valid())return;
+        busy=false;fallback.remove();if(explicit)setStatus('previewReady');else{status.textContent='';delete status.dataset.storyWord;}
+        const destination=focusTarget?.()||image;
+        if(retryHadFocus&&document.activeElement===retry&&current()&&destination?.isConnected)destination.focus({preventScroll:true});
+        retry.hidden=true;retry.setAttribute('aria-disabled','false');
+      });
+      image.src=mediaURL(id,'preview');
+    }
+    start(false);
+    return {retry,status};
+  }
   const readerFontScales=[0.9,1,1.25];
   const syncReaderFontScale=(reader,group,scale)=>{
     if(!reader||!group||!readerFontScales.includes(scale))return false;
@@ -891,9 +929,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(readerFromShelf&&!dirty&&!pendingSave)rememberStoryPosition(draft,c,item);
     const frameHost=$('story-reader-frames'),priorScrollLeft=frameHost.scrollLeft;
     const stage=$('story-reader-stage');stage.replaceChildren();
-    const img=node('img');img.alt=`${text(item.kind==='video'?'video':'photo')} ${item.id}`;img.src=mediaURL(item.id,'preview');
-    const imageStillCurrent=()=>readerStillCurrent()&&img.isConnected&&stage.contains(img);
-    img.addEventListener('error',()=>{if(!imageStillCurrent())return;img.src=mediaURL(item.id,'thumbnail');img.addEventListener('error',()=>{if(!imageStillCurrent())return;img.remove();stage.append(node('p',text('previewMissing')));},{once:true});},{once:true});stage.append(img);
+    mountPreviewRetry({visual:stage,retryHost:stage,id:item.id,alt:`${text(item.kind==='video'?'video':'photo')} ${item.id}`,isCurrent:()=>readerStillCurrent()&&draft.items.includes(item)&&c.asset_ids[frame]===item.id,classes:{status:'story-reader-preview-status',retry:'quiet story-reader-preview-retry',fallback:'story-reader-preview-fallback'}});
     if(item.kind==='video'){
       const videoOpen=button(text('video'),()=>{if(!readerStillCurrent()||!videoOpen.isConnected||scope().locked||!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'}))return;stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAsset(item);},'story-video-open');
       stage.append(videoOpen);
@@ -1315,18 +1351,17 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       sourceStatusHost=node('section',undefined,'memory-book-source-status');sourceStatusHost.tabIndex=-1;sourceStatusHost.setAttribute('aria-label',owner.language==='en'?'Chapter source status':'本章来源状态');pane.append(sourceStatusHost);
       const sectionTicket=readingTicket,renderedStory=readingStory,renderedStoryIndex=storyIndex,renderedSectionIndex=sectionIndex,frames=node('div',undefined,'memory-book-reading-frames');
       if(section.asset_ids.length===2)frames.classList.add('memory-book-reading-frames-two');
+      pane.append(frames);
       for(const [mediaIndex,id] of section.asset_ids.entries()){
-        const media=renderedStory.items.find(item=>item.id===id),image=node('img'),kind=media.kind==='video'?'video':'photo',kindLabel=text(media.kind==='video'?'choiceVideo':'photo');
+        const media=renderedStory.items.find(item=>item.id===id),kind=media.kind==='video'?'video':'photo',kindLabel=text(media.kind==='video'?'choiceVideo':'photo');
         const ordinal=owner.language==='en'?`${kind==='video'?'Video':'Photo'} ${mediaIndex+1} of ${section.asset_ids.length}`:`${kindLabel} ${mediaIndex+1} / ${section.asset_ids.length}`;
-        image.alt=ordinal;
         const open=button('',()=>{if(!mediaStillCurrent()||!mayLeave()||!mediaStillCurrent())return;stopNarration();reader.close();openAsset(media);},'memory-book-media');
         const mediaStillCurrent=()=>Boolean(open.isConnected&&pane.contains(open)&&open.closest('.memory-book-reading')===pane&&readerCurrent(sectionTicket)&&readingTicket===sectionTicket&&readingStory===renderedStory&&storyIndex===renderedStoryIndex&&sectionIndex===renderedSectionIndex&&renderedStory.chapters[renderedSectionIndex]===section&&section.asset_ids[mediaIndex]===id);
-        open.setAttribute('aria-label',owner.language==='en'?`Open ${ordinal.toLowerCase()}`:`打开${ordinal}`);open.append(image);
-        image.src=mediaURL(id,'preview');
-        image.addEventListener('error',()=>{if(!mediaStillCurrent())return;image.src=mediaURL(id,'thumbnail');image.addEventListener('error',()=>{if(!mediaStillCurrent())return;image.replaceWith(node('p',text('previewMissing')));},{once:true});},{once:true});
+        open.setAttribute('aria-label',owner.language==='en'?`Open ${ordinal.toLowerCase()}`:`打开${ordinal}`);
         const item=node('figure');item.append(open,node('figcaption',`${ordinal} · ${dateLabel(media)}`));frames.append(item);
+        mountPreviewRetry({visual:open,retryHost:item,id,alt:ordinal,isCurrent:mediaStillCurrent,focusTarget:()=>open,classes:{status:'memory-book-preview-status',retry:'quiet memory-book-preview-retry',fallback:'memory-book-preview-fallback'}});
       }
-      pane.append(frames,node('p',section.narration,'memory-book-reading-prose'));
+      pane.append(node('p',section.narration,'memory-book-reading-prose'));
       sourceHost=node('div',undefined,'memory-book-source-host');sourceSection=section;pane.append(sourceHost);renderBookSources();
       const narrationStory=readingStory,narrationStoryIndex=storyIndex,narrationSectionIndex=sectionIndex;
       const chaptersSnapshot=JSON.stringify(narrationStory.chapters.map(chapter=>[chapter.id,chapter.asset_ids,chapter.title,chapter.narration]));

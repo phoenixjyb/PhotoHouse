@@ -2612,3 +2612,24 @@ with 49 focused tests passing and all production capabilities still unavailable.
 This does not change the frozen v59 four-group/ten-case native proposal. Initial
 intake docs and the Android entry README now distinguish this current source
 from historical verification and delivered versions.
+
+
+### October 15 explicit reader preview recovery
+
+The following v60 slice adds a 48 dp phone / 48 px Web explicit retry for the
+current failed story or memoir preview. It handles malformed cached phone bytes,
+keeps ordinary frame navigation responsive, and does not change a bookmark or
+restart speech. Browser recovery replaces only the image area and retains prose,
+font, source disclosures, current contribution drafts and focus ownership. Late
+callbacks and repeated busy taps are inert; original/video opening remains explicit.
+
+Twenty-four focused phone store cases, debug lint and four bilingual API 36
+emulator retry cases passed. Six Edge story checks and eight Edge memoir checks
+passed with zero external requests or page errors. English/Chinese 390 px / 150%
+and phone enlarged renders were inspected. The browser fixture isolates a fresh
+valid thumbnail rendition for its injected 503 response; production transport
+URLs and no-store behavior remain unchanged. A first-story guide and the v60
+trial now distinguish original photo memories, saved stories and memoirs.
+
+Full integrated profiles and exact immutable v60 package identities follow the
+source freeze; focused results alone do not qualify a release.

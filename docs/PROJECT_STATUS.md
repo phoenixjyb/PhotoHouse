@@ -26,6 +26,18 @@ matched the complete signed APK over HTTPS. The independent Mac first/last range
 checks passed; its additional complete transfer timed out. Neither publication
 nor a running process is a physical-device or narrative-quality pass.
 
+## Following local increment
+
+Phone v60 / Web source adds temporary narrative text size, compact phone memoir
+navigation and explicit protected-preview recovery. Focused enlarged Chinese/
+English browser and API 36 emulator journeys pass. The generated oral-history
+qualifier now has five groups / twelve cases, including populated legacy history
+and interrupted paired-commit replay; the frozen v59 proposal retains four/ten.
+The [first-story guide](FIRST_STORY_GUIDE_ZH.md) explains why a photo memory is
+not yet a saved multi-image story. Full profiles and immutable packages are
+recorded in [Development](DEVELOPMENT.md) after the source freeze. This increment
+has no signing, Windows execution or publication authority attached.
+
 ## Runtime configuration observed
 
 The public defaults remain closed or opt-in. The following describes this
