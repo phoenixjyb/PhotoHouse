@@ -56,6 +56,22 @@ format/schema admission, provider installation/native inference, live activation
 artifact publication and family/device acceptance answer different questions.
 Neither a source catalog nor a running task makes an AI capability ready.
 
+## October 15 source follow-up
+
+Later source separates client timing into pure monotonic trackers and saved
+narration segmentation into a small server-owned module. Clients negotiate the
+new [section-reading contract](ASSISTANT_SEGMENT_READING.md) independently of
+opening speech; they supply an ordinal and current parent/revision, never prose.
+One playback owner and exact request-entry identity protect cancellation and
+replacement. Complete source revalidation also catches edits outside the current
+segment. [Release-profile preparation](ANDROID_RELEASE_PREPARATION.md) now has a
+portable read-only checker; signing/cutover controllers remain a later extraction.
+
+The internal oral-history withdrawal/V4 writer-fence primitive remains separate
+from live admission, transport and erasure. These source changes do not alter
+the October 14 installation snapshot. Maintain the source/package/runtime/device
+gates as features become available, rather than relabeling prototypes as deployed.
+
 ## Documentation maintenance decision
 
 [Architecture](ARCHITECTURE.md) is the maintained source map;

@@ -64,6 +64,12 @@ class HttpsAssistantWorkspaceApiTest {
         .setHeader("X-PhotoHouse-Receipt-Status", "succeeded")
         .setBody(okio.Buffer().write(bytes))
 
+    private fun segmentSpeechResponse(bytes: ByteArray, segment: String = "0", count: String = "2",
+                                      requestId: String = speechRequest) = speechResponse(bytes, requestId)
+        .setHeader("X-PhotoHouse-Playback-Tracking", "enabled")
+        .setHeader("X-PhotoHouse-Reading-Segment", segment)
+        .setHeader("X-PhotoHouse-Reading-Segment-Count", count)
+
     private fun result(kind: String = "results", effect: String = "null") =
         """{"version":1,"kind":"$kind","reply":"Found one.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1},"filters":{},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}],"total":1,"has_more":false,"effect":$effect}"""
 
@@ -265,6 +271,7 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("identity", sent.getHeader("Accept-Encoding"))
             assertEquals(speechRequest, sent.getHeader("X-PhotoHouse-Request-Id"))
             assertEquals(request, sent.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            assertNull(sent.getHeader("X-PhotoHouse-Reading-Segment"))
             val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
             assertEquals(setOf("library_id", "expected_revision"), body.keys)
             assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
@@ -295,6 +302,69 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals(setOf("library_id", "expected_revision"), body.keys)
             assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
             assertEquals("7", body.getValue("expected_revision").jsonPrimitive.content)
+        }
+    }
+
+    @Test fun savedMemorySegmentCapabilityIsIndependentAndOld403IsRevalidated() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(response("""{"version":1,"available":true}"""))
+            assertTrue(api.savedMemorySegmentReadingCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/saved-memory-segment-reading-capabilities?library_id=family-a",
+                f.server.takeRequest().path)
+
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":true,"preferences_applied":false,"server_owned_turns":true,"applied_preferences":[]}"""))
+            assertFalse(api.savedMemorySegmentReadingCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/saved-memory-segment-reading-capabilities?library_id=family-a", f.server.takeRequest().path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", f.server.takeRequest().path)
+        }
+    }
+
+    @Test fun savedMemorySegmentSpeechUsesExactRouteAndValidatesCanonicalResponseMetadata() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            val audioBytes = wav()
+            f.server.enqueue(segmentSpeechResponse(audioBytes, segment = "1", count = "3"))
+            val result = api.speakSavedMemorySegment(token, "family-a", thread, request, 3, 1, 7, speechRequest)
+            assertEquals(1, result.segment)
+            assertEquals(3, result.segmentCount)
+            assertEquals(speechRequest, result.receipt.requestId)
+            assertArrayEquals(audioBytes, result.bytes)
+            result.bytes.fill(0)
+            val sent = f.server.takeRequest()
+            assertEquals("POST", sent.method)
+            assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request/memory-cards/3/segments/1/speech", sent.path)
+            assertEquals(token.header(), sent.getHeader("Authorization"))
+            assertEquals("audio/wav", sent.getHeader("Accept"))
+            assertEquals("no-store", sent.getHeader("Cache-Control"))
+            assertEquals("identity", sent.getHeader("Accept-Encoding"))
+            assertEquals(speechRequest, sent.getHeader("X-PhotoHouse-Request-Id"))
+            assertEquals(request, sent.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
+            assertEquals(setOf("library_id", "expected_revision"), body.keys)
+            assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
+            assertEquals("7", body.getValue("expected_revision").jsonPrimitive.content)
+        }
+    }
+
+    @Test fun savedMemorySegmentSpeechRejectsMismatchedOrNonCanonicalHeadersBeforeExposingAudio() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            listOf("1" to "3", "00" to "3", "0" to "01", "0" to "0", "0" to "129").forEach { (segment, count) ->
+                f.server.enqueue(segmentSpeechResponse(wav(), segment, count))
+                invalid { api.speakSavedMemorySegment(token, "family-a", thread, request, 3, 0, 7, speechRequest) }
+                f.server.takeRequest()
+            }
+            f.server.enqueue(speechResponse(wav()).setHeader("X-PhotoHouse-Reading-Segment", "0"))
+            invalid { api.speakSavedMemorySegment(token, "family-a", thread, request, 3, 0, 7, speechRequest) }
+            f.server.takeRequest()
+            f.server.enqueue(speechResponse(wav())
+                .setHeader("X-PhotoHouse-Reading-Segment", "0")
+                .setHeader("X-PhotoHouse-Reading-Segment-Count", "2"))
+            invalid { api.speakSavedMemorySegment(token, "family-a", thread, request, 3, 0, 7, speechRequest) }
+            f.server.takeRequest()
+            assertEquals(7, f.server.requestCount)
         }
     }
 

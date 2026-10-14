@@ -83,6 +83,13 @@ data class AssistantWorkspaceTurn(
 data class AssistantWorkspaceDeletedThread(val threadId: String, val deleted: Boolean)
 
 data class SavedMemoryReaderCapabilities(val version: Int, val available: Boolean)
+/** One bounded source segment synthesized for the exact selected fresh memory-card turn. */
+data class AssistantMemorySegmentSpeechResult(
+    val bytes: ByteArray,
+    val receipt: AssistantRequestReceipt,
+    val segment: Int,
+    val segmentCount: Int,
+)
 data class AssistantSavedMemoryParent(val requestId: String, val revision: Long)
 sealed interface SavedMemoryReaderPayload {
     data class Story(val value: SavedMemoryStory) : SavedMemoryReaderPayload
@@ -153,9 +160,17 @@ interface AssistantWorkspaceApi {
     /** Optional source-opening speech capability, independent from generic reply speech. */
     suspend fun savedMemoryReadingCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
+    /** Optional bounded first-chapter / memoir-introduction speech capability. */
+    suspend fun savedMemorySegmentReadingCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
+        SavedMemoryReaderCapabilities(1, false)
     /** Synthesizes the original opening for one card in the latest fresh memory-card result. */
     suspend fun speakSavedMemoryOpening(token: Bearer, library: String, threadId: String, turnId: String,
                                         ordinal: Int, expectedRevision: Long, speechRequestId: String): AssistantSpeechResult =
+        throw ApiFailure(FailureKind.HTTP, 503)
+    /** Synthesizes exactly one explicitly requested bounded source segment. */
+    suspend fun speakSavedMemorySegment(token: Bearer, library: String, threadId: String, turnId: String,
+                                        ordinal: Int, segment: Int, expectedRevision: Long,
+                                        speechRequestId: String): AssistantMemorySegmentSpeechResult =
         throw ApiFailure(FailureKind.HTTP, 503)
     suspend fun savedMemoryReader(
         token: Bearer, library: String, threadId: String, turnId: String, ordinal: Int,

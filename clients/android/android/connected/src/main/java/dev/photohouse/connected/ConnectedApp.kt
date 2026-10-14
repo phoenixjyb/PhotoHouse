@@ -161,6 +161,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReadingCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySegmentReadingCapabilities()) privateAssistant.state.first { !it.busy }
         }
     }
     LaunchedEffect(privateAssistantOpen) {
@@ -172,6 +173,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemorySpeechCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReadingCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySegmentReadingCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshThreads()) {
                 privateAssistant.state.first { !it.busy }
                 privateAssistant.refreshPreferences()
@@ -738,6 +740,24 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 }
                             }
                         },
+                        onReadSavedMemorySegment = { ordinal, segment ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            val liveWorkspace = privateAssistant.state.value
+                            if (current() && privateAssistantState.savedMemorySegmentReadingAvailable &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    liveWorkspace.currentTurn, liveWorkspace.detail) &&
+                                store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                                val afterVoiceEnd = privateAssistant.state.value
+                                if (current() && afterVoiceEnd.savedMemorySegmentReadingAvailable &&
+                                    isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                        afterVoiceEnd.currentTurn, afterVoiceEnd.detail) &&
+                                    store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                    store.loadAssistantMemorySegment(ordinal, segment, renderedTurn?.requestId, renderedTurn?.revision)
+                                }
+                            }
+                        },
                         onOpenSavedMemoryCard = { ordinal ->
                             val renderedTurn = privateAssistantState.currentTurn
                             val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
@@ -820,6 +840,23 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
                                     afterVoiceEnd.currentTurn, afterVoiceEnd.detail)) {
                                 store.loadAssistantMemoryOpening(ordinal, renderedTurn?.requestId, renderedTurn?.revision)
+                            }
+                        }
+                    },
+                    onReadSavedMemorySegment = { ordinal, segment ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                        val fresh = privateAssistant?.state?.value
+                        if (assistantScopeCurrent() && privateAssistantState.savedMemorySegmentReadingAvailable &&
+                            isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                fresh?.currentTurn, fresh?.detail) && store.canReadAssistantMemorySegment(ordinal, segment)) {
+                            stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                            val afterVoiceEnd = privateAssistant?.state?.value
+                            if (assistantScopeCurrent() && afterVoiceEnd?.savedMemorySegmentReadingAvailable == true &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    afterVoiceEnd.currentTurn, afterVoiceEnd.detail) &&
+                                store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                store.loadAssistantMemorySegment(ordinal, segment, renderedTurn?.requestId, renderedTurn?.revision)
                             }
                         }
                     },

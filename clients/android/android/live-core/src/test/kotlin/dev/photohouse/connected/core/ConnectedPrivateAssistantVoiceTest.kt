@@ -234,6 +234,96 @@ class ConnectedPrivateAssistantVoiceTest {
         fixture.driver.close()
     }
 
+    @Test fun memorySegmentContinuationWaitsForPlaybackCompletionAndStopClearsEphemeralProgress() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemorySegmentReadingAvailable = true
+        fixture.workspaceApi.resultFactory = ::savedMemoryResult
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+        assertTrue(fixture.store.sendAssistantText("find saved memories")); runCurrent()
+
+        assertTrue(fixture.store.canReadAssistantMemorySegment(0, 0))
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 0))
+        runCurrent()
+        val firstAudio = requireNotNull(fixture.store.state.value.assistant?.speechAudio)
+        assertEquals(listOf(0), fixture.workspaceApi.memorySegmentIndices)
+        assertEquals(2, fixture.store.state.value.assistant?.speechMemorySegmentProgress?.segmentCount)
+        assertNull(fixture.store.state.value.assistant?.speechMemorySegmentProgress?.completedSegmentIndex)
+        assertFalse("the next explicit tap stays locked until player completion", fixture.store.canReadAssistantMemorySegment(0, 1))
+
+        assertTrue(fixture.store.reportAssistantPlaybackOutcome(firstAudio, "completed"))
+        assertEquals(0, fixture.store.state.value.assistant?.speechMemorySegmentProgress?.completedSegmentIndex)
+        assertTrue(fixture.store.canReadAssistantMemorySegment(0, 1))
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 1))
+        runCurrent()
+        val secondAudio = requireNotNull(fixture.store.state.value.assistant?.speechAudio)
+        assertEquals(listOf(0, 1), fixture.workspaceApi.memorySegmentIndices)
+        assertFalse("server count caps continuation", fixture.store.canReadAssistantMemorySegment(0, 2))
+        assertTrue(fixture.store.reportAssistantPlaybackOutcome(secondAudio, "completed"))
+        assertEquals(1, fixture.store.state.value.assistant?.speechMemorySegmentProgress?.completedSegmentIndex)
+        assertTrue("completed source can be explicitly restarted from its first segment",
+            fixture.store.canReadAssistantMemorySegment(0, 0))
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 0))
+        runCurrent()
+        assertEquals(listOf(0, 1, 0), fixture.workspaceApi.memorySegmentIndices)
+        assertEquals(0, fixture.store.state.value.assistant?.speechMemorySegmentProgress?.segmentIndex)
+        fixture.store.clearAssistantSpeech()
+        assertNull(fixture.store.state.value.assistant?.speechMemorySegmentProgress)
+        assertTrue("Stop resets this ephemeral reader to its first explicit segment",
+            fixture.store.canReadAssistantMemorySegment(0, 0))
+        fixture.driver.close()
+    }
+
+    @Test fun changedSegmentCapabilityCancelsPendingAudioAndClearsProgress() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemorySegmentReadingAvailable = true
+        fixture.workspaceApi.resultFactory = ::savedMemoryResult
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+        assertTrue(fixture.store.sendAssistantText("find saved memories")); runCurrent()
+        val pendingSpeech = CompletableDeferred<AssistantMemorySegmentSpeechResult>()
+        fixture.workspaceApi.memorySegmentHandler = { _, _, _, _, _, _, speechRequestId ->
+            pendingSpeech.await().also { assertEquals(speechRequestId, it.receipt.requestId) }
+        }
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 0)); runCurrent()
+        assertNotNull(fixture.store.state.value.assistant?.speechMemorySegmentProgress)
+        fixture.workspaceApi.savedMemorySegmentReadingAvailable = false
+        assertTrue(coordinator.refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+        assertFalse(coordinator.state.value.savedMemorySegmentReadingAvailable)
+        assertNull(fixture.store.state.value.assistant?.speechMemorySegmentProgress)
+        assertNull(fixture.store.state.value.assistant?.speechAudio)
+        fixture.driver.close()
+    }
+
+    @Test fun continuationRefusesChangedCountForTheFrozenSourceBinding() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemorySegmentReadingAvailable = true
+        fixture.workspaceApi.resultFactory = ::savedMemoryResult
+        fixture.workspaceApi.memorySegmentHandler = { _, _, _, _, segment, _, request ->
+            AssistantMemorySegmentSpeechResult(syntheticAnnotationWav(),
+                AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true),
+                segment, if (segment == 0) 2 else 3)
+        }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+        assertTrue(fixture.store.sendAssistantText("find saved memories")); runCurrent()
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 0)); runCurrent()
+        val firstAudio = requireNotNull(fixture.store.state.value.assistant?.speechAudio)
+        assertTrue(fixture.store.reportAssistantPlaybackOutcome(firstAudio, "completed"))
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 1)); runCurrent()
+        assertNull("changed count is refused before audio is exposed", fixture.store.state.value.assistant?.speechAudio)
+        assertNull(fixture.store.state.value.assistant?.speechMemorySegmentProgress)
+        assertEquals(listOf(0, 1), fixture.workspaceApi.memorySegmentIndices)
+        assertEquals(0, fixture.workspaceApi.memoryOpeningSpeechCalls)
+        fixture.driver.close()
+    }
+
     @Test fun savedMemoryOpeningDiscardsLateAudioAfterNewTurnAndHidesRecoveredOrHistoryTurns() = runTest {
         val fixture = fixture(activatePrivate = true)
         val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
@@ -1013,6 +1103,7 @@ class ConnectedPrivateAssistantVoiceTest {
         var savedMemoryFollowupAvailable = false
         var savedMemoryReaderAvailable = false
         var savedMemoryReadingAvailable = false
+        var savedMemorySegmentReadingAvailable = false
         var readerPayload: SavedMemoryReaderPayload = SavedMemoryReaderPayload.Story(SavedMemoryStory(
             id = "33333333-3333-4333-8333-333333333333", libraryId = "family", revision = 2,
             createdAt = 0, updatedAt = 0, canEdit = false, selectionRevision = "a".repeat(64),
@@ -1022,6 +1113,10 @@ class ConnectedPrivateAssistantVoiceTest {
             questions = emptyList(),
         ))
         var memoryOpeningSpeechCalls = 0
+        val memorySegmentIndices = mutableListOf<Int>()
+        var memorySegmentHandler: suspend (String, String, String, Int, Int, Long, String) -> AssistantMemorySegmentSpeechResult =
+            { _, _, _, _, segment, _, request -> AssistantMemorySegmentSpeechResult(syntheticAnnotationWav(),
+                AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true), segment, 2) }
         var speechHandler: suspend (String, String, String, Long, String) -> AssistantSpeechResult =
             { _, _, _, _, request -> AssistantSpeechResult(syntheticAnnotationWav(), AssistantRequestReceipt(request, "enabled", "succeeded")) }
         var memoryOpeningHandler: suspend (String, String, String, Int, Long, String) -> AssistantSpeechResult =
@@ -1080,6 +1175,8 @@ class ConnectedPrivateAssistantVoiceTest {
         }
         override suspend fun savedMemoryReadingCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryReadingAvailable)
+        override suspend fun savedMemorySegmentReadingCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemorySegmentReadingAvailable)
         override suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryReaderAvailable)
         override suspend fun savedMemoryReader(token: Bearer, library: String, threadId: String, turnId: String,
@@ -1089,6 +1186,12 @@ class ConnectedPrivateAssistantVoiceTest {
                                                      speechRequestId: String): AssistantSpeechResult {
             memoryOpeningSpeechCalls++
             return memoryOpeningHandler(library, threadId, turnId, ordinal, expectedRevision, speechRequestId)
+        }
+        override suspend fun speakSavedMemorySegment(token: Bearer, library: String, threadId: String, turnId: String,
+                                                     ordinal: Int, segment: Int, expectedRevision: Long,
+                                                     speechRequestId: String): AssistantMemorySegmentSpeechResult {
+            memorySegmentIndices += segment
+            return memorySegmentHandler(library, threadId, turnId, ordinal, segment, expectedRevision, speechRequestId)
         }
         override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryCardsAvailable)

@@ -102,6 +102,8 @@ class AssistantVoiceSessionStore(
         sessionMemoryActionsEnabled = store.assistantWorkspaceState.value.savedMemoryActionsAvailable
         val transition = controller.start(voiceScope, foreground = true)
         if (!transition.accepted) return false
+        // A new explicit microphone session starts fresh; do not carry section progress forward.
+        store.clearAssistantMemoryOpeningSpeech()
         ownedTranscriptRequestId = null
         ownedTurnRequestId = null
         ownedSpeechRequestId = null

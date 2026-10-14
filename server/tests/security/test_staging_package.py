@@ -20,6 +20,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/assistant_journal.py',
             'backend/app/access/assistant_workspace_store.py',
             'backend/app/access/assistant_workspace_transport.py',
+            'backend/app/access/assistant_reading_segments.py',
             'backend/app/access/assistant_memory_discovery.py',
             'backend/app/access/assistant_memory_intent.py',
             'backend/app/access/assistant_saved_memory_tool.py',

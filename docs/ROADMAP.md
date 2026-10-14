@@ -29,6 +29,13 @@ acceptance remain in the trial above.
 
 ## 2. Make assistant reading and conversation fluid
 
+October 15 source adds [explicit saved-section narration](ASSISTANT_SEGMENT_READING.md)
+for a story's first chapter or a memoir introduction. Each tap requests one
+bounded server-derived segment; successful playback permits Continue and the
+last segment permits an explicit restart. Source/scope changes and Stop clear
+progress. This is a source/browser/emulator slice, with delivery and physical
+listening gates still open. It does not add hands-free chapter advancement.
+
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.
 Reuse the existing manual chapter reader's guards; do not duplicate playback

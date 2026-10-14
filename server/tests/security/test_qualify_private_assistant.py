@@ -44,7 +44,7 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         output = self.parent / 'fresh-output'
         result = qualification.run(output)
         self.assertEqual(result, qualification._report(os.name == 'nt'))
-        self.assertEqual(len(result['cases_passed']), 11)
+        self.assertEqual(len(result['cases_passed']), 12)
         self.assertIn('negotiated_saved_story_memoir_and_strict_legacy_recovery',
                       result['cases_passed'])
         self.assertIn('saved_memory_reply_speech_revalidates_sources_after_synthesis',
@@ -75,6 +75,19 @@ class QualifyPrivateAssistantTests(unittest.TestCase):
         self.assertEqual(failure, {'status': 'failed', 'synthetic_only': True,
             'phase': 'saved_memory_contextual_actions', 'exception_class': 'RuntimeError',
             'winerror': None})
+
+    def test_generated_runtime_refuses_broken_segment_metadata(self):
+        sys.path.insert(0, str(ROOT / 'backend'))
+        from app.access import assistant_workspace_transport as transport
+
+        output = self.parent / 'segment-contract-failure'
+        with patch.object(transport, 'saved_reading_segments', side_effect=lambda text: (text,)):
+            with self.assertRaisesRegex(RuntimeError, 'synthetic_segment_speech_or_metadata_failed'):
+                qualification.run(output)
+        failure = json.loads((output / 'qualification-failure.json').read_text(encoding='ascii'))
+        self.assertEqual(failure['phase'], 'saved_memory_segment_reading')
+        self.assertEqual(failure['status'], 'failed')
+        self.assertTrue(failure['synthetic_only'])
 
     def test_output_must_be_new_absolute_direct_private_local_path(self):
         with self.assertRaises(ValueError):

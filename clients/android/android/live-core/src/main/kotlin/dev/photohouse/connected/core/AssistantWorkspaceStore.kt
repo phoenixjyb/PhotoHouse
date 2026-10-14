@@ -66,6 +66,7 @@ data class AssistantWorkspaceState(
     val savedMemoryReaderAvailable: Boolean = false,
     val savedMemorySpeechAvailable: Boolean = false,
     val savedMemoryReadingAvailable: Boolean = false,
+    val savedMemorySegmentReadingAvailable: Boolean = false,
     val savedMemoryFollowupAvailable: Boolean = false,
     val memoryFollowupDraftParent: AssistantSavedMemoryParent? = null,
     val threads: AssistantWorkspaceThreadList? = null,
@@ -159,7 +160,8 @@ class AssistantWorkspaceStore(
         val scope = requireScope()
         requireEnabled()
         mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = false, savedMemoryReaderAvailable = false,
-            savedMemorySpeechAvailable = false, savedMemoryReadingAvailable = false, savedMemoryFollowupAvailable = false,
+            savedMemorySpeechAvailable = false, savedMemoryReadingAvailable = false,
+            savedMemorySegmentReadingAvailable = false, savedMemoryFollowupAvailable = false,
             savedMemoryActionsAvailable = false, memoryFollowupDraftParent = null)
         val value = api.capabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
@@ -179,7 +181,7 @@ class AssistantWorkspaceStore(
         val scope = requireScope()
         requireEnabled()
         mutableState.value = mutableState.value.copy(savedMemoryFollowupAvailable = false, savedMemoryActionsAvailable = false,
-            savedMemoryReadingAvailable = false, memoryFollowupDraftParent = null)
+            savedMemoryReadingAvailable = false, savedMemorySegmentReadingAvailable = false, memoryFollowupDraftParent = null)
         val value = api.savedMemoryCardsCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         val cardsAvailable = value.version == 1 && value.available
@@ -225,6 +227,17 @@ class AssistantWorkspaceStore(
         val value = api.savedMemoryReadingCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(savedMemoryReadingAvailable = value.version == 1 && value.available)
+    }
+
+    /** Independent optional capability for explicitly requested bounded source segments. */
+    fun refreshSavedMemorySegmentReadingCapabilities(): Boolean = launchAction {
+        val scope = requireScope()
+        requireEnabled()
+        mutableState.value = mutableState.value.copy(savedMemorySegmentReadingAvailable = false)
+        val value = api.savedMemorySegmentReadingCapabilities(scope.bearer, scope.libraryId)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(
+            savedMemorySegmentReadingAvailable = value.version == 1 && value.available)
     }
 
     /** Explicit open from the latest fresh, negotiated card result only. */

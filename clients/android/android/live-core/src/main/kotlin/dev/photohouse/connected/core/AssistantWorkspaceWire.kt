@@ -329,6 +329,19 @@ object AssistantWorkspaceWire {
         }.toString()
     }
 
+    /** Exact request body for one explicit saved-memory source segment. */
+    fun savedMemorySegmentSpeechRequest(library: String, expectedRevision: Long,
+                                        turnId: String, segment: Int, speechRequestId: String): String {
+        if (!PhoneDiscoveryWire.validLibrary(library) || expectedRevision !in 0..REVISION_MAX ||
+            !validUuid4(turnId) || segment !in 0..127 || !validUuid4(speechRequestId) || turnId == speechRequestId) {
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        }
+        return buildJsonObject {
+            put("library_id", library)
+            put("expected_revision", expectedRevision)
+        }.toString()
+    }
+
     /** Apply the shared WAV envelope check plus the private Windows TTS duration contract. */
     fun replySpeechAudio(bytes: ByteArray): ByteArray = guarded {
         AssistantWire.speechAudio(bytes)

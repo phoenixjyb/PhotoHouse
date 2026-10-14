@@ -129,3 +129,11 @@ The next delivery gate is a pinned source/API package and unsigned phone
 candidate, followed by separately authorized Windows qualification, API switch,
 original-certificate signing and OTA publication. No deployment or publication
 is included in the overnight source checks above.
+
+The next source slice now implements [saved-section narration](ASSISTANT_SEGMENT_READING.md)
+on Web and phone: first story chapter or memoir introduction, one explicit
+segment at a time, completion-gated Continue, visible Stop and final restart.
+Generated backend, wire/controller and enlarged browser/emulator journeys pass.
+The source-only API closure has 200 files and twelve disposable qualification
+groups. Its new optional probe and segment route preserve old opening contracts.
+The installed v58/TV v30 observations above remain separate delivery evidence.

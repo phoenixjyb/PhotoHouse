@@ -85,11 +85,12 @@ const detail=(from,to,hasOlder=false,overrides={})=>({version:1,thread:thread(to
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function harness(handler=async()=>{throw new Error('unexpected request')},opts={}){
   let current={account:'account-a',library,generation:1,locked:false},next=0;const calls=[],changes=[];
-  const controller=createController({scope:()=>current,request:async(path,options)=>{calls.push({path,...options});const value=await handler(path,options,calls);if(path.includes('/speech')&&opts.autoSpeechResponse!==false)options.onResponse?.({ok:true,status:opts.speechStatus??200,headers:new Headers({
+  const controller=createController({scope:()=>current,request:async(path,options)=>{calls.push({path,...options});const value=await handler(path,options,calls);if(path.includes('/speech')&&opts.autoSpeechResponse!==false){const segment=path.match(/\/segments\/(0|[1-9][0-9]*)\/speech$/),headers=new Headers({
       'X-PhotoHouse-Request-Id':options.extraHeaders?.['X-PhotoHouse-Request-Id']||'',
       'X-PhotoHouse-Tracking':'enabled','X-PhotoHouse-Receipt-Status':'succeeded',
-      'Content-Type':'audio/wav','Cache-Control':'private, no-store','Content-Encoding':'identity',...opts.speechHeaders
-    })});return value;},
+      'Content-Type':'audio/wav','Cache-Control':'private, no-store','Content-Encoding':'identity',
+      ...(segment?{'X-PhotoHouse-Playback-Tracking':'enabled','X-PhotoHouse-Reading-Segment':segment[1],'X-PhotoHouse-Reading-Segment-Count':'3'}:{})
+    });const custom=typeof opts.speechHeaders==='function'?opts.speechHeaders(path,options):opts.speechHeaders;for(const [key,val] of Object.entries(custom||{})){if(val===null)headers.delete(key);else headers.set(key,String(val));}options.onResponse?.({ok:true,status:opts.speechStatus??200,headers});}return value;},
     newUUID:()=>opts.ids?.[next++]||requestId,onChange:s=>changes.push(s),hydrateResults:opts.hydrateResults||(async v=>v)});
   return {controller,calls,changes,setScope:v=>{current={...current,...v};},getScope:()=>current};
 }
@@ -1037,6 +1038,107 @@ async function preparedMemoryOpening({handler,ids=[threadId,requestId,'33333333-
   return h;
 }
 
+async function preparedMemorySegments({handler,ids=[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444'],speechHeaders}={}){
+  const h=harness(async(path,options)=>{
+    if(path.includes('/saved-memory-segment-reading-capabilities'))return {version:1,available:true};
+    if(path.includes('/saved-memory-reading-capabilities'))return savedMemoryReadingCapabilities(true);
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),request_id:options.body.request_id,result:memoryResult()};
+    if(path.includes('/segments/')&&path.endsWith('/speech'))return handler?handler(path,options):fakeWav();
+    if(path===`/assistant/workspace/v1/threads/${threadId}?library_id=${library}`)return detail(1,1);
+    throw Error(`unexpected ${path}`);
+  },{ids,speechHeaders});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReadingCapabilities();
+  await h.controller.savedMemorySpeechCapabilities();await h.controller.savedMemorySegmentReadingCapabilities();await h.controller.create();
+  await h.controller.send('search saved memories');return h;
+}
+
+test('saved-memory section speech is route-bound and requires playback outcome tracking',async()=>{
+  const h=await preparedMemorySegments();assert.equal(h.controller.state().savedMemorySegmentReadingReady,true);
+  const first=await h.controller.speakMemorySegment(0,0);assert.equal(first.audio instanceof Blob,true);assert.equal(first.segmentCount,3);
+  const call=h.calls.at(-1);assert.equal(call.path,`/assistant/workspace/v1/threads/${threadId}/requests/${requestId}/memory-cards/0/segments/0/speech`);
+  assert.deepEqual(call.body,{library_id:library,expected_revision:1});
+  assert.deepEqual(call.extraHeaders,{'X-PhotoHouse-Request-Id':'33333333-3333-4333-8333-333333333333','X-PhotoHouse-Parent-Request-Id':requestId});
+  assert.equal(call.responseType,'blob','the section transport returns audio bytes only');
+  const next=await h.controller.speakMemorySegment(0,1,{expectedSegmentCount:first.segmentCount});assert.equal(next.segmentCount,3);
+  assert.match(h.calls.at(-1).path,/\/segments\/1\/speech$/);
+  for(const headers of [
+    {'X-PhotoHouse-Playback-Tracking':null},
+    {'X-PhotoHouse-Playback-Tracking':'disabled'},
+    {'X-PhotoHouse-Playback-Tracking':'enabled, enabled'},
+    {'X-PhotoHouse-Reading-Segment':null},
+    {'X-PhotoHouse-Reading-Segment':'0, 0'},
+    {'X-PhotoHouse-Reading-Segment':'00'},
+    {'X-PhotoHouse-Reading-Segment':'1'},
+    {'X-PhotoHouse-Reading-Segment-Count':null},
+    {'X-PhotoHouse-Reading-Segment-Count':'03'},
+    {'X-PhotoHouse-Reading-Segment-Count':'3, 3'},
+    {'X-PhotoHouse-Reading-Segment-Count':'0'}
+  ]){
+    const bad=await preparedMemorySegments({speechHeaders:headers});
+    await assert.rejects(bad.controller.speakMemorySegment(0,0),error=>error.code==='invalid_response');
+  }
+  const changed=await preparedMemorySegments({speechHeaders:path=>path.includes('/segments/1/')?{'X-PhotoHouse-Reading-Segment-Count':'4'}:{}});
+  const initial=await changed.controller.speakMemorySegment(0,0);
+  await assert.rejects(changed.controller.speakMemorySegment(0,1,{expectedSegmentCount:initial.segmentCount}),error=>error.code==='invalid_response',
+    'continuation refuses a changed server count');
+});
+
+test('section speech optional 403 rechecks the existing base capability route',async()=>{
+  let baseReads=0;
+  const h=harness(async(path)=>{
+    if(path.includes('/capabilities?')){baseReads++;return workspaceCaps({reply_speech:true});}
+    if(path.includes('/saved-memory-segment-reading-capabilities'))throw Object.assign(new Error('old optional route'),{status:403});
+    if(path.includes('/saved-memory-speech-capabilities'))return savedMemorySpeechCapabilities(true);
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-reading-capabilities'))return savedMemoryReadingCapabilities(true);
+    throw Error(`unexpected ${path}`);
+  });
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();await h.controller.savedMemoryReadingCapabilities();
+  await h.controller.savedMemorySpeechCapabilities();assert.equal(await h.controller.savedMemorySegmentReadingCapabilities(),false);
+  assert.equal(baseReads,2,'unknown optional route gets one exact base recheck');
+  assert.equal(h.controller.state().locked,false,'legacy route 403 does not revoke current workspace authorization');
+  assert.equal(h.controller.state().savedMemoryAvailable,true);
+});
+
+test('section response bytes are discarded after result, scope, or capability refresh changes',async()=>{
+  for(const interrupt of ['result','scope','refresh']){
+    const gate=deferred(),started=deferred();
+    const h=await preparedMemorySegments({handler:async(_path,{signal})=>{started.resolve();await gate.promise;if(signal.aborted){const error=new Error('aborted');error.name='AbortError';throw error;}return fakeWav();},ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444']});
+    const pending=h.controller.speakMemorySegment(0,0);await started.promise;
+    if(interrupt==='result')await h.controller.send('replace saved-memory result');
+    else if(interrupt==='scope')h.setScope({account:'account-b',library:'library-b',generation:2});
+    else await h.controller.savedMemorySegmentReadingCapabilities();
+    h.controller.state();const call=h.calls.find(item=>item.path.includes('/segments/0/speech'));
+    assert.equal(call.signal.aborted,true,`${interrupt} fences the in-flight segment response`);
+    gate.resolve();await assert.rejects(pending);
+    assert.equal(h.controller.state().segmentMemorySpeechIndex,null,`${interrupt} clears section progress`);
+  }
+});
+
+test('late finally from an aborted segment cannot clear a requalified same-index request marker',async()=>{
+  const firstGate=deferred(),firstStarted=deferred(),replacementGate=deferred(),replacementStarted=deferred();let speechRequestCount=0;
+  const h=await preparedMemorySegments({handler:async(_path,{signal})=>{
+    speechRequestCount++;
+    if(speechRequestCount===1){firstStarted.resolve();await firstGate.promise;if(signal.aborted){const error=new Error('aborted');error.name='AbortError';throw error;}}
+    if(speechRequestCount===2){replacementStarted.resolve();await replacementGate.promise;}
+    return fakeWav();
+  },ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555']});
+  const oldRequest=h.controller.speakMemorySegment(0,0);await firstStarted.promise;
+  assert.equal(await h.controller.savedMemorySegmentReadingCapabilities(),true,'refresh resets and then requalifies the current segment capability');
+  const replacement=h.controller.speakMemorySegment(0,0);await replacementStarted.promise;
+  assert.equal(h.calls.find(item=>item.path.endsWith('/segments/0/speech')).signal.aborted,true,'the old segment request was aborted by refresh');
+  firstGate.resolve();await assert.rejects(oldRequest);
+  assert.equal(h.controller.state().segmentMemorySpeechOrdinal,0,'old finally preserves the replacement request ordinal');
+  assert.equal(h.controller.state().segmentMemorySpeechIndex,0,'old finally preserves the replacement request index');
+  await assert.rejects(h.controller.speakMemorySegment(0,0),error=>error.code==='invalid_input','a third direct request stays blocked while replacement playback is unresolved');
+  replacementGate.resolve();const ready=await replacement;assert.equal(ready.segmentCount,3);
+  assert.equal(h.controller.state().segmentMemorySpeechIndex,null,'the owning completion clears its marker');
+});
+
 test('explicit fresh card opening speech posts only bound identities and validates private audio',async()=>{
   const h=await preparedMemoryOpening();assert.equal(h.controller.state().savedMemoryReadingReady,true);
   const audio=await h.controller.speakMemoryOpening(0);assert.equal(audio instanceof Blob,true);
@@ -1065,6 +1167,25 @@ test('opening speech loses late bytes after a new turn, Stop, history read, or s
     if(interrupt==='turn')assert.equal(h.controller.state().currentResult.kind,'memory_cards');
     if(interrupt==='scope')assert.equal(h.controller.state().currentResult,null);
   }
+});
+
+test('late opening finally from a refreshed probe cannot clear a same-card retry marker',async()=>{
+  const firstGate=deferred(),firstStarted=deferred(),retryGate=deferred(),retryStarted=deferred();let speechRequestCount=0;
+  const h=await preparedMemoryOpening({handler:async(_path,{signal})=>{
+    speechRequestCount++;
+    if(speechRequestCount===1){firstStarted.resolve();await firstGate.promise;if(signal.aborted){const error=new Error('aborted');error.name='AbortError';throw error;}}
+    if(speechRequestCount===2){retryStarted.resolve();await retryGate.promise;}
+    return fakeWav();
+  },ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555']});
+  const oldRequest=h.controller.speakMemoryOpening(0);await firstStarted.promise;
+  assert.equal(await h.controller.savedMemoryReadingCapabilities(),true,'reader capability refresh requalifies the current source');
+  const retry=h.controller.speakMemoryOpening(0);await retryStarted.promise;
+  assert.equal(h.calls.find(item=>item.path.endsWith('/memory-cards/0/speech')).signal.aborted,true,'refresh aborted the earlier opening request');
+  firstGate.resolve();await assert.rejects(oldRequest);
+  assert.equal(h.controller.state().openingMemorySpeechOrdinal,0,'old finally preserves the replacement opening marker');
+  await assert.rejects(h.controller.speakMemoryOpening(0),error=>error.code==='invalid_input','a third opening request stays blocked while retry is unresolved');
+  retryGate.resolve();assert.equal(await retry instanceof Blob,true);
+  assert.equal(h.controller.state().openingMemorySpeechOrdinal,null,'the owning opening completion clears its marker');
 });
 
 test('reading probe revocation and authorization denial clear active opening capability',async()=>{

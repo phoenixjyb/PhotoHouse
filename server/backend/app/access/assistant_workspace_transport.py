@@ -28,6 +28,7 @@ from .assistant_workspace_store import (AssistantWorkspaceStore,
     WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
 from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
+from .assistant_reading_segments import saved_reading_segments, MAX_SEGMENTS
 from .service import AccessDenied, AccessService
 from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime,
                         _single, credentials_from_request, _memory_runtime)
@@ -731,6 +732,12 @@ async def saved_memory_reading_capabilities(request: Request):
     return JSONResponse({'version': 1, 'available': available}, headers=PRIVACY_HEADERS)
 
 
+@router.get('/assistant/workspace/v1/saved-memory-segment-reading-capabilities')
+async def saved_memory_segment_reading_capabilities(request: Request):
+    # Separate negotiation keeps old clients' exact opening contracts unchanged.
+    return await saved_memory_reading_capabilities(request)
+
+
 def _validate_saved_speech_references(access, token, library, cards):
     if type(cards) is not list or not 1 <= len(cards) <= 12:
         raise WorkspaceInvalid()
@@ -1027,8 +1034,8 @@ router.add_api_route(
     reply_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
 
 
-def _saved_memory_reading_text(access, token, library, reference):
-    """Return the bounded saved story opening or memoir introduction verbatim."""
+def _saved_memory_reading_source(access, token, library, reference):
+    """Resolve the authorized first story chapter or memoir introduction."""
     try:
         envelope = _saved_memory_reader(access, token, library, reference)
     except (AccessDenied, TransportError, WorkspaceInvalid, WorkspaceStoreConflict,
@@ -1065,6 +1072,12 @@ def _saved_memory_reading_text(access, token, library, reference):
             continue
         if not char.isprintable():
             raise AssistantSpeechUnavailable()
+    return text
+
+
+def _saved_memory_reading_text(access, token, library, reference):
+    """Return the bounded saved story opening or memoir introduction verbatim."""
+    text = _saved_memory_reading_source(access, token, library, reference)
 
     clipped = []
     encoded_size = 0
@@ -1085,8 +1098,19 @@ def _saved_memory_reading_text(access, token, library, reference):
     return result
 
 
-async def saved_memory_reading_speech(request: Request, thread_id: str,
-                                      turn_id: str, ordinal: str):
+def _saved_memory_reading_segment(access, token, library, reference, segment):
+    source = _saved_memory_reading_source(access, token, library, reference)
+    try:
+        sections = saved_reading_segments(source)
+    except ValueError:
+        raise AssistantSpeechUnavailable() from None
+    if segment >= len(sections):
+        raise WorkspaceStoreMissing()
+    return sections[segment], len(sections), source.encode('utf-8')
+
+
+async def _saved_memory_reading_speech(request: Request, thread_id: str,
+                                      turn_id: str, ordinal: str, *, segment: str | None = None):
     body = await _body(request, {'library_id', 'expected_revision'})
     library = _library(body['library_id'])
     expected_revision = _revision(body['expected_revision'])
@@ -1097,6 +1121,12 @@ async def saved_memory_reading_speech(request: Request, thread_id: str,
             len(ordinal) > 2 or int(ordinal) > MAX_MEMORY_READER_ORDINAL):
         raise WorkspaceInvalid()
     selected_ordinal = int(ordinal)
+    selected_segment = None
+    if segment is not None:
+        if (type(segment) is not str or len(segment) > 3 or
+                re.fullmatch(r'(?:0|[1-9][0-9]*)', segment) is None or int(segment) >= MAX_SEGMENTS):
+            raise WorkspaceInvalid()
+        selected_segment = int(segment)
     store, journal, tts = _reply_speech_dependencies(request)
     _saved_memory_enabled(request)
 
@@ -1132,9 +1162,14 @@ async def saved_memory_reading_speech(request: Request, thread_id: str,
     _saved_memory_enabled(request)
     await run_in_threadpool(_validate_saved_speech_references_for_reading,
                             _memory_runtime(request), token, library, refs)
-    source_text = await run_in_threadpool(_saved_memory_reading_text,
-        _memory_runtime(request), token, library, refs[selected_ordinal])
-    source_bytes = source_text.encode('utf-8')
+    if selected_segment is None:
+        source_text = await run_in_threadpool(_saved_memory_reading_text,
+            _memory_runtime(request), token, library, refs[selected_ordinal])
+        source_bytes = source_text.encode('utf-8')
+        segment_count = None
+    else:
+        source_text, segment_count, source_bytes = await run_in_threadpool(_saved_memory_reading_segment,
+            _memory_runtime(request), token, library, refs[selected_ordinal], selected_segment)
 
     await assistant_engine._begin(request, access, token, library, 'speech')
     await assistant_engine._stage(request, 'validated')
@@ -1159,17 +1194,42 @@ async def saved_memory_reading_speech(request: Request, thread_id: str,
         raise WorkspaceStoreConflict()
     await run_in_threadpool(_validate_saved_speech_references_for_reading,
                             _memory_runtime(request), token, library, latest_refs)
-    latest_text = await run_in_threadpool(_saved_memory_reading_text,
-        _memory_runtime(request), token, library, latest_refs[selected_ordinal])
-    if latest_text.encode('utf-8') != source_bytes:
+    if selected_segment is None:
+        latest_text = await run_in_threadpool(_saved_memory_reading_text,
+            _memory_runtime(request), token, library, latest_refs[selected_ordinal])
+        latest_source_bytes = latest_text.encode('utf-8')
+        latest_count = None
+    else:
+        latest_text, latest_count, latest_source_bytes = await run_in_threadpool(_saved_memory_reading_segment,
+            _memory_runtime(request), token, library, latest_refs[selected_ordinal], selected_segment)
+    if latest_source_bytes != source_bytes or latest_text != source_text or latest_count != segment_count:
         raise WorkspaceStoreConflict()
+    headers = dict(PRIVACY_HEADERS, **assistant_engine._playback_headers(request))
+    if selected_segment is not None:
+        headers['X-PhotoHouse-Reading-Segment'] = str(selected_segment)
+        headers['X-PhotoHouse-Reading-Segment-Count'] = str(segment_count)
     return Response(content=audio, media_type='audio/wav',
-                    headers=dict(PRIVACY_HEADERS, **assistant_engine._playback_headers(request)))
+                    headers=headers)
+
+
+async def saved_memory_reading_speech(request: Request, thread_id: str,
+                                      turn_id: str, ordinal: str):
+    return await _saved_memory_reading_speech(request, thread_id, turn_id, ordinal)
 
 
 router.add_api_route(
     '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}/speech',
     saved_memory_reading_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
+
+
+async def saved_memory_segment_speech(request: Request, thread_id: str,
+                                      turn_id: str, ordinal: str, segment: str):
+    return await _saved_memory_reading_speech(request, thread_id, turn_id, ordinal, segment=segment)
+
+
+router.add_api_route(
+    '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}/segments/{segment}/speech',
+    saved_memory_segment_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
 
 
 @router.get('/assistant/workspace/v1/capabilities')

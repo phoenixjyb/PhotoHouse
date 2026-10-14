@@ -290,6 +290,8 @@ data class AssistantClientState(
     val transcribing: Boolean = false, val transcript: AssistantTranscript? = null,
     val speechBusy: Boolean = false, val speechAudio: ProtectedAnnotationAudio? = null,
     val speechMemoryOpeningOrdinal: Int? = null,
+    /** Ephemeral segment progress tied to the exact fresh memory-card result; indices are zero based. */
+    val speechMemorySegmentProgress: AssistantMemorySegmentProgress? = null,
     val pendingTurn: AssistantPendingTurn? = null,
     val lastRequestReceipt: AssistantRequestReceipt? = null, val receiptDetail: AssistantReceipt? = null,
     val confirmedTranscriptRequestId: String? = null,
@@ -298,6 +300,16 @@ data class AssistantClientState(
     val privateThreadId: String? = null,
     /** Ledger status is independent of optional audit-journal tracking. */
     val privateRequestStatus: String? = null,
+)
+data class AssistantMemorySegmentProgress(
+    val threadId: String,
+    val turnId: String,
+    val revision: Long,
+    val ordinal: Int,
+    val sourceKind: String,
+    val segmentIndex: Int,
+    val segmentCount: Int?,
+    val completedSegmentIndex: Int? = null,
 )
 data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null,
@@ -380,8 +392,12 @@ class ConnectedStore(
     private var assistantSpeechJob: Job? = null
     private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
     private var assistantSpeechMemoryReference: MemoryOpeningSpeechReference? = null
+    private var assistantSpeechSegmentReference: MemoryOpeningSpeechReference? = null
     private data class AssistantPlaybackOwner(val requestId: String, val accountId: String, val library: String,
-                                             val generation: Long, val credential: Bearer, var reported: Boolean = false)
+                                             val generation: Long, val credential: Bearer,
+                                             val segmentReference: MemoryOpeningSpeechReference? = null,
+                                             val segmentIndex: Int? = null, val segmentCount: Int? = null,
+                                             var reported: Boolean = false)
     private val assistantPlaybackOwners = java.util.WeakHashMap<ProtectedAnnotationAudio, AssistantPlaybackOwner>()
     private val assistantWorkspaceTransport = assistantWorkspaceApi?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
     private var assistantSpeechRequest = 0L
@@ -410,15 +426,19 @@ class ConnectedStore(
             val selected = current.privateThreadId ?: return@collect
             val speakingReply = assistantSpeechReplyReference
             val speakingMemory = assistantSpeechMemoryReference
-            if ((current.speechBusy || current.speechAudio != null) &&
+            val speakingSegment = assistantSpeechSegmentReference
+            if (((current.speechBusy || current.speechAudio != null) &&
                 (speakingReply != null && privateReplySpeechReference() != speakingReply ||
-                    speakingMemory != null && memoryOpeningSpeechReference(speakingMemory.ordinal) != speakingMemory)) {
+                    speakingMemory != null && memoryOpeningSpeechReference(speakingMemory.ordinal) != speakingMemory ||
+                    speakingSegment != null && memorySegmentSpeechReference(speakingSegment.ordinal) != speakingSegment)) ||
+                (speakingSegment != null && memorySegmentSpeechReference(speakingSegment.ordinal) != speakingSegment)) {
                 assistantSpeechRequest++
                 assistantSpeechJob?.cancel(); assistantSpeechJob = null
-                assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null
+                assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null; assistantSpeechSegmentReference = null
                 current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
                 mutable.value = state.value.copy(assistant = current.copy(speechBusy = false, speechAudio = null,
                     speechMemoryOpeningOrdinal = null,
+                    speechMemorySegmentProgress = null,
                     failure = LiveProblem(Message.DISCOVERY_CHANGED)))
             }
             if (workspace.accountId == state.value.session?.account_id && workspace.libraryId == current.library &&
@@ -432,10 +452,12 @@ class ConnectedStore(
             assistantTurnRequest++; assistantTranscriptRequest++; assistantSpeechRequest++
             assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
             assistantSpeechMemoryReference = null
+            assistantSpeechSegmentReference = null
             current.speechAudio?.close()
             mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null,
                 pendingTurn = null, busy = false, transcript = null, transcribing = false,
                 confirmedTranscriptRequestId = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null,
+                speechMemorySegmentProgress = null,
                 lastRequestReceipt = null, receiptDetail = null, receiptChecking = false,
                 privateRequestStatus = null, failure = LiveProblem(Message.DISCOVERY_CHANGED)))
         } }
@@ -733,6 +755,7 @@ class ConnectedStore(
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
         assistantTurnRequest++
         assistantTranscriptRequest++
         val nextGeneration = previous.generation + 1
@@ -754,7 +777,7 @@ class ConnectedStore(
             storageFailed = runCatching { persistence?.clear() }.isFailure
             token = null; identity = null; deadline = 0; expiryJob?.cancel(); expiryJob = null }
         val assistant = previous.assistant?.takeIf { keepIdentity && !cover && previous.library == it.library }
-            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, pendingTurn = null,
+            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, pendingTurn = null,
                 privateThreadId = null, privateRequestStatus = null,
                 turns = if (it.privateThreadId != null) emptyList() else it.turns,
                 context = if (it.privateThreadId != null) null else it.context) }
@@ -4807,7 +4830,7 @@ class ConnectedStore(
         assistantTurnRequest++
         assistantTranscriptRequest++
         mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null, failure = null, busy = false,
-            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
+            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
             receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, pendingTurn = null))
     }
     /** Stop local voice work, retaining uncertain submitted requests for read-only recovery. */
@@ -4818,6 +4841,7 @@ class ConnectedStore(
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
         if (current.busy) assistantTurnRequest++
         if (current.privateThreadId != null) current.pendingTurn?.let {
             assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
@@ -4825,7 +4849,7 @@ class ConnectedStore(
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         mutable.value = state.value.copy(assistant = current.copy(
             transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
-            speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, busy = false,
+            speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, busy = false,
         ))
     }
     fun clearAssistantSpeech() {
@@ -4835,10 +4859,13 @@ class ConnectedStore(
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
-        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
+        assistantSpeechSegmentReference = null
+        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null))
     }
     fun clearAssistantMemoryOpeningSpeech() {
-        if (state.value.assistant?.speechMemoryOpeningOrdinal != null) clearAssistantSpeech()
+        if (state.value.assistant?.let { it.speechMemoryOpeningOrdinal != null || it.speechMemorySegmentProgress != null } == true)
+            clearAssistantSpeech()
     }
     private data class PrivateReplySpeechReference(val threadId: String, val turnId: String,
                                                   val revision: Long, val kind: String, val reply: String)
@@ -4849,7 +4876,7 @@ class ConnectedStore(
         val references: List<AssistantSavedMemoryReference>,
     )
 
-    private fun memoryOpeningSpeechReference(ordinal: Int): MemoryOpeningSpeechReference? {
+    private fun memoryOpeningSpeechReference(ordinal: Int, segments: Boolean = false): MemoryOpeningSpeechReference? {
         val live = state.value
         val assistant = live.assistant ?: return null
         val workspace = assistantWorkspaceState.value
@@ -4864,7 +4891,8 @@ class ConnectedStore(
             workspace.accountId != live.session?.account_id || workspace.libraryId != assistant.library ||
             workspace.generation != assistant.generation || !workspace.savedMemoryCardsAvailable ||
             workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } != true ||
-            !workspace.savedMemoryReadingAvailable || workspace.busy || workspace.pendingTurn != null ||
+            !(if (segments) workspace.savedMemorySegmentReadingAvailable else workspace.savedMemoryReadingAvailable) ||
+            workspace.busy || workspace.pendingTurn != null ||
             workspace.historyRefreshRequired || assistant.busy || assistant.pendingTurn != null ||
             turn.status != AssistantWorkspaceRequestStatus.COMPLETED || turn.recovered ||
             turn.threadId != detail.thread.threadId || turn.revision != detail.thread.revision || turn.revision <= 0 ||
@@ -4883,8 +4911,28 @@ class ConnectedStore(
             context.sourceRevision, refs.toList())
     }
 
+    private fun memorySegmentSpeechReference(ordinal: Int): MemoryOpeningSpeechReference? =
+        memoryOpeningSpeechReference(ordinal, segments = true)
+
     fun canReadAssistantMemoryOpening(ordinal: Int): Boolean =
         api.assistantEnabled && assistantWorkspaceTransport != null && memoryOpeningSpeechReference(ordinal) != null
+
+    fun canReadAssistantMemorySegment(ordinal: Int, segment: Int = 0): Boolean {
+        if (!api.assistantEnabled || assistantWorkspaceTransport == null || segment !in 0..127) return false
+        val anchor = memoryOpeningSpeechReference(ordinal, segments = true) ?: return false
+        val assistant = state.value.assistant ?: return false
+        val progress = assistant.speechMemorySegmentProgress
+        val sameSource = progress?.threadId == anchor.threadId && progress.turnId == anchor.turnId &&
+            progress.revision == anchor.revision && progress.ordinal == ordinal && progress.sourceKind == anchor.card.kind
+        return if (progress == null || !sameSource) segment == 0 && assistant.speechAudio == null && !assistant.speechBusy
+        else if (segment == 0 && progress.completedSegmentIndex == progress.segmentIndex &&
+            progress.segmentCount != null && progress.segmentIndex + 1 == progress.segmentCount)
+            assistant.speechAudio == null && !assistant.speechBusy
+        else
+            progress.ordinal == ordinal && progress.sourceKind == anchor.card.kind && progress.completedSegmentIndex == progress.segmentIndex &&
+            progress.segmentCount != null && segment == progress.segmentIndex + 1 && segment < progress.segmentCount &&
+            assistant.speechAudio == null && !assistant.speechBusy
+    }
 
     /** One-shot speech for the saved opening bound to the latest fresh card result. */
     fun loadAssistantMemoryOpening(
@@ -4908,9 +4956,10 @@ class ConnectedStore(
         assistantSpeechJob?.cancel(); assistantSpeechJob = null
         assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = anchor
+        assistantSpeechSegmentReference = null
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
-            speechMemoryOpeningOrdinal = ordinal,
+            speechMemoryOpeningOrdinal = ordinal, speechMemorySegmentProgress = null,
             lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
             receiptChecking = false, receiptCheckFailed = false, failure = null))
         val job = scope.launch(start = CoroutineStart.LAZY) {
@@ -4935,7 +4984,8 @@ class ConnectedStore(
                     } }
                 }
                 mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false, speechAudio = audio,
-                    speechMemoryOpeningOrdinal = ordinal, lastRequestReceipt = speech.receipt, failure = null))
+                    speechMemoryOpeningOrdinal = ordinal, speechMemorySegmentProgress = null,
+                    lastRequestReceipt = speech.receipt, failure = null))
                 if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded")
                     reportAssistantOutcome(anchor.library, anchor.generation, credential, requestId, "displayed")
             } catch (e: CancellationException) { bytes?.fill(0); throw e }
@@ -4948,8 +4998,105 @@ class ConnectedStore(
                 else state.value.assistant?.let { latest ->
                     mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false,
                         speechMemoryOpeningOrdinal = null,
+                        speechMemorySegmentProgress = null,
                         lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
                 }
+            }
+        }
+        assistantSpeechJob = job
+        requests += job
+        job.invokeOnCompletion {
+            requests.remove(job)
+            if (assistantSpeechJob === job) assistantSpeechJob = null
+        }
+        job.start()
+        return true
+    }
+
+    /** One explicit, bounded source segment. Continuation is admitted only after actual playback completion. */
+    fun loadAssistantMemorySegment(
+        ordinal: Int,
+        segment: Int,
+        expectedParentTurnId: String? = null,
+        expectedRevision: Long? = null,
+    ): Boolean {
+        if (!canReadAssistantMemorySegment(ordinal, segment)) return false
+        val anchor = memoryOpeningSpeechReference(ordinal, segments = true) ?: return false
+        if ((expectedParentTurnId == null) != (expectedRevision == null) ||
+            expectedParentTurnId != null && (anchor.turnId != expectedParentTurnId || anchor.revision != expectedRevision)) return false
+        val current = state.value.assistant ?: return false
+        val credential = token ?: return false
+        val workspaceApi = assistantWorkspaceTransport ?: return false
+        if (!api.assistantEnabled || !allowed() || current.library != anchor.library || current.generation != anchor.generation)
+            return false
+        val previous = current.speechMemorySegmentProgress?.takeIf {
+            it.threadId == anchor.threadId && it.turnId == anchor.turnId && it.revision == anchor.revision &&
+                it.ordinal == ordinal && it.sourceKind == anchor.card.kind
+        }?.takeIf { segment > 0 }
+        if (segment > 0 && (previous == null ||
+                previous.completedSegmentIndex != previous.segmentIndex || previous.segmentIndex + 1 != segment ||
+                previous.segmentCount == null || segment >= previous.segmentCount)) return false
+        val requestId = UUID.randomUUID().toString()
+        if (!AssistantWorkspaceWire.validUuid4(requestId) || requestId == anchor.turnId) return false
+        val expectedProgress = AssistantMemorySegmentProgress(anchor.threadId, anchor.turnId, anchor.revision,
+            ordinal, anchor.card.kind, segment, previous?.segmentCount, previous?.completedSegmentIndex)
+        assistantSpeechRequest++
+        val request = assistantSpeechRequest
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null
+        assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = anchor
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = expectedProgress,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            var bytes: ByteArray? = null
+            try {
+                if (memoryOpeningSpeechReference(ordinal, segments = true) != anchor ||
+                    state.value.assistant?.speechMemorySegmentProgress != expectedProgress) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = workspaceApi.speakSavedMemorySegment(credential, anchor.library, anchor.threadId,
+                    anchor.turnId, anchor.ordinal, segment, anchor.revision, requestId)
+                bytes = speech.bytes
+                val received = speech.bytes
+                val latestProgress = state.value.assistant?.speechMemorySegmentProgress
+                if (speech.segment != segment || speech.segmentCount !in 1..128 || speech.segmentCount <= segment ||
+                    previous?.segmentCount?.let { it != speech.segmentCount } == true ||
+                    !active(anchor.generation) || state.value.covered || state.value.library != anchor.library ||
+                    token !== credential || request != assistantSpeechRequest ||
+                    memoryOpeningSpeechReference(ordinal, segments = true) != anchor || latestProgress != expectedProgress) {
+                    received.fill(0)
+                    throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                }
+                val latest = state.value.assistant?.takeIf { it.library == anchor.library && it.generation == anchor.generation }
+                    ?: run { received.fill(0); return@launch }
+                val progress = expectedProgress.copy(segmentCount = speech.segmentCount)
+                val audio = ProtectedAnnotationAudio(received); bytes = null
+                state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                    assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, anchor.library,
+                        anchor.generation, credential, anchor, segment, speech.segmentCount)
+                } }
+                mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false, speechAudio = audio,
+                    speechMemorySegmentProgress = progress, lastRequestReceipt = speech.receipt, failure = null))
+                if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded")
+                    reportAssistantOutcome(anchor.library, anchor.generation, credential, requestId, "displayed")
+            } catch (e: CancellationException) {
+                bytes?.fill(0)
+                if (request == assistantSpeechRequest && assistantSpeechSegmentReference == anchor) {
+                    assistantSpeechSegmentReference = null
+                    state.value.assistant?.let { latest -> mutable.value = state.value.copy(assistant = latest.copy(
+                        speechBusy = false, speechAudio = null, speechMemorySegmentProgress = null)) }
+                }
+                throw e
+            } catch (e: Exception) {
+                bytes?.fill(0)
+                if (!active(anchor.generation) || state.value.library != anchor.library || token !== credential ||
+                    request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal, segments = true) != anchor) return@launch
+                if (assistantSpeechSegmentReference == anchor) assistantSpeechSegmentReference = null
+                state.value.assistant?.let { latest -> mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false,
+                    speechMemorySegmentProgress = null,
+                    lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e))) }
             }
         }
         assistantSpeechJob = job
@@ -5015,6 +5162,23 @@ class ConnectedStore(
             if (assistantPlaybackOwners[audio] !== owner || owner.reported) return false
             owner.reported = true
         }
+        if (owner.segmentReference != null && owner.segmentIndex != null && owner.segmentCount != null) {
+            val progress = assistant.speechMemorySegmentProgress
+            if (assistantSpeechSegmentReference != owner.segmentReference ||
+                memoryOpeningSpeechReference(owner.segmentReference.ordinal, segments = true) != owner.segmentReference ||
+                progress?.threadId != owner.segmentReference.threadId || progress.turnId != owner.segmentReference.turnId ||
+                progress.ordinal != owner.segmentReference.ordinal || progress.segmentIndex != owner.segmentIndex ||
+                progress.segmentCount != owner.segmentCount || assistant.speechAudio !== audio) return false
+            if (outcome == "completed") {
+                mutable.value = live.copy(assistant = assistant.copy(
+                    speechAudio = null,
+                    speechMemorySegmentProgress = progress.copy(completedSegmentIndex = owner.segmentIndex)))
+                audio.close()
+            } else {
+                assistantSpeechSegmentReference = null
+                mutable.value = live.copy(assistant = assistant.copy(speechMemorySegmentProgress = null))
+            }
+        }
         scope.launch {
             val latest = state.value
             if (!latest.covered && latest.generation == owner.generation && latest.library == owner.library &&
@@ -5035,8 +5199,12 @@ class ConnectedStore(
         val request = ++assistantSpeechRequest
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
         current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
-        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, speechMemoryOpeningOrdinal = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
         val job = scope.launch(start = CoroutineStart.LAZY) {
             var bytes: ByteArray? = null
             try {
@@ -5186,7 +5354,11 @@ class ConnectedStore(
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
-        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
+        assistantSpeechSegmentReference = null
+        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null,
+            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null))
         launch { activeGeneration ->
             try {
                 val result = api.assistantTurn(credential, library, text, context, requestId, parentId)
@@ -5261,11 +5433,13 @@ class ConnectedStore(
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
         assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
         val request = ++assistantTurnRequest
         mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
             lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), privateRequestStatus = "pending",
             receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null,
-            failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null))
+            failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null,
+            speechMemorySegmentProgress = null))
         awaitPrivateAssistantTurn(current, pending, request, checking = false)
         return true
     }

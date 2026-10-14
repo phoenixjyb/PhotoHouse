@@ -8,7 +8,7 @@
   let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let memoryGroupGalleryItems=[];
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
-  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
+  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
   let assistantFocusRevision=0;
   const assistantVoiceTiming=typeof window.PhotoHouseVoiceTurnTiming==='function'?window.PhotoHouseVoiceTurnTiming():null;
   let assistantVoiceTimingPhase=null,assistantVoiceTimingOperation=0,assistantVoiceTimingGeneration=-1,assistantVoiceTimingRendered=null;
@@ -42,8 +42,8 @@
   Object.assign(words.zh,{assistantVoiceReply:'正在播报私密回复…',assistantPlayReply:'播放语音回复',assistantReplyTooLong:'回复太长，无法语音播放。请阅读后再继续。'});
   Object.assign(words.zh,{assistantMemoryStory:'已保存的故事',assistantMemoryMemoir:'已保存的回忆录',assistantMemorySource:'来自家人保存的内容，检索不会改写原文。',assistantOpenSavedStory:'打开已保存的故事',assistantOpenMemoir:'打开回忆录',assistantReaderUnavailable:'完整阅读暂不可用，请稍后重试。',assistantMemoryFollowupOverview:'介绍这些回忆',assistantMemoryFollowupPreview:'第{ordinal}段回忆讲了什么',assistantMemoryFollowupOutline:'第{ordinal}段回忆有哪些章节'});
   Object.assign(words.en,{assistantMemoryStory:'Saved story',assistantMemoryMemoir:'Saved memoir',assistantMemorySource:'From saved family content. Search does not rewrite the original.',assistantOpenSavedStory:'Open saved story',assistantOpenMemoir:'Open memoir',assistantReaderUnavailable:'The full reader is unavailable. Please try again.',assistantMemoryFollowupOverview:'introduce these memories',assistantMemoryFollowupPreview:'what is the {ordinal} saved memory about',assistantMemoryFollowupOutline:'what chapters does the {ordinal} saved memory have'});
-  Object.assign(words.zh,{assistantReadMemoryOpening:'朗读开篇',assistantPreparingMemoryOpening:'正在准备开篇…',assistantPlayingMemoryOpening:'正在朗读开篇',assistantStopMemoryOpening:'停止朗读',assistantMemoryOpeningUnavailable:'开篇暂时无法朗读，请稍后重试。'});
-  Object.assign(words.en,{assistantReadMemoryOpening:'Read opening',assistantPreparingMemoryOpening:'Preparing opening…',assistantPlayingMemoryOpening:'Reading opening',assistantStopMemoryOpening:'Stop reading',assistantMemoryOpeningUnavailable:'The opening is unavailable right now. Please try again.'});
+  Object.assign(words.zh,{assistantReadMemoryOpening:'朗读开篇',assistantPreparingMemoryOpening:'正在准备开篇…',assistantPlayingMemoryOpening:'正在朗读开篇',assistantStopMemoryOpening:'停止朗读',assistantMemoryOpeningUnavailable:'开篇暂时无法朗读，请稍后重试。',assistantReadMemoryStorySections:'分段朗读故事第一章',assistantReadMemoryMemoirSections:'分段朗读回忆录序言',assistantMemorySegmentHelp:'每次朗读一段；播放结束后可选择继续。朗读时麦克风保持关闭。',assistantPreparingMemorySegment:'正在准备第 1 段…',assistantPlayingMemorySegment:'正在朗读第 {segment}/{count} 段',assistantMemorySegmentPlayingStatus:'正在播放这一段。',assistantMemorySegmentCompletedStatus:'已读完第 {segment}/{count} 段，可以继续。',assistantContinueMemorySegment:'继续第 {segment}/{count} 段',assistantMemorySegmentsComplete:'这段回忆已读完',assistantMemorySegmentUnavailable:'这段暂时无法朗读，请重试。',assistantStopMemorySegment:'停止朗读这一段'});
+  Object.assign(words.en,{assistantReadMemoryOpening:'Read opening',assistantPreparingMemoryOpening:'Preparing opening…',assistantPlayingMemoryOpening:'Reading opening',assistantStopMemoryOpening:'Stop reading',assistantMemoryOpeningUnavailable:'The opening is unavailable right now. Please try again.',assistantReadMemoryStorySections:'Read the first chapter in sections',assistantReadMemoryMemoirSections:'Read the memoir introduction in sections',assistantMemorySegmentHelp:'Reads one section at a time. Choose Continue after playback; the microphone stays off.',assistantPreparingMemorySegment:'Preparing segment 1…',assistantPlayingMemorySegment:'Reading segment {segment}/{count}',assistantMemorySegmentPlayingStatus:'The section audio is playing.',assistantMemorySegmentCompletedStatus:'Finished segment {segment}/{count}. Continue when ready.',assistantContinueMemorySegment:'Continue segment {segment}/{count}',assistantMemorySegmentsComplete:'This memory section is finished',assistantMemorySegmentUnavailable:'This section is unavailable right now. Please try again.',assistantStopMemorySegment:'Stop this section'});
   Object.assign(words.zh,{assistantMemoryActionOpen:'打开这条回忆',assistantMemoryActionRead:'朗读这条回忆的开篇',assistantMemoryActionCueOpen:'正在打开这条已保存的回忆。',assistantMemoryActionCueRead:'正在朗读这条已保存回忆的开篇。',assistantMemoryActionUnavailable:'这项操作暂时不可用。'});
   Object.assign(words.en,{assistantMemoryActionOpen:'Open this memory',assistantMemoryActionRead:'Read this memory’s opening',assistantMemoryActionCueOpen:'Opening this saved memory.',assistantMemoryActionCueRead:'Reading the opening of this saved memory.',assistantMemoryActionUnavailable:'This action is unavailable right now.'});
   Object.assign(words.en,{assistantReceiptUnknown:'The server receipt is unknown. Check again when the connection is available.',assistantReceiptDisabled:'Request tracking is disabled for this service.',assistantReceiptReceived:'Received by the server; still processing.',assistantReceiptSucceeded:'The server completed this request.',assistantReceiptFailed:'The server could not complete this request.',assistantReceiptInterrupted:'Processing stopped before completion.',assistantReceiptCheck:'Check server receipt',assistantReceiptChecking:'Checking the server receipt…',assistantReceiptUnavailable:'The receipt could not be checked.',assistantReceiptUnconfirmed:'The request was sent, but the server receipt is not confirmed.',assistantOutcomeDisplayed:'The result was shown in this tab.',assistantOutcomeFailed:'The result could not be shown in this tab.',assistantRequestIdLabel:'Request ID',assistantReceiptTrackingOff:'Tracking disabled',assistantRecoveryOffer:'A previous request may have reached the server. Check its receipt before starting again. Its reply and search context are not stored for recovery.',assistantRecoveryChecking:'Checking the earlier request…',assistantRecoveryReceived:'The server received this request and may still be processing it. Check again or acknowledge to start fresh.',assistantRecoverySucceeded:'The server completed this request, but its reply and search context are unavailable. Start a new search if you still need one.',assistantRecoveryFailed:'The server recorded a failure. The original reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryInterrupted:'Server processing was interrupted. The reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryUnknown:'The earlier request outcome is still unknown. Do not resend it automatically; check again or acknowledge to start fresh.',assistantRecoveryAcknowledge:'Acknowledge and start fresh'});
@@ -707,7 +707,7 @@
     $('assistant-mic').setAttribute('aria-pressed','false');$('assistant-stop').hidden=true;$('assistant-recording-cancel').hidden=true;syncAssistantControls();
   }
   function endAssistantVoice(){const session=assistantState.voiceSession;if(session.phase==='idle')return;pauseAssistantVoice('assistantVoiceScope');session.generation++;session.phase='idle';session.binding=null;session.reason=null;syncAssistantControls();}
-  function stopMemoryOpeningBeforeCapture(){if(assistantState.memoryOpeningPlayback)stopAssistantSpeech();}
+  function stopMemoryOpeningBeforeCapture(){if(assistantState.memoryOpeningPlayback||assistantState.memorySegmentPlayback)stopAssistantSpeech();}
   function startAssistantVoice(){const session=assistantState.voiceSession;if(session.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return;stopMemoryOpeningBeforeCapture();const binding=assistantVoiceBinding();if(!binding)return;session.generation++;session.phase='listening';session.binding=binding;session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,binding);}
   function resumeAssistantVoice(){const session=assistantState.voiceSession;if(session.phase!=='paused'||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
   async function captureAssistantVoice(token,binding){
@@ -787,12 +787,28 @@
     receipt.outcomePromise=(receipt.outcomePromise||Promise.resolve()).then(send);
   }
   function syncMemoryOpeningControls(){
-    const opening=assistantState.memoryOpeningPlayback,privateState=privateAssistant?.state(),ready=privateState?.savedMemoryReadingReady===true;
+    const opening=assistantState.memoryOpeningPlayback,privateState=privateAssistant?.state(),ready=privateState?.savedMemoryReadingReady===true,segmentBusy=!!assistantState.memorySegmentPlayback&&['preparing','playing'].includes(assistantState.memorySegmentPlayback.phase);
     for(const button of $('assistant-results')?.querySelectorAll('.assistant-memory-opening')||[]){
       const ordinal=Number(button.dataset.ordinal),current=opening?.ordinal===ordinal;
-      button.disabled=current&&opening.phase==='preparing'||!current&&!ready||privateAssistantBusy;
+      button.disabled=segmentBusy||current&&opening.phase==='preparing'||!current&&!ready||privateAssistantBusy;
       button.textContent=t(current?(opening.phase==='preparing'?'assistantPreparingMemoryOpening':'assistantStopMemoryOpening'):'assistantReadMemoryOpening');
       button.setAttribute('aria-pressed',String(current&&opening.phase==='playing'));
+    }
+  }
+  function syncMemorySegmentControls(){
+    const operation=assistantState.memorySegmentPlayback,privateState=privateAssistant?.state(),segmentBusy=!!operation&&['preparing','playing'].includes(operation.phase);
+    for(const button of $('assistant-results')?.querySelectorAll('.assistant-memory-segment-reading')||[]){
+      const ordinal=Number(button.dataset.ordinal),card=button.closest('.assistant-memory-card');
+      const current=operation?.ordinal===ordinal&&operation.turn===privateState?.currentResult&&operation.card===privateState?.currentResult?.memory_cards?.[ordinal];
+      const status=card?.querySelector('.assistant-memory-segment-status'),help=card?.querySelector('.assistant-memory-segment-help'),stop=card?.querySelector('.assistant-memory-segment-stop');
+      button.disabled=privateState?.savedMemorySegmentReadingReady!==true||privateAssistantBusy||segmentBusy||assistantState.voiceSession.phase!=='idle';
+      if(current&&operation.phase==='preparing')button.textContent=t('assistantPreparingMemorySegment');
+      else if(current&&operation.phase==='playing')button.textContent=t('assistantPlayingMemorySegment').replace('{segment}',String(operation.segment+1)).replace('{count}',String(operation.segmentCount));
+      else if(current&&operation.phase==='complete'&&operation.segment+1<operation.segmentCount)button.textContent=t('assistantContinueMemorySegment').replace('{segment}',String(operation.segment+2)).replace('{count}',String(operation.segmentCount));
+      else button.textContent=t(card?.dataset.memoryKind==='story'?'assistantReadMemoryStorySections':'assistantReadMemoryMemoirSections');
+      if(status){const value=current&&operation.phase==='playing'?t('assistantMemorySegmentPlayingStatus'):current&&operation.phase==='complete'?operation.segment+1<operation.segmentCount?t('assistantMemorySegmentCompletedStatus').replace('{segment}',String(operation.segment+1)).replace('{count}',String(operation.segmentCount)):t('assistantMemorySegmentsComplete'):'';status.textContent=value;status.hidden=!value;}
+      if(help){help.textContent=t('assistantMemorySegmentHelp');help.hidden=privateState?.savedMemorySegmentReadingReady!==true;}
+      if(stop){stop.hidden=!current||!['preparing','playing'].includes(operation.phase);stop.disabled=stop.hidden;}
     }
   }
   function stopAssistantSpeech(revoke=true) {
@@ -803,7 +819,8 @@
     const audio=$('assistant-speech-audio');audio.pause();try{audio.currentTime=0;}catch{}
     if(revoke){audio.removeAttribute('src');audio.load();assistantState.speechPlaybackReceipt=null;}
     assistantState.memoryOpeningPlayback=null;
-    $('assistant-play').disabled=false;$('assistant-speech-stop').hidden=true;syncMemoryOpeningControls();syncAssistantControls();
+    assistantState.memorySegmentPlayback=null;
+    $('assistant-play').disabled=false;$('assistant-speech-stop').hidden=true;syncMemoryOpeningControls();syncMemorySegmentControls();syncAssistantControls();
   }
   function assistantErrorKey(error) {
     return error.status===401||error.status===403?'assistantDenied':error.status===409?'assistantConflict':error.status===429?'assistantLimited':error.status===404||error.status===503||!error.status||error.status>=500?'assistantUnavailable':'assistantError';
@@ -1039,6 +1056,62 @@
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&error?.name!=='AbortError')pauseAssistantVoice('assistantVoiceReview');
     }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
   }
+  async function playAssistantMemorySegment(memory,turn,epoch,ordinal,button,segment=0,expectedSegmentCount=null){
+    const binding=assistantState.binding,valid=()=>{
+      const latest=privateAssistant?.state();
+      return !stale(epoch)&&!state.locked&&state.profile?.account_id===binding?.account&&state.library===binding?.library&&binding?.generation===epoch&&
+        latest?.savedMemorySegmentReadingReady===true&&latest.currentResult===turn&&turn?.kind==='memory_cards'&&turn.memory_cards?.[ordinal]===memory&&
+        latest.activeThread?.revision===latest.revision&&latest.pendingTurn==null&&latest.pendingCreation==null&&assistantState.voiceSession.phase==='idle';
+    };
+    if(!valid()||assistantState.busy||privateAssistantBusy||assistantState.captureStarting||assistantState.capture||assistantState.captureAttempt)return;
+    const previous=assistantState.memorySegmentPlayback;
+    if(previous?.ordinal===ordinal&&previous.turn===turn&&['preparing','playing'].includes(previous.phase))return;
+    stopAssistantSpeech(false);if(!valid())return;
+    const operation={ordinal,segment,segmentCount:expectedSegmentCount,phase:'preparing',turn,card:memory,binding:{...binding},button,player:new Audio(),url:null,onEnded:null,onError:null,playback:null,playConfirmed:false};
+    const controller=new AbortController();assistantState.speechController=controller;state.controllers.add(controller);assistantState.memorySegmentPlayback=operation;
+    $('assistant-speech-stop').hidden=false;syncMemorySegmentControls();syncAssistantControls();
+    const release=({preserveProgress=false}={})=>{
+      operation.player.removeEventListener('ended',operation.onEnded);operation.player.removeEventListener('error',operation.onError);
+      const ownsOperation=assistantState.memorySegmentPlayback===operation||assistantState.manualPlayback===operation;
+      const ownsPlayback=operation.playback!==null&&assistantState.activePlayback===operation.playback;
+      if(ownsOperation||ownsPlayback){operation.player.pause();operation.player.removeAttribute('src');operation.player.load();}
+      if(operation.url)URL.revokeObjectURL(operation.url);
+      if(ownsPlayback)assistantState.activePlayback=null;
+      if(assistantState.manualPlayback===operation)assistantState.manualPlayback=null;
+      const ownsStopControl=ownsOperation||ownsPlayback||assistantState.speechController===controller;
+      if(ownsStopControl)$('assistant-speech-stop').hidden=true;
+      if(assistantState.speechController===controller)assistantState.speechController=null;
+      state.controllers.delete(controller);
+      if(!preserveProgress&&assistantState.memorySegmentPlayback===operation)assistantState.memorySegmentPlayback=null;
+      syncMemorySegmentControls();syncAssistantControls();
+    };
+    assistantState.manualPlayback=operation;
+    try{
+      const result=await privateAssistant.speakMemorySegment(ordinal,segment,{signal:controller.signal,expectedSegmentCount});
+      if(controller.signal.aborted||assistantState.memorySegmentPlayback!==operation||!valid())throw new DOMException('Stale saved-memory segment','AbortError');
+      operation.segmentCount=result.segmentCount;
+      const receipt=assistantState.receipt?.operation==='speech'?assistantState.receipt:null;
+      assistantState.speechPlaybackReceipt=receipt;operation.url=URL.createObjectURL(result.audio);operation.player.src=operation.url;
+      operation.playback={receipt,binding:{...binding},requestId:receipt?.id,player:operation.player,started:false,outcomeSent:false,owner:operation};
+      operation.onEnded=()=>{
+        if(assistantState.memorySegmentPlayback!==operation||assistantState.activePlayback!==operation.playback||!operation.playConfirmed)return;
+        if(!valid()){operation.phase='cancelled';release();return;}
+        reportAssistantPlaybackOutcome(operation.playback,'completed');operation.playback.started=false;operation.phase='complete';release({preserveProgress:true});
+      };
+      operation.onError=()=>{
+        if(assistantState.memorySegmentPlayback!==operation||assistantState.activePlayback!==operation.playback)return;
+        reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;release();if(valid())$('assistant-status').textContent=t('assistantMemorySegmentUnavailable');
+      };
+      operation.player.addEventListener('ended',operation.onEnded);operation.player.addEventListener('error',operation.onError);
+      assistantState.activePlayback=operation.playback;syncMemorySegmentControls();syncAssistantControls();await operation.player.play();
+      if(controller.signal.aborted||assistantState.memorySegmentPlayback!==operation||assistantState.activePlayback!==operation.playback||!valid())throw new DOMException('Stale saved-memory playback','AbortError');
+      operation.phase='playing';operation.playback.started=true;operation.playback.playConfirmed=true;operation.playConfirmed=true;
+      if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncMemorySegmentControls();syncAssistantControls();
+    }catch(error){
+      if(operation.playback&&assistantState.activePlayback===operation.playback){reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;}
+      const current=assistantState.memorySegmentPlayback===operation;release();if(current&&error?.name!=='AbortError'&&valid())$('assistant-status').textContent=t('assistantMemorySegmentUnavailable');
+    }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
+  }
   async function startAssistantCapture() {
     if(!assistantState.transcribe||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.captureStarting||assistantState.capture||annotationState.capture||assistantState.transcribing||assistantState.busy||state.locked||!state.profile||!state.library)return;
     stopMemoryOpeningBeforeCapture();
@@ -1180,6 +1253,7 @@
       for(const memory of turn.memory_cards){
         const card=document.createElement('article');card.className='assistant-result assistant-memory-card';
         card.dataset.memoryOrdinal=String(Array.from(turn.memory_cards).indexOf(memory));
+        card.dataset.memoryKind=memory.kind;
         const badge=document.createElement('p');badge.className='assistant-memory-kind';badge.textContent=t(memory.kind==='story'?'assistantMemoryStory':'assistantMemoryMemoir');
         const title=document.createElement('h3');title.textContent=memory.title;
         const excerpt=document.createElement('p');excerpt.className='assistant-memory-excerpt';excerpt.textContent=memory.excerpt;
@@ -1205,6 +1279,7 @@
         }
         if(privateSpeech?.savedMemoryReaderReady===true){const open=document.createElement('button');open.type='button';open.className='quiet assistant-memory-open';open.textContent=t(memory.kind==='story'?'assistantOpenSavedStory':'assistantOpenMemoir');open.disabled=privateSpeech.openingMemoryCard===true;open.addEventListener('click',()=>{void openPrivateMemoryCard(memory,turn,epoch,Array.from(turn.memory_cards).indexOf(memory),open);});card.append(open);}
         if(privateSpeech?.savedMemoryReadingReady===true){const read=document.createElement('button');read.type='button';read.className='quiet assistant-memory-opening';read.dataset.ordinal=String(Array.from(turn.memory_cards).indexOf(memory));read.textContent=t('assistantReadMemoryOpening');read.addEventListener('click',()=>{if(assistantState.memoryOpeningPlayback?.ordinal===Number(read.dataset.ordinal))stopAssistantSpeech(false);else void playAssistantMemoryOpening(memory,turn,epoch,Number(read.dataset.ordinal),read);});card.append(read);}
+        if(privateSpeech?.savedMemorySegmentReadingAvailable===true){const help=document.createElement('p');help.className='fine assistant-memory-segment-help';help.textContent=t('assistantMemorySegmentHelp');help.hidden=privateSpeech.savedMemorySegmentReadingReady!==true;card.append(help);const status=document.createElement('p');status.className='fine assistant-memory-segment-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.hidden=true;card.append(status);const read=document.createElement('button');read.type='button';read.className='quiet assistant-memory-segment-reading';read.dataset.ordinal=String(Array.from(turn.memory_cards).indexOf(memory));read.textContent=t(memory.kind==='story'?'assistantReadMemoryStorySections':'assistantReadMemoryMemoirSections');read.addEventListener('click',()=>{const ordinal=Number(read.dataset.ordinal),current=assistantState.memorySegmentPlayback;if(current?.ordinal===ordinal&&current.turn===turn&&current.phase==='complete'&&current.segment+1<current.segmentCount)void playAssistantMemorySegment(memory,turn,epoch,ordinal,read,current.segment+1,current.segmentCount);else void playAssistantMemorySegment(memory,turn,epoch,ordinal,read);});card.append(read);const stop=document.createElement('button');stop.type='button';stop.className='quiet assistant-memory-segment-stop';stop.textContent=t('assistantStopMemorySegment');stop.hidden=true;stop.disabled=true;stop.addEventListener('click',()=>{if(assistantState.memorySegmentPlayback?.card===memory)stopAssistantSpeech(false);});card.append(stop);}
         root.append(card);
       }
     }
@@ -1303,6 +1378,7 @@
       }
     });
     if(assistantState.memoryOpeningPlayback&&(!snapshot.savedMemoryReadingReady||snapshot.currentResult!==assistantState.memoryOpeningPlayback.turn||assistantState.memoryOpeningPlayback.actionBound&&snapshot.savedMemoryActionsAvailable!==true))stopAssistantSpeech();
+    if(assistantState.memorySegmentPlayback&&(!snapshot.savedMemorySegmentReadingReady||snapshot.currentResult!==assistantState.memorySegmentPlayback.turn||snapshot.activeThread?.revision!==snapshot.revision))stopAssistantSpeech();
     if(snapshot.currentResult?.kind==='memory_cards'){
       const turn=snapshot.currentResult,epoch=state.generation;
       for(const card of $('assistant-results').querySelectorAll('.assistant-memory-card')){
@@ -1317,9 +1393,19 @@
           if(!button){button=document.createElement('button');button.type='button';button.className='quiet assistant-memory-opening';button.dataset.ordinal=String(ordinal);button.addEventListener('click',()=>{if(assistantState.memoryOpeningPlayback?.ordinal===ordinal)stopAssistantSpeech(false);else void playAssistantMemoryOpening(memory,turn,epoch,ordinal,button);});card.append(button);}
           button.hidden=false;
         }else if(button)button.hidden=true;
+        let segmentHelp=card.querySelector('.assistant-memory-segment-help'),segmentStatus=card.querySelector('.assistant-memory-segment-status'),segmentButton=card.querySelector('.assistant-memory-segment-reading'),segmentStop=card.querySelector('.assistant-memory-segment-stop');
+        if(snapshot.savedMemorySegmentReadingAvailable){
+          if(!segmentHelp){segmentHelp=document.createElement('p');segmentHelp.className='fine assistant-memory-segment-help';card.append(segmentHelp);}
+          segmentHelp.textContent=t('assistantMemorySegmentHelp');segmentHelp.hidden=snapshot.savedMemorySegmentReadingReady!==true;
+          if(!segmentStatus){segmentStatus=document.createElement('p');segmentStatus.className='fine assistant-memory-segment-status';segmentStatus.setAttribute('role','status');segmentStatus.setAttribute('aria-live','polite');segmentStatus.hidden=true;card.append(segmentStatus);}
+          if(!segmentButton){segmentButton=document.createElement('button');segmentButton.type='button';segmentButton.className='quiet assistant-memory-segment-reading';segmentButton.dataset.ordinal=String(ordinal);segmentButton.addEventListener('click',()=>{const current=assistantState.memorySegmentPlayback;if(current?.ordinal===ordinal&&current.turn===turn&&current.phase==='complete'&&current.segment+1<current.segmentCount)void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton,current.segment+1,current.segmentCount);else void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton);});card.append(segmentButton);}
+          segmentButton.hidden=false;
+          if(!segmentStop){segmentStop=document.createElement('button');segmentStop.type='button';segmentStop.className='quiet assistant-memory-segment-stop';segmentStop.addEventListener('click',()=>{if(assistantState.memorySegmentPlayback?.card===memory)stopAssistantSpeech(false);});card.append(segmentStop);}
+          segmentStop.hidden=true;segmentStop.disabled=true;
+        }else{if(segmentHelp)segmentHelp.hidden=true;if(segmentStatus)segmentStatus.hidden=true;if(segmentButton)segmentButton.hidden=true;if(segmentStop){segmentStop.hidden=true;segmentStop.disabled=true;}}
       }
     }
-    syncMemoryOpeningControls();
+    syncMemoryOpeningControls();syncMemorySegmentControls();
     for(const button of $('assistant-results')?.querySelectorAll('.assistant-memory-action')||[]){
       const open=button.dataset.actionType==='open';
       button.disabled=privateAssistantBusy||!snapshot.savedMemoryActionReady||
@@ -1398,6 +1484,7 @@
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryActionsCapabilities==='function')await privateAssistant.savedMemoryActionsCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReadingCapabilities==='function')await privateAssistant.savedMemoryReadingCapabilities();
+      if(!stale(epoch)&&typeof privateAssistant.savedMemorySegmentReadingCapabilities==='function')await privateAssistant.savedMemorySegmentReadingCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReaderCapabilities==='function')await privateAssistant.savedMemoryReaderCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryFollowupCapabilities==='function')await privateAssistant.savedMemoryFollowupCapabilities();}
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');}

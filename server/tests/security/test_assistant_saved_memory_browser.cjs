@@ -21,7 +21,7 @@ createInterface({input:bridge.stdout}).on('line',line=>{
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Saved-memory browser bridge exited (${code})`));for(const item of pending.values())item.reject(new Error('Saved-memory browser bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const requests=[],errors=[],external=[],checks=[];
-let probeMode='live',speechProbeMode='live',readingProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null,openingSpeechGate=null;
+let probeMode='live',speechProbeMode='live',readingProbeMode='live',segmentReadingProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null,openingSpeechGate=null,segmentSpeechGate=null;
 let followupProbeMode='live',voiceTranscript='',reloadRequestStart=0;
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
@@ -34,10 +34,13 @@ const routeMemorySpeechPath='/assistant/workspace/v1/saved-memory-speech-capabil
 const routeMemoryReaderPath='/assistant/workspace/v1/saved-memory-reader-capabilities';
 const routeMemoryFollowupPath='/assistant/workspace/v1/saved-memory-followup-capabilities';
 const routeMemoryReadingPath='/assistant/workspace/v1/saved-memory-reading-capabilities';
+const routeMemorySegmentReadingPath='/assistant/workspace/v1/saved-memory-segment-reading-capabilities';
 const routeMemoryActionPath='/assistant/workspace/v1/saved-memory-action-capabilities';
 const readerCalls=()=>requests.filter(item=>item.method==='GET'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\//.test(item.path));
 const speechCalls=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/speech$/.test(item.path));
 const openingSpeechCalls=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\/(?:0|[1-9]|1[01])\/speech$/.test(item.path));
+const segmentSpeechCalls=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\/(?:0|[1-9]|1[01])\/segments\/(?:0|[1-9][0-9]?|1[01][0-9]|12[0-7])\/speech$/.test(item.path));
+const segmentAudio=()=>{const data=Buffer.alloc(2),header=Buffer.alloc(44);header.write('RIFF',0);header.writeUInt32LE(38,4);header.write('WAVEfmt ',8);header.writeUInt32LE(16,16);header.writeUInt16LE(1,20);header.writeUInt16LE(1,22);header.writeUInt32LE(8000,24);header.writeUInt32LE(16000,28);header.writeUInt16LE(2,32);header.writeUInt16LE(16,34);header.write('data',36);header.writeUInt32LE(data.length,40);return Buffer.concat([header,data]);};
 async function installTransport(target){
   await target.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
@@ -45,6 +48,13 @@ async function installTransport(target){
     const item={method:request.method(),path:url.pathname+url.search,
       headers:await request.allHeaders(),body:request.postData()||'',serverReached:false};
     requests.push(item);
+    if(item.method==='GET'&&url.pathname===routeMemorySegmentReadingPath){item.syntheticSegmentCapability=true;item.status=segmentReadingProbeMode==='missing'?404:segmentReadingProbeMode==='forbidden'?403:200;item.response=item.status===200?{version:1,available:true}:undefined;item.responseHeaders={'cache-control':'no-store'};await route.fulfill({status:item.status,contentType:'application/json',headers:item.responseHeaders,body:JSON.stringify(item.response||{detail:'Not Found'})});return;}
+    if(item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\/(?:0|[1-9]|1[01])\/segments\/(?:0|[1-9][0-9]?|1[01][0-9]|12[0-7])\/speech$/.test(url.pathname)){
+      if(segmentSpeechGate){const gate=segmentSpeechGate;segmentSpeechGate=null;gate.arrive();await gate.waiting;}
+      item.syntheticSegmentSpeech=true;item.status=200;const requestId=item.headers['x-photohouse-request-id'],segment=Number(url.pathname.match(/\/segments\/(\d+)\/speech$/)?.[1]);
+      item.responseHeaders={'cache-control':'no-store','content-type':'audio/wav','x-photohouse-tracking':'enabled','x-photohouse-playback-tracking':'enabled','x-photohouse-request-id':requestId,'x-photohouse-receipt-status':'succeeded','x-photohouse-reading-segment':String(segment),'x-photohouse-reading-segment-count':'3'};
+      try{await route.fulfill({status:200,contentType:'audio/wav',headers:item.responseHeaders,body:segmentAudio()});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
+    }
     if(item.method==='POST'&&url.pathname==='/assistant/v1/transcribe'&&voiceTranscript){
       item.status=200;
       item.syntheticTranscription=true;item.responseHeaders={'cache-control':'no-store','x-photohouse-tracking':'disabled','x-photohouse-receipt-status':'disabled'};
@@ -128,6 +138,7 @@ const speechProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET
 const readerProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryReaderPath));
 const followupProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryFollowupPath));
 const readingProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryReadingPath));
+const segmentReadingProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemorySegmentReadingPath));
 const actionProbeReads=()=>currentPageRequests().filter(item=>item.method==='GET'&&item.path.startsWith(routeMemoryActionPath));
 const fakeTtsCalls=async()=>{const response=await rpc({command:'tts-calls'});assert.equal(response.ok,true);return response.calls;};
 async function waitForTurnCount(before){
@@ -219,6 +230,11 @@ async function reloadAndLogin(){
   while(!readingProbeReads().some(item=>item.response?.available===true)&&Date.now()<readingProbeDeadline)await page.waitForTimeout(20);
   const readingProbeEntry=readingProbeReads().find(item=>item.response?.available===true);
   assert(readingProbeEntry,'separate current-library opening probe reports available');
+  const segmentReadingProbeDeadline=Date.now()+10000;
+  while(!segmentReadingProbeReads().some(item=>item.response?.available===true)&&Date.now()<segmentReadingProbeDeadline)await page.waitForTimeout(20);
+  const segmentReadingProbeEntry=segmentReadingProbeReads().find(item=>item.response?.available===true);
+  assert(segmentReadingProbeEntry,'separate current-library section-reading probe reports available');
+  assert.deepEqual(Object.keys(segmentReadingProbeEntry.response).sort(),['available','version']);assert.deepEqual(segmentReadingProbeEntry.response,{version:1,available:true});
   const policyCard=page.locator('#saved-memory-list article').filter({hasText:'来源审阅回忆录重开检查'});
   await policyCard.waitFor({state:'visible',timeout:10000});
   await policyCard.locator('.saved-memory-copy button').click();
@@ -234,10 +250,10 @@ async function reloadAndLogin(){
   const preferencesEntry=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/preferences?'));
   assert(baseEntry&&listEntry&&preferencesEntry&&probeEntry&&requests.indexOf(baseEntry)<requests.indexOf(listEntry)&&
     requests.indexOf(listEntry)<requests.indexOf(preferencesEntry)&&requests.indexOf(preferencesEntry)<requests.indexOf(probeEntry)&&
-    requests.indexOf(probeEntry)<requests.indexOf(speechProbeEntry)&&requests.indexOf(speechProbeEntry)<requests.indexOf(actionProbeEntry)&&requests.indexOf(actionProbeEntry)<requests.indexOf(readingProbeEntry)&&requests.indexOf(readingProbeEntry)<requests.indexOf(readerProbeEntry)&&
+    requests.indexOf(probeEntry)<requests.indexOf(speechProbeEntry)&&requests.indexOf(speechProbeEntry)<requests.indexOf(actionProbeEntry)&&requests.indexOf(actionProbeEntry)<requests.indexOf(readingProbeEntry)&&requests.indexOf(readingProbeEntry)<requests.indexOf(segmentReadingProbeEntry)&&requests.indexOf(segmentReadingProbeEntry)<requests.indexOf(readerProbeEntry)&&
     requests.indexOf(readerProbeEntry)<requests.indexOf(followupProbeEntry),
     'optional probes follow base capabilities, list and preferences for the current library');
-  pass('Member workspace reads a separate current-library saved-memory probe without changing base capabilities');
+  pass('Member workspace reads a separate exact version-1 section-reading probe without changing base capabilities');
 
   const privatePanel=page.locator('#assistant-private');
   if(!await privatePanel.locator('#assistant-private-management').evaluate(node=>node.open))
@@ -255,7 +271,7 @@ async function reloadAndLogin(){
   assert.equal(await storyCard.locator('.assistant-memory-kind').innerText(),'已保存的故事');
   assert.equal(await storyCard.locator('h3').innerText(),fixtureInfo.story_title);
   assert.equal(await storyCard.locator('.assistant-memory-excerpt').innerText(),fixtureInfo.story_excerpt);
-  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),4,'the card exposes explicit reader and opening actions plus two draft-only followups');
+  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),6,'the card exposes explicit reader, opening, section-read and local Stop actions plus two draft-only followups');
   assert.equal(await storyCard.locator('.assistant-memory-followup').count(),2,'ordinal followup chips are attached to the current source card');
   assert.match(await storyCard.locator('.assistant-memory-open').innerText(),/打开已保存的故事|Open saved story/);
   assert.equal(await page.evaluate(()=>window.__savedMemoryXss),0,'hostile source text executes no markup');
@@ -272,6 +288,67 @@ async function reloadAndLogin(){
   assert.equal(await page.evaluate(()=>window.__phSpeechCalls),speechBefore,'fresh saved-memory cards do not start TTS');
   assert.equal(speechCalls().length,0,'no private speech route is called before explicit playback');
   assert.equal(openingSpeechCalls().length,0,'no opening speech route is called before explicit playback');
+  assert.equal(segmentSpeechCalls().length,0,'no section audio is requested before the explicit section-reading tap');
+  await page.evaluate(()=>{const card=document.querySelector('#assistant-results .assistant-memory-card');if(card){card.querySelector('h3').textContent='湖边的家庭散步';card.querySelector('.assistant-memory-excerpt').textContent='野餐后，一家人在湖边散步，记录了共同度过的时光。';}});
+  const sectionButton=storyCard.locator('.assistant-memory-segment-reading');assert.match(await sectionButton.innerText(),/分段朗读故事第一章|Read the first chapter in sections/);
+  assert.match(await storyCard.locator('.assistant-memory-segment-help').innerText(),/每次朗读一段|Reads one section at a time/);
+  assert.match(await storyCard.locator('.assistant-memory-segment-help').innerText(),/麦克风保持关闭|microphone stays off/);
+  const sectionTurnsBefore=turns().length,sectionMicBefore=await page.evaluate(()=>window.__phMicCalls),sectionOpensBefore=requests.filter(item=>/^\/assets\/[^/]+\/(?:open|original)(?:\?|$)/.test(item.path)).length;
+  await sectionButton.click();
+  const firstSectionDeadline=Date.now()+10000;while(segmentSpeechCalls().length<1&&Date.now()<firstSectionDeadline)await page.waitForTimeout(20);
+  assert.equal(segmentSpeechCalls().length,1,'one explicit tap requests only the first section');
+  const firstSection=segmentSpeechCalls()[0],firstSectionPayload=JSON.parse(firstSection.body),firstSectionId=firstSection.headers['x-photohouse-request-id'];
+  assert.match(firstSection.path,new RegExp(`/requests/${turnId}/memory-cards/0/segments/0/speech$`));
+  assert.deepEqual(Object.keys(firstSectionPayload).sort(),['expected_revision','library_id']);
+  assert.deepEqual(firstSectionPayload,{library_id:'family-a',expected_revision:storyTurn.response.revision});
+  assert.notEqual(firstSectionId,turnId);assert.equal(firstSection.headers['x-photohouse-parent-request-id'],turnId);
+  assert.equal(firstSection.headers['x-photohouse-reading-segment'],undefined,'segment index comes from the exact route path, not an extra request header');
+  await page.waitForFunction(()=>/朗读第 1\/3 段|Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  assert.equal(await sectionButton.isDisabled(),true,'the card cannot request another segment during playback');
+  assert.equal(segmentSpeechCalls().length,1,'Continue is unavailable until playback ends');
+  assert.equal(firstSection.responseHeaders['x-photohouse-reading-segment'],'0');assert.equal(firstSection.responseHeaders['x-photohouse-reading-segment-count'],'3');
+  assert.equal(firstSection.responseHeaders['x-photohouse-playback-tracking'],'enabled','section audio carries the required playback outcome tracking contract');
+  await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-1-playing-desktop-zh.png')});
+  await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await storyCard.locator('.assistant-memory-segment-stop').isVisible(),'active section exposes a card-local Stop beside the current memory');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'active section Stop fits the 390px Chinese page at 150% text');
+  await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-playing-phone-150-zh.png')});
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>/继续第 2\/3 段|Continue segment 2\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  assert.equal(segmentSpeechCalls().length,1,'successful playback completion exposes an explicit Continue without auto-requesting it');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'section progress fits the 390px Chinese page at 150% text');
+  assert(await storyCard.evaluate(node=>node.scrollWidth<=node.clientWidth),'section progress and controls wrap within the card');
+  await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-continue-phone-150-zh.png')});
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+  for(const expectedSegment of [1,2]){
+    await sectionButton.click();
+    const deadline=Date.now()+10000;while(segmentSpeechCalls().length<expectedSegment+1&&Date.now()<deadline)await page.waitForTimeout(20);
+    assert.equal(segmentSpeechCalls().length,expectedSegment+1,'each Continue tap requests exactly one next segment');
+    const item=segmentSpeechCalls().at(-1),payload=JSON.parse(item.body);
+    assert.match(item.path,new RegExp(`/requests/${turnId}/memory-cards/0/segments/${expectedSegment}/speech$`));
+    assert.deepEqual(Object.keys(payload).sort(),['expected_revision','library_id']);
+    assert.equal(item.headers['x-photohouse-reading-segment'],undefined,'continuation sends no uncontracted segment request header');
+    assert.equal(item.headers['x-photohouse-parent-request-id'],turnId);
+    assert.equal(item.responseHeaders['x-photohouse-reading-segment'],String(expectedSegment));
+    assert.equal(item.responseHeaders['x-photohouse-reading-segment-count'],'3');
+    assert.equal(item.responseHeaders['x-photohouse-playback-tracking'],'enabled');
+    await page.waitForFunction(segment=>new RegExp(`朗读第 ${segment+1}\\/3 段|Reading segment ${segment+1}\\/3`).test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''),expectedSegment);
+    await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+    if(expectedSegment===1)await page.waitForFunction(()=>/继续第 3\/3 段|Continue segment 3\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  }
+  await page.waitForFunction(()=>/这段回忆已读完|This memory is finished/.test(document.querySelector('.assistant-memory-segment-status')?.textContent||''));
+  assert.equal(segmentSpeechCalls().length,3,'the final segment completes with no automatic fourth request');
+  assert.equal(turns().length,sectionTurnsBefore,'section narration does not submit or create an assistant turn');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),sectionMicBefore,'section narration never starts microphone listening');
+  assert.equal(requests.filter(item=>/^\/assets\/[^/]+\/(?:open|original)(?:\?|$)/.test(item.path)).length,sectionOpensBefore,'segment speech does not implicitly fetch full reader text or originals');
+  await sectionButton.click();const stopAgainDeadline=Date.now()+10000;while(segmentSpeechCalls().length<4&&Date.now()<stopAgainDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>/朗读第 1\/3 段|Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  await storyCard.locator('.assistant-memory-segment-stop').click();
+  await page.waitForFunction(()=>/分段朗读故事第一章|Read the first chapter in sections/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||'')&&document.querySelector('.assistant-memory-segment-status')?.hidden===true);
+  assert.equal(segmentSpeechCalls().length,4,'Stop cancels the active segment without requesting Continue');
+  pass('Saved story section narration is tap-by-tap, source-bound, and continues only after successful playback completion');
+  await page.evaluate(({title,excerpt})=>{const card=document.querySelector('#assistant-results .assistant-memory-card');if(card){card.querySelector('h3').textContent=title;card.querySelector('.assistant-memory-excerpt').textContent=excerpt;}},{title:fixtureInfo.story_title,excerpt:fixtureInfo.story_excerpt});
+  await page.evaluate(()=>{window.__phAudioPlayCalls=0;window.__phAudioPauseCalls=0;});
   assert(await page.locator('#assistant-play').isVisible(),'fresh owned card reply exposes an explicit playback action');
   assert.match(await page.locator('#assistant-play').innerText(),/播放语音回复|Play spoken reply/);
   const callCountBefore=await fakeTtsCalls();assert.equal(callCountBefore.length,0,'fake local TTS has no automatic calls');
@@ -330,6 +407,7 @@ async function reloadAndLogin(){
   await callCommand('reply-speech-on');
   assert.equal(await page.evaluate(()=>window.__privateAssistantController.savedMemorySpeechCapabilities()),true);
   assert.equal(await page.evaluate(()=>window.__privateAssistantController.savedMemoryReadingCapabilities()),true);
+  assert.equal(await page.evaluate(()=>window.__privateAssistantController.savedMemorySegmentReadingCapabilities()),true);
   const openingTurn=await submit(storyQuery),openingTurnId=JSON.parse(openingTurn.body).request_id;
   const openingCard=cards().first(),openingButton=openingCard.locator('.assistant-memory-opening'),turnsBeforeOpening=turns().length;
   assert.match(await openingButton.innerText(),/朗读开篇|Read opening/);
@@ -341,11 +419,30 @@ async function reloadAndLogin(){
     window.AudioContext=class{constructor(){this.sampleRate=16000;this.destination={};}createMediaStreamSource(){return {connect(){},disconnect(){}};}createScriptProcessor(){const processor={onaudioprocess:null,connect(){},disconnect(){}};window.__phAudioProcessors.push(processor);return processor;}resume(){return Promise.resolve();}close(){if(window.__phAudioContextCloseDeferred){window.__phAudioContextCloseStarted=true;return new Promise(resolve=>{window.__phAudioContextCloseRelease=()=>{window.__phAudioContextCloseDeferred=false;resolve();};});}return Promise.resolve();}};
     window.__phFeed=(value,count)=>{const processor=window.__phAudioProcessors.at(-1);if(!processor?.onaudioprocess)return false;const data=new Float32Array(count);data.fill(value);processor.onaudioprocess({inputBuffer:{getChannelData:()=>data}});return true;};
   });
+  const micBeforeSectionConflict=await page.evaluate(()=>window.__phMicCalls),asrBeforeSectionConflict=requests.filter(item=>item.path==='/assistant/v1/transcribe').length;
+  await openingCard.locator('.assistant-memory-segment-reading').click();
+  const conflictSpeechDeadline=Date.now()+10000;while(segmentSpeechCalls().length<5&&Date.now()<conflictSpeechDeadline)await page.waitForTimeout(20);
+  assert.equal(segmentSpeechCalls().length,5,'capture conflict starts from one explicit section tap');
+  await page.waitForFunction(()=>/朗读第 1\/3 段|Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  await page.locator('#assistant-voice-start').click();
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening'&&document.getElementById('assistant-stop')?.hidden===false);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true&&document.getElementById('assistant-speech-audio')?.getAttribute('src')===null);
+  assert(await openingCard.locator('.assistant-memory-segment-stop').isHidden(),'manual capture clears the card-local section Stop state');
+  assert.match(await openingCard.locator('.assistant-memory-segment-reading').innerText(),/分段朗读故事第一章|Read the first chapter in sections/,'manual capture clears section progress before recording');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micBeforeSectionConflict+1,'section cancellation allows only the explicit continuous-capture request');
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micBeforeSectionConflict+1,'canceled section audio does not restart microphone capture');
+  await page.locator('#assistant-voice-end').click();
+  await page.waitForFunction(()=>window.__phVoiceTrack?.stopped===true);
+  assert.equal(requests.filter(item=>item.path==='/assistant/v1/transcribe').length,asrBeforeSectionConflict,'canceling the section conflict never submits audio for ASR');
+  pass('Explicit continuous capture cancels section playback before listening without narration capture or automatic restart');
+  await page.evaluate(()=>{window.__phAudioPlayCalls=0;window.__phAudioPauseCalls=0;});
   const micBeforeOpening=await page.evaluate(()=>window.__phMicCalls);
   await page.locator('#assistant-voice-start').click();
   await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
   await page.waitForFunction(before=>window.__phMicCalls===before+1&&!!window.__phVoiceTrack,micBeforeOpening);
   await page.waitForFunction(()=>document.getElementById('assistant-stop')?.hidden===false);
+  const openingPlayBaseline=await page.evaluate(()=>window.__phAudioPlayCalls);
   const openingGate=deferredGate();openingSpeechGate=openingGate;
   await openingButton.click();await openingGate.reached;
   assert.match(await openingButton.innerText(),/正在准备开篇|Preparing opening/,'card action exposes preparing state');
@@ -396,7 +493,7 @@ async function reloadAndLogin(){
   assert.equal(resumedOpeningRequest.headers['x-photohouse-parent-request-id'],openingTurnId);
   const resumedOpeningCalls=await fakeTtsCalls();assert.equal(resumedOpeningCalls.length,3);
   assert.equal(resumedOpeningCalls[2].reply,fixtureInfo.story_excerpt,'explicit retry synthesizes only the first chapter narration');
-  await page.waitForFunction(()=>window.__phAudioPlayCalls===3&&document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.waitForFunction(base=>window.__phAudioPlayCalls===base+2&&document.getElementById('assistant-speech-audio')?.paused===false,openingPlayBaseline);
   const openingAudioUrl=await openingAudio.getAttribute('src');assert.match(openingAudioUrl||'',/^blob:/);
   assert.match(await openingButton.innerText(),/停止朗读|Stop reading/,'the active card action exposes a stop state');
   await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
@@ -441,7 +538,7 @@ async function reloadAndLogin(){
   const readyCaptureDeadline=Date.now()+10000;
   while((!openingSpeechCalls().at(-1)?.responseHeaders||(await fakeTtsCalls()).length<4)&&Date.now()<readyCaptureDeadline)await page.waitForTimeout(20);
   assert.equal(openingSpeechCalls().length,3,'ready capture interruption requests only the explicit opening audio');
-  await page.waitForFunction(()=>window.__phAudioPlayCalls===4&&document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.waitForFunction(base=>window.__phAudioPlayCalls===base+3&&document.getElementById('assistant-speech-audio')?.paused===false,openingPlayBaseline);
   await page.locator('#assistant-speech-stop').click();
   await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true);
 
@@ -463,7 +560,7 @@ async function reloadAndLogin(){
   const pendingCaptureDeadline=Date.now()+10000;
   while((!openingSpeechCalls().at(-1)?.responseHeaders||(await fakeTtsCalls()).length<5)&&Date.now()<pendingCaptureDeadline)await page.waitForTimeout(20);
   assert.equal(openingSpeechCalls().length,4,'permission-pending capture interruption requests only the explicit opening audio');
-  await page.waitForFunction(()=>window.__phAudioPlayCalls===5&&document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.waitForFunction(base=>window.__phAudioPlayCalls===base+4&&document.getElementById('assistant-speech-audio')?.paused===false,openingPlayBaseline);
   await page.locator('#assistant-speech-stop').click();
   await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true);
   const openingPostsBeforeCloseRace=openingSpeechCalls().length;
@@ -491,7 +588,7 @@ async function reloadAndLogin(){
   const delayedCloseDeadline=Date.now()+10000;
   while((!openingSpeechCalls().at(-1)?.responseHeaders||(await fakeTtsCalls()).length<6)&&Date.now()<delayedCloseDeadline)await page.waitForTimeout(20);
   assert.equal(openingSpeechCalls().length,openingPostsBeforeCloseRace+1,'the stopped old operation never posts after capture cleanup releases');
-  await page.waitForFunction(()=>window.__phAudioPlayCalls===6&&document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.waitForFunction(base=>window.__phAudioPlayCalls===base+5&&document.getElementById('assistant-speech-audio')?.paused===false,openingPlayBaseline);
   await page.locator('#assistant-speech-stop').click();
   await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true);
   assert.equal(requests.filter(item=>item.path==='/assistant/v1/transcribe').length,manualAsrCount,'neither manual capture path calls ASR');
@@ -657,7 +754,7 @@ async function reloadAndLogin(){
   assert.equal(await memoirCard.locator('.assistant-memory-kind').innerText(),'已保存的回忆录');
   assert.equal(await memoirCard.locator('h3').innerText(),fixtureInfo.memoir_title);
   assert.equal(await memoirCard.locator('.assistant-memory-excerpt').innerText(),'野餐之后，我们记下了家人一起度过的时光。');
-  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),4);
+  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),6,'memoir card adds explicit section-read and local Stop actions');
   assert.match(await memoirCard.locator('.assistant-memory-opening').innerText(),/朗读开篇|Read opening/);
   assert.match(await memoirCard.locator('.assistant-memory-open').innerText(),/打开回忆录|Open memoir/);
   assert(await memoirCard.locator('.assistant-memory-open').isVisible(),'explicit memoir reader action is visible on the card');
@@ -796,7 +893,28 @@ async function reloadAndLogin(){
   assert.equal(JSON.parse(deniedReadingTurn.body).accepts?.[0],'saved_memory_cards_v1');
   pass('Unknown-route 403 triggers an exact base capability recheck and preserves the authorized card and reader scope');
 
-  followupProbeMode='missing';readerProbeMode='live';speechProbeMode='live';await reloadAndLogin();
+  segmentReadingProbeMode='missing';readingProbeMode='live';await reloadAndLogin();
+  const missingSegmentDeadline=Date.now()+10000;while(!segmentReadingProbeReads().some(item=>item.status===404)&&Date.now()<missingSegmentDeadline)await page.waitForTimeout(20);
+  assert(segmentReadingProbeReads().some(item=>item.status===404),'old server can omit the optional section-reading probe');
+  await ensureThread();const missingSegmentTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(await cards().first().locator('.assistant-memory-segment-reading').count(),0,'missing section capability hides only section narration');
+  assert.equal(await cards().first().locator('.assistant-memory-opening').count(),1,'missing section capability preserves the existing opening action');
+  assert.equal(JSON.parse(missingSegmentTurn.body).accepts?.[0],'saved_memory_cards_v1');
+  pass('Missing optional section-reading capability preserves cards and the existing opening action');
+
+  segmentReadingProbeMode='forbidden';await reloadAndLogin();
+  const deniedSegmentDeadline=Date.now()+10000;while(!segmentReadingProbeReads().some(item=>item.status===403)&&Date.now()<deniedSegmentDeadline)await page.waitForTimeout(20);
+  assert(segmentReadingProbeReads().some(item=>item.status===403),'unknown-route 403 is simulated for the section-reading probe');
+  assert.equal(await page.evaluate(()=>window.__privateAssistantController.state().locked),false,'optional section-reading 403 does not lock or revoke the current workspace');
+  const segmentBaseRecheckDeadline=Date.now()+10000;while(baseCapabilityReads().length<2&&Date.now()<segmentBaseRecheckDeadline)await page.waitForTimeout(20);
+  assert(baseCapabilityReads().length>=2,'optional section-reading 403 rechecks the existing base capability route');
+  await ensureThread();const deniedSegmentTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(await cards().first().locator('.assistant-memory-segment-reading').count(),0,'optional 403 leaves section narration unavailable');
+  assert.equal(await cards().first().locator('.assistant-memory-opening').count(),1,'optional 403 leaves the independent opening action available');
+  assert.equal(JSON.parse(deniedSegmentTurn.body).accepts?.[0],'saved_memory_cards_v1');
+  pass('Unknown-route 403 safely leaves section narration unavailable in the current unlocked scope');
+
+  segmentReadingProbeMode='live';followupProbeMode='missing';readerProbeMode='live';speechProbeMode='live';await reloadAndLogin();
   const followupFallbackDeadline=Date.now()+10000;
   while(!followupProbeReads().some(item=>item.syntheticMissingProbe)&&Date.now()<followupFallbackDeadline)await page.waitForTimeout(20);
   assert(followupProbeReads().some(item=>item.syntheticMissingProbe),'old server followup probe returns its simulated 404');
@@ -834,6 +952,35 @@ async function reloadAndLogin(){
   assert.equal(await page.locator('#assistant-send').isDisabled(),true,'a late old-scope reader completion cannot release the new turn busy lock');
   nextTurnGate.release();await waitForTurnCount(beforeReplacementTurn);
   pass('A delayed old-scope reader reply cannot release a replacement assistant operation');
+
+  await ensureThread();await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  const cancelSection=cards().first().locator('.assistant-memory-segment-reading'),lateSegmentGate=deferredGate();segmentSpeechGate=lateSegmentGate;
+  const playsBeforeLateSegment=await page.evaluate(()=>window.__phAudioPlayCalls),micBeforeLateSegment=await page.evaluate(()=>window.__phMicCalls);
+  await cancelSection.click();await lateSegmentGate.reached;
+  const replacementMemoryTurn=await submit('找回忆录 野餐');
+  await page.waitForFunction(title=>Array.from(document.querySelectorAll('#assistant-results .assistant-memory-card h3')).some(node=>node.textContent===title),fixtureInfo.memoir_title,{timeout:10000});
+  lateSegmentGate.release();await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(()=>window.__phAudioPlayCalls),playsBeforeLateSegment,'late segment audio from a replaced result never reaches playback');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micBeforeLateSegment,'canceling a stale segment never starts microphone listening');
+  assert.equal(await cards().first().locator('h3').innerText(),fixtureInfo.memoir_title,'the replacement source remains current after the late response');
+  assert.equal(await cards().first().locator('.assistant-memory-segment-status').isHidden(),true,'stale section completion leaves no progress on the replacement card');
+  assert.equal(JSON.parse(replacementMemoryTurn.body).text,'找回忆录 野餐');
+  pass('Replacing a saved-memory result aborts and ignores a late section response');
+
+  await page.locator('#language').click();
+  await page.waitForFunction(()=>document.querySelector('#assistant-workspace-title')?.textContent==='PhotoHouse Memory Assistant',{},{timeout:10000});
+  const workspacePanel=page.locator('#assistant-panel');if(!await workspacePanel.evaluate(node=>node.open))await workspacePanel.locator(':scope > summary').click();
+  await page.locator('#assistant-private').waitFor({state:'visible',timeout:10000});await ensureThread();
+  const englishSegmentTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(await cards().first().locator('.assistant-memory-segment-reading').innerText(),'Read the first chapter in sections');
+  assert.equal(await cards().first().locator('.assistant-memory-segment-help').innerText(),'Reads one section at a time. Choose Continue after playback; the microphone stays off.');
+  await page.evaluate(()=>{const card=document.querySelector('#assistant-results .assistant-memory-card');if(card){card.querySelector('h3').textContent='Family walk by the lake';card.querySelector('.assistant-memory-excerpt').textContent='After the picnic, the family walked by the lake and kept a note of their time together.';}});
+  await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'English section card fits the 390px viewport at 150% text');
+  assert(await cards().first().evaluate(node=>node.scrollWidth<=node.clientWidth),'English section card wraps within the narrow viewport');
+  await cards().first().screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150.png')});
+  await page.screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150-full.png'),fullPage:true});
+  pass('English section-reading action remains readable at 390px with 150% text');
 
   assert.deepEqual(external,[],'browser makes no request outside the synthetic origin');
   assert.deepEqual(errors,[],'browser has no uncaught JavaScript errors');

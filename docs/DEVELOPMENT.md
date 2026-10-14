@@ -72,6 +72,23 @@ turn, with no extra request, persistence or provider-latency claim. The affected
 closed-application inventory/import checks passed **27 tests and 18 subchecks**;
 the new static UI helper is included in the **199-file** source closure.
 
+The later [saved-section narration slice](ASSISTANT_SEGMENT_READING.md) passed
+**16** new backend cases and the **16** existing opening cases. **Eight**
+disposable-qualifier checks pass, and the source-only **200-file** closure now
+qualifies twelve generated scenario groups, including three explicit segments
+from one saved story and content-free speech receipts. Initial qualification
+fixture errors used the wrong thread-create field/status; corrected fixtures
+exercise the existing `thread_id` / HTTP 201 contract.
+
+Web passed **70 Node tests** and **26 generated browser checkpoints**. Review
+identified old same-index cleanup races for both opening and segment requests;
+unique entry ownership now prevents a late finally block clearing its replacement.
+Phone passed **33** affected store cases, **19** wire cases and **nine** simulator
+cases, plus debug lint and Android-test Kotlin compilation. The active Stop case
+scrolls the control fully into view and performs a real click. Chinese/English
+150% renders were inspected. These counts overlap; no Windows provider, signed
+APK or family listening acceptance is claimed by these source checks.
+
 
 ## Oral-history intake foundation (October 14)
 

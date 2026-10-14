@@ -35,6 +35,7 @@ FILES = (
     'backend/app/access/assistant_memory_followup.py',
     'backend/app/access/assistant_saved_memory_tool.py',
     'backend/app/access/assistant_speech.py',
+    'backend/app/access/assistant_reading_segments.py',
     'backend/app/access/asset_tombstones.py',
     'backend/app/access/bootstrap.py',
     'backend/app/access/boundary.py',

@@ -42,6 +42,7 @@ CASES = (
     'safe_asr_failures_are_journaled_without_audio',
     'negotiated_saved_story_memoir_and_strict_legacy_recovery',
     'saved_memory_reply_speech_revalidates_sources_after_synthesis',
+    'explicit_bounded_saved_section_speech_and_private_metadata',
     'opt_in_unicode_label_and_paged_history',
     'foreign_actor_reads_are_indistinguishable',
     'fixed_retention_expires_private_text',
@@ -840,6 +841,53 @@ def run(output):
             _assert(removed_memory_thread.status_code == 200 and
                     removed_memory_thread.json().get('deleted') is True,
                     'synthetic_memory_thread_cleanup_failed')
+
+            phase = 'saved_memory_segment_reading'
+            _save_synthetic_story(client, 'Synthetic segmentqualification story', 'A' * 250)
+            segment_thread_id = str(uuid.uuid4())
+            created_segment_thread = client.post(BASE + '/threads', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'thread_id': segment_thread_id})
+            _assert(created_segment_thread.status_code == 201,
+                    'synthetic_segment_thread_create_failed')
+            segment_turn_id = str(uuid.uuid4())
+            segment_turn = client.post(f'{BASE}/threads/{segment_thread_id}/turns',
+                headers=_auth(TOKEN), json={'library_id': LIBRARY,
+                    'request_id': segment_turn_id, 'expected_revision': 0,
+                    'text': 'find saved story segmentqualification',
+                    'accepts': ['saved_memory_cards_v1']})
+            _assert(segment_turn.status_code == 200 and
+                    segment_turn.json()['result']['kind'] == 'memory_cards' and
+                    len(segment_turn.json()['result']['memory_cards']) == 1,
+                    'synthetic_segment_saved_card_failed')
+            segment_capability = client.get(BASE +
+                '/saved-memory-segment-reading-capabilities?library_id=' + LIBRARY,
+                headers=_auth(TOKEN))
+            _assert(segment_capability.status_code == 200 and
+                    segment_capability.json() == {'version': 1, 'available': True},
+                    'synthetic_segment_capability_failed')
+            for segment, expected_text in enumerate(('A' * 120, 'A' * 120, 'A' * 10)):
+                calls_before = len(tts.calls)
+                segment_speech_id = str(uuid.uuid4())
+                section_audio = client.post(
+                    f'{BASE}/threads/{segment_thread_id}/requests/{segment_turn_id}'
+                    f'/memory-cards/0/segments/{segment}/speech',
+                    headers={**_auth(TOKEN), 'X-PhotoHouse-Request-Id': segment_speech_id,
+                             'X-PhotoHouse-Parent-Request-Id': segment_turn_id},
+                    json={'library_id': LIBRARY, 'expected_revision': 1})
+                section_receipt = app.state.assistant_journal.get(segment_speech_id, OWNER, LIBRARY)
+                _assert(section_audio.status_code == 200 and section_audio.content == tts.audio and
+                        section_audio.headers.get('X-PhotoHouse-Reading-Segment') == str(segment) and
+                        section_audio.headers.get('X-PhotoHouse-Reading-Segment-Count') == '3' and
+                        section_audio.headers.get('X-PhotoHouse-Playback-Tracking') == 'enabled' and
+                        len(tts.calls) == calls_before + 1 and tts.calls[-1] == (expected_text, 'en') and
+                        section_receipt['status'] == 'succeeded' and
+                        section_receipt['input_text'] is None and section_receipt['recognized_text'] is None,
+                        'synthetic_segment_speech_or_metadata_failed')
+            removed_segment_thread = client.request('DELETE',
+                f'{BASE}/threads/{segment_thread_id}', headers=_auth(TOKEN),
+                json={'library_id': LIBRARY, 'expected_revision': 1})
+            _assert(removed_segment_thread.status_code == 200,
+                    'synthetic_segment_thread_cleanup_failed')
 
             # Populate additional deterministic rows through the private store
             # API to exercise paging without repeated engine work.

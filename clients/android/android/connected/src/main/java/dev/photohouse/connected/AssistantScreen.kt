@@ -99,6 +99,7 @@ internal fun AssistantScreen(
     savedMemoryWorkspace: AssistantWorkspaceState? = null,
     onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
     onReadSavedMemoryOpening: ((Int) -> Unit)? = null,
+    onReadSavedMemorySegment: ((Int, Int) -> Unit)? = null,
     onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
     showMemoryOpeningPlayback: Boolean = true,
 ) {
@@ -490,6 +491,55 @@ internal fun AssistantScreen(
                                                     modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-opening-$ordinal"),
                                                 ) { Text(t("Stop", "停止")) }
                                             }
+                                            val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
+                                                it.ordinal == ordinal && it.threadId == freshMemoryTurn.threadId &&
+                                                    it.turnId == freshMemoryTurn.requestId && it.revision == freshMemoryTurn.revision &&
+                                                    it.sourceKind == card.kind
+                                            }
+                                            if (savedMemoryWorkspace.savedMemorySegmentReadingAvailable && onReadSavedMemorySegment != null &&
+                                                card.kind in setOf("story", "memoir")) {
+                                                val segmentCount = segmentProgress?.segmentCount
+                                                val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
+                                                    segmentCount != null && segmentProgress.segmentIndex + 1 <= segmentCount
+                                                val canRestart = segmentReady && segmentCount != null &&
+                                                    segmentProgress.segmentIndex + 1 >= segmentCount
+                                                val activeSegment = segmentProgress != null && !segmentReady
+                                                val sourceName = if (card.kind == "story") t("first chapter", "第一章")
+                                                    else t("memoir introduction", "回忆录引言")
+                                                val label = when {
+                                                    segmentProgress == null -> t("Read $sourceName", "朗读$sourceName")
+                                                    segmentCount == null -> t("Preparing $sourceName…", "正在准备$sourceName…")
+                                                    segmentReady && segmentProgress.segmentIndex + 1 < segmentCount ->
+                                                        t("Continue · Segment ${segmentProgress.segmentIndex + 2}/$segmentCount",
+                                                            "继续 · 第${segmentProgress.segmentIndex + 2}/${segmentCount}段")
+                                                    canRestart -> t("Read $sourceName again", "重新朗读$sourceName")
+                                                    segmentReady -> t("Finished · Segment $segmentCount/$segmentCount",
+                                                        "已完成 · 第${segmentCount}/${segmentCount}段")
+                                                    else -> t("Segment ${segmentProgress.segmentIndex + 1}/$segmentCount",
+                                                        "第${segmentProgress.segmentIndex + 1}/${segmentCount}段")
+                                                }
+                                                TextButton(onClick = {
+                                                    val next = if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1
+                                                    onReadSavedMemorySegment(ordinal, next)
+                                                }, enabled = savedMemoryWorkspace.savedMemorySegmentReadingAvailable && !assistant.let { it?.speechBusy == true || it?.speechAudio != null } &&
+                                                    savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy && !activeSegment &&
+                                                    (segmentProgress == null || canRestart || segmentReady && segmentCount != null && segmentProgress.segmentIndex + 1 < segmentCount),
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-read-memory-segment-$ordinal")) {
+                                                    Text(label)
+                                                }
+                                                if (assistant?.speechBusy == true && segmentProgress != null) TextButton(
+                                                    onClick = onStopSpeech,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
+                                                ) { Text(t("Stop", "停止")) }
+                                                else if (assistant?.speechAudio != null && segmentProgress != null) TextButton(
+                                                    onClick = onStopSpeech,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
+                                                ) { Text(t("Stop", "停止")) }
+                                                Text(t("One segment at a time; continue after it finishes. The microphone stays off.",
+                                                    "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    modifier = Modifier.testTag("assistant-memory-segment-guidance-$ordinal"))
+                                            }
                                             if (savedMemoryWorkspace.memoryReaderErrorOrdinal == ordinal) {
                                                 Text(t("Could not open this memory.", "无法打开这段回忆。"),
                                                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -652,6 +702,8 @@ internal fun AssistantScreen(
                         Text(t("This reply is long. Read the complete text here.", "这条回复较长，可在这里阅读完整文字。"),
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-reply-speech-unavailable"))
                     val openingSpeech = assistant.speechMemoryOpeningOrdinal != null
+                    val segmentSpeech = assistant.speechMemorySegmentProgress != null
+                    val memorySpeech = openingSpeech || segmentSpeech
                     if (openingSpeech && assistant.speechBusy) Row(Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-memory-opening-loading"))
@@ -659,7 +711,7 @@ internal fun AssistantScreen(
                             Text(t("Stop", "停止"))
                         }
                     }
-                    if (!openingSpeech && (privateReplySpeechAvailable ||
+                    if (!memorySpeech && (privateReplySpeechAvailable ||
                         !privateReplySpeechEnabled && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty())) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                             if (assistant.speechBusy) LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-speech-loading"))
@@ -667,8 +719,8 @@ internal fun AssistantScreen(
                                 modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken results", "播报结果")) }
                         }
                     }
-                    if (!openingSpeech || showMemoryOpeningPlayback) assistant.speechAudio?.let { audio ->
-                        AssistantSpeechPlayback(audio, zh, openingSpeech,
+                    if (!memorySpeech || showMemoryOpeningPlayback) assistant.speechAudio?.let { audio ->
+                        AssistantSpeechPlayback(audio, zh, openingSpeech, segmentSpeech,
                             onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
                     }
                     OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) draft = it },
@@ -755,6 +807,7 @@ private fun isHumanReadableContextLabel(value: String): Boolean {
 @Composable
 @androidx.annotation.OptIn(UnstableApi::class)
 internal fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, memoryOpening: Boolean = false,
+                                    memorySegment: Boolean = false,
                                     onStop: () -> Unit,
                                     onOutcome: (String) -> Unit) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -792,7 +845,8 @@ internal fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolea
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.testTag("assistant-speech-playback")) {
         TextButton(onClick = { if (!reported) { reported = true; onOutcome("cancelled") }; player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
-        if (playing) Text(if (memoryOpening) t("Reading the saved opening…", "正在朗读保存的开篇…")
+        if (playing) Text(if (memorySegment) t("Reading this saved section…", "正在朗读这段已保存内容…")
+            else if (memoryOpening) t("Reading the saved opening…", "正在朗读保存的开篇…")
             else t("Speaking the results…", "正在播报结果…"), style = MaterialTheme.typography.bodySmall)
         if (failed) Text(t("Speech could not play.", "语音无法播放。"), color = MaterialTheme.colorScheme.error)
     }
