@@ -4,7 +4,7 @@
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null};
   let storyWorkspace, memoryCommunity, memoryGroups;
-  let privateAssistant=null,privateAssistantBusy=false,privateAssistantOperation=0,privateCreationRetryId=null;
+  let privateAssistant=null,privateAssistantBusy=false,privateAssistantOperation=0,privateCreationRetryId=null,assistantMemoryActionTarget=null;
   let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let memoryGroupGalleryItems=[];
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
@@ -41,6 +41,8 @@
   Object.assign(words.en,{assistantMemoryStory:'Saved story',assistantMemoryMemoir:'Saved memoir',assistantMemorySource:'From saved family content. Search does not rewrite the original.',assistantOpenSavedStory:'Open saved story',assistantOpenMemoir:'Open memoir',assistantReaderUnavailable:'The full reader is unavailable. Please try again.',assistantMemoryFollowupOverview:'introduce these memories',assistantMemoryFollowupPreview:'what is the {ordinal} saved memory about',assistantMemoryFollowupOutline:'what chapters does the {ordinal} saved memory have'});
   Object.assign(words.zh,{assistantReadMemoryOpening:'朗读开篇',assistantPreparingMemoryOpening:'正在准备开篇…',assistantPlayingMemoryOpening:'正在朗读开篇',assistantStopMemoryOpening:'停止朗读',assistantMemoryOpeningUnavailable:'开篇暂时无法朗读，请稍后重试。'});
   Object.assign(words.en,{assistantReadMemoryOpening:'Read opening',assistantPreparingMemoryOpening:'Preparing opening…',assistantPlayingMemoryOpening:'Reading opening',assistantStopMemoryOpening:'Stop reading',assistantMemoryOpeningUnavailable:'The opening is unavailable right now. Please try again.'});
+  Object.assign(words.zh,{assistantMemoryActionOpen:'打开这条回忆',assistantMemoryActionRead:'朗读这条回忆的开篇',assistantMemoryActionCueOpen:'正在打开这条已保存的回忆。',assistantMemoryActionCueRead:'正在朗读这条已保存回忆的开篇。',assistantMemoryActionUnavailable:'这项操作暂时不可用。'});
+  Object.assign(words.en,{assistantMemoryActionOpen:'Open this memory',assistantMemoryActionRead:'Read this memory’s opening',assistantMemoryActionCueOpen:'Opening this saved memory.',assistantMemoryActionCueRead:'Reading the opening of this saved memory.',assistantMemoryActionUnavailable:'This action is unavailable right now.'});
   Object.assign(words.en,{assistantReceiptUnknown:'The server receipt is unknown. Check again when the connection is available.',assistantReceiptDisabled:'Request tracking is disabled for this service.',assistantReceiptReceived:'Received by the server; still processing.',assistantReceiptSucceeded:'The server completed this request.',assistantReceiptFailed:'The server could not complete this request.',assistantReceiptInterrupted:'Processing stopped before completion.',assistantReceiptCheck:'Check server receipt',assistantReceiptChecking:'Checking the server receipt…',assistantReceiptUnavailable:'The receipt could not be checked.',assistantReceiptUnconfirmed:'The request was sent, but the server receipt is not confirmed.',assistantOutcomeDisplayed:'The result was shown in this tab.',assistantOutcomeFailed:'The result could not be shown in this tab.',assistantRequestIdLabel:'Request ID',assistantReceiptTrackingOff:'Tracking disabled',assistantRecoveryOffer:'A previous request may have reached the server. Check its receipt before starting again. Its reply and search context are not stored for recovery.',assistantRecoveryChecking:'Checking the earlier request…',assistantRecoveryReceived:'The server received this request and may still be processing it. Check again or acknowledge to start fresh.',assistantRecoverySucceeded:'The server completed this request, but its reply and search context are unavailable. Start a new search if you still need one.',assistantRecoveryFailed:'The server recorded a failure. The original reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryInterrupted:'Server processing was interrupted. The reply is unavailable. Acknowledge before starting fresh.',assistantRecoveryUnknown:'The earlier request outcome is still unknown. Do not resend it automatically; check again or acknowledge to start fresh.',assistantRecoveryAcknowledge:'Acknowledge and start fresh'});
   Object.assign(words.zh,{assistantReceiptUnknown:'服务器是否收到请求尚未确认。网络恢复后可以再次查询。',assistantReceiptDisabled:'此服务未启用请求跟踪。',assistantReceiptReceived:'服务器已收到，仍在处理中。',assistantReceiptSucceeded:'服务器已完成此请求。',assistantReceiptFailed:'服务器未能完成此请求。',assistantReceiptInterrupted:'请求在完成前中断。',assistantReceiptCheck:'查询服务器回执',assistantReceiptChecking:'正在查询服务器回执…',assistantReceiptUnavailable:'暂时无法查询服务器回执。',assistantReceiptUnconfirmed:'请求已发送，但尚未确认服务器回执。',assistantOutcomeDisplayed:'此标签页已显示结果。',assistantOutcomeFailed:'此标签页未能显示结果。',assistantRequestIdLabel:'请求编号',assistantReceiptTrackingOff:'未启用跟踪',assistantRecoveryOffer:'之前的请求可能已到达服务器。开始新请求前，请先查询回执。回复和搜索上下文不会保存在此处供恢复。',assistantRecoveryChecking:'正在查询之前的请求…',assistantRecoveryReceived:'服务器已收到请求，可能仍在处理中。可以再次查询，或确认后重新开始。',assistantRecoverySucceeded:'服务器已完成请求，但无法恢复其回复和搜索上下文。如仍需查找，请开始新的搜索。',assistantRecoveryFailed:'服务器记录了失败，原回复无法恢复。确认后可以重新开始。',assistantRecoveryInterrupted:'服务器处理中断，回复无法恢复。确认后可以重新开始。',assistantRecoveryUnknown:'之前请求的结果仍不确定。系统不会自动重发；请再次查询，或确认后重新开始。',assistantRecoveryAcknowledge:'确认并重新开始'});
   Object.assign(words.en,{assistantPendingTitle:'Request awaiting confirmation',assistantPendingSending:'Sending this request…',assistantPendingCancelled:'Stopped waiting. The server may still process this request.',assistantPendingUnknown:'The outcome is unknown. The server may already have processed this request.',assistantPendingDisabled:'Request tracking is unavailable. This does not show whether the server processed the request.',assistantPendingReceived:'The server received this request and may still be processing it.',assistantPendingSucceeded:'The server completed this request, but its reply and updated context were not recovered.',assistantPendingFailed:'The server recorded a failure. Its reply is unavailable.',assistantPendingInterrupted:'Server processing was interrupted. Its reply is unavailable.',assistantPendingQuestion:'Submitted question',assistantPendingHelp:'Checking a receipt only reads its status; it never resends this request. Acknowledge to clear this conversation and start fresh. The server may still finish the original request.',assistantPendingCheckUnavailable:'The receipt could not be checked. The last known status is unchanged; this does not mean the request was not processed.',assistantPendingAcknowledge:'Acknowledge and start fresh',assistantPendingRestore:'Close and restore question',assistantPendingRestoreHelp:'The server recorded a failed or interrupted request. Restore its question as a draft only if the composer is empty; sending still requires your action.',assistantReceiptDetails:'Request tracking details'});
@@ -945,21 +947,26 @@
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceError');
     } finally {if(requestController){state.controllers.delete(requestController);if(assistantState.speechController===requestController)assistantState.speechController=null;}syncAssistantControls();}
   }
-  async function playAssistantMemoryOpening(memory,turn,epoch,ordinal,button){
+  async function playAssistantMemoryOpening(memory,turn,epoch,ordinal,button,voiceToken=null,actionBound=false){
     const binding=assistantState.binding,valid=()=>{
       const latest=privateAssistant?.state();
       return !stale(epoch)&&!state.locked&&state.profile?.account_id===binding?.account&&state.library===binding?.library&&binding?.generation===epoch&&
         latest?.savedMemoryReadingReady===true&&latest.currentResult===turn&&turn?.kind==='memory_cards'&&turn.memory_cards?.[ordinal]===memory&&
-        latest.activeThread?.revision===latest.revision&&latest.pendingTurn==null&&latest.pendingCreation==null;
+        latest.activeThread?.revision===latest.revision&&latest.pendingTurn==null&&latest.pendingCreation==null&&
+        (!actionBound||latest.savedMemoryActionsAvailable===true)&&
+        (!Number.isSafeInteger(voiceToken)||currentAssistantVoice(voiceToken,binding));
     };
     if(!valid()||assistantState.busy||privateAssistantBusy)return;
     const previous=assistantState.memoryOpeningPlayback;
     if(previous?.ordinal===ordinal&&previous.phase==='preparing')return;
     if(previous?.ordinal===ordinal&&previous.phase==='playing'){stopAssistantSpeech(false);return;}
-    if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();
-    stopAssistantSpeech();
+    if(Number.isSafeInteger(voiceToken)){
+      if(!currentAssistantVoice(voiceToken,binding))return;
+      assistantState.voiceSession.phase='speaking';syncAssistantControls();
+    }else if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();
+    stopAssistantSpeech(false);
     if(!valid())return;
-    const operation={ordinal,phase:'preparing',turn,memory,binding:{...binding},button,player:new Audio(),url:null,onEnded:null,onError:null,playback:null};
+    const operation={ordinal,phase:'preparing',turn,memory,binding:{...binding},button,player:new Audio(),url:null,onEnded:null,onError:null,playback:null,voiceToken,actionBound};
     const controller=new AbortController();assistantState.speechController=controller;state.controllers.add(controller);assistantState.memoryOpeningPlayback=operation;
     $('assistant-speech-stop').hidden=false;syncMemoryOpeningControls();syncAssistantControls();
     const release=()=>{
@@ -987,8 +994,8 @@
       const receipt=assistantState.receipt?.operation==='speech'?assistantState.receipt:null;
       assistantState.speechPlaybackReceipt=receipt;operation.url=URL.createObjectURL(blob);operation.player.src=operation.url;
       operation.playback={receipt,binding:{...binding},requestId:receipt?.id,player:operation.player,started:false,outcomeSent:false,owner:operation};
-      operation.onEnded=()=>{if(assistantState.memoryOpeningPlayback!==operation||assistantState.activePlayback!==operation.playback)return;reportAssistantPlaybackOutcome(operation.playback,'completed');operation.playback.started=false;release();};
-      operation.onError=()=>{if(assistantState.memoryOpeningPlayback!==operation||assistantState.activePlayback!==operation.playback)return;reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;release();};
+      operation.onEnded=()=>{if(assistantState.memoryOpeningPlayback!==operation||assistantState.activePlayback!==operation.playback)return;reportAssistantPlaybackOutcome(operation.playback,'completed');operation.playback.started=false;release();if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)){const session=assistantState.voiceSession;if(session.phase==='speaking'){session.phase='listening';syncAssistantControls();void captureAssistantVoice(voiceToken,binding);}}};
+      operation.onError=()=>{if(assistantState.memoryOpeningPlayback!==operation||assistantState.activePlayback!==operation.playback)return;reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;release();if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceError');};
       operation.player.addEventListener('ended',operation.onEnded);operation.player.addEventListener('error',operation.onError);
       assistantState.activePlayback=operation.playback;
       syncMemoryOpeningControls();syncAssistantControls();await operation.player.play();
@@ -1001,6 +1008,7 @@
       const current=assistantState.memoryOpeningPlayback===operation;
       release();
       if(current&&error?.name!=='AbortError'&&valid())$('assistant-status').textContent=t(error.status?assistantErrorKey(error):'assistantMemoryOpeningUnavailable');
+      if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&error?.name!=='AbortError')pauseAssistantVoice('assistantVoiceReview');
     }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
   }
   async function startAssistantCapture() {
@@ -1149,6 +1157,18 @@
         const excerpt=document.createElement('p');excerpt.className='assistant-memory-excerpt';excerpt.textContent=memory.excerpt;
         const source=document.createElement('p');source.className='fine assistant-memory-source';source.textContent=t('assistantMemorySource');
         card.append(badge,title,excerpt,source);
+        const memoryOrdinal=Array.from(turn.memory_cards).indexOf(memory),memoryAction=turn.memory_action;
+        const actionReady=currentPrivate?.savedMemoryActionReady===true&&currentPrivate.currentResult===turn&&
+          currentPrivate.activeThread?.revision===currentPrivate.revision&&currentPrivate.account===assistantState.binding?.account&&
+          currentPrivate.library===assistantState.binding?.library&&assistantState.binding?.generation===epoch&&!state.locked;
+        if(actionReady&&memoryAction?.ordinal===memoryOrdinal&&['open','read_opening'].includes(memoryAction.type)){
+          const action=document.createElement('button');action.type='button';action.className='quiet assistant-memory-action';
+          action.textContent=t(memoryAction.type==='open'?'assistantMemoryActionOpen':'assistantMemoryActionRead');
+          action.dataset.actionType=memoryAction.type;action.dataset.ordinal=String(memoryOrdinal);
+          action.disabled=memoryAction.type==='open'?currentPrivate.savedMemoryReaderReady!==true:currentPrivate.savedMemoryReadingReady!==true;
+          action.addEventListener('click',()=>runAssistantMemoryAction(memory,turn,epoch,memoryAction,null,action));card.append(action);
+          if(action.disabled){const guidance=document.createElement('p');guidance.className='fine assistant-memory-action-guidance';guidance.textContent=t('assistantMemoryActionUnavailable');card.append(guidance);}
+        }
         if(followupsReady){const actions=document.createElement('div');actions.className='assistant-memory-followups';actions.setAttribute('aria-label',state.language==='zh'?'关于这条回忆':'Ask about this memory');
           const ordinal=Array.from(turn.memory_cards).indexOf(memory)+1;
           const number=state.language==='en'?['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth','eleventh','twelfth'][ordinal-1]:String(ordinal);
@@ -1236,6 +1256,10 @@
 
   function renderPrivateAssistant(snapshot){
     if(!$('assistant-private'))return;
+    if(assistantMemoryActionTarget&&snapshot.currentResult!==assistantMemoryActionTarget.turn){
+      const oldTarget=$('assistant-results')?.querySelector('.assistant-memory-card--action-target');
+      oldTarget?.classList.remove('assistant-memory-card--action-target');oldTarget?.removeAttribute('aria-current');assistantMemoryActionTarget=null;
+    }
     const followupBlocked=!snapshot.savedMemoryFollowupReady||!!snapshot.pendingTurn||!!snapshot.pendingCreation||snapshot.openingMemoryCard===true||privateAssistantBusy;
     for(const button of $('assistant-results').querySelectorAll('.assistant-memory-followup'))button.disabled=followupBlocked;
     const memoryScope=JSON.stringify([snapshot.account,snapshot.library,state.generation]);
@@ -1250,12 +1274,17 @@
         endAssistantVoice();stopAssistantSpeech();$('assistant-speech').hidden=true;syncAssistantControls();
       }
     });
-    if(assistantState.memoryOpeningPlayback&&(!snapshot.savedMemoryReadingReady||snapshot.currentResult!==assistantState.memoryOpeningPlayback.turn))stopAssistantSpeech();
+    if(assistantState.memoryOpeningPlayback&&(!snapshot.savedMemoryReadingReady||snapshot.currentResult!==assistantState.memoryOpeningPlayback.turn||assistantState.memoryOpeningPlayback.actionBound&&snapshot.savedMemoryActionsAvailable!==true))stopAssistantSpeech();
     if(snapshot.currentResult?.kind==='memory_cards'){
       const turn=snapshot.currentResult,epoch=state.generation;
       for(const card of $('assistant-results').querySelectorAll('.assistant-memory-card')){
         const ordinal=Number(card.dataset.memoryOrdinal);if(!Number.isSafeInteger(ordinal)||ordinal<0||ordinal>=turn.memory_cards.length)continue;
-        const memory=turn.memory_cards[ordinal];let button=card.querySelector('.assistant-memory-opening');
+        const memory=turn.memory_cards[ordinal];let reader=card.querySelector('.assistant-memory-open');
+        if(snapshot.savedMemoryReaderReady){
+          if(!reader){reader=document.createElement('button');reader.type='button';reader.className='quiet assistant-memory-open';reader.addEventListener('click',()=>{void openPrivateMemoryCard(memory,turn,epoch,ordinal,reader);});card.append(reader);}
+          reader.textContent=t(memory.kind==='story'?'assistantOpenSavedStory':'assistantOpenMemoir');reader.hidden=false;reader.disabled=snapshot.openingMemoryCard===true;
+        }else if(reader)reader.hidden=true;
+        let button=card.querySelector('.assistant-memory-opening');
         if(snapshot.savedMemoryReadingReady){
           if(!button){button=document.createElement('button');button.type='button';button.className='quiet assistant-memory-opening';button.dataset.ordinal=String(ordinal);button.addEventListener('click',()=>{if(assistantState.memoryOpeningPlayback?.ordinal===ordinal)stopAssistantSpeech(false);else void playAssistantMemoryOpening(memory,turn,epoch,ordinal,button);});card.append(button);}
           button.hidden=false;
@@ -1263,6 +1292,11 @@
       }
     }
     syncMemoryOpeningControls();
+    for(const button of $('assistant-results')?.querySelectorAll('.assistant-memory-action')||[]){
+      const open=button.dataset.actionType==='open';
+      button.disabled=privateAssistantBusy||!snapshot.savedMemoryActionReady||
+        (open?snapshot.savedMemoryReaderReady!==true:snapshot.savedMemoryReadingReady!==true)||assistantState.voiceSession.phase!=='idle';
+    }
     if(snapshot.locked&&!state.locked&&state.profile){const epoch=state.generation;queueMicrotask(()=>{if(!stale(epoch)&&privateAssistant?.state().locked){showAuth();status('denied');}});}
     const available=snapshot.capabilities?.available===true&&snapshot.capabilities?.threads===true;
     const turnAvailable=snapshot.capabilities?.server_owned_turns===true;
@@ -1334,6 +1368,7 @@
     if(!privateAssistant)return;
     try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();
+      if(!stale(epoch)&&typeof privateAssistant.savedMemoryActionsCapabilities==='function')await privateAssistant.savedMemoryActionsCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReadingCapabilities==='function')await privateAssistant.savedMemoryReadingCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReaderCapabilities==='function')await privateAssistant.savedMemoryReaderCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryFollowupCapabilities==='function')await privateAssistant.savedMemoryFollowupCapabilities();}
@@ -1354,6 +1389,30 @@
       closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
     }catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantReaderUnavailable');}
     finally{if(operation===privateAssistantOperation){privateAssistantBusy=false;if(!stale(epoch)){renderPrivateAssistant(privateAssistant.state());syncAssistantControls();}}}
+  }
+
+  function runAssistantMemoryAction(memory,turn,epoch,action,voiceToken=null,button=null){
+    const privateState=privateAssistant?.state(),binding=assistantState.binding,ordinal=action?.ordinal;
+    const valid=()=>!stale(epoch)&&!state.locked&&binding?.generation===epoch&&state.profile?.account_id===binding.account&&state.library===binding.library&&
+      privateAssistant?.state().savedMemoryActionReady===true&&privateAssistant.state().currentResult===turn&&turn?.kind==='memory_cards'&&
+      Number.isSafeInteger(ordinal)&&ordinal>=0&&turn.memory_cards?.[ordinal]===memory&&
+      ['open','read_opening'].includes(action?.type)&&(!Number.isSafeInteger(voiceToken)||currentAssistantVoice(voiceToken,binding));
+    if(!valid()){if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceReview');return;}
+    const root=$('assistant-results');root?.querySelectorAll('.assistant-memory-card--action-target').forEach(target=>{target.classList.remove('assistant-memory-card--action-target');target.removeAttribute('aria-current');});
+    assistantMemoryActionTarget={turn,ordinal};
+    const card=root?.querySelector(`.assistant-memory-card[data-memory-ordinal="${ordinal}"]`);
+    if(card){card.classList.add('assistant-memory-card--action-target');card.setAttribute('aria-current','true');card.tabIndex=-1;card.focus();}
+    $('assistant-status').textContent=t(action.type==='open'?'assistantMemoryActionCueOpen':'assistantMemoryActionCueRead');
+    if(action.type==='open'){
+      const canOpen=privateState?.savedMemoryReaderReady===true;
+      if(!canOpen){$('assistant-private-status').textContent=t('assistantMemoryActionUnavailable');if(Number.isSafeInteger(voiceToken))pauseAssistantVoice('assistantVoiceReview');return;}
+      void openPrivateMemoryCard(memory,turn,epoch,ordinal,button||card?.querySelector('.assistant-memory-open')||card?.querySelector('.assistant-memory-action'));
+      return;
+    }
+    const canRead=privateState?.savedMemoryReadingReady===true;
+    if(!canRead){$('assistant-private-status').textContent=t('assistantMemoryActionUnavailable');if(Number.isSafeInteger(voiceToken))pauseAssistantVoice('assistantVoiceReview');return;}
+    const readButton=button||card?.querySelector('.assistant-memory-opening')||card?.querySelector('.assistant-memory-action');
+    void playAssistantMemoryOpening(memory,turn,epoch,ordinal,readButton,voiceToken,true);
   }
 
   async function privateAssistantAction(action,{allowPaused=false}={}){
@@ -1393,6 +1452,7 @@
 
   async function submitPrivateAssistant(text,voiceToken){
     const epoch=state.generation,binding=Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:epoch});
+    let voiceMemoryAction=null;
     if(privateAssistantBusy)return;
     privateAssistantBusy=true;stopAssistantSpeech();assistantState.busy=true;assistantState.binding=binding;
     $('assistant-status').textContent=t('assistantWorking');syncAssistantControls();
@@ -1406,8 +1466,9 @@
         showPrivateAssistantResult(envelope,text);
         assistantState.transcriptRequestId=null;
         if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)){
-          const replySpeech=privateAssistant.state();
-          if(replySpeech.capabilities?.reply_speech===true&&replySpeech.speechReady){
+          const replySpeech=privateAssistant.state(),action=envelope.result.kind==='memory_cards'&&!envelope.recovered?envelope.result.memory_action:null;
+          if(action){assistantState.voiceSession.phase='speaking';voiceMemoryAction={action,turn:envelope.result,memory:envelope.result.memory_cards[action.ordinal],epoch,token:voiceToken};syncAssistantControls();}
+          else if(replySpeech.capabilities?.reply_speech===true&&replySpeech.speechReady){
             if(replySpeech.speechReplyBytes<=600){assistantState.voiceSession.phase='speaking';syncAssistantControls();}
             else{$('assistant-status').textContent=t('assistantReplyTooLong');pauseAssistantVoice('assistantVoiceReview');}
           }else if(envelope.result.kind==='results'&&envelope.result.items.length&&assistantState.speech&&!envelope.recovered){assistantState.voiceSession.phase='speaking';syncAssistantControls();}
@@ -1415,7 +1476,7 @@
         }
       }else{$('assistant-status').textContent=t('assistantPrivateUnknown');if(Number.isSafeInteger(voiceToken))pauseAssistantVoice('assistantVoiceError');}
     }catch(error){if(assistantBindingCurrent(binding)){$('assistant-status').textContent=t('assistantPrivateUnknown');$('assistant-text').value=privateAssistant.state().draft;pauseAssistantVoice('assistantVoiceError');}}
-    finally{if(!stale(epoch)){assistantState.busy=false;assistantState.controller=null;privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&assistantState.voiceSession.phase==='speaking')void playAssistantSpeech(voiceToken);}}
+    finally{if(!stale(epoch)){assistantState.busy=false;assistantState.controller=null;privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();if(voiceMemoryAction&&currentAssistantVoice(voiceMemoryAction.token,binding))runAssistantMemoryAction(voiceMemoryAction.memory,voiceMemoryAction.turn,voiceMemoryAction.epoch,voiceMemoryAction.action,voiceMemoryAction.token);else if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&assistantState.voiceSession.phase==='speaking')void playAssistantSpeech(voiceToken);}}
   }
 
   async function recoverPrivateAssistant(){

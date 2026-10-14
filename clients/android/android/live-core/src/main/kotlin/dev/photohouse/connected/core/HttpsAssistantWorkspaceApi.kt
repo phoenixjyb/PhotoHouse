@@ -245,17 +245,24 @@ class HttpsAssistantWorkspaceApi internal constructor(
     override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                     expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
                                     memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn {
+        return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+            acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions = false)
+    }
+
+    override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                    expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                                    memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId))
         require(parentRequestId == null || AssistantWire.validRequestId(parentRequestId))
         val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text,
-            acceptSavedMemoryCards, memoryParent)
+            acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
             extraHeaders = buildMap {
                 put("X-PhotoHouse-Request-Id", requestId)
                 parentRequestId?.let { put("X-PhotoHouse-Parent-Request-Id", it) }
             })
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false,
-            acceptSavedMemoryCards = acceptSavedMemoryCards) }
+            acceptSavedMemoryCards = acceptSavedMemoryCards, acceptSavedMemoryActions = acceptSavedMemoryActions) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
@@ -285,6 +292,24 @@ class HttpsAssistantWorkspaceApi internal constructor(
         } catch (failure: ApiFailure) {
             if (failure.status == 404 || failure.status == 503) SavedMemoryReaderCapabilities(1, false)
             else throw failure
+        }
+    }
+
+    override suspend fun savedMemoryActionCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities {
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/saved-memory-action-capabilities", library),
+                AssistantWorkspaceWire::savedMemoryReaderCapabilities)
+        } catch (failure: ApiFailure) {
+            when (failure.status) {
+                404, 503 -> SavedMemoryReaderCapabilities(1, false)
+                403 -> {
+                    // Confirm the same authenticated library still has the base workspace before
+                    // interpreting a legacy route denial as absence of this optional feature.
+                    capabilities(token, library)
+                    SavedMemoryReaderCapabilities(1, false)
+                }
+                else -> throw failure
+            }
         }
     }
 

@@ -404,6 +404,21 @@ internal fun PrivateAssistantPanel(
                             if (freshMemoryResult) {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("private-assistant-memory-cards")) {
                                     Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleSmall)
+                                    result.memoryAction?.takeIf { state.savedMemoryActionsAvailable && it.ordinal in result.memoryCards.indices }?.let { action ->
+                                        val actionCard = result.memoryCards[action.ordinal]
+                                        OutlinedButton(
+                                            onClick = { if (action.type == "open") onOpenSavedMemoryCard(action.ordinal)
+                                                else onReadSavedMemoryOpening(action.ordinal) },
+                                            enabled = !state.busy && state.pendingTurn == null &&
+                                                (if (action.type == "open") state.savedMemoryReaderAvailable else state.savedMemoryReadingAvailable),
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                                .testTag("private-assistant-memory-action"),
+                                        ) {
+                                            Text(if (action.type == "open")
+                                                t("Open memory: ${actionCard.title}", "打开回忆：${actionCard.title}")
+                                            else t("Read opening: ${actionCard.title}", "朗读开篇：${actionCard.title}"))
+                                        }
+                                    }
                                     if (state.savedMemoryFollowupAvailable) AssistChip(
                                         onClick = { onSavedMemoryFollowupDraft(memoryFollowupPrompt(0, 2, zh)) },
                                         label = { Text(memoryFollowupPrompt(0, 2, zh)) },

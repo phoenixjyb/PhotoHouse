@@ -14209,6 +14209,176 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-saved-memory-voice-actions-and-fluid-experience-design-20261014",
+      "based_on_commit": "237633c9ce74b660b0594e65a0a6a30c9c29d01e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "57d252d3fda9d4615126912f7bb66f093c3946422c6cb49c36660b0ed6f46d3a",
+          "sha256": "28466d66927185a04476de71e21413eeef64b239c4cc90f56b996fb1b526472b"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/PrivateAssistantPanelUiTest.kt",
+          "before_sha256": "bfe02928146234373c68c7e6e2dc8c98c5c41982a16e4fadf796b512d7a1155c",
+          "sha256": "f220d80017b8d11a5bc95842f03090a80c996fc17eb03239731a3073343bc3d6"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "79a4d1889e05ff609573467de8e678625d9e151309de7183b41356f4d371ea1d",
+          "sha256": "a88afe9229ebe2a050515fcae358a3586f64c467277f6879b368dab8068da577"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "a9b6d4c8a0484c3d4f715d350f79e9b4b673c2bd20cdd076033641986a75a563",
+          "sha256": "6d4427dda7010af0c62b23dffffc88e1126038c51075ef690ac235c9bd16ab0c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "before_sha256": "919b922206a8e9a8fcab85769e472c54ad21304fa0f2a2994b12246fef6f9f03",
+          "sha256": "9a858c724340bc9c5538f1c5b8d277d1b43d2447e5cfa06db61bce5dd3018c5e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "before_sha256": "fff22844bb2bf8d37602f1e8a303c3d8019099a6c0ba6c97cfad8f4ba223a076",
+          "sha256": "dbc3a00520612bfde0e12b6eff31ee344f582a1019c009f954753fc2a65a9c68"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWire.kt",
+          "before_sha256": "8552057a9c8ab2980d3b856fb97828b47a5f7dccb858f2c55ca07e7b4d10814a",
+          "sha256": "dc826be04048f0c19102d11eb6d1f883d54f92cea0d003a8413d5e15ddc7f744"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceApi.kt",
+          "before_sha256": "4bd0d092b4db98350b3d96f0ba733b66cbf21a6d45593beea64dd0c9e4c1c23a",
+          "sha256": "2d4cd78912de1f3b8315511985fa0bec564823ef6a4763627308a5a3fb60a382"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStore.kt",
+          "before_sha256": "6f64f33e947224da9eaa1290e182e65883416909304e2633c72848c356012843",
+          "sha256": "7ca9c1e4f768af76409a4bfe2d2bd1ca8347ea5accb9f819c17ee0986704c89d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWire.kt",
+          "before_sha256": "2c24753474bcc3d81db16868e3864e33a96d9b0bf04aba3a417a15bf055057d8",
+          "sha256": "2668962217a193f38c0c611614cd1a2ec60887a51ea5c81e3a1ad0a00e11447d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApi.kt",
+          "before_sha256": "c094fa83dfcdd6aaa03971270323015d97ac23f54fa3419f0086960bd2df6bb2",
+          "sha256": "953bd2382cb126fa3c59070ee31e2e573629567819981a067291d5e529fba257"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStoreTest.kt",
+          "before_sha256": "6ad311bd965d9a8d5a1bd9cbdbbd3af5f9f960670d60c1b9068ca6fdb32fb06c",
+          "sha256": "8a2ef9f1919b7c9792523e752015832fea0edd252df7de50a3e9a21d63b84bd0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "0ecd7e52ff25ee912047debfce633f00ad0e42a6cf46f9cdc9eb2ff3b86aab7d",
+          "sha256": "72665e21da34c9fb4b9a0795c6e76fa36a9a252595c09ceae58a4e96d0dc1671"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedPrivateAssistantVoiceTest.kt",
+          "before_sha256": "2aa55f8f20f18fcaf3fc0edccf0b68a5cfef44ceedc1d75098a3f505d6d3e2aa",
+          "sha256": "4c90814fe8032743627ddd9378a2829d597da28f37c5512ce13bf7e1e65704c8"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApiTest.kt",
+          "before_sha256": "d94a8954259150f384679fb1c426b51fa70e1dff19f6221673f6eee6517aa74c",
+          "sha256": "1e17b7131d90e3ee48666fe147aa49b8394a90c04e71aee852b54e92dd91d57e"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "2334863eed5690def2e848bdaba615c2554c5a19c4cc3c368a2d5d9577fe7c5e",
+          "sha256": "ec5a04a12dc5929b161a4d0bc94404c6452080dfc26c93ceb29c79f237dcfde2"
+        },
+        {
+          "path": "docs/ASSISTANT_FLUID_EXPERIENCE.md",
+          "before_sha256": null,
+          "sha256": "10d3c3ae63bf358994a2aa5ef63db74c728619d29f2e6361718cacfb5bacc5da"
+        },
+        {
+          "path": "docs/ASSISTANT_SAVED_MEMORY_FOLLOWUPS.md",
+          "before_sha256": "ac50a4984a4575991e8286a2d9a85945c1d88809f931b879dfe13a0d9f40127f",
+          "sha256": "42b3786a5bdb346f64a03b26ad0ecda2cdb95ecc3024c4bee1f16319fd02e51a"
+        },
+        {
+          "path": "docs/ASSISTANT_SAVED_MEMORY_READING.md",
+          "before_sha256": "7065a8d384bc6966c8a76e57a935eed6c5f126e4541f369a9e45fa71521a15a5",
+          "sha256": "5e0bd73ae45796934f6e0c852ac5925f1bbdd790e40ec871c3a19b9cdd3b0204"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "6df979bb13075c9112d4e5b2471c5285e388e8bcaf1b2a416f4e2eff20e49d12",
+          "sha256": "8ad2c9d8d219735d1b41263765b3febbc3ccc9ce35cb04503533f9448576eb9d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f0cad85cad168e70ee5959379218ccb116640f6c53eac268493a08739498efd5",
+          "sha256": "0d5bf65e83d7b4c3c96dd9b6b05cad3f9224e4a7751df9bbabab1b95b1b1449d"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "53b950594910a6dec168f9d9d9ff21ce46768bcd31526ca5078caf1bd7b1854d",
+          "sha256": "b7e6965fbdde8949687f842b2cda3c7ec627064892e67f7aefda5c0a039fd708"
+        },
+        {
+          "path": "server/backend/app/access/assistant_memory_followup.py",
+          "before_sha256": "053aaba3728658377ca97eb6319021ff97ed5c8be657c0ed10240b83a4f769b7",
+          "sha256": "72921f88b239f6ae34e68aee6a89bd22e6ea55ec65457e1bec9a3dc2277162ed"
+        },
+        {
+          "path": "server/backend/app/access/assistant_saved_memory_tool.py",
+          "before_sha256": "98d0543c9f33a68e54de20040d7b27a95ccc6078c0ab13b7c38cd247935592bd",
+          "sha256": "fd67283a45d04804a7e7c89b8575ac6d11e3a30cae122c12aa81385e0295c24f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "48d5e39e00c9a314159ca3fb29f25fad7db3492d055a8379d61c0b7994df2534",
+          "sha256": "fdd0240dd130b579c9ecc83b80e1a71c1d2af00a5c736f4ca7a810bfd030ebb5"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "db675eb6d06c086c991b3e110a70592fc587c3a8e79beea661599000572d535a",
+          "sha256": "ad1162d2a966edf875805d309e62e9e68def70bf52ec6ca0ff2e5fd95a8f2066"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "de735402b8e3bd73754cff551bc8f66d2df136f749284b2e7d1325e13103409c",
+          "sha256": "72d63670626e280dc10d4454ca276c2940412d49003cd6a88e411bbb3fe68375"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "ed4fef3fc53608eb072948e11463d0244fc8ac255f5f5edc50dfbe180f7ce3a9",
+          "sha256": "b3856c8cce5e1a2d08ae373b35c74f9449cff5835846deb4ae45f4b2549cd636"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "64ef278bdfe6d6ce27ebcd9263e61112078f6ff389261cf6466c1ddfdc3601f2",
+          "sha256": "3885d786c020ec28e9c432505a370acf97651157c5262a5119e5e5f6743fbc11"
+        },
+        {
+          "path": "server/tests/security/test_assistant_memory_actions.py",
+          "before_sha256": null,
+          "sha256": "57353f6d115d7e86d0b0363b9f123f3512f6d0e9e7c363be60ddbbdcae585042"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "04fee8f2388eb4689476f797d6c88045d5600b51fb815ef6c521b59582a2d860",
+          "sha256": "00107a9c87d68aed7cde467a61a3d5dbd8111bd4b8c349180421d8a047ca05c0"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "before_sha256": "cb9b35590fdbf1b4417f7385d921f102d4d7e8dada4f0cc17a4d33a658b6d7c2",
+          "sha256": "e5d0379bc45e58f93f7c65361248d08cc3cad6145338dda98b6a9e2b3190bf16"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

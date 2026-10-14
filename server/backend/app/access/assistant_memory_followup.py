@@ -71,8 +71,36 @@ def parse_saved_memory_followup(text):
     return None
 
 
+def parse_saved_memory_action(text):
+    """Recognize a complete read-only request; never extract a command substring."""
+    if type(text) is not str:
+        return None
+    value = _trim(text.casefold())
+    zh_number = r'([0-9]+|一|二|两|三|四|五|六|七|八|九|十|十一|十二)'
+    en_number = r'([0-9]+(?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth)'
+    patterns = (
+        (rf'(?:请|帮我)?(?:打开|查看)第{zh_number}(?:个|篇|段|本)(?:回忆录|回忆|故事)', 'open'),
+        (rf'(?:请|帮我)?(?:读|朗读|读一下|读一读)第{zh_number}(?:个|篇|段|本)(?:回忆录|回忆|故事)(?:的开篇|开篇)?', 'read_opening'),
+        (rf'(?:please )?open (?:the )?{en_number} (?:saved memory|story|memoir)', 'open'),
+        (rf'(?:please )?read (?:the )?{en_number} (?:saved memory|story|memoir)(?: opening)?', 'read_opening'),
+    )
+    for pattern, mode in patterns:
+        match = re.fullmatch(pattern, value)
+        if match:
+            return SavedMemoryFollowup(mode, _ordinal(match.group(1)))
+    for mode, phrases in (
+            ('open', {'打开这个故事', '打开这篇回忆', '打开这本回忆录', 'open this story', 'open this saved memory', 'open this memoir'}),
+            ('read_opening', {'读这个故事', '读这篇回忆', '读这本回忆录', '朗读开篇', 'read this story', 'read this saved memory', 'read this memoir'})):
+        if value in phrases:
+            return SavedMemoryFollowup(mode)
+    return None
+
+
 def _reply(mode, count, ordinal, locale):
     if locale == 'zh':
+        if mode in {'open', 'read_opening'}:
+            return (f'已选中第 {ordinal} 条回忆，可以打开阅读。' if mode == 'open' else
+                    f'可以朗读第 {ordinal} 条回忆的开篇。')
         if mode == 'overview':
             return f'已按当前显示的 {count} 条已保存回忆整理概览；内容仅对应当前显示列表。'
         if mode == 'preview':
@@ -80,6 +108,9 @@ def _reply(mode, count, ordinal, locale):
         return f'已根据当前显示列表第 {ordinal} 条已保存回忆整理章节目录。'
     if mode == 'overview':
         return f'Overview of the {count} currently displayed saved memories; this uses only the displayed list.'
+    if mode in {'open', 'read_opening'}:
+        return (f'Item {ordinal} is ready to open.' if mode == 'open' else
+                f'The opening of item {ordinal} is ready to read aloud.')
     if mode == 'preview':
         return f'Original excerpt for item {ordinal} in the currently displayed saved memory list.'
     return f'Chapter outline for item {ordinal} in the currently displayed saved memory list.'
@@ -105,7 +136,7 @@ class AssistantMemoryFollowupTool:
         from .assistant_memory_discovery import AssistantMemoryDiscovery, MemoryReference
         from .service import AccessService
 
-        if type(mode) is not str or mode not in {'overview', 'preview', 'outline'}:
+        if type(mode) is not str or mode not in {'overview', 'preview', 'outline', 'open', 'read_opening'}:
             raise TransportError(400, 'Invalid saved-memory followup')
         if type(references) is not list or len(references) > MAX_RESULTS:
             return _clarification(library, locale, '请先搜索并显示要查看的已保存回忆。'
@@ -138,18 +169,29 @@ class AssistantMemoryFollowupTool:
             identities.add(identity)
             payloads.append(reference)
 
+        action = mode in {'open', 'read_opening'}
+        choice_reply = None
         if ordinal is None:
             if mode == 'outline' and len(payloads) != 1:
                 return _clarification(library, locale,
                     '请先搜索并只显示一条已保存回忆，再询问章节。' if locale == 'zh' else
                     'Search again and display one saved memory before asking for its chapters.')
             selected = 0 if len(payloads) == 1 else None
+            if action and selected is None:
+                choice_reply = (f'你想选择哪一条？当前有 {len(payloads)} 条回忆，可以说“读第二个故事”或“打开第一个故事”。'
+                    if locale == 'zh' else
+                    f'Which one? There are {len(payloads)} memories. Say “read the second story” or “open the first story”.')
         else:
             if type(ordinal) is not int or not 1 <= ordinal <= 12 or ordinal > len(payloads):
-                return _clarification(library, locale,
-                    '这个序号不在当前显示列表中；请先重新搜索。' if locale == 'zh' else
-                    'That number is outside the displayed list. Search again first.')
-            selected = ordinal - 1
+                if not action:
+                    return _clarification(library, locale,
+                        '这个序号不在当前显示列表中；请先重新搜索。' if locale == 'zh' else
+                        'That number is outside the displayed list. Search again first.')
+                selected = None
+                choice_reply = (f'当前只有 {len(payloads)} 条回忆，请选择列表中的序号。' if locale == 'zh' else
+                    f'There are {len(payloads)} memories. Choose a number from this list.')
+            else:
+                selected = ordinal - 1
 
         try:
             with access.connection_factory() as connection:
@@ -235,8 +277,10 @@ class AssistantMemoryFollowupTool:
 
         immutable = tuple(projected)
         return AssistantSavedMemoryOutcome(library_id=library, locale=locale,
-            clarification=False, reply=_reply(mode, count,
+            clarification=False, reply=choice_reply or _reply(mode, count,
                 None if selected is None else selected + 1, locale),
             references=immutable, total=count, has_more=False,
             context_revision=_context_revision(library, count,
-                [_reference_payload(item) for item in immutable]))
+                [_reference_payload(item) for item in immutable]),
+            action_type=mode if action and selected is not None else None,
+            action_ordinal=selected if action and selected is not None else None)

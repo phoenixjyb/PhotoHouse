@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 
 const require=createRequire(import.meta.url);
-const {createController,PrivateAssistantError,safeJson,validateExchange,validateResult,validateEnvelope,validateCapabilities,validateThread,validateHistoryPage}=require('../../backend/app/ui/access/assistant-private-workspace.js');
+const {createController,PrivateAssistantError,safeJson,validateExchange,validateResult,validateEnvelope,validateCapabilities,validateSavedMemoryActionCapabilities,validateThread,validateHistoryPage}=require('../../backend/app/ui/access/assistant-private-workspace.js');
 const threadId='22222222-2222-4222-8222-222222222222';
 const requestId='11111111-1111-4111-8111-111111111111';
 const library='library-a';
@@ -17,9 +17,69 @@ const savedMemorySpeechCapabilities=available=>({version:1,available});
 const savedMemoryReaderCapabilities=available=>({version:1,available});
 const savedMemoryFollowupCapabilities=available=>({version:1,available});
 const savedMemoryReadingCapabilities=available=>({version:1,available});
+const savedMemoryActionCapabilities=available=>({version:1,available});
 const memoryBinding={kind:'story',id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',revision:'2',source_revision:'b'.repeat(64)};
 const memoryResult=(overrides={})=>({version:1,kind:'memory_cards',reply:'Found 1 saved memory.',context:{kind:'saved_memory',library_id:library,source_revision:'c'.repeat(64),references:[{...memoryBinding}]},filters:null,items:[],total:1,has_more:false,effect:null,memory_cards:[{...memoryBinding,title:'A family day 👨‍👩‍👧‍👦',excerpt:'We walked beside the water.'}],...overrides});
 const memoryClarification=(overrides={})=>({version:1,kind:'clarification',reply:'Say a phrase to search saved memories.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,memory_cards:[],...overrides});
+
+test('saved-memory action capability and action proposals are exact, fresh, and ordinal-bound',async()=>{
+  const action={type:'read_opening',ordinal:0},fresh=memoryResult({memory_action:action});
+  assert.deepEqual(validateResult(fresh,library,false,true,true).memory_action,action);
+  for(const bad of [
+    {...fresh,memory_action:{type:'read_opening',ordinal:12}},
+    {...fresh,memory_action:{type:'open',ordinal:0,asset_id:'42'}},
+    {...fresh,memory_action:{type:'delete',ordinal:0}},
+    {...memoryClarification(),memory_action:action}
+  ])assert.throws(()=>validateResult(bad,library,false,true,true),e=>e.code==='invalid_response');
+  assert.throws(()=>validateResult(fresh,library,false,true,false),e=>e.code==='invalid_response');
+  assert.throws(()=>validateResult(fresh,library,true,true,true),e=>e.code==='invalid_response','recovery cannot restore a navigable action');
+  assert.deepEqual(validateSavedMemoryActionCapabilities({version:1,available:false}),{version:1,available:false});
+  assert.throws(()=>validateSavedMemoryActionCapabilities({version:1,available:true,extra:false}),e=>e.code==='invalid_response');
+
+  let turnCount=0;
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps();
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-action-capabilities'))return savedMemoryActionCapabilities(true);
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turnCount++;return {...envelope('completed',false,turnCount),request_id:options.body.request_id,result:turnCount===1?memoryResult():fresh};}
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333']});
+  await h.controller.capabilities();await h.controller.savedMemoryCapabilities();
+  assert.equal(await h.controller.savedMemoryActionsCapabilities(),true);
+  await h.controller.create();await h.controller.send('find saved memories');
+  const completed=await h.controller.send('read the first saved memory');
+  const actionTurn=h.calls.filter(call=>call.path.endsWith('/turns')).at(-1);
+  assert.deepEqual(actionTurn.body.accepts,['saved_memory_cards_v1','saved_memory_actions_v1']);
+  assert.deepEqual(actionTurn.body.memory_parent,{request_id:requestId,revision:1},'action parent binding works independently of the followup probe');
+  assert.equal(completed.recovered,false);assert.deepEqual(h.controller.state().currentResult.memory_action,action);
+  assert.equal(h.controller.state().savedMemoryActionReady,true,'the action requires the current visible source cohort');
+});
+
+test('saved-memory action probe preserves old-route fallback and revokes on true base denial',async()=>{
+  let baseReads=0;
+  const fallback=harness(async(path)=>{
+    if(path.includes('/capabilities?')){baseReads++;return workspaceCaps();}
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-action-capabilities'))throw Object.assign(new Error('old optional route'),{status:403});
+    throw Error(`unexpected ${path}`);
+  });
+  await fallback.controller.capabilities();await fallback.controller.savedMemoryCapabilities();
+  assert.equal(await fallback.controller.savedMemoryActionsCapabilities(),false);
+  assert.equal(baseReads,2,'an optional route 403 is disambiguated by the same authenticated base probe');
+  assert.equal(fallback.controller.state().locked,false,'a legacy route boundary does not revoke the authorized workspace');
+
+  let deniedBaseReads=0;
+  const denied=harness(async(path)=>{
+    if(path.includes('/capabilities?')){deniedBaseReads++;if(deniedBaseReads===1)return workspaceCaps();throw Object.assign(new Error('authorization revoked'),{status:403});}
+    if(path.includes('/saved-memory-capabilities'))return savedMemoryCapabilities(true);
+    if(path.includes('/saved-memory-action-capabilities'))throw Object.assign(new Error('old optional route'),{status:403});
+    throw Error(`unexpected ${path}`);
+  });
+  await denied.controller.capabilities();await denied.controller.savedMemoryCapabilities();
+  await assert.rejects(denied.controller.savedMemoryActionsCapabilities(),e=>e.status===403);
+  assert.equal(denied.controller.state().locked,true,'a real authorization denial clears the local scope');
+});
 const exchange=(revision,id=`${String(revision).padStart(8,'0')}-4444-4444-8444-${String(revision).padStart(12,'0')}`)=>({exchange_id:id,revision,created_at:stamp,expires_at:'2026-11-11T00:00:00Z',input_text:`Question ${revision}`,reply:`Reply ${revision}`,cards:[],receipt_count:0});
 const detail=(from,to,hasOlder=false,overrides={})=>({version:1,thread:thread(to),exchanges:Array.from({length:to-from+1},(_,i)=>exchange(from+i)),has_older_exchanges:hasOlder,...overrides});
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};

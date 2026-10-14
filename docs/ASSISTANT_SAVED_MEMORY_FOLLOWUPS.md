@@ -1,8 +1,9 @@
 # Conversational followups over saved memories
 
-Status: implemented in local backend, Web and phone source; phone v56 identity
-is reserved. Published API/Web and phone v55 contain search and reader handoff,
-not this later followup feature. Delivery and family acceptance remain separate.
+Status: followups are delivered in API/Web source `4b69844` and phone v57.
+Family acceptance remains separate. The later local
+[contextual voice actions](ASSISTANT_FLUID_EXPERIENCE.md) extend this contract
+with explicit action negotiation; they are not part of delivered v57.
 
 ## User experience
 

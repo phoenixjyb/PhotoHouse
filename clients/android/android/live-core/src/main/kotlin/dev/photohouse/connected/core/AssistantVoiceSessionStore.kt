@@ -51,8 +51,10 @@ class AssistantVoiceSessionStore(
     private var ownedTranscriptRequestId: String? = null
     private var ownedTurnRequestId: String? = null
     private var ownedSpeechRequestId: String? = null
+    private var ownedMemoryReaderOrdinal: Int? = null
     /** The explicit start/resume choice is held for this session; capability loss ends the loop. */
     @Volatile private var sessionPrivateReplySpeechEnabled: Boolean? = null
+    @Volatile private var sessionMemoryActionsEnabled: Boolean = false
     @Volatile private var closed = false
     private val storeMonitor = coroutineScope.launch {
         store.state.collect { live ->
@@ -69,6 +71,12 @@ class AssistantVoiceSessionStore(
         store.assistantWorkspaceState.collect {
             val boundMode = sessionPrivateReplySpeechEnabled
             if (!closed && boundMode != null && boundMode != store.privateReplySpeechEnabled() &&
+                controller.state.phase in ACTIVE_PHASES) {
+                stopForTransition(controller.contextChanged(null))
+            } else if (!closed && controller.state.phase in ACTIVE_PHASES &&
+                store.state.value.assistant?.speechMemoryOpeningOrdinal != null && !it.savedMemoryReadingAvailable) {
+                stopForTransition(controller.contextChanged(null))
+            } else if (!closed && sessionMemoryActionsEnabled && !it.savedMemoryActionsAvailable &&
                 controller.state.phase in ACTIVE_PHASES) {
                 stopForTransition(controller.contextChanged(null))
             }
@@ -88,11 +96,13 @@ class AssistantVoiceSessionStore(
     fun start(): Boolean = synchronized(lock) {
         if (closed || !foregroundNow() || !scopeMatches(store.state.value) || !readyForStart()) return false
         sessionPrivateReplySpeechEnabled = store.privateReplySpeechEnabled()
+        sessionMemoryActionsEnabled = store.assistantWorkspaceState.value.savedMemoryActionsAvailable
         val transition = controller.start(voiceScope, foreground = true)
         if (!transition.accepted) return false
         ownedTranscriptRequestId = null
         ownedTurnRequestId = null
         ownedSpeechRequestId = null
+        ownedMemoryReaderOrdinal = null
         mutableState.value = transition.state
         transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
         true
@@ -105,6 +115,7 @@ class AssistantVoiceSessionStore(
             current.reason == VoiceSessionStopReason.UNCERTAIN_REQUEST || !foregroundNow() ||
             !scopeMatches(store.state.value) || !readyForStart()) return false
         sessionPrivateReplySpeechEnabled = store.privateReplySpeechEnabled()
+        sessionMemoryActionsEnabled = store.assistantWorkspaceState.value.savedMemoryActionsAvailable
         val transition = controller.resume(voiceScope, foreground = true)
         if (!transition.accepted) return false
         mutableState.value = transition.state
@@ -190,6 +201,9 @@ class AssistantVoiceSessionStore(
 
     /** Never clear or cancel work that was started by a separate manual assistant control. */
     private fun cancelOwnedStoreWork() {
+        val memoryReaderIsOurs = ownedMemoryReaderOrdinal != null
+        ownedMemoryReaderOrdinal = null
+        if (memoryReaderIsOurs) store.assistantWorkspaceCoordinator?.invalidateSavedMemoryReader()
         val assistant = store.state.value.assistant ?: return
         val transcriptIsOurs = ownedTranscriptRequestId?.let { requestId ->
             assistant.transcribing && assistant.lastRequestReceipt?.requestId == requestId
@@ -346,6 +360,65 @@ class AssistantVoiceSessionStore(
             endForOpen(asset, requestId)
             return
         }
+        val memoryAction = turn.memoryAction
+        if (turn.kind == "memory_cards" && memoryAction != null) {
+            val workspace = store.assistantWorkspaceState.value
+            val currentTurn = workspace.currentTurn
+            val currentResult = currentTurn?.result
+            val ordinal = memoryAction.ordinal
+            val freshAction = workspace.savedMemoryActionsAvailable && currentTurn?.requestId == requestId &&
+                currentTurn.status == AssistantWorkspaceRequestStatus.COMPLETED && !currentTurn.recovered &&
+                currentTurn.threadId == assistant?.privateThreadId && currentTurn.revision == workspace.detail?.thread?.revision &&
+                currentTurn.revision > 0 && currentResult?.kind == "memory_cards" &&
+                currentResult.memoryCards.isNotEmpty() && ordinal in currentResult.memoryCards.indices &&
+                currentResult.savedMemoryContext?.libraryId == workspace.libraryId && currentResult.memoryAction == memoryAction &&
+                assistant?.turns?.lastOrNull()?.let { it.localRequestId == requestId && !it.turn.recovered &&
+                    it.turn.memoryAction == memoryAction && it.turn.memoryCards == currentResult.memoryCards } == true
+            if (!freshAction) { reviewCompletedRequest(binding); return }
+            val exactTurn = requireNotNull(currentTurn)
+            val exactResult = requireNotNull(currentResult)
+            when (memoryAction.type) {
+                "open" -> {
+                    val coordinator = store.assistantWorkspaceCoordinator
+                    if (!workspace.savedMemoryReaderAvailable || coordinator == null) {
+                        reviewCompletedRequest(binding); return
+                    }
+                    ownedMemoryReaderOrdinal = ordinal
+                    if (!coordinator.openSavedMemoryCard(ordinal)) {
+                        ownedMemoryReaderOrdinal = null
+                        reviewCompletedRequest(binding); return
+                    }
+                    val opened = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                        store.assistantWorkspaceState.first { latest ->
+                            latest.memoryReaderHandoff != null || latest.memoryReaderErrorOrdinal == ordinal && !latest.busy
+                        }
+                    }?.let { latest -> latest.memoryReaderHandoff?.let { handoff ->
+                        handoff.turnId == requestId && handoff.completionRevision == exactTurn.revision &&
+                            handoff.ordinal == ordinal && handoff.card == exactResult.memoryCards[ordinal]
+                    } == true } == true
+                    if (opened && bindingCurrent(binding, VoiceSessionPhase.REQUESTING)) {
+                        ownedMemoryReaderOrdinal = null
+                        endForSavedMemory()
+                    } else reviewCompletedRequest(binding)
+                    return
+                }
+                "read_opening" -> {
+                    if (!workspace.savedMemoryReadingAvailable || !store.canReadAssistantMemoryOpening(ordinal)) {
+                        reviewCompletedRequest(binding); return
+                    }
+                    val transition = controller.requestCompleted(binding, VoiceAssistantReply(
+                        text = exactResult.reply, receipt = VoiceRequestReceipt.CONFIRMED_SUCCESS,
+                    ))
+                    if (!accept(transition)) return
+                    val speak = transition.effects.filterIsInstance<VoiceSessionEffect.Speak>().singleOrNull()
+                    if (speak == null) { reviewCompletedRequest(binding); return }
+                    fetchAndPlaySpeech(speak.binding, memoryOpeningOrdinal = ordinal,
+                        parentTurnId = requestId, parentRevision = exactTurn.revision)
+                    return
+                }
+                else -> { reviewCompletedRequest(binding); return }
+            }
+        }
         val privateReplySpeech = sessionPrivateReplySpeechEnabled == true
         val savedMemorySpeech = turn.kind != "memory_cards" || store.assistantWorkspaceState.value.savedMemorySpeechAvailable
         // An enabled private reply path never silently degrades to a count or truncates the reply.
@@ -367,48 +440,75 @@ class AssistantVoiceSessionStore(
         fetchAndPlaySpeech(speak.binding)
     }
 
-    private suspend fun fetchAndPlaySpeech(binding: VoiceSessionBinding) {
+    private suspend fun fetchAndPlaySpeech(
+        binding: VoiceSessionBinding,
+        memoryOpeningOrdinal: Int? = null,
+        parentTurnId: String? = null,
+        parentRevision: Long? = null,
+    ) {
         if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
         val priorReceiptId = store.state.value.assistant?.lastRequestReceipt?.requestId
-        if (!store.loadAssistantSpeech(language)) {
+        val loaded = if (memoryOpeningOrdinal != null)
+            store.loadAssistantMemoryOpening(memoryOpeningOrdinal, parentTurnId, parentRevision)
+        else store.loadAssistantSpeech(language)
+        if (!loaded) {
             completeSpeech(binding, success = false)
             return
         }
         val requestId = store.state.value.assistant?.lastRequestReceipt?.requestId
             ?.takeIf(AssistantWire::validRequestId)?.takeIf { it != priorReceiptId }
         if (requestId == null) { completeSpeech(binding, success = false); return }
+        // Register ownership before waiting for the server-owned opening. Pause/End can now cancel
+        // the in-flight GET/TTS job through ConnectedStore, including before audio is returned.
         ownedSpeechRequestId = requestId
-        val result = awaitAssistantState(binding, STEP_TIMEOUT_MILLIS) { assistant ->
-            assistant?.speechAudio != null && assistant.lastRequestReceipt?.requestId == requestId ||
-                assistant?.let { !it.speechBusy && it.lastRequestReceipt?.requestId == requestId && it.failure != null } == true
-        }
-        if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
-        val audio = result?.assistant?.speechAudio?.takeIf {
-            result.assistant.lastRequestReceipt?.requestId == requestId
-        }
-        if (audio == null) { completeSpeech(binding, success = false); return }
-        var success = false
+        val capabilityMonitor = if (memoryOpeningOrdinal != null) coroutineScope.launch {
+            store.assistantWorkspaceState.first { !it.savedMemoryReadingAvailable || !it.savedMemoryActionsAvailable }
+            if (bindingCurrent(binding, VoiceSessionPhase.SPEAKING))
+                stopForTransition(controller.contextChanged(null))
+        } else null
         try {
-            success = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
-                platform.playSpeech(audio) { observePlatformStart(binding, VoiceSessionPhase.SPEAKING) }
-            } == true
-            store.reportAssistantPlaybackOutcome(audio, if (success) "completed" else "failed")
-        } catch (cancelled: CancellationException) {
-            store.reportAssistantPlaybackOutcome(audio, "cancelled")
-            throw cancelled
-        } catch (_: Exception) {
-            success = false
-            store.reportAssistantPlaybackOutcome(audio, "failed")
+            val result = awaitAssistantState(binding, STEP_TIMEOUT_MILLIS) { assistant ->
+                assistant?.let { it.speechMemoryOpeningOrdinal == memoryOpeningOrdinal || memoryOpeningOrdinal == null } == true &&
+                    (assistant.speechAudio != null && assistant.lastRequestReceipt?.requestId == requestId ||
+                        !assistant.speechBusy && assistant.lastRequestReceipt?.requestId == requestId && assistant.failure != null)
+            }
+            if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+            val audio = result?.assistant?.speechAudio?.takeIf {
+                result.assistant.lastRequestReceipt?.requestId == requestId
+            }
+            if (audio == null) { completeSpeech(binding, success = false); return }
+            var success = false
+            try {
+                success = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                    platform.playSpeech(audio) { observePlatformStart(binding, VoiceSessionPhase.SPEAKING) }
+                } == true
+                store.reportAssistantPlaybackOutcome(audio, if (success) "completed" else "failed")
+            } catch (cancelled: CancellationException) {
+                store.reportAssistantPlaybackOutcome(audio, "cancelled")
+                throw cancelled
+            } catch (_: Exception) {
+                success = false
+                store.reportAssistantPlaybackOutcome(audio, "failed")
+            } finally {
+                if (!success) runCatching { platform.stopAudio() }
+                audio.close()
+                val latestAssistant = store.state.value.assistant
+                if (ownedSpeechRequestId == requestId && latestAssistant?.lastRequestReceipt?.requestId == requestId &&
+                    latestAssistant.speechAudio === audio) store.clearAssistantSpeech()
+                if (ownedSpeechRequestId == requestId) ownedSpeechRequestId = null
+            }
+            if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+            completeSpeech(binding, success)
         } finally {
-            if (!success) runCatching { platform.stopAudio() }
-            audio.close()
-            val latestAssistant = store.state.value.assistant
-            if (ownedSpeechRequestId == requestId && latestAssistant?.lastRequestReceipt?.requestId == requestId &&
-                latestAssistant.speechAudio === audio) store.clearAssistantSpeech()
-            if (ownedSpeechRequestId == requestId) ownedSpeechRequestId = null
+            capabilityMonitor?.cancel()
+            if (ownedSpeechRequestId == requestId) {
+                // If audio never arrived, clearAssistantSpeech cancels the pending workspace TTS job.
+                val latestAssistant = store.state.value.assistant
+                if (latestAssistant?.lastRequestReceipt?.requestId == requestId && latestAssistant.speechBusy)
+                    store.clearAssistantSpeech()
+                ownedSpeechRequestId = null
+            }
         }
-        if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
-        completeSpeech(binding, success)
     }
 
     private fun completeRequest(binding: VoiceSessionBinding, reply: VoiceAssistantReply) {
@@ -440,6 +540,19 @@ class AssistantVoiceSessionStore(
         runCatching { platform.stopAudio() }
         cancelOwnedStoreWork()
         if (foregroundNow() && scopeMatches(store.state.value)) runCatching { onOpen(asset.id, requestId) }
+    }
+
+    /** End only after the source-bound memory handoff is installed and before its UI navigation runs. */
+    private fun endForSavedMemory() {
+        val transition = controller.end()
+        if (!accept(transition)) return
+        synchronized(lock) {
+            operationJob?.cancel()
+            operationJob = null
+            activeCapture = null
+        }
+        runCatching { platform.stopAudio() }
+        cancelOwnedStoreWork()
     }
 
     private suspend fun awaitAssistantState(

@@ -18,6 +18,7 @@ data class AssistantSavedMemoryContext(
 data class AssistantSavedMemoryReference(
     val kind: String, val id: String, val revision: String, val sourceRevision: String,
 )
+data class AssistantSavedMemoryAction(val type: String, val ordinal: Int)
 data class AssistantTurn(
     val kind: String,
     val reply: String,
@@ -31,6 +32,7 @@ data class AssistantTurn(
     val recovered: Boolean = false,
     val memoryCards: List<AssistantSavedMemoryCard> = emptyList(),
     val savedMemoryContext: AssistantSavedMemoryContext? = null,
+    val memoryAction: AssistantSavedMemoryAction? = null,
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,

@@ -129,6 +129,10 @@ interface AssistantWorkspaceApi {
                            expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
                            memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn =
         submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId, acceptSavedMemoryCards)
+    suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                           expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                           memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean): AssistantWorkspaceTurn =
+        submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId, acceptSavedMemoryCards, memoryParent)
     suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Synthesizes only the server-owned reply for an exact completed private turn. */
     suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
@@ -139,6 +143,8 @@ interface AssistantWorkspaceApi {
         SavedMemoryReaderCapabilities(1, false)
     /** Older servers/adapters keep the new search result disabled unless this exact probe is available. */
     suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
+        SavedMemoryReaderCapabilities(1, false)
+    suspend fun savedMemoryActionCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
     suspend fun savedMemoryFollowupCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)

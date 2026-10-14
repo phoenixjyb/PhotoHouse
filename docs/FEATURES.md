@@ -1,5 +1,18 @@
 # Feature and acceptance matrix
 
+## Next local slice: conversational story actions
+
+The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) connects voice, chat,
+current numbered story cards and protected readers. Local work adds negotiated
+“读第二个故事” and “打开第一个故事” actions, ambiguity that retains the displayed
+list, and cancellation guards. Delivered v57 stays the live baseline; this slice
+is not yet qualified on Windows, signed, deployed or physically accepted.
+
+Following priorities are chapter progress/continuation, measured latency and
+qualified speaking interruption, then grounded storytelling and family quality
+review. New providers and live editorial/grouping activation remain separate
+qualification and operation gates.
+
 ## October 14 delivered: saved-memory opening speech and followups
 
 API/Web source 4b69844 is served and phone **v57** is signed and published on

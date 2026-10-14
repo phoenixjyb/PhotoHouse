@@ -10,6 +10,16 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## Conversational viewing
+
+The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) uses the protected
+backend as the authority for context and typed read-only actions. New clients
+explicitly negotiate action results over fresh source cohorts; private persisted
+replies remain generic, and recovered/history exchanges remain inert. Web and
+phone own visible state, capture, playback and lifecycle cancellation.
+Continuous source reading, latency measurement and speaking interruption have
+separate acceptance stages; the current pipeline remains half duplex.
+
 ## Product concepts
 
 A **library** is an access boundary. An **album** is a deliberate collection of media. A **memory** is an original contribution, in text or audio, from a family member. A **story** is an editable, revisioned narrative with chapters and media selection. A **memory book** organizes related chapters for a longer reading experience.

@@ -1,5 +1,38 @@
 # Development and public release qualification
 
+## Contextual voice and viewing qualification (October 14)
+
+The local [fluid assistant slice](ASSISTANT_FLUID_EXPERIENCE.md) passed 111
+saved-memory backend tests, including negotiated action shape, source-bound
+opening speech, withdrawn-source concealment, current full-cohort validation,
+legacy/recovered request compatibility and choice prompts that retain ordering.
+Source text/action metadata stays out of persisted private replies.
+
+Android passed 958 live-core and 17 connected JVM tests, phone lint, and
+unconfigured debug/app-test assembly. One generated API 36 emulator journey
+checked the explicit localized read action at 200% text; the render was inspected.
+Voice tests cover successful playback before the next capture, Pause during a
+held opening fetch and reading-capability loss during playback. Reader UI
+navigation waits until voice ends. Phone identity is reserved as v58; these
+unconfigured builds are not a signed household OTA candidate.
+
+Web passed 65 Node tests and a generated browser journey with 20 checkpoints,
+including actual continuous-session action dispatch, source opening playback,
+asynchronous media-error pause, explicit typed actions, target-card focus,
+ambiguity, fresh capability negotiation and a delayed old-scope reader response.
+Phone at 150% text and desktop renders were inspected. Screenshot labels use
+clean generated layout text after separate hostile-title escaping assertions.
+Two earlier browser runs timed out during a later search setup. The fixture was
+corrected to scope capability probes to the current reload and wait for current
+controller readiness, rather than matching earlier page responses; the final
+complete journey passed without extending that timeout.
+
+The broader API profile and Windows qualification were not run in this slice.
+No live API switch, schema migration, signing, publication or physical phone/TV
+acceptance is claimed. Half-duplex turn taking remains in place; whole chapters,
+streaming/latency changes and speaking interruption are later stages.
+
+
 ## Voice reliability qualification (October 13)
 
 The [voice reliability contract](ASSISTANT_VOICE_RELIABILITY.md) passed the

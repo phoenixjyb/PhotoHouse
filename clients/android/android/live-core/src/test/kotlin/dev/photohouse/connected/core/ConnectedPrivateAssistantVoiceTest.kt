@@ -86,6 +86,123 @@ class ConnectedPrivateAssistantVoiceTest {
         fixture.driver.close()
     }
 
+    @Test fun freshReadOpeningActionUsesSavedMemorySpeechAndRelistensOnlyAfterPlaybackCompletes() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemoryActionsAvailable = true
+        fixture.workspaceApi.savedMemoryReadingAvailable = true
+        fixture.workspaceApi.resultFactory = { request -> savedMemoryResult(request).copy(
+            memoryAction = AssistantSavedMemoryAction("read_opening", 0)) }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.state.value.savedMemoryActionsAvailable)
+        assertTrue(coordinator.refreshSavedMemoryReadingCapabilities()); runCurrent()
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start()); runCurrent()
+        fixture.platform.speechStarted.receive()
+        assertEquals(1, fixture.workspaceApi.memoryOpeningSpeechCalls)
+        assertEquals(0, fixture.workspaceApi.speechCalls)
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.platform.captureCalls)
+        fixture.platform.speechResults.send(true)
+        runCurrent()
+        assertEquals(VoiceSessionPhase.LISTENING, fixture.driver.state.value.phase)
+        assertEquals(2, fixture.platform.captureCalls)
+        fixture.driver.end()
+        fixture.driver.close()
+    }
+
+    @Test fun pausingDuringPendingOpeningFetchCancelsOwnedSpeechRequest() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemoryActionsAvailable = true
+        fixture.workspaceApi.savedMemoryReadingAvailable = true
+        fixture.workspaceApi.resultFactory = { request -> savedMemoryResult(request).copy(
+            memoryAction = AssistantSavedMemoryAction("read_opening", 0)) }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemoryReadingCapabilities()); runCurrent()
+        val speechStarted = CompletableDeferred<Unit>()
+        val pendingSpeech = CompletableDeferred<AssistantSpeechResult>()
+        fixture.workspaceApi.memoryOpeningHandler = { _, _, _, _, _, _ ->
+            speechStarted.complete(Unit)
+            pendingSpeech.await()
+        }
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start()); runCurrent()
+        speechStarted.await()
+        assertTrue(fixture.store.state.value.assistant!!.speechBusy)
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertTrue(fixture.driver.pause())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertFalse("Pause cancels the in-flight workspace opening request", fixture.store.state.value.assistant!!.speechBusy)
+        assertNull(fixture.store.state.value.assistant?.speechAudio)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.platform.captureCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun freshOpenActionInstallsSourceBoundHandoffThenEndsVoice() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        val card = savedMemoryResult("33333333-3333-4333-8333-333333333333").memoryCards.single()
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemoryActionsAvailable = true
+        fixture.workspaceApi.savedMemoryReaderAvailable = true
+        fixture.workspaceApi.readerPayload = SavedMemoryReaderPayload.Story(SavedMemoryStory(
+            id = card.id, libraryId = "family", revision = 2, createdAt = 0, updatedAt = 0, canEdit = false,
+            selectionRevision = "a".repeat(64), title = card.title, theme = "family", language = "en",
+            items = listOf(MemoryStoryAsset(testAsset(), emptyList())),
+            chapters = listOf(SavedMemoryStoryChapter("chapter-1", "Garden", "A day together.", listOf("1"), emptyList())),
+            questions = emptyList(),
+        ))
+        fixture.workspaceApi.resultFactory = { request -> savedMemoryResult(request).copy(
+            memoryAction = AssistantSavedMemoryAction("open", 0)) }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemoryReaderCapabilities()); runCurrent()
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start()); runCurrent()
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.USER_ENDED, fixture.driver.state.value.reason)
+        val handoff = requireNotNull(coordinator.state.value.memoryReaderHandoff)
+        assertEquals(0, handoff.ordinal)
+        assertEquals(coordinator.state.value.currentTurn?.requestId, handoff.turnId)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        fixture.driver.close()
+    }
+
+    @Test fun losingReadingCapabilityDuringActionPlaybackCancelsWithoutRelistening() = runTest {
+        val fixture = fixture(activatePrivate = true)
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemoryActionsAvailable = true
+        fixture.workspaceApi.savedMemoryReadingAvailable = true
+        fixture.workspaceApi.resultFactory = { request -> savedMemoryResult(request).copy(
+            memoryAction = AssistantSavedMemoryAction("read_opening", 0)) }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemoryReadingCapabilities()); runCurrent()
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.start()); runCurrent()
+        fixture.platform.speechStarted.receive()
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertEquals(0, fixture.store.state.value.assistant?.speechMemoryOpeningOrdinal)
+        val audio = requireNotNull(fixture.platform.lastSpeechAudio)
+
+        fixture.workspaceApi.savedMemoryReadingAvailable = false
+        assertTrue(coordinator.refreshSavedMemoryReadingCapabilities()); runCurrent()
+        assertFalse(coordinator.state.value.savedMemoryReadingAvailable)
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertTrue(audio.isClosed)
+        assertEquals(1, fixture.platform.captureCalls)
+        fixture.driver.close()
+    }
+
     @Test fun savedMemoryOpeningEndsVoiceBeforePostAndStopCancelsPlaybackWithoutRelistening() = runTest {
         val fixture = fixture(activatePrivate = true)
         val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
@@ -892,8 +1009,18 @@ class ConnectedPrivateAssistantVoiceTest {
         val speechRequestIds = mutableListOf<String>()
         var resultFactory: (String) -> AssistantTurn = ::result
         var savedMemoryCardsAvailable = false
+        var savedMemoryActionsAvailable = false
         var savedMemoryFollowupAvailable = false
+        var savedMemoryReaderAvailable = false
         var savedMemoryReadingAvailable = false
+        var readerPayload: SavedMemoryReaderPayload = SavedMemoryReaderPayload.Story(SavedMemoryStory(
+            id = "33333333-3333-4333-8333-333333333333", libraryId = "family", revision = 2,
+            createdAt = 0, updatedAt = 0, canEdit = false, selectionRevision = "a".repeat(64),
+            title = "Garden day", theme = "family", language = "en",
+            items = listOf(MemoryStoryAsset(testAsset(), emptyList())),
+            chapters = listOf(SavedMemoryStoryChapter("chapter-1", "Garden", "A day together.", listOf("1"), emptyList())),
+            questions = emptyList(),
+        ))
         var memoryOpeningSpeechCalls = 0
         var speechHandler: suspend (String, String, String, Long, String) -> AssistantSpeechResult =
             { _, _, _, _, request -> AssistantSpeechResult(syntheticAnnotationWav(), AssistantRequestReceipt(request, "enabled", "succeeded")) }
@@ -931,6 +1058,12 @@ class ConnectedPrivateAssistantVoiceTest {
             texts += text
             return submitHandler(threadId, requestId, expectedRevision, text)
         }
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?,
+                                        acceptSavedMemoryCards: Boolean, memoryParent: AssistantSavedMemoryParent?,
+                                        acceptSavedMemoryActions: Boolean): AssistantWorkspaceTurn =
+            submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+                acceptSavedMemoryCards, memoryParent)
         override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
             getCalls++
             return getHandler(threadId, requestId, revision)
@@ -947,6 +1080,10 @@ class ConnectedPrivateAssistantVoiceTest {
         }
         override suspend fun savedMemoryReadingCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryReadingAvailable)
+        override suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemoryReaderAvailable)
+        override suspend fun savedMemoryReader(token: Bearer, library: String, threadId: String, turnId: String,
+                                               ordinal: Int, expectedRevision: Long): SavedMemoryReaderPayload = readerPayload
         override suspend fun speakSavedMemoryOpening(token: Bearer, library: String, threadId: String, turnId: String,
                                                      ordinal: Int, expectedRevision: Long,
                                                      speechRequestId: String): AssistantSpeechResult {
@@ -955,6 +1092,8 @@ class ConnectedPrivateAssistantVoiceTest {
         }
         override suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryCardsAvailable)
+        override suspend fun savedMemoryActionCapabilities(token: Bearer, library: String) =
+            SavedMemoryReaderCapabilities(1, savedMemoryActionsAvailable)
         override suspend fun savedMemoryFollowupCapabilities(token: Bearer, library: String) =
             SavedMemoryReaderCapabilities(1, savedMemoryFollowupAvailable)
 

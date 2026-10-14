@@ -416,6 +416,22 @@ internal fun AssistantScreen(
                             Card(Modifier.fillMaxWidth().testTag("assistant-saved-memory-cards"), shape = RoundedCornerShape(18.dp)) {
                                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleMedium)
+                                    freshMemoryTurn.result?.memoryAction?.takeIf { savedMemoryWorkspace.savedMemoryActionsAvailable &&
+                                        it.ordinal in cards.indices }?.let { action ->
+                                        val actionCard = cards[action.ordinal]
+                                        OutlinedButton(
+                                            onClick = { if (action.type == "open") onOpenSavedMemoryCard?.invoke(action.ordinal)
+                                                else onReadSavedMemoryOpening?.invoke(action.ordinal) },
+                                            enabled = if (action.type == "open") savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null
+                                                else savedMemoryWorkspace.savedMemoryReadingAvailable && onReadSavedMemoryOpening != null,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                                .testTag("assistant-saved-memory-action"),
+                                        ) {
+                                            Text(if (action.type == "open")
+                                                t("Open suggested memory: ${actionCard.title}", "打开推荐回忆：${actionCard.title}")
+                                            else t("Read suggested opening: ${actionCard.title}", "朗读推荐回忆开篇：${actionCard.title}"))
+                                        }
+                                    }
                                     if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
                                         AssistChip(onClick = { val prompt = memoryFollowupPrompt(0, 2, zh)
                                             if (onSavedMemoryFollowupDraft(prompt)) draft = prompt },

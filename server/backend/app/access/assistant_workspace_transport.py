@@ -20,7 +20,8 @@ from . import discovery as discovery_engine
 from .assistant_journal import Journal, JournalUnavailable, JournalConflict, JournalMissing
 from .assistant_saved_memory_tool import AssistantSavedMemoryTool, _language as _memory_language
 from .assistant_memory_followup import (AssistantMemoryFollowupTool,
-                                        parse_saved_memory_followup)
+                                        parse_saved_memory_followup,
+                                        parse_saved_memory_action)
 from .assistant_memory_discovery import AssistantMemoryDiscovery
 
 from .assistant_workspace_store import (AssistantWorkspaceStore,
@@ -570,6 +571,7 @@ async def saved_memory_capabilities(request: Request):
 
 
 @router.get('/assistant/workspace/v1/saved-memory-followup-capabilities')
+@router.get('/assistant/workspace/v1/saved-memory-action-capabilities')
 async def saved_memory_followup_capabilities(request: Request):
     query = _query(request, {'library_id'}, {'library_id'})
     library = _library(query['library_id'])
@@ -657,6 +659,8 @@ async def read_saved_memory_card(request: Request, thread_id: str,
 
     token, _mode = credentials_from_request(request, allow_query=True)
     access = _memory_runtime(request, allow_query=True)
+    await run_in_threadpool(_validate_saved_reader_references,
+                           access, token, library, cards)
     result = await run_in_threadpool(_saved_memory_reader, access, token, library,
                                      cards[selected_ordinal])
 
@@ -674,6 +678,8 @@ async def read_saved_memory_card(request: Request, thread_id: str,
             latest_exchange.get('revision') != expected_revision or
             latest_exchange.get('cards') != cards):
         raise WorkspaceStoreConflict()
+    await run_in_threadpool(_validate_saved_reader_references,
+                           access, token, library, cards)
     if await _principal(request, library) != account:
         raise AccessDenied()
     return JSONResponse(result, headers=PRIVACY_HEADERS)
@@ -765,12 +771,25 @@ def _validate_saved_speech_references_for_reading(access, token, library, cards)
         raise AssistantSpeechUnavailable() from None
 
 
+def _validate_saved_reader_references(access, token, library, cards):
+    """Keep the reader's withdrawn-source concealment while validating its cohort."""
+    try:
+        return _validate_saved_speech_references_for_reading(access, token, library, cards)
+    except AccessDenied:
+        raise TransportError(404, 'Saved memory unavailable') from None
+    except TransportError as exc:
+        if exc.status in (401, 403, 404):
+            raise TransportError(404, 'Saved memory unavailable') from None
+        raise
+
+
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
 async def create_turn(request: Request, thread_id: str):
     body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts', 'memory_parent'},
                        required={'library_id', 'request_id', 'expected_revision', 'text'},
                        maximum=20 * 1024)
     memory_opt_in = 'accepts' in body
+    memory_actions_opt_in = False
     library, selected = _library(body['library_id']), _thread_id(thread_id)
     ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
     words = _turn_text(body['text'])
@@ -808,8 +827,11 @@ async def create_turn(request: Request, thread_id: str):
     if parent is not None and not memory_opt_in:
         raise WorkspaceInvalid()
     if memory_opt_in:
-        if type(body['accepts']) is not list or body['accepts'] != ['saved_memory_cards_v1']:
+        if (type(body['accepts']) is not list or body['accepts'] not in (
+                ['saved_memory_cards_v1'],
+                ['saved_memory_cards_v1', 'saved_memory_actions_v1'])):
             raise WorkspaceInvalid()
+        memory_actions_opt_in = body['accepts'] == ['saved_memory_cards_v1', 'saved_memory_actions_v1']
         _saved_memory_enabled(request)
     row = await _call(store, 'begin_turn', account, library, selected, ident, revision, words)
     if row['replayed']:
@@ -828,6 +850,8 @@ async def create_turn(request: Request, thread_id: str):
         preferences = await _call(store, 'get_preferences', account)
         memory_access = _memory_runtime(request) if memory_opt_in else None
         followup = parse_saved_memory_followup(words) if memory_opt_in else None
+        if followup is None and memory_actions_opt_in:
+            followup = parse_saved_memory_action(words)
         if followup is not None:
             followup_locale = _memory_language(words, preferences['locale'])
             if parent is None:

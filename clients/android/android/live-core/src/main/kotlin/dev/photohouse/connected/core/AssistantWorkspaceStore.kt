@@ -62,6 +62,7 @@ data class AssistantWorkspaceState(
     val generation: Long? = null,
     val capabilities: AssistantWorkspaceCapabilities? = null,
     val savedMemoryCardsAvailable: Boolean = false,
+    val savedMemoryActionsAvailable: Boolean = false,
     val savedMemoryReaderAvailable: Boolean = false,
     val savedMemorySpeechAvailable: Boolean = false,
     val savedMemoryReadingAvailable: Boolean = false,
@@ -158,7 +159,8 @@ class AssistantWorkspaceStore(
         val scope = requireScope()
         requireEnabled()
         mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = false, savedMemoryReaderAvailable = false,
-            savedMemorySpeechAvailable = false, savedMemoryReadingAvailable = false, savedMemoryFollowupAvailable = false, memoryFollowupDraftParent = null)
+            savedMemorySpeechAvailable = false, savedMemoryReadingAvailable = false, savedMemoryFollowupAvailable = false,
+            savedMemoryActionsAvailable = false, memoryFollowupDraftParent = null)
         val value = api.capabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
         mutableState.value = mutableState.value.copy(
@@ -168,6 +170,7 @@ class AssistantWorkspaceStore(
             error = if (value.available && value.threads) null else AssistantWorkspaceError.UNAVAILABLE,
             savedMemoryCardsAvailable = if (value.available && value.threads) mutableState.value.savedMemoryCardsAvailable else false,
             savedMemoryReaderAvailable = if (value.available && value.threads) mutableState.value.savedMemoryReaderAvailable else false,
+            savedMemoryActionsAvailable = if (value.available && value.threads) mutableState.value.savedMemoryActionsAvailable else false,
         )
     }
 
@@ -175,11 +178,16 @@ class AssistantWorkspaceStore(
     fun refreshSavedMemoryCardsCapabilities(): Boolean = launchAction {
         val scope = requireScope()
         requireEnabled()
-        mutableState.value = mutableState.value.copy(savedMemoryFollowupAvailable = false,
+        mutableState.value = mutableState.value.copy(savedMemoryFollowupAvailable = false, savedMemoryActionsAvailable = false,
             savedMemoryReadingAvailable = false, memoryFollowupDraftParent = null)
         val value = api.savedMemoryCardsCapabilities(scope.bearer, scope.libraryId)
         requireCurrent(scope)
-        mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = value.available)
+        val cardsAvailable = value.version == 1 && value.available
+        val actions = if (cardsAvailable) api.savedMemoryActionCapabilities(scope.bearer, scope.libraryId)
+            else SavedMemoryReaderCapabilities(1, false)
+        requireCurrent(scope)
+        mutableState.value = mutableState.value.copy(savedMemoryCardsAvailable = cardsAvailable,
+            savedMemoryActionsAvailable = cardsAvailable && actions.version == 1 && actions.available)
     }
 
     fun refreshSavedMemoryFollowupCapabilities(): Boolean = launchAction {
@@ -447,14 +455,17 @@ class AssistantWorkspaceStore(
             if (!AssistantWorkspaceWire.validUuid4(request) ||
                 parentRequestId != null && !AssistantWorkspaceWire.validUuid4(parentRequestId)) return false
             val acceptMemoryCards = current.savedMemoryCardsAvailable
+            val acceptMemoryActions = current.savedMemoryCardsAvailable && current.savedMemoryActionsAvailable
             // The parent is the latest fresh saved-memory result, not a property of
             // how the user populated the draft. This also covers typed and spoken
             // followups and drafts edited after a chip was tapped.
             val latestMemoryParent = current.currentTurn?.let { AssistantSavedMemoryParent(it.requestId, it.revision) }
                 ?.takeIf { validCurrentMemoryParent(current, detail.thread, it) }
-            val memoryParent = latestMemoryParent.takeIf { current.savedMemoryFollowupAvailable }
+            val memoryParent = latestMemoryParent.takeIf {
+                current.savedMemoryFollowupAvailable || current.savedMemoryActionsAvailable
+            }
             try { AssistantWorkspaceWire.turnRequest(scope.libraryId, request, detail.thread.revision, text,
-                acceptMemoryCards, memoryParent) }
+                acceptMemoryCards, memoryParent, acceptMemoryActions) }
             catch (_: ApiFailure) { return false }
             val pending = AssistantWorkspacePendingTurn(
                 detail.thread.threadId, request, detail.thread.revision, text, parentRequestId, memoryParent,
@@ -462,7 +473,7 @@ class AssistantWorkspaceStore(
             mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null,
                 memoryFollowupDraftParent = null,
                 memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
-            launchReservedTurn(scope, pending, detail, acceptMemoryCards)
+            launchReservedTurn(scope, pending, detail, acceptMemoryCards, acceptMemoryActions)
             return true
         }
     }
@@ -487,6 +498,7 @@ class AssistantWorkspaceStore(
         pending: AssistantWorkspacePendingTurn,
         detail: AssistantWorkspaceThreadDetail,
         acceptSavedMemoryCards: Boolean = false,
+        acceptSavedMemoryActions: Boolean = false,
     ) {
         operationNonce++
         activeOperationNonce = operationNonce
@@ -497,7 +509,7 @@ class AssistantWorkspaceStore(
                 yield()
                 actionMutex.withLock {
                     requireCurrent(scope)
-                    submitReservedTurn(scope, pending, detail, acceptSavedMemoryCards)
+                    submitReservedTurn(scope, pending, detail, acceptSavedMemoryCards, acceptSavedMemoryActions)
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
@@ -522,12 +534,12 @@ class AssistantWorkspaceStore(
         pending: AssistantWorkspacePendingTurn,
         detail: AssistantWorkspaceThreadDetail,
         acceptSavedMemoryCards: Boolean,
+        acceptSavedMemoryActions: Boolean,
     ) {
         val turn = try {
-            if (pending.memoryParent != null) api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
-                pending.expectedRevision, pending.text, pending.parentRequestId, acceptSavedMemoryCards, pending.memoryParent)
-            else api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
-                pending.expectedRevision, pending.text, pending.parentRequestId, acceptSavedMemoryCards)
+            api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
+                pending.expectedRevision, pending.text, pending.parentRequestId, acceptSavedMemoryCards, pending.memoryParent,
+                acceptSavedMemoryActions)
         } catch (cancel: CancellationException) { throw cancel }
         catch (postFailure: Exception) {
             requireCurrent(scope)

@@ -42,6 +42,41 @@ class AssistantWorkspaceWireTest {
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, true) }
     }
 
+    @Test fun savedMemoryActionsAreStrictFreshAndBoundToAnExistingCard() {
+        val base = savedMemoryResult()
+        fun action(value: String) = base.dropLast(1) + ",\"memory_action\":$value}"
+        val accepted = AssistantWorkspaceWire.turn(turn(action("{\"type\":\"read_opening\",\"ordinal\":0}"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request,
+            fromGet = false, acceptSavedMemoryCards = true, acceptSavedMemoryActions = true)
+        assertEquals(AssistantSavedMemoryAction("read_opening", 0), accepted.result!!.memoryAction)
+        invalid { AssistantWorkspaceWire.turn(turn(action("{\"type\":\"open\",\"ordinal\":0}"), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, acceptSavedMemoryCards = true) }
+        invalid { AssistantWorkspaceWire.turn(turn(action("{\"type\":\"delete\",\"ordinal\":0}"), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, false, true, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(action("{\"type\":\"open\",\"ordinal\":1}"), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, false, true, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(action("{\"type\":\"open\",\"ordinal\":0,\"extra\":true}"), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, false, true, true) }
+        invalid { AssistantWorkspaceWire.turn(turn(action("{\"type\":\"open\",\"ordinal\":0}"), recovered = true).toByteArray(),
+            "family-a", thread, request, fromGet = true, acceptSavedMemoryCards = true, acceptSavedMemoryActions = true) }
+        val clarification = """{"version":1,"kind":"clarification","reply":"Which memory?","context":null,"filters":null,"items":[],"total":0,"has_more":false,"effect":null,"memory_cards":[],"memory_action":{"type":"open","ordinal":0}}"""
+        invalid { AssistantWorkspaceWire.turn(turn(clarification, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, false, true, true) }
+    }
+
+    @Test fun actionNegotiationSendsTheExactOptInPairOnlyWhenQualified() {
+        val requestBody = AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 0, "find a memory",
+            acceptSavedMemoryCards = true, acceptSavedMemoryActions = true)
+        val accepted = kotlinx.serialization.json.Json.parseToJsonElement(requestBody).jsonObject
+        assertEquals(listOf("saved_memory_cards_v1", "saved_memory_actions_v1"),
+            accepted.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+        val legacy = kotlinx.serialization.json.Json.parseToJsonElement(
+            AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 0, "find a memory", acceptSavedMemoryCards = true)).jsonObject
+        assertEquals(listOf("saved_memory_cards_v1"), legacy.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+        invalidInput { AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 0, "find a memory",
+            acceptSavedMemoryCards = false, acceptSavedMemoryActions = true) }
+    }
+
     @Test fun memoryFollowupParentIsAnExactOptionalPositiveRevisionObject() {
         val parent = AssistantSavedMemoryParent(request, 7)
         val legacy = AssistantWorkspaceWire.turnRequest("family-a", exchangeA, 7, "find saved memories")

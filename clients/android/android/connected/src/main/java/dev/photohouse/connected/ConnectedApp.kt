@@ -178,17 +178,6 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             }
         }
     }
-    LaunchedEffect(privateAssistantState.memoryReaderHandoff, state.generation, state.library, state.session?.account_id) {
-        val handoff = privateAssistantState.memoryReaderHandoff ?: return@LaunchedEffect
-        val live = store?.state?.value ?: return@LaunchedEffect
-        val inForeground = (privateAssistantOpen || assistantOpen) && !live.covered && live.generation == state.generation &&
-            live.library == state.library && live.session?.account_id == state.session?.account_id
-        if (inForeground && store.openAssistantMemoryReader(handoff, state.session?.account_id.orEmpty(),
-                state.library.orEmpty(), state.generation)) {
-            closePrivateAssistantPanel()
-            assistantOpen = false
-        }
-    }
     var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
@@ -610,6 +599,22 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     if (assistantOpen && requestId != handledAssistantExchangeId) {
                         handledAssistantExchangeId = requestId
                         store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id)
+                    }
+                }
+                LaunchedEffect(privateAssistantState.memoryReaderHandoff, state.generation, state.library,
+                    state.session?.account_id, voice?.session) {
+                    val handoff = privateAssistantState.memoryReaderHandoff ?: return@LaunchedEffect
+                    // A memory action can publish its reader payload while the voice operation is
+                    // unwinding. Keep the handoff staged until the user opted-in session has ended.
+                    if (voice?.session != null) return@LaunchedEffect
+                    val live = store.state.value
+                    val inForeground = (privateAssistantOpen || assistantOpen) && !live.covered &&
+                        live.generation == state.generation && live.library == state.library &&
+                        live.session?.account_id == state.session?.account_id
+                    if (inForeground && store.openAssistantMemoryReader(handoff, state.session?.account_id.orEmpty(),
+                            state.library.orEmpty(), state.generation)) {
+                        closePrivateAssistantPanel()
+                        assistantOpen = false
                     }
                 }
                 val stopVoiceAndDiscardCaptureBeforeMemorySpeech: () -> Unit = {

@@ -107,6 +107,8 @@ class AssistantSavedMemoryOutcome:
     total: int
     has_more: bool
     context_revision: str | None
+    action_type: str | None = None
+    action_ordinal: int | None = None
 
     def fresh_result(self):
         """Return the transient proposed wire result as fresh mutable objects."""
@@ -138,6 +140,14 @@ class AssistantSavedMemoryOutcome:
                 'has_more': self.has_more, 'effect': None,
                 'memory_cards': cards,
             }
+        if self.action_type is not None:
+            if (self.clarification or self.action_type not in {'open', 'read_opening'} or
+                    type(self.action_ordinal) is not int or
+                    not 0 <= self.action_ordinal < len(cards)):
+                raise TransportError(503, 'Saved memory action unavailable')
+            result['memory_action'] = {'type': self.action_type, 'ordinal': self.action_ordinal}
+        elif self.action_ordinal is not None:
+            raise TransportError(503, 'Saved memory action unavailable')
         try:
             size = len(json.dumps(result, ensure_ascii=False, separators=(',', ':'),
                                   allow_nan=False).encode('utf-8'))

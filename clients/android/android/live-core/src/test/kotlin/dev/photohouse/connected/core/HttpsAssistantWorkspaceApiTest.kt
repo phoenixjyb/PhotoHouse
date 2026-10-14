@@ -140,6 +140,12 @@ class HttpsAssistantWorkspaceApiTest {
             assertProtected(cardsProbe)
 
             f.server.enqueue(response("""{"version":1,"available":true}"""))
+            assertTrue(api.savedMemoryActionCapabilities(token, "family-a").available)
+            val actionsProbe = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-action-capabilities?library_id=family-a", actionsProbe.path)
+            assertProtected(actionsProbe)
+
+            f.server.enqueue(response("""{"version":1,"available":true}"""))
             assertTrue(api.savedMemoryFollowupCapabilities(token, "family-a").available)
             val followupProbe = f.server.takeRequest()
             assertEquals("/assistant/workspace/v1/saved-memory-followup-capabilities?library_id=family-a", followupProbe.path)
@@ -165,11 +171,12 @@ class HttpsAssistantWorkspaceApiTest {
             assertProtected(reading)
 
             f.server.enqueue(response(envelope("completed", result()), 200))
-            api.submitTurn(token, "family-a", thread, request, 0, "find saved story lake", null, true)
+            api.submitTurn(token, "family-a", thread, request, 0, "find saved story lake", null, true,
+                memoryParent = null, acceptSavedMemoryActions = true)
             val post = f.server.takeRequest()
             val body = Json.parseToJsonElement(post.body.readUtf8()).jsonObject
             assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts"), body.keys)
-            assertEquals(listOf("saved_memory_cards_v1"), body.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+            assertEquals(listOf("saved_memory_cards_v1", "saved_memory_actions_v1"), body.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
 
             f.server.enqueue(response(envelope("completed", result()).replace(request, speechRequest)))
             api.submitTurn(token, "family-a", thread, speechRequest, 1, "what is the first saved memory about", request, true,
@@ -221,6 +228,19 @@ class HttpsAssistantWorkspaceApiTest {
             val deniedBase = f.server.takeRequest()
             assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", deniedBase.path)
             assertProtected(deniedBase)
+        }
+    }
+
+    @Test fun legacyAction403RequiresSameScopeBaseCapabilityRevalidation() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true}"""))
+            assertFalse(f.api().savedMemoryActionCapabilities(token, "family-a").available)
+            val optional = f.server.takeRequest()
+            val base = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/saved-memory-action-capabilities?library_id=family-a", optional.path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", base.path)
+            assertProtected(optional); assertProtected(base)
         }
     }
 

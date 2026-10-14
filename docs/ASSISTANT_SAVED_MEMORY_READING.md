@@ -19,8 +19,10 @@ opening, rather than the original family recording. It does not rewrite it.
 
 This client action is one-shot playback. It ends foreground voice and pending
 manual microphone capture before requesting audio, shows preparing/playing
-states, and exposes Stop. It never restarts listening automatically. Foreground voice-requested narration is
-a later separate slice; the existing v56 followup parser does not imply it.
+states, and exposes Stop. It never restarts listening automatically. The later
+local [contextual voice action](ASSISTANT_FLUID_EXPERIENCE.md) is separately
+negotiated and may return to listening only inside an approved voice session
+after successful actual playback; delivered v57 does not contain that extension.
 
 ## Protected server contract
 

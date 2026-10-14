@@ -300,11 +300,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-workspace-content .assistant-turn-trail-list{max-height:30rem;overflow:auto;overscroll-behavior:contain}
 .assistant-workspace-content .assistant-results{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:.9rem}
 .assistant-memory-card{display:flex;flex-direction:column;gap:.7rem;padding:1.15rem;background:linear-gradient(150deg,#fffdf8,#fff);border-color:#dfd1bd;box-shadow:0 2px 9px #3d302408}
+.assistant-memory-card--action-target,.assistant-memory-card--action-target:focus{border-color:#567f64;box-shadow:0 0 0 3px #6d9f7940,0 3px 14px #263c2d18;outline:2px solid #567f64;outline-offset:2px}
 .assistant-memory-card h3{margin:0;font-size:1.15rem;line-height:1.45;overflow-wrap:anywhere}
 .assistant-memory-card .assistant-memory-kind{align-self:flex-start;margin:0;padding:.25rem .6rem;border-radius:999px;background:#f5eadd;color:#87543a;font-size:.78rem;font-weight:600;letter-spacing:.03em}
 .assistant-memory-card .assistant-memory-excerpt{white-space:pre-wrap;line-height:1.7;margin:0}
 .assistant-memory-card .assistant-memory-source{margin-top:auto;padding-top:.55rem;border-top:1px solid var(--line);line-height:1.5}
 .assistant-memory-opening{min-height:44px;max-width:100%;white-space:normal;line-height:1.35;text-align:left}
+.assistant-memory-action{min-height:44px;max-width:100%;white-space:normal;line-height:1.35;text-align:left}
 .assistant-memory-followups{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.2rem}
 .assistant-memory-followup{min-height:40px;max-width:100%;white-space:normal;line-height:1.35;text-align:left}
 .assistant-workspace-content .assistant-result{background:#fffefb;border-color:#dce2d5}

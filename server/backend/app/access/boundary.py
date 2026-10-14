@@ -178,6 +178,7 @@ class ClosedBoundary:
                 ('GET', '/assistant/workspace/v1/capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-reading-capabilities'),
