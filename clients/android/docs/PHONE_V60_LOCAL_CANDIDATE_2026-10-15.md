@@ -52,13 +52,20 @@ match their pins. Signature verification correctly rejects this unsigned APK.
 - Exact extracted archive: twelve assistant groups plus five experimental
   oral-history groups / twelve cases, with generated data on Mac.
 
+The complete final Web profile passed at review commit `2c7c924` with an
+unchanged-input receipt. All 201 packaged runtime files and the complete Android
+subtree at that commit match artifact source `53e3954`.
+
 The first full Web pass stopped at a memoir text-scale fixture that repeatedly
 scaled a persistent dialog and inherited line height. Its failed receipt is
 retained. The fixture repair preserves the strict bilingual viewport and speech
 lifecycle checks; the complete final Web qualification is recorded in
-[Development](../../../docs/DEVELOPMENT.md) at its review commit. All packaged
-runtime files and the Android subtree must match this immutable source before
-using that later Web receipt as qualification for these artifacts.
+[Development](../../../docs/DEVELOPMENT.md) at its review commit. The earlier failed
+receipt is not counted as passing.
+
+The next native controller/runner preparation passes 18 local checks and
+read-only PowerShell syntax parsing (zero errors). It has not been staged or run
+on Windows; future execution authority remains disabled.
 
 ## Remaining delivery and family gates
 

@@ -48,7 +48,8 @@ Focused checks passed: 24 phone store cases, debug lint, four bilingual API 36
 emulator retry cases, six Edge story checks and eight Edge memoir checks. They
 cover corrupt image bytes, held attempts, explicit recovery, unchanged reader
 state, bookmark neutrality and stale callbacks. Chinese/English enlarged renders
-were inspected. Complete integrated profiles are recorded separately in
+were inspected. Complete API, Android and Web integrated profiles pass at their bound artifact/
+review revisions, recorded separately in
 [Development](DEVELOPMENT.md).
 The [v60 reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md) provides
 the physical phone/Web follow-up after delivery.

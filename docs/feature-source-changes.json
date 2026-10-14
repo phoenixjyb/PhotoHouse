@@ -16355,6 +16355,57 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "v60-complete-local-qualification-and-overnight-handoff",
+      "source_commit": "2c7c92438089c157cd966f80a8f1776a7bed6ef9",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md",
+          "before_sha256": "1072f87ebb7c3cb0a0c1a4355e4accdf132ad0619c52b04534adb557d6a6c9de",
+          "sha256": "05a507cb94ec65e5226cd98f83a80ff603dea82619c21b8b1d6c6d09589c23f8"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "39e5bea2a6d3c0a9efbd9875e2c7251ae6085912ef08e1a954970763b7fa30f0",
+          "sha256": "39b92a083fe3cb05300a63e02f757393c7df6c2b739b76babd46654334978f56"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7f5b5298e9245b9fcca87da1606bfa3882ab669763943202c0b731f25156f364",
+          "sha256": "0776c00d763c4536a4ec250b9fdb346b92bce6bd91c9103ded11c515d47031f5"
+        },
+        {
+          "path": "docs/NEXT_SESSION_HANDOFF_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "6a77c0acaa89f0bd5563407c78f42fbc8a2114051a45d5924c7dc3af97841fa0"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3884cb061b80b384a52523515cfe2d2ca6d66e3ae201619c7db11665647fa9c8",
+          "sha256": "c6396887b93b3495227bccaf47dde5c1c04a26b33d7c0212c47433a4d8a4ebc6"
+        },
+        {
+          "path": "docs/READER_PREVIEW_RECOVERY.md",
+          "before_sha256": "52010c1baedfcc5375055d80696cf375c5e2ff63d45333fc86bf93affbbf42bc",
+          "sha256": "51397f3ca04aae66a441e61622ea27679801d6095353fe66b835a2cd1369643c"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "d08868c5200f58d545e52cb3e6f32a25c9083166922356c55143dcbcb1ae04e3",
+          "sha256": "622547c2db0a90e6a4dd0e3b2343716cf604eafa72f8d2db13e5d63a522398ff"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2a1ec517a81f11b58f82a6fc93e275dd45eeb00a2dcc0b2de76db2370fc39c1b",
+          "sha256": "9e017de6b276120bc1d7de019a70bb40843f8dd736ce1fc2b87dc05ef9dc70a5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

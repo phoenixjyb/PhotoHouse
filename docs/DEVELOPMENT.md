@@ -2662,3 +2662,36 @@ identities and the incumbent configuration hash. Eight identified task processes
 remain owned and running; Home TV remains a separate interactive-logon dependency.
 The 06:20 resource sample reports about 53 GiB free system RAM and an idle RTX3090.
 No production database was opened and no model, task or service was changed.
+
+
+The complete final Web profile passed at review commit `2c7c924` with an
+unchanged-input receipt (06:25–06:28 Beijing). All 201 packaged runtime files
+and the complete Android subtree at that commit match immutable artifact source
+`53e3954`; the later review changed only a browser fixture and documentation.
+API, Android and Web results therefore bind their stated revisions rather than
+being attributed to a later documentation HEAD. Native Windows fixture execution,
+release signing/publication and family-device listening remain unperformed.
+
+The separately prepared v60 native controller/runner/pins pass 18 local synthetic
+checks and content-free validation of the extracted Mac reports. Read-only native
+PowerShell ParseInput reports zero errors / 4,081 tokens. The parser did not
+execute or stage the controller; future execution authority remains disabled.
+Its reviewed boundaries remain five minutes, 2 GiB process memory, eight
+processes and an 8 GiB free-RAM admission floor, synthetic candidate output only.
+
+
+A separate v60 one-shot transfer/qualification driver passes 15 local guard
+checks and references the frozen controller/runner/pins without duplicating them.
+It refuses disabled or mismatched operation authority before transport import.
+The exact source/archive, 12 assistant groups and five oral groups/twelve cases,
+unique stages, transfer readback and native result checks remain bound. It has
+not imported transport, staged files or run the fixture on Windows. This
+preparation is not a live cutover or OTA publication controller.
+
+
+A separate private first-story interaction prototype uses only fictional inline
+illustrations and text. Desktop, 390 px and 320 px Edge journeys with synthetic
+150% text scaling verify selection, retained drafts, literal user text, preserved
+original quotes and explicit demo confirmation; zero external requests/page
+errors. Normal/enlarged renders were inspected. The prototype is outside the
+frozen source/archive/APK and does not implement or activate an app workflow.

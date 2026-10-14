@@ -66,6 +66,15 @@ delivery evidence remains separate from the focused browser/emulator checks.
 
 ## 3. Improve grounded family storytelling
 
+The next UX slice is a guided first saved story: choose a few related frames,
+keep one shared narrator statement, review an editable title/attribution and
+preview before explicit save. It should reuse the existing authorized picker,
+draft and save/retry contracts. It must not copy that statement silently into
+every asset or turn a photo note into a published story. A private fictional
+three-step prototype was checked separately from v60; it is not an implemented
+application workflow. See the [first-story guide](FIRST_STORY_GUIDE_ZH.md) for
+the current manual path.
+
 The synthetic corpus now has eight cases, including cross-event visual
 similarity and separate subject/speaker/uploader attribution. Its planner and
 canary contract checks do not establish model output quality. Next add an

@@ -28,6 +28,10 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
+Latest continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
+[v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).
+These are source/package records, not publication notices.
+
 ## Document roles
 
 **Maintained summaries** describe current source contracts and link to a dated

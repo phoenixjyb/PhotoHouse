@@ -35,8 +35,11 @@ English browser and API 36 emulator journeys pass. The generated oral-history
 qualifier now has five groups / twelve cases, including populated legacy history
 and interrupted paired-commit replay; the frozen v59 proposal retains four/ten.
 The [first-story guide](FIRST_STORY_GUIDE_ZH.md) explains why a photo memory is
-not yet a saved multi-image story. Full profiles and immutable packages are
-recorded in [Development](DEVELOPMENT.md) after the source freeze. This increment
+not yet a saved multi-image story. Complete API (1,495 tests / 915 subchecks),
+Android and Web profiles pass at their bound revisions.
+The immutable v60 unsigned APK and 201-file API archive are recorded in the
+[candidate record](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md)
+and [Development](DEVELOPMENT.md). This increment
 has no signing, Windows execution or publication authority attached.
 
 ## Runtime configuration observed
