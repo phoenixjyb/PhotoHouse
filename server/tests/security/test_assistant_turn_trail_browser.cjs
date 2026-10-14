@@ -239,8 +239,13 @@ let browser,context,page;
   controlGate.release();await controlGate.finished;
   await page.waitForFunction(count=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return rows.length===Math.min(count+1,8)&&last?.querySelector('.assistant-turn-trail-text')?.textContent==='Control Enter is an explicit send';},trailBase);
   const metaBase=posts().length,metaTrailBase=await page.locator('#assistant-turn-trail-list > li').count();
-  await page.locator('#assistant-text').fill('Meta Enter is an explicit send');await page.locator('#assistant-text').press('Meta+Enter');
-  await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===Math.min(count+1,8),metaTrailBase);
+  const metaResponse=page.waitForResponse(response=>response.request().method()==='POST'&&new URL(response.url()).pathname==='/assistant/v1/turns');
+  await page.locator('#assistant-text').fill('Meta Enter is an explicit send');await page.locator('#assistant-text').press('Meta+Enter');await metaResponse;
+  const metaReply=`Reply ${turnNumber}`;
+  await page.waitForFunction(({count,reply})=>{
+    const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1],text=last?.querySelectorAll('.assistant-turn-trail-text');
+    return rows.length===Math.min(count+1,8)&&text?.[0]?.textContent==='Meta Enter is an explicit send'&&text?.[1]?.textContent===reply;
+  },{count:metaTrailBase,reply:metaReply},{timeout:10000});
   assert.equal(posts().length,metaBase+1,'Meta+Enter submits one explicit request');
   assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','Meta+Enter retains composer focus');
   const beforeRejectedShortcuts=posts().length;
@@ -250,7 +255,7 @@ let browser,context,page;
       textarea.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,...init}));
   });
   assert.equal(posts().length,beforeRejectedShortcuts,'Shift, Alt, IME and repeated shortcut events do not submit');
-  await page.locator('#assistant-send').focus();await page.locator('#assistant-text').evaluate(textarea=>textarea.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true})));
+  await page.locator('#assistant-send').focus();assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-send','the deliberate non-composer shortcut test first confirms focus is on Send');await page.locator('#assistant-text').evaluate(textarea=>textarea.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true})));
   assert.equal(posts().length,beforeRejectedShortcuts,'shortcut dispatched while the composer is not focused does not submit');
   assert.equal(await page.locator('#assistant-text').inputValue(),'draft remains after rejected keyboard events','rejected shortcut combinations preserve the draft');
 

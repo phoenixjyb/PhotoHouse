@@ -2509,3 +2509,13 @@ selector and twenty rendered rows before the original explicit-open assertion.
 All fifteen focused history/workspace journeys pass with their original paging,
 privacy and recovery checks. No product source changed for this synchronization
 repair; the next complete Web run remains a separate gate.
+
+
+A later full Web run reached the keyboard trail fixture and exposed another
+synchronization issue at its eight-row cap: a row-count-only wait could pass
+while the Meta+Enter turn was still pending. The fixture now waits for the exact
+response and rendered question/reply, and verifies focus actually moved to Send
+before its deliberate non-composer shortcut event. The focused Edge journey
+passes with the original rejection, privacy and scope assertions preserved.
+This changes fixture synchronization only; complete Web qualification is still
+reported separately.

@@ -15886,6 +15886,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "turn-trail-fixture-waits-for-exact-render-at-row-cap",
+      "source_commit": "51dd0083b4a6285b42eaa4cf522630131b47a216",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "4f1586414c07f3c8666bce0e59da22e09239f9ec4937e9392461ab25c53247b5",
+          "sha256": "a367aaf0e3ad557971646bc122f1b98a93f8234c27e67d1440b9f52c4a0ed44e"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "84884abc5c7588629bba54db8ab4184e8d44472910696a92e60c8b0483903c80",
+          "sha256": "b7ad3085c98022cc5485f929d98c3bbcfedc3eaa8e0ee325e7a3bc3a0e459d87"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
