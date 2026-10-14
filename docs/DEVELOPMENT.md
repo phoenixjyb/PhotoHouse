@@ -35,8 +35,15 @@ its existing eleven scenario groups, and a failure-injection test confirms the
 action dispatch gate is checked; 47 qualifier/closure/dispatcher tests and
 20 subchecks passed. The [fixed v58 phone/API candidate](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md)
 now records the configured unsigned APK, preserved icon, exact API archive and
-matching Android subtree across the two build revisions. Native Windows
-qualification remains pending.
+matching Android subtree across the two build revisions. The authorized Windows
+qualification passed all eleven synthetic scenario groups against this exact
+archive, capped at five minutes, 2 GiB and eight processes with an 8 GiB
+free-RAM admission floor. It opened no family database/media, called no models
+and changed no services or tasks. Eight deployment controllers also passed native
+syntax checks and a read-only bootstrap derivation; 17 local operation checks
+passed, including preservation of the API startup trigger and anonymous denial
+for the new action capability. Live v58 deployment and signing/publication remain
+pending.
 No live API switch, schema migration, signing, publication or physical phone/TV
 acceptance is claimed. Half-duplex turn taking remains in place; whole chapters,
 streaming/latency changes and speaking interruption are later stages.

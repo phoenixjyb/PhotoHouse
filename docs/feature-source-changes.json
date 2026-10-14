@@ -14434,6 +14434,31 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "contextual-memory-v58-native-qualification-and-delivery-gates-20261014",
+      "based_on_commit": "cde489441a111e2bff3ba459ad2c609c19d71fe6",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5b2c7df90084692e576aa00c36d64f20937e7831064e41e4b1751eb765c1a817",
+          "sha256": "65876467213c468f22f610b1519af9e0c1dfef859d0ac5eaa24a172e2738f02f"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "b7e6965fbdde8949687f842b2cda3c7ec627064892e67f7aefda5c0a039fd708",
+          "sha256": "ea306a0739c66fcd169c7d7471b28b2fab1fec82a436e94f02b073661b000956"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md",
+          "before_sha256": "b9f6ab81d1941ee6f549c1d6c06f853824a338e44aff63fea4d0ed8022aa53ed",
+          "sha256": "8deb2fd4fe3d2f833a2d5d28ec289573c470a967f167d41090f0083f52231de0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

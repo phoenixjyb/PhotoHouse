@@ -1,12 +1,13 @@
 # Product roadmap
 
-## Next local slice: conversational story actions
+## Qualified candidate: conversational story actions
 
 The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) connects voice, chat,
 current numbered story cards and protected readers. Local work adds negotiated
 “读第二个故事” and “打开第一个故事” actions, ambiguity that retains the displayed
-list, and cancellation guards. Delivered v57 stays the live baseline; this slice
-is not yet qualified on Windows, signed, deployed or physically accepted.
+list, and cancellation guards. The [fixed v58 candidate](../clients/android/docs/PHONE_V58_RELEASE_CANDIDATE_2026-10-14.md)
+passed Windows synthetic qualification. Delivered v57 stays the live baseline;
+v58 is not yet signed, deployed or physically accepted.
 
 Following priorities are chapter progress/continuation, measured latency and
 qualified speaking interruption, then grounded storytelling and family quality

@@ -1,6 +1,6 @@
 # Phone v58 contextual memory actions candidate
 
-Status: prepared locally; native Windows qualification, live deployment, original-certificate signing and phone OTA publication remain pending. The current delivered baseline is v57.
+Status: native Windows offline qualification passed. Live deployment, original-certificate signing and phone OTA publication remain pending. The current delivered baseline is v57.
 
 ## Fixed source and artifacts
 
@@ -9,7 +9,11 @@ Its source-only ZIP contains 195 files, is 3,461,241 bytes, and has SHA-256
 `c17da6ac93af17956092957ad9e833690387c41534890a5dff04e2236e2336ac`.
 All extracted members match the manifest; the extracted qualifier passed its
 11 synthetic scenario groups on Mac, including contextual memory action checks.
-No real database, media, provider/model, network, listener or worker was used.
+The authorized Windows run also passed all 11 scenario groups against the exact
+archive. Limits were five minutes, 2 GiB, eight processes and an 8 GiB free-RAM
+admission floor. The native receipt confirms no real database, media,
+provider/model, network, listener or worker was used, and no service/task changes
+or publication occurred.
 
 The configured unsigned phone package is `dev.photohouse.connected`, version
 58, `0.58-contextual-memory-actions`. It is 11,530,077 bytes, SHA-256
@@ -38,8 +42,9 @@ history does not retain executable action metadata or opening text.
 
 [Development](../../../docs/DEVELOPMENT.md) records backend, Web, Android and
 large-text emulator evidence. The full API profile passed 1,426 tests and 862
-subchecks plus its generated no-listener demo. These are local checks, not hosted
-CI, Windows runtime qualification or physical family acceptance.
+subchecks plus its generated no-listener demo. Native candidate qualification is recorded above; neither source checks nor
+synthetic qualification establish hosted CI, live deployment or physical family
+acceptance.
 
 After delivery, test on a signed-in phone and Web session:
 
