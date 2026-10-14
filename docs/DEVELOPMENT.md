@@ -89,6 +89,22 @@ scrolls the control fully into view and performs a real click. Chinese/English
 150% renders were inspected. These counts overlap; no Windows provider, signed
 APK or family listening acceptance is claimed by these source checks.
 
+The full API profile at `9a3faad` passed **1,482 tests and 913 subchecks**, plus
+the generated no-listener demo, with unchanged-input receipt. Its full Web run
+then exposed an Edge native focus blur after Send became disabled. Valid explicit
+Send submissions now focus the still-editable composer synchronously; no later
+completion steals user-directed focus. The strict turn-trail assertion passes
+in Edge and cached Chromium, including newline entry and Tab movement during a
+delayed request. One concurrent diagnostic run saw a transient receipt-focus
+overlap after reload; final isolated runs kept the strict assertion and passed.
+
+A later mixed-language guard infers narration language from the complete section
+so a Latin-only segment does not switch voice unexpectedly. Its final focused
+backend/opening/qualifier cohort passed **41 tests and 38 subchecks**. The new
+segment class contains seventeen cases; the earlier sixteen-case evidence above
+belongs to the preceding source revision. Package, native and family gates stay
+separate.
+
 
 ## Oral-history intake foundation (October 14)
 

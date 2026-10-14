@@ -138,6 +138,16 @@ class AssistantMemorySegmentSpeechTests(unittest.TestCase):
         self.assertEqual(self.fx.tts.calls, [('B' * 10, 'en')])
         self.assertEqual(memoir.headers.get('X-PhotoHouse-Reading-Segment-Count'), '2')
 
+    def test_mixed_language_section_does_not_switch_voice_for_a_latin_only_segment(self):
+        source = ('A' * 120) + '湖边的回忆。'
+        thread, turn_id, _ = self.fresh_turn(opening=source)
+        self.fx.tts.calls.clear()
+        first = self.segment_speech(thread, turn_id, segment='0')
+        second = self.segment_speech(thread, turn_id, segment='1')
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(self.fx.tts.calls, [('A' * 120, 'zh'), ('湖边的回忆。', 'zh')])
+
     def test_path_body_parent_and_headers_are_strict_and_out_of_range_does_not_synthesize(self):
         thread, turn_id, _ = self.fresh_turn(opening='A' * 250)
         path = SEGMENT_PATH.format(thread=thread['thread_id'], turn=turn_id,

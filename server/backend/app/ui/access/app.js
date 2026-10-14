@@ -1303,9 +1303,11 @@
     if(assistantState.busy||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||assistantState.transcribing||state.locked||!state.profile||!state.library)return;
     const text=(typeof overrideText==='string'?overrideText:$('assistant-text').value).trim();if(!text)return;
     if(new TextEncoder().encode(text).length>1024){$('assistant-status').textContent=t('assistantTextTooLong');return;}
-    const privateScope=privateAssistant?.state();
-    if(privateScope?.activeThread||privateScope?.capabilities?.server_owned_turns){
-      if(privateScope?.capabilities?.server_owned_turns!==true){$('assistant-status').textContent=t('assistantPrivateSearchOffline');return;}
+    const privateScope=privateAssistant?.state(),privateRoute=!!(privateScope?.activeThread||privateScope?.capabilities?.server_owned_turns);
+    if(privateRoute&&privateScope?.capabilities?.server_owned_turns!==true){$('assistant-status').textContent=t('assistantPrivateSearchOffline');return;}
+    const send=$('assistant-send'),composer=$('assistant-text');
+    if(event?.submitter===send&&document.activeElement===send)composer.focus({preventScroll:true});
+    if(privateRoute){
       await submitPrivateAssistant(text,voiceToken);return;
     }
     stopAssistantSpeech();

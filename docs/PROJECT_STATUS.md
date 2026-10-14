@@ -137,3 +137,9 @@ Generated backend, wire/controller and enlarged browser/emulator journeys pass.
 The source-only API closure has 200 files and twelve disposable qualification
 groups. Its new optional probe and segment route preserve old opening contracts.
 The installed v58/TV v30 observations above remain separate delivery evidence.
+
+The frozen `9a3faad` API profile passed 1,482 tests / 913 subchecks and the
+generated demo. Later source corrects Edge's focused-Send native blur and keeps
+one inferred voice language across mixed-language narration segments. Narrow
+cross-browser and backend checks pass; the next candidate's complete release
+profiles and immutable artifacts remain the delivery gate.

@@ -71,6 +71,11 @@ let browser,context,page;
   const signIn=async phone=>{await page.locator('#phone').fill(phone);await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();};
   await signIn('+12025550100');
   await page.locator('#assistant-panel > summary').click();await page.locator('#assistant-form').waitFor({state:'visible'});
+  const turnsBeforeComposerEnter=requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length;
+  await page.locator('#assistant-text').fill('Enter stays in the editable composer');await page.locator('#assistant-text').press('Enter');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'Enter stays in the editable composer\n','Enter in the composer remains an editable newline');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length,turnsBeforeComposerEnter,'Enter in the composer does not submit a search');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','Enter keeps focus in the composer');
   const submit=async text=>{
     const expected=turnNumber+1,expectedTrailCount=Math.min(await page.locator('#assistant-turn-trail-list > li').count()+1,8);
     await page.locator('#assistant-text').fill(text);
@@ -81,6 +86,7 @@ let browser,context,page;
       recovery:sessionStorage.getItem('photohouse.assistant.turn-recovery.v1')}))));throw error;}
     await page.locator('#assistant-send').click();
     const afterSubmit=await page.evaluate(()=>({focus:document.activeElement?.id,scrollY:window.scrollY}));
+    assert.equal(afterSubmit.focus,'assistant-text','a focused send-button submission returns focus to the composer before the button becomes disabled');
     await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===count,expectedTrailCount);
     const expectedReply=expected===1?'Assistant reply <img src=x onerror="window.__trailXss=1">':
       text.includes('clarify')?'Please clarify that detail.':`Reply ${expected}`;
@@ -150,7 +156,9 @@ let browser,context,page;
   await page.locator('#assistant-text').fill('repeat an identical reply while I read');
   await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-send').click();await heldReply.arrived;
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),false,'no jump indicator appears before the held reply succeeds');
+  await page.locator('#assistant-text').press('Tab');
   const heldCount=await page.locator('#assistant-turn-trail-list > li').count(),heldFocus=await page.evaluate(()=>document.activeElement.id),heldPageY=await page.evaluate(()=>window.scrollY);
+  assert.notEqual(heldFocus,'assistant-text','a deliberate keyboard focus move during a delayed request takes effect');
   heldReply.release();await heldReply.finished;
   await page.waitForFunction(()=>{const entries=document.querySelectorAll('#assistant-turn-trail-list > li'),last=entries[entries.length-1];return entries.length===8&&last?.querySelector('.assistant-turn-trail-text')?.textContent==='repeat an identical reply while I read'&&last?.lastElementChild?.textContent==='Reply 10';});
   const afterHeld=await trailReadingPosition(),survivingAnchor=beforeHeld.visible[0];

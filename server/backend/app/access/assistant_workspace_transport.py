@@ -1174,8 +1174,11 @@ async def _saved_memory_reading_speech(request: Request, thread_id: str,
     await assistant_engine._begin(request, access, token, library, 'speech')
     await assistant_engine._stage(request, 'validated')
     await assistant_engine._stage(request, 'provider_started')
+    # Keep one inferred narration language across mixed-language segments,
+    # including a Latin-only prefix of a Chinese section.
+    language_source = source_text if selected_segment is None else source_bytes.decode('utf-8')
     audio = await run_in_threadpool(tts.synthesize, source_text,
-                                    assistant_engine._language(source_text))
+                                    assistant_engine._language(language_source))
     if not valid_reply_wav(audio):
         raise AssistantSpeechUnavailable()
     await assistant_engine._stage(request, 'provider_completed')

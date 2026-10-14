@@ -63,6 +63,8 @@ segment is at most 120 code points and 360 UTF-8 bytes; concatenating all segmen
 recovers the exact source spacing and order. The complete section is bounded to
 6,000 UTF-8 bytes and 128 segments. Empty, malformed or pathological
 whitespace-only sections are unavailable rather than silently rewritten.
+All segments use the language inferred from the complete section, so a
+Latin-only prefix of a Chinese section does not unexpectedly change narrator.
 
 Smaller inputs do not guarantee a speech duration. Every provider WAV must still
 pass the existing 30-second and 2-MiB validator. A failure withholds audio and
@@ -76,7 +78,7 @@ assistant troubleshooting input/transcript fields or new database records.
 
 ## Remaining acceptance
 
-Sixteen generated backend segment cases and the sixteen existing opening cases
+Seventeen generated backend segment cases and the sixteen existing opening cases
 passed. Eight disposable-qualifier checks passed; its twelve scenario groups now
 include a complete three-segment synthetic story and private receipt metadata.
 The Web controller passed seventy Node tests and twenty-six browser checkpoints,

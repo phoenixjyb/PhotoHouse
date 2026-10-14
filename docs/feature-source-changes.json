@@ -15368,6 +15368,53 @@
       "generation_enabled": false,
       "providers_activated": false,
       "phone_version_reserved": 59
+    },
+    {
+      "feature": "explicit-submit-focus-and-consistent-section-voice-language",
+      "source_commit": "9a3faad49c4220bef0490c14eb37d2149fbc68bc",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SEGMENT_READING.md",
+          "before_sha256": "023beb6eef2a12f99a133727669dc6e91b2f052a7b220ffea75c63d95db0d079",
+          "sha256": "b2894bb08bb2d822484ed942de324770bb090c883418b7eea4c6962363598b23"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "aad851e9184eaeea55a0278745145a65088a6e0a8aa9248c5b4e105e1e4cc177",
+          "sha256": "76b2fe1a7b652c04cb4ee0a896fdc9b9c3ca85a45b371ba928ef1326b9304142"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f9a91096dd9962f933b494e7b267f09e872d3af0bc77a60119ca0443a3a74ce7",
+          "sha256": "9eac10c75b2e01a1c983a8940046d8c48f619492e06912676b4a42f44674757f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "f817f43ac6b7a1c7ff65a3178e3b977cee9c78d7b3b3d7be9ddeae9dc5e84a34",
+          "sha256": "d6ad21e9978e540c4ac65181e1135ca367fb74de7e6f92d723e3aff92e1e4401"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "2ddc5d637080b2b3224be81698d1ce1bf48710e42daf08416e1a9977485e97bd",
+          "sha256": "d9045182edd6b5cfcf7a1eb1fef5a595867837a1d820271cc9bc6cba518e2e50"
+        },
+        {
+          "path": "server/tests/security/test_assistant_memory_segment_speech.py",
+          "before_sha256": "4a662ffd6c837331b5f932ca2a4e967a49c2837d4b1c08879d098d7db1e03139",
+          "sha256": "1b4a5242aef9b70c3dd5f04245b80e8f5d40747138faea289af41a71ea4aeca4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "024e3c91d14b2cae2d684df511893c141e051eb0c90db7fc5241b1521a10a170",
+          "sha256": "8ba96dc1d7b56f96132b8d1444020941df016d478e13124ccf98a360593a80dd"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
