@@ -15949,6 +15949,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "capture-scope-fixture-waits-for-current-voice-restoration",
+      "source_commit": "d977aa7f5498514d75d2be743d9529b05128f281",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_capture_scope_browser.cjs",
+          "before_sha256": "a31c95b6af24b383e367137ae034e75d4686f4ea3a2e5492e9c7ac9590a73989",
+          "sha256": "3cd8b524d7a704fb367463d82bbde44a9bdc70d2dbac97d566da09d803df38fe"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "05b6cbbbe6f6cbca115be752cee63f2dadbd89235b7cee4061dac1a6c775a85e",
+          "sha256": "391e8edc728a412795c36ec2526cfd09f73b845e33e0522ad61891af29a89998"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

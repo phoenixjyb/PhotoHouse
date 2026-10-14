@@ -2535,3 +2535,10 @@ ID/library/revision empty-reference receipts now complete that fixture contract.
 All 27 focused story-workspace checkpoints pass with the original save/retry,
 reopen, source-selection and dictation assertions intact. No product save or
 authorization behavior changed.
+
+The account-switch capture fixture now also waits for current voice readiness
+after sign-in. Its gallery-row wait could match the prior account while the
+new account's restoration still correctly disabled capture. The focused seven
+checkpoint Edge journey passes with the delayed old-account stream and pending
+new-account controls preserved. These synchronization repairs do not weaken
+production voice gates or convert incomplete full runs into successful receipts.
