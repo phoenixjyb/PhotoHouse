@@ -14,7 +14,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       splitChapterAfter:n=>`在第 ${n} 个画面后分章`,mergeChapterNext:'与下一章合并',chapterStructureHelp:'只调整这个未保存草稿的分组。每个故事最多 6 章，每章最多 4 个画面；改动后请检查标题、正文和来源，再另行保存。',chapterSplitLimit:'最多 6 章。当前分组未更改。',chapterMergeLimit:'合并后每章最多 4 个画面。当前分组未更改。',chapterJoinTextLimit:'合并后的标题或正文超过长度限制。当前分组未更改。',chapterJoinSourceLimit:'合并后每章最多保留 12 项来源。当前分组未更改。',
       savedContributionRefs:'已保存的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
-      bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',
+      bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',bookRefsRetry:'重试核实来源',bookRefsAvailable:n=>`本章已核实 ${n} 条家人回忆来源链接；引用资料仍需核对。`,bookRefsAvailableNone:'本章没有已保存的家人回忆来源链接；如需依赖画面资料，请先核对素材来源。',
       unknown:'拍摄时间待补充',filename:'文件名日期 · 非拍摄证明',received:'收到日期 · 非拍摄证明',capture:'记录的拍摄日期',
       read:'沉浸预览',export:'下载故事草稿',exported:'已下载草稿；这不会保存到相册库或发布到电视。',empty:'请先选择至少一个画面。',
       error:'暂时无法整理故事，请重试。',close:'返回',previous:'上一章',next:'下一章',video:'播放此视频',photo:'照片',choiceVideo:'视频',choiceFrame:'画面',
@@ -30,7 +30,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       splitChapterAfter:n=>`Split after frame ${n}`,mergeChapterNext:'Merge with next chapter',chapterStructureHelp:'These controls change grouping in this unsaved draft only. A story can have up to 6 chapters, with up to 4 frames each. Review titles, wording and sources before saving separately.',chapterSplitLimit:'A story can have up to 6 chapters. No change was made.',chapterMergeLimit:'A chapter can have up to 4 frames after merging. No change was made.',chapterJoinTextLimit:'The merged title or wording exceeds its limit. No change was made.',chapterJoinSourceLimit:'A chapter can keep up to 12 sources after merging. No change was made.',
       savedContributionRefs:'Saved family-memory sources',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
-      bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',
+      bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',bookRefsRetry:'Retry source check',bookRefsAvailable:n=>`${n} saved family-memory source link${n===1?'':'s'} checked for this chapter. The cited material still needs review.`,bookRefsAvailableNone:'No saved family-memory source links were found for this chapter. Review any frame references before relying on them.',
       unknown:'Capture date to add',filename:'Filename date · not proof of capture',received:'Received date · not proof of capture',capture:'Recorded capture date',
       read:'Immersive preview',export:'Download story draft',exported:'Draft downloaded; it was not saved to the library or published to TV.',empty:'Choose at least one frame first.',
       error:'The story could not be arranged. Please try again.',close:'Back',previous:'Previous chapter',next:'Next chapter',video:'Play this video',photo:'Photo',choiceVideo:'Video',choiceFrame:'Moment',
@@ -1172,7 +1172,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const introduction=node('p',book.introduction,'memory-book-introduction'),introductionNarration=node('div',undefined,'memory-book-introduction-narration-host');
     const introductionSources=node('div',undefined,'memory-book-introduction-sources');
     bookReader.append(header,heading,introduction,introductionNarration,introductionSources);
-    const reader=bookReader,owner={...scope()};reader.__photoHouseBookTarget=book;let readingTicket=0,storyIndex=0,sectionIndex=0,readingStory=null,readingRefs=null,bookRefsEpoch=0,sourceHost=null,sourceSection=null,planStoryOpening=false;
+    const reader=bookReader,owner={...scope()};reader.__photoHouseBookTarget=book;let readingTicket=0,storyIndex=0,sectionIndex=0,readingStory=null,readingRefs=null,bookRefsEpoch=0,sourceHost=null,sourceStatusHost=null,sourceSection=null,planStoryOpening=false;
     const bookIdSnapshot=book.id,bookRevisionSnapshot=book.revision;
     const positionKey=JSON.stringify([owner.account,owner.library,book.id,book.revision]);
     const resume=button(owner.language==='en'?'Continue where you left off':'继续上次阅读',()=>{const position=bookPositions.get(positionKey),index=position&&book.stories.findIndex(story=>story.id===position.storyId),ticket=readingTicket,expected=()=>readerCurrent(ticket)&&resume.isConnected&&!resume.hidden&&reader.contains(resume);if(Number.isInteger(index)&&index>=0)void readBookStory(index,false,position,expected);},'memory-book-resume');
@@ -1236,6 +1236,28 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const renderBookSources=()=>{
       const section=readingStory?.chapters[sectionIndex];if(!section||!sourceHost?.isConnected||sourceSection!==section)return;
       const ticket=readingTicket,story=readingStory,state=readingRefs;
+      const keepStatusFocus=Boolean(sourceStatusHost?.contains(document.activeElement));
+      if(sourceStatusHost){
+        const note=node('p',undefined,'memory-book-source-status-note');note.setAttribute('role','status');
+        if(state?.loading)note.textContent=text('bookRefsLoading');
+        else if(!state?.available)note.textContent=text('bookRefsUnavailable');
+        else {
+          const contributionIds=state.groups.get(section.id)||[];
+          note.textContent=contributionIds.length?text('bookRefsAvailable')(contributionIds.length):text('bookRefsAvailableNone');
+        }
+        const statusContents=[note];
+        if(state&&!state.loading&&!state.available){
+          const retry=button(text('bookRefsRetry'),()=>{
+            if(!sourceStateCurrent(ticket,story,state)||state.loading)return;
+            state.groups=null;state.available=false;state.loading=true;
+            renderBookSources();void loadBookRefs(story,ticket);
+          },'memory-book-source-retry');
+          retry.style.minHeight='44px';retry.style.maxWidth='100%';retry.style.whiteSpace='normal';
+          statusContents.push(retry);
+        }
+        sourceStatusHost.replaceChildren(...statusContents);
+        if(keepStatusFocus)sourceStatusHost.focus({preventScroll:true});
+      }
       const active=sourceHost.contains(document.activeElement)?document.activeElement:null,keepOpen=sourceHost.querySelector('.story-reader-sources')?.open===true,focusId=active?.closest?.('[data-contribution-id]')?.dataset.contributionId,focusSummary=active?.matches?.('.story-reader-sources > summary')===true;
       sourceHost.replaceChildren();const context={mode:'memoir',refs:state,isSectionCurrent:(selectedStory,selectedSection)=>sourceStateCurrent(ticket,selectedStory,state)&&selectedStory===story&&readingStory.chapters[sectionIndex]===selectedSection&&sourceHost?.isConnected&&sourceSection===selectedSection,isCurrent:(row,selectedStory,selectedSection,id)=>sourceStateCurrent(ticket,selectedStory,state)&&selectedStory===story&&readingStory.chapters[sectionIndex]===selectedSection&&row.isConnected&&row.dataset.contributionId===id&&row.closest('.story-reader-sources')&&state?.available===true&&state.groups.get(selectedSection.id)?.includes(`contribution-${id}`),reauthorize:async()=>{if(!story||!state||!sourceStateCurrent(ticket,story,state))return false;if(!await reauthorizeBook(ticket)||!sourceStateCurrent(ticket,story,state))return false;return await reauthorizeChild(story,ticket)&&sourceStateCurrent(ticket,story,state);}};
       appendChapterSources(sourceHost,readingStory,section,context);
@@ -1271,6 +1293,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       }
       const chapterHeading=node('h4',section.title);chapterHeading.tabIndex=-1;
       pane.append(node('p',`${owner.language==='en'?'Story':'故事'} ${storyIndex+1} / ${book.stories.length} · ${text('chapters')} ${sectionIndex+1} / ${readingStory.chapters.length}`,'eyebrow'),node('h3',readingStory.title),chapterHeading);
+      sourceStatusHost=node('section',undefined,'memory-book-source-status');sourceStatusHost.tabIndex=-1;sourceStatusHost.setAttribute('aria-label',owner.language==='en'?'Chapter source status':'本章来源状态');pane.append(sourceStatusHost);
       const sectionTicket=readingTicket,renderedStory=readingStory,renderedStoryIndex=storyIndex,renderedSectionIndex=sectionIndex,frames=node('div',undefined,'memory-book-reading-frames');
       if(section.asset_ids.length===2)frames.classList.add('memory-book-reading-frames-two');
       for(const [mediaIndex,id] of section.asset_ids.entries()){

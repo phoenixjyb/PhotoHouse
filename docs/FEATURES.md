@@ -22,6 +22,9 @@ installation, and family acceptance requires physical use.
 | Foreground continuous voice | Explicit Start authorizes read-only listen → reply → listen; Pause/End and lifecycle fences | Real ASR/TTS/echo/latency trial; half duplex remains |
 | Saved-story search, followups, current-card opening and opening speech | Deployed Web/API and signed phone v58; full-cohort/parent/source validation; typed actions explicit | Physical v58 trial; opening limited to 240 code points / 600 UTF-8 bytes |
 | Assistant full-chapter continuation/progress and interruption | Design/next slice; manual reader speech is a separate implementation | Bounded segments, resume identity, cancellation/echo/quality qualification |
+| Manual chapter narration segment progress | October 15 phone source shows current segment while preparing, speaking or paused; session-local | Signed delivery and physical audio acceptance; no persistent resume or assistant full-chapter speech |
+| Memoir source-check status and retry | October 15 Web source shows status outside collapsed originals and explicit read-only retry | Served delivery and family trial; linked-source checking is not fact verification |
+| Long oral-history withdrawal and replay | Internal default-off V4 journal/source prototype; author-only withdrawal retains raw sections and blocks revived source access | No HTTP/client/migration; journal upgrade, production admission and permanent erasure remain open |
 | Model replacement and topology | Thirteen catalogued source capabilities; explicit typed projection for four target groups | Per-provider installation/licensing/resources/native quality; face/embedding projection and orchestration remain separate |
 | OTA and recovery | Phone v58, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
 

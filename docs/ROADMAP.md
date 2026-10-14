@@ -94,6 +94,15 @@ reopen/concurrency/rollback evidence. It stays internal and default-off; no
 transport, migration or recorder is delivered. Next is withdrawal/journal replay
 and admission, then a client pilot that clearly distinguishes saved and retrying.
 
+October 15 source work implements author-only retained-source withdrawal and
+V4 journal prefix replay with generated fixtures. Next qualify a journal/schema
+upgrade, production admission and permanent erasure before exposing the long
+recording transport. See [withdrawal](ORAL_HISTORY_WITHDRAWAL.md).
+
+Reader polish now includes visible Web source-check/retry state and ephemeral
+phone manual-narration segment progress. Assistant full-chapter continuation and
+physical audio quality remain open; see [reader UX](READER_PROGRESS_AND_SOURCES.md).
+
 **Exit:** accepted recording sections survive retry/restart; conflicting accounts
 retain their speakers; proposed prose is faithful and adopted explicitly;
 permissions and source-withdrawal/restore tests pass before family use.

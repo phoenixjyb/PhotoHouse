@@ -52,6 +52,9 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/memory_stories.py',
             'backend/app/access/memory_transport.py',
             'backend/app/access/original_deletions.py',
+            'backend/app/access/oral_history_schema.py',
+            'backend/app/access/oral_history_intake.py',
+            'backend/app/access/oral_history_withdrawal.py',
             'backend/app/access/prepared_video.py',
             'backend/app/access/private_storage.py',
             'backend/app/access/model_deployment.py',
@@ -156,6 +159,8 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_erasure import VectorErasureStore, verify_visual_erasure_schema\n'
                 'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
+                'from app.access.oral_history_intake import OralHistoryIntake\n'
+                'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"

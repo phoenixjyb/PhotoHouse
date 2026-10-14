@@ -16,6 +16,7 @@ from .oral_history_schema import (SESSION, SECTION, MUTATION, MAX_SECTIONS,
     MAX_SECTION_FRAMES, MAX_SECTION_BYTES, MAX_TOTAL_BYTES, MAX_TOTAL_FRAMES,
     MAX_SESSIONS_PER_AUTHOR, assert_schema)
 from .service import AccessDenied
+from .original_deletions import OriginalDeletionError
 from .transport import TransportError
 
 LANGUAGES = {'zh', 'en', 'mixed', 'und'}
@@ -89,10 +90,69 @@ def _next(head, ordinal, start, frames, size, source):
                     'frames': frames, 'byte_count': size, 'sha256': source})
 
 
+def _one(db, sql, args):
+    cursor=db.execute(sql,args)
+    row=cursor.fetchone()
+    return dict(zip((c[0] for c in cursor.description),row)) if row is not None else None
+
+
+def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
+    """Internal bounded metadata verifier; caller owns its authorization/transaction."""
+    row = _one(db, f'SELECT * FROM {SESSION} WHERE id=? AND library_id=? AND author_id=?',
+                           (ident, library, actor))
+    if row is None:
+        raise AccessDenied('Access denied')
+    if row['state']=='withdrawn' and not allow_withdrawn:
+        raise AccessDenied('Access denied')
+    try:
+        _text(row['title'],512,required=True)
+        _text(row['subject_label'],512)
+        _text(row['narrator_label'],256)
+        if (row['language'] not in LANGUAGES or row['processing_consent'] not in (0,1)
+                or row['state'] not in {'open','completed','cancelled','withdrawn'}):
+            raise ValueError()
+        for key, maximum in (('revision',MAX_SECTIONS+3),('section_count',MAX_SECTIONS),
+                             ('total_bytes',MAX_TOTAL_BYTES),('total_frames',MAX_TOTAL_FRAMES)):
+            _integer(row[key],maximum)
+    except (ValueError, TypeError, TransportError):
+        raise TransportError(503, 'Recording storage unavailable') from None
+    logical_state=row['withdrawn_from'] if row['state']=='withdrawn' else row['state']
+    if logical_state not in {'open','completed','cancelled'}:
+        raise TransportError(503, 'Recording storage unavailable')
+    # Verify a bounded source manifest/counters; raw audio is verified separately on read.
+    parts = db.execute(f'''SELECT ordinal,start_frame,frames,byte_count,sha256,
+        parent_manifest,manifest_sha256 FROM {SECTION} WHERE session_id=? ORDER BY ordinal
+        LIMIT ?''', (ident, MAX_SECTIONS + 1)).fetchall()
+    head, frames, size = _seed(row), 0, 0
+    for ordinal, part in enumerate(parts):
+        n, start, length, byte_count, sha, parent, after = part
+        if (type(length) is not int or not 1 <= length <= MAX_SECTION_FRAMES
+                or type(byte_count) is not int or byte_count != 44+length*2
+                or any(type(value) is not str or len(value)!=64
+                       or any(c not in '0123456789abcdef' for c in value)
+                       for value in (sha,parent,after))):
+            raise TransportError(503, 'Recording storage unavailable')
+        if (n != ordinal or start != frames or parent != head
+                or after != _next(head, ordinal, start, length, byte_count, sha)):
+            raise TransportError(503, 'Recording storage unavailable')
+        head = after
+        frames += length
+        size += byte_count
+    if (len(parts) > MAX_SECTIONS or frames > MAX_TOTAL_FRAMES or size > MAX_TOTAL_BYTES
+            or (row['section_count'], row['total_frames'], row['total_bytes'], row['manifest_sha256'])
+            != (len(parts), frames, size, head)
+            or row['revision'] != 1 + len(parts) + int(logical_state != 'open') + int(row['state']=='withdrawn')):
+        raise TransportError(503, 'Recording storage unavailable')
+    return row
+
+
 class OralHistoryIntake:
-    def __init__(self, access, *, enabled=False):
-        if type(enabled) is not bool:
+    def __init__(self, access, *, enabled=False, withdrawal_enabled=False, journal=None):
+        if type(enabled) is not bool or type(withdrawal_enabled) is not bool:
             raise ValueError('Explicit oral history opt-in required')
+        if withdrawal_enabled and (journal is None or access.original_deletions is not journal):
+            raise ValueError('Recording withdrawal requires its bound shared journal')
+        self.withdrawal_enabled,self.journal=withdrawal_enabled,journal
         self.access, self.db, self.enabled = access, access.db, enabled
 
     def _ready(self):
@@ -113,47 +173,12 @@ class OralHistoryIntake:
         return member
 
     def _session(self, actor, library, ident):
-        row = self.access._one(f'SELECT * FROM {SESSION} WHERE id=? AND library_id=? AND author_id=?',
-                               (ident, library, actor))
-        if row is None:
-            raise AccessDenied('Access denied')
-        try:
-            _text(row['title'],512,required=True)
-            _text(row['subject_label'],512)
-            _text(row['narrator_label'],256)
-            if (row['language'] not in LANGUAGES or row['processing_consent'] not in (0,1)
-                    or row['state'] not in {'open','completed','cancelled'}):
-                raise ValueError()
-            for key, maximum in (('revision',MAX_SECTIONS+2),('section_count',MAX_SECTIONS),
-                                 ('total_bytes',MAX_TOTAL_BYTES),('total_frames',MAX_TOTAL_FRAMES)):
-                _integer(row[key],maximum)
-        except (ValueError, TypeError, TransportError):
-            raise TransportError(503, 'Recording storage unavailable') from None
-        # Verify a bounded source manifest/counters; raw audio is verified separately on read.
-        parts = self.db.execute(f'''SELECT ordinal,start_frame,frames,byte_count,sha256,
-            parent_manifest,manifest_sha256 FROM {SECTION} WHERE session_id=? ORDER BY ordinal
-            LIMIT ?''', (ident, MAX_SECTIONS + 1)).fetchall()
-        head, frames, size = _seed(row), 0, 0
-        for ordinal, part in enumerate(parts):
-            n, start, length, byte_count, sha, parent, after = part
-            if (type(length) is not int or not 1 <= length <= MAX_SECTION_FRAMES
-                    or type(byte_count) is not int or byte_count != 44+length*2
-                    or any(type(value) is not str or len(value)!=64
-                           or any(c not in '0123456789abcdef' for c in value)
-                           for value in (sha,parent,after))):
-                raise TransportError(503, 'Recording storage unavailable')
-            if (n != ordinal or start != frames or parent != head
-                    or after != _next(head, ordinal, start, length, byte_count, sha)):
-                raise TransportError(503, 'Recording storage unavailable')
-            head = after
-            frames += length
-            size += byte_count
-        if (len(parts) > MAX_SECTIONS or frames > MAX_TOTAL_FRAMES or size > MAX_TOTAL_BYTES
-                or (row['section_count'], row['total_frames'], row['total_bytes'], row['manifest_sha256'])
-                != (len(parts), frames, size, head)
-                or row['revision'] != 1 + len(parts) + int(row['state'] != 'open')):
-            raise TransportError(503, 'Recording storage unavailable')
-        return row
+        if self.access.original_deletions is not None:
+            try:
+                self.access.original_deletions.assert_recording_available(self.db, ident)
+            except OriginalDeletionError:
+                raise TransportError(503, 'Recording storage unavailable') from None
+        return session_snapshot(self.db,actor,library,ident)
 
     @staticmethod
     def _status(row):
@@ -347,3 +372,41 @@ class OralHistoryIntake:
             self.db.execute(f'UPDATE {SESSION} SET state=?,revision=revision+1 WHERE id=?',
                             ('cancelled' if cancel else 'completed', ident))
             return self._record(actor, request, operation, digest, self._session(actor, library, ident))
+
+    def withdraw(self, token, library, ident, *, request_id, expected_revision):
+        """Explicit author-only withdrawal; retain raw source, append external V4 first."""
+        _text(library,128,required=True)
+        ident,request=_uuid(ident),_uuid(request_id)
+        revision=_integer(expected_revision,MAX_SECTIONS+2,minimum=1)
+        digest=_digest(['withdraw',library,ident,request,revision])
+        if not self.withdrawal_enabled:
+            raise TransportError(503,'Recording withdrawal unavailable')
+        from .oral_history_withdrawal import prepare_recording_tombstone, apply_recording_tombstone
+        from .original_deletions import OriginalDeletionError
+        try:
+            with self.access._transaction(write=True):
+                actor=self._member(token,library)['account_id']
+                row=session_snapshot(self.db,actor,library,ident,allow_withdrawn=True)
+                self.journal.require_oral_format()
+                if self.db.execute('PRAGMA secure_delete=ON').fetchone()[0]!=1:
+                    raise TransportError(503,'Recording withdrawal unavailable')
+                if row['state']=='withdrawn':
+                    if row['withdrawal_request_id']!=request or row['withdrawal_request_digest']!=digest:
+                        raise TransportError(409,'Recording withdrawal request differs')
+                    self.journal.oral_record(self.db,ident)
+                else:
+                    if row['revision']!=revision:
+                        raise TransportError(409,'Recording changed; refresh before withdrawing')
+                    tombstone=prepare_recording_tombstone(self.db,ident,library,actor,
+                        revision,request,digest,self.access._now())
+                    self.journal.append(self.db,'oral_history',{'id':ident,'library_id':library,
+                        'author_id':actor,'revision':revision,'request_id':request,
+                        'request_digest':digest,'oral_binding_json':tombstone['oral_binding_json']},
+                        self.access._now())
+                    apply_recording_tombstone(self.db,tombstone)
+                    self.access._audit(actor,'oral_history.withdraw',library)
+                    row=session_snapshot(self.db,actor,library,ident,allow_withdrawn=True)
+                return {'version':1,'session_id':ident,'request_id':request,
+                        'state':'withdrawn','revision':row['revision']}
+        except OriginalDeletionError:
+            raise TransportError(503,'Recording withdrawal unavailable') from None

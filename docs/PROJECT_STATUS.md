@@ -86,3 +86,18 @@ was developed after the installation snapshot above. It has source tests only,
 no HTTP/client surface, migration or runtime configuration. Windows services,
 model/worker activity, family data and v58/TV OTA feeds were not changed. Do not
 interpret its source quota or generated-fixture installer as live admission.
+
+## October 15 source increment: readers and withdrawal
+
+Web memoir readers now show source-check state outside the collapsed original
+source panel, with an explicit retry after failure. A checked source link is not
+fact verification. Phone manual chapter narration displays its current speech
+segment during preparation, playback and pause; progress is session-local and
+clears on interruption/end. This does not extend assistant opening speech to a
+full chapter. See [reader UX](READER_PROGRESS_AND_SOURCES.md).
+
+The [oral-history withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md) adds
+author-only retained-source withdrawal, content-free V4 journal bindings and
+older-prefix replay. Raw WAV bytes remain retained; permanent erasure and live
+admission are not implemented. There are no new routes, migrations, live flags,
+service changes or APK/OTA publications in this increment.

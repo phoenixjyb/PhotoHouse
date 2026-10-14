@@ -15,7 +15,7 @@ bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready){bookId=value.book_id;csrfToken=value.csrf_token;sessionCookie=value.session_cookie;cookieName=value.cookie_name;resolveReady();return;}const item=pending.get(value.id);if(item){pending.delete(value.id);item.resolve(value);}});
 bridge.on('exit',code=>{if(code){rejectReady(new Error('Synthetic bridge failed'));for(const item of pending.values())item.reject(new Error('Synthetic bridge failed'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
-let browser,context,page,holdEditorial=null,overrideEditorial=null,overrideParent=false,overrideChild=false,editorialStatusOverride=null;const requests=[],errors=[],checks=[];
+let browser,context,page,holdEditorial=null,holdRefs=null,overrideEditorial=null,overrideParent=false,overrideChild=false,editorialStatusOverride=null,refsStatusOverride=null;const requests=[],errors=[],checks=[];
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
 const html=fs.readFileSync(path.join(root,'backend/app/ui/access/index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'');
 (async()=>{
@@ -31,9 +31,12 @@ const html=fs.readFileSync(path.join(root,'backend/app/ui/access/index.html'),'u
   let body=Buffer.from(result.body,'base64');
   if(req.method()==='GET'&&url.pathname==='/memory-community/v1/books/'+bookId&&overrideParent){overrideParent=false;const dto=JSON.parse(body);dto.stories[1].revision=String(BigInt(dto.stories[1].revision)+1n);body=Buffer.from(JSON.stringify(dto));}
   if(req.method()==='GET'&&/^\/memory-stories\/[0-9a-f-]+$/.test(url.pathname)&&overrideChild){overrideChild=false;const dto=JSON.parse(body);dto.revision=String(BigInt(dto.revision)+1n);body=Buffer.from(JSON.stringify(dto));}
+  if(req.method()==='GET'&&url.pathname.endsWith('/contribution-refs')&&holdRefs){const hold=holdRefs;holdRefs=null;hold.arrive();await hold.release;}
   if(req.method()==='GET'&&url.pathname.endsWith('/editorial')&&overrideEditorial){const transform=overrideEditorial;overrideEditorial=null;body=Buffer.from(JSON.stringify(transform(JSON.parse(body))));}
   if(req.method()==='GET'&&url.pathname.endsWith('/editorial')&&holdEditorial){const hold=holdEditorial;holdEditorial=null;hold.arrive();await hold.release;}
-  const responseStatus=req.method()==='GET'&&url.pathname.endsWith('/editorial')&&editorialStatusOverride!==null?editorialStatusOverride:result.status;
+  let responseStatus=result.status;
+  if(req.method()==='GET'&&url.pathname.endsWith('/editorial')&&editorialStatusOverride!==null)responseStatus=editorialStatusOverride;
+  if(req.method()==='GET'&&url.pathname.endsWith('/contribution-refs')&&refsStatusOverride!==null){responseStatus=refsStatusOverride;refsStatusOverride=null;}
   try{await route.fulfill({status:responseStatus,contentType:result.content_type||'application/json',body});}catch(error){if(!/closed|handled|cancel|Invalid InterceptionId/.test(error.message))throw error;}
  });
  page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
@@ -68,9 +71,47 @@ const html=fs.readFileSync(path.join(root,'backend/app/ui/access/index.html'),'u
  const jump=reader.locator('.memory-book-editorial-reading-transition details');await jump.locator('summary').click();await jump.locator('button').click();
  await reader.locator('.story-reader-sources').waitFor({state:'attached'});
  await page.waitForFunction(()=>document.querySelector('#memory-book-reader .story-reader-sources')?.open===true);
- assert.equal(requests.filter(item=>/\/contributions\/[^/]+\?/.test(item.path)).length,0,'citation navigation selects a source without loading original text/audio');
+ assert.equal(requests.filter(item=>/\/contributions\/[^/]+(?:\?|$)/.test(item.path)).length,0,'citation navigation selects a source without loading original text/audio');
  assert(await reader.locator('[data-contribution-id] button').first().isVisible());
  pass('Explicit citation jump selects its chapter and opens source choices without auto-loading originals');
+ const originalsBeforeExplicitOpen=requests.filter(item=>/\/contributions\/[^/]+(?:\?|$)/.test(item.path)).length;
+ await reader.locator('.story-reader-sources [data-contribution-id] button').first().click();
+ await page.waitForFunction(()=>document.querySelector('#memory-book-reader [data-contribution-id] .story-contribution-source-detail')?.hidden===false);
+ assert.equal(requests.filter(item=>/\/contributions\/[^/]+(?:\?|$)/.test(item.path)).length,originalsBeforeExplicitOpen+1,'original family wording loads only after its explicit source action');
+ pass('Original family wording loads only after its explicit source action');
+
+ await reader.locator('header button').click();await page.evaluate(()=>window.__workspace.openBook(window.__book));
+ refsStatusOverride=503;await reader.locator('.memory-book-toc button').nth(1).click();
+ const topSourceStatus=reader.locator('.memory-book-source-status-note');
+ await reader.locator('.memory-book-source-retry').waitFor({state:'visible'});
+ assert.match(await topSourceStatus.textContent(),/来源链接暂不可用/);
+ assert.equal(await reader.locator('.story-reader-sources').evaluateAll(nodes=>nodes.every(node=>!node.open)),true,'source failure remains visible while the disclosure stays closed');
+ await page.screenshot({path:path.join(artifacts,'memoir-source-unavailable-zh-150.png')});
+ const originalsBeforeRetry=requests.filter(item=>/\/contributions\/[^/]+(?:\?|$)/.test(item.path)).length;
+ const writesBeforeRetry=requests.filter(item=>['POST','PUT','PATCH','DELETE'].includes(item.method)&&/memory-stories|memory-community\/v1\/books/.test(item.path)).length;
+ const readingContextBeforeRetry=await reader.evaluate(element=>element.__photoHouseReadingContext());
+ let retryArrive,retryRelease;const retrySeen=new Promise(resolve=>retryArrive=resolve),retryReleased=new Promise(resolve=>retryRelease=resolve);holdRefs={arrive:retryArrive,release:retryReleased};
+ await reader.locator('.memory-book-source-retry').click();
+ await retrySeen;
+ assert.match(await topSourceStatus.textContent(),/正在核实本章/,'retry exposes the checking state outside the disclosure');
+ assert.equal(await reader.locator('.memory-book-source-retry').count(),0,'duplicate retries are unavailable while checking');
+ assert.deepEqual(await reader.evaluate(element=>element.__photoHouseReadingContext()),readingContextBeforeRetry,'retry preserves the current book/story/chapter identity');
+ await page.screenshot({path:path.join(artifacts,'memoir-source-checking-zh-150.png')});
+ retryRelease();
+ await page.waitForFunction(()=>{const text=document.querySelector('#memory-book-reader .memory-book-source-status-note')?.textContent||'';return /本章已核实|本章没有已保存/.test(text);});
+ assert.equal(await reader.locator('.story-reader-sources').evaluateAll(nodes=>nodes.every(node=>!node.open)),true,'successful retry leaves the source disclosure closed');
+ assert.equal(requests.filter(item=>/\/contributions\/[^/]+(?:\?|$)/.test(item.path)).length,originalsBeforeRetry,'retry refreshes references without loading original contribution text or audio');
+ assert.equal(requests.filter(item=>['POST','PUT','PATCH','DELETE'].includes(item.method)&&/memory-stories|memory-community\/v1\/books/.test(item.path)).length,writesBeforeRetry,'retry creates no story, editorial or save mutation');
+ assert.match(await topSourceStatus.textContent(),/本章已核实 \d+ 条|本章没有已保存/,'Chinese status reports current source-link results');
+ pass('Chapter source checking/failure is visible outside the disclosure; explicit retry refreshes references only');
+
+ await reader.locator('header button').click();await page.evaluate(()=>{window.__scope.language='en';window.__workspace.openBook(window.__book);});
+ await reader.locator('.memory-book-toc button').nth(1).click();
+ await page.waitForFunction(()=>{const text=document.querySelector('#memory-book-reader .memory-book-source-status-note')?.textContent||'';return /source link|source links/.test(text)&&!/^Checking/.test(text);});
+ assert.match(await reader.locator('.memory-book-source-status-note').textContent(),/source link|source links/,'English reader reports the available source-link state');
+ await page.screenshot({path:path.join(artifacts,'memoir-source-available-en-150.png')});
+ await reader.locator('header button').click();await page.evaluate(()=>{window.__scope.language='zh';window.__workspace.openBook(window.__book);});
+
  await reader.locator('header button').click();await page.evaluate(()=>window.__workspace.openBook(window.__book));await reader.locator('.memory-book-introduction-sources details').waitFor({state:'attached'});overrideParent=true;
  await reader.locator('.memory-book-toc button').nth(1).click();await reader.locator('.memory-book-reopen').waitFor();assert.equal(await reader.locator('.memory-book-editorial-reading-transition').count(),0);assert.equal(await reader.locator('.memory-book-introduction-sources details').count(),0);
  pass('Changed child revision in the reauthorized parent withholds the opened snapshot');
@@ -97,7 +138,13 @@ const html=fs.readFileSync(path.join(root,'backend/app/ui/access/index.html'),'u
  await reader.locator('.memory-book-editorial-reading-status').waitFor();assert.match(await reader.locator('.memory-book-editorial-reading-status').textContent(),/来源已变化/);
  await reader.locator('.memory-book-toc button').nth(1).click();await reader.locator('.memory-book-reading h4').waitFor();assert.equal(await reader.locator('.memory-book-editorial-reading-transition').count(),0);
  pass('Deleted source produces source_changed and withholds old transition prose');
- await reader.locator('header button').click();let arrive,release;const seen=new Promise(resolve=>arrive=resolve),released=new Promise(resolve=>release=resolve);holdEditorial={arrive,release:released};
+ await reader.locator('header button').click();let refsArrive,refsRelease;const refsSeen=new Promise(resolve=>refsArrive=resolve),refsReleased=new Promise(resolve=>refsRelease=resolve);holdRefs={arrive:refsArrive,release:refsReleased};
+ await page.evaluate(()=>window.__workspace.openBook(window.__book));await reader.locator('.memory-book-toc button').nth(1).click();await refsSeen;
+ await page.evaluate(()=>{window.__scope.library='family-b';window.__workspace.clear();});refsRelease();await page.waitForTimeout(40);
+ assert.equal(await page.locator('#memory-book-reader').count(),0);assert.equal(await page.locator('body').textContent().then(text=>text.includes('Checking this chapter’s saved family-memory links')),false,'late source lookup is fenced after a protected scope change');
+ pass('Late source-reference response is fenced after account/library scope changes');
+ await page.evaluate(()=>{window.__scope.library='family-a';window.__workspace.openBook(window.__book);});
+ let arrive,release;const seen=new Promise(resolve=>arrive=resolve),released=new Promise(resolve=>release=resolve);holdEditorial={arrive,release:released};
  await page.evaluate(()=>window.__workspace.openBook(window.__book));await seen;await page.evaluate(()=>{window.__scope.library='family-b';window.__workspace.clear();});release();await page.waitForTimeout(40);
  assert.equal(await page.locator('#memory-book-reader').count(),0);assert.equal(await page.locator('body').textContent().then(text=>text.includes('从那次相聚')),false);
  pass('Late editorial response is fenced after protected scope changes');

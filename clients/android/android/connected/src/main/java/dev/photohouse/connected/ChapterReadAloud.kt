@@ -175,6 +175,8 @@ internal class ChapterReadAloudController(
 ) {
     val status = mutableStateOf("idle")
     val completed = mutableStateOf(false)
+    /** Ephemeral progress within the frozen TTS chunks for this exact reader scope. */
+    val progress = mutableStateOf<ChapterReadAloudProgress?>(null)
     private val main = Handler(Looper.getMainLooper())
     private val chunks = runCatching { narrationChunks(text) }.getOrDefault(emptyList())
     private var generation = 0L
@@ -189,6 +191,7 @@ internal class ChapterReadAloudController(
         if (closed || chunks.isEmpty() || status.value in setOf("loading", "speaking", "paused", "paused_busy")) return false
         completed.value = false
         chunkIndex = 0
+        progress.value = null
         return begin(preserveChunk = false)
     }
     fun pause() {
@@ -208,6 +211,7 @@ internal class ChapterReadAloudController(
         val speechLease = coordinator.acquire(ReaderAudioKind.SPEECH) { stop() }
         if (speechLease == null) {
             status.value = if (preserveChunk) "paused_busy" else "busy"
+            updateProgress()
             completed.value = false
             return false
         }
@@ -220,6 +224,7 @@ internal class ChapterReadAloudController(
         adapter = player
         if (!preserveChunk) chunkIndex = 0
         activeUtterance = null; status.value = "loading"
+        updateProgress()
         val initialized = runCatching { player.initialize { ok, voices -> main.post {
                 if (!isCurrent(run, player)) { runCatching { player.shutdown() }; return@post }
                 val voice = if (ok) selectOfflineVoice(voices, language) else null
@@ -235,6 +240,7 @@ internal class ChapterReadAloudController(
         if (!isCurrent(run, player)) return
         val index = chunkIndex
         if (index >= chunks.size) { stopWith("done"); return }
+        updateProgress()
         val id = "$run:$index"; activeUtterance = id
         val accepted = runCatching { player.speak(chunks[index], id, done = { callback -> main.post {
             if (isCurrent(run, player) && activeUtterance == id && callback == id) {
@@ -247,6 +253,12 @@ internal class ChapterReadAloudController(
     }
     private fun isCurrent(run: Long, player: ChapterSpeechAdapter? = adapter): Boolean =
         !closed && generation == run && player != null && adapter === player && coordinator.isOwned(lease)
+    private fun updateProgress() {
+        progress.value = if (status.value in setOf("loading", "speaking", "paused", "paused_busy") &&
+            chunkIndex in chunks.indices) {
+            ChapterReadAloudProgress(currentSegment = chunkIndex + 1, segmentCount = chunks.size)
+        } else null
+    }
     fun stop() = stopWith("idle")
     private fun stopWith(nextStatus: String, preserveChunk: Boolean = false) {
         if (Looper.myLooper() != Looper.getMainLooper()) { main.post { stopWith(nextStatus, preserveChunk) }; return }
@@ -260,6 +272,7 @@ internal class ChapterReadAloudController(
         if (!preserveChunk) chunkIndex = 0
         completed.value = nextStatus == "done"
         status.value = nextStatus
+        updateProgress()
     }
     fun close() {
         if (Looper.myLooper() != Looper.getMainLooper()) { main.post { close() }; return }
@@ -267,6 +280,8 @@ internal class ChapterReadAloudController(
         stopWith("idle")
     }
 }
+
+internal data class ChapterReadAloudProgress(val currentSegment: Int, val segmentCount: Int)
 
 internal data class ChapterReadAloudLabels(
     val read: String,
@@ -303,6 +318,7 @@ internal fun ChapterReadAloud(
     }
     val status by controller.status
     val completed by controller.completed
+    val progress by controller.progress
     val latestScopeKey by rememberUpdatedState(scopeKey)
     val latestEnabled by rememberUpdatedState(enabled)
     val latestController by rememberUpdatedState(controller)
@@ -372,6 +388,23 @@ internal fun ChapterReadAloud(
         if (paused) Text(labels?.resumeChunkNotice ?: t(
             "Resume restarts the current short segment; part of it may repeat.",
             "继续朗读会从当前短句开头重读，可能重复一小段内容。"), modifier = Modifier.testTag("$tag-paused-notice"))
+        progress?.let { current ->
+            val progressLabel = when (status) {
+                "loading" -> t(
+                    "Preparing narration segment ${current.currentSegment} of ${current.segmentCount}",
+                    "正在准备朗读分段 ${current.currentSegment}/${current.segmentCount}",
+                )
+                "paused", "paused_busy" -> t(
+                    "Paused at narration segment ${current.currentSegment} of ${current.segmentCount}",
+                    "已暂停 · 朗读分段 ${current.currentSegment}/${current.segmentCount}",
+                )
+                else -> t(
+                    "Narration segment ${current.currentSegment} of ${current.segmentCount}",
+                    "朗读分段 ${current.currentSegment}/${current.segmentCount}",
+                )
+            }
+            Text(progressLabel, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("$tag-progress"))
+        }
         if (status == "paused_busy") Text(labels?.pausedBusyNotice ?: t(
             "Recording is active. Finish it, then choose Resume.", "录音正在进行。结束录音后，请手动选择继续朗读。"),
             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("$tag-paused-busy"))

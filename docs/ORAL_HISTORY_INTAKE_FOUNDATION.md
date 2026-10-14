@@ -6,6 +6,12 @@ fixtures. There is no HTTP route, client recorder, Alembic migration, runtime
 configuration, ASR queue, deployment or public recording feature. A new checkout
 and the current Windows installation do not activate this prototype.
 
+The October 15 source increment adds separate opt-in, author-only withdrawal
+and V4 journal replay. Withdrawal retains original bytes but denies ordinary
+source/status access, including after an older backup is restored. See the
+[withdrawal contract](ORAL_HISTORY_WITHDRAWAL.md) for the remaining admission
+and permanent-erasure gates.
+
 ## What this slice provides
 
 [`OralHistoryIntake`](../server/backend/app/access/oral_history_intake.py) supports

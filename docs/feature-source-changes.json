@@ -14817,6 +14817,114 @@
       "providers_activated": false,
       "live_schema_changed": false,
       "alembic_head_changed": false
+    },
+    {
+      "feature": "reader-progress-source-status-and-recording-withdrawal",
+      "source_commit": "13f1b56f2a3d0e8f2dd93429214116b19393c53a",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ChapterReadAloudUiTest.kt",
+          "before_sha256": "37f825382e128318752f9bbb7719e7d79686be6e19a54a8c6b54854bbfc9aee2",
+          "sha256": "d26ca385703c0cba8b00f16654ac041bb6067ce3b26782a4963ab1671f786475"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ChapterReadAloud.kt",
+          "before_sha256": "0e2a617d9486bd792d3aca0e8fb318cb4a89e101071f90deabb0f943da9f9584",
+          "sha256": "f58cd37dc47fe862b77dc8b148b9889d44e67eb46320b2b81ceb44007d4f5469"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "342f4236fbea6cee1a5a34219f6bbd0b8c3ef1df040bee3c5c50f47b7b21739d",
+          "sha256": "b5b41720545bc742c7f8a7e721210a23c0bd53d66f8bec7547428ed565df52fb"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "8fc698a0301e5b5595432ca3fa8ed32bbe6b625b1f33ccc290f7623157577979",
+          "sha256": "7c143d08bc95e61399c255abd7153a2a567735603c1352f424f199773f15acdc"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_WITHDRAWAL.md",
+          "before_sha256": null,
+          "sha256": "e9f8c530d10ce470be411445c35c1ee67768a6bad28ba086a8b6a63c32e787ad"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "33f6e663e4303d05d091b47e18cfc5af6f04dee184db35326cc15dd33105d3b2",
+          "sha256": "9c1d7249d2833fbf93d8eff314ad6a570dda697033ed728b74e9281fa931a0d6"
+        },
+        {
+          "path": "docs/READER_PROGRESS_AND_SOURCES.md",
+          "before_sha256": null,
+          "sha256": "9b587d18a46d0d2a701de5ab149312106f0b56c75ed8237149a4397746b27cdb"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e4cd44ae5afb14ea473f3e49423e0169e79330c31020ae37ef17be70a2b65b92",
+          "sha256": "dcd9ed3412d03d662f89dc4183a588ac49180c30da913a56baa2971f273c21a5"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "6f8744d89d0235cc787615ed62c9f6be10ab810ad8c6b468b4a9cb5b402c7e01",
+          "sha256": "9f5c9b70ca45fc1e64e92941b14d9f9671a3f73ad26b1877fe59f84e0c6a8709"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "17e25b4e31114d33fe7de24160ef0ebf438f9858bd5c2dd17e3f799f2529f882",
+          "sha256": "312a96af3c5448dcfa67d495c1c2eb94c0f14ba386e82fd26c719ec39345e728"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_schema.py",
+          "before_sha256": "fbac4c1d95522c4e9114f177d856b4d932c478488444c60211ebdc5100edbf77",
+          "sha256": "7ab06381b25d862c77bdf910323ff1919a6496caf2816fe440e056e024d55c5d"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_withdrawal.py",
+          "before_sha256": null,
+          "sha256": "68b007a8f4c7a7c4eccf5aebf552336ee0521b2d1b256d2aab2d2d4945262eb6"
+        },
+        {
+          "path": "server/backend/app/access/original_deletions.py",
+          "before_sha256": "950c75c61a8f469ad49272da806011ce5fdf0169c05a0003c7f0974ba6ded249",
+          "sha256": "fc3b8e67072d37be6e9f99a1e1c8c8737841fdf665d9d82295fca8d1c408cb1d"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "36e56744d8fed97c6308bd93b3842ba741b02cc6df37e4e6d199ff558c17cfa5",
+          "sha256": "ca8601ca337d2d3485496cce8e3b6de38531b15df7e746c4e3ac1afdaf56c7df"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "d3e90d3f9e668368cb25943211231a3bc3edc11c5dc4905917cfc3d57d84ee4c",
+          "sha256": "22d9e0ad1a6341d100c720a6dac91f7dbecdef378dc9c6a245c18c902529183c"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
+          "before_sha256": "1a7e687e8a51494ba6b910387cfbc6f744c72cccee37914f0f52f19173de9071",
+          "sha256": "d560063c2d86cfe3194a224a11009430943e7d1a6728167b4f7e3dd700e0c5b1"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_withdrawal.py",
+          "before_sha256": null,
+          "sha256": "591c0bb122f76cf62ef712effedd7b2407cce89663b82b5b8938e35339be2c65"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "0e368752e33952d84db5d320868010eb0e3707873ef863fcd3627cc4aff3dd47",
+          "sha256": "e197711119bd71bdd429f986dfb385d4d496ca9d8e90b3119b984996039edafe"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "c403689ad8e528b41abc237284faee4004ed8e86dd89641ee8ad5e7081459a10",
+          "sha256": "f8db0e4118351c4d4b9565440a2fc89b979f550fb53ff13ad3f27e827921ed07"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "fixture_schema_changed": true,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "providers_activated": false,
+      "generation_enabled": false
     }
   ]
 }

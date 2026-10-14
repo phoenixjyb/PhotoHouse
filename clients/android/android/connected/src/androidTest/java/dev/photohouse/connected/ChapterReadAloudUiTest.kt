@@ -37,8 +37,9 @@ import java.util.concurrent.TimeUnit
 class ChapterReadAloudUiTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun capture(name: String) {
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+    private fun capture(name: String, tag: String? = null) {
+        val target = if (tag == null) rule.onRoot() else rule.onNodeWithTag(tag)
+        val bitmap = target.captureToImage().asAndroidBitmap()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val values = ContentValues().apply {
             put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "chapter-readaloud-$name.png")
@@ -113,10 +114,14 @@ class ChapterReadAloudUiTest {
         rule.waitUntil(5_000) { engines.engines.size == 1 && attempts.size == 1 }
         assertEquals(listOf(request.uniqueId to true), attempts.toList())
         val engine = engines.engines.single()
-        engine.init?.invoke(true, setOf(offlineVoice("en")))
-        rule.waitForIdle()
         val chunks = narrationChunks(text)
         assertTrue("test text should exercise multiple bounded utterances", chunks.size > 1)
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals(
+            "Preparing narration segment 1 of ${chunks.size}")
+        engine.init?.invoke(true, setOf(offlineVoice("en")))
+        rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals(
+            "Narration segment 1 of ${chunks.size}")
         assertEquals(1, engine.spoken.size)
         assertEquals(chunks.first(), engine.spoken.first().text)
         assertTrue("a partial read is not chapter completion", completions.none { it })
@@ -135,14 +140,22 @@ class ChapterReadAloudUiTest {
             val completedSignals = completions.count { it }
             assertEquals("only the final bounded chunk reports completion", if (index == chunks.lastIndex) 1 else 0,
                 completedSignals)
+            if (index < chunks.lastIndex) {
+                rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals(
+                    "Narration segment ${index + 2} of ${chunks.size}")
+            } else {
+                rule.onNodeWithTag("saved-memory-narration-progress").assertDoesNotExist()
+            }
         }
         val last = engine.spoken.last()
         last.done(last.id)
         rule.waitForIdle()
         assertEquals(listOf(false, true), completions.toList())
+        rule.onNodeWithTag("saved-memory-narration-progress").assertDoesNotExist()
         rule.onNodeWithTag("one-shot-change-scope").performClick()
         rule.waitForIdle()
         assertEquals("a new reader scope clears completed state", listOf(false, true, false), completions.toList())
+        rule.onNodeWithTag("saved-memory-narration-progress").assertDoesNotExist()
     }
 
     @Test fun disabledAndRecordingDeniedRequestsAreConsumedWithoutAutomaticRetry() {
@@ -201,13 +214,17 @@ class ChapterReadAloudUiTest {
         val request = ChapterReadAloudStartRequest(scopeKey)
         val attempts = mutableStateListOf<Pair<String, Boolean>>()
         rule.setContent {
+            val base = LocalDensity.current
             var startRequest by remember { mutableStateOf<ChapterReadAloudStartRequest?>(null) }
-            CompositionLocalProvider(LocalReaderAudioCoordinator provides coordinator,
+            CompositionLocalProvider(LocalDensity provides Density(base.density, 1.5f),
+                LocalReaderAudioCoordinator provides coordinator,
                 LocalChapterSpeechAdapterFactory provides engines,
                 LocalChapterAudioFocusFactory provides FakeFocusFactory()) {
                 Column {
-                    ChapterReadAloud(text, "en", scopeKey, false, startRequest = startRequest,
-                        onStartRequestConsumed = { id, started -> attempts += id to started })
+                    Column(Modifier.testTag("narration-progress-controls")) {
+                        ChapterReadAloud(text, "zh", scopeKey, true, startRequest = startRequest,
+                            onStartRequestConsumed = { id, started -> attempts += id to started })
+                    }
                     Button(onClick = { startRequest = request }, modifier = Modifier.testTag("request-while-paused")) {
                         Text("Request read")
                     }
@@ -217,15 +234,21 @@ class ChapterReadAloudUiTest {
 
         rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
         val firstEngine = engines.engines.single()
-        firstEngine.init?.invoke(true, setOf(offlineVoice("en")))
+        firstEngine.init?.invoke(true, setOf(offlineVoice("zh")))
         rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 1/${chunks.size}")
+        capture("progress-active-zh-150", "narration-progress-controls")
         assertEquals(chunks.first(), firstEngine.spoken.single().text)
         firstEngine.spoken.first().done(firstEngine.spoken.first().id)
         rule.waitForIdle()
         assertEquals(chunks[1], firstEngine.spoken.last().text)
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 2/${chunks.size}")
+        val pausedUtterance = firstEngine.spoken.last()
 
         rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
         rule.onNodeWithTag("saved-memory-narration-paused-notice").assertExists()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("已暂停 · 朗读分段 2/${chunks.size}")
+        capture("progress-paused-zh-150", "narration-progress-controls")
         rule.onNodeWithTag("request-while-paused").performClick()
         rule.waitUntil(5_000) { attempts.size == 1 }
         assertEquals(request.uniqueId to false, attempts.single())
@@ -234,10 +257,26 @@ class ChapterReadAloudUiTest {
 
         rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
         val resumedEngine = engines.engines.last()
-        resumedEngine.init?.invoke(true, setOf(offlineVoice("en")))
+        resumedEngine.init?.invoke(true, setOf(offlineVoice("zh")))
         rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 2/${chunks.size}")
+        capture("progress-resumed-zh-150", "narration-progress-controls")
         assertEquals("explicit resume continues at the paused chunk", chunks[1], resumedEngine.spoken.single().text)
-        assertEquals("the consumed request does not restart the chapter", 2, engines.engines.size)
+        pausedUtterance.done(pausedUtterance.id)
+        rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 2/${chunks.size}")
+        rule.onNodeWithTag("saved-memory-narration-stop").performClick()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertDoesNotExist()
+        rule.onNodeWithTag("saved-memory-narration-toggle").assertTextEquals("朗读本章")
+        rule.onNodeWithTag("saved-memory-narration-toggle").performClick()
+        val restartedEngine = engines.engines.last()
+        restartedEngine.init?.invoke(true, setOf(offlineVoice("zh")))
+        rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 1/${chunks.size}")
+        pausedUtterance.done(pausedUtterance.id)
+        rule.waitForIdle()
+        rule.onNodeWithTag("saved-memory-narration-progress").assertTextEquals("朗读分段 1/${chunks.size}")
+        assertEquals("the consumed request does not restart the chapter; Stop allowed one fresh manual start", 3, engines.engines.size)
     }
 
     @Test fun mismatchedScopeRequestIsConsumedAndCannotStartAfterScopeChanges() {

@@ -25,13 +25,24 @@ STATEMENTS = (
         narrator_label TEXT NOT NULL CHECK(length(CAST(narrator_label AS BLOB)) <= 256),
         language TEXT NOT NULL CHECK(language IN ('zh','en','mixed','und')),
         processing_consent INTEGER NOT NULL CHECK(processing_consent IN (0,1)),
-        state TEXT NOT NULL CHECK(state IN ('open','completed','cancelled')),
+        state TEXT NOT NULL CHECK(state IN ('open','completed','cancelled','withdrawn')),
+        withdrawn_from TEXT,
+        withdrawal_request_id TEXT,
+        withdrawal_request_digest TEXT,
         revision INTEGER NOT NULL CHECK(revision > 0),
         section_count INTEGER NOT NULL CHECK(section_count BETWEEN 0 AND {MAX_SECTIONS}),
         total_bytes INTEGER NOT NULL CHECK(total_bytes BETWEEN 0 AND {MAX_TOTAL_BYTES}),
         total_frames INTEGER NOT NULL CHECK(total_frames BETWEEN 0 AND {MAX_TOTAL_FRAMES}),
         manifest_sha256 TEXT NOT NULL CHECK(length(manifest_sha256)=64 AND manifest_sha256 NOT GLOB '*[^0-9a-f]*'),
-        created_at INTEGER NOT NULL CHECK(created_at >= 0)
+        created_at INTEGER NOT NULL CHECK(created_at >= 0),
+        CHECK((state='withdrawn' AND withdrawn_from IS NOT NULL
+            AND withdrawal_request_id IS NOT NULL AND withdrawal_request_digest IS NOT NULL
+            AND withdrawn_from IN ('open','completed','cancelled')
+            AND length(withdrawal_request_id)=36
+            AND length(withdrawal_request_digest)=64
+            AND withdrawal_request_digest NOT GLOB '*[^0-9a-f]*')
+            OR (state!='withdrawn' AND withdrawn_from IS NULL
+                AND withdrawal_request_id IS NULL AND withdrawal_request_digest IS NULL))
     )''',
     f'''CREATE INDEX ix_oral_history_author ON {SESSION}(author_id,library_id,id)''',
     f'''CREATE TABLE {SECTION} (
@@ -65,16 +76,22 @@ STATEMENTS = (
         OR NEW.created_at IS NOT OLD.created_at
         BEGIN SELECT RAISE(ABORT,'oral_history_identity_immutable'); END''',
     f'''CREATE TRIGGER oral_history_session_transition BEFORE UPDATE ON {SESSION}
-        WHEN OLD.state != 'open' OR NEW.revision != OLD.revision+1 OR NOT (
-            (NEW.state='open' AND NEW.section_count=OLD.section_count+1 AND EXISTS (
+        WHEN NEW.revision != OLD.revision+1 OR NOT (
+            (OLD.state='open' AND NEW.state='open' AND NEW.withdrawn_from IS NULL
+                AND NEW.section_count=OLD.section_count+1 AND EXISTS (
                 SELECT 1 FROM {SECTION} p WHERE p.session_id=OLD.id AND p.ordinal=OLD.section_count
                 AND p.start_frame=OLD.total_frames AND p.frames=NEW.total_frames-OLD.total_frames
                 AND p.byte_count=NEW.total_bytes-OLD.total_bytes
                 AND p.parent_manifest=OLD.manifest_sha256 AND p.manifest_sha256=NEW.manifest_sha256))
-            OR (NEW.state IN ('completed','cancelled') AND NEW.section_count=OLD.section_count
+            OR (OLD.state='open' AND NEW.state IN ('completed','cancelled')
+                AND NEW.withdrawn_from IS NULL AND NEW.section_count=OLD.section_count
                 AND NEW.total_frames=OLD.total_frames AND NEW.total_bytes=OLD.total_bytes
                 AND NEW.manifest_sha256=OLD.manifest_sha256
-                AND (NEW.state='cancelled' OR OLD.section_count > 0)))
+                AND (NEW.state='cancelled' OR OLD.section_count > 0))
+            OR (OLD.state IN ('open','completed','cancelled') AND NEW.state='withdrawn'
+                AND NEW.withdrawn_from=OLD.state AND NEW.section_count=OLD.section_count
+                AND NEW.total_frames=OLD.total_frames AND NEW.total_bytes=OLD.total_bytes
+                AND NEW.manifest_sha256=OLD.manifest_sha256))
         BEGIN SELECT RAISE(ABORT,'oral_history_transition_invalid'); END''',
     f'''CREATE TRIGGER oral_history_section_insert BEFORE INSERT ON {SECTION}
         WHEN NOT EXISTS (SELECT 1 FROM {SESSION} s WHERE s.id=NEW.session_id
@@ -104,7 +121,8 @@ def assert_schema(db):
         rows = db.execute('SELECT name,sql FROM sqlite_master WHERE tbl_name IN (?,?,?)',
                           (SESSION, SECTION, MUTATION)).fetchall()
         actual = {name: sql.strip() for name, sql in rows if sql is not None}
-        if (actual != EXPECTED or db.execute('PRAGMA foreign_keys').fetchone()[0] != 1
+        extra = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE name LIKE 'access_oral_history_%' OR name LIKE 'oral_history_%' OR name LIKE 'ix_oral_history_%'")} - set(EXPECTED)
+        if (extra or actual != EXPECTED or db.execute('PRAGMA foreign_keys').fetchone()[0] != 1
                 or db.execute('PRAGMA ignore_check_constraints').fetchone()[0] != 0):
             raise ValueError('oral_history_schema_unavailable')
     except sqlite3.DatabaseError:
