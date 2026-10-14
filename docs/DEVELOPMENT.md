@@ -2676,7 +2676,7 @@ The separately prepared v60 native controller/runner/pins pass 18 local syntheti
 checks and content-free validation of the extracted Mac reports. Read-only native
 PowerShell ParseInput reports zero errors / 4,081 tokens. The parser did not
 execute or stage the controller; future execution authority remains disabled.
-Its reviewed boundaries remain five minutes, 2 GiB process memory, eight
+Its reviewed boundaries remain five minutes, 2 GiB total job memory, eight
 processes and an 8 GiB free-RAM admission floor, synthetic candidate output only.
 
 

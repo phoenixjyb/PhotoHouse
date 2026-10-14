@@ -16406,6 +16406,27 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "clarify-native-total-job-memory-and-production-data-boundary",
+      "source_commit": "6dff4777f501cb8c6d931d55b6476ac96c6f0dd4",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "39b92a083fe3cb05300a63e02f757393c7df6c2b739b76babd46654334978f56",
+          "sha256": "1a51acf635316ff09c7be6e9e44b5d4f16a39bd634231a742b54647bd77af065"
+        },
+        {
+          "path": "docs/NEXT_SESSION_HANDOFF_2026-10-15.md",
+          "before_sha256": "6a77c0acaa89f0bd5563407c78f42fbc8a2114051a45d5924c7dc3af97841fa0",
+          "sha256": "9c0ac96e3994b1170e2ffe0e093c283df164672f21b2727c5a27571cde9d51c9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

@@ -46,7 +46,7 @@ reported gallery previews decoded successfully in the live UI. No family media
 was exported for that check.
 
 No overnight deployment, model inference, Windows candidate staging, signing,
-OTA publication, database mutation or task/service change has occurred. A running
+OTA publication, production database mutation or task/service change has occurred. A running
 task is not queue completion, a warm provider or physical audio acceptance.
 The read-only resource query did not open production databases.
 
