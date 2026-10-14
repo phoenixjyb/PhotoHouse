@@ -2,6 +2,7 @@ package dev.photohouse.connected
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
@@ -44,9 +45,10 @@ class AssistantMemoryOpeningUiTest {
         }
     }
 
-    private fun workspace(recovered: Boolean = false, kind: String = "story"): AssistantWorkspaceState {
+    private fun workspace(recovered: Boolean = false, kind: String = "story", followup: Boolean = false,
+                          segmentReading: Boolean = true, resultKind: String = "memory_cards"): AssistantWorkspaceState {
         val selectedCard = if (kind == card.kind) card else card.copy(kind = kind)
-        val result = AssistantTurn("memory_cards", "Found one saved memory.", null, null, emptyList(), 1, false, null,
+        val result = AssistantTurn(resultKind, "Found one saved memory.", null, null, emptyList(), 1, false, null,
             memoryCards = listOf(selectedCard), savedMemoryContext = AssistantSavedMemoryContext("synthetic-library",
                 "f".repeat(64), listOf(AssistantSavedMemoryReference(selectedCard.kind, selectedCard.id,
                     selectedCard.revision, selectedCard.sourceRevision))))
@@ -57,7 +59,9 @@ class AssistantMemoryOpeningUiTest {
         return AssistantWorkspaceState(
             accountId = "synthetic-account", libraryId = "synthetic-library", generation = 1,
             capabilities = AssistantWorkspaceCapabilities(1, true, true, true, true, true),
-            savedMemoryCardsAvailable = true, savedMemoryReadingAvailable = true, savedMemorySegmentReadingAvailable = true,
+            savedMemoryCardsAvailable = true, savedMemoryReadingAvailable = true,
+            savedMemorySegmentReadingAvailable = segmentReading,
+            savedMemoryFollowupAvailable = followup,
             detail = AssistantWorkspaceThreadDetail(1, summary, emptyList()), currentTurn = turn,
             continuationEnabled = true,
         )
@@ -99,6 +103,36 @@ class AssistantMemoryOpeningUiTest {
         }
         rule.onNodeWithTag("private-assistant-memory-cards").assertDoesNotExist()
         rule.onNodeWithTag("private-assistant-read-memory-opening-0").assertDoesNotExist()
+    }
+
+    @Test fun unavailableSegmentCapabilityHidesPrivatePanelActionAndGuidance() {
+        rule.setContent {
+            PhotoHouseTheme {
+                PrivateAssistantPanel(workspace(segmentReading = false), true,
+                    onNew = {}, onRefresh = {}, onOpenThread = { _, _ -> }, onDraft = {}, onSend = {}, onRecover = {},
+                    onDelete = { _, _ -> }, onSetLocale = {}, onDismiss = {}, onReadSavedMemorySegment = { _, _ -> })
+            }
+        }
+        rule.onNodeWithTag("private-assistant-read-memory-segment-0").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-memory-segment-guidance-0").assertDoesNotExist()
+    }
+
+    @Test fun unavailableSegmentCapabilityHidesCentralAssistantActionAndGuidance() {
+        rule.setContent {
+            PhotoHouseTheme {
+                AssistantScreen(
+                    AssistantClientState("synthetic-library", 1), true,
+                    onBack = {}, previews = emptyMap(), onRetryCapabilities = {}, onSend = { true },
+                    onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {}, onRecord = {},
+                    onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                    onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {},
+                    savedMemoryWorkspace = workspace(segmentReading = false),
+                    onReadSavedMemorySegment = { _, _ -> },
+                )
+            }
+        }
+        rule.onNodeWithTag("assistant-read-memory-segment-0").assertDoesNotExist()
+        rule.onNodeWithTag("assistant-memory-segment-guidance-0").assertDoesNotExist()
     }
 
     @Test fun freshCardShowsEnglishOpeningAction() {
@@ -184,12 +218,98 @@ class AssistantMemoryOpeningUiTest {
                 }
             }
         }
+        rule.onNodeWithTag("assistant-intro").assertDoesNotExist()
         rule.onNodeWithTag("assistant-read-memory-segment-0").assertIsDisplayed()
             .assertTextContains("朗读第一章").performClick()
         rule.onNodeWithTag("assistant-memory-segment-guidance-0")
             .assertTextEquals("每次只朗读一段；播放结束后可继续，麦克风不会开启。")
         assertEquals(listOf(0 to 0), reads)
         saveRender("zh-central-segment")
+    }
+
+    @Test fun centralAssistantContinuesCompletedSectionInEnglishAndKeepsFullFollowupPrompt() {
+        val reads = mutableListOf<Pair<Int, Int>>()
+        val drafts = mutableListOf<String>()
+        val progress = AssistantMemorySegmentProgress(threadId, turnId, 1, 0, "story", 0, 2, 0)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(
+                        AssistantClientState("synthetic-library", 1, speechMemorySegmentProgress = progress), false,
+                        onBack = {}, previews = emptyMap(), onRetryCapabilities = {}, onSend = { true },
+                        onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {}, onRecord = {},
+                        onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                        onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {},
+                        savedMemoryWorkspace = workspace(followup = true),
+                        onReadSavedMemorySegment = { ordinal, segment -> reads += ordinal to segment },
+                        onSavedMemoryFollowupDraft = { drafts += it; true },
+                    )
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-intro").assertDoesNotExist()
+        rule.onNodeWithTag("assistant-memory-followup-0-0").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("Summary").assertContentDescriptionEquals("Summary. what is the first saved memory about")
+            .performClick()
+        rule.onNodeWithTag("assistant-read-memory-segment-0").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("Continue · Segment 2/2").performClick()
+        assertEquals(listOf("what is the first saved memory about"), drafts)
+        assertEquals(listOf(0 to 1), reads)
+        saveRender("en-central-continued-segment")
+    }
+
+    @Test fun staleOrUnsupportedSavedMemoryResultKeepsLegitimateEmptyIntro() {
+        val state = mutableStateOf(workspace(recovered = true))
+        rule.setContent {
+            PhotoHouseTheme {
+                AssistantScreen(
+                    AssistantClientState("synthetic-library", 1), true,
+                    onBack = {}, previews = emptyMap(), onRetryCapabilities = {}, onSend = { true },
+                    onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {}, onRecord = {},
+                    onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                    onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {},
+                    savedMemoryWorkspace = state.value,
+                )
+            }
+        }
+        rule.onNodeWithTag("assistant-intro").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-saved-memory-cards").assertDoesNotExist()
+
+        state.value = workspace(resultKind = "unsupported")
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-intro").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-saved-memory-cards").assertDoesNotExist()
+    }
+
+    @Test fun centralAssistantStopIsVisibleAndReallyTapableDuringChineseSectionPlayback() {
+        val constructor = ProtectedAnnotationAudio::class.java.getDeclaredConstructor(ByteArray::class.java)
+        constructor.isAccessible = true
+        val audio = constructor.newInstance(syntheticWav())
+        var stops = 0
+        val progress = AssistantMemorySegmentProgress(threadId, turnId, 1, 0, "story", 0, 2, null)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(
+                        AssistantClientState("synthetic-library", 1, speechAudio = audio,
+                            speechMemorySegmentProgress = progress), true,
+                        onBack = {}, previews = emptyMap(), onRetryCapabilities = {}, onSend = { true },
+                        onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {}, onRecord = {},
+                        onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                        onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = { stops++ },
+                        savedMemoryWorkspace = workspace(), onReadSavedMemorySegment = { _, _ -> },
+                        showMemoryOpeningPlayback = false,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-stop-memory-segment-0").performScrollTo()
+            .assertIsDisplayed().assertHasClickAction().performClick()
+        assertEquals(1, stops)
+        saveRender("zh-central-active-stop")
+        audio.close()
     }
 
     @Test fun stopRemainsAtTheActiveSavedSectionDuringPlayback() {

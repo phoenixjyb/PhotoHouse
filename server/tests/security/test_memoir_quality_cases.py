@@ -36,14 +36,20 @@ import plan_memoir_quality_cases as planner  # noqa: E402
 
 
 class MemoirQualityCasePlanTests(unittest.TestCase):
-    def test_original_case_ids_tasks_and_bundle_hashes_remain_pinned(self):
+    def test_original_six_case_ids_tasks_and_bundle_hashes_remain_pinned(self):
         cases = {case["case_id"]: case for case in planner.build_plan()["cases"]}
         self.assertEqual({
             "synthetic-coherence": ("narrative", "4146b546ba71f011b9062017c5eb57e1addaefa6ed2a08e613df1b926532a5f3"),
             "synthetic-conflict": ("narrative", "ca79efa76960d1c7f4cbf1fdf997679032b656da45a266a3ca516b1ae6772767"),
             "synthetic-provenance": ("companion", "733dbf227527f1bac08f89b9a83fa02bd60885fc04f63599e6039ce47603ca88"),
+            "synthetic-title-family": ("suggest", "210b7fa1eb5db7983c9a01f192ce0336c4d049b55674dd333a076de11c30edf0"),
+            "synthetic-title-uncertainty": ("suggest", "11cb64cf75f6c27dbdf411a3c63902fd29cc0d5ad1b51055b9845349e5d9b529"),
+            "synthetic-title-abstention": ("suggest", "7d00617b22a68d057cbe3beaf0d6628071a0567d2202a3ba3e28d62a9245ae2f"),
         }, {case_id: (cases[case_id]["task"], cases[case_id]["bundle_sha256"])
-            for case_id in ("synthetic-coherence", "synthetic-conflict", "synthetic-provenance")})
+            for case_id in (
+                "synthetic-coherence", "synthetic-conflict", "synthetic-provenance",
+                "synthetic-title-family", "synthetic-title-uncertainty", "synthetic-title-abstention",
+            )})
 
     def test_cases_pass_real_bundle_validator_and_stay_within_all_bounds(self):
         plan = planner.build_plan()
@@ -52,8 +58,8 @@ class MemoirQualityCasePlanTests(unittest.TestCase):
         self.assertFalse(plan["model_executed"])
         self.assertEqual(0, plan["external_requests_made"])
         self.assertEqual(0, plan["database_writes"])
-        self.assertEqual(6, len(plan["cases"]))
-        self.assertEqual(6, len({case["case_id"] for case in plan["cases"]}))
+        self.assertEqual(8, len(plan["cases"]))
+        self.assertEqual(8, len({case["case_id"] for case in plan["cases"]}))
 
         all_ids = set()
         for case in plan["cases"]:
@@ -94,6 +100,50 @@ class MemoirQualityCasePlanTests(unittest.TestCase):
         self.assertIn("ordered_multichapter_coherence_and_exact_citations", focus)
         self.assertIn("conflicting_multi_author_memories_and_uncertain_date", focus)
         self.assertIn("recent_multiturn_clarification_and_source_provenance", focus)
+        self.assertIn("similar_photos_distinct_days_and_evidence_boundaries", focus)
+        self.assertIn("speaker_uploader_subject_roles_and_conflicting_oral_recollections", focus)
+
+    def test_similar_photo_case_keeps_days_activities_assets_and_evidence_separate(self):
+        case = next(item for item in planner.build_plan()["cases"]
+                    if item["case_id"] == "synthetic-similar-photos")
+        bundle = case["bundle"]
+        sources = {source["id"]: source for source in bundle["sources"]}
+        first, second = bundle["chapters"]
+        self.assertEqual(["synthetic-similar-photos-pond-memory"], first["evidence_ids"])
+        self.assertEqual(["synthetic-similar-photos-school-memory"], second["evidence_ids"])
+        self.assertEqual(["synthetic-similar-photos-pond-photo"], first["asset_ids"])
+        self.assertEqual(["synthetic-similar-photos-school-photo"], second["asset_ids"])
+        self.assertNotEqual(sources[first["evidence_ids"][0]]["asset_id"],
+                            sources[second["evidence_ids"][0]]["asset_id"])
+        self.assertIn("April 12", sources[first["evidence_ids"][0]]["text"])
+        self.assertIn("April 14", sources[second["evidence_ids"][0]]["text"])
+        self.assertIn("cannot tell whether this is Mira", sources[second["evidence_ids"][0]]["text"])
+        self.assertIn("text-only", case["human_review_expectations"]["literary_style"])
+
+    def test_oral_role_case_separates_speakers_uploaders_subject_and_conflicting_uncertainty(self):
+        case = next(item for item in planner.build_plan()["cases"]
+                    if item["case_id"] == "synthetic-speaker-uploader-subject")
+        sources = {source["id"]: source for source in case["bundle"]["sources"]}
+        subject = sources["synthetic-speaker-uploader-subject-subject-memory"]
+        ren = sources["synthetic-speaker-uploader-subject-ren-transcript"]
+        dev = sources["synthetic-speaker-uploader-subject-dev-transcript"]
+        upload_log = sources["synthetic-speaker-uploader-subject-upload-log"]
+        self.assertEqual("family", subject["kind"])
+        self.assertEqual("Synthetic story subject Mira", subject["author"])
+        self.assertEqual("transcript", ren["kind"])
+        self.assertEqual("Synthetic speaker Aunt Ren", ren["author"])
+        self.assertEqual("transcript", dev["kind"])
+        self.assertEqual("Synthetic speaker Uncle Dev", dev["author"])
+        self.assertIn("uploaded by Synthetic member Sam", ren["text"])
+        self.assertIn("uploaded by Synthetic member Lee", dev["text"])
+        self.assertIn("late 2020", ren["text"])
+        self.assertIn("2021", dev["text"])
+        self.assertIn("file upload dates only", upload_log["text"])
+        self.assertEqual([ren["id"], dev["id"], upload_log["id"]],
+                         case["bundle"]["chapters"][1]["evidence_ids"])
+        expectations = case["human_review_expectations"]
+        self.assertIn("Never state or imply that an uploader is the speaker", expectations["attribution"])
+        self.assertIn("do not put transcript words in quotation marks", expectations["literary_style"])
 
     def test_title_cases_use_distinct_validated_inputs_and_title_specific_review_criteria(self):
         cases = {case["case_id"]: case for case in planner.build_plan()["cases"]

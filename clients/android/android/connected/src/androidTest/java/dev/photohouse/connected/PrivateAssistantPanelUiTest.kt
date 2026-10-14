@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.unit.Density
 import androidx.activity.ComponentActivity
+import android.os.Environment
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.connected.core.AssistantWorkspaceCapabilities
@@ -45,7 +48,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 /** Synthetic private workspace UI. No store, network, recorder, or inference provider is used. */
 @RunWith(AndroidJUnit4::class)
@@ -129,6 +131,7 @@ class PrivateAssistantPanelUiTest {
             savedMemoryCardsAvailable = includeFreshMemoryCard,
             savedMemoryFollowupAvailable = includeMemoryFollowup,
             savedMemoryActionsAvailable = includeMemoryAction,
+            savedMemoryReaderAvailable = includeFreshMemoryCard,
             savedMemoryReadingAvailable = includeMemoryAction,
             currentTurn = if (includeFreshMemoryCard) {
                 val card = AssistantSavedMemoryCard("story", "123e4567-e89b-42d3-a456-426614174103", "2",
@@ -223,8 +226,16 @@ class PrivateAssistantPanelUiTest {
 
     private fun saveMemoryFollowupScreenshot(name: String) {
         val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        val file = File(rule.activity.cacheDir, name)
-        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "compact-$name")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/PhotoHouseCompactMemoryCards")
+        }
+        val imageUri = requireNotNull(context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        context.contentResolver.openOutputStream(imageUri)?.use { output ->
+            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output))
+        } ?: error("could not write synthetic saved-memory card render")
         bitmap.recycle()
     }
 
@@ -266,11 +277,29 @@ class PrivateAssistantPanelUiTest {
         val callbacks = Callbacks()
         show(uiState, zh = true, callbacks, fontScale = 1.5f)
         rule.onNodeWithTag("private-assistant-memory-followup-all").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithTag("private-assistant-memory-followup-0-0").performScrollTo().assertIsDisplayed().performClick()
+        rule.onNodeWithTag("private-assistant-memory-followup-all").assertTextEquals("全部回忆")
+            .assertContentDescriptionEquals("全部回忆. 介绍这些回忆")
+        rule.onNodeWithTag("private-assistant-memory-followup-0-0").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("讲了什么").assertContentDescriptionEquals("讲了什么. 第1段回忆讲了什么").performClick()
         assertEquals(listOf("第1段回忆讲了什么"), callbacks.memoryFollowupDrafts)
-        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed().performClick()
+        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("章节").assertContentDescriptionEquals("章节. 第1段回忆有哪些章节").performClick()
         assertEquals(listOf("第1段回忆讲了什么", "第1段回忆有哪些章节"), callbacks.memoryFollowupDrafts)
         rule.onNodeWithText("已保存故事 · 第1段").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun freshSavedMemoryFollowupChipsUseShortEnglishLabelsAndFullAccessiblePrompts() {
+        val callbacks = Callbacks()
+        show(mutableStateOf(state(includeFreshMemoryCard = true, includeMemoryFollowup = true)), zh = false,
+            callbacks = callbacks, fontScale = 1.5f)
+        rule.onNodeWithTag("private-assistant-memory-followup-0-0").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("Summary").assertContentDescriptionEquals("Summary. what is the first saved memory about")
+            .performClick()
+        rule.onNodeWithTag("private-assistant-memory-followup-0-1").performScrollTo().assertIsDisplayed()
+            .assertTextEquals("Chapters").assertContentDescriptionEquals("Chapters. what chapters does the first saved memory have")
+            .performClick()
+        assertEquals(listOf("what is the first saved memory about", "what chapters does the first saved memory have"),
+            callbacks.memoryFollowupDrafts)
     }
 
     @Test fun followupChipsStayHiddenWithoutFreshCapabilityOrForRecoveredMemory() {

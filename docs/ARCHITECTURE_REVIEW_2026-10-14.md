@@ -72,6 +72,31 @@ from live admission, transport and erasure. These source changes do not alter
 the October 14 installation snapshot. Maintain the source/package/runtime/device
 gates as features become available, rather than relabeling prototypes as deployed.
 
+### October 15 compact controls, qualification and delivery boundary
+
+Phone and Web followup controls now display compact Summary, Chapters and All
+memories labels, with localized phone/Web text. Accessibility descriptions keep
+the full scoped question, and activation still places the unchanged prior
+request wording in the editable draft. Explicit saved-memory reader actions
+retain minimum 48 dp phone and 48 px Web targets; continuing remains a user
+action for one segment at a time.
+
+The Web capability-probe race now adds missing followup controls only to the
+exact current rendered result after capability readiness. Its deterministic
+held-response Edge journey passed 27 checkpoints, including no focus movement,
+auto-submission or duplicate controls; the turn-trail journey also passed.
+Complete integrated profiles and delivery remain separate gates.
+The generated oral-history qualification now covers four content-free groups
+and ten cases with `experimental_fixture_schema=true`, guarded V3/V4 journal
+replay, withdrawal and retained source bytes. It does not qualify production
+admission, transport or erasure.
+
+The API source-package plan is now 201 files. Earlier dated records that say
+200 files remain historical counts; this follow-up did not rebuild or qualify a
+package. There is no deployment or runtime change here: the October 14 v58
+phone / TV v30 snapshot remains the recorded runtime state. No new native,
+family/device or model-quality acceptance is claimed.
+
 ## Documentation maintenance decision
 
 [Architecture](ARCHITECTURE.md) is the maintained source map;

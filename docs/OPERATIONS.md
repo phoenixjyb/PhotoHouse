@@ -8,7 +8,7 @@ runtimes; the source checkout contains application code, contracts and tools.
 ## Release sequence
 
 1. **Pin source and artifacts.** Record repository/branch/commit, clean/dirty state,
-   API manifest, APK profile and Android subtree. A docs commit is not a rebuilt
+   API manifest, [canonical package inspection](API_PACKAGE_INSPECTION.md), APK profile and Android subtree. A docs commit is not a rebuilt
    package; source, package and served identities may differ deliberately.
 2. **Qualify offline.** Use [CPU/Web/Android profiles](DEVELOPMENT.md), exact
    extracted-source and native synthetic checks. Provider inference/resource and

@@ -143,3 +143,41 @@ generated demo. Later source corrects Edge's focused-Send native blur and keeps
 one inferred voice language across mixed-language narration segments. Narrow
 cross-browser and backend checks pass; the next candidate's complete release
 profiles and immutable artifacts remain the delivery gate.
+
+
+## October 15 integrated product-readiness round
+
+Later source compacts saved-memory actions into wrapping 48-pixel/dp controls,
+keeps complete accessible prompts behind short visible follow-up labels, and
+removes redundant phone onboarding when current result cards are already present.
+Late follow-up capability readiness now fills missing controls only for the
+exact current rendered result. Its held-response Edge journey passed 27
+checkpoints, including focus, duplicate and unchanged-submission checks.
+Web Ctrl/Cmd+Enter uses the same guarded explicit Send path; ordinary Enter and
+IME composition do not send. Reload recovery now retains the restore-start turn
+identity and respects later composer focus and scroll intent. These changes do
+not grant a new voice consent or automatically submit a suggested question.
+
+TV source exposes current-page preview failures and retry directly above the
+gallery. Only missing derived previews are retried. Recovery status and its
+focused remote action persist after completion; paging discards the prior page's
+status. Three emulator scenarios, debug lint/compilation and bilingual enlarged
+renders passed. TV v31 / `0.31-preview-recovery` is reserved in source. This source is not
+installed on a projector or published to OTA.
+
+The synthetic story-quality corpus now includes eight cases, adding similar
+photographs from different events and distinct subject/speaker/uploader roles.
+No model inference or narrative quality pass follows from planner validation.
+A new [generated oral-history qualifier](ORAL_HISTORY_QUALIFICATION.md) rehearses
+four scenario groups and ten case assertions against disposable fixtures,
+including older-prefix replay after withdrawal. It does not admit production
+recordings or permanently erase retained sections. Its addition makes the next
+source-only API package closure **201 files**; the prior 200-file packages remain
+bound to their historical revisions.
+
+The [read-only package inspector](API_PACKAGE_INSPECTION.md) verifies a pinned
+canonical API archive against local committed Git blobs, with no extraction or
+candidate execution. Its 26 generated checks passed. Final integrated full
+profiles and exact release artifacts are recorded separately when complete.
+The live v58/TV v30 snapshot above remains the latest runtime evidence; these
+source additions have not changed Windows services, data or feeds.

@@ -203,6 +203,7 @@ FILES = (
     'scripts/prepare_access_discovery_index.py',
     'scripts/prepare_assistant_workspace.py',
     'scripts/qualify_private_assistant.py',
+    'scripts/qualify_oral_history.py',
     'scripts/provision_access.py',
     'scripts/qualify_vector_erasure.py',
     'scripts/qualify_memory_groups.py',

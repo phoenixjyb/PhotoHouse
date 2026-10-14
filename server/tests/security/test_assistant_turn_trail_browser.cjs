@@ -10,7 +10,7 @@ const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tm
 fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700);console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),
   [path.join(__dirname,'assistant_pending_recovery_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,turnNumber=0,dropNextTurn=false,malformedNextTurn=false,holdNextTurn=null,nextReplyOverride=null;
+let serial=0,readyResolve,readyReject,turnNumber=0,dropNextTurn=false,malformedNextTurn=false,holdNextTurn=null,holdNextPrivateCapabilities=null,nextReplyOverride=null,currentAccountId=null;
 const pendingRpc=new Map(),requests=[],pageErrors=[],externalOrigins=[],activeGates=new Set();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
@@ -45,6 +45,9 @@ let browser,context,page;
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){externalOrigins.push(url.origin);await route.abort();return;}
     const entry={method:request.method(),path:url.pathname+url.search,body:request.postData()||''};requests.push(entry);
+    if(entry.method==='GET'&&url.pathname==='/assistant/workspace/v1/capabilities'&&holdNextPrivateCapabilities){
+      const gate=holdNextPrivateCapabilities;holdNextPrivateCapabilities=null;gate.arrive();await gate.released;
+    }
     if(entry.method==='GET'&&/^\/assets\/[1-9][0-9]*\/thumbnail$/.test(url.pathname)){
       await route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pXcAAAAASUVORK5CYII=','base64')});return;
     }
@@ -62,6 +65,7 @@ let browser,context,page;
     const headers=await request.allHeaders();delete headers['content-length'];if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
     const response=await rpc({method:entry.method,path:entry.path,headers,
       body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
+    if(entry.method==='GET'&&url.pathname==='/auth/session'&&response.status===200)currentAccountId=JSON.parse(Buffer.from(response.body,'base64').toString('utf8')).account_id;
     const outputHeaders={...response.headers};delete outputHeaders['content-length'];delete outputHeaders['content-encoding'];
     try{await route.fulfill({status:response.status,headers:outputHeaders,body:Buffer.from(response.body,'base64')});}
     catch(error){if(!/closed|handled|cancel|Invalid InterceptionId/.test(error.message))throw error;}
@@ -71,6 +75,9 @@ let browser,context,page;
   const signIn=async phone=>{await page.locator('#phone').fill(phone);await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();};
   await signIn('+12025550100');
   await page.locator('#assistant-panel > summary').click();await page.locator('#assistant-form').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-text').getAttribute('aria-keyshortcuts'),'Control+Enter Meta+Enter','composer exposes both explicit send shortcuts to assistive technology');
+  assert.equal(await page.locator('#assistant-text').getAttribute('aria-describedby'),'assistant-send-shortcut','composer announces its visible keyboard hint');
+  assert.match(await page.locator('#assistant-send-shortcut').textContent(),/发送|send/,'composer keyboard hint is visible and localized');
   const turnsBeforeComposerEnter=requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length;
   await page.locator('#assistant-text').fill('Enter stays in the editable composer');await page.locator('#assistant-text').press('Enter');
   assert.equal(await page.locator('#assistant-text').inputValue(),'Enter stays in the editable composer\n','Enter in the composer remains an editable newline');
@@ -224,6 +231,29 @@ let browser,context,page;
   assert.equal(JSON.stringify(secondTurnPayload.context).includes('<img src=x'),false,'displayed user/reply text is absent from future context');
   assert.equal(JSON.stringify(secondTurnPayload.context).includes('查找照片 1'),false,'displayed history is not prompt context');
 
+  const shortcutBase=posts().length,trailBase=await page.locator('#assistant-turn-trail-list > li').count(),controlGate=responseGate();holdNextTurn=controlGate;
+  await page.locator('#assistant-text').fill('Control Enter is an explicit send');await page.locator('#assistant-text').press('Control+Enter');await controlGate.arrived;
+  assert.equal(posts().length,shortcutBase+1,'Control+Enter submits one explicit request');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','keyboard submit keeps focus in the composer');
+  await page.locator('#assistant-text').press('Control+Enter');assert.equal(posts().length,shortcutBase+1,'a held request blocks a second shortcut submit');
+  controlGate.release();await controlGate.finished;
+  await page.waitForFunction(count=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return rows.length===Math.min(count+1,8)&&last?.querySelector('.assistant-turn-trail-text')?.textContent==='Control Enter is an explicit send';},trailBase);
+  const metaBase=posts().length,metaTrailBase=await page.locator('#assistant-turn-trail-list > li').count();
+  await page.locator('#assistant-text').fill('Meta Enter is an explicit send');await page.locator('#assistant-text').press('Meta+Enter');
+  await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===Math.min(count+1,8),metaTrailBase);
+  assert.equal(posts().length,metaBase+1,'Meta+Enter submits one explicit request');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','Meta+Enter retains composer focus');
+  const beforeRejectedShortcuts=posts().length;
+  await page.locator('#assistant-text').fill('draft remains after rejected keyboard events');
+  await page.locator('#assistant-text').evaluate(textarea=>{
+    for(const init of [{ctrlKey:true,shiftKey:true},{ctrlKey:true,altKey:true},{ctrlKey:true,isComposing:true},{ctrlKey:true,keyCode:229},{ctrlKey:true,repeat:true}])
+      textarea.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,...init}));
+  });
+  assert.equal(posts().length,beforeRejectedShortcuts,'Shift, Alt, IME and repeated shortcut events do not submit');
+  await page.locator('#assistant-send').focus();await page.locator('#assistant-text').evaluate(textarea=>textarea.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true})));
+  assert.equal(posts().length,beforeRejectedShortcuts,'shortcut dispatched while the composer is not focused does not submit');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft remains after rejected keyboard events','rejected shortcut combinations preserve the draft');
+
   const trailBeforeMalformed=await page.locator('#assistant-turn-trail-list > li').count(),postsBeforeMalformed=posts().length;
   malformedNextTurn=true;await page.locator('#assistant-text').fill('malformed response must not enter history');
   await page.locator('#assistant-send').click();await page.locator('#assistant-pending-turn').waitFor();
@@ -245,9 +275,11 @@ let browser,context,page;
   assert.equal(await page.locator('#assistant-reply').textContent(),'Please clarify that detail.','clarification reply is visible');
   assert.equal(posts().length,beforeClarification+1,'a clarification turn runs only after explicit submit');
 
-  const turnCountBeforeFailure=await page.locator('#assistant-turn-trail-list > li').count();dropNextTurn=true;
-  await page.locator('#assistant-text').fill('uncertain query must not enter history');await page.locator('#assistant-send').click();
+  const turnCountBeforeFailure=await page.locator('#assistant-turn-trail-list > li').count(),pendingShortcutPosts=posts().length;dropNextTurn=true;
+  await page.locator('#assistant-text').fill('uncertain query must not enter history');await page.locator('#assistant-text').press('Meta+Enter');
   await page.locator('#assistant-pending-turn').waitFor();
+  assert.equal(posts().length,pendingShortcutPosts+1,'Meta+Enter creates one uncertain request');
+  await page.locator('#assistant-text').press('Control+Enter');assert.equal(posts().length,pendingShortcutPosts+1,'a pending receipt blocks further keyboard shortcuts');
   assert.equal(await page.locator('#assistant-turn-trail-list > li').count(),turnCountBeforeFailure,'uncertain submissions never enter completed history');
   assert.equal((await page.locator('#assistant-turn-trail-list').innerText()).includes('uncertain query must not enter history'),false);
   const postCountBeforeAck=posts().length;await page.locator('#assistant-pending-ack').click();
@@ -286,6 +318,7 @@ let browser,context,page;
   await page.evaluate(()=>{document.documentElement.style.zoom='';});
   await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});
   await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
+  assert.match(await page.locator('#assistant-send-shortcut').textContent(),/Ctrl or ⌘ \+ Enter sends; Enter adds a new line\./,'keyboard help updates to English with the application locale');
   await signIn('+12025550100');await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
   await page.setViewportSize({width:390,height:1024});await submit('find photos');await submit('find more photos');await submit('find another set');await submit('find one more set');await submit('find one more');await submit('find another');
   const englishReading=await page.locator('#assistant-turn-trail-list').evaluate(list=>{list.scrollTop=Math.min(list.scrollHeight-list.clientHeight,list.firstElementChild.getBoundingClientRect().height+20);const bounds=list.getBoundingClientRect();return [...list.children].map(row=>({id:row.dataset.assistantTurnId,offset:row.getBoundingClientRect().top-bounds.top,visible:row.getBoundingClientRect().bottom>bounds.top&&row.getBoundingClientRect().top<bounds.bottom})).filter(row=>row.visible);});
@@ -318,12 +351,77 @@ let browser,context,page;
   assert.equal(englishJump.focus,'assistant-turn-trail-list','explicit jump leaves focus in the trail after hiding its control');
   assert.equal(await page.evaluate(()=>window.scrollY),pageYBeforeJump,'explicit jump does not move the page');
   console.log('EN_LAYOUT '+JSON.stringify(enLayout));
-  const postsBeforeReload=posts().length;await page.reload();await page.locator('#grid .asset').first().waitFor();
-  await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
-  assert.equal(await page.locator('#assistant-turn-trail').isVisible(),false,'reload clears in-memory exchanges');
-  assert.equal(posts().length,postsBeforeReload,'reload does not replay completed or uncertain turns');
-  await submit('找照片');assert.equal(await page.locator('#assistant-turn-trail').isVisible(),true,'new page can start a fresh temporary trail');
-  console.log('PASS English localization, narrow layout, reload clearing, and no automatic turn replay');
+  const reloadWithPrivateProbeHeld=async()=>{
+    const gate=responseGate();holdNextPrivateCapabilities=gate;await page.reload();await page.locator('#grid .asset').first().waitFor();await gate.arrived;
+    await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
+    assert.equal(await page.locator('#assistant-turn-trail').isVisible(),false,'reload clears in-memory exchanges');
+    return gate;
+  };
+  const startDelayedTurn=async text=>{
+    const gate=responseGate();holdNextTurn=gate;await page.locator('#assistant-text').fill(text);
+    await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-send').click();
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','delayed focused submission leaves focus in the composer');
+    await gate.arrived;return gate;
+  };
+  const finishDelayedTurn=async(gate,text)=>{
+    gate.release();await gate.finished;
+    await page.waitForFunction(value=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return last?.querySelector('.assistant-turn-trail-text')?.textContent===value;},text);
+  };
+  const postsBeforeReload=posts().length,restoreBeforeCompleted=await reloadWithPrivateProbeHeld();
+  const completedDuringRestore=await startDelayedTurn('completed before delayed restore ends');await finishDelayedTurn(completedDuringRestore,'completed before delayed restore ends');
+  const restoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
+  restoreBeforeCompleted.release();await restoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore after a new turn completed does not steal composer focus');
+  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器已完成此请求。':'The server completed this request.'),'late restore does not replace the completed live receipt with a recovery offer');
+  assert.equal(posts().length,postsBeforeReload+1,'reload restoration does not replay or duplicate the newly completed turn');
+
+  const restoreBeforePending=await reloadWithPrivateProbeHeld(),pendingDuringRestore=await startDelayedTurn('pending while restore finishes');
+  const pendingRestoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
+  restoreBeforePending.release();await pendingRestoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore during a new pending turn does not steal composer focus');
+  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器是否收到请求尚未确认。网络恢复后可以再次查询。':'The server receipt is unknown. Check again when the connection is available.'),'late restore preserves the active turn receipt');
+  await finishDelayedTurn(pendingDuringRestore,'pending while restore finishes');
+  assert.equal(posts().length,postsBeforeReload+2,'restoration does not issue an automatic or duplicate turn request');
+  console.log('PASS English localization, narrow layout, reload clearing, no automatic replay, and delayed receipt restoration focus guards');
+
+  assert(currentAccountId,'synthetic authenticated profile exposes an account scope for the recovery fixture');
+  const recoveryKey='photohouse.assistant.turn-recovery.v1',recoveryPointer=requestId=>({version:1,request_id:requestId,account_id:currentAccountId,library_id:'family-a'});
+  const recoveryRequestsBefore=requests.filter(item=>item.method==='GET'&&item.path.startsWith('/assistant/v1/requests/')).length;
+  await page.evaluate(({key,value})=>sessionStorage.setItem(key,JSON.stringify(value)),{key:recoveryKey,value:recoveryPointer('11111111-1111-4111-8111-111111111111')});
+  await page.reload();await page.locator('#assistant-receipt-check').waitFor({state:'visible'});
+  assert.match(await page.locator('#assistant-receipt-status').textContent(),/可能已到达服务器|may have reached the server/,'unchanged saved pointer is offered after reload');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-receipt-check','untouched recovery restore keeps automatic focus on its explicit receipt check');
+  assert.equal(requests.filter(item=>item.method==='GET'&&item.path.startsWith('/assistant/v1/requests/')).length,recoveryRequestsBefore,'showing the recovery offer does not query its receipt automatically');
+
+  const scrollRecoveryBefore=posts().length,delayedValidRestore=responseGate();
+  await page.evaluate(({key,value})=>{sessionStorage.setItem(key,JSON.stringify(value));document.getElementById('assistant-panel').open=false;},
+    {key:recoveryKey,value:recoveryPointer('22222222-2222-4222-8222-222222222222')});
+  holdNextPrivateCapabilities=delayedValidRestore;await page.reload();await page.locator('#grid .asset').first().waitFor();await delayedValidRestore.arrived;
+  await page.locator('#assistant-panel > summary').click();await page.locator('#assistant-form').waitFor({state:'visible'});
+  await page.locator('#assistant-text').scrollIntoViewIfNeeded();
+  const beforeDelayedRecovery=await page.evaluate(()=>{
+    const composer=document.getElementById('assistant-text'),panel=document.getElementById('assistant-panel');
+    const start=window.scrollY,max=Math.max(0,document.documentElement.scrollHeight-innerHeight),target=Math.min(max,start+100);
+    window.scrollTo(0,target===start?Math.max(0,start-100):target);composer.focus({preventScroll:true});
+    return {focus:document.activeElement.id,scrollY:window.scrollY,startScrollY:start,panelTop:panel.getBoundingClientRect().top};
+  });
+  assert.equal(beforeDelayedRecovery.focus,'assistant-text','user can focus the composer while recovery presentation is deferred');
+  assert.notEqual(beforeDelayedRecovery.scrollY,beforeDelayedRecovery.startScrollY,'the user establishes a new page position during deferred restore');
+  const delayedReceiptResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
+  delayedValidRestore.release();await delayedReceiptResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const afterDelayedRecovery=await page.evaluate(()=>({focus:document.activeElement.id,scrollY:window.scrollY,panelOpen:document.getElementById('assistant-panel').open,receiptHidden:document.getElementById('assistant-receipt').hidden}));
+  assert.equal(afterDelayedRecovery.panelOpen,true,'the saved recovery offer opens its disclosure after delayed restoration');
+  assert.equal(afterDelayedRecovery.receiptHidden,false,'the recovered receipt offer stays visible');
+  assert.match(await page.locator('#assistant-receipt-status').textContent(),/可能已到达服务器|may have reached the server/,'delayed valid recovery remains an explicit offer');
+  assert.equal(afterDelayedRecovery.focus,'assistant-text','delayed recovery does not replace the user’s newer composer focus');
+  assert.equal(afterDelayedRecovery.scrollY,beforeDelayedRecovery.scrollY,'delayed recovery preserves the user’s newer page position');
+  assert.equal(posts().length,scrollRecoveryBefore,'recovery presentation never resends a turn');
+  assert.equal(requests.filter(item=>item.method==='GET'&&item.path.startsWith('/assistant/v1/requests/')).length,recoveryRequestsBefore,'delayed recovery does not query the receipt automatically');
+  await page.locator('#assistant-text').fill('recovery keeps shortcut as a draft only');await page.locator('#assistant-text').press('Control+Enter');
+  assert.equal(posts().length,scrollRecoveryBefore,'unresolved recovery blocks the keyboard shortcut from starting another turn');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'recovery keeps shortcut as a draft only','recovery preserves the draft when keyboard submission is blocked');
+  await page.locator('#assistant-clear').click();assert.equal(await page.evaluate(key=>sessionStorage.getItem(key),recoveryKey),null,'test acknowledges the explicit recovery offer before later turns');
+  console.log('PASS saved receipt restoration retains explicit untouched autofocus and respects newer focus and scroll');
 
   const currentGate=responseGate();holdNextTurn=currentGate;
   const historyBeforeCurrentDelay=await page.locator('#assistant-turn-trail-list > li').count();

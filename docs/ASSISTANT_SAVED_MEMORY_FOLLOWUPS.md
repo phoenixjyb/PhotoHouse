@@ -99,3 +99,23 @@ mutation, typed/voice chaining and older-server fallback. Generated Web and
 Chinese/English 150% phone renders are separate from physical microphone/speaker
 and family acceptance. Portable synthetic qualification also exercises search →
 overview → outline → explicit reader → inert recovery, without live data or providers.
+
+## October 15 compact controls
+
+Phone and Web now show short visible labels for these followups: **Summary**,
+**Chapters**, and **All memories** (localized as 讲了什么、章节、全部回忆).
+Each accessible name begins with its visible label and retains the complete
+scoped prompt. Selecting
+one still inserts the exact prior request wording into the editable draft—for
+example, “what is the first saved memory about”—and the user still sends it
+explicitly. The displayed shortening changes neither the request grammar nor
+the server's source/revision contract.
+
+This is current source work only. It does not change the separate October 14
+v58/TV v30 runtime snapshot or establish a new device/family acceptance result.
+
+When the capability response arrives after a card renders, missing followups
+are now added only to the exact current rendered turn and matching card objects.
+The deterministic delayed-response Edge journey passed 27 checkpoints, including
+focus preservation, no auto-submission/duplicates and enlarged narrow geometry.
+The complete integrated Web profile and release delivery are separate checks.

@@ -14,8 +14,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |
 | Backend/Web entry | [Server README](../server/README.md), [Web development](WEB_DEVELOPMENT.md) |
 | Phone/TV entry | [Android README](../clients/android/README.md) |
-| Family trial | [v58 Chinese test guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md) |
-| Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md) |
+| Family trial | [Delivered v58 guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md); [next v59 candidate guide](../clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md) |
+| Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
 | Private manifest and model quality gates | [Deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md), [qualification](MODEL_QUALIFICATION.md) |
 | Monorepo transition and old repository disposition | [Repository transition](REPOSITORY_TRANSITION.md) |
@@ -23,7 +23,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Reader progress and source status | [Reader UX](READER_PROGRESS_AND_SOURCES.md) |
 | Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
-| Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md) |
+| Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
 ## Document roles
 

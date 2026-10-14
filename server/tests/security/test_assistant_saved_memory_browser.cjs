@@ -22,7 +22,7 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Saved-memory browser bri
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const requests=[],errors=[],external=[],checks=[];
 let probeMode='live',speechProbeMode='live',readingProbeMode='live',segmentReadingProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null,openingSpeechGate=null,segmentSpeechGate=null;
-let followupProbeMode='live',voiceTranscript='',reloadRequestStart=0;
+let followupProbeMode='live',followupProbeGate=null,voiceTranscript='',reloadRequestStart=0;
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const deferredGate=()=>{let arrive,release;const reached=new Promise(resolve=>{arrive=resolve;}),waiting=new Promise(resolve=>{release=resolve;});return {reached,arrive,release,waiting};};
@@ -76,6 +76,7 @@ async function installTransport(target){
       item.syntheticMissingProbe=true;item.status=404;
       await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
     }
+    if(item.method==='GET'&&url.pathname===routeMemoryFollowupPath&&followupProbeGate){const gate=followupProbeGate;followupProbeGate=null;item.syntheticFollowupGate=true;gate.arrive();await gate.waiting;}
     if(item.method==='GET'&&url.pathname===routeMemoryReadingPath&&readingProbeMode==='missing'){
       item.syntheticMissingProbe=true;item.status=404;
       await route.fulfill({status:404,contentType:'application/json',body:'{"detail":"Not Found"}'});return;
@@ -273,6 +274,17 @@ async function reloadAndLogin(){
   assert.equal(await storyCard.locator('.assistant-memory-excerpt').innerText(),fixtureInfo.story_excerpt);
   assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),6,'the card exposes explicit reader, opening, section-read and local Stop actions plus two draft-only followups');
   assert.equal(await storyCard.locator('.assistant-memory-followup').count(),2,'ordinal followup chips are attached to the current source card');
+  const allMemoriesChip=page.getByRole('button',{name:'全部回忆. 介绍这些回忆',exact:true});
+  const summaryChip=storyCard.getByRole('button',{name:'讲了什么. 第1段回忆讲了什么',exact:true});
+  const chaptersChip=storyCard.getByRole('button',{name:'章节. 第1段回忆有哪些章节',exact:true});
+  assert.equal(await allMemoriesChip.innerText(),'全部回忆','overview prompt uses a compact localized visible label');
+  assert.equal(await allMemoriesChip.getAttribute('aria-label'),'全部回忆. 介绍这些回忆','overview accessible name starts with its visible label and keeps its exact full prompt');
+  assert.equal(await summaryChip.innerText(),'讲了什么','summary prompt uses a compact localized visible label');
+  assert.equal(await summaryChip.getAttribute('aria-label'),'讲了什么. 第1段回忆讲了什么','summary accessible name starts with its visible label and keeps its exact ordinal prompt');
+  assert.equal(await chaptersChip.innerText(),'章节','chapter prompt uses a compact localized visible label');
+  assert.equal(await chaptersChip.getAttribute('aria-label'),'章节. 第1段回忆有哪些章节','chapter accessible name starts with its visible label and keeps its exact ordinal prompt');
+  const primaryActions=storyCard.locator('.assistant-memory-primary-actions');
+  assert.equal(await primaryActions.locator('button').count(),4,'reader and speech controls share one primary action row');
   assert.match(await storyCard.locator('.assistant-memory-open').innerText(),/打开已保存的故事|Open saved story/);
   assert.equal(await page.evaluate(()=>window.__savedMemoryXss),0,'hostile source text executes no markup');
   assert.equal(storyTurn.body&&JSON.parse(storyTurn.body).text,storyQuery,'fresh story request is recorded');
@@ -312,6 +324,11 @@ async function reloadAndLogin(){
   await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
   assert(await storyCard.locator('.assistant-memory-segment-stop').isVisible(),'active section exposes a card-local Stop beside the current memory');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'active section Stop fits the 390px Chinese page at 150% text');
+  const primaryPhoneGeometry=await primaryActions.evaluate(row=>{const rowRect=row.getBoundingClientRect(),card=row.closest('.assistant-memory-card'),cardRect=card.getBoundingClientRect();return {width:innerWidth,rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:card.clientWidth,cardScrollWidth:card.scrollWidth,
+    controls:[...row.querySelectorAll('button')].filter(button=>!button.hidden).map(button=>{const r=button.getBoundingClientRect();return {height:r.height,left:r.left,right:r.right,rowLeft:rowRect.left,rowRight:rowRect.right,cardLeft:cardRect.left,cardRight:cardRect.right};})};});
+  assert(primaryPhoneGeometry.rowScrollWidth<=primaryPhoneGeometry.rowWidth,'primary action row wraps without its own horizontal overflow at Chinese 150%');
+  assert(primaryPhoneGeometry.cardScrollWidth<=primaryPhoneGeometry.cardWidth,'primary action row fits within its source card at Chinese 150%');
+  assert(primaryPhoneGeometry.controls.every(item=>item.height>=48&&item.left>=item.rowLeft-1&&item.right<=item.rowRight+1&&item.left>=item.cardLeft&&item.right<=item.cardRight),'visible primary controls retain 48px targets within the row and card at Chinese 150%');
   await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-playing-phone-150-zh.png')});
   await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
   await page.waitForFunction(()=>/继续第 2\/3 段|Continue segment 2\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
@@ -427,6 +444,10 @@ async function reloadAndLogin(){
   await page.locator('#assistant-voice-start').click();
   await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening'&&document.getElementById('assistant-stop')?.hidden===false);
   await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true&&document.getElementById('assistant-speech-audio')?.getAttribute('src')===null);
+  const turnsDuringCapture=turns().length;
+  await page.evaluate(()=>document.getElementById('assistant-text').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true})));
+  assert.equal(turns().length,turnsDuringCapture,'keyboard shortcut cannot submit while continuous capture owns the voice session');
+  assert.equal(await page.evaluate(()=>document.getElementById('assistant-send').disabled),true,'capture state keeps the existing Send guard active for keyboard input');
   assert(await openingCard.locator('.assistant-memory-segment-stop').isHidden(),'manual capture clears the card-local section Stop state');
   assert.match(await openingCard.locator('.assistant-memory-segment-reading').innerText(),/分段朗读故事第一章|Read the first chapter in sections/,'manual capture clears section progress before recording');
   assert.equal(await page.evaluate(()=>window.__phMicCalls),micBeforeSectionConflict+1,'section cancellation allows only the explicit continuous-capture request');
@@ -929,16 +950,41 @@ async function reloadAndLogin(){
   assert.equal(await cards().first().locator('.assistant-memory-followup').count(),0,'old server exposes no followup chips');
   pass('Missing optional followup probe preserves the prior turn body, cards, reader and speech');
 
-  await callCommand('reply-speech-on');readerProbeMode='live';speechProbeMode='live';readingProbeMode='live';followupProbeMode='live';await reloadAndLogin();
+  await callCommand('reply-speech-on');readerProbeMode='live';speechProbeMode='live';readingProbeMode='live';followupProbeMode='live';
+  const delayedFollowupGate=deferredGate();followupProbeGate=delayedFollowupGate;await reloadAndLogin();await delayedFollowupGate.reached;
   const liveReaderDeadline=Date.now()+10000;
   while(!readerProbeReads().some(item=>item.response?.available===true)&&Date.now()<liveReaderDeadline)await page.waitForTimeout(20);
-  await page.waitForFunction(()=>{const snapshot=window.__privateAssistantController?.state();return snapshot?.savedMemoryAvailable===true&&snapshot.savedMemoryActionsAvailable===true&&snapshot.savedMemoryReaderAvailable===true;},{},{timeout:10000});
+  await page.waitForFunction(()=>{const snapshot=window.__privateAssistantController?.state();return snapshot?.savedMemoryAvailable===true&&snapshot.savedMemoryActionsAvailable===true&&snapshot.savedMemoryReaderAvailable===true&&snapshot.savedMemoryFollowupAvailable===false;},{},{timeout:10000});
   await ensureThread();const scopeTurn=await submit('搜索故事 野餐');
   assert.deepEqual(JSON.parse(scopeTurn.body).accepts,['saved_memory_cards_v1','saved_memory_actions_v1'],'final scope-fencing turn waits for and opts into both live saved-memory capabilities');
+  assert.equal(scopeTurn.response?.status,'completed');assert.equal(scopeTurn.response.result.kind,'memory_cards');
   try{await cards().waitFor({state:'visible',timeout:10000});}catch(error){
     const ui=await page.evaluate(()=>{const snapshot=window.__privateAssistantController?.state();return {status:document.querySelector('#assistant-status')?.textContent,privateStatus:document.querySelector('#assistant-private-status')?.textContent,privateVisible:document.querySelector('#assistant-private')?.hidden===false,resultKind:snapshot?.currentResult?.kind,revision:snapshot?.revision,pendingTurn:snapshot?.pendingTurn?.status,savedMemoryAvailable:snapshot?.savedMemoryAvailable,savedMemoryActionReady:snapshot?.savedMemoryActionReady,readerReady:snapshot?.savedMemoryReaderReady,cards:document.querySelectorAll('#assistant-results .assistant-memory-card').length};});
     console.error('SCOPE_SEARCH_DIAGNOSTIC',JSON.stringify({request:{path:scopeTurn.path,status:scopeTurn.status,body:scopeTurn.body},response:scopeTurn.response,ui}));throw error;
   }
+  const scopeCardTitle=scopeTurn.response.result.memory_cards[0].title;
+  await page.waitForFunction(title=>document.querySelector('#assistant-results .assistant-memory-card h3')?.textContent===title,scopeCardTitle,{timeout:10000});
+  assert.equal(await cards().first().locator('.assistant-memory-followup').count(),0,'the exact current story card has no followups until its delayed capability returns');
+  await page.locator('#assistant-text').focus();const turnsBeforeFollowupReady=turns().length;
+  const heldFollowup=followupProbeReads().find(item=>item.syntheticFollowupGate);assert(heldFollowup,'the optional followup capability response is held during the current story render');
+  delayedFollowupGate.release();
+  await page.waitForFunction(()=>{const snapshot=window.__privateAssistantController?.state();return snapshot?.savedMemoryFollowupReady===true&&snapshot.currentResult?.kind==='memory_cards';},{},{timeout:10000});
+  const delayedOverview=page.getByRole('button',{name:'全部回忆. 介绍这些回忆',exact:true});
+  const delayedSummary=cards().first().getByRole('button',{name:'讲了什么. 第1段回忆讲了什么',exact:true});
+  const delayedChapters=cards().first().getByRole('button',{name:'章节. 第1段回忆有哪些章节',exact:true});
+  await delayedOverview.waitFor({state:'visible',timeout:10000});await delayedSummary.waitFor({state:'visible',timeout:10000});await delayedChapters.waitFor({state:'visible',timeout:10000});
+  assert.equal(await page.locator('#assistant-results > .assistant-memory-followups[data-followup-kind="overview"]').count(),1,'late readiness adds only one overview group');
+  assert.equal(await cards().first().locator('.assistant-memory-followups[data-followup-kind="card"] .assistant-memory-followup').count(),2,'late readiness adds exactly the current card prompt pair');
+  assert.equal(await page.evaluate(()=>document.activeElement?.id),'assistant-text','late capability adds buttons without moving focus');
+  assert.equal(turns().length,turnsBeforeFollowupReady,'late capability adds draft controls without submitting a turn');
+  await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  const lateChipLayout=await cards().first().evaluate(card=>[...card.querySelectorAll('.assistant-memory-followups')].map(group=>({width:group.clientWidth,scrollWidth:group.scrollWidth,
+    buttons:[...group.querySelectorAll('button')].map(button=>button.getBoundingClientRect().height)})));
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'late localized chips fit the 390px page at 150% text');
+  assert(lateChipLayout.length===1&&lateChipLayout.every(group=>group.scrollWidth<=group.width&&group.buttons.every(height=>height>=44)),`late localized chips wrap without overflow and keep 44px targets: ${JSON.stringify(lateChipLayout)}`);
+  await cards().first().screenshot({path:path.join(artifacts,'assistant-memory-late-followups-phone-150-zh.png')});
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+  pass('A delayed current-scope followup capability adds exact source-bound chips without focus movement or submission');
   const oldReaderGate=deferredGate();readerGate=oldReaderGate;
   await cards().first().locator('.assistant-memory-open').click();await oldReaderGate.reached;
   await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible',timeout:10000});
@@ -971,15 +1017,52 @@ async function reloadAndLogin(){
   await page.waitForFunction(()=>document.querySelector('#assistant-workspace-title')?.textContent==='PhotoHouse Memory Assistant',{},{timeout:10000});
   const workspacePanel=page.locator('#assistant-panel');if(!await workspacePanel.evaluate(node=>node.open))await workspacePanel.locator(':scope > summary').click();
   await page.locator('#assistant-private').waitFor({state:'visible',timeout:10000});await ensureThread();
-  const englishSegmentTurn=await submit('搜索故事 野餐');await cards().waitFor({state:'visible',timeout:10000});
+  const englishSegmentTurn=await submit('搜索故事 野餐');
+  assert.equal(englishSegmentTurn.response.result.kind,'memory_cards','English story request returns the expected current card result');
+  try{
+    await page.waitForFunction(({title,label})=>document.querySelector('#assistant-results .assistant-memory-card h3')?.textContent===title&&
+      document.querySelector(`#assistant-results .assistant-memory-followup[aria-label="${label}"]`),
+      {title:fixtureInfo.story_title,label:'All memories. introduce these memories'},{timeout:10000});
+  }catch(error){
+    const snapshot=await page.evaluate(()=>{const state=window.__privateAssistantController?.state(),thread=state?.activeThread,result=state?.currentResult;
+      return {currentResultKind:result?.kind,memoryCardCount:result?.memory_cards?.length,followupReady:state?.savedMemoryFollowupReady,
+        savedMemoryAvailable:state?.savedMemoryAvailable,pendingTurn:state?.pendingTurn?.status??!!state?.pendingTurn,pendingCreation:!!state?.pendingCreation,
+        revisionMatchesThread:state?.revision===thread?.revision,cardTitles:[...document.querySelectorAll('#assistant-results .assistant-memory-card h3')].map(node=>node.textContent),
+        followupNames:[...document.querySelectorAll('#assistant-results .assistant-memory-followup')].map(node=>node.getAttribute('aria-label'))};});
+    console.log('SAVED_MEMORY_FOLLOWUP_DIAGNOSTIC '+JSON.stringify({snapshot,turnRequestId:JSON.parse(englishSegmentTurn.body).request_id,
+      turnResponse:englishSegmentTurn.response?.status,followupCapabilityReceipts:followupProbeReads().map(item=>({method:item.method,path:item.path,status:item.status})),
+      latestTurnRequest:turns().at(-1)?.path}));
+    throw error;
+  }
+  await cards().waitFor({state:'visible',timeout:10000});
   assert.equal(await cards().first().locator('.assistant-memory-segment-reading').innerText(),'Read the first chapter in sections');
   assert.equal(await cards().first().locator('.assistant-memory-segment-help').innerText(),'Reads one section at a time. Choose Continue after playback; the microphone stays off.');
+  const englishAllMemories=page.getByRole('button',{name:'All memories. introduce these memories',exact:true});
+  const englishSummary=cards().first().getByRole('button',{name:'Summary. what is the first saved memory about',exact:true});
+  const englishChapters=cards().first().getByRole('button',{name:'Chapters. what chapters does the first saved memory have',exact:true});
+  assert.equal(await englishAllMemories.innerText(),'All memories');assert.equal(await englishAllMemories.getAttribute('aria-label'),'All memories. introduce these memories');
+  assert.equal(await englishSummary.innerText(),'Summary');
+  assert.equal(await englishSummary.getAttribute('aria-label'),'Summary. what is the first saved memory about');
+  assert.equal(await englishChapters.innerText(),'Chapters');
+  assert.equal(await englishChapters.getAttribute('aria-label'),'Chapters. what chapters does the first saved memory have');
   await page.evaluate(()=>{const card=document.querySelector('#assistant-results .assistant-memory-card');if(card){card.querySelector('h3').textContent='Family walk by the lake';card.querySelector('.assistant-memory-excerpt').textContent='After the picnic, the family walked by the lake and kept a note of their time together.';}});
   await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'English section card fits the 390px viewport at 150% text');
   assert(await cards().first().evaluate(node=>node.scrollWidth<=node.clientWidth),'English section card wraps within the narrow viewport');
+  const englishActionRow=cards().first().locator('.assistant-memory-primary-actions');
+  const englishIdleActions=await englishActionRow.evaluate(row=>({rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:row.closest('.assistant-memory-card').clientWidth,
+    cardScrollWidth:row.closest('.assistant-memory-card').scrollWidth,buttons:[...row.querySelectorAll('button')].filter(button=>!button.hidden).map(button=>button.getBoundingClientRect().height)}));
+  assert(englishIdleActions.rowScrollWidth<=englishIdleActions.rowWidth&&englishIdleActions.cardScrollWidth<=englishIdleActions.cardWidth,'English primary actions wrap within the card at 390px and 150% text');
+  assert(englishIdleActions.buttons.every(height=>height>=48),'English primary actions retain 48px targets at 390px and 150% text');
+  await cards().first().locator('.assistant-memory-segment-reading').click();
+  await page.waitForFunction(()=>/Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  assert(await cards().first().locator('.assistant-memory-segment-stop').isVisible(),'English section playback exposes its local Stop action');
+  const englishPlayingActions=await englishActionRow.evaluate(row=>({rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:row.closest('.assistant-memory-card').clientWidth,
+    cardScrollWidth:row.closest('.assistant-memory-card').scrollWidth,stop:row.querySelector('.assistant-memory-segment-stop').getBoundingClientRect().height}));
+  assert(englishPlayingActions.rowScrollWidth<=englishPlayingActions.rowWidth&&englishPlayingActions.cardScrollWidth<=englishPlayingActions.cardWidth&&englishPlayingActions.stop>=48,'English active Stop wraps in the 48px action row at 390px and 150% text');
   await cards().first().screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150.png')});
   await page.screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150-full.png'),fullPage:true});
+  await cards().first().locator('.assistant-memory-segment-stop').click();
   pass('English section-reading action remains readable at 390px with 150% text');
 
   assert.deepEqual(external,[],'browser makes no request outside the synthetic origin');

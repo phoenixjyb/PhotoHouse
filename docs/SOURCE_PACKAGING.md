@@ -38,3 +38,12 @@ mismatches are refused.
 Inspect package contents and complete the repository's separate privacy and
 release reviews before sharing an archive. A valid source package does not
 establish live-service, migration, device, model or family acceptance.
+
+## Fixed API package inspection
+
+The API staging builder has a separate closed source-only allowlist. Use the
+[read-only inspector](API_PACKAGE_INSPECTION.md) to bind that exact ZIP to its
+reviewed builder, immutable Git commit, archive hash and explicit local Git
+binary. It does not extract or execute the application, qualify native runtime
+state, switch services or sign APKs. The full monorepo snapshot tool above and
+the smaller API runtime source package are different artifacts.

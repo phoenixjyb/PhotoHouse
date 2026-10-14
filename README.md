@@ -77,6 +77,8 @@ Web 可选的 Node/Playwright/Chromium 合成检查见[Web 开发](docs/WEB_DEVE
 模型、原始媒体、私有配置、凭据及签名材料保留在运行环境，模型许可证分别确认。
 [运维说明](docs/OPERATIONS.md)定义资格检查、操作授权、备份、回滚与交付；
 源码仓库还不是一条命令即可安装的家庭生产系统。
+[API 包检查](docs/API_PACKAGE_INSPECTION.md)提供只读核验：将固定 ZIP 与明确 Git 提交逐字节比较，
+不解压、不运行候选代码、不触碰家庭数据或服务。
 
 ## 贡献与许可证
 

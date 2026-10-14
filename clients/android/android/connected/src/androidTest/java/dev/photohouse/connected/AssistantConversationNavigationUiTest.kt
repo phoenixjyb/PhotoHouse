@@ -66,6 +66,13 @@ class AssistantConversationNavigationUiTest {
         rule.onNodeWithTag("assistant-exchange-request-1").assertIsDisplayed()
     }
 
+    @Test fun genuinelyEmptyAssistantStillShowsChineseIntroAndStarterPrompt() {
+        show(mutableStateOf(baseState()), zh = true, Callbacks())
+        rule.onNodeWithTag("assistant-intro").assertIsDisplayed()
+        rule.onNodeWithText("今天想找哪段回忆？", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithTag("assistant-suggestion-0").assertIsDisplayed()
+    }
+
     @Test fun englishManualHistoryStaysPutAcrossPendingReplyReceiptAndTranscriptThenExplicitJumpRevealsLatest() {
         val state = mutableStateOf(baseState(turns = seedTurns()))
         val callbacks = Callbacks()

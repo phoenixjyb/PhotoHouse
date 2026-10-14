@@ -48,9 +48,17 @@ audio-focus handling before permitting microphone/speaker overlap.
 Chinese/English enlarged UI checks, latency measurements and physical speech
 acceptance. Scope/default behavior and legacy clients remain explicit.
 
+The later source round compacts reading controls and follow-up labels, adds
+explicit composer shortcuts, preserves user focus during delayed reload recovery
+and exposes TV preview retry directly in the gallery. Final full-profile and
+delivery evidence remains separate from the focused browser/emulator checks.
+
 ## 3. Improve grounded family storytelling
 
-Build a small synthetic + explicitly approved family quality corpus for titles,
+The synthetic corpus now has eight cases, including cross-event visual
+similarity and separate subject/speaker/uploader attribution. Its planner and
+canary contract checks do not establish model output quality. Next add an
+explicitly approved family quality corpus for titles,
 attribution, multi-photo activities, essay/chronicle/memoir forms and conflicting
 contributions. Preserve original words/audio, source IDs and uncertainty; suggestions
 stay reviewable. Narrative, polishing and title roles keep independent contracts.
@@ -91,6 +99,12 @@ and rollback instructions, reviewed provider manifests and reproducible source
 checks. Live service/task changes, migrations, signing, publishing and legacy
 repository retirement still need their operation authority.
 
+October 15 source now adds a portable read-only [API package inspector](API_PACKAGE_INSPECTION.md).
+It binds the entire canonical archive to reviewed local Git blobs and a fixed
+hash, with generated corruption/path/race checks. It does not extract, execute,
+deploy or replace native runtime qualification. Public signing and live cutover
+controllers remain later work.
+
 ## 6. Build the family memory hub
 
 The [family memory hub design](FAMILY_MEMORY_HUB.md) adds person/event-centered
@@ -117,8 +131,10 @@ upgrade, production admission and permanent erasure before exposing the long
 recording transport. See [withdrawal](ORAL_HISTORY_WITHDRAWAL.md).
 
 The source now includes the internal V3→V4 upgrade primitive with writer-fence
-and final revalidation tests. It does not yet include an operator controller,
-native upgrade qualification or live migration.
+and final revalidation tests, plus a [four-group generated rehearsal](ORAL_HISTORY_QUALIFICATION.md)
+covering durable section receipts, withdrawal and older-prefix replay. It does
+not yet include an operator upgrade controller, native upgrade qualification or
+live migration.
 
 Reader polish now includes visible Web source-check/retry state and ephemeral
 phone manual-narration segment progress. Assistant full-chapter continuation and

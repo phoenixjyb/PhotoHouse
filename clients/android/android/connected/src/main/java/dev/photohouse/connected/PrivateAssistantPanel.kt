@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -427,8 +428,9 @@ internal fun PrivateAssistantPanel(
                                     }
                                     if (state.savedMemoryFollowupAvailable) AssistChip(
                                         onClick = { onSavedMemoryFollowupDraft(memoryFollowupPrompt(0, 2, zh)) },
-                                        label = { Text(memoryFollowupPrompt(0, 2, zh)) },
-                                        modifier = Modifier.testTag("private-assistant-memory-followup-all"),
+                                        label = { Text(memoryFollowupLabel(2, zh)) },
+                                        modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(0, 2, zh) }
+                                            .testTag("private-assistant-memory-followup-all"),
                                     )
                                     result.memoryCards.forEachIndexed { ordinal, card ->
                                         Card(Modifier.fillMaxWidth().testTag("private-assistant-memory-card-$ordinal"),
@@ -444,77 +446,85 @@ internal fun PrivateAssistantPanel(
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     (0..1).forEach { promptIndex ->
                                                         val prompt = memoryFollowupPrompt(ordinal, promptIndex, zh)
-                                                        AssistChip(onClick = { onSavedMemoryFollowupDraft(prompt) }, label = { Text(prompt) },
-                                                            modifier = Modifier.testTag("private-assistant-memory-followup-$ordinal-$promptIndex"))
+                                                        AssistChip(onClick = { onSavedMemoryFollowupDraft(prompt) },
+                                                            label = { Text(memoryFollowupLabel(promptIndex, zh)) },
+                                                            modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(ordinal, promptIndex, zh) }
+                                                                .testTag("private-assistant-memory-followup-$ordinal-$promptIndex"))
                                                     }
                                                 }
-                                                OutlinedButton(
-                                                    onClick = { onOpenSavedMemoryCard(ordinal) },
-                                                    enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
-                                                        state.savedMemoryReaderAvailable && state.memoryReaderOrdinal != ordinal,
-                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                                                        .testTag("private-assistant-open-memory-$ordinal"),
-                                                ) {
-                                                    Text(if (card.kind == "story") t("Open saved story", "打开已保存故事")
-                                                        else t("Open memoir", "打开回忆录"))
-                                                }
-                                                TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
-                                                    enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
-                                                        state.savedMemoryReadingAvailable &&
-                                                        assistant?.speechBusy != true,
-                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                                                        .testTag("private-assistant-read-memory-opening-$ordinal")) {
-                                                    Text(if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechBusy)
-                                                        t("Preparing opening…", "正在准备开篇语音…")
-                                                    else if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechAudio != null)
-                                                        t("Opening ready", "开篇语音已准备好")
-                                                    else t("Read opening", "朗读开篇"))
-                                                }
-                                                val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
-                                                    it.ordinal == ordinal && it.threadId == currentTurn.threadId &&
-                                                        it.turnId == currentTurn.requestId && it.revision == currentTurn.revision &&
-                                                        it.sourceKind == card.kind
-                                                }
-                                                if (state.savedMemorySegmentReadingAvailable && card.kind in setOf("story", "memoir")) {
-                                                    val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
-                                                        segmentProgress?.segmentCount != null
-                                                    val canContinue = segmentReady && segmentProgress!!.segmentIndex + 1 < segmentProgress.segmentCount!!
-                                                    val canRestart = segmentReady && segmentProgress!!.segmentCount != null &&
-                                                        segmentProgress.segmentIndex + 1 >= segmentProgress.segmentCount!!
-                                                    val sourceName = if (card.kind == "story") t("first chapter", "第一章")
-                                                        else t("memoir introduction", "回忆录引言")
-                                                    val label = when {
-                                                        segmentProgress == null -> t("Read $sourceName", "朗读$sourceName")
-                                                        segmentProgress.segmentCount == null -> t("Preparing $sourceName…", "正在准备$sourceName…")
-                                                        canContinue -> t("Continue · Segment ${segmentProgress.segmentIndex + 2}/${segmentProgress.segmentCount}",
-                                                            "继续 · 第${segmentProgress.segmentIndex + 2}/${segmentProgress.segmentCount}段")
-                                                        canRestart -> t("Read $sourceName again", "重新朗读$sourceName")
-                                                        segmentReady -> t("Finished · Segment ${segmentProgress.segmentCount}/${segmentProgress.segmentCount}",
-                                                            "已完成 · 第${segmentProgress.segmentCount}/${segmentProgress.segmentCount}段")
-                                                        else -> t("Segment ${segmentProgress.segmentIndex + 1}/${segmentProgress.segmentCount}",
-                                                            "第${segmentProgress.segmentIndex + 1}/${segmentProgress.segmentCount}段")
-                                                    }
-                                                    TextButton(onClick = {
-                                                        onReadSavedMemorySegment(ordinal,
-                                                            if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1)
-                                                    }, enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
-                                                        assistant?.speechBusy != true && assistant?.speechAudio == null &&
-                                                        (segmentProgress == null || canContinue || canRestart),
-                                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                                                            .testTag("private-assistant-read-memory-segment-$ordinal")) {
-                                                        Text(label)
-                                                    }
-                                                    if ((assistant?.speechBusy == true || assistant?.speechAudio != null) && segmentProgress != null) TextButton(
-                                                        onClick = onStopMemoryOpening,
+                                                val canReadMemorySegments = state.savedMemorySegmentReadingAvailable &&
+                                                    card.kind in setOf("story", "memoir")
+                                                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                    OutlinedButton(
+                                                        onClick = { onOpenSavedMemoryCard(ordinal) },
+                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                            state.savedMemoryReaderAvailable && state.memoryReaderOrdinal != ordinal,
                                                         modifier = Modifier.heightIn(min = 48.dp)
-                                                            .testTag("private-assistant-stop-memory-segment-$ordinal")) {
-                                                        Text(t("Stop", "停止"))
+                                                            .testTag("private-assistant-open-memory-$ordinal"),
+                                                    ) {
+                                                        Text(if (card.kind == "story") t("Open saved story", "打开已保存故事")
+                                                            else t("Open memoir", "打开回忆录"))
                                                     }
-                                                    Text(t("One segment at a time; continue after it finishes. The microphone stays off.",
+                                                    TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
+                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                            state.savedMemoryReadingAvailable &&
+                                                            assistant?.speechBusy != true,
+                                                        modifier = Modifier.heightIn(min = 48.dp)
+                                                            .testTag("private-assistant-read-memory-opening-$ordinal")) {
+                                                        Text(if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechBusy)
+                                                            t("Preparing opening…", "正在准备开篇语音…")
+                                                        else if (assistant?.speechMemoryOpeningOrdinal == ordinal && assistant.speechAudio != null)
+                                                            t("Opening ready", "开篇语音已准备好")
+                                                        else t("Read opening", "朗读开篇"))
+                                                    }
+                                                    val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
+                                                        it.ordinal == ordinal && it.threadId == currentTurn.threadId &&
+                                                            it.turnId == currentTurn.requestId && it.revision == currentTurn.revision &&
+                                                            it.sourceKind == card.kind
+                                                    }
+                                                    if (canReadMemorySegments) {
+                                                        val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
+                                                            segmentProgress?.segmentCount != null
+                                                        val canContinue = segmentReady && segmentProgress!!.segmentIndex + 1 < segmentProgress.segmentCount!!
+                                                        val canRestart = segmentReady && segmentProgress!!.segmentCount != null &&
+                                                            segmentProgress.segmentIndex + 1 >= segmentProgress.segmentCount!!
+                                                        val sourceName = if (card.kind == "story") t("first chapter", "第一章")
+                                                            else t("memoir introduction", "回忆录引言")
+                                                        val label = when {
+                                                            segmentProgress == null -> t("Read $sourceName", "朗读$sourceName")
+                                                            segmentProgress.segmentCount == null -> t("Preparing $sourceName…", "正在准备$sourceName…")
+                                                            canContinue -> t("Continue · Segment ${segmentProgress.segmentIndex + 2}/${segmentProgress.segmentCount}",
+                                                                "继续 · 第${segmentProgress.segmentIndex + 2}/${segmentProgress.segmentCount}段")
+                                                            canRestart -> t("Read $sourceName again", "重新朗读$sourceName")
+                                                            segmentReady -> t("Finished · Segment ${segmentProgress.segmentCount}/${segmentProgress.segmentCount}",
+                                                                "已完成 · 第${segmentProgress.segmentCount}/${segmentProgress.segmentCount}段")
+                                                            else -> t("Segment ${segmentProgress.segmentIndex + 1}/${segmentProgress.segmentCount}",
+                                                                "第${segmentProgress.segmentIndex + 1}/${segmentProgress.segmentCount}段")
+                                                        }
+                                                        TextButton(onClick = {
+                                                            onReadSavedMemorySegment(ordinal,
+                                                                if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1)
+                                                        }, enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                            assistant?.speechBusy != true && assistant?.speechAudio == null &&
+                                                            (segmentProgress == null || canContinue || canRestart),
+                                                            modifier = Modifier.heightIn(min = 48.dp)
+                                                                .testTag("private-assistant-read-memory-segment-$ordinal")) {
+                                                            Text(label)
+                                                        }
+                                                        if ((assistant?.speechBusy == true || assistant?.speechAudio != null) && segmentProgress != null) TextButton(
+                                                            onClick = onStopMemoryOpening,
+                                                            modifier = Modifier.heightIn(min = 48.dp)
+                                                                .testTag("private-assistant-stop-memory-segment-$ordinal")) {
+                                                            Text(t("Stop", "停止"))
+                                                        }
+                                                    }
+                                                }
+                                                if (canReadMemorySegments) Text(
+                                                    t("One segment at a time; continue after it finishes. The microphone stays off.",
                                                         "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         modifier = Modifier.testTag("private-assistant-memory-segment-guidance-$ordinal"))
-                                                }
                                                 if (state.memoryReaderOrdinal == ordinal) Text(
                                                     t("Opening…", "正在打开…"), style = MaterialTheme.typography.bodySmall,
                                                     modifier = Modifier.testTag("private-assistant-memory-opening-$ordinal"))

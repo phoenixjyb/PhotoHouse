@@ -86,6 +86,8 @@ internal val Edge = Color(0xFF496258)
     var pendingLibraryFocus by remember(browseStore) { mutableStateOf<LibraryFocusIntent?>(null) }
     var pendingLibraryRetryFocus by remember(browseStore) { mutableStateOf(false) }
     val route = when { state.covered -> "covered"; store == null -> "setup"; exploring -> "explore"; state.feed == null -> "connection"; state.video != null -> "video"; viewer -> "viewer"; else -> "grid" }
+    var previewRecovery by remember(store, state.feed?.id, state.feed?.page, state.feed?.revision,
+        store?.selection, discoveryState.query) { mutableStateOf<TvPreviewRecoverySession?>(null) }
     var galleryGridHasFocus by remember(store, store?.selection, route) { mutableStateOf(false) }
     LaunchedEffect(route) {
         if (route != "grid") updates = false
@@ -480,7 +482,53 @@ internal val Edge = Color(0xFF496258)
                         val gallery = state.feed
                         var menu by remember { mutableStateOf(false) }
                         val selection = store.selection
-                        val previewRetry = state.gridProblems.isNotEmpty() || state.missingGrids.any { id -> gallery?.items?.any { it.id == id && it.grid != null } == true }
+                        val failedPreviewIds = gallery?.items.orEmpty().asSequence()
+                            .filter { asset -> asset.grid != null && (asset.id in state.gridProblems || asset.id in state.missingGrids) }
+                            .map { it.id }.toSet()
+                        val previewRetry = failedPreviewIds.isNotEmpty()
+                        val showPreviewRecovery = previewRetry || previewRecovery != null
+                        val recoveryIds = previewRecovery?.assetIds.orEmpty()
+                        val pendingRecoveryCount = recoveryIds.count { id ->
+                            id !in state.grids && id !in state.gridProblems && id !in state.missingGrids
+                        }
+                        val recoveryInProgress = previewRecovery != null && pendingRecoveryCount > 0
+                        val recoveredCount = recoveryIds.count { it in state.grids }
+                        val remainingPreviewCount = failedPreviewIds.size
+                        val recoveryStatus = when {
+                            previewRecovery == null -> t(
+                                "${failedPreviewIds.size} ${if (failedPreviewIds.size == 1) "preview" else "previews"} unavailable on this page.",
+                                "本页有 ${failedPreviewIds.size} 个预览不可用。",
+                            )
+                            recoveryInProgress -> t(
+                                "Retrying ${pendingRecoveryCount} ${if (pendingRecoveryCount == 1) "preview" else "previews"}…",
+                                "正在重试 ${pendingRecoveryCount} 个预览…",
+                            )
+                            remainingPreviewCount > 0 -> t(
+                                "$remainingPreviewCount ${if (remainingPreviewCount == 1) "preview is" else "previews are"} still unavailable.",
+                                "仍有 $remainingPreviewCount 个预览不可用。",
+                            )
+                            else -> t(
+                                "Preview retry complete · $recoveredCount ready.",
+                                "预览重试完成 · 已恢复 $recoveredCount 个。",
+                            )
+                        }
+                        val recoveryActionLabel = when {
+                            previewRecovery == null -> t("Retry previews", "重试预览")
+                            recoveryInProgress -> t("Hide status", "隐藏状态")
+                            remainingPreviewCount > 0 -> t("Retry remaining", "重试剩余预览")
+                            else -> t("Return to gallery", "返回图库")
+                        }
+                        fun retryPagePreviews(targetIds: Set<Int>) {
+                            val latest = store.state.value
+                            val currentStore = discovery?.state?.value?.results ?: browseStore
+                            val latestFeed = latest.feed
+                            if (targetIds.isEmpty() || currentStore !== store || store.selection != selection ||
+                                latest.busy || latest.covered || latest.disconnected || latest.problem != null ||
+                                latestFeed == null || gallery == null || latestFeed.id != gallery.id ||
+                                latestFeed.page != gallery.page || latestFeed.revision != gallery.revision) return
+                            previewRecovery = TvPreviewRecoverySession(targetIds)
+                            store.retryPreviews()
+                        }
                         val compactGallery = LocalConfiguration.current.screenHeightDp <= 650
                         val galleryFontScale = LocalConfiguration.current.fontScale
                         val featured = gallery?.items?.firstOrNull { it.kind == AssetKind.PHOTO && it.canOpen() }
@@ -538,7 +586,8 @@ internal val Edge = Color(0xFF496258)
                                         ) {
                                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                                                 TvImage(state.grids[featured.id], t("Featured photo", "精选照片"), Modifier.fillMaxHeight().weight(1.25f),
-                                                    if (featured.id in state.gridProblems) t("Preview unavailable · Retry from More", "预览不可用 · 请在更多中重试") else t("Loading preview…", "正在加载预览…"),
+                                                    if (featured.id in state.gridProblems || featured.id in state.missingGrids)
+                                                        t("Preview unavailable · Retry below", "预览不可用 · 可在下方重试") else t("Loading preview…", "正在加载预览…"),
                                                     maxPixels = 1_048_576, loading = featured.grid != null && state.grids[featured.id] == null && featured.id !in state.missingGrids && featured.id !in state.gridProblems)
                                                 Column(Modifier.weight(1f).padding(horizontal = 22.dp, vertical = if (galleryFontScale >= 2f) 4.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                                     if (galleryFontScale < 1.5f) {
@@ -552,6 +601,25 @@ internal val Edge = Color(0xFF496258)
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        }
+                        if (showPreviewRecovery) Surface(
+                            Modifier.fillMaxWidth().padding(bottom = 6.dp).testTag("preview-recovery"),
+                            color = Moss, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Edge),
+                        ) {
+                            Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(recoveryStatus, Modifier.weight(1f).testTag("preview-recovery-status"),
+                                    style = MaterialTheme.typography.bodyMedium, color = Cream, maxLines = 2)
+                                TvButton(recoveryActionLabel, Modifier.heightIn(min = 48.dp).testTag("preview-recovery-action"),
+                                    enabled = !state.busy && !state.covered && !state.disconnected) {
+                                    when {
+                                        previewRecovery == null -> retryPagePreviews(failedPreviewIds)
+                                        recoveryInProgress -> previewRecovery = null
+                                        remainingPreviewCount > 0 -> retryPagePreviews(failedPreviewIds)
+                                        else -> previewRecovery = null
                                     }
                                 }
                             }
@@ -682,7 +750,7 @@ internal val Edge = Color(0xFF496258)
                                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Moss, contentColor = Cream),
                                         border = BorderStroke(if (focused) 3.dp else 1.dp, if (focused) Gold else Moss)) {
                                         Column(Modifier.fillMaxSize()) {
-                                            TvImage(state.grids[asset.id], t("Photo", "照片") + " ${asset.id}", Modifier.fillMaxWidth().weight(1f), if (asset.id in state.gridProblems) t("Preview load failed · Retry", "预览加载失败 · 可重试") else if (asset.kind == AssetKind.VIDEO && asset.video != null) t("Ready to play", "可以播放") else unavailableText(asset.gridUnavailable, zh), maxPixels = 262144, loading = asset.grid != null && state.grids[asset.id] == null && asset.id !in state.missingGrids && asset.id !in state.gridProblems)
+                                            TvImage(state.grids[asset.id], t("Photo", "照片") + " ${asset.id}", Modifier.fillMaxWidth().weight(1f), if (asset.id in state.gridProblems || asset.id in state.missingGrids) t("Preview load failed · Retry above", "预览加载失败 · 请用上方重试") else if (asset.kind == AssetKind.VIDEO && asset.video != null) t("Ready to play", "可以播放") else unavailableText(asset.gridUnavailable, zh), maxPixels = 262144, loading = asset.grid != null && state.grids[asset.id] == null && asset.id !in state.missingGrids && asset.id !in state.gridProblems)
                                             if (asset.kind != AssetKind.PHOTO) Text(if (asset.kind == AssetKind.VIDEO) (if (asset.video != null) t("Video · Play", "视频 · 播放") else t("Video · Not ready", "视频 · 尚未就绪")) else t("Unsupported format", "不支持的格式"), Modifier.testTag("asset-kind-${asset.id}"), style = MaterialTheme.typography.labelSmall)
                                             Text(asset.caption.ifEmpty { t("Photo", "照片") + " ${asset.id}" }, maxLines = 2,
                                                 style = if (LocalConfiguration.current.fontScale >= 1.5f) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelLarge)
@@ -697,6 +765,8 @@ internal val Edge = Color(0xFF496258)
         }
     }
 }
+
+private data class TvPreviewRecoverySession(val assetIds: Set<Int>)
 
 private data class LibraryFocusIntent(val collectionId: String?)
 

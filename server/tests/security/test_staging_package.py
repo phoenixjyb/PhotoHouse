@@ -29,6 +29,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/ui/access/voice-turn-timing.js',
             'scripts/prepare_assistant_workspace.py',
             'scripts/qualify_private_assistant.py',
+            'scripts/qualify_oral_history.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -161,12 +162,13 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_erasure import VectorErasureStore, verify_visual_erasure_schema\n'
                 'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
+                'import qualify_oral_history\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name=='staging_app':\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

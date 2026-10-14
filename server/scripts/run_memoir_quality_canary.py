@@ -33,6 +33,8 @@ CASE_BINDINGS = {
     "synthetic-coherence": ("narrative", "narrative"),
     "synthetic-conflict": ("narrative", "narrative"),
     "synthetic-provenance": ("narrative", "companion"),
+    "synthetic-similar-photos": ("narrative", "narrative"),
+    "synthetic-speaker-uploader-subject": ("narrative", "narrative"),
     "synthetic-title-family": ("title_suggestions", "suggest"),
     "synthetic-title-uncertainty": ("title_suggestions", "suggest"),
     "synthetic-title-abstention": ("title_suggestions", "suggest"),

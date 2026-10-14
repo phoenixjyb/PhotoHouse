@@ -93,3 +93,20 @@ Windows TTS behavior, live API delivery, signed APK publication and physical
 family listening are separate evidence. This source increment grants no live
 operation authority. See [opening speech](ASSISTANT_SAVED_MEMORY_READING.md),
 [voice timing](VOICE_TURN_TIMING.md) and [the roadmap](ROADMAP.md).
+
+## October 15 compact controls and Web status
+
+The phone's explicit reader actions have a minimum 48 dp target; Web's primary
+saved-memory reader controls have a minimum 48 px target. The followup chips use
+short visible labels (Summary, Chapters and All memories, localized on phone
+and Web), while their accessibility descriptions retain the complete scoped
+prompt. Choosing a chip still inserts the unchanged prior request wording into
+the editable draft. Segment reading remains one explicit request per tap, with
+no automatic chapter advance.
+
+A late Web capability-probe race fix is in progress. The Web Node and browser
+counts above are pre-fix baseline evidence and do not qualify the current Web
+followup lifecycle. Re-run the focused delayed-capability/current-result checks
+after that fix before treating this Web path as accepted. These source notes do
+not establish native TTS, live API, package, physical-device or family
+acceptance.

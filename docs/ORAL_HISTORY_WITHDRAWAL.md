@@ -75,3 +75,22 @@ Next: an operator-qualified V4 upgrade and schema admission plan, permanent eras
 backup replay, then protected section transport and a client recorder showing
 saved/pending/retrying states. Speech processing, linking to family stories and
 editorial stitching need their own consent, revision and provenance checks.
+
+## October 15 generated qualification
+
+The source-only `server/scripts/qualify_oral_history.py` runner now qualifies a
+generated private database in four content-free groups and ten cases. It
+installs the experimental fixture schema only in that generated database,
+binds a fresh V3 journal, and uses the guarded V3-to-V4 replay before adding
+recording sections. The cases exercise ordered short/full sections across
+close and reopen, exact retry/conflict behavior, author/library privacy,
+withdrawal with retained source bytes and a content-free journal, stale
+open-prefix restore refusal followed by reviewed replay, and corrupt-source
+refusal. The generated report marks `experimental_fixture_schema=true` and
+keeps production admission, transport and erasure unavailable.
+
+The focused source tests are in
+[`server/tests/security/test_qualify_oral_history.py`](../server/tests/security/test_qualify_oral_history.py).
+Audio remains in the generated SQLite fixture after withdrawal and replay; this
+is not an erasure guarantee, production schema admission, or live recording
+service. No family recording or model inference is involved.

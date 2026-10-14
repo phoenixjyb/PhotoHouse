@@ -1,6 +1,6 @@
 # Feature and acceptance matrix
 
-Maintained summary, reviewed **2026-10-14**. [Project Status](PROJECT_STATUS.md)
+Maintained summary, reviewed **2026-10-15** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
 binds the exact release/runtime observations; [Roadmap](ROADMAP.md) owns active
 next work. “Implemented” describes source, “enabled” describes an inspected
 installation, and family acceptance requires physical use.
@@ -25,8 +25,10 @@ installation, and family acceptance requires physical use.
 | Assistant saved-section narration | [October 15 source](ASSISTANT_SEGMENT_READING.md): first story chapter or memoir introduction, explicit segments, actual-completion-gated Continue, Stop and restart | Windows/package/phone delivery and physical speech acceptance; voice-requested continuation and later chapters remain future work |
 | Manual chapter narration segment progress | October 15 phone source shows current segment while preparing, speaking or paused; session-local | Signed delivery and physical audio acceptance; no persistent resume or assistant full-chapter speech |
 | Memoir source-check status and retry | October 15 Web source shows status outside collapsed originals and explicit read-only retry | Served delivery and family trial; linked-source checking is not fact verification |
-| Long oral-history withdrawal and replay | Internal default-off V4 journal/source prototype; author-only withdrawal retains raw sections and blocks revived source access | No HTTP/client/migration; journal upgrade, production admission and permanent erasure remain open |
+| Long oral-history withdrawal and replay | Internal default-off V4 journal/source prototype and generated four-group qualification; author-only withdrawal retains raw sections and blocks revived source access | No HTTP/client/migration; operator upgrade, native admission and permanent erasure remain open |
 | Model replacement and topology | Thirteen catalogued source capabilities; explicit typed projection for four target groups | Per-provider installation/licensing/resources/native quality; face/embedding projection and orchestration remain separate |
+| Explicit TV preview retry | TV v31 reserved in October 15 source: visible current-page failures, explicit missing-preview retry and persistent focused recovery action; three emulator cases | Signed TV delivery and physical remote/projector trial |
+| Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | Native operator qualification and live delivery remain separate |
 | OTA and recovery | Phone v58, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
 
 ## Acceptance rules
@@ -47,8 +49,9 @@ See [Architecture](ARCHITECTURE.md), [Operations](OPERATIONS.md),
 [Ordered local recording sections](ORAL_HISTORY_INTAKE_FOUNDATION.md) now have an
 internal opt-in store with exact receipts, private author scope, manifest checks
 and bounded quotas. Generated restart/retry/concurrency/refusal checks are source
-evidence. This is not a deployed recording interface: withdrawal/replay, admitted
-schema, transport, Web/phone capture and worker/native qualification remain open.
+evidence. This is not a deployed recording interface. Internal retained-source withdrawal
+and replay now have generated qualification; admitted schema, operator upgrade,
+transport, Web/phone capture and worker/native qualification remain open.
 
 ## Family memory hub direction
 

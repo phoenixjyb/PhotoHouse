@@ -2430,3 +2430,40 @@ and through independent complete Mac HTTPS readback; TV v30's feed response is
 unchanged. Final observation: eight required tasks running/enabled, ASR/TTS/OCR
 identities preserved, about 47.6 GiB free RAM. Physical phone installation and
 family listening acceptance remain next.
+
+
+## October 15 overnight product-readiness source
+
+The integrated source round includes explicit segmented reading, process-local
+voice timing, gallery preview recovery and foreground conversation recovery.
+The frozen `d57a41c` API profile passed **1,483 tests / 913 subchecks** plus the
+no-listener demo; its Android profile passed with unchanged-input receipts.
+Subsequent Web runs found two fixture synchronization gaps and a real reload
+recovery race. Capture fixtures now wait for the actual audio processor; reader
+fixtures bind the exact source response. Recovery UI now binds the pointer read
+at restore start and preserves later user focus/scroll intent. Historical failed
+profile runs remain failures; focused reruns do not replace the final full run.
+
+Compact saved-memory controls passed phone bilingual enlarged render checks,
+26 private-panel, 14 opening-reader and six conversation-navigation UI cases.
+After accessible names were changed to begin with each visible short label,
+three specifically affected instrumentation methods passed again. These scopes
+overlap. Follow-up callbacks retain the complete existing query; a label is not
+an automatic request. TV current-page retry passed three emulator cases, debug
+lint/compilation and enlarged Chinese/English render review. No physical-device
+or TV installation is inferred.
+
+The generated oral-history cohort passed **49 tests / 24 subchecks**: intake,
+withdrawal and the new four-group/ten-case disposable qualifier. The quality
+planner/canary contracts passed 11 and 21 focused cases without inference. The
+portable API archive inspector passed 26 generated checks, including canonical
+archive identity, pinned local Git/builder identity, bounded execution and
+content-free refusal reports. The API package allowlist now includes the oral
+qualifier: **201 source files**, with twelve existing assistant qualification
+groups and a separate four-group experimental recording rehearsal.
+
+Current exact committed-package qualification, final complete profiles and
+unsigned v59 release evidence must be recorded against the final immutable
+revision. They are separate from Windows staging/native execution, live cutover,
+signing, OTA and family listening acceptance. No deployment or provider activation
+was authorized or performed as a consequence of the checks above.
