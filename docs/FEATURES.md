@@ -1,5 +1,61 @@
 # Feature and acceptance matrix
 
+Maintained summary, reviewed **2026-10-14**. [Project Status](PROJECT_STATUS.md)
+binds the exact release/runtime observations; [Roadmap](ROADMAP.md) owns active
+next work. “Implemented” describes source, “enabled” describes an inspected
+installation, and family acceptance requires physical use.
+
+## Current capabilities
+
+| Capability | Source / delivery state | Remaining gate |
+| --- | --- | --- |
+| Accounts, library membership, owner review and selected-member auto approval | Protected contracts and per-library policy; upload review enabled | Owner/member/device trial; existing uploads still need review |
+| Photo/video browsing, named libraries/albums, dates and prepared playback | Phone/Web protected readers; TV separate published catalog; filename/receipt hints remain distinct from capture time | Home TV desktop/listener and physical projector check; original-source failures need independent recovery |
+| Upload queue/history folding and retry/status | Client source and delivered app; approval, preparation and visibility remain distinct | Family queue/recovery UX trial |
+| Chinese-first UI and visible voice phases | Phone v58 / Web deployed; source/browser/emulator and large-text checks recorded | Device microphone/audio-focus and user perception |
+| Text/audio original family contributions | Revisioned, attributed original and derivation contracts; collaboration/originals enabled | Family quality/recovery checks; not the assistant's transient audio path |
+| Upload/folder annotation intake and automatic polish/tags | Source adapters/contracts present | Separate annotation intake off; provider/queue activation and source-quality review |
+| Story/memoir composition, reviewed chapter sources, albums and reading continuity | Source supports protected composition/readers; separate manual chapter narration exists | Larger real-family story/album reading and contribution acceptance |
+| Automatic story/title proposals, memoir editorial and reviewed editions | Source and generated qualification; source/derivation/consent and CAS guards | Generation/title/editorial/edition flags off; schema, model quality, paired backup and native delivery |
+| Adjustable activity/shared-memory grouping | Manual group and time/similarity candidate contracts; source/version revalidation | Groups off; compatible schema/vector identity, withdrawal replay, native recovery and family adjustment trial |
+| Private assistant threads/history and reply-language preference | Separate owned schema-v2 store, 30-day retention, idempotent requests and GET recovery; configured in v58 installation | Family/private account continuation checks; response length and voice pace are not applied |
+| Foreground continuous voice | Explicit Start authorizes read-only listen → reply → listen; Pause/End and lifecycle fences | Real ASR/TTS/echo/latency trial; half duplex remains |
+| Saved-story search, followups, current-card opening and opening speech | Deployed Web/API and signed phone v58; full-cohort/parent/source validation; typed actions explicit | Physical v58 trial; opening limited to 240 code points / 600 UTF-8 bytes |
+| Assistant full-chapter continuation/progress and interruption | Design/next slice; manual reader speech is a separate implementation | Bounded segments, resume identity, cancellation/echo/quality qualification |
+| Model replacement and topology | Thirteen catalogued source capabilities; explicit typed projection for four target groups | Per-provider installation/licensing/resources/native quality; face/embedding projection and orchestration remain separate |
+| OTA and recovery | Phone v58, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
+
+## Acceptance rules
+
+- A receipt is not upload approval, derived readiness, gallery visibility or TV publication.
+- A catalog/manifest is not a loaded model, GPU placement or model-quality pass.
+- A local test/debug build is not hosted CI, signing, live activation or physical acceptance.
+- A source reference grants no new permission; account/library/revision changes fence late actions.
+- Original contributions, transcripts, polished proposals and adopted story text remain distinct.
+- The foreground voice session cannot save, share, erase or change access automatically.
+
+See [Architecture](ARCHITECTURE.md), [Operations](OPERATIONS.md),
+[Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md) and the
+[v58 test guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md).
+
+## Family memory hub direction
+
+[Long oral histories and multiple-relative stories](FAMILY_MEMORY_HUB.md) are
+planned: person/event relationships, resumable recording sections, reviewed
+multi-speaker chapters and immersive books with source audio. Existing short
+contributions and story/memoir editors are their foundation; automatic stitching
+and long-session intake are not available yet. The [introduction website](../website/README.md)
+uses fictional examples and original illustrations.
+
+## Historical implementation and delivery notes
+
+Earlier notes below preserve their original source/qualification context. Their
+“pending”, “next” and release numbers are historical and are superseded by the
+maintained matrix and dated Project Status. They are not the active backlog.
+
+<details>
+<summary>Expand earlier feature qualification notes</summary>
+
 ## Next local slice: conversational story actions
 
 The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) connects voice, chat,
@@ -493,3 +549,6 @@ the spoken text and enforces the current turn revision, membership, parent
 receipt and transient audio limits. Its separate runtime flag defaults off.
 Source and generated-client qualification are complete; native Windows checks,
 activation and a matching signed phone release remain separate delivery gates.
+
+
+</details>

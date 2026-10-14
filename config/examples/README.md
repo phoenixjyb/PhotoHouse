@@ -14,3 +14,11 @@ The ordinary application entry point starts closed. Public UI code may be served
 while authenticated media routes remain unavailable until configuration is valid.
 Windows scheduled-task, GPU and release operator profiles need independent
 qualification; the CPU demo does not claim those profiles work on every host.
+
+Model-provider examples are maintained separately under [`models/`](../../models/README.md).
+The public provider file is a disabled template and is not loaded as application
+configuration. A private deployment manifest can be checked and explicitly
+projected only for the supported assistant, memory, and story-title targets; see
+the [model deployment guide](../../docs/MODEL_DEPLOYMENT_MANIFEST.md). Neither a
+valid manifest nor a source adapter proves an installed provider, running service,
+model quality, or live activation.

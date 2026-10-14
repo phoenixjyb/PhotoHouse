@@ -10,6 +10,15 @@ the generated-data demo, and 773 Android JVM tests with lint and unconfigured
 phone/TV debug builds. This records source qualification, not an installed
 application or model-quality result.
 
+## Current transition reference
+
+Reviewed 2026-10-14. This monorepo remains the development home. See
+[Project Status](PROJECT_STATUS.md) for current delivery and
+[Operations](OPERATIONS.md) for the remaining portable deployment-tooling gap.
+The initial import checks above and October 9 comparisons below are historical
+preservation evidence. They do not verify today's remote branch/CI or authorize
+retirement of a legacy repository. No repository is archived or removed here.
+
 ## Where changes belong
 
 | Work | Development home |

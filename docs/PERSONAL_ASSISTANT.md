@@ -1,44 +1,44 @@
 # 拾光助手：每个人自己的家庭回忆入口
 
-Status: approved by the owner, 2026-10-12; implementation in progress. The [interactive design prototype](assistant-design/prototype.html) uses
-synthetic examples. It does not record, connect to PhotoHouse,
-run a model or save family data. Phone v48 is a separate delivery of the already
-qualified saved memoir editor.
+Design approved 2026-10-12; implementation status reconciled 2026-10-14.
+The [interactive prototype](assistant-design/prototype.html) uses synthetic
+examples and does not connect, record, run models or save family data. Product
+aspirations below are distinct from the delivered scope.
 
 ## Current implementation boundary
 
-The first phone/Web source slice uses the existing protected v1 retrieval,
-transcription and result-count speech. It adds a central workspace and explicit
-foreground voice session; actual playback completion admits the next capture.
-Provider failures, uncertainty and context changes stop automatic progression.
-Clarifications and empty/unsupported replies remain visible and pause the loop.
-This layer has no language-model tool agent or story-writing authority.
+API/Web and phone v58 deliver the central assistant, protected retrieval,
+foreground voice loop, owned private threads/history, applied reply language,
+saved-story/memoir cards, current-card followups and short opening speech.
+[Project Status](PROJECT_STATUS.md) separates installation evidence and family
+acceptance. Source defaults are closed/opt-in; this installation explicitly
+configures the private schema-v2 workspace, receipt journal, ASR and TTS.
 
-`assistant_workspace_store.py` separately implements private account/library
-threads and revisioned account preferences with explicit initialization, fixed
-30-day exchange expiry, deletion, bounded typed references and exact retry checks.
-The protected `/assistant/workspace/v1` source API now exposes owned thread
-listing/creation/reading/deletion and revisioned preference reading/updating/reset.
-It requires fresh library membership, an explicitly configured existing store and
-healthy retention maintenance. Saved references are reduced to non-actionable
-type/count placeholders; IDs, bindings and receipt IDs are not projected as actions.
-No client can upload an arbitrary assistant reply or card list. Capability flags
-report server-owned turns, applied reply language and optional history/speech
-features independently. The local candidate implements revision-bound turns,
-reference revalidation, explicit phone/Web continuation and older history paging.
-The private API remains default-off and is not activated in the served Windows
-release; its database must be provisioned explicitly. Response length and voice
-pace remain unsupported preferences. Preference storage does not select providers.
+One visible Start authorizes temporary listen → read-only request → reply →
+listen. Capture is suspended during requests/speech; actual successful playback
+admits the next listen. Empty results and clarifications can speak on the enabled
+private-reply path; unsupported or unsafe progression pauses. Pause/End,
+backgrounding, access loss and context changes stop it. Ordinary dictation
+still uses review → insert → Send. There is no streaming/barge-in or general
+language-model tool agent, and session consent cannot change memories/access.
+
+Private threads are scoped to the authenticated account/library; library owners
+cannot inspect another member's private history. Separate stores retain private
+exchanges and troubleshooting input/status for 30 days, without assistant audio.
+Family original contributions use a different lifecycle and remain until explicit
+authorized deletion/withdrawal. Responses and restored history cannot supply
+saved action authority. Response length and voice pace remain unsupported
+preferences; preference storage does not choose a model or ASR/TTS provider.
+
 See [private turns](PRIVATE_ASSISTANT_TURNS_V1.md),
-[continuation](PRIVATE_ASSISTANT_VOICE_V1.md),
-[history navigation](PRIVATE_ASSISTANT_HISTORY_V1.md) and
-[protected reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md).
-
-The [roadmap](ROADMAP.md#october-12-central-personal-assistant) records the next
-layers: qualify and activate the private conversation candidate, then add grounded
-saved-story/memoir retrieval and reviewed cross-workflow tools.
-Phone v49 and the Web workspace are delivered with the voice foundation; these private backend
-APIs are a separate source slice and are not activated by that APK.
+[voice continuation](PRIVATE_ASSISTANT_VOICE_V1.md),
+[history navigation](PRIVATE_ASSISTANT_HISTORY_V1.md),
+[protected reply speech](PRIVATE_ASSISTANT_REPLY_SPEECH_V1.md) and
+[fluid assistant experience](ASSISTANT_FLUID_EXPERIENCE.md).
+The [roadmap](ROADMAP.md) prioritizes family acceptance, chapter reading/progress,
+grounded story quality and carefully activated grouping. The
+[family memory hub](FAMILY_MEMORY_HUB.md) adds the proposed long oral-history
+and multiple-relative storytelling direction.
 
 ## Product decision
 
@@ -53,20 +53,20 @@ workflow. It should feel like a patient personal guide through the family archiv
 
 ## What we have, and what remains
 
-| Capability | Current inspected source | Required development |
+| Capability | Delivered/source foundation | Next acceptance or development |
 | --- | --- | --- |
-| Photo/video retrieval | Protected deterministic search, facets, dates, clarification and result cards | More natural semantic queries and retrieval across authorized stories/notes/albums |
-| Follow-ups | Visible-result ordinal opening and scoped filter refinement | Durable conversation, unresolved references and cross-workflow context |
-| Voice | Opt-in foreground voice loop in phone/Web source; endpointing, strict playback completion, Pause/End; ordinary reviewed dictation retained | Native delivery and real microphone/audio-focus/echo acceptance; richer grounded speech |
-| Stories and memoirs | Separate revisioned readers, contribution/editor/chat APIs | Assistant tools that hand off or propose changes in those authorized workflows |
-| Troubleshooting | Account/library-scoped receipts, recognized text and status, 30-day retention | Conversation context distinct from audit receipts; user-visible processing stages |
-| Personal experience | Default-off, tested owned thread/preferences APIs and isolated storage, inactive at runtime | Server-owned turns, client continuation, applied preferences, explicit remembered facts and cross-device continuation |
+| Retrieval | Protected deterministic media queries and saved-story/memoir search/cards | Broader semantic/person/event retrieval, bounded provider qualification |
+| Followups | Private server-owned context and fresh ordinal/story actions | Ambiguous references and reviewed cross-workflow proposals |
+| Voice | Foreground half-duplex ASR/TTS, visible stages, Pause/End, strict playback completion | Real echo/audio-focus/listening acceptance, latency and chapter continuation |
+| Stories/memoirs | Revisioned readers, original contributions and editors; optional generation contracts | Generation/title/grouping activation, long oral history and reviewed narrative quality |
+| Troubleshooting | Separate 30-day input/status receipts, transient assistant audio | Operational visibility without leaking private conversations |
+| Personal experience | Owned threads/history and applied reply language; 30-day exchange expiry | Explicit remembered facts, broader preferences and verified cross-device UX |
 
-These are source facts, not current service or family-device acceptance. The
-protected assistant's narrow command parser is not an LLM conversation agent.
-Legacy admin voice routes are not the current protected assistant path.
+Runtime enablement and source capability are separate; consult the dated status
+page. The current typed command parser is not an LLM conversation agent. Legacy
+admin voice routes are not the protected assistant path.
 
-## Experience
+## Intended experience beyond the delivered scope
 
 1. Open 拾光助手. See the active library and a few useful personal starting points:
    找一段回忆 / 接着讲上次的故事 / 整理这次出游 / 继续读回忆册.
@@ -183,9 +183,13 @@ These references support UI/architecture patterns, not a claim that their stock
 agents satisfy PhotoHouse family permissions. Build on our protected services;
 any future OpenClaw adapter gets the same narrow typed tools and account scope.
 
-## Delivery sequence and review gates
+## Original design sequence and remaining review gates
 
-1. **v48:** deliver the qualified saved memoir editor. No major agent changes.
+The sequence below records the approved October 12 design. Steps 1–5 now have
+v58 delivery evidence; their physical/family acceptance is still separate.
+Steps 6–7 remain bounded development/activation work.
+
+1. **v48 baseline:** qualified saved memoir editor before major assistant changes.
 2. **Design review:** approve the central workspace, voice interaction choice,
    personal/shared boundaries and first tool set using the interactive prototype.
 3. **Workspace foundation:** phone/Web chat hub, result cards, explicit source

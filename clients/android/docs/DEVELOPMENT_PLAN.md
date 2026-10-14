@@ -1,4 +1,12 @@
-# Development plan
+# Historical Android development plan
+
+
+**Historical September–October 6 record, superseded for current status.**
+Use the [Android README](../README.md), [project status](../../../docs/PROJECT_STATUS.md)
+and [current roadmap](../../../docs/ROADMAP.md). The monorepo now contains
+Android phone/TV development; the independent-repository/iOS layout below was
+an earlier proposal. No tracked iOS implementation is established by it.
+The v42 signing statements below describe that dated candidate, not current OTA.
 
 October 6 night: source search/paging, separate chat bubbles, associated input
 errors and [localized dictation recovery](ANDROID_DICTATION_RECOVERY_2026-10-06.md)
@@ -40,32 +48,31 @@ request remains exact; combined UTF-8 limits preserve drafts and frozen retries.
 71 focused JVM checks, two final unmasked Chinese/English 150% emulator journeys
 and debug lint passed. These options are not model-quality or OTA acceptance.
 
-Latest local phone slice: [memoir companion and checks](ANDROID_MEMOIR_COMPANION_2026-10-02.md).
+Latest local phone slice: memoir companion and checks (legacy October 2 record not included in this curated source).
 The feature is not yet published and remains gated off by default.
 
-Both phone readers now have [chapter source references](ANDROID_CHAPTER_SOURCES_2026-10-02.md),
+Both phone readers now have chapter source references (legacy October 2 record not included here),
 with synthetic emulator and release-compilation evidence. Matching backend,
 signed artifact and family acceptance remain delivery gates.
 
-Latest local TV slice: [library focus and readable viewport](ANDROID_TV_BROWSE_FOCUS_2026-10-02.md).
+Latest local TV slice: library focus and readable viewport (legacy October 2 record not included here).
 Normal and 2.0 font-scale emulator navigation passed; signed publication and
 projector acceptance remain separate gates.
 
 For current phone/TV access, artifact and OTA status, use
-[Phone and TV access](PHONE_TV_ACCESS_2026-09-29.md). The backend repository's
-`docs/PRODUCT_ROADMAP_2026-09-29.md` is the current cross-surface feature
-register. The plan below preserves the September 9 foundation decisions.
+[current project status](../../../docs/PROJECT_STATUS.md). The monorepo [roadmap](../../../docs/ROADMAP.md) is the current cross-surface
+feature register. The plan below preserves the September 9 foundation decisions.
 
 **Historical foundation document.** Platform/backend status statements below describe
 that handoff's baseline. For current Android implementation and remaining live gates,
-use [Android MVP status](../android/MVP_STATUS.md) and
-[pilot acceptance](../android/PILOT_ACCEPTANCE.md). Do not restart the Android
+use [Android source overview](../README.md) and
+[current phone test guide](PHONE_V58_TEST_GUIDE_ZH.md). Do not restart the Android
 foundation capsule or treat an earlier blocker as current without those records.
 
 Updated 2026-09-09: native fixture work is ready from the frozen local tag
 `refs/tags/photohouse-mobile-fixture-v1`. The backend foundation is locally tested
 at `1e394f789ff1f7cef6d9930bb541186684f5a9a0`; mobile apps are not built yet.
-[Session capsules](SESSION_CAPSULES.md) define executable scopes and acceptance.
+The legacy session-capsule record is not included in this curated source.
 
 ## 1. Repository and implementation choices
 

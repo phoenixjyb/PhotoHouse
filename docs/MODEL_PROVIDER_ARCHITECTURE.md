@@ -2,9 +2,12 @@
 
 This page maps model-backed capabilities to their current application adapters and
 describes how an inference implementation can be replaced. It is an inventory and
-design boundary, not a deployment procedure. Source code may contain an adapter
-without a corresponding installed model, checkpoint, qualified endpoint, or active
-runtime.
+design boundary, not a deployment procedure. A source adapter can exist without an
+installed model, checkpoint, qualified endpoint, or active runtime. Catalog stage
+labels describe source integration shape; they do not mean a model was approved,
+qualified, enabled, installed, or is live. Source catalog membership and an offline
+manifest validation are separate from a running process, native inference, and
+human quality review.
 
 ## Inventory and configuration
 
@@ -30,7 +33,7 @@ The development [`tools/doctor.py`](../tools/doctor.py) checks the pinned local
 development toolchain. It is not a model, GPU, checkpoint, or endpoint doctor.
 Run `python3 tools/check_model_deployment.py --manifest /absolute/private/path --json`
 for the private metadata graph check. To inspect a target mapping, add
-`--project assistant|memory-contributions|memory-narrative --platform windows|linux|macos`
+`--project assistant|memory-contributions|memory-narrative|story-titles --platform windows|linux|macos`
 and, when that feature is already opted in, `--feature-enabled`. Its redacted
 `configuration_valid` or `projection_valid` report does not probe runtimes, verify
 artifacts, resolve tokens, evaluate quality, or activate bindings. For
@@ -46,15 +49,15 @@ conflicts with legacy provider settings.
 
 | Role | Current purpose and adapter source | Replacement boundary |
 | --- | --- | --- |
-| `vlm_caption` | Image captions through [`caption_service.py`](../server/backend/app/caption_service.py): HTTP, subprocess, built-in VLM, and stub adapters. The external caption worker is maintained separately from this application. | Preserve the caption response contract, attribution, bounded inputs, and configured fallback policy. Keep each VLM runtime and its large dependencies isolated from the API environment. |
+| `vlm_caption` | The catalog maps the HTTP adapter in [`caption_service.py`](../server/backend/app/caption_service.py). The same module also contains built-in and stub paths; [`caption_subprocess.py`](../server/backend/app/caption_subprocess.py) contains subprocess adapters. These additional paths are not equivalent to the manifest-selectable HTTP adapter. | Preserve the caption response contract, attribution, bounded inputs, and configured fallback policy. Keep each VLM runtime and its large dependencies isolated from the API environment. |
 | `assistant_asr` | Transient assistant audio through [`assistant_speech.py`](../server/backend/app/access/assistant_speech.py) (`LocalAssistantAsr`); selected through explicit assistant runtime configuration. | Preserve the raw-WAV request and bounded transcript response contract. Assistant opt-in and its current local-only URL validation remain required; an unavailable provider must not become an unconfigured cloud call. |
 | `memory_asr` | Audio retained as a memory contribution is handled by the separate annotation path in [`annotation_local.py`](../server/backend/app/access/annotation_local.py) (`LocalAnnotationModels`). Audio retention and derived transcript review are distinct from transient assistant recognition. | Preserve the multipart-audio protocol, retention policy, source-to-derivation links, size/language limits, and failure state. Do not substitute the transient assistant adapter without preserving these semantics. |
 | `annotation_polish` | Local wording/tag proposals in [`annotation_local.py`](../server/backend/app/access/annotation_local.py), using a local Ollama-compatible text generation endpoint after recognition. | Treat output as a reviewable proposal, preserve source text and attribution, and retain the loopback-only URL restriction. It is not the ASR provider and cannot establish facts. |
 | `narrative` | Reviewable memory-story proposals and grounded conversation through [`memory_narrative.py`](../server/backend/app/access/memory_narrative.py) (`LocalMemoryNarrator`). | Preserve structured output, source IDs, uncertainty, and human review. Generated text must not silently become a saved or published source. |
-| `title_suggestions` | Story title suggestions through [`story_titles.py`](../server/backend/app/access/story_titles.py) (`LocalStoryTitleSuggester`), also using a local text-generation endpoint. | Preserve the title schema, source citations, limits, and review requirement. This is a distinct task contract even when it uses the same model service as narrative generation. Explicit runtime/staging wiring and the independent `story-titles` projection exist, default off. Live runtime, resource and title quality qualification remain pending. |
-| `assistant_tts` | Server-side reply audio through [`assistant_speech.py`](../server/backend/app/access/assistant_speech.py) (`LocalAssistantTts`) and [`windows_tts.py`](../server/backend/app/access/windows_tts.py) (`WindowsSystemSpeech`). The bridge is started by [`serve_windows_tts.py`](../server/scripts/serve_windows_tts.py). | Preserve explicit assistant opt-in, bounded output, cancellation/yield behavior, and no automatic playback. This is separate from native Android/browser read-aloud. Windows system speech is an OS speech engine, not a checked-in model. |
-| `face_detection` | Face boxes and landmarks through [`face_detection_service.py`](../server/backend/app/face_detection_service.py): stub, MTCNN, or InsightFace/SCRFD implementations. | Record detector package/model-pack identity and effective device. Strict mode must continue refusing an unsuitable provider; a stub or fallback is not equivalent detection evidence. |
-| `face_embedding` | Face recognition vectors through [`face_embedding_service.py`](../server/backend/app/face_embedding_service.py): FaceNet, InsightFace, LVFace direct/HTTP/subprocess, and stub implementations. The bounded approved path is [`run_approved_face_pipeline.py`](../server/scripts/run_approved_face_pipeline.py), which verifies its selected detector/embedder hashes and records shadow artifacts. | Treat detector/alignment, checkpoint, normalization, dimension, and model version as one artifact identity. Existing face vectors cannot be mixed with a replacement merely because dimensions match; shadow and compare a new version before any explicit migration. |
+| `title_suggestions` | Story title suggestions through [`story_titles.py`](../server/backend/app/access/story_titles.py) (`LocalStoryTitleSuggester`), also using a local text-generation endpoint. | Preserve the title schema, source citations, limits, and review requirement. This is a distinct task contract even when it uses the same model service as narrative generation. Explicit runtime/staging wiring and the independent `story-titles` projection exist, default off. This source page does not establish current runtime, resource, or title-quality qualification. |
+| `assistant_tts` | The catalog maps the server-side HTTP client [`LocalAssistantTts`](../server/backend/app/access/assistant_speech.py). [`WindowsSystemSpeech`](../server/backend/app/access/windows_tts.py) serves that request in a separate service and is inventory-only in the current manifest schema. Its bridge is started by [`serve_windows_tts.py`](../server/scripts/serve_windows_tts.py). | Preserve explicit assistant opt-in, bounded output, cancellation/yield behavior, and no playback without the applicable explicit user/session authorization. This is separate from native Android/browser read-aloud. Windows system speech is an OS speech engine, not a checked-in model. |
+| `face_detection` | The catalog maps [`InsightFaceDetectionProvider`](../server/backend/app/face_detection_service.py) for the approved face worker. That module also contains stub and MTCNN source paths; their presence does not qualify them for that worker. | Record detector package/model-pack identity and effective device. Strict mode must continue refusing an unsuitable provider; a stub or fallback is not equivalent detection evidence. |
+| `face_embedding` | The catalog maps LVFace direct/subprocess providers in [`face_embedding_service.py`](../server/backend/app/face_embedding_service.py) and [`lvface_subprocess.py`](../server/backend/app/lvface_subprocess.py). The bounded face worker path is [`run_approved_face_pipeline.py`](../server/scripts/run_approved_face_pipeline.py), which verifies its selected detector/embedder hashes and records shadow artifacts. Other FaceNet, InsightFace, HTTP, and stub implementations in the service are source alternatives, not evidence that those providers are installed or qualified. | Treat detector/alignment, checkpoint, normalization, dimension, and model version as one artifact identity. Existing face vectors cannot be mixed with a replacement merely because dimensions match; shadow and compare a new version before any explicit migration. |
 | `image_embedding` | Image vectors through [`vector_index.py`](../server/backend/app/vector_index.py) and the approved versioned image worker [`run_approved_image_embed_worker.py`](../server/scripts/run_approved_image_embed_worker.py). Strict inference requires an explicitly existing local checkpoint. | Preserve preprocessing, normalization, model/checkpoint identity, dimension, and index version. A replacement needs a separately versioned vector set and compatibility evaluation. |
 | `video_embedding` | Video-derived vectors through [`run_approved_video_embed_worker.py`](../server/scripts/run_approved_video_embed_worker.py), which uses the selected image embedding implementation over sampled frames and records its model version. | Preserve frame sampling and image-model identity as well as vector metadata. Video vectors are not interchangeable with vectors from a different model or sampling contract. |
 | `image_tags` | Optional HTTP image-tag suggestions through [`image_tag_service.py`](../server/backend/app/image_tag_service.py) (`HTTPImageTagProvider`), with a legacy stub fallback. | Preserve bounded response and proposal labeling; an available endpoint or stub does not establish approved tag processing. |
@@ -66,6 +69,37 @@ Deterministic image utilities and media probes are workers, not learned-model
 providers. FFmpeg supplies media decoding/encoding; it is not a model. A separate
 OCR or dedicated video foundation-model adapter is not established by this
 inventory; future capabilities need their own contract and reviewed adapter.
+
+## Source support and deployment state
+
+The catalog currently names source implementations for all thirteen rows above.
+Its stage values distinguish caption/protected adapters, memory worker adapters,
+approved face/image/video worker adapters, and legacy adapters. In particular,
+`approved_worker_adapter` identifies a bounded worker integration in source; it is
+not provider, model, or quality approval. `legacy_adapter` marks the optional text
+embedding and image-tag paths, which have no approved worker qualification here.
+
+The deployment manifest validator can check a private declaration against catalog
+roles, but that does not configure application startup. The typed bridge currently
+projects only these role groups into configuration copies:
+
+- assistant: `assistant_asr`, `assistant_tts`
+- memory contributions: `memory_asr`, `annotation_polish`
+- memory narrative: `narrative`
+- story titles: `title_suggestions`
+
+Caption, face, embedding, and image-tag roles have no typed projection in this
+bridge. Their source adapters, direct worker settings, and any private deployment
+records remain separate from that bridge. The source tree has no general live-state
+feed for provider/model installation or activation. Current installation, process
+health, effective device, native inference, and family-facing quality therefore
+require their own dated evidence; none can be inferred from this table, catalog,
+disabled examples, or a valid offline manifest.
+
+There is no separate general-purpose language-understanding role in the catalog.
+Annotation polishing, grounded narrative/conversation, and title suggestions are
+separate contracts with their own source, review, and projection gates. A shared
+text-generation service does not make their outputs interchangeable.
 
 ## Runtime and replacement rules
 
@@ -104,8 +138,9 @@ establish model or data licensing rights.
 ## Qualification and migration gates
 
 The dated [local text-model shortlist](LOCAL_TEXT_MODEL_SHORTLIST_2026-10-09.md)
-records current replacement candidates, pinned registry metadata and a staged
-evaluation plan. Narrative/companion, polish and title requests explicitly send
+preserves a 2026-10-09 snapshot of replacement candidates, pinned registry
+metadata and a staged evaluation plan; it is historical evidence, not a current
+availability or recommendation check. Narrative/companion, polish and title requests explicitly send
 Ollama `think: false`; they retain strict JSON, citations and existing bounds.
 Actual support on the selected runtime remains a native qualification gate.
 

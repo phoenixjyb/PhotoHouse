@@ -1,5 +1,114 @@
 # Product roadmap
 
+Active priorities after the **October 14 v58 delivery**. [Features](FEATURES.md)
+lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
+live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
+records maintainability findings. Dated history is preserved below.
+
+## 1. Accept the delivered experience
+
+Run the [v58 phone/Web trial](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md)
+with owner and member accounts: fresh saved-story search, opening the right card,
+reading its saved opening, actual playback before relistening, Pause/End, account/
+library change and recovery. Complete TV v30's physical named-library and playback
+check when the desktop/projector is available.
+
+**Exit:** device version and scenario-specific observations/receipts, including
+Chinese clarity and large-text/remote usability. Source/emulator results and
+publication remain separate from family acceptance.
+
+## 2. Make assistant reading and conversation fluid
+
+Add bounded chapter narration/continuation with explicit progress and resume,
+source citations, current story/book/chapter revisions and robust cancellation.
+Reuse the existing manual chapter reader's guards; do not duplicate playback
+ownership or make local completion navigate without a current user intent.
+Measure capture/ASR/processing/TTS/playback latency before streaming or speaking
+interruption. Keep microphone consent and Pause/End visible; qualify echo and
+audio-focus handling before permitting microphone/speaker overlap.
+
+**Exit:** current-source segment identity and resumption, no replay after recovery,
+Chinese/English enlarged UI checks, latency measurements and physical speech
+acceptance. Scope/default behavior and legacy clients remain explicit.
+
+## 3. Improve grounded family storytelling
+
+Build a small synthetic + explicitly approved family quality corpus for titles,
+attribution, multi-photo activities, essay/chronicle/memoir forms and conflicting
+contributions. Preserve original words/audio, source IDs and uncertainty; suggestions
+stay reviewable. Narrative, polishing and title roles keep independent contracts.
+Qualify a provider/profile and a compatible schema/backup/recovery plan before
+activating generation, title suggestions, editorial or editions.
+
+**Exit:** source-faithful proposals and measurable family/editorial quality,
+explicit adoption and no unsupported factual propagation. A newer/larger model
+is not a substitute for those checks.
+
+## 4. Activate adjustable memory grouping carefully
+
+Use capture-time evidence and qualified image similarity as candidates; keep
+filename/download/received dates labeled as weaker hints. A shared original note
+must remain one attributed source with reviewed links across the selected cohort.
+Manual adjustment, current membership, withdrawal and restore replay remain required.
+Groups/vector identity need the prepared schema and native lifecycle gates.
+
+**Exit:** source/model/preprocessing identity, stable review/edit behavior, deletion/
+restore qualification and family confirmation of suggested grouping. No silent
+copy of a memory into unrelated photographs.
+
+## 5. Make the open-source stack maintainable and deployable
+
+- Extract reviewed private release/recovery logic into generic, fail-closed public
+  controllers using synthetic fixtures and selected private manifests.
+- Replace scattered dated readiness claims with the maintained status/feature
+  map and capability/schema acceptance profiles; preserve strict client negotiation.
+- Extend typed provider wiring for face/embedding roles only with complete identity,
+  resource, shadow comparison and migration/reindex evidence.
+- Remove Home TV's interactive-session dependency through a separately qualified
+  operator plan; preserve its publication and LAN access boundaries.
+- Keep one writer per artifact, portable paths, original signer continuity, paired
+  multi-store backups and no weights/secrets/household data in Git.
+
+**Exit:** a clean-checkout synthetic release/recovery rehearsal, clear installation
+and rollback instructions, reviewed provider manifests and reproducible source
+checks. Live service/task changes, migrations, signing, publishing and legacy
+repository retirement still need their operation authority.
+
+## 6. Build the family memory hub
+
+The [family memory hub design](FAMILY_MEMORY_HUB.md) adds person/event-centered
+oral-history projects: long accounts recorded in resumable bounded sections,
+several relatives contributing with attribution, and reviewed chapters/books
+that can be read alongside original voices and media. This is future work;
+current short contributions do not provide a long recording transport.
+
+Start with subject/account/speaker identity and consent boundaries, durable
+section receipts, interruption recovery and complete source citations. Then
+qualify a multi-speaker editorial pilot before activating automatic stitching.
+Manual links and revisions remain available throughout. The separate project
+introduction uses fictional examples/cartoon illustrations, never family media.
+
+**Exit:** accepted recording sections survive retry/restart; conflicting accounts
+retain their speakers; proposed prose is faithful and adopted explicitly;
+permissions and source-withdrawal/restore tests pass before family use.
+
+## Delivery discipline
+
+Work in bounded slices and keep one main development repository. Local source,
+CI, packages, live services, installed clients and physical/family quality are
+separate gates. Do not republish or activate an optional feature as a side effect
+of editing documentation. Historical video errors need independent sources or a
+separately reviewed salvage plan; resume only unfinished conversion work.
+
+## Historical implementation and delivery notes
+
+The earlier chronological notes below retain their revision and acceptance
+context. Their old “next”, “pending” and “live” claims do not override the
+active priorities above or current Project Status.
+
+<details>
+<summary>Expand earlier roadmap and release notes</summary>
+
 ## October 14 delivered: conversational story actions
 
 The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) connects voice, chat,
@@ -742,3 +851,6 @@ The next bounded product slices are:
 4. Reviewed related-moment suggestions and shared memory links, retaining manual
    inclusion/exclusion and original authorship. Generation and source propagation
    remain explicit separate opt-ins.
+
+
+</details>

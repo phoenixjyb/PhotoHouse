@@ -3,13 +3,15 @@
 The CPU API, generated demo, phone and TV source checks do not require model
 weights. This directory contains a registry template, not a model installer.
 
-[`catalog.json`](catalog.json) maps thirteen model-backed capabilities to actual
-source adapters, configuration owners, execution modes and replacement boundaries.
+[`catalog.json`](catalog.json) maps thirteen model-backed capabilities to source
+adapters, configuration owners, execution modes and replacement boundaries.
 [`providers.example.json`](providers.example.json) contains corresponding disabled
 selection placeholders. Neither file is loaded by the application as runtime
-configuration. The private selection format and its validation boundaries are
-described in [the deployment manifest guide](../docs/MODEL_DEPLOYMENT_MANIFEST.md).
-Private deployment records and weights belong outside the source checkout.
+configuration. A catalog row means that a source adapter or worker entry point
+exists; it does not mean a provider is installed, qualified, enabled, running, or
+live. The private selection format and its validation boundaries are described in
+[the deployment manifest guide](../docs/MODEL_DEPLOYMENT_MANIFEST.md). Private
+deployment records and weights belong outside the source checkout.
 
 From the repository root, run the offline check:
 
@@ -53,6 +55,14 @@ worker deadlines. It does not start a service or resolve tokens in the offline
 command. See the [typed projection guide](../docs/MODEL_DEPLOYMENT_MANIFEST.md#typed-runtime-projection-and-lifecycle-gates)
 for the explicit source APIs and remaining runtime qualification gates.
 
+The typed source bridge currently projects assistant ASR/TTS, memory ASR and
+polishing, memory narrative, and story-title suggestions into private
+configuration copies. It does not project captions, face detection/recognition,
+image/video/text embeddings, or image tags. Those roles need their existing
+worker or configuration path and independent qualification; catalog membership
+does not wire them into deployment. No source catalog role currently reports a
+live provider state.
+
 For each selected provider record its exact adapter, endpoint, runtime version,
 dependency lock identity, checkpoint or service identity, license source,
 permitted use, preprocessing/vector identity and resource budget outside source
@@ -78,7 +88,8 @@ file checks and provider/device/quality acceptance separate; no setting is appli
 
 A model availability check is separate from quality acceptance. Processing
 failures retain an honest state; source memories and failed proposals are not
-replaced. Explicit assistant and memory projections are implemented; independent
-runtime catalog packaging, face/embedding projection, measured provider
-qualification and activation remain separate gates. No model weights, household endpoints,
-private deployment manifests or provider tokens belong in this checkout.
+replaced. Projection is implemented for the named assistant and memory targets;
+independent runtime catalog packaging, face/embedding projection, measured
+provider qualification and activation remain separate gates. No model weights,
+household endpoints, private deployment manifests or provider tokens belong in
+this checkout.

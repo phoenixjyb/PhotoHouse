@@ -1,0 +1,86 @@
+# Android clients
+
+This directory contains the Android phone and TV apps, their shared Kotlin
+modules, API contract fixtures, and Android-specific design and release notes.
+The current source defines phone app version **58** and TV app version **30**.
+
+## Projects
+
+The Gradle project is in [`android/`](android/), with these main components:
+
+- `:connected` is the PhotoHouse phone app. Its Compose UI uses `:live-core`
+  for account/library, story, memoir and assistant API/domain behavior, and
+  `:home-core` for home-feed and catalog behavior.
+- `:tv` is the TV app. It uses `:home-core` for home/catalog reads and
+  `:ota-android` for the Android update client. The desktop-dependent TV flow
+  still needs its physical projector check.
+- `:protocol` holds shared wire models; `:playback-core` holds playback
+  progress logic used by the phone and home modules; `:home-core` contains the
+  HTTPS home/catalog clients, stores, discovery and video-reading logic.
+- `:ota-android` contains the Android OTA client and its provider configuration.
+- `:core` and `:app` are the standalone development fixture app, not the
+  household phone app. `:story-fixture-core` and the optional fixture UI provide
+  generated story data for development journeys.
+
+## Local development
+
+Use JDK 17 and Android SDK platform 34 with build tools 34.0.0. From the
+PhotoHouse repository root, run the supported Android profile:
+
+```sh
+.venv/bin/python tools/check.py android
+```
+
+This runs JVM tests for the shared modules and both apps, phone and TV debug
+lint, and unconfigured debug APK assembly. For a focused phone or TV iteration,
+run Gradle from `clients/android/android/`:
+
+```sh
+./gradlew --no-daemon --console=plain :connected:testDebugUnitTest :connected:lintDebug :connected:assembleDebug
+./gradlew --no-daemon --console=plain :tv:testDebugUnitTest :tv:lintDebug :tv:assembleDebug
+```
+
+Build origins and feature switches are optional local configuration. Keep
+`local.properties`, credentials, household endpoints, signing material, media,
+recordings, databases and model weights out of Git. Debug builds use no release
+signer and do not install or publish an update. See the repository
+[`DEVELOPMENT.md`](../../docs/DEVELOPMENT.md) for qualification details and
+[`AGENTS.md`](../../AGENTS.md) for data and authorization boundaries.
+
+## Voice and reading behavior
+
+The assistant microphone is opt-in: mounting the screen does not record. One
+explicit foreground **Start** begins temporary audio capture and read-only
+assistant requests. The phone takes turns: it stops capture while a request and
+reply are prepared, plays the reply, and listens again only after successful
+playback. **Pause**, **End**, backgrounding, or account/library context changes
+stop the session; stale replies and playback are fenced from the new context.
+Uncertainty pauses the flow. Session consent does not authorize memory edits or
+access changes. Outside this session, capture and transcript review remain
+explicit actions.
+
+Within that assistant flow, a user may ask to open an item in the current
+displayed results or read a saved story/memoir opening. Typed requests show an
+explicit action button. The opening is limited to 240 Unicode code points and
+600 UTF-8 bytes. It is not a whole-chapter assistant reading mode. The phone
+also has a separate, manually started chapter read-aloud control with its own
+pause/resume behavior. Wait for speech to finish before speaking; assistant
+streaming speech and interruption are later stages.
+
+See the [v58 Chinese test guide](docs/PHONE_V58_TEST_GUIDE_ZH.md),
+[v58 release record](docs/PHONE_V58_RELEASE_2026-10-14.md),
+[assistant voice contract](../../docs/ASSISTANT_VOICE_RELIABILITY.md), and
+[fluid assistant design](../../docs/ASSISTANT_FLUID_EXPERIENCE.md).
+
+## Release and acceptance
+
+Source checks, debug APK assembly, a signed release, OTA publication,
+installation, and family/device acceptance are separate evidence. The v58
+release record documents a signed phone APK and published phone update; it does
+not establish installation on the physical phone or family listening acceptance.
+TV OTA remains v30. The physical TV/projector check is pending. Do not treat a
+successful local check or APK assembly as release signing, installation, or
+acceptance.
+
+Keep dated release records as historical evidence. Check the current source,
+release record and device state before making a delivery claim.

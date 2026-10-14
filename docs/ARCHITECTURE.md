@@ -10,6 +10,59 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## System map and ownership
+
+The protected server is a modular application with separate worker/provider
+processes. It owns library authorization, revisions and accepted mutations;
+clients own capture, playback and presentation. [Project status](PROJECT_STATUS.md)
+records the dated installation; a diagram is not an activation inventory.
+
+```mermaid
+flowchart LR
+    W[Web UI] --> A[Protected API and domain services]
+    P[Android phone] --> A
+    A --> DB[Primary SQLite]
+    A --> J[Deletion and receipt journals]
+    A --> C[Private assistant workspace]
+    A --> M[Protected originals and derived media]
+    Q[Approved upload workers] --> DB
+    Q --> M
+    A --> I[Optional ASR TTS and narrative adapters]
+    Q --> I
+    T[Android TV] --> H[Separately authorized Home TV service]
+    H --> M
+    O[HTTPS OTA publication] --> P
+    O --> T
+```
+
+Home TV publication/allow-list rules are a separate access path. The current
+Android home/catalog and OTA clients require HTTPS; a local network does not
+remove that transport contract or grant protected library access.
+
+| State | Ownership and lifecycle |
+| --- | --- |
+| Primary SQLite | Accounts/libraries, asset metadata, approval/tasks, original contributions and revisioned stories/memoirs; explicit Alembic admission/migration |
+| Family raw text/audio | Original text and bounded audio BLOBs remain distinct from transcripts, polished wording and tags; keep until authorized deletion/withdrawal, not assistant expiry |
+| Original media | Runtime filesystem roots; no photos/videos in source Git |
+| Derived media/vector/index state | Versioned preview/video/vector artifacts, claims and publication closure; output existence alone does not imply visibility |
+| Original-deletion journal | Separate durable ledger/namespace and restore replay; matched backup prevents restored primary data from bypassing withdrawn access |
+| Assistant receipt journal | Recognized input/processing status, 30-day expiry; transient assistant recordings are not retained |
+| Private assistant workspace | Separate validated schema-v2 SQLite store, owned threads/preferences/request context, 30-day exchange expiry; independent of primary Alembic and troubleshooting receipts |
+| Models and OTA | External runtime model installations/licenses; separately signed APKs and immutable HTTPS channel artifacts |
+
+Main entry points are `server/backend/app/main.py` (closed application factory),
+`server/backend/app/access/runtime.py` (explicit existing-store/provider admission),
+`server/backend/app/access/` (protected domain contracts) and
+`clients/android/android/` (shared Kotlin and Compose clients). The Web UI lives
+with the server. [Server](../server/README.md), [Android](../clients/android/README.md),
+[model providers](MODEL_PROVIDER_ARCHITECTURE.md) and [operations](OPERATIONS.md)
+map their development and runtime boundaries.
+
+The [family memory hub direction](FAMILY_MEMORY_HUB.md) extends current stories
+and memoirs with long oral-history projects, people/event relationships and
+reviewed multiple-speaker chapters. It is a design direction requiring additive
+contracts; current short recording/storage limits do not support unlimited sessions.
+
 ## Conversational viewing
 
 The [fluid assistant design](ASSISTANT_FLUID_EXPERIENCE.md) uses the protected
@@ -175,15 +228,22 @@ Native provider/filesystem qualification remains a separate delivery gate.
 
 ## Voice pipeline
 
+Two entry paths share protected ASR/intent/speech contracts:
+
 ```text
-phone/browser: explicit capture → stop → review
-server ASR adapter: transient audio → recognized text
-client: edit → explicit submit
-server: authenticated receipt → context/intent → allowed action or clarification
-client: visible response → explicit speech request/playback
+ordinary dictation: capture → stop → ASR → review/edit → insert → explicit Send
+opt-in foreground voice: Start → capture/endpoint → ASR → read-only turn
+                         → visible reply/action → successful playback → listen
+                         Pause/End, uncertainty or lifecycle loss → stop
 ```
 
-A local ASR/model adapter is configurable. Recognition is not a submitted command. Continuous conversation retains explicit turn boundaries; it does not imply continuous microphone capture. Every accepted action must have a receipt and processing state.
+The explicit Start authorizes the bounded foreground read-only loop. Capture
+stops during requests and playback; the next listen depends on actual successful
+audio completion. It is half duplex, with no background microphone, streaming
+speech or speech barge-in. Ordinary dictation still requires transcript review
+and submission. Memory edits, permissions and original deletion need their
+separate explicit workflow. Receipt/status history is distinct from personal
+conversation context and from family source recordings.
 
 The [Web assistant](ASSISTANT_TRANSCRIPT_REVIEW.md) and
 [phone assistant's transcript review](../clients/android/docs/ANDROID_ASSISTANT_TRANSCRIPT_REVIEW_2026-10-10.md)
@@ -492,8 +552,9 @@ The first applied preference is the language of a grounded textual reply.
 Response length and voice pace remain unsupported presentation preferences;
 they do not configure ASR/TTS or select providers. Capability checks expose this
 distinction. Schema-v2 initialization or the explicit offline v1 upgrade is a
-separate operation; opening a store never creates or migrates it. This source
-does not activate private storage in the currently served Windows backend.
+separate operation; opening a store never creates or migrates it. New checkouts
+remain default-off. The v58 installation has explicitly configured workspace
+storage and prior native admission evidence; see [current status](PROJECT_STATUS.md).
 
 [Native qualification](PRIVATE_ASSISTANT_NATIVE_QUALIFICATION.md) must use the
 service's execution identity. In particular, an interactive-user private-store
@@ -515,8 +576,9 @@ retained in the journal. Replies exceeding 600 UTF-8 bytes remain visible.
 The foreground phone/Web loop may speak a fresh result, empty result or
 clarification, then listen after actual audio completion. Unsupported requests
 speak help and pause for review. Recovery never triggers speech or navigation.
-Client scope/cancellation fences discard late audio. This source flag does not
-activate the Windows provider or private database. When the new capability is
+Client scope/cancellation fences discard late audio. The v58 installation enables
+this optional flag with separately qualified storage/providers; a new checkout
+does not activate them. When the capability is
 absent, clients retain the v1 result-speech path; its content depends on the
 deployed server revision. Local narration checks do not establish native TTS
 quality, delivery or physical-device acceptance.
@@ -554,7 +616,7 @@ A separate optional reader probe preserves search compatibility. The ordinal GET
 resolves stored completed-turn references, revalidates current source digests and
 owner/revision chains, and returns existing reader detail. Clients stop foreground
 voice before a tap-triggered read and fence late handoffs by scope and fresh turn.
-The published v55 source is `c65528a`. The
+The earlier v55 delivery was pinned to `c65528a`; v58 retains this foundation. The
 [saved-memory card contract](ASSISTANT_SAVED_MEMORY_CARDS_V1.md) requires separate
 feature negotiation, current-source revalidation and explicit reader handoff.
 Recovered history remains non-actionable. No inference, automatic story mutation
@@ -571,7 +633,7 @@ current authorized source readers and returns the same ordered card grammar.
 No client source context grants authority. Outline and original-excerpt views
 remain bounded; history/recovery is generic and cannot restore actions.
 
-This local source is outside the published v55 API/phone. No provider, schema,
+This followup layer was developed after v55 and is included in v58. No provider, schema,
 retention or story mutation is added. Draft suggestions end foreground voice;
 explicit sends and reader opening keep their existing controls. Optional-probe
 403 fallback rechecks the base capability, so older closed routes remain
@@ -584,13 +646,30 @@ The [opening-speech contract](ASSISTANT_SAVED_MEMORY_READING.md) adds a separate
 optional capability and ordinal speech route. The server resolves current story
 first-chapter narration or memoir introduction from stored canonical references,
 without replaying a search or accepting caller text. All sources and parent
-state are rechecked after local synthesis; selected saved wording stays transient. This
-source is outside fixed v56. Web and phone offer a one-shot card action, end
-voice/capture before speech, fence the rendered parent and current scope, and
-discard audio after cancellation or source/capability changes. Fresh-display
+state are rechecked after local synthesis; selected saved wording stays transient.
+The one-shot card action was delivered in v57 and is retained in v58. It ends
+voice/capture before speech, fences the rendered parent and current scope, and
+discards audio after cancellation or source/capability changes. Fresh-display
 client guards complement server ownership checks; recovered history cannot
 trigger playback. The private panel and central phone workspace share one player.
 
+
+## Contextual voice actions in v58
+
+The [fluid experience contract](ASSISTANT_FLUID_EXPERIENCE.md) adds explicitly
+negotiated typed actions over a fresh completed result cohort. Spoken retrieval
+may open a validated current ordinal or read a saved story/memoir opening; typed
+requests present an explicit action control. Opening a reader ends foreground
+voice. A successful opening playback can resume listening within an opted-in
+session; failure/uncertainty pauses it. The spoken opening is bounded to 240
+Unicode code points and 600 UTF-8 bytes. The separate manually started chapter
+read-aloud reader has its own pause/resume behavior; it is not this assistant
+opening loop. Assistant full-chapter continuation/progress remains roadmap work.
+
+Parent revision/source bindings and current membership are rechecked; recovered
+history cannot start speech/navigation. There is no general LLM tool executor,
+automatic story mutation or permission change. The [v58 test guide](../clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md)
+provides supported examples and retains physical-device acceptance as a separate gate.
 
 ## Release launcher qualification
 

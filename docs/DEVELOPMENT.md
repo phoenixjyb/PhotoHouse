@@ -1,5 +1,21 @@
 # Development and public release qualification
 
+## Maintainer navigation
+
+Use [Project Status](PROJECT_STATUS.md) for the dated delivered/runtime snapshot,
+[Architecture](ARCHITECTURE.md) for stores and ownership, and the
+[documentation index](README.md) for topic contracts. Start with
+[CPU quick start](#cpu-quick-start), [Android checks](#android-checks),
+[Web browser profile](#optional-web-browser-profile),
+[required profiles](#required-local-profiles) and [public release gates](#public-release-gates).
+
+Dated sections below retain qualification and delivery history at their stated
+revision. “Candidate”, “not deployed”, test counts and next-step statements apply
+to that record, not every later release. Do not sum overlapping checks or treat
+local evidence as current hosted CI, runtime/model quality or device acceptance.
+The October 14 documentation audit did not rebuild applications.
+
+
 ## Contextual voice and viewing qualification (October 14)
 
 The local [fluid assistant slice](ASSISTANT_FLUID_EXPERIENCE.md) passed 111

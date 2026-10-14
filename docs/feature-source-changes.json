@@ -14519,6 +14519,166 @@
       "schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "existing-maintainer-scaffold-documentation-provenance-20261014",
+      "based_on_commit": "86a154ed45e3fe3027777127fc26013128f87e7a",
+      "files": [
+        {
+          "path": "config/examples/README.md",
+          "before_sha256": null,
+          "sha256": "0514d3eaa6f0beb50a43c05267c3852154afd872e6d1f287fabb9c5c1e3cf614"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "architecture-documentation-reconciliation-and-family-memory-introduction-20261014",
+      "based_on_commit": "86a154ed45e3fe3027777127fc26013128f87e7a",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "f2a2f087f681064d0808070a137b9eff121ba8338b6525fc00e8660700b0556f",
+          "sha256": "c0da9b32a7e795df2d15f7584dcf8efb8b8309bd5783fe0df74ce94b640dd2a6"
+        },
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": null,
+          "sha256": "8b7d22d30afb59571cba17c8591eb497abd8d8506ddaea9b7b4d0d4f5e1a8afb"
+        },
+        {
+          "path": "clients/android/docs/DEVELOPMENT_PLAN.md",
+          "before_sha256": "052fc58105d7bd17c7f22d66254b7eb72fb2f38d41475bc0625d99b50c2c9fbf",
+          "sha256": "ff28fe8cc55aa08fca36abba7656c877c3fab5bec808c70786288a0a0fe5994c"
+        },
+        {
+          "path": "config/examples/README.md",
+          "before_sha256": "0514d3eaa6f0beb50a43c05267c3852154afd872e6d1f287fabb9c5c1e3cf614",
+          "sha256": "b11ce6f839fd1cd0a8c48320a617e3656f4a42b38837c998f6502f460f263922"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "ec5a04a12dc5929b161a4d0bc94404c6452080dfc26c93ceb29c79f237dcfde2",
+          "sha256": "64fb9edcafcfb451a21832326fcbbaf6219366a4a3aef69859dd5fc10f78bcfb"
+        },
+        {
+          "path": "docs/ARCHITECTURE_REVIEW_2026-10-14.md",
+          "before_sha256": null,
+          "sha256": "aecc83554af3ebbbfdf41fbc5c66a3ccc8038a3a45878fa728843d9de0508980"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2c428c926712d9761ceab985445f8ddd39afb085582bc3b6132eb42a325b2684",
+          "sha256": "1d8b0a0ff03b215e0475bb5cf4c1766c4897212dc3c4a9c5d06262e8b4dcec59"
+        },
+        {
+          "path": "docs/FAMILY_MEMORY_HUB.md",
+          "before_sha256": null,
+          "sha256": "52beca0aaf4faa3a41a076464a24ce53e1feee4155bf432e5051e413952d224e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "0d5bf65e83d7b4c3c96dd9b6b05cad3f9224e4a7751df9bbabab1b95b1b1449d",
+          "sha256": "5e9014ee75f62e4e7096abc9b2e005478846f515db9fe847e61a210f9f7061e7"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "f8c26cc9a8abc0beb6a552a21b41bb59ab21f3754dabd25da4a60074d1e60b84",
+          "sha256": "03873178f4de91321e120e7e1a6456227c105d29574fa0782f00665473449361"
+        },
+        {
+          "path": "docs/OPERATIONS.md",
+          "before_sha256": null,
+          "sha256": "c2948fc9d4277afc78b3a8c5f09e15f9aa15fc5694be5946db0ddd4b6633c9f6"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "before_sha256": "154fde0b2d65496477ff8b624e3bba921b377ef758b5b89a13d8b6b07a4f909a",
+          "sha256": "264aac84939147a58f3abb7623d9ae366a9fb0d6c395383b79aa22f13ed7faed"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": null,
+          "sha256": "520ce53c78bc8899e57bad360cfa97ca7889a5821b686848a897736cd162911d"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": null,
+          "sha256": "29647f6991b6611dc4a09b92f082c60c6b9f31c85e21222ebd86adc33882df2d"
+        },
+        {
+          "path": "docs/REPOSITORY_TRANSITION.md",
+          "before_sha256": "d1bcc97fd1b325d530cd279c0fd7386bd4efa9400f351669078cd2fedcbac01d",
+          "sha256": "bb8e452e87daf8022cbfd1ae430afacbf9d784783cc47f1f27f2241c3cabb938"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "270daed0a85faa797de2d2a7232436638c6d3278ab297ba040e3449449d83c6f",
+          "sha256": "5fbd67d0c8d142cec8101cbc2630283976b6fb11bf775e581d4983a7b81a9624"
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "before_sha256": "af562704b86da2170e221d35aa25b11f6b1e81e5c34da32772b0c3dfe9c4088e",
+          "sha256": "edec88400eab6c8469bd1e08c82df98da4e8ba9f3af09c5e2d3044f422f23fb3"
+        },
+        {
+          "path": "models/README.md",
+          "before_sha256": "bfe31e18d80aaed9f384744c194bd52df622d8183662a899d2b65bd455808748",
+          "sha256": "ec8d7ef8a4245b7f05b39855afb6d010f11c327a31af61349ec583778b49d30a"
+        },
+        {
+          "path": "server/README.md",
+          "before_sha256": null,
+          "sha256": "64b86f428ee01085adae3d0c7187639d3d2b54af34e661898a9938575a8dd51b"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_ERASURE_V2.md",
+          "before_sha256": "c549f59152cf77e9103c21c836e285b672cf657cc72df94df17a5ef2c6858b52",
+          "sha256": "1eaedae1c2b3dfa931122f463d11f0c413e8eb51098341988fb5e12fdb2b039b"
+        },
+        {
+          "path": "server/docs/security/FAMILY_NOTE_IDENTITIES_V1.md",
+          "before_sha256": "ebbca1cbeceb4d03a171ccd0905aace4b058fb39814f0dc61c4b22bb38125b06",
+          "sha256": "4d12087a808f11cc2cfbb82998ba272c8b07b54adf327556cc299b4cdcad096f"
+        },
+        {
+          "path": "server/docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md",
+          "before_sha256": "4a58c58580d3930dd38d7bc84241e79ccba82b98f123c750682ff668404eda13",
+          "sha256": "e9c2418d9c01ca594a3139390c15ab49a4666d31b1ec744bf5a83e4320495859"
+        },
+        {
+          "path": "server/tests/README.md",
+          "before_sha256": "8394c1e1223b2a06bf5656d88d70dcacedfb7dc86d0f0605d1dc65d4f8b03b4a",
+          "sha256": "9929958efe8a59ba763f5f0d3ad46aa6522c789a130b5296c5c88f6fde5d1c35"
+        },
+        {
+          "path": "website/README.md",
+          "before_sha256": null,
+          "sha256": "5e9a899e44d561b7278f1f507f879ce2e2eca7ce4106a48c5cdea7299663b96d"
+        },
+        {
+          "path": "website/dist/index.html",
+          "before_sha256": null,
+          "sha256": "b9f8a4b6b346ce6f9a756534572ed86aefd177aa8580c020d444d061a9c3e943"
+        },
+        {
+          "path": "website/dist/photohouse-mark.png",
+          "before_sha256": null,
+          "sha256": "c8fc559e39c5c4d0b9902cafca47e15ac4e6cfa2cbc18d81a40d956e8a8f8909"
+        },
+        {
+          "path": "website/dist/styles.css",
+          "before_sha256": null,
+          "sha256": "ea7a5c8526461587973027febd0baee00ec0db8685efcc8b558030935d6a64f1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
