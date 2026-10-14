@@ -104,9 +104,11 @@ prompt. Choosing a chip still inserts the unchanged prior request wording into
 the editable draft. Segment reading remains one explicit request per tap, with
 no automatic chapter advance.
 
-A late Web capability-probe race fix is in progress. The Web Node and browser
-counts above are pre-fix baseline evidence and do not qualify the current Web
-followup lifecycle. Re-run the focused delayed-capability/current-result checks
-after that fix before treating this Web path as accepted. These source notes do
-not establish native TTS, live API, package, physical-device or family
-acceptance.
+The late Web capability-probe race now has a deterministic held-response
+journey: 27 Edge checkpoints passed with exact current-result binding, no focus
+movement, no duplicates and no automatic submission. A separate held session
+restore exposed premature voice startup; the current source blocks capture until
+that restore completes and shows a localized setup state with the microphone
+off. Its focused voice and recovery journeys pass. Complete integrated profiles,
+native TTS, live API delivery, physical-device and family acceptance remain
+separate evidence.

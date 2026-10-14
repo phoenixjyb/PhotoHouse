@@ -7,6 +7,7 @@
   let privateAssistant=null,privateAssistantBusy=false,privateAssistantOperation=0,privateCreationRetryId=null,assistantMemoryActionTarget=null;
   let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let memoryGroupGalleryItems=[];
+  let assistantRestoreGate=null,assistantRestoreSerial=0;
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
   const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
   let assistantFocusRevision=0;
@@ -32,8 +33,8 @@
   Object.assign(words.zh,{assistantMic:'按住说话',assistantStop:'结束录音',assistantRecordingCancel:'取消录音',assistantCaptureStarting:'正在打开麦克风…',assistantCaptureNotStarted:'录音尚未开始，请再次按住说话。',assistantRecording:'正在录音，最长 30 秒。',assistantCaptureError:'无法启动麦克风，请检查权限后重试。',assistantTranscribing:'正在识别录音…',assistantTranscriptTitle:'请先检查识别文本，再使用',assistantTranscriptLanguage:'识别语言',assistantLangZh:'中文',assistantLangEn:'英文',assistantLangMixed:'中英混合',assistantLangUnknown:'无法判断',assistantTranscriptReady:'识别完成。请检查文本，再选择放入搜索框。',assistantTranscriptError:'语音识别失败，请重试。',assistantTranscriptTooLong:'识别文本与已输入内容合计超过 1,024 个 UTF-8 字节。请编辑任一文本；内容均未删除。',assistantUseTranscript:'放入搜索框',assistantDiscardTranscript:'丢弃识别文本',assistantTextTooLong:'请输入不超过 1,024 个 UTF-8 字节的内容。'});
   Object.assign(words.en,{assistantVoiceStart:'Start voice search',assistantVoicePause:'Pause',assistantVoiceResume:'Resume',assistantVoiceEnd:'End voice search',assistantVoiceReady:'Voice search is off. Start to allow continuous listening while this page stays open.',assistantVoiceListening:'Listening. Pause or end voice search at any time.',assistantVoiceTranscribing:'Recognizing your request…',assistantVoiceWorking:'Searching this library…',assistantVoiceSpeaking:'Speaking the results…',assistantVoiceReview:'Paused. Read the reply, then resume when ready.',assistantVoiceError:'Voice search paused. Read the message and resume when ready.',assistantVoiceNoSpeech:'No speech was detected. Voice search paused.',assistantVoiceTooShort:'That utterance was too short. Voice search paused.',assistantVoiceLimit:'The 30-second recording limit was reached. Voice search paused.',assistantVoiceScope:'Voice search ended because this page context changed.'});
   Object.assign(words.zh,{assistantVoiceStart:'开始连续语音查找',assistantVoicePause:'暂停',assistantVoiceResume:'继续',assistantVoiceEnd:'结束语音查找',assistantVoiceReady:'语音查找已关闭。开始后，本页保持打开时会连续聆听。',assistantVoiceListening:'正在聆听。你可以随时暂停或结束语音查找。',assistantVoiceTranscribing:'正在识别你的请求…',assistantVoiceWorking:'正在当前相册库中查找…',assistantVoiceSpeaking:'正在播报结果…',assistantVoiceReview:'已暂停。请先阅读回复，准备好后再继续。',assistantVoiceError:'语音查找已暂停。请阅读提示，准备好后再继续。',assistantVoiceNoSpeech:'没有检测到语音，语音查找已暂停。',assistantVoiceTooShort:'这段语音太短，语音查找已暂停。',assistantVoiceLimit:'录音已达到 30 秒上限，语音查找已暂停。',assistantVoiceScope:'页面上下文已改变，语音查找已结束。'});
-  Object.assign(words.en,{assistantPresenceIdle:'Ready when you are',assistantPresenceOpening:'Opening your microphone',assistantPresenceListening:'Your turn — I’m listening',assistantPresenceRecognizing:'Recognizing your words',assistantPresenceFinding:'Finding your moments',assistantPresencePreparing:'Preparing my voice',assistantPresenceSpeaking:'My turn — replying',assistantPresencePaused:'Conversation paused',assistantPresenceUnavailable:'Voice is unavailable',assistantMicOn:'Microphone on',assistantMicOff:'Microphone off',assistantVoiceOpening:'Allow microphone access if asked. Listening begins once it is ready.',assistantVoicePreparing:'Your reply is ready. Preparing the audio; the microphone is off.',assistantVoiceUnavailable:'You can type a message while voice is unavailable.'});
-  Object.assign(words.zh,{assistantPresenceIdle:'准备好了，等你开始',assistantPresenceOpening:'正在开启麦克风',assistantPresenceListening:'轮到你了，我在听',assistantPresenceRecognizing:'正在识别你的话',assistantPresenceFinding:'正在寻找你的回忆',assistantPresencePreparing:'正在准备语音',assistantPresenceSpeaking:'轮到我了，正在回答',assistantPresencePaused:'对话已暂停',assistantPresenceUnavailable:'语音暂不可用',assistantMicOn:'麦克风开启',assistantMicOff:'麦克风关闭',assistantVoiceOpening:'如有提示，请允许使用麦克风。准备好后才会开始聆听。',assistantVoicePreparing:'回复已准备好，正在准备播放；麦克风已关闭。',assistantVoiceUnavailable:'你可以先输入文字，继续和助手聊聊。'});
+  Object.assign(words.en,{assistantPresenceIdle:'Ready when you are',assistantPresenceOpening:'Opening your microphone',assistantPresenceListening:'Your turn — I’m listening',assistantPresenceRecognizing:'Recognizing your words',assistantPresenceFinding:'Finding your moments',assistantPresencePreparing:'Preparing my voice',assistantPresenceSpeaking:'My turn — replying',assistantPresencePaused:'Conversation paused',assistantPresenceUnavailable:'Voice is unavailable',assistantPresenceChecking:'Checking before voice can start',assistantMicOn:'Microphone on',assistantMicOff:'Microphone off',assistantVoiceOpening:'Allow microphone access if asked. Listening begins once it is ready.',assistantVoicePreparing:'Your reply is ready. Preparing the audio; the microphone is off.',assistantVoiceUnavailable:'You can type a message while voice is unavailable.',assistantVoiceChecking:'Checking this page and voice access. The microphone is off.'});
+  Object.assign(words.zh,{assistantPresenceIdle:'准备好了，等你开始',assistantPresenceOpening:'正在开启麦克风',assistantPresenceListening:'轮到你了，我在听',assistantPresenceRecognizing:'正在识别你的话',assistantPresenceFinding:'正在寻找你的回忆',assistantPresencePreparing:'正在准备语音',assistantPresenceSpeaking:'轮到我了，正在回答',assistantPresencePaused:'对话已暂停',assistantPresenceUnavailable:'语音暂不可用',assistantPresenceChecking:'正在检查语音使用条件',assistantMicOn:'麦克风开启',assistantMicOff:'麦克风关闭',assistantVoiceOpening:'如有提示，请允许使用麦克风。准备好后才会开始聆听。',assistantVoicePreparing:'回复已准备好，正在准备播放；麦克风已关闭。',assistantVoiceUnavailable:'你可以先输入文字，继续和助手聊聊。',assistantVoiceChecking:'正在检查此页面和语音权限。麦克风已关闭。'});
   Object.assign(words.en,{assistantPlay:'Play spoken results',assistantSpeechStop:'Stop playback',assistantSpeechError:'Spoken results are unavailable. Try again.'});
   Object.assign(words.zh,{assistantPlay:'播报结果',assistantSpeechStop:'停止播放',assistantSpeechError:'暂时无法播报结果，请重试。'});
   Object.assign(words.en,{assistantAsrNoInput:'No words were recognized. Voice search is paused; your typed text is unchanged. Record again when ready.',assistantAsrBusy:'Speech recognition is busy. Voice search is paused; your typed text is unchanged. Try recording again shortly.',assistantAsrTimeout:'Speech recognition took too long. Voice search is paused; your typed text is unchanged. Record again when ready.',assistantAsrInvalid:'Speech recognition returned an unreadable result. Voice search is paused; your typed text is unchanged. Record again when ready.',assistantAsrUnavailable:'Speech recognition is unavailable. Voice search is paused; your typed text is unchanged. Try again later.',assistantAsrNoInputManual:'No words were recognized. Nothing was added to your request. Record again when ready.',assistantAsrBusyManual:'Speech recognition is busy. Nothing was added to your request. Try recording again shortly.',assistantAsrTimeoutManual:'Speech recognition took too long. Nothing was added to your request. Record again when ready.',assistantAsrInvalidManual:'Speech recognition returned an unreadable result. Nothing was added to your request. Record again when ready.',assistantAsrUnavailableManual:'Speech recognition is unavailable. Nothing was added to your request. Try again later.'});
@@ -670,14 +671,15 @@
     const privateSnapshot=privateAssistant?.state();
     const privatePending=privateSnapshot?.pendingTurn||privateSnapshot?.pendingCreation;
     const privateUnavailable=!!privateSnapshot?.activeThread&&privateSnapshot?.capabilities?.server_owned_turns!==true;
+    const restorePending=assistantRestoreGate!==null;
     const blocked=privateUnavailable||privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
     $('assistant-text').disabled=sessionOwnsVoice;
     $('assistant-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();
-    $('assistant-mic').disabled=blocked||sessionOwnsVoice;
+    $('assistant-mic').disabled=blocked||restorePending||sessionOwnsVoice;
     $('assistant-voice-session').hidden=!assistantState.transcribe;
     $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden);
     $('assistant-voice-start').hidden=session.phase!=='idle';$('assistant-voice-pause').hidden=!active;$('assistant-voice-resume').hidden=!paused;$('assistant-voice-end').hidden=!(active||paused);
-    $('assistant-voice-start').disabled=blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=state.locked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
+    $('assistant-voice-start').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
     $('assistant-mic').hidden=active||paused;
     $('assistant-play').disabled=sessionOwnsVoice;
     const presentationPhase=session.phase!=='idle'?session.phase:assistantState.capture||assistantState.captureStarting?'listening':assistantState.transcribing?'transcribing':assistantState.busy||privateAssistantBusy?'requesting':assistantState.activePlayback||assistantState.speechController?'speaking':'idle';
@@ -688,9 +690,9 @@
     const voiceStatus={idle:'assistantVoiceReady',opening:'assistantVoiceOpening',listening:'assistantVoiceListening',transcribing:'assistantVoiceTranscribing',requesting:'assistantVoiceWorking',preparing:'assistantVoicePreparing',speaking:privateSnapshot?.speechReady&&privateSnapshot?.capabilities?.reply_speech?'assistantVoiceReply':'assistantVoiceSpeaking',paused:session.reason||'assistantVoiceReview',unavailable:'assistantVoiceUnavailable'};
     const presenceTitle={idle:'assistantPresenceIdle',opening:'assistantPresenceOpening',listening:'assistantPresenceListening',transcribing:'assistantPresenceRecognizing',requesting:'assistantPresenceFinding',preparing:'assistantPresencePreparing',speaking:'assistantPresenceSpeaking',paused:'assistantPresencePaused',unavailable:'assistantPresenceUnavailable'};
     $('assistant-voice-session').dataset.phase=presence;
-    $('assistant-voice-title').textContent=t(presenceTitle[presence]||'assistantPresenceIdle');
+    $('assistant-voice-title').textContent=t(restorePending?'assistantPresenceChecking':presenceTitle[presence]||'assistantPresenceIdle');
     $('assistant-voice-mic-state').textContent=t(microphoneReady?'assistantMicOn':'assistantMicOff');
-    $('assistant-voice-session-status').textContent=t(session.phase==='idle'&&presence==='listening'?'assistantRecording':voiceStatus[presence]||'assistantVoiceReady');
+    $('assistant-voice-session-status').textContent=t(restorePending?'assistantVoiceChecking':session.phase==='idle'&&presence==='listening'?'assistantRecording':voiceStatus[presence]||'assistantVoiceReady');
     const privateMode=privateSnapshot?.capabilities?.available===true&&privateSnapshot?.capabilities?.threads===true;
     $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
     $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
@@ -712,10 +714,10 @@
   }
   function endAssistantVoice(){const session=assistantState.voiceSession;if(session.phase==='idle')return;pauseAssistantVoice('assistantVoiceScope');session.generation++;session.phase='idle';session.binding=null;session.reason=null;syncAssistantControls();}
   function stopMemoryOpeningBeforeCapture(){if(assistantState.memoryOpeningPlayback||assistantState.memorySegmentPlayback)stopAssistantSpeech();}
-  function startAssistantVoice(){const session=assistantState.voiceSession;if(session.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return;stopMemoryOpeningBeforeCapture();const binding=assistantVoiceBinding();if(!binding)return;session.generation++;session.phase='listening';session.binding=binding;session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,binding);}
-  function resumeAssistantVoice(){const session=assistantState.voiceSession;if(session.phase!=='paused'||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
+  function startAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return;stopMemoryOpeningBeforeCapture();const binding=assistantVoiceBinding();if(!binding)return;session.generation++;session.phase='listening';session.binding=binding;session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,binding);}
+  function resumeAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='paused'||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
   async function captureAssistantVoice(token,binding){
-    if(!currentAssistantVoice(token,binding)||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy())return;
+    if(assistantRestoreGate||!currentAssistantVoice(token,binding)||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy())return;
     const attempt={binding,completed:false,controller:new AbortController(),voiceToken:token};assistantState.captureAttempt=attempt;assistantState.captureStarting=true;syncAssistantControls();
     try{
       const capture=await annotationCapture((file,finishedCapture)=>{if(!currentAssistantCapture(attempt)||!currentAssistantVoice(token,binding)){void finishedCapture.stop(false);return;}attempt.completed=true;if(assistantState.capture===finishedCapture)assistantState.capture=null;if(annotationState.capture===finishedCapture)annotationState.capture=null;assistantState.captureAttempt=null;assistantState.captureStarting=false;assistantState.voiceSession.phase='transcribing';syncAssistantControls();void transcribeAssistantRecording(file,binding,token);},30,{isCurrent:()=>currentAssistantCapture(attempt)&&currentAssistantVoice(token,binding),signal:attempt.controller.signal,endpointDetectorFactory:rate=>assistantEndpointDetector(rate),onEndpoint:status=>{
@@ -1117,7 +1119,7 @@
     }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
   }
   async function startAssistantCapture() {
-    if(!assistantState.transcribe||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.captureStarting||assistantState.capture||annotationState.capture||assistantState.transcribing||assistantState.busy||state.locked||!state.profile||!state.library)return;
+    if(assistantRestoreGate||!assistantState.transcribe||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.captureStarting||assistantState.capture||annotationState.capture||assistantState.transcribing||assistantState.busy||state.locked||!state.profile||!state.library)return;
     stopMemoryOpeningBeforeCapture();
     let settleAttempt;
     const binding={library:String(state.library),account:String(state.profile.account_id),generation:state.generation},attempt={binding,completed:false,manual:true,controller:new AbortController(),done:new Promise(resolve=>{settleAttempt=resolve;})};
@@ -1345,6 +1347,7 @@
   }
   async function submitAssistant(event,overrideText=null,voiceToken=null) {
     event?.preventDefault();
+    if(Number.isSafeInteger(voiceToken)&&assistantRestoreGate)return;
     if(Number.isSafeInteger(voiceToken)&&!currentAssistantVoice(voiceToken))return;
     if(assistantState.busy||assistantState.pendingTurn||assistantRecoveryPending()||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||assistantState.transcribing||state.locked||!state.profile||!state.library)return;
     const text=(typeof overrideText==='string'?overrideText:$('assistant-text').value).trim();if(!text)return;
@@ -2227,7 +2230,8 @@
     } catch(error) {if(ticket===galleryLoad&&!discoveryState.active)await failure(error,epoch);return false;}
   }
   async function restore(load=true) {
-    const epoch=invalidate(),restoreFocusRevision=assistantFocusRevision,restoreScrollY=window.scrollY;let readyGeneration=epoch;
+    const epoch=invalidate(),restoreGate=Object.freeze({id:++assistantRestoreSerial,epoch}),restoreFocusRevision=assistantFocusRevision,restoreScrollY=window.scrollY;let readyGeneration=epoch,restoreSucceeded=false;
+    assistantRestoreGate=restoreGate;if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();syncAssistantControls();
     // Keep upload history unavailable until catalogue, assistant capabilities,
     // and the current gallery have all settled. loadGallery() invalidates the
     // current view, so revealing the control earlier could discard an open
@@ -2268,12 +2272,18 @@
       }
       if(stale(readyGeneration)||state.locked||state.profile?.account_id!==profile.account_id)return false;
       $('my-uploads-open').hidden=!available.length;$('my-uploads-panel').hidden=!available.length;
+      restoreSucceeded=true;
       return true;
     } catch(error) {
       if(error.name==='AbortError'||stale(epoch))return;
       state.sessionCheckFailed=error.status!==401;
       if(error.status===401) {showAuth();status('');}
       else {showAuth();status(errorStatus(error));}
+    } finally {
+      if(assistantRestoreGate===restoreGate){
+        if(!restoreSucceeded){assistantState.transcribe=false;assistantState.speech=false;}
+        assistantRestoreGate=null;syncAssistantControls();
+      }
     }
   }
   function setMode(mode) {

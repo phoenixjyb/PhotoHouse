@@ -85,6 +85,11 @@ The Web capability-probe race now adds missing followup controls only to the
 exact current rendered result after capability readiness. Its deterministic
 held-response Edge journey passed 27 checkpoints, including no focus movement,
 auto-submission or duplicate controls; the turn-trail journey also passed.
+A subsequent owned restore gate closes premature voice startup while session
+restoration can still invalidate ASR; current source shows checking access with
+the microphone off. Focused held-restore voice/recovery journeys pass. Phone
+composer text is hoisted only within the live assistant host so My conversations
+round trips preserve it without persistent storage or automatic submission.
 Complete integrated profiles and delivery remain separate gates.
 The generated oral-history qualification now covers four content-free groups
 and ten cases with `experimental_fixture_schema=true`, guarded V3/V4 journal

@@ -15752,6 +15752,119 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "web-owned-restoration-voice-readiness",
+      "source_commit": "bd21d2748854b5f85a622776cd149aa58b7c03ce",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "798b7f86c49a0f9466fdfd7009c019e4f9e2e55883f418e0a61902d24d978150",
+          "sha256": "dff10872f0861be176be08c16744e9a1873eae06730c25794b597ae494de6ad6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "ea687325927bf1e3e94d56a0ac4940f26b0bcea09ab77029c9ab8fe052e88b74",
+          "sha256": "5d0968dc288edcf08c8cec714c2a276454ee5277e8e98653afc62f27e789f41a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "phone-composition-local-draft-continuity",
+      "source_commit": "bd21d2748854b5f85a622776cd149aa58b7c03ce",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantDraftContinuityUiTest.kt",
+          "before_sha256": null,
+          "sha256": "a4cc40b3917566f76780f20cae2de317dd0291167528e2fe7c079924283c61c8"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "3fadaf5472af55b88c95093d6ac9fe9e4ff87a0daeead97cad75acd43861bbb2",
+          "sha256": "9cdf14ae95526b40cb8df5327ba73b46f1b1c98adf5ec9f3d5965f4e4a1d4e24"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "f71a0e66dc945c3462d792163ae63b7947865bf66c5e22fd3f4b77434ddfb4fb",
+          "sha256": "bc82f01e0ceb669e585c281fea2e22d82d8cb3fcbb67ef06f514f453baf1d261"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "expanded-quality-worksheet-inventory",
+      "source_commit": "bd21d2748854b5f85a622776cd149aa58b7c03ce",
+      "files": [
+        {
+          "path": "tools/tests/test_review_model_qualification.py",
+          "before_sha256": "73dc32abde412d539ab1a35b7f006a56f3199b34c741ff66b554d2129452d542",
+          "sha256": "8d05c407985abc84e622443ca068a1421335c57c6ac2df04f55fca14d68cf37c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "overnight-source-qualification-followup-docs",
+      "source_commit": "bd21d2748854b5f85a622776cd149aa58b7c03ce",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md",
+          "before_sha256": "002aa77331717260a24280ca50f47a250b07edcfaef360ae173e3b8d3ad41de3",
+          "sha256": "629ab5d5bc95509069b99fc5f31d04db3d653beb55988b1eeb7a85bedc08a230"
+        },
+        {
+          "path": "docs/ARCHITECTURE_REVIEW_2026-10-14.md",
+          "before_sha256": "29ad4e31befa8935d9907d76c8895dba73119c6487179f758fb5eb0c15bdc3a4",
+          "sha256": "5bac0dbeabca371080f5bf7b0433382760a0e6e9748f93b02ac68cb15196cca0"
+        },
+        {
+          "path": "docs/ASSISTANT_SEGMENT_READING.md",
+          "before_sha256": "0e9131a9fe05bfdcb9c5206709682330d22e34aa4fc5c73608234aa02c4f2313",
+          "sha256": "3b792750148519d590df701ae8b30575f2c551253554bc91d3a9efeff0786eb2"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2622b74dcf8372a3639f25b0c68a9ab92ef01a9a3ada8417c04d8ab8caed335b",
+          "sha256": "58599c7a89f75cdde4f35675c27ed87313a291a85fa27e624d017256e5b745de"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b0d0ccb79aca9bfcc5dff55550e1d33005805f7b1b19955b4f53f1cc939f0c44",
+          "sha256": "b67e5bd16793f5a4d8fe3c53ff6fe364e2c0c05899c130c4ac513fdb3bfbc7b7"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "before_sha256": "264aac84939147a58f3abb7623d9ae366a9fb0d6c395383b79aa22f13ed7faed",
+          "sha256": "29f89218def161952f26f9bff38c25d36fc8f734f577f1f828239518bf8edceb"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "0ff82dc5527ec116c473e330ab219ef758c660c0d430ae32c54fabe1bb9f088f",
+          "sha256": "511da7aec7ab54c464916fb0ef51a2606d5b734fc164c65479b8d457c7be1d8e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

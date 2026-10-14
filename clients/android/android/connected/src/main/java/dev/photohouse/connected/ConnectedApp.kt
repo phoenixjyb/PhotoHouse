@@ -146,6 +146,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val state = store?.state?.collectAsState()?.value ?: LiveState()
     var assistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
     var privateAssistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
+    val assistantDraft = remember(state.session?.account_id, state.library, state.generation, state.covered, assistantOpen,
+        state.assistant?.privateThreadId) { mutableStateOf("") }
     val closePrivateAssistantPanel: () -> Unit = {
         store?.clearAssistantMemoryOpeningSpeech()
         privateAssistantOpen = false
@@ -926,7 +928,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     onUseTranscript = store::takeAssistantTranscriptForDraft,
                     onPlaySpeech = { if (manualAssistantAction()) store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
                     onStopSpeech = store::clearAssistantSpeech,
-                    onPlaybackOutcome = store::reportAssistantPlaybackOutcome)
+                    onPlaybackOutcome = store::reportAssistantPlaybackOutcome,
+                    draftState = assistantDraft)
                 return@Surface
             }
             LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("connected-screen"), state = scroll,

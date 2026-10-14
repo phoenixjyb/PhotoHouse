@@ -114,9 +114,14 @@ internal fun AssistantScreen(
     onReadSavedMemorySegment: ((Int, Int) -> Unit)? = null,
     onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
     showMemoryOpeningPlayback: Boolean = true,
+    draftState: MutableState<String>? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
-    var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
+    var localDraft by remember(state?.generation, state?.library) { mutableStateOf("") }
+    val draft = draftState?.value ?: localDraft
+    val setDraft: (String) -> Unit = { value ->
+        if (draftState != null) draftState.value = value else localDraft = value
+    }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     var showRetentionDetails by remember(state?.generation, state?.library) { mutableStateOf(false) }
@@ -125,7 +130,7 @@ internal fun AssistantScreen(
         if (text.isNotEmpty() && assistantDraftWithinLimits(draft) && state?.pendingTurn == null && state?.busy != true && voiceSessionState == null &&
             state?.transcribing != true && state?.transcript == null && !recording) {
             keyboard?.hide(); focusManager.clearFocus()
-            if (onSend(text) && draft.trim() == text) draft = ""
+            if (onSend(text) && draft.trim() == text) setDraft("")
         }
     }
     val exchanges = state?.turns.orEmpty()
@@ -450,7 +455,7 @@ internal fun AssistantScreen(
                                     }
                                     if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
                                         AssistChip(onClick = { val prompt = memoryFollowupPrompt(0, 2, zh)
-                                            if (onSavedMemoryFollowupDraft(prompt)) draft = prompt },
+                                            if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
                                             label = { Text(memoryFollowupLabel(2, zh)) },
                                             modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(0, 2, zh) }
                                                 .testTag("assistant-memory-followup-all"))
@@ -469,7 +474,7 @@ internal fun AssistantScreen(
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     listOf(memoryFollowupPrompt(ordinal, 0, zh), memoryFollowupPrompt(ordinal, 1, zh))
                                                         .forEachIndexed { promptIndex, prompt ->
-                                                            AssistChip(onClick = { if (onSavedMemoryFollowupDraft(prompt)) draft = prompt },
+                                                            AssistChip(onClick = { if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
                                                                 label = { Text(memoryFollowupLabel(promptIndex, zh)) },
                                                                 modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(ordinal, promptIndex, zh) }
                                                                     .testTag("assistant-memory-followup-$ordinal-$promptIndex"))
@@ -587,7 +592,7 @@ internal fun AssistantScreen(
                                     t("Find photos from last September", "找去年九月的照片"),
                                     t("Find photos from a spring outing", "找春天出游的照片"),
                                 ).forEachIndexed { index, suggestion ->
-                                    OutlinedButton(onClick = { draft = suggestion },
+                                    OutlinedButton(onClick = { setDraft(suggestion) },
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("assistant-suggestion-$index")) {
                                         Text(suggestion, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
                                     }
@@ -659,7 +664,7 @@ internal fun AssistantScreen(
                                     Text(if (assistant.receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
                                 }
                                 TextButton(onClick = {
-                                    if (assistant.privateThreadId == null && pendingFailed && draft.isBlank()) draft = pendingTurn.text
+                                    if (assistant.privateThreadId == null && pendingFailed && draft.isBlank()) setDraft(pendingTurn.text)
                                     onClear()
                                 }, modifier = Modifier.testTag("assistant-close-pending")) {
                                     Text(if (assistant.privateThreadId != null) t("Manage this request", "管理这次请求")
@@ -695,7 +700,7 @@ internal fun AssistantScreen(
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(onClick = {
                                             val combined = assistantDraftWithTranscript(draft, transcript.text)
-                                            if (combined != null && onUseTranscript(transcript) == transcript.text) draft = combined
+                                            if (combined != null && onUseTranscript(transcript) == transcript.text) setDraft(combined)
                                         }, enabled = canInsert, modifier = Modifier.testTag("assistant-insert-transcript")) {
                                             Text(t("Add to message", "加入消息"))
                                         }
@@ -742,7 +747,7 @@ internal fun AssistantScreen(
                         AssistantSpeechPlayback(audio, zh, openingSpeech, segmentSpeech,
                             onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
                     }
-                    OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) draft = it },
+                    OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) setDraft(it) },
                         modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy && voiceSessionState == null,
                         label = { Text(t("Message 拾光助手", "给拾光助手发消息")) },
                         placeholder = { Text(t("Describe a photo or moment you remember", "说说你记得的照片或瞬间")) },

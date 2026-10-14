@@ -1,6 +1,7 @@
 # 拾光助手：每个人自己的家庭回忆入口
 
-Design approved 2026-10-12; implementation status reconciled 2026-10-14.
+Design approved 2026-10-12; delivered scope reconciled 2026-10-14, with
+October 15 source follow-ups recorded below.
 The [interactive prototype](assistant-design/prototype.html) uses synthetic
 examples and does not connect, record, run models or save family data. Product
 aspirations below are distinct from the delivered scope.
@@ -217,3 +218,21 @@ switch users and libraries with no history/preference leakage; revoke access
 between search and open; unavailable provider; process death; enlarged Chinese
 and English layouts; prepared and unprepared video results; backgrounding and
 audio-focus loss. An empty result is a truthful answer, not invented material.
+
+
+## October 15 source follow-ups
+
+The next source round adds explicit saved first-chapter/introduction segments,
+compact accessible result actions and client-observed voice timing. Web now
+revalidates the current restoration before enabling voice capture; setup does
+not imply microphone access. These additions preserve one-tap-per-segment
+reading, foreground voice consent, read-only sending and Pause/End.
+
+The phone's unsent composer now survives opening and returning from My
+conversations in the same account/library/active thread. Three real-route
+emulator cases passed: scope/thread changes and closing the assistant clear
+the draft, same-thread revision refresh retains it, and navigation sends no
+turn or transcription and starts no capture. Drafts remain composition-local;
+they are not saved to preferences, disk or server.
+[Project Status](PROJECT_STATUS.md) records the final source/package/device gates;
+this section does not alter the delivered v58 baseline above.

@@ -2467,3 +2467,33 @@ unsigned v59 release evidence must be recorded against the final immutable
 revision. They are separate from Windows staging/native execution, live cutover,
 signing, OTA and family listening acceptance. No deployment or provider activation
 was authorized or performed as a consequence of the checks above.
+
+
+### Follow-up: voice restoration ownership and quality worksheets
+
+The `bd21d27` full API profile passed **1,495 tests / 915 subchecks** plus the
+generated demo; Android passed its full profile. Both receipts bind unchanged
+profile inputs. The complete Web run failed at the final English utterance.
+A deterministic private reproduction held `/auth/session` after a language
+change and proved Start could become enabled before restoration settled; later
+capability loading aborted the just-started ASR. The repair adds an owned restore
+gate to voice Start/Resume, manual capture and voice-origin sends. It keeps
+ordinary typed submission/recovery behavior, stops prior voice and displays a
+localized checking/microphone-off state. Focused Edge voice and turn-trail
+journeys pass; a later full Web rerun remains required.
+
+The standard-library tooling run found two stale worksheet inventory assertions
+after the story-quality corpus grew. The worksheet test now checks all five
+narrative case IDs separately from the three title case IDs. **158 tool tests**
+pass with the same private, unreviewed and content-free-report boundaries. These
+are not model quality or hosted CI results.
+
+
+Phone composer continuity now uses a composition-local holder in ConnectedApp,
+passed optionally to the central assistant screen. Its key includes current
+account/library/generation/protection state, assistant host and the active private
+thread ID; browsing another history entry does not itself activate that thread.
+Three actual-route emulator cases passed, including thread activation versus
+revision-only refresh and zero send/transcribe/capture side effects. Debug lint
+and instrumentation compilation passed; no geometry changed. The default local
+screen holder keeps standalone fixtures and other callers compatible.
