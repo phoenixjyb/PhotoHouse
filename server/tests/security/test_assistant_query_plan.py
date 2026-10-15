@@ -105,6 +105,46 @@ class AssistantQueryPlanTests(unittest.TestCase):
             with self.subTest(words=words):
                 self.assert_ready(words, expected)
 
+    def test_bilingual_date_ranges_are_inclusive_and_keep_other_conditions(self):
+        cases = {
+            'find photos from March to June 2024': ('2024-03-01', '2024-06-30'),
+            'find photos between March 2024 and June 2024': ('2024-03-01', '2024-06-30'),
+            'find photos from 2024-03-05 to 2024-06-07': ('2024-03-05', '2024-06-07'),
+            'find photos 2024-03-05 to 2024-06-07': ('2024-03-05', '2024-06-07'),
+            'find photos 从2024年3月到2024年6月': ('2024-03-01', '2024-06-30'),
+            'find photos 2024年3月至6月': ('2024-03-01', '2024-06-30'),
+            'find photos from March to June 1998': ('1998-03-01', '1998-06-30'),
+        }
+        for words, (start, end) in cases.items():
+            with self.subTest(words=words):
+                self.assert_ready(words, {'media': ['image'], 'date': {'from': start, 'to': end}})
+        for words in ('find photos in March 1998', 'find photos from 5 March 1998'):
+            self.assertEqual(plan(words).status, 'ready', words)
+        for words in ('find photos from 1899-03-01 to 1899-06-01',
+                      'find photos 12024-03-01 to 2024-06-01',
+                      'find photos 2024年3月至6月5日', 'find photos from March 2024 to June'):
+            self.assert_clarifies(words)
+        self.assert_ready('find photos in 1998', {
+            'media': ['image'], 'date': {'from': '1998-01-01', 'to': '1998-12-31'}})
+        self.assert_ready('find photos of Sample Child from March to June 2024 at the beach', {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2024-03-01', 'to': '2024-06-30'}, 'text': 'beach'})
+
+    def test_malformed_or_ambiguous_date_ranges_clarify_and_quoted_ranges_stay_opaque(self):
+        for words in (
+            'find photos from June to March 2024',
+            'find photos from March to',
+            'find photos from 2024-03-30 to 2024-02-01',
+            'find photos from March to June 2024 and between March 2024 and June 2024',
+            'find photos from March to June 2024 and September 2024',
+            'find photos without dates from March to June 2024',
+            '找不要2024年3月至6月的照片',
+        ):
+            with self.subTest(words=words):
+                self.assert_clarifies(words)
+        self.assert_ready('find photos containing "from March to June 2024"', {
+            'media': ['image'], 'text': 'from March to June 2024'})
+
     def test_relative_calendar_ranges_use_supplied_civil_date(self):
         cases = {
             'find photos today': {'media': ['image'], 'date': {'from': '2032-09-14', 'to': '2032-09-14'}},
@@ -255,6 +295,11 @@ class AssistantQueryPlanTests(unittest.TestCase):
             '找昨天的照片': 'search',
             '今年九月': 'refine',
             '2032年': 'refine',
+            '1998': 'refine',
+            'March 1998': 'refine',
+            'from March to June 2024': 'refine',
+            'between March 2024 and June 2024': 'refine',
+            '2024年3月至6月': 'refine',
             '2032年九月的照片': 'refine',
             '9月': 'refine',
             '13月': 'refine',

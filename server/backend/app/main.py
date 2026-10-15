@@ -22,6 +22,8 @@ from .access.tags import router as tag_router
 from .access.albums import router as album_router
 from .access.boundary import ClosedBoundary
 from .access.discovery_transport import router as discovery_router
+from .access.semantic_search_transport import router as semantic_search_router
+from .access.semantic_search import SemanticSearchRuntime
 from .access.assistant import router as assistant_router
 from .access.assistant_workspace_transport import router as assistant_workspace_router
 from .access.upload_transport import router as upload_router
@@ -35,7 +37,7 @@ from .updates import router as updates_router
 
 
 def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=None,
-               upload_runtime=None, upload_review_runtime=None,
+               upload_runtime=None, upload_review_runtime=None, semantic_search_runtime=None,
                annotation_intake_enabled=False, assistant_enabled=False,
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
@@ -44,6 +46,11 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_workspace_store=None, assistant_kinship_provider=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
+    if semantic_search_runtime is not None and (
+            type(semantic_search_runtime) is not SemanticSearchRuntime or
+            semantic_search_runtime.access is not access_runtime or
+            semantic_search_runtime.discovery is not discovery_runtime):
+        raise ValueError('Explicit matching semantic search runtime required')
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
     if memory_group_vectors is not None and (not memory_groups_enabled or
@@ -159,6 +166,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.story_title_lock = Lock()
     app.state.media_runtime = media_runtime
     app.state.discovery_runtime = discovery_runtime
+    app.state.semantic_search_runtime = semantic_search_runtime
     app.state.assistant_enabled = assistant_enabled
     app.state.memory_groups_enabled = memory_groups_enabled
     app.state.memory_group_vectors = memory_group_vectors
@@ -197,6 +205,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(album_router)
     app.include_router(ui_router)
     app.include_router(discovery_router)
+    if semantic_search_runtime is not None:
+        app.include_router(semantic_search_router)
     app.include_router(assistant_router)
     app.include_router(assistant_workspace_router)
     app.include_router(upload_router)
