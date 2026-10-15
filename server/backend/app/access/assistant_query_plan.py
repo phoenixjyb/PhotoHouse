@@ -51,6 +51,18 @@ _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b))', re.I)
 _CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
+_CONTENT_INTRO = re.compile(
+    r'包含|含有|關於|关于|内容|內容|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', re.I)
+_CONTENT_ACTION = re.compile(
+    r'^\s*(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
+    r'(?a:\b)(?:and|then|also)\s+(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
+    r'(?:^|[\s\r\n,，;；。.!！?？])(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
+    r'(?:然后|接着|并且|并|再)\s*(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)|'
+    r'^\s*(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)|'
+    r'(?:^|[\s\r\n,，;；。.!！?？])(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)', re.I)
+
+_CONTENT_MEDIA_TAIL = re.compile(
+    r'(?:(?:\s+of)?\s+|\s*的\s*)(?P<media>videos?|movies?|photos?|photographs?|pictures?|images?|影片|视频|照片|图片|相片)\s*$', re.I)
 _DATE_ONLY_WORD = re.compile(
     r'^(?:today|yesterday|this\s+week|last\s+week|this\s+month|last\s+month|'
     r'this\s+year|last\s+year|今天|昨天|本周|这周|上周|本月|这个月|這個月|上个月|上個月|今年|去年)$', re.I)
@@ -379,6 +391,13 @@ def _consumed_label(text, residue, labels):
                for original, label_mask, condition_mask in zip(text, masked, residue))
 
 
+def _grammar_residue(text):
+    """Remove only the same closed syntax words used by the query parser."""
+    text = re.sub(r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|take|photographed|photo|photos|picture|pictures|image|images|please|me|for|and|or)(?a:\b)', ' ', text, flags=re.I)
+    text = re.sub(r'请|麻烦|帮忙|帮我|替我|我想|能不能|可以|一下|的|那些|一些|里面|中|所拍|找|搜索|查找|查|搜|看看|看|显示|照片|图片|相片|视频|影片|有关|包含|关于|在|于|年|月|日|里|上|下|呢|吗|么|？|\?|！|!|。|\.|、|，|,|：|:|\s+', ' ', text, flags=re.I)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def _entity_filters(entities):
     if type(entities) is not dict or type(entities.get('groups')) is not dict:
         return None, 'invalid_entities'
@@ -507,11 +526,27 @@ def plan_query(words, *, now: datetime, entities: dict,
     if literal is not None and len(literal.encode('utf-8')) > 512:
         return _clarify('text_too_long', previous_filters if refine else None)
 
+    # Bare "content" nouns remain legacy syntax (for example 不限内容).
+    # They do not independently introduce a new unquoted literal.
+    content_cues = [match for match in _CONTENT_INTRO.finditer(quote_removed)
+                    if match.group(0) not in {'内容', '內容'}]
+    content_tail = None
+    if len(content_cues) == 1 and literal is None:
+        content_tail = quote_removed[content_cues[0].end():].strip()
+        content_tail = re.sub(r'^[\s,，;；:：]+', '', content_tail)
+        content_tail = re.sub(r'[\s,，;；。.!！?？:：]+$', '', content_tail).strip()
+
     # Normalize once before any span-based parsing so all later offsets refer
     # to this same string. The quoted literal remains byte-for-byte as entered.
     outside = d.fold(quote_removed)
     # Content introducers are syntax, not content. Quoted words stay opaque.
-    outside = re.sub(r'包含|含有|關於|关于|内容|內容|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', ' ', outside, flags=re.I)
+    cue_residue = _CONTENT_INTRO.sub(lambda match: ' ' * len(match.group(0)), quote_removed)
+    cue_labels = [d.fold(match.group(0)) for match in content_cues]
+    if (content_cues and (_consumed_label(quote_removed, cue_residue, labels) or
+            any(cue and cue in d.fold(label.strip()) for cue in cue_labels
+                for label in labels if label.strip()))):
+        return _clarify('ambiguous_entities', previous_filters if refine else None)
+    outside = _CONTENT_INTRO.sub(lambda match: ' ' * len(match.group(0)), outside)
     outside = _strip_prefix(outside)
 
     today = now.date()
@@ -554,8 +589,14 @@ def plan_query(words, *, now: datetime, entities: dict,
     people_mode = 'all' if together or has_and else 'any'
     outside = _CONNECTORS.sub(' ', outside)
 
+    # Multiple content introducers make the literal span unclear. This check
+    # follows date, media, entity and negation validation, so those guards stay
+    # authoritative before any unquoted phrase is accepted.
+    if len(content_cues) > 1 and literal is None:
+        return _clarify('unsupported_condition', previous_filters if refine else None)
+
     text_filter = literal
-    if text_filter is None:
+    if text_filter is None and not content_cues:
         folded = d.fold(outside)
         for scene, phrases in sorted(_SCENES.items(), key=lambda pair: max(map(len, pair[1])), reverse=True):
             for phrase in phrases:
@@ -576,7 +617,7 @@ def plan_query(words, *, now: datetime, entities: dict,
                     break
             if text_filter is not None:
                 break
-    if text_filter is None:
+    if text_filter is None and not content_cues:
         # Retain the old explicit Chinese play-scene syntax, but require the
         # entire remaining condition to be exactly "在<scene>玩/游玩(的)".
         # This keeps arbitrary unknown suffixes from being consumed as a
@@ -596,9 +637,49 @@ def plan_query(words, *, now: datetime, entities: dict,
     if locations and 'locations' not in enabled:
         return _clarify('locations_unavailable', previous_filters if refine else None)
 
+    if len(content_cues) == 1 and literal is None:
+        if not content_tail:
+            return _clarify('empty_literal', previous_filters if refine else None)
+        if _CONTENT_ACTION.search(content_tail):
+            return _clarify('unsupported_condition', previous_filters if refine else None)
+        candidate = content_tail
+        folded_candidate = d.fold(candidate)
+        if len(folded_candidate) != len(candidate):
+            return _clarify('unsupported_condition', previous_filters if refine else None)
+        dates_in_candidate, _, date_error = _extract_dates(folded_candidate, today)
+        if date_error:
+            return _clarify(date_error, previous_filters if refine else None)
+        if dates_in_candidate or _remove_occurrences(folded_candidate, labels) != folded_candidate:
+            return _clarify('unsupported_condition', previous_filters if refine else None)
+        media_spans = [match.span() for _, pattern in _MEDIA for match in pattern.finditer(folded_candidate)]
+        if media_spans:
+            suffix = _CONTENT_MEDIA_TAIL.search(folded_candidate)
+            if (suffix is None or not media_spans or
+                    any(start < suffix.start('media') or end > len(folded_candidate)
+                        for start, end in media_spans)):
+                return _clarify('unsupported_condition', previous_filters if refine else None)
+            candidate = candidate[:suffix.start()].rstrip(' \t,，;；:：')
+            folded_candidate = d.fold(candidate)
+            if not candidate:
+                return _clarify('empty_literal', previous_filters if refine else None)
+        try:
+            if len(candidate.encode('utf-8', errors='strict')) > 512:
+                return _clarify('text_too_long', previous_filters if refine else None)
+        except UnicodeError:
+            return _clarify('invalid_query', previous_filters if refine else None)
+        # A content cue authorizes only the tail as literal text. Parsed
+        # filters before the cue remain separate; if other unconsumed words or
+        # hard-filter spans remain, do not absorb them into the literal.
+        if (_grammar_residue(folded_candidate) and
+                _grammar_residue(outside) == _grammar_residue(folded_candidate)):
+            text_filter = candidate
+            outside = ' '
+
+    if text_filter is not None and 'text' not in enabled:
+        return _clarify('text_unavailable', previous_filters if refine else None)
+
     # Only a small closed vocabulary of grammatical residue is accepted.
-    outside = re.sub(r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|take|photographed|photo|photos|picture|pictures|image|images|please|me|for|and|or)(?a:\b)', ' ', outside, flags=re.I)
-    outside = re.sub(r'请|麻烦|帮忙|帮我|替我|我想|能不能|可以|一下|的|那些|一些|里面|中|所拍|找|搜索|查找|查|搜|看看|看|显示|照片|图片|相片|视频|影片|有关|包含|关于|在|于|年|月|日|里|上|下|呢|吗|么|？|\?|！|!|。|\.|、|，|,|：|:|\s+', ' ', outside, flags=re.I)
+    outside = _grammar_residue(outside)
     if outside.strip():
         return _clarify('unsupported_condition', previous_filters if refine else None)
 
