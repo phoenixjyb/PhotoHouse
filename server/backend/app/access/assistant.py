@@ -152,6 +152,14 @@ def _engine(request):
     if (not enabled or not isinstance(access, AccessRuntime)
             or not isinstance(discovery, DiscoveryRuntime) or discovery.access is not access):
         return access, None
+    version = _single(request, 'x-photohouse-search-version')
+    if version not in (None, '1', '2'):
+        raise AssistantInvalid()
+    if version == '2':
+        if request.url.path not in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities'):
+            raise TransportError(400, 'Search version is not supported on this endpoint')
+        from .assistant_search import SearchRuntime
+        discovery = SearchRuntime(discovery, getattr(request.app.state, 'assistant_kinship_provider', None))
     return access, discovery
 
 
@@ -424,9 +432,9 @@ def _matches(words, items):
 
 
 def _unmatched(words, labels):
-    remaining = words.casefold()
+    remaining = d.fold(words)
     for label in sorted(labels, key=len, reverse=True):
-        remaining = remaining.replace(label, ' ')
+        remaining = remaining.replace(d.fold(label), ' ')
     remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])月?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
     remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月|(?:十一|十二|十|[一二三四五六七八九])月', ' ', remaining)
     remaining = re.sub(SEARCH_PREFIX + '|' + REFINE_PREFIX, ' ', remaining)
@@ -486,6 +494,8 @@ def _context_result(engine, token, library, context):
 
 
 def _turn(engine, token, library, words, previous, clock, *, language=None):
+    from .assistant_search import SearchRuntime
+    search_v2 = isinstance(engine, SearchRuntime)
     lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
     existing = None
@@ -565,15 +575,18 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
         return {'version': 1, 'kind': 'clarification', 'reply': reply, 'context': None,
                 'filters': None, 'items': [], 'total': 0, 'has_more': False, 'effect': None}
 
-    first = engine.call('facets', token, library, lambda: False,
+    condition_words = re.sub(r'[“"][^“”"]+[”"]', ' ', words) if search_v2 else words
+    condition_lower = condition_words.casefold()
+    first = engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
+                        {'words': condition_words} if search_v2 else
                         {'facet': 'people', 'page': 1, 'page_size': 100})
     binding, enabled = first['binding'], set(first['enabled'])
     filters = dict(previous['filters']) if refine else {}
-    if re.search(r'视频|影片|videos?\b|movies?\b', lower):
+    if re.search(r'视频|影片|videos?\b|movies?\b', condition_lower):
         filters['media'] = ['video']
-    elif re.search(r'照片|图片|相片|photos?\b|pictures?\b|images?\b', lower):
+    elif re.search(r'照片|图片|相片|photos?\b|pictures?\b|images?\b', condition_lower):
         filters['media'] = ['image']
-    dated = _date_filter(words, now)
+    dated = _date_filter(condition_words, now)
     if dated is not None and 'date' not in enabled:
         reply = ('这个相册库暂时没有可用的日期索引。' if lang == 'zh' else
                  'Date search is not available in this library yet.')
@@ -584,27 +597,67 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     if dated is not None:
         filters['date'] = dated
     labels = []
+    ambiguous = search_v2 and first['ambiguous']
     if 'people' in enabled:
-        people, hits = _matches(words, _facets(engine, token, library, 'people', binding))
+        people, hits = ((first['groups']['people'], first['labels']) if search_v2 else
+                        _matches(words, _facets(engine, token, library, 'people', binding)))
         labels.extend(hits)
         if people:
-            filters['people'] = {'ids': people, 'match': 'any'}
+            connective_words = d.fold(condition_words)
+            for label in hits:
+                connective_words = connective_words.replace(d.fold(label), ' ')
+            together = bool(re.search(r'一起|同时|\bboth\b|\btogether\b', connective_words))
+            conjunction = bool(re.search(r'和|与|及|\band\b', connective_words))
+            mode = 'all' if together or conjunction else 'any'
+            filters['people'] = {'ids': people, 'match': mode}
+            if len(people) >= 2:
+                labels.extend(['同时出现', '一起出现', '一起', '同时', '和', '与', '及', '或者', '或',
+                               'both', 'together', 'and', 'or'])
+            elif together:
+                ambiguous = True
     if 'tags' in enabled:
-        tags, hits = _matches(words, _facets(engine, token, library, 'tags', binding))
+        tags, hits = ((first['groups']['tags'], first['labels']) if search_v2 else
+                      _matches(words, _facets(engine, token, library, 'tags', binding)))
         labels.extend(hits)
         if tags:
             filters['tags'] = {'ids': tags, 'match': 'any'}
     if 'locations' in enabled:
-        places, hits = _matches(words, _facets(engine, token, library, 'locations', binding))
+        places, hits = ((first['groups']['locations'], first['labels']) if search_v2 else
+                        _matches(words, _facets(engine, token, library, 'locations', binding)))
         labels.extend(hits)
         if places:
             filters['locations'] = places
-    if _unmatched(words, labels):
+    # Explicit content forms keep unknown identities, dates and negation out of
+    # the lexical fallback. Quotes preserve spaces and literal short Chinese.
+    if search_v2:
+        quoted = re.search(r'[“"]([^“”"]+)[”"]', words)
+        candidate = None
+        if quoted and not _unmatched(words.replace(quoted.group(0), ''), labels + ['包含', '内容', '关于', 'containing', 'about']):
+            candidate = quoted.group(1)
+            labels.append(quoted.group(0))
+            labels.extend(['包含', '内容', '关于', 'containing', 'about'])
+        else:
+            residual = _unmatched(words, labels)
+            scene = re.fullmatch(r'在([^不要没有排除删除]{1,40}?)(?:游玩|玩)(?:的)?', residual)
+            if scene:
+                candidate = scene.group(1)
+                labels.append(residual)
+        if candidate:
+            if re.search(r'不要|没有|排除|删除|\b(?:not|without|except|delete)\b', condition_lower):
+                ambiguous = True
+            else:
+                filters['text'] = candidate
+    if ambiguous or _unmatched(words, labels):
         reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或指定年月。'
                  if lang == 'zh' else
                  'Some details could not be matched. Try a library person, label, place, or month.')
-        missing = [field for field in ('people', 'caption', 'tags') if field not in enabled]
-        if missing:
+        missing = [field for field in ('people', 'caption', 'tags') if field not in enabled
+                   and not (field == 'caption' and 'text' in enabled)]
+        if ambiguous:
+            reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
+                     if lang == 'zh' else
+                     'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
+        elif missing:
             names = ({'people': '人物', 'caption': '照片说明', 'tags': '标签'} if lang == 'zh' else
                      {'people': 'people', 'caption': 'captions', 'tags': 'tags'})
             unavailable = ('、' if lang == 'zh' else ', ').join(names[field] for field in missing)
@@ -641,9 +694,13 @@ async def capabilities(request: Request):
     asr = getattr(request.app.state, 'assistant_asr', None)
     tts = getattr(request.app.state, 'assistant_tts', None)
     transcribe = engine is not None and isinstance(asr, LocalAssistantAsr)
-    return {'version': 1, 'enabled': engine is not None, 'text': engine is not None,
+    result = {'version': 1, 'enabled': engine is not None, 'text': engine is not None,
             'transcribe': transcribe, 'speech': engine is not None and isinstance(tts, LocalAssistantTts),
             'max_audio_seconds': MAX_AUDIO_SECONDS if transcribe else 0}
+    if _single(request, 'x-photohouse-search-version') == '2':
+        result.update(version=2, search={'version': 2, 'text_sources': ['current_caption', 'photo_memory'],
+                                      'date_basis': 'capture', 'ranking': 'authored_then_asset_id'})
+    return result
 
 
 @router.post('/assistant/v1/turns')
@@ -658,6 +715,8 @@ async def turns(request: Request):
     await _stage(request, 'action_started')
     result = await run_in_threadpool(_turn, engine, token, library,
                                      payload['text'], payload['context'], access.clock)
+    if _single(request, 'x-photohouse-search-version') == '2':
+        result['version'] = 2
     request.state.assistant_summary = {'kind':result['kind'], 'total':result['total']}
     return JSONResponse(result)
 

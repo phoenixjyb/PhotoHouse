@@ -15,6 +15,13 @@ and relevance ranking. See the [search diagnosis and implementation plan](ASSIST
 The current local parser/coverage-message patch is not yet deployed. v60 device
 feedback remains useful, while the broader sections below retain the backlog.
 
+The [first negotiated text/person API slice](ASSISTANT_JOINT_SEARCH_V2.md) now
+joins current photo notes/captions and reviewed identities in a protected,
+source-bound request-time projection. Next integrate its explicit contract and
+match reasons into Web/phone/private-workspace recovery, then qualify video date
+bases and local semantic understanding/ranking. Source checks and synthetic
+results do not establish real-library readiness or relevance.
+
 ## 1. Accept the delivered experience
 
 Run the [v60 phone/Web trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)

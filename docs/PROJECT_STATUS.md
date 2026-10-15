@@ -35,6 +35,45 @@ v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
+The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
+for search v2. It binds an explicit library/account allowlist and chosen
+perspective, resolves bilingual relative chains only to current reviewed
+identities, and invalidates contexts on graph/perspective/access changes.
+Household data and pending account approvals remain outside Git. The focused
+generated graph/provider/HTTP suite passes 29 tests. The complete API profile at
+`01cf409` passed **1,552 tests / 988 subchecks** plus the generated no-listener
+demo, with unchanged start/end commit and source input hash. Staging/runtime
+forwarding, existing joint/conversational and source-verifier checks also pass.
+This source cohort uses fictional fixtures; private graph validation and the
+bounded operator inventory remain separate private records. Live activation still needs
+confirmed account/library/person bindings, client perspective display and the
+separate server delivery gate. No account creation or live permission change is
+implied by source checks or a private draft.
+
+The next local source increment adds an explicitly negotiated search-v2 API
+slice joining eligible current captions, saved photo memories and reviewed
+people with existing date/media/place constraints. It uses a request-time
+protected projection, separate source-bound contexts, authored-evidence-first
+ordering and provenance reasons. Default v1 clients retain their wire contract.
+See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Work is isolated on
+`codex/search-redesign-20261015`; the concurrent story branch is separate.
+This is not deployed or enabled in Web/phone/private-workspace clients. Real
+index readiness, video date bases, local semantic understanding and relevance
+qualification remain ahead.
+
+The focused generated-data joint-search suite passes 19 tests, including short
+Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
+ranking/paging, current-result opening/refinement, personal-kinship alias refusal
+and version isolation. The complete API profile at implementation commit
+`b7d605b` passed **1,519 tests / 939 subchecks** plus the generated no-listener
+demo. Its private invocation receipt records identical start/end commit and
+source input hash, with exit code 0. Earlier interrupted runs are incomplete
+records, not passes. Affected discovery/index suites and the check-driver/source
+verifier checks also passed. No household data, GPU or live service was used.
+Android/Web profiles, native Windows and real-library relevance were not run
+for this API-only increment. Later documentation commits do not rebind this
+profile evidence to a different source revision.
+
 A later read-only owner-requested investigation confirmed ASR/turn intake but
 weak deterministic query parsing and missing searchable fields in the inspected
 library index. Its active fields are date, reviewed locations and media; stored

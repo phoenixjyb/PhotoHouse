@@ -284,6 +284,18 @@ def assistant_asset_fingerprint(binding, asset_id):
 
 
 class DiscoveryReads:
+    def _extra_source(self, index, source, read, check):
+        return {}
+
+    def _search_fields(self, index):
+        return set(index.enabled)
+
+    def _content_match(self, row, filters):
+        return True, []
+
+    def _rank(self, found):
+        return found
+
     def __init__(self, access: AccessService, provider, budget: ReadBudget):
         if not isinstance(access,AccessService) or not isinstance(budget,ReadBudget): raise ValueError('Explicit access and shared budget required')
         self.access,self.provider,self.budget=access,provider,budget
@@ -307,12 +319,14 @@ class DiscoveryReads:
                     if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
                     check()
                 if tuple(str(r[0]) for r in source['assets'])!=index.scope_ids or digest(source)!=index.source_digest: raise DiscoveryChanged()
+                extra = self._extra_source(index, source, read, check)
                 binding=digest({'policy':POLICY,'library':library,'session':session_digest(token),'account':member['account_id'],
-                                'membership':member['revision'],'originals':member['originals'],'index':asdict(index)})
+                                'membership':member['revision'],'originals':member['originals'],'index':asdict(index),
+                                **({'extension': digest(extra)} if extra else {})})
                 if expected is not None:
                     require(hashed(expected))
                     if binding!=expected: raise DiscoveryChanged()
-                facts=self._facts(index,source,people,places,check)
+                facts=self._facts(index,dict(source, **extra),people,places,check)
                 result=action(index,facts,binding,member,check)
                 check()
                 if len(packed(result))>self.budget.response_bytes: raise DiscoveryUnavailable()
@@ -413,7 +427,7 @@ class DiscoveryReads:
     def search(self, token, library, *, binding, filters, page=1, page_size=50, fingerprint=None, cancelled=lambda:False):
         def action(index,facts,context,member,check):
             require(binding is not None and type(page) is int and 1<=page<=100000 and type(page_size) is int and 1<=page_size<=100)
-            require(type(filters) is dict and set(filters)<=set(FIELDS) and set(filters)<=set(index.enabled))
+            require(type(filters) is dict and set(filters)<=self._search_fields(index))
             require(len(packed(filters))<=16384)
             assets,rows,facets,coverage=facts;normalized={}
             for f,v in filters.items():
@@ -455,7 +469,10 @@ class DiscoveryReads:
                     day=row['date'];bounds=normalized['date']
                     if day is None or (bounds['from'] is not None and day<bounds['from']) or (bounds['to'] is not None and day>bounds['to']):continue
                 if 'caption' in normalized and (row['caption'] is None or normalized['caption'] not in fold(row['caption'])):continue
-                found.append(asset)
+                matches, reasons = self._content_match(row, normalized)
+                if not matches: continue
+                found.append(dict(asset, match_reasons=reasons) if reasons else asset)
+            found = self._rank(found)
             offset=(page-1)*page_size
             return {'library_id':library,'binding':context,'fingerprint':expected,'page':page,'page_size':page_size,
                     'total':len(found),'has_more':offset+page_size<len(found),'originals_allowed':bool(member['originals']),

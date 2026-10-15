@@ -27,6 +27,8 @@ FILES = (
     'backend/app/access/annotation_schema.py',
     'backend/app/access/annotations.py',
     'backend/app/access/assistant.py',
+    'backend/app/access/assistant_search.py',
+    'backend/app/access/kinship.py',
     'backend/app/access/assistant_journal.py',
     'backend/app/access/assistant_workspace_store.py',
     'backend/app/access/assistant_workspace_transport.py',

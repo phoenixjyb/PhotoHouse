@@ -267,6 +267,46 @@ class StagingConfigurationTests(unittest.TestCase):
                 assistant_workspace_path=str(missing))).build_app()
         self.assertFalse(missing.exists())
 
+    def test_assistant_kinship_catalog_is_optional_explicit_and_forwarded_without_loading(self):
+        self.assertIsNone(s.parse_configuration(base()).assistant_kinship_path)
+        selected_path = '/synthetic/private/kinship-catalog.json'
+        selected = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_kinship_path=selected_path))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            selected.build_app()
+        self.assertEqual(runtime.call_args.kwargs['assistant_kinship_path'], Path(selected_path))
+
+        invalid = (
+            {'assistant_kinship_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': 'relative.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/01_INCOMING/catalog.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/VLM_DATA/derived/catalog.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/databases/metadata.sqlite'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/tls/server.key'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/updates/catalog.json',
+             'update_root': '/synthetic/updates'},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'assistant_journal_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'assistant_workspace_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'original_deletion_journal_path': selected_path,
+             'original_deletion_namespace': '00000000-0000-4000-8000-000000000001'},
+        )
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+
+    def test_configuration_file_cannot_be_selected_as_kinship_catalog(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='staging-config-') as temporary:
+            path = Path(temporary) / 'config.json'
+            document = dict(base(), assistant_enabled=True, assistant_kinship_path=str(path))
+            path.write_text(json.dumps(document), encoding='utf-8')
+            with self.assertRaises(s.InvalidConfiguration):
+                s.load_configuration(path)
+
     def test_a_configuration_written_before_upload_still_loads(self):
         configuration = s.parse_configuration(base())
         self.assertIsNone(configuration.incoming_root)

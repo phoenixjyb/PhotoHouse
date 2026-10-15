@@ -16713,6 +16713,327 @@
       "generation_enabled": false,
       "providers_activated": false,
       "apk_published": false
+    },
+    {
+      "feature": "story-search-common-parent-provenance-projection",
+      "source_commit": "c4cac82",
+      "integration_projection_only": true,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "98a3e21172806a25d6421d99d6cf9ef9ec765af1421f2f05a0c9b4cb36f84b95",
+          "sha256": "b60c906fb05b5d63f2fe110433e595a5604b94ce2dc080dba03b8821038c01fd"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "75b9104eacfac7de8cbd80ac498f698022cad817f2367276e084f98ba4d9ef7d",
+          "sha256": "9f2eec28bf9f14a7ef9011f18777a0aa51380887432add5eead5eeebca2300a6"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a9dc7f34262afad31a3624fe3364c9f7f9349160f7f5d1b7d47ac75667529083",
+          "sha256": "3b6ae61fd50c8166dc8357387cc9a2e39099f6f0b0808c3fcdd91321e9b5c62e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false
+    },
+    {
+      "feature": "negotiated-protected-text-reviewed-person-search-v2",
+      "source_commit": "c4cac82d13f6324da9a31023e9eb62d7dcb71997",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": null,
+          "sha256": "6f4e9bb3b6fc10075fa7dd0613cae69c6e022489de0285c20d607ef3718691ac"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "c3cc599e4b4296300d1378c8ce617b85e08ff9873d37db525d66fd26925a57a5",
+          "sha256": "8faa64910b60b2c1f99f23b592c6d58a6b9e50946c98e4d8e7e25f3dedd1ab29"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b60c906fb05b5d63f2fe110433e595a5604b94ce2dc080dba03b8821038c01fd",
+          "sha256": "3155e8820b2d6fe7f78f330f82e53c0ab146a70d830d5a9948feea69468cf070"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9f2eec28bf9f14a7ef9011f18777a0aa51380887432add5eead5eeebca2300a6",
+          "sha256": "a1ec4fce9ca5aa8ff9d5a2a7f58f69f01baffe715bb4abddb9a95cff1dd31e57"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "df4ad52655dd175bfe91aaa1fdfac5e95e852f360b92979bf1688b9c2a4b2d5b",
+          "sha256": "cfb211b28d505fe7acb7be64f986d6d354feadf009e21f6a660e409e507d2ac5"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": null,
+          "sha256": "6d5073120f292bfd2322678ecc6560ad60b22d4404d672b946804287a8940d97"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "d6ad21e9978e540c4ac65181e1135ca367fb74de7e6f92d723e3aff92e1e4401",
+          "sha256": "1269bdee0818cc435412838df58cc53464b3188e5528d80b764203cb09359f93"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "405a41f8e0a6de35224afb7952164c686facb6c0da202f0f1f15ade689dc9c60",
+          "sha256": "2bf3b7507d80607b6f93eb3ce519f607057adfe75023740e3e5f5cf26f50e0b2"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f2c09b9844374065ccd164f6fdd3ad79f3118c74e73b2bdc47a1473d57fbfeb7",
+          "sha256": "ac980b4929e22f177dd525c79f854b561ee04415ba0f5c1b715f0cc120064842"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": null,
+          "sha256": "f90fe412c821e3a815b61096784a183d25db56a85b7cc79eadfc594366be8b92"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "5e022abd9f74b288f9c1b5aa1f08a6dc41dd20fa688692d9f91902296f11dbcc",
+          "sha256": "33f3b58803d3cf4391ef01877af006567066cccd213e18928dcfdbb462be4d78"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3b6ae61fd50c8166dc8357387cc9a2e39099f6f0b0808c3fcdd91321e9b5c62e",
+          "sha256": "77e1c77507f4b7db7be1a0accfc7ce4a739eb8054424d1586aa49e5f1f13eb55"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "preserve-reviewed-person-conjunction-across-search-versions",
+      "source_commit": "92dfef6afbbb984f5c4b667746231fdfacbf51a8",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "cfb211b28d505fe7acb7be64f986d6d354feadf009e21f6a660e409e507d2ac5",
+          "sha256": "2c0a3947b1d3657cf00476b388459397f90e6d3ba7500306ae1fbcc7f6198053"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "f90fe412c821e3a815b61096784a183d25db56a85b7cc79eadfc594366be8b92",
+          "sha256": "4b769c744518f000c29d2e9537b139bd98b10160bf89440f2f44bb64379a6fd3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "require-personal-mapping-for-kinship-search-aliases",
+      "source_commit": "1d70294a73f13fa9672d1b0b859902eea378ee2f",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "6d5073120f292bfd2322678ecc6560ad60b22d4404d672b946804287a8940d97",
+          "sha256": "6cfcf9b9c80eb9570b612690e7fda61de174239b54dcf38136c111710954ba6b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "4b769c744518f000c29d2e9537b139bd98b10160bf89440f2f44bb64379a6fd3",
+          "sha256": "ad85762378907b455e11e9cf24b5b7de52310b01197c952d2a5f325203552563"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3155e8820b2d6fe7f78f330f82e53c0ab146a70d830d5a9948feea69468cf070",
+          "sha256": "2c40e4217bd4198475eb0e02f778418ae77362665df22ffdcf944ed30f0058e1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "record-joint-search-api-source-qualification",
+      "source_commit": "b7d605ba402df9672ddcd4780f82b8eb62eff1df",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "2c40e4217bd4198475eb0e02f778418ae77362665df22ffdcf944ed30f0058e1",
+          "sha256": "e0156b8978ffca6ed32022c40c6e1145cb27bb475118efae0c76761af9dce01e"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "6f4e9bb3b6fc10075fa7dd0613cae69c6e022489de0285c20d607ef3718691ac",
+          "sha256": "15995ead00c238ff3de4107a780e37af37e44dae89683e153c16485cc2fc2db3"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "8faa64910b60b2c1f99f23b592c6d58a6b9e50946c98e4d8e7e25f3dedd1ab29",
+          "sha256": "f9f560e99a37bb9b456869aae39382b02f4c074e5341ef9a6c945894aee57d4b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "private-scoped-kinship-graph-and-relative-search",
+      "source_commit": "d8b48caa99b722397e16c551f1108594bf021e98",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "15995ead00c238ff3de4107a780e37af37e44dae89683e153c16485cc2fc2db3",
+          "sha256": "667f0f352b6a2eebd128048e0c6c68113229706833a5336d53df2253f47de919"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "f9f560e99a37bb9b456869aae39382b02f4c074e5341ef9a6c945894aee57d4b",
+          "sha256": "79b70673f45c381de31effb24af396d539ffc2f34231de0b2953298d3f034de5"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": null,
+          "sha256": "b8b65e75f1f66f3dedad40b041a92be530e156cdcf8cb91d3922cbb717f9d8c0"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "e0156b8978ffca6ed32022c40c6e1145cb27bb475118efae0c76761af9dce01e",
+          "sha256": "9f3fdf3684c2be8b2ef2309bc784ddbcf9235ef0e8b38985b1f05aee59f6f8be"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "2c0a3947b1d3657cf00476b388459397f90e6d3ba7500306ae1fbcc7f6198053",
+          "sha256": "3c9f2f1adede26a198dfc4b1301429109b81ee3d79745155c52c456379e9cd71"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "6cfcf9b9c80eb9570b612690e7fda61de174239b54dcf38136c111710954ba6b",
+          "sha256": "12218847e0aeb863b0451622f2a666d8fdaab189b04e51f0af395aaa1ef9f421"
+        },
+        {
+          "path": "server/backend/app/access/kinship.py",
+          "before_sha256": null,
+          "sha256": "e6e8b8df323e2204193e6ac4651c3f0ac4abcbf618e518aaf99f1c8c75eeebab"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "c9550f703af1c3f21939ad5df9e2c2558e9a7d463b58cbad2d3b03083ce15b39",
+          "sha256": "deb548a471be0138dd9e34f5ec6bcda81fc71de3489e00d42a298cacc79d7b49"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "00dbd8447ff0e78c2b4f7c1c59999bee6e273812711d18b26fb75e2c5443ee43",
+          "sha256": "0aba5599f590bf17f4a86344d4be611b364b249532b1f037e2769a57c9c3a764"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "ac980b4929e22f177dd525c79f854b561ee04415ba0f5c1b715f0cc120064842",
+          "sha256": "564afbd7cc7802381c76a964bc2b942afca35c090721f28fe7d928a5c3a59604"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "82fd978835ebf98a62c7a65a067a74d6238038156f131f23e887ce1668f9fb0c",
+          "sha256": "790a993b8404884ad021e1c1df66c6e479b7831a8a9b4beb9f7516644f8a5449"
+        },
+        {
+          "path": "server/tests/security/test_assistant_kinship.py",
+          "before_sha256": null,
+          "sha256": "a251d19d91ac6ee8d97e71069b0c1d3a8f7a0afa953f7cd15d030e5d9df49111"
+        },
+        {
+          "path": "server/tests/security/test_kinship.py",
+          "before_sha256": null,
+          "sha256": "e505f5fd9785f334473f4d295fbea9bbe4d10dea3d680886633ecb0070203038"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "bebcc44fbec9ae04d52e179fbdd1145ffd70464838961663b540a2a8de61d79b",
+          "sha256": "b5f8c98a6a312c1f044b5068112bf0f9891406a218eefecd942ed24cf51a607e"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "62800235c96c21b51e40636fa9f683a7c04e6ea3a0a60e1ce74215510ebd9093",
+          "sha256": "90472703e4d16b739fd0359efa5a8ca59aceba530ad7ac6880bc629a65cc0be0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "33f3b58803d3cf4391ef01877af006567066cccd213e18928dcfdbb462be4d78",
+          "sha256": "0f2b441da30f6fbc7ee1d8dc1e5c48110d5acd50883e3a182647d5f6a450f5b1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "77e1c77507f4b7db7be1a0accfc7ce4a739eb8054424d1586aa49e5f1f13eb55",
+          "sha256": "28df77bb8d819bc284a6a5f1750fb1e1bb76d20d9b82e8e4456fb3f732076ce4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "record-private-kinship-source-qualification",
+      "source_commit": "01cf409f44c9be06d7a1180be824bc216a77dbd2",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "9f3fdf3684c2be8b2ef2309bc784ddbcf9235ef0e8b38985b1f05aee59f6f8be",
+          "sha256": "85e51f6d26557938783970e72a566a6f97138dd4d1fcf6b239402d6f84b8150d"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "b8b65e75f1f66f3dedad40b041a92be530e156cdcf8cb91d3922cbb717f9d8c0",
+          "sha256": "d9345f401b1c0fe58ccc070164ce4093e1c5fef39bbdef41c57854a43752e2ba"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "79b70673f45c381de31effb24af396d539ffc2f34231de0b2953298d3f034de5",
+          "sha256": "3eb94756591be96abcf2be6c08bc7791abf477c6babfb746575c5defe43c3226"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "combined-story-search-v61-source-integration",
+      "source_commit": "66677dbd33adafcea917967d5dbb5bd9e1b4d70d",
+      "merged_source_commit": "3594fc0c43acf9492d86e86f40d8986eaaa2b0e5",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "85e51f6d26557938783970e72a566a6f97138dd4d1fcf6b239402d6f84b8150d",
+          "sha256": "1eac64c54f8b929ab771b33d688e9886290b2ef76bc71be38509b36e2dfed1c8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "a1ec4fce9ca5aa8ff9d5a2a7f58f69f01baffe715bb4abddb9a95cff1dd31e57",
+          "sha256": "3c80790d86021a87c9d74446074b668fbccf39ee3058423e072ec7f92b40d639"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "28df77bb8d819bc284a6a5f1750fb1e1bb76d20d9b82e8e4456fb3f732076ce4",
+          "sha256": "0dc2beb78fe9cdc668718af36dfeee226c4ea060c1b6e7a9148994772f9791ee"
+        },
+        {
+          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "51ca5e67998d479c2e5008b9761f6a9bdfac551766439ff7bfb7cf8abb4aa4d5"
+        },
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "916c9c78867e4cfcb42a7ec13b8fccc2842cedd84625b41a34219c50bab0d43e",
+          "sha256": "26dd7f04be88209b1f79e718709204dd46e76d5060ce708ca8bb59b301add91b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "providers_activated": false,
+      "apk_published": false
     }
   ]
 }
