@@ -184,6 +184,101 @@ test('wire validators reject unsafe revisions, cross-library rows, duplicate key
   await assert.rejects(h.controller.list(),e=>e.code==='invalid_response');
 });
 
+test('search v2 validation binds interpretations and match reasons to exact selected filters',()=>{
+  const fresh=validateResult(searchResult(),library,false,false,false,2);
+  assert.equal(fresh.context.search_version,2);
+  assert.equal(fresh.interpretation.people[0].label,'示例人物');
+  assert.equal(fresh.items[0].match_reasons.length,5);
+  for(const bad of [
+    searchResult({unexpected:true}),
+    searchResult({interpretation:undefined}),
+    searchResult({interpretation:{...searchResult().interpretation,people:[]}}),
+    searchResult({interpretation:{...searchResult().interpretation,people:[{id:'7',label:'x'},{id:'7',label:'duplicate'}]}}),
+    searchResult({context:{...searchContext(searchResult().filters),search_version:1}}),
+    searchResult({filters:{...searchResult().filters,text:'x'.repeat(513)}}),
+    searchResult({interpretation:{...searchResult().interpretation,tags:[{id:'8',label:'x'.repeat(513)}]}}),
+    searchResult({items:[{...asset(),match_reasons:Array.from({length:65},()=>({source:'reviewed_person',source_id:'7'}))}]}),
+    searchResult({items:[{...asset(),match_reasons:[{source:'reviewed_person',source_id:'person-7'}]}]}),
+    searchResult({items:[{...asset(),match_reasons:[{source:'generated_caption',source_id:'secret',revision:'d'.repeat(64)}]}]})
+  ])assert.throws(()=>validateResult(bad,library,false,false,false,2),e=>e.code==='invalid_response');
+  assert.throws(()=>validateResult(searchResult(),library),e=>e.code==='invalid_response','legacy mode refuses v2 result shape');
+  const legacyContext={...context(),filters:{text:'literal'}};
+  assert.throws(()=>validateResult(contextualResult({context:legacyContext,filters:legacyContext.filters}),library),e=>e.code==='invalid_response','text filters require v2 context');
+  const recoveredLegacy=validateResult(contextualResult(),library,true,false,false,2);
+  assert.equal(recoveredLegacy.version,1,'a negotiated client can read an older stored v1 row');
+  const clarification={version:2,kind:'clarification',reply:'Please clarify.',context:null,filters:null,items:[],total:0,has_more:false,effect:null,interpretation:{date_basis:'capture',people:[],tags:[],locations:[],perspective:null}};
+  assert.equal(validateResult(clarification,library,false,false,false,2).interpretation.date_basis,'capture');
+  const unsupported={...clarification,kind:'unsupported',reply:'Unsupported search.'};
+  assert.equal(validateResult(unsupported,library,false,false,false,2).kind,'unsupported');
+  assert.throws(()=>validateResult({...unsupported,interpretation:undefined},library,false,false,false,2),e=>e.code==='invalid_response','every v2 result carries interpretation, including unsupported');
+  const retainedClarification=searchResult({kind:'clarification',reply:'Could you clarify the date range?'});
+  assert.equal(validateResult(retainedClarification,library,false,false,false,2).context.search_version,2,'clarification may preserve a tagged v2 context');
+  assert.throws(()=>validateResult({...retainedClarification,context:{...retainedClarification.context,search_version:undefined}},library,false,false,false,2),e=>e.code==='invalid_response','every nonnull v2 context keeps its version tag');
+});
+
+test('search v2 is probed explicitly, sent once, and retained on GET recovery',async()=>{
+  const calls=[];let capReads=0,turnPosts=0;
+  const h=harness(async(path,options)=>{
+    calls.push({path,...options});
+    if(path.includes('/capabilities?')){capReads++;return workspaceCaps({search:{version:2,date_basis:'capture',perspective:{label:'示例家庭视角'}}});}
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
+    if(path.endsWith('/turns')){turnPosts++;throw Error('connection lost after submit');}
+    if(path.includes('/requests/'))return {...envelope('completed',true,1),result:searchResult()};
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId]});
+  const caps=await h.controller.capabilities();assert.equal(caps.search.version,2);assert.equal(caps.search.perspective.label,'示例家庭视角');
+  assert.equal(calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'2','capability probe negotiates explicitly');
+  await h.controller.create();h.controller.setDraft('find a beach photo');
+  await assert.rejects(h.controller.send(),e=>e.code==='request_failed');
+  assert.equal(turnPosts,1,'a lost v2 turn is never silently retried');
+  const sent=calls.find(call=>call.path.endsWith('/turns')&&call.method==='POST');
+  assert.equal(sent.extraHeaders['X-PhotoHouse-Search-Version'],'2');
+  const recovered=await h.controller.recover(threadId,requestId);
+  const read=calls.find(call=>call.path.includes('/requests/')&&call.method==='GET');
+  assert.equal(read.extraHeaders['X-PhotoHouse-Search-Version'],'2');
+  assert.equal(recovered.result.version,2);assert.equal(recovered.recovered,true);
+  assert.equal(h.controller.state().speechReady,false,'recovery does not seed reply speech');
+  assert.equal(capReads,1);
+});
+
+test('fresh v2 reply speech keeps its negotiated header on the speech route',async()=>{
+  const h=harness(async(path,options)=>{
+    if(path.includes('/capabilities?'))return workspaceCaps({reply_speech:true,search:{version:2,date_basis:'capture',perspective:null}});
+    if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0,threadId)};
+    if(path.endsWith('/turns'))return {...envelope('completed',false,1),result:searchResult()};
+    if(path.includes('/speech'))return fakeWav();
+    throw Error(`unexpected ${path}`);
+  },{ids:[threadId,requestId,'33333333-3333-4333-8333-333333333333']});
+  await h.controller.capabilities();await h.controller.create();await h.controller.send('find photos');
+  await h.controller.speakReply();
+  const speech=h.calls.find(call=>call.path.endsWith(`/requests/${requestId}/speech`));
+  assert.equal(speech.extraHeaders['X-PhotoHouse-Search-Version'],'2');
+  assert.equal(speech.extraHeaders['X-PhotoHouse-Parent-Request-Id'],requestId);
+});
+
+test('only an unsupported v2 capability response falls back to the legacy contract',async()=>{
+  const calls=[];const h=harness(async(path,options)=>{calls.push({path,...options});if(path.includes('/capabilities?')){if(options.extraHeaders?.['X-PhotoHouse-Search-Version']==='2')throw Object.assign(new Error('unsupported'),{status:400,code:'search_version_unsupported'});return workspaceCaps();}throw Error('unexpected');});
+  const caps=await h.controller.capabilities();assert.equal(caps.search,null);assert.equal(calls.length,2);
+  assert.equal(calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'2');assert.equal(calls[1].extraHeaders,undefined);
+  const generic400=harness(async(path,options)=>{if(path.includes('/capabilities?'))throw Object.assign(new Error('bad request'),{status:400});});
+  await assert.rejects(generic400.controller.capabilities(),e=>e.status===400&&e.code==='request_failed');
+  assert.equal(generic400.calls.length,1,'generic 400 responses do not trigger a legacy downgrade');
+  const denied=harness(async(path,options)=>{if(path.includes('/capabilities?'))throw Object.assign(new Error('denied'),{status:403});});
+  await assert.rejects(denied.controller.capabilities(),e=>e.status===403);
+  assert.equal(denied.calls.length,1,'authorization failures do not trigger legacy retry');
+});
+
+test('an older capability probe cannot overwrite a newer negotiated search version',async()=>{
+  const first=deferred(),second=deferred();let count=0;
+  const h=harness(async(path)=>{if(path.includes('/capabilities?'))return (++count===1?first:second).promise;throw Error('unexpected');});
+  const older=h.controller.capabilities(),newer=h.controller.capabilities();
+  second.resolve(workspaceCaps({search:{version:2,date_basis:'capture',perspective:null}}));
+  await newer;
+  first.resolve(workspaceCaps());
+  await assert.rejects(older,e=>e.code==='conflict','a stale probe cannot return a cached legacy capability snapshot');
+  assert.equal(h.controller.state().capabilities.search.version,2,'late legacy-looking data cannot drop search negotiation');
+});
+
 test('invalid draft and preferences fail before network requests',async()=>{
   const h=harness(async()=>({version:1,locale:null,reply_length:null,voice_pace:null,revision:0}));
   assert.throws(()=>h.controller.setDraft('x'.repeat(1025)),e=>e.code==='invalid_input');
@@ -194,6 +289,8 @@ test('invalid draft and preferences fail before network requests',async()=>{
 const asset=(id='42',lib=library)=>({id,kind:'image',width:640,height:480,duration_sec:null,taken_at:'2024-04-05 12:13:14',thumbnail_url:`/assets/${id}/thumbnail?library=${encodeURIComponent(lib)}`});
 const context=(lib=library)=>({library_id:lib,binding:'a'.repeat(64),fingerprint:'b'.repeat(64),filters:{},visible_ids:['42'],total:1});
 const contextualResult=(overrides={})=>({version:1,kind:'results',reply:'Found 1 photo.',context:context(),filters:{},items:[asset()],total:1,has_more:false,effect:null,...overrides});
+const searchContext=filters=>({library_id:library,binding:'a'.repeat(64),fingerprint:'b'.repeat(64),filters,visible_ids:['42'],total:1,search_version:2});
+const searchResult=(overrides={})=>{const filters={people:{ids:['7'],match:'all'},text:'海边',date:{from:'2024-04-01',to:'2024-04-30'},media:['image'],tags:{ids:['8'],match:'any'},locations:['9']};return {version:2,kind:'results',reply:'Found 1 photo.',context:searchContext(filters),filters,items:[{...asset(),match_reasons:[{source:'photo_memory',source_id:'note-101',revision:2},{source:'edited_caption',source_id:'12',revision:'c'.repeat(64)},{source:'generated_caption',source_id:'13',revision:'d'.repeat(64)},{source:'reviewed_person',source_id:'7'},{source:'capture_date',value:'2024-04-05'}]}],total:1,has_more:false,effect:null,interpretation:{date_basis:'capture',people:[{id:'7',label:'示例人物'}],tags:[{id:'8',label:'海边'}],locations:[{id:'9',label:'示例地点'}],perspective:{label:'示例家庭视角'}},...overrides};};
 
 function wavChunk(name,payload){const part=new Uint8Array(8+payload.length+(payload.length&1)),view=new DataView(part.buffer);for(let i=0;i<4;i++)part[i]=name.charCodeAt(i);view.setUint32(4,payload.length,true);part.set(payload,8);return part;}
 function pcmWav({channels=1,rate=16000,bits=16,dataBytes=320,ancillary=false,badByteRate=false}={}){

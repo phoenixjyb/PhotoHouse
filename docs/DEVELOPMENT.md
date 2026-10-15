@@ -15,6 +15,11 @@ to that record, not every later release. Do not sum overlapping checks or treat
 local evidence as current hosted CI, runtime/model quality or device acceptance.
 The October 14 documentation audit did not rebuild applications.
 
+The optional [search/video qualification guide](SEARCH_READINESS_AND_RELEVANCE.md)
+documents the private offline runner, generated fixtures and small video-worker
+test dependency overlay. The ordinary API profile includes readiness/evaluator/
+CLI checks without importing legacy workers or requiring FFmpeg.
+
 ## October 15 v60 delivery closure
 
 The owner authorized release of immutable source `53e3954`. Native Windows

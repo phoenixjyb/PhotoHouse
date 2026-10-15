@@ -161,6 +161,58 @@ class AssistantWorkspaceWireTest {
         invalid { AssistantWorkspaceWire.capabilities(extended.replace("\"thread_labels\":false", "\"thread_labels\":\"false\"").toByteArray()) }
     }
 
+    @Test fun searchV2CapabilityAndResultAreBoundedStrictAndHumanReadable() {
+        val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true}"""
+        val v2 = legacy.dropLast(1) + ",\"search\":{\"version\":2,\"date_basis\":\"capture\",\"perspective\":{\"label\":\"妈妈\"}}}"
+        val capabilities = AssistantWorkspaceWire.capabilities(v2.toByteArray())
+        assertEquals(2, capabilities.searchVersion)
+        assertEquals("capture", capabilities.searchDateBasis)
+        assertEquals("妈妈", capabilities.searchPerspectiveLabel)
+        invalid { AssistantWorkspaceWire.capabilities(v2.replace("\"version\":2", "\"version\":1").toByteArray()) }
+        invalid { AssistantWorkspaceWire.capabilities(v2.replace("capture", "taken_at").toByteArray()) }
+        invalid { AssistantWorkspaceWire.capabilities(v2.replace("妈妈", "😀".repeat(129)).toByteArray()) }
+        invalid { AssistantWorkspaceWire.capabilities(v2.replace("妈妈", "").toByteArray()) }
+
+        val interpretation = """{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":{"label":"妈妈"}}"""
+        val context = """{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{"text":"海边"},"visible_ids":["123"],"total":1,"search_version":2}"""
+        val item = """{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a","match_reasons":[{"source":"generated_caption","source_id":"81","revision":"${"c".repeat(64)}"},{"source":"capture_date","value":"2025-06-01"}]}"""
+        val result = """{"version":2,"kind":"results","reply":"Found one.","context":$context,"filters":{"text":"海边"},"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
+        val parsed = AssistantWorkspaceWire.turn(turn(result).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 2).result!!
+        assertEquals(2, parsed.searchVersion)
+        assertEquals("妈妈", parsed.searchInterpretation!!.perspective!!.label)
+        assertEquals(listOf(AssistantMatchReason.Caption(true, "81"), AssistantMatchReason.CaptureDate("2025-06-01")),
+            parsed.matchReasons.getValue("123"))
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"search_version\":2", "\"search_version\":1")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 2) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"text\":\"海边\"", "\"text\":\" ")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 2) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"source_id\":\"81\"", "\"source_id\":\"81\",\"id\":\"99\"")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 2) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"people\":[]", "\"people\":[{\"id\":\"5\",\"label\":\"A\"}]")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 2) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"perspective\":{\"label\":\"妈妈\"}", "\"perspective\":{\"label\":\"\"}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 2) }
+        val selectedLabel = result.replace("\"people\":[]", "\"people\":[{\"id\":\"5\",\"label\":\"\"}]")
+            .replace("\"filters\":{\"text\":\"海边\"}", "\"filters\":{\"text\":\"海边\",\"people\":{\"ids\":[\"5\"],\"match\":\"any\"}}")
+        invalid { AssistantWorkspaceWire.turn(turn(selectedLabel).toByteArray(), "family-a", thread, request,
+            true, searchVersion = 2) }
+        assertEquals(2, AssistantWorkspaceWire.turn(turn(result, recovered = false).toByteArray(), "family-a", thread,
+            request, fromGet = false, acceptSavedMemoryCards = true, searchVersion = 2).result!!.searchVersion)
+        invalid { AssistantWorkspaceWire.turn(turn(result(kind = "results"), recovered = false).toByteArray(), "family-a", thread,
+            request, fromGet = false, searchVersion = 2) }
+
+        for (kind in listOf("clarification", "unsupported")) {
+            val noContext = """{"version":2,"kind":"$kind","reply":"Try again.","context":null,"filters":null,"items":[],"total":0,"has_more":false,"effect":null,"interpretation":{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null}}"""
+            val parsedEmpty = AssistantWorkspaceWire.turn(turn(noContext).toByteArray(), "family-a", thread, request,
+                fromGet = true, searchVersion = 2).result!!
+            assertEquals(kind, parsedEmpty.kind)
+            assertTrue(parsedEmpty.items.isEmpty())
+            invalid { AssistantWorkspaceWire.turn(turn(noContext.replace("\"filters\":null", "\"filters\":{}")).toByteArray(),
+                "family-a", thread, request, true, searchVersion = 2) }
+        }
+    }
+
     @Test fun privateReplySpeechCapabilityAndRequestStayOptionalAndNarrow() {
         val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":false}"""
         assertFalse(AssistantWorkspaceWire.capabilities(legacy.toByteArray()).replySpeech)

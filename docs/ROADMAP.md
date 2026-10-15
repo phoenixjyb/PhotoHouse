@@ -18,10 +18,29 @@ the broader sections below retain the backlog.
 
 The [first negotiated text/person API slice](ASSISTANT_JOINT_SEARCH_V2.md) now
 joins current photo notes/captions and reviewed identities in a protected,
-source-bound request-time projection. Next integrate its explicit contract and
-match reasons into Web/phone/private-workspace recovery, then qualify video date
-bases and local semantic understanding/ranking. Source checks and synthetic
-results do not establish real-library readiness or relevance.
+source-bound request-time projection. The local Web/phone integration now shows
+the chosen perspective, interpreted conditions and match reasons, and preserves
+the original search version through private-workspace recovery. The current
+qualification and delivery boundaries are recorded in [Project Status](PROJECT_STATUS.md).
+The next local source round adds a [private readiness/relevance runner](SEARCH_READINESS_AND_RELEVANCE.md)
+and conservative explicit QuickTime capture-date propagation for newly processed
+videos. Next use the read-only report on the data-owning host, admit a reviewed
+person/text index for a real library and qualify a small owner-reviewed query
+set. Prepare a separately approved historical date repair only after measuring
+the missing-date cohort. Then improve local semantic understanding/ranking
+against those cases. Source checks and synthetic results do not establish
+real-library readiness or relevance. Private kinship activation still requires
+verified account/library/person bindings; future-account approvals grant no
+access until those bindings are confirmed.
+
+The next acceptance set should cover a named person and the equivalent relative
+chain, two people together with a scene, a follow-up year/media restriction,
+opening the second current result, short names overlapping place words, unknown
+dates, no matches and an account without kinship permission. Keep household
+queries and relevance judgments in the private operator record. Record expected
+people and hard filters, top-result relevance, missing-source explanations and
+observed latency separately; improve
+ranking only after incorrect identity/date/filter behavior is resolved.
 
 ## 1. Accept the delivered experience
 

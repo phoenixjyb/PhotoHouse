@@ -89,6 +89,7 @@ class HttpsAssistantWorkspaceApiTest {
             assertTrue(api.capabilities(token, "family-a").available)
             val caps = f.server.takeRequest()
             assertEquals("GET", caps.method); assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", caps.path); assertProtected(caps)
+            assertEquals("2", caps.getHeader("X-PhotoHouse-Search-Version"))
 
             val summary = """{"thread_id":"$thread","library_id":"family-a","created_at":"2026-10-13T00:00:00Z","updated_at":"2026-10-13T00:00:00Z","expires_at":"2026-11-12T00:00:00Z","revision":0,"exchange_count":0}"""
             f.server.enqueue(response("""{"version":1,"thread":$summary}""", 200))
@@ -99,6 +100,26 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals(setOf("library_id", "thread_id"), body.keys)
             assertEquals("family-a", body.getValue("library_id").jsonPrimitive.content)
             assertEquals(thread, body.getValue("thread_id").jsonPrimitive.content)
+        }
+    }
+
+    @Test fun capabilitiesRetriesLegacyOnlyForExplicitUnsupportedSearchVersion() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(response("""{"error":"invalid_request","detail":"Search version is not supported on this endpoint"}""", 400))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true}"""))
+            val value = f.api().capabilities(token, "family-a")
+            assertEquals(1, value.searchVersion)
+            assertEquals("2", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+            assertNull(f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+            assertEquals(2, f.server.requestCount)
+        }
+        Fixture().use { f ->
+            f.server.enqueue(response("""{"error":"invalid_request","detail":"Invalid workspace request"}""", 400))
+            try {
+                f.api().capabilities(token, "family-a")
+                fail("generic invalid request was retried")
+            } catch (failure: ApiFailure) { assertEquals(400, failure.status) }
+            assertEquals(1, f.server.requestCount)
         }
     }
 
@@ -116,6 +137,7 @@ class HttpsAssistantWorkspaceApiTest {
             val post = f.server.takeRequest()
             assertEquals("POST", post.method); assertEquals("/assistant/workspace/v1/threads/$thread/turns", post.path); assertProtected(post)
             assertEquals(request, post.getHeader("X-PhotoHouse-Request-Id"))
+            assertNull(post.getHeader("X-PhotoHouse-Search-Version"))
             assertEquals(parent, post.getHeader("X-PhotoHouse-Parent-Request-Id"))
             val body = Json.parseToJsonElement(post.body.readUtf8()).jsonObject
             assertEquals(setOf("library_id", "request_id", "expected_revision", "text"), body.keys)
@@ -132,7 +154,41 @@ class HttpsAssistantWorkspaceApiTest {
             assertEquals("GET", get.method)
             assertEquals("/assistant/workspace/v1/threads/$thread/requests/$request?library_id=family-a", get.path)
             assertProtected(get)
+            assertNull(get.getHeader("X-PhotoHouse-Search-Version"))
             assertEquals(2, f.server.requestCount)
+        }
+    }
+
+    @Test fun negotiatedSearchVersionStaysOnTurnRecoveryAndReplySpeechOnly() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            val interpretation = """{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null}"""
+            val context = """{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1,"search_version":2}"""
+            val item = """{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a","match_reasons":[{"source":"reviewed_person","source_id":"9"}]}"""
+            val v2Result = """{"version":2,"kind":"results","reply":"Found one.","context":$context,"filters":{},"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
+
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":true,"preferences_applied":false,"server_owned_turns":true,"search":{"version":2,"date_basis":"capture","perspective":null}}"""))
+            assertEquals(2, api.capabilities(token, "family-a").searchVersion)
+            assertEquals("2", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+
+            f.server.enqueue(response(envelope("completed", v2Result, recovered = false)))
+            assertEquals(2, api.submitTurn(token, "family-a", thread, request, 0, "找妈妈", null,
+                false, null, false, 2).result!!.searchVersion)
+            val post = f.server.takeRequest()
+            assertEquals("2", post.getHeader("X-PhotoHouse-Search-Version"))
+
+            f.server.enqueue(response(envelope("completed", v2Result, recovered = true)))
+            val recovered = api.getTurn(token, "family-a", thread, request, 2)
+            assertTrue(recovered.recovered); assertEquals(2, recovered.result!!.searchVersion)
+            assertEquals("2", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+
+            f.server.enqueue(response("""{"version":1,"locale":null,"reply_length":null,"voice_pace":null,"revision":0}"""))
+            api.preferences(token, "family-a")
+            assertNull(f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+
+            f.server.enqueue(speechResponse(wav()))
+            api.speakTurn(token, "family-a", thread, request, 1, speechRequest, 2)
+            assertEquals("2", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
         }
     }
 

@@ -5,6 +5,7 @@ No SQL writes, filesystem/index loading, models, HTTP routes or original grants.
 """
 from collections import Counter, defaultdict
 from contextlib import contextmanager
+from copy import copy
 from dataclasses import asdict, replace
 from datetime import date, datetime
 import hashlib
@@ -93,12 +94,31 @@ class ReadBudget:
     connection progress callback during a call; no ambient callback is preserved.
     """
     def __init__(self, *, rows=100000, source_bytes=16*1024**2, index_bytes=4*1024**2,
-                 response_bytes=512*1024, seconds=2.0, concurrency=2, clock=monotonic):
+                 response_bytes=512*1024, seconds=2.0, concurrency=2, clock=monotonic,
+                 search_source_bytes=None, search_seconds=None):
         require(all(type(v) is int and v>0 for v in (rows,source_bytes,index_bytes,response_bytes,concurrency)))
         require(type(seconds) in (int,float) and math.isfinite(seconds) and seconds>0)
         self.rows,self.source_bytes,self.index_bytes,self.response_bytes=rows,source_bytes,index_bytes,response_bytes
         self.seconds,self.clock=seconds,clock
+        if search_source_bytes is not None:
+            require(type(search_source_bytes) is int and search_source_bytes > 0)
+        self.search_source_bytes = source_bytes if search_source_bytes is None else search_source_bytes
+        if search_seconds is not None:
+            require(type(search_seconds) in (int, float) and math.isfinite(search_seconds) and search_seconds > 0)
+        self.search_seconds = seconds if search_seconds is None else search_seconds
         self.slots=threading.BoundedSemaphore(concurrency)
+
+    def search_view(self):
+        """Use an explicit text allowance while retaining the SAME admission pool.
+
+        Counters/deadlines remain per-attempt; rows, response/index limits,
+        cancellation, clock and concurrency are unchanged. No request gets a new
+        semaphore just because its transport wraps the runtime for search v2.
+        """
+        view = copy(self)
+        view.source_bytes = self.search_source_bytes
+        view.seconds = self.search_seconds
+        return view
 
     @contextmanager
     def attempt(self, connection, cancelled):
@@ -296,6 +316,9 @@ class DiscoveryReads:
     def _rank(self, found):
         return found
 
+    def _search_presentation(self, facets, filters):
+        return {}
+
     def __init__(self, access: AccessService, provider, budget: ReadBudget):
         if not isinstance(access,AccessService) or not isinstance(budget,ReadBudget): raise ValueError('Explicit access and shared budget required')
         self.access,self.provider,self.budget=access,provider,budget
@@ -476,5 +499,6 @@ class DiscoveryReads:
             offset=(page-1)*page_size
             return {'library_id':library,'binding':context,'fingerprint':expected,'page':page,'page_size':page_size,
                     'total':len(found),'has_more':offset+page_size<len(found),'originals_allowed':bool(member['originals']),
-                    'items':found[offset:offset+page_size]}
+                    'items':found[offset:offset+page_size],
+                    **self._search_presentation(facets, normalized)}
         return self._run(token,library,binding,action,cancelled)

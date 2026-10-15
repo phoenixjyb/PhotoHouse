@@ -1,35 +1,97 @@
 # Current project status
 
 Reviewed **2026-10-15 after the v61 delivery**. API/Web source
-`8f4690506106cb156f1bf4cc346c82b1da70357b` is deployed, and phone
-**v61 / 0.61-guided-stories** is signed and published on Windows HTTPS OTA.
-The guarded API switch completed at 13:30 Beijing, with backup, readback and
-worker restoration verified. Phone native/complete HTTPS verification followed;
-TV remains v30. Physical installation and family acceptance remain open.
+`8f4690506106cb156f1bf4cc346c82b1da70357b` is deployed, with phone OTA
+**v61 / 0.61-guided-stories** and TV v30. The guarded story release completed
+backup, HTTPS readback and worker restoration. Physical installation and family
+acceptance remain separate.
+
+The search candidate `c1ca91e58589196c147ce0b97a8205ec3370f978` preserves that
+story source and prepares phone **v62 / 0.62-private-search**. All hosted API,
+Web, Android and Windows checks pass; the exact 205-file candidate passed native
+Windows qualification and a read-only configured-library resource check using
+production bounds. These checks do not establish authenticated family relevance.
+API cutover and phone publication remain pending. The subsequent repository
+merge imports only documentation and test synchronization; application and
+Android source remain identical to that qualified candidate.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | `8f46905`, 203-file archive; native qualification, guarded backup/cutover, served bytes and anonymous denials passed | Real owner/member UX and voice acceptance |
-| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified, no migration | Later feature activation and recovery qualification |
-| Phone | v61 original certificate/artwork, native and complete trusted HTTPS download verified | Samsung installation and family trial |
-| Guided stories | Web profile passed; seven final-source emulator journeys passed in Chinese/English at 150% text | Real-library create/save/reopen trial; durable private drafts |
-| TV | v30 feed unchanged | Projector/library/playback check; Home TV requires desktop session |
-| Introduction website | Cartoon/fictional public introduction delivered previously | Family/design feedback; [record](../website/RELEASE_2026-10-14.md) |
-| Search v2 | Completed negotiated backend included | Web/phone/private-conversation clients, real relevance and private graph activation |
-| Public source | Committed app work is on GitHub; [sync review](REPOSITORY_SYNC_2026-10-15.md) separates stable PR #18 and search PR #17 | Exact-head CI/review and merge state remain distinct from this runtime snapshot |
+| API/Web | Source `53e3954`, 201-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
+| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
+| Phone | v60 signed with original certificate/artwork, published and completely read back over trusted HTTPS | Installation and physical reading/listening trial |
+| TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
+| Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
+| Public source | Monorepo is the development home; exact package provenance and ordered source overlays retained | Remote refs and hosted CI not refreshed by this release |
+| Following UX | Fictional three-step first-story prototype passes responsive/large-text checks outside the v60 archive | Design review and production implementation |
 
-The [v61 release and trial](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
-binds exact archive/APK hashes, qualification reuse and delivery. The
-[v60 record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md) remains history;
-v59 was not published. The [phone guide](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md)
-describes the shipped selection → wording/dictation → literal review → explicit
-save flow and its process-memory draft boundary.
+The [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+binds exact APK/archive/certificate hashes, native qualification and delivery.
+v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
-The delivered source includes an optional, inactive [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
+The next local source round adds an internal search-readiness inventory and a
+private offline relevance runner. It separates recorded metadata from searchable
+coverage, runs actual protected search/refine/open interpretation and emits
+content-free scores/check outcomes. It opens databases read-only and discards
+partial results on source drift. New ingestion and video-probe handling accept
+only a valid explicit QuickTime capture timestamp, preserve its local day and
+leave unknown dates unknown; the worker fills null dates only. No historical
+backfill, production write, model or permission activation occurred. The
+[operator guide](SEARCH_READINESS_AND_RELEVANCE.md) records limitations and commands.
+The focused search/source/storage cohort passes **131 tests / 81 subchecks**.
+The video cohort passes **12 tests / 13 subchecks**, including a generated MP4
+through real FFmpeg/ffprobe. Later full release profiles and native Windows,
+real-library relevance and family/device acceptance remain open. The Android
+emulator remains closed as requested; this round changes no client UI.
+
+The current local integration connects negotiated search v2 to the private
+workspace, Web and phone. It presents the chosen family perspective, actual
+person/text/date/media/place conditions and evidence labels, including explicit
+AI-caption wording. Recovery retains the original search version and revalidates
+current source order; it neither resubmits the request nor replays navigation or
+speech. Only the exact unsupported-version capability response allows a legacy
+capability retry. See [the updated contract](ASSISTANT_JOINT_SEARCH_V2.md).
+Focused checks pass: the generated joint-search suite (20 tests), workspace HTTP
+suite (14), private kinship suite (29), reply-speech suite (8), Web wire suite
+(75), and phone wire/HTTP/store suites (67). These overlapping cohorts are not
+summed. The generated Web v2 journey passes five checkpoint groups, including
+two reviewed people with a noun-only scene, a year refinement, opening the
+second result, and lost-response GET recovery. Desktop and Chinese/English
+phone layouts at 150% text were inspected. The corrected saved-memory journey
+completes 27 checkpoints, including explicit Chinese/English Stop labels (its
+headless browser needed bounded teardown after all assertions completed); the
+legacy voice journey passes with an explicit unsupported-version capability
+fixture and no search-v2 header on its v1 private turn.
+
+Phone main and Android-test source compilation pass. Debug lint passes with no
+errors at the pre-copy cohort `e55b954`; the later `acfc55c` changes only two
+media-neutral UI labels and the synthetic screenshot helper. Full Android,
+native Windows and physical family/device qualification remain separate gates.
+The additional caller/voice JVM cohort passes 38 tests (5 workspace callers and
+33 voice cases). Both English/Chinese emulator cases pass at 150% text, and four
+retained renders were inspected. The final test-only assertion recognizes the
+perspective in both the pre-submit banner and the interpreted result. An
+isolated, unconfigured debug package preserved the existing higher-version
+emulator installation; only the temporary test packages were removed afterward.
+These fixture results do not establish a signed phone release or family relevance.
+
+The complete API invocation at `f0c5176` is **incomplete**, stopped after 185
+passes, 96 subchecks and two library-transfer failures. Both failed cases pass
+alone with the same profile flags. Their relevant source and fixture blobs are
+unchanged from the prior search baseline; repeated identity-schema verification
+inside the existing three-second transfer transaction is a likely load-sensitive
+timeout path. This is not a full API pass. The full Web invocation at that
+revision also stopped at the legacy voice fixture's v2 readiness mismatch;
+the corrected fixture and affected playback journey pass separately. A complete
+release regression remains open. Earlier API-only passes below remain bound to
+their stated revisions, and do not qualify this later client integration.
+
+
+The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
 for search v2. It binds an explicit library/account allowlist and chosen
 perspective, resolves bilingual relative chains only to current reviewed
 identities, and invalidates contexts on graph/perspective/access changes.
@@ -44,16 +106,16 @@ confirmed account/library/person bindings, client perspective display and the
 separate server delivery gate. No account creation or live permission change is
 implied by source checks or a private draft.
 
-The delivered source includes an explicitly negotiated search-v2 API
+The next local source increment adds an explicitly negotiated search-v2 API
 slice joining eligible current captions, saved photo memories and reviewed
 people with existing date/media/place constraints. It uses a request-time
 protected projection, separate source-bound contexts, authored-evidence-first
 ordering and provenance reasons. Default v1 clients retain their wire contract.
-See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Completed backend source is merged into the story release; the ongoing client work
-remains separate on `codex/search-redesign-20261015`.
-Version 2 is not enabled in the released Web/phone/private-workspace clients. Real
-index readiness, video date bases, local semantic understanding and relevance
-qualification remain ahead.
+See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Work is isolated on
+`codex/search-redesign-20261015`; the concurrent story branch is separate.
+That earlier API-only cohort was not integrated into clients. The current
+local client integration above remains undeployed. Real index readiness, video
+date bases, local semantic understanding and relevance qualification remain ahead.
 
 The focused generated-data joint-search suite passes 19 tests, including short
 Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
@@ -71,8 +133,7 @@ profile evidence to a different source revision.
 A later read-only owner-requested investigation confirmed ASR/turn intake but
 weak deterministic query parsing and missing searchable fields in the inspected
 library index. Its active fields are date, reviewed locations and media; stored
-captions and confirmed face records are not part of the released v1 client index;
-the negotiated v2 backend has separate eligibility and source checks.
+captions and confirmed face records are not yet part of this assistant index.
 Unknown capture dates also cause date queries to omit videos. Private transcripts
 and aggregate household coverage are retained outside Git.
 
@@ -137,8 +198,8 @@ for any separately scoped source repair.
   five-worker restoration, original-certificate signing and full native/HTTPS
   phone APK readback. Independent Mac manifest/UI check passed.
 
-Next: install v61 and run guided-story, owner/member reading and continuous-voice trials; then
-add durable private-draft saving/resume. Long recording intake, model quality,
+Next: install v60 and run owner/member reading and continuous-voice trials; then
+implement the reviewed first-story flow. Long recording intake, model quality,
 TV v31 delivery and broader narrative/grouping activation retain separate gates.
 
 ## Earlier progress notes
@@ -249,7 +310,7 @@ The [read-only package inspector](API_PACKAGE_INSPECTION.md) verifies a pinned
 canonical API archive against local committed Git blobs, with no extraction or
 candidate execution. Its 26 generated checks passed. Final integrated full
 profiles and exact release artifacts are recorded separately when complete.
-The historical v58/TV v30 snapshot above predates the v61 delivery recorded at the top; these
+The live v58/TV v30 snapshot above remains the latest runtime evidence; these
 source additions have not changed Windows services, data or feeds.
 
 

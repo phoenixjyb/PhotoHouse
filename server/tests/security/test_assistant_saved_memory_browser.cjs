@@ -36,7 +36,7 @@ async function holdPrimaryActionCapabilities(){
   let deadline;
   try{await Promise.race([Promise.all([reader.reached,opening.reached,segments.reached]),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(new Error('Optional capability gates were not reached')),10000);})]);}
   catch(error){reader.release();opening.release();segments.release();throw error;}
-  finally{clearTimeout(deadline);} 
+  finally{clearTimeout(deadline);}
   return {release(){reader.release();opening.release();segments.release();},complete(){return page.evaluate(()=>window.__latePrimaryActionCapabilityReads);}};
 }
 const decode=response=>JSON.parse(Buffer.from(response.body,'base64').toString('utf8'));
@@ -389,6 +389,7 @@ async function reloadAndLogin(){
   await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-1-playing-desktop-zh.png')});
   await page.setViewportSize({width:390,height:1100});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
   assert(await storyCard.locator('.assistant-memory-segment-stop').isVisible(),'active section exposes a card-local Stop beside the current memory');
+  assert.equal(await storyCard.locator('.assistant-memory-segment-stop').innerText(),'停止朗读这一段');
   assert(await storyCard.locator('.assistant-memory-primary-actions').getByRole('button',{name:'停止朗读这一段',exact:true}).isVisible(),'late Chinese Stop control has a visible accessible label in the primary action row');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'active section Stop fits the 390px Chinese page at 150% text');
   const primaryPhoneGeometry=await primaryActions.evaluate(row=>{const rowRect=row.getBoundingClientRect(),card=row.closest('.assistant-memory-card'),cardRect=card.getBoundingClientRect();return {width:innerWidth,rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:card.clientWidth,cardScrollWidth:card.scrollWidth,
@@ -712,6 +713,11 @@ async function reloadAndLogin(){
   // Draft chips stay local until Send. The overview, outline and preview each
   // advance the revision while retaining the exact visible source cohort.
   const beforeAllStories=turns().length,allStories=await submit('搜索故事 双故事');
+  await page.waitForFunction(expected=>{
+    const turn=document.querySelector('#assistant-results')?.__assistantRenderedTurn;
+    return !document.querySelector('#assistant-private-new')?.disabled&&
+      JSON.stringify(turn?.memory_cards?.map(card=>card.id))===JSON.stringify(expected);
+  },allStories.response.result.memory_cards.map(card=>card.id),{timeout:10000});
   assert.equal(cards().count?await cards().count():0,allStories.response.result.memory_cards.length);
   assert(allStories.response.result.memory_cards.length>=2,`unfiltered story search exposes the second saved memory: ${JSON.stringify(allStories.response.result)}`);
   const displayedIds=allStories.response.result.memory_cards.map(card=>card.id),allStoriesParent=JSON.parse(allStories.body);
@@ -1128,6 +1134,7 @@ async function reloadAndLogin(){
   await cards().first().locator('.assistant-memory-segment-reading').click();
   await page.waitForFunction(()=>/Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
   assert(await cards().first().locator('.assistant-memory-segment-stop').isVisible(),'English section playback exposes its local Stop action');
+  assert.equal(await cards().first().locator('.assistant-memory-segment-stop').innerText(),'Stop this section');
   assert(await englishActionRow.getByRole('button',{name:'Stop this section',exact:true}).isVisible(),'late English Stop control has a visible accessible label in the primary action row');
   const englishPlayingActions=await englishActionRow.evaluate(row=>({rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:row.closest('.assistant-memory-card').clientWidth,
     cardScrollWidth:row.closest('.assistant-memory-card').scrollWidth,stop:row.querySelector('.assistant-memory-segment-stop').getBoundingClientRect().height}));

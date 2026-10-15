@@ -27,6 +27,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
 | Natural-language search diagnosis and next work | [Search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [new-session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
+| Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |

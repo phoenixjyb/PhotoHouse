@@ -150,15 +150,28 @@ object AssistantWorkspaceWire {
     fun capabilities(bytes: ByteArray): AssistantWorkspaceCapabilities = guarded {
         check(bytes.size in 1..4096)
         val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available", "threads", "preferences", "preferences_applied", "server_owned_turns"),
-            setOf("applied_preferences", "history_paging", "thread_labels", "reply_speech"))
+            setOf("applied_preferences", "history_paging", "thread_labels", "reply_speech", "search"))
         check(o.getValue("version").count(1) == 1)
         val applied = o["applied_preferences"]?.array(4)?.map { it.str(32) } ?: emptyList()
         check(applied.distinct().size == applied.size && applied.all { it == "locale" })
         val appliedFlag = o.getValue("preferences_applied").bool()
+        val hasSearch = "search" in o
+        val searchPerspectiveLabel = if (hasSearch) {
+            val value = o.getValue("search")
+            check(o.getValue("available").bool() && o.getValue("threads").bool() && o.getValue("server_owned_turns").bool())
+            val presentation = value.obj(setOf("version", "date_basis", "perspective"))
+            check(presentation.getValue("version").count(2) == 2)
+            check(presentation.getValue("date_basis").str(16) == "capture")
+            val perspective = presentation.getValue("perspective")
+            val label = if (perspective == JsonNull) null else perspective.obj(setOf("label"))
+                .getValue("label").let { memoryText(it, 512, 512) }
+            label
+        } else null
         AssistantWorkspaceCapabilities(1, o.getValue("available").bool(), o.getValue("threads").bool(),
             o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet(),
             o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false,
-            o["reply_speech"]?.bool() ?: false)
+            o["reply_speech"]?.bool() ?: false, if (hasSearch) 2 else 1,
+            if (hasSearch) "capture" else null, searchPerspectiveLabel)
     }
 
     fun savedMemoryReaderCapabilities(bytes: ByteArray): SavedMemoryReaderCapabilities = guarded {
@@ -422,16 +435,25 @@ object AssistantWorkspaceWire {
     }
 
     private fun validateResult(bytes: ByteArray, library: String, recovered: Boolean,
-                               acceptSavedMemoryCards: Boolean, acceptSavedMemoryActions: Boolean): AssistantTurn {
+                               acceptSavedMemoryCards: Boolean, acceptSavedMemoryActions: Boolean,
+                               searchVersion: Int): AssistantTurn {
         val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
+        if (raw["version"] == JsonPrimitive(2)) {
+            check(searchVersion == 2)
+            return validateV2Result(bytes, library, recovered)
+        }
+        check(searchVersion in 1..2)
         if ("memory_cards" in raw || raw["kind"]?.let { (it as? JsonPrimitive)?.content } == "memory_cards") {
             check(bytes.size in 1..SAVED_MEMORY_RESPONSE_LIMIT && acceptSavedMemoryCards && !recovered)
             return savedMemoryResult(raw, library, acceptSavedMemoryActions)
         }
+        check(searchVersion != 2 || recovered)
         val result = AssistantWire.response(bytes, library)
         val json = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
         val context = json.getValue("context").let { if (it == JsonNull) null else it as? JsonObject ?: bad() }
         if (context != null) {
+            val contextV2 = "search_version" in context
+            check(!contextV2)
             val ctx = context.obj(setOf("library_id", "binding", "fingerprint", "filters", "visible_ids", "total"))
             check(ctx.getValue("library_id").str(128) == library)
             check(ctx.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
@@ -451,8 +473,8 @@ object AssistantWorkspaceWire {
     }
 
     /** Validate the persisted form emitted by PhoneFilters.json without display metadata. */
-    private fun validateFilters(filters: JsonObject) {
-        check(filters.keys.all { it in PhoneDiscoveryWire.fields })
+    private fun validateFilters(filters: JsonObject, searchVersion: Int = 1) {
+        check(filters.keys.all { it in PhoneDiscoveryWire.fields || searchVersion == 2 && it == "text" })
         fun selected(e: JsonElement, withMatch: Boolean) {
             if (withMatch) {
                 val group = e.obj(setOf("ids", "match"))
@@ -476,8 +498,123 @@ object AssistantWorkspaceWire {
             val caption = e.str(512)
             check(caption.isNotBlank() && caption.toByteArray(Charsets.UTF_8).size <= 512)
         }
+        filters["text"]?.let { e ->
+            check(searchVersion == 2)
+            memoryText(e, 512, 512)
+        }
         check(filters.toString().toByteArray(Charsets.UTF_8).size <= 16 * 1024)
-        check(phoneFilters(filters).json() == filters)
+        val phoneFields = JsonObject(filters.filterKeys { it != "text" })
+        check(phoneFilters(phoneFields).json() == phoneFields)
+    }
+
+    private fun selectedFilterIds(filters: JsonObject?, key: String): List<String> {
+        if (filters == null) return emptyList()
+        return when (key) {
+            "locations" -> filters[key]?.array(20)?.map { it.str(19) } ?: emptyList()
+            else -> filters[key]?.obj(setOf("ids", "match"))?.getValue("ids")?.array(20)?.map { it.str(19) }
+                ?: emptyList()
+        }
+    }
+
+    private fun searchInterpretation(value: JsonElement, filters: JsonObject?): AssistantSearchInterpretation {
+        val o = value.obj(setOf("date_basis", "people", "tags", "locations", "perspective"))
+        check(o.getValue("date_basis").str(16) == "capture")
+        fun selections(key: String): List<AssistantSearchFacetSelection> {
+            val selected = selectedFilterIds(filters, key)
+            val values = o.getValue(key).array(20).map { item ->
+                val facet = item.obj(setOf("id", "label"))
+                val id = facet.getValue("id").str(19).also { check(PhoneDiscoveryWire.validId(it)) }
+                val label = memoryText(facet.getValue("label"), 512, 512)
+                AssistantSearchFacetSelection(id, label)
+            }
+            check(values.map { it.id } == selected && values.map { it.id }.distinct().size == values.size)
+            return values
+        }
+        val perspectiveValue = o.getValue("perspective")
+        val perspective = if (perspectiveValue == JsonNull) null else {
+            val p = perspectiveValue.obj(setOf("label"))
+            val label = memoryText(p.getValue("label"), 512, 512)
+            AssistantSearchPerspective(label)
+        }
+        return AssistantSearchInterpretation("capture", selections("people"), selections("tags"),
+            selections("locations"), perspective)
+    }
+
+    private fun reason(value: JsonElement): AssistantMatchReason {
+        val source = (value as? JsonObject)?.get("source")?.str(32) ?: bad()
+        return when (source) {
+            "photo_memory" -> {
+                val o = value.obj(setOf("source", "source_id", "revision"))
+                val id = o.getValue("source_id").str(128)
+                check(id.isNotEmpty() && strictUtf8(id).size <= 128)
+                check(o.getValue("revision").integer() > 0)
+                AssistantMatchReason.PhotoMemory(id)
+            }
+            "edited_caption", "generated_caption" -> {
+                val o = value.obj(setOf("source", "source_id", "revision"))
+                val id = o.getValue("source_id").str(19)
+                check(PhoneDiscoveryWire.validId(id))
+                val digest = o.getValue("revision").str(64)
+                check(digest.matches(Regex("[0-9a-f]{64}")))
+                AssistantMatchReason.Caption(source == "generated_caption", id)
+            }
+            "reviewed_person" -> {
+                val o = value.obj(setOf("source", "source_id"))
+                val id = o.getValue("source_id").str(19)
+                check(PhoneDiscoveryWire.validId(id))
+                AssistantMatchReason.ReviewedPerson(id)
+            }
+            "capture_date" -> {
+                val o = value.obj(setOf("source", "value"))
+                val date = o.getValue("value").str(10)
+                check(date.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")) && runCatching { java.time.LocalDate.parse(date) }.isSuccess)
+                AssistantMatchReason.CaptureDate(date)
+            }
+            else -> bad()
+        }
+    }
+
+    private fun validateV2Result(bytes: ByteArray, library: String, recovered: Boolean): AssistantTurn {
+        val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(
+            setOf("version", "kind", "reply", "context", "filters", "items", "total", "has_more", "effect", "interpretation"))
+        check(raw.getValue("version").count(2) == 2)
+        val context = raw.getValue("context").let { if (it == JsonNull) null else
+            it.obj(setOf("library_id", "binding", "fingerprint", "filters", "visible_ids", "total", "search_version")) }
+        val filters = raw.getValue("filters").let { if (it == JsonNull) null else it as? JsonObject ?: bad() }
+        if (context != null) {
+            check(context.getValue("library_id").str(128) == library && context.getValue("search_version").count(2) == 2)
+            check(context.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
+            check(context.getValue("fingerprint").str(64).matches(Regex("[0-9a-f]{64}")))
+            check(filters != null && context.getValue("filters") == filters)
+            validateFilters(filters!!, 2)
+        } else check(filters == null)
+        val interpretation = searchInterpretation(raw.getValue("interpretation"), filters)
+        val rawItems = raw.getValue("items").array(20)
+        val reasons = linkedMapOf<String, List<AssistantMatchReason>>()
+        val strippedItems = rawItems.map { item ->
+            val asset = item as? JsonObject ?: bad()
+            val legacyKeys = setOf("id", "kind", "width", "height", "duration_sec", "taken_at", "thumbnail_url")
+            check(asset.keys == legacyKeys || asset.keys == legacyKeys + "date_hint" ||
+                asset.keys == legacyKeys + "match_reasons" || asset.keys == legacyKeys + setOf("date_hint", "match_reasons"))
+            val id = asset.getValue("id").str(19).also { check(PhoneDiscoveryWire.validId(it)) }
+            asset["match_reasons"]?.let { value ->
+                val parsed = value.array(64).map(::reason)
+                check(parsed.isNotEmpty() && id !in reasons)
+                reasons[id] = parsed
+            }
+            JsonObject(asset.filterKeys { it != "match_reasons" })
+        }
+        val legacy = JsonObject(raw.filterKeys { it != "interpretation" } + ("version" to JsonPrimitive(1)) +
+            ("items" to JsonArray(strippedItems)))
+        val turn = AssistantWire.response(legacy.toString().toByteArray(Charsets.UTF_8), library)
+        if (context != null) {
+            val ids = context.getValue("visible_ids").array(20).map { it.str(19).also { id -> check(PhoneDiscoveryWire.validId(id)) } }
+            check(ids.distinct().size == ids.size && ids == turn.items.map { it.id })
+            check(context.getValue("total").integer(100000).toInt() == turn.total)
+            check(turn.filters == filters && turn.total == raw.getValue("total").count(100000))
+        } else check(turn.total == 0 && turn.items.isEmpty() && turn.filters == null && turn.effect == null && !turn.hasMore)
+        if (recovered) check(turn.kind != "open" && turn.effect == null)
+        return turn.copy(searchVersion = 2, searchInterpretation = interpretation, matchReasons = reasons)
     }
 
     private fun phoneFilters(filters: JsonObject): PhoneFilters {
@@ -513,7 +650,8 @@ object AssistantWorkspaceWire {
 
     fun turn(bytes: ByteArray, library: String, threadId: String, requestId: String,
              fromGet: Boolean, acceptSavedMemoryCards: Boolean = false,
-             acceptSavedMemoryActions: Boolean = false): AssistantWorkspaceTurn = guarded {
+             acceptSavedMemoryActions: Boolean = false,
+             searchVersion: Int = 1): AssistantWorkspaceTurn = guarded {
         check(bytes.size in 1..RESPONSE_LIMIT && PhoneDiscoveryWire.validLibrary(library) && validUuid4(threadId) && validUuid4(requestId))
         val o = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(setOf("version", "thread_id", "request_id", "status", "revision", "recovered", "error", "result"))
         check(o.getValue("version").count(1) == 1)
@@ -535,7 +673,7 @@ object AssistantWorkspaceWire {
         check(if (status == AssistantWorkspaceRequestStatus.FAILED || status == AssistantWorkspaceRequestStatus.INTERRUPTED)
             error in ERROR_CODES else error == null)
         val result = if (rawResult == JsonNull) null else validateResult(rawResult.toString().toByteArray(Charsets.UTF_8), library, recovered,
-            acceptSavedMemoryCards, acceptSavedMemoryActions)
+            acceptSavedMemoryCards, acceptSavedMemoryActions, searchVersion)
         AssistantWorkspaceTurn(1, threadId, requestId, status, revision, recovered, error, result)
     }
 }

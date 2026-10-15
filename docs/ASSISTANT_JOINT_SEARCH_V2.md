@@ -1,5 +1,12 @@
 # Protected text and reviewed-person search, first slice
 
+The release preparation adds an explicit production search-v2 source allowance
+of 64 MiB, with legacy discovery still at 16 MiB. Both share the original
+admission pool and retain the existing row/index/response limits. Search v2 uses
+a fixed five-second per-read deadline; legacy discovery retains two seconds.
+Superseded captions are excluded from the independent current-text fallback
+before loading it. See [readiness and resource limits](SEARCH_READINESS_AND_RELEVANCE.md).
+
 October 15 source increment, following the [search handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md).
 This is a locally runnable API path, not a Windows deployment or a Web/phone
 feature activation. New story creation remains deferred.
@@ -9,10 +16,10 @@ feature activation. New story creation remains deferred.
 Send `X-PhotoHouse-Search-Version: 2` to the existing
 `GET /assistant/v1/capabilities`, `POST /assistant/v1/turns` and
 `POST /assistant/v1/speech` endpoints. Turns/capabilities then identify their
-response as version 2. Other header values except absent/1 are refused. Version
-2 is explicitly refused on private-workspace endpoints: persisted turn recovery,
-saved-memory actions and the phone/Web decoders need a subsequent integration
-slice. Existing clients send no new header and retain the version-1 shape.
+response as version 2. Other header values except absent/1 are refused.
+The private workspace now negotiates the same search contract on capabilities,
+turn creation, request recovery and reply speech. Its outer envelope remains
+version 1. Existing clients send no new header and retain the version-1 shape.
 
 The internal `SearchPlan(version=2)` accepts existing discovery hard filters
 (`media`, `date`, reviewed `people` with `any`/`all`, `locations`, `tags`, and
@@ -32,7 +39,8 @@ Examples using fictional reviewed names:
 
 Quoted text is content, not an identity hint. Two-character Chinese and NFKC /
 case-folded mixed-language matching work without an FTS tokenizer. Unquoted
-scene parsing currently supports only the bounded `在…玩/游玩` form. Arbitrary
+scene parsing supports `在…玩/游玩` and a short explicit noun-scene list,
+including `在海边的照片`; the scene remains a literal text condition. Arbitrary
 unmatched details, unknown/ambiguous names, unconfigured personal kinship mappings and
 unsupported negation require clarification; there is no model or cloud fallback.
 This is a lexical baseline, not general semantic understanding.
@@ -90,9 +98,58 @@ cards may omit it. Text reasons identify `photo_memory`,
 `edited_caption` or `generated_caption`, `source_id` and current `revision`;
 reviewed-person reasons identify the confirmed person ID, and capture-date reasons
 identify the recorded day. No original prose is copied into context or the reply.
-Clients must label generated evidence as generated; no semantic confidence or
-truth judgment is implied. A subsequent UI slice must render those explanations
-and negotiate this contract before enabling it for users.
+Clients label generated evidence as generated; no semantic confidence or truth
+judgment is implied.
+
+## Private workspace and client experience
+
+Web and phone probe `/assistant/workspace/v1/capabilities` with the v2 header.
+Only an explicit unsupported HTTP 400 permits a legacy capability retry. A
+submitted turn is never retried or silently downgraded. A healthy negotiated
+response retains the normal version-1 workspace fields and adds:
+
+```json
+{"search":{"version":2,"date_basis":"capture","perspective":null}}
+```
+
+An unavailable, stale or busy search source withholds turn admission while
+leaving owned conversation history and preferences available. It does not force
+the whole private workspace offline or silently retry a legacy search.
+
+For a currently allowed private graph, `perspective` is instead a bounded object
+with one `label`. This authenticated, library-scoped presentation does not expose
+the graph, its relationships, aliases, allowlist or file location. The chosen
+center appears before submission; results also identify their own perspective.
+
+Header 2 is admitted only on workspace capabilities, `POST threads/{id}/turns`,
+`GET threads/{id}/requests/{id}`, and `POST .../requests/{id}/speech`. Thread
+management, preferences and saved-memory endpoints keep their existing contracts.
+Negotiating saved-memory cards alongside search does not change media results
+into saved-memory results: saved-memory cards remain their separate version-1
+contract.
+
+Every nested version-2 result adds `interpretation`: `date_basis: "capture"`,
+`perspective`, and `people`, `tags`, `locations` arrays of `{id,label}` exactly
+matching the selected filter IDs in order. Initial clarifications have null
+filters and empty selections. Version-2 contexts carry `search_version: 2`;
+labels and reasons are never stored in context. Cards carry at most 64 reasons.
+Clients validate the whole result before presenting any of it, render labels as
+plain text, show whether all or any people are required, and distinguish saved
+photo memories, edited captions and AI-generated captions.
+
+Durable summaries retain the original search version, filters and opaque source
+binding, without interpretation labels or card evidence. Recovery rehydrates
+those from current authorized sources using the original engine. A v2 client
+can recover a legacy result as version 1; a legacy client cannot read or speak a
+version-2 result. A fresh explicit search may leave a different-version context,
+while refinements and ordinal opens require refresh rather than reinterpretation.
+Recovered requests never replay an open effect or become fresh speech sources.
+Source, membership and private graph changes still invalidate the result set;
+reply synthesis checks those dependencies before and after generation.
+
+This JSON extension requires the matching server for v2-created conversation
+state. A rollback to older code must account for those threads; no production
+workspace upgrade or rollback has been exercised by local fixtures.
 
 ## Checks and remaining gates
 
@@ -116,8 +173,9 @@ profiles remain incomplete records. Source-ledger verification, 119 local
 documentation link targets and the affected discovery/index suites also passed.
 No Web/Android profile or native/model/runtime/real-family acceptance is claimed.
 
-Next bounded slice: negotiate and render the shared contract in Web/phone/private
-workspace with recovery and large-text checks, then qualify an explicit video
-date-basis contract and local typed-understanding/ranking adapters. No real date
-backfill, reviewed-index preparation, deployment, signing or publication is part
-of this source increment.
+The integrated source slice connects Web/phone/private workspace, visible
+interpretations and evidence, and recovery. Its current validation is recorded in
+the project status. Next are real-library identity/index admission and relevance
+measurement, explicit video date-basis handling, and local understanding/ranking.
+No real date backfill, reviewed-index preparation, deployment, signing or
+publication is part of this source increment.

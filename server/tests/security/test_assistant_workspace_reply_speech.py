@@ -354,5 +354,38 @@ class AssistantWorkspaceReplySpeechTests(unittest.TestCase):
         self.assertNotEqual(revision_changed.headers.get('content-type'), 'audio/wav')
 
 
+    def test_search_v2_reply_requires_negotiation_and_revalidates_after_synthesis(self):
+        with closing(sqlite3.connect(self.database)) as db, db:
+            db.execute('''CREATE TABLE access_stories (
+                id TEXT PRIMARY KEY, asset_id INTEGER, library_id TEXT, author_id TEXT,
+                revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
+        tid = self.create_thread()
+        rid = new_id()
+        headers = self.headers(request_id=rid) | {'X-PhotoHouse-Search-Version': '2'}
+        turn = self.client.post(f'{BASE}/threads/{tid}/turns', headers=headers,
+            json={'library_id': 'family-a', 'request_id': rid,
+                  'expected_revision': 0, 'text': 'find photos'})
+        self.assertEqual(turn.status_code, 200, turn.text)
+        self.assertEqual(turn.json()['result']['version'], 2)
+        _, downgraded = self.speak(tid, rid)
+        self.assertEqual(downgraded.status_code, 409)
+        self.assertEqual(self.tts.calls, [])
+
+        def speak_v2():
+            speech_headers = self.headers(request_id=new_id(), parent_id=rid) | {
+                'X-PhotoHouse-Search-Version': '2'}
+            return self.client.post(f'{BASE}/threads/{tid}/requests/{rid}/speech',
+                headers=speech_headers, json={'library_id': 'family-a', 'expected_revision': 1})
+
+        audio = speak_v2()
+        self.assertEqual(audio.status_code, 200, audio.text if audio.status_code != 200 else '')
+        self.assertEqual(audio.content, self.tts.audio)
+        self.tts.on_synthesize = lambda: self.update('''INSERT INTO access_stories
+            VALUES('synthetic-note',101,'family-a','one',1,'Changed','New source',1,0)''')
+        changed = speak_v2()
+        self.assertEqual(changed.status_code, 409)
+        self.assertNotEqual(changed.headers.get('content-type'), 'audio/wav')
+
+
 if __name__ == '__main__':
     unittest.main()

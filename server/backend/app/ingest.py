@@ -98,6 +98,8 @@ def ingest_paths(session: Session, roots: List[str], *, enqueue_embeddings: bool
                 mime = mimetypes.guess_type(p.name)[0] or 'video/unknown'
                 try:
                     meta = probe_video_metadata(p, timeout_sec=8)
+                    if meta.get('taken_at') is not None:
+                        exif['taken_at'] = meta['taken_at']
                     if meta.get('duration_sec') is not None:
                         exif['duration_sec'] = float(meta['duration_sec'])
                     if meta.get('fps') is not None:

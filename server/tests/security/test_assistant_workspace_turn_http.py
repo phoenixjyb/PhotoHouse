@@ -110,6 +110,124 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         response = self.request('GET', '/capabilities?library_id=family-a')
         self.assertFalse(response.json()['server_owned_turns'])
 
+    def enable_search(self):
+        with closing(sqlite3.connect(self.database)) as connection, connection:
+            connection.execute('''CREATE TABLE access_stories (
+                id TEXT PRIMARY KEY, asset_id INTEGER, library_id TEXT, author_id TEXT,
+                revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
+        return self.auth | {'X-PhotoHouse-Search-Version': '2'}
+
+    def test_search_v2_capability_is_negotiated_and_other_workspace_routes_stay_legacy(self):
+        headers = self.enable_search()
+        legacy = self.request('GET', '/capabilities?library_id=family-a')
+        self.assertNotIn('search', legacy.json())
+        current = self.request('GET', '/capabilities?library_id=family-a', headers=headers)
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual(current.json()['version'], 1)
+        self.assertEqual(current.json()['search'],
+                         {'version': 2, 'date_basis': 'capture', 'perspective': None})
+        for path in ('/threads?library_id=family-a', '/preferences?library_id=family-a',
+                     '/saved-memory-capabilities?library_id=family-a'):
+            self.assertEqual(self.request('GET', path, headers=headers).status_code, 400)
+        denied = self.request('GET', '/capabilities?library_id=family-a',
+                              headers={'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(denied.status_code, 401)
+
+    def test_search_v2_text_refinement_open_recovery_and_original_version_are_preserved(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        first_id = new_id()
+        found = self.turn(tid, first_id, text='找照片', headers=headers)
+        self.assertEqual(found.status_code, 200, found.text)
+        result = found.json()['result']
+        self.assertEqual((found.json()['version'], result['version']), (1, 2))
+        self.assertEqual(result['context']['search_version'], 2)
+        self.assertEqual([item['id'] for item in result['items']], ['103', '101'])
+        self.assertEqual(result['interpretation'], {'date_basis': 'capture',
+            'people': [], 'tags': [], 'locations': [], 'perspective': None})
+
+        opened_id = new_id()
+        opened = self.turn(tid, opened_id, revision=1, text='打开第二个', headers=headers)
+        self.assertEqual(opened.status_code, 200, opened.text)
+        self.assertEqual(opened.json()['result']['effect'], {'type': 'open_asset', 'asset_id': '101'})
+        restored = self.request('GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertTrue(restored.json()['recovered'])
+        self.assertEqual(restored.json()['result']['version'], 2)
+        self.assertEqual(restored.json()['result']['kind'], 'results')
+        self.assertIsNone(restored.json()['result']['effect'])
+        self.assertEqual([item['id'] for item in restored.json()['result']['items']], ['103', '101'])
+        downgrade = self.request('GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a')
+        self.assertEqual(downgrade.status_code, 409)
+        replay = self.turn(tid, first_id, text='找照片')
+        self.assertEqual(replay.status_code, 409)
+
+        narrowed = self.turn(tid, revision=2, text='只看2026年的', headers=headers)
+        self.assertEqual(narrowed.status_code, 200, narrowed.text)
+        self.assertEqual([item['id'] for item in narrowed.json()['result']['items']], ['101'])
+        self.assertEqual(narrowed.json()['result']['items'][0]['match_reasons'],
+                         [{'source': 'capture_date', 'value': '2026-01-02'}])
+        text = self.turn(tid, revision=3, text='找包含“Portrait”的照片', headers=headers)
+        self.assertEqual(text.status_code, 200, text.text)
+        self.assertEqual(text.json()['result']['filters'], {'media': ['image'], 'text': 'Portrait'})
+        self.assertEqual(text.json()['result']['items'][0]['match_reasons'][0]['source'], 'generated_caption')
+        row = self.workspace.get_turn('one', 'family-a', tid, text.json()['request_id'])
+        self.assertNotIn('interpretation', row['result_summary'])
+        self.assertNotIn('items', row['result_summary'])
+
+    def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        self.turn(tid)
+        self.app.state.discovery_runtime = DiscoveryRuntime(self.access, MemoryIndexProvider(()), d.ReadBudget())
+        capabilities = self.request('GET', '/capabilities?library_id=family-a', headers=headers)
+        self.assertEqual(capabilities.status_code, 200, capabilities.text)
+        value = capabilities.json()
+        self.assertTrue(value['available'])
+        self.assertTrue(value['threads'])
+        self.assertTrue(value['preferences'])
+        self.assertFalse(value['server_owned_turns'])
+        self.assertNotIn('search', value)
+        history = self.request('GET', f'/threads/{tid}?library_id=family-a')
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual(len(history.json()['exchanges']), 1)
+        self.assertEqual(self.request('GET', '/preferences?library_id=family-a').status_code, 200)
+
+    def test_search_v2_rehydrates_reviewed_labels_and_checks_current_source_and_membership(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        response = self.turn(tid, text='找示例儿童和示例成人一起的照片', headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['result']
+        self.assertEqual(result['filters']['people'], {'ids': ['301', '302'], 'match': 'all'})
+        self.assertEqual(result['interpretation']['people'], [
+            {'id': '301', 'label': 'Sample Child / 示例儿童'},
+            {'id': '302', 'label': 'Sample Adult / 示例成人'}])
+        request_id = response.json()['request_id']
+        path = f'/threads/{tid}/requests/{request_id}?library_id=family-a'
+        fresh = self.request('GET', path, headers=headers)
+        self.assertEqual(fresh.status_code, 200, fresh.text)
+        self.assertEqual(fresh.json()['result']['interpretation'], result['interpretation'])
+        self.update('UPDATE captions SET text=? WHERE id=2', ('Changed source',))
+        self.assertEqual(self.request('GET', path, headers=headers).status_code, 409)
+        self.update("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        self.assertIn(self.request('GET', path, headers=headers).status_code, (401, 403))
+
+    def test_search_v2_client_reads_legacy_without_reinterpreting_and_can_start_new_search(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        legacy = self.turn(tid)
+        rid = legacy.json()['request_id']
+        read = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a', headers=headers)
+        self.assertEqual(read.status_code, 200, read.text)
+        self.assertEqual(read.json()['result']['version'], 1)
+        self.assertNotIn('interpretation', read.json()['result'])
+        refine = self.turn(tid, revision=1, text='只看2026年的', headers=headers)
+        self.assertEqual(refine.status_code, 409)
+        fresh = self.turn(tid, revision=1, text='找包含“Portrait”的照片', headers=headers)
+        self.assertEqual(fresh.status_code, 200, fresh.text)
+        self.assertEqual(fresh.json()['result']['version'], 2)
+
     def test_server_owned_context_preference_effect_recovery_and_exchange_ids(self):
         saved = self.request('PUT', '/preferences', body={
             'library_id': 'family-a', 'expected_revision': 0, 'locale': 'en'})

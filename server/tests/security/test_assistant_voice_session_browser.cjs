@@ -9,7 +9,7 @@ const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-assistant-voice-'));
 fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700);console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'assistant_pending_recovery_browser_bridge.py'),'--private-workspace'],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,nextTurn=0,turnMode=null,privateReplyMode='results',privateSpeechGate=null,playbackTrackingEnabled=false,asrErrorCode=null,loggedPhone=null,restoreSessionGate=null;const pendingRpc=new Map(),requests=[],transcriptionRequests=[],privateSpeechRequests=[],playbackRequests=[],errors=[],origins=[],gates=new Set();
+let serial=0,readyResolve,readyReject,nextTurn=0,turnMode=null,privateReplyMode='results',privateSpeechGate=null,playbackTrackingEnabled=false,asrErrorCode=null,loggedPhone=null,restoreSessionGate=null;const pendingRpc=new Map(),requests=[],transcriptionRequests=[],privateSpeechRequests=[],playbackRequests=[],privateTurnVersions=[],errors=[],origins=[],gates=new Set();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready){readyResolve();return;}const call=pendingRpc.get(value.id);if(call){pendingRpc.delete(value.id);call.resolve(value);}});
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Fixture bridge exited (${code})`));for(const call of pendingRpc.values())call.reject(new Error('Fixture bridge exited'));}});
@@ -59,12 +59,18 @@ let browser,context,page;
       const reply=mode==='over-limit'?'家'.repeat(201):mode==='clarification'?'Private clarification reply':mode==='zero-results'?'Private zero-result reply':mode==='unsupported'?'Private unsupported reply':mode==='recovered'?'Private recovered reply':'Private results reply';
       const result={version:1,kind,reply,context:null,filters:null,items:[],total:0,has_more:false,effect:null};
       const envelope={version:1,thread_id:url.pathname.split('/')[5],request_id:requestId,status:'completed',revision:body.expected_revision+1,recovered:mode==='recovered',error:null,result};
+      privateTurnVersions.push({version:result.version,searchHeader:entry.headers['x-photohouse-search-version']||null});
       try{await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store',...tracking(requestId)},body:JSON.stringify(envelope)});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
     }
     if(entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/requests\/[^/]+\/speech$/.test(url.pathname)){
       privateSpeechRequests.push(entry);
       const speechGate=privateSpeechGate;privateSpeechGate=null;if(speechGate){speechGate.arrive();await speechGate.released;}
       const headers={'cache-control':'no-store',...tracking(entry.headers['x-photohouse-request-id']),...(playbackTrackingEnabled?{'X-PhotoHouse-Playback-Tracking':'enabled'}:{})};try{await route.fulfill({status:200,contentType:'audio/wav',headers,body:Buffer.from(audioWav())});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}finally{speechGate?.finish();gates.delete(speechGate);}return;
+    }
+    // This fixture intentionally models an older server: it rejects only the
+    // negotiated v2 probe, so the client must requalify voice on the v1 caps.
+    if(entry.method==='GET'&&url.pathname==='/assistant/workspace/v1/capabilities'&&entry.headers['x-photohouse-search-version']==='2'){
+      await route.fulfill({status:400,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify({error:'invalid_request',detail:'Search version is not supported on this endpoint'})});return;
     }
     if(entry.method==='POST'&&/^\/assistant\/v1\/receipts\/[^/]+\/playback$/.test(url.pathname)){playbackRequests.push(entry);const requestId=url.pathname.split('/')[4],body=JSON.parse(entry.body);await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify({version:1,request_id:requestId,playback_outcome:body.outcome})});return;}
     if(entry.method==='POST'&&url.pathname.endsWith('/outcome')){await route.fulfill({status:204,headers:{'cache-control':'no-store'},body:''});return;}
@@ -170,6 +176,10 @@ let browser,context,page;
   const privateSpeakingCapture=path.join(artifacts,'assistant-private-reply-speaking-phone-text150.png');await page.screenshot({path:privateSpeakingCapture,fullPage:false});fs.chmodSync(privateSpeakingCapture,0o600);
   await page.locator('#assistant-reply').evaluate((node,text)=>{node.textContent=text;},originalSpeakingReply);
   const privateSpeech=privateSpeechRequests[0],privateSpeechBody=JSON.parse(privateSpeech.body),privateTurn=requests.find(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(item.path));
+  const capabilityProbe=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/capabilities?')&&item.headers['x-photohouse-search-version']==='2');
+  const legacyCapabilityRetry=requests.find(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/capabilities?')&&!item.headers['x-photohouse-search-version']);
+  assert(capabilityProbe,'legacy fixture observes the explicit v2 capability probe');assert(legacyCapabilityRetry,'exact unsupported response causes a headerless v1 capability retry');
+  assert.equal(privateTurnVersions[0]?.version,1,'the legacy server fixture answers the private turn with v1');assert.equal(privateTurnVersions[0]?.searchHeader,null,'the legacy private turn is sent without a v2 search header');
   assert.deepEqual(Object.keys(privateSpeechBody).sort(),['expected_revision','library_id']);assert.equal(privateSpeech.headers['x-photohouse-parent-request-id'],privateTurn.headers['x-photohouse-request-id']);assert.notEqual(privateSpeech.headers['x-photohouse-request-id'],privateTurn.headers['x-photohouse-request-id']);
   const timing=page.locator('#assistant-voice-timing');
   assert.equal(await timing.isHidden(),true,'timing remains unavailable while confirmed playback is still running');

@@ -1,7 +1,8 @@
 """Synthetic ASGI bridge for the private assistant workspace browser test."""
 import base64
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -28,8 +29,34 @@ derived.mkdir()
 
 import prepare_access_discovery_index as producer
 from contextlib import closing
+search_fixture = os.environ.get('PH_SEARCH_FIXTURE') == '1'
+if search_fixture:
+    # Explicit synthetic identities; no face inference or household data.
+    import sqlite3
+    with closing(sqlite3.connect(fixture.path)) as db, db:
+        db.executemany('INSERT INTO persons(id,display_name,face_count) VALUES(?,?,2)',
+                       [(301, 'Sample Child / 示例儿童'), (302, 'Sample Adult / 示例成人')])
+        db.executemany('''INSERT INTO face_detections
+            (id,asset_id,person_id,bbox_x,bbox_y,bbox_w,bbox_h,label_source)
+            VALUES(?,?,?,0,0,1,1,'manual')''',
+            [(1,101,301), (2,101,302), (3,102,301), (4,102,302)])
+        db.execute("UPDATE captions SET text='海边 beach synthetic evidence',user_edited=0 WHERE id IN (101,102)")
+        db.execute('''INSERT INTO access_stories
+            (id,asset_id,library_id,author_id,revision,title,text,language,byline,created_at,updated_at,deleted)
+            VALUES(?,101,'family-a',?,1,'海边回忆','Synthetic original wording kept private','zh','',?,?,0)''',
+            ('11111111-1111-4111-8111-111111111111', fixture.member_id, fixture.now, fixture.now))
 with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) as db:
     index, _catalog = producer.derive(db, producer.library('family-a'), producer.revision('1'))
+    if search_fixture:
+        from app.access import discovery as d
+        from app.access.discovery_provider import ReviewedIndex, ReviewedPerson, ReviewedFace
+        source = d.scoped_source('family-a', lambda sql, args: db.execute(sql, args).fetchall())
+        scope = tuple(str(row[0]) for row in source['assets'])
+        search_index = ReviewedIndex('family-a', '1', scope, scope, d.digest(source),
+            people=(ReviewedPerson('family-a','301','Sample Child / 示例儿童',('示例儿童','Sample Child')),
+                    ReviewedPerson('family-a','302','Sample Adult / 示例成人',('示例成人','Sample Adult'))),
+            assignments=tuple(ReviewedFace(str(fid),str(aid),str(pid)) for fid,aid,pid in
+                [(1,101,301), (2,101,302), (3,102,301), (4,102,302)]))
 index_path = root / 'discovery-index.json'
 producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True, ensure_ascii=True,
     separators=(',', ':')).encode())
@@ -45,6 +72,16 @@ fixture.addCleanup(client.close)
 fixture.client = client
 fixture.client.headers['Sec-Fetch-Site'] = 'same-origin'
 discovery = client.app.state.discovery_runtime
+if search_fixture:
+    from app.access.discovery_provider import MemoryIndexProvider
+    from test_assistant_kinship import MutableKinshipProvider, assistant_graph
+    discovery = replace(discovery, provider=MemoryIndexProvider((search_index,)))
+    client.app.state.discovery_runtime = discovery
+    graph = assistant_graph()
+    graph['scope'] = {'account_id': fixture.member_id, 'library_id': 'family-a'}
+    kinship = MutableKinshipProvider()
+    kinship.install(graph)
+    client.app.state.assistant_kinship_provider = kinship
 
 def append_synthetic_exchange(store, account_id, thread_id, revision, question, reply):
     request_id = str(uuid.uuid4())

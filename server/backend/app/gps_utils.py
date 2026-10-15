@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import exifread
@@ -143,6 +144,71 @@ def parse_ffprobe_gps(info: dict[str, Any]) -> tuple[float, float] | None:
     return None
 
 
+_QUICKTIME_CREATIONDATE = "com.apple.quicktime.creationdate"
+_QUICKTIME_CREATIONDATE_VALUE = re.compile(
+    r"([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+    r"(?:\.([0-9]{1,6}))?(Z|[+-][0-9]{2}:?[0-9]{2})"
+)
+
+
+def _parse_quicktime_creationdate(value: Any) -> tuple[datetime, int] | None:
+    """Parse one explicit QuickTime capture timestamp without changing its wall time."""
+    if type(value) is not str or len(value) > 64 or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return None
+    match = _QUICKTIME_CREATIONDATE_VALUE.fullmatch(value)
+    if match is None:
+        return None
+    day, hour, minute, second, fraction, offset = match.groups()
+    try:
+        microsecond = int((fraction or "").ljust(6, "0"))
+        local = datetime.strptime(f"{day}T{hour}:{minute}:{second}", "%Y-%m-%dT%H:%M:%S")
+        local = local.replace(microsecond=microsecond)
+        if offset == "Z":
+            offset_minutes = 0
+        else:
+            sign = 1 if offset[0] == "+" else -1
+            digits = offset[1:].replace(":", "")
+            offset_hour, offset_minute = int(digits[:2]), int(digits[2:])
+            if offset_minute > 59 or offset_hour > 14 or (offset_hour == 14 and offset_minute != 0):
+                return None
+            offset_minutes = sign * (offset_hour * 60 + offset_minute)
+        # Keep the source's local clock/day. The database's taken_at column is
+        # naive, so the explicit offset is returned separately as diagnostics.
+        timezone(timedelta(minutes=offset_minutes))
+    except (ValueError, OverflowError):
+        return None
+    return local, offset_minutes
+
+
+def parse_ffprobe_creationdate(info: dict[str, Any]) -> tuple[datetime | None, str | None, int | None]:
+    """Return a consistent explicit QuickTime capture date, if present.
+
+    Only the exact Apple QuickTime creationdate key is accepted, from the
+    container or first video stream. Generic creation_time may describe
+    presentation/container time and is deliberately ignored.
+    """
+    candidates: list[Any] = []
+    fmt = info.get("format") or {}
+    if isinstance(fmt, dict) and isinstance(fmt.get("tags"), dict):
+        candidates.extend(value for key, value in fmt["tags"].items()
+                          if str(key).lower() == _QUICKTIME_CREATIONDATE)
+    first_video = next((stream for stream in (info.get("streams") or ())
+                        if isinstance(stream, dict) and stream.get("codec_type") == "video"), None)
+    if isinstance(first_video, dict) and isinstance(first_video.get("tags"), dict):
+        candidates.extend(value for key, value in first_video["tags"].items()
+                          if str(key).lower() == _QUICKTIME_CREATIONDATE)
+    if not candidates:
+        return None, None, None
+    parsed = [_parse_quicktime_creationdate(value) for value in candidates]
+    if any(value is None for value in parsed):
+        return None, None, None
+    first = parsed[0]
+    if any(value != first for value in parsed[1:]):
+        return None, None, None
+    local, offset_minutes = first
+    return local, "embedded_quicktime_creationdate", offset_minutes
+
+
 class VideoProbeError(ValueError):
     """A video failed the bounded metadata probe."""
 
@@ -155,11 +221,14 @@ MAX_PROBE_OUTPUT = 2 * 1024 * 1024
 
 
 def probe_video_metadata(path: str | Path, timeout_sec: int = 10, *, strict: bool = False) -> dict:
-    out: dict[str, float | None] = {
+    out: dict[str, Any] = {
         "duration_sec": None,
         "fps": None,
         "gps_lat": None,
         "gps_lon": None,
+        "taken_at": None,
+        "taken_at_source": None,
+        "taken_at_offset_minutes": None,
     }
     try:
         source = Path(path)
@@ -224,6 +293,8 @@ def probe_video_metadata(path: str | Path, timeout_sec: int = 10, *, strict: boo
     if gps is not None:
         out["gps_lat"] = gps[0]
         out["gps_lon"] = gps[1]
+    (out["taken_at"], out["taken_at_source"],
+     out["taken_at_offset_minutes"]) = parse_ffprobe_creationdate(info)
     if strict:
         _validate_video_probe(source, out, info)
     return out

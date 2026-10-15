@@ -138,6 +138,32 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertNotIn('people', body['filters'])
         self.assertEqual([item['id'] for item in body['items']], ['101'])
 
+    def test_noun_only_scene_keeps_both_people_and_date_without_relaxing_unknown_conditions(self):
+        response = self.turn('找示例儿童和示例成人在海边的照片')
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()
+        self.assertEqual(result['kind'], 'results')
+        self.assertEqual(result['filters'], {'media': ['image'], 'text': '海边',
+            'people': {'ids': ['301', '302'], 'match': 'all'}})
+        self.assertEqual([item['id'] for item in result['items']], ['103'])
+        dated = self.turn('找2032年9月示例儿童和示例成人在海边的照片').json()
+        self.assertEqual(dated['filters']['date'], {'from': '2032-09-01', 'to': '2032-09-30'})
+        self.assertEqual(dated['filters']['people'], result['filters']['people'])
+        self.assertEqual(dated['filters']['text'], '海边')
+        known = self.turn('找示例儿童在公园的照片').json()
+        self.assertEqual(known['kind'], 'results', known)
+        self.assertEqual(known['filters']['tags']['ids'], ['501'])
+        self.assertEqual(known['filters']['people']['ids'], ['301'])
+        self.assertEqual([item['id'] for item in known['items']], ['103'])
+        for words in ('找陌生人物和示例儿童在海边的照片', '找示例儿童不要在海边的照片',
+                      '找示例儿童在海边拍摄的照片', '找示例儿童2032年99月在海边的照片',
+                      '找示例儿童在未知场景的照片'):
+            with self.subTest(words=words):
+                refused = self.turn(words).json()
+                self.assertEqual(refused['kind'], 'clarification', refused)
+                self.assertIsNone(refused['context'])
+                self.assertEqual(refused['items'], [])
+
     def test_ascii_identity_boundaries_allow_chinese_suffix_without_matching_longer_name(self):
         self.assertIn('Synthetic Person 500',
                       name_hits('找Synthetic Person 500的照片', 'Synthetic Person 500'))
@@ -379,8 +405,8 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual([item['id'] for item in first['items']], ['103', '101', '422', '421', '420'])
         self.assertEqual([item['id'] for item in second['items']], ['419', '418', '417', '416', '415'])
 
-    def test_private_workspace_does_not_accept_the_new_search_contract(self):
-        for endpoint in ('capabilities', 'saved-memory-capabilities',
+    def test_unrelated_private_workspace_endpoints_do_not_accept_the_new_search_contract(self):
+        for endpoint in ('saved-memory-capabilities',
                          'saved-memory-followup-capabilities', 'saved-memory-reader-capabilities'):
             with self.subTest(endpoint=endpoint):
                 response = self.client.get('/assistant/workspace/v1/' + endpoint + '?library_id=family-a',
