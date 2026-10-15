@@ -29,6 +29,8 @@
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
   Object.assign(words.en,{assistantTitle:'PhotoHouse Memory Assistant',assistantHelp:'Search this library only. Add details to refine; matching photos are shown before you open one. After a search, ask “describe these results” for a brief overview. To request a specific item, say “open asset ID 123”. Recognized text, submitted commands, and processing status are kept for 30 days. Recordings are transient. This is separate from saved family notes.',assistantPrompt:'What would you like to find?',assistantSend:'Find',assistantClear:'Clear',assistantCancel:'Cancel request',assistantCancelled:'Request canceled.',assistantWorking:'Looking in this library…',assistantError:'The assistant could not complete that request. Try again.',assistantDenied:'Your access could not be confirmed. Sign in again or contact the library owner.',assistantConflict:'The library changed. Clear this search and try again.',assistantLimited:'Too many requests. Please wait and try again.',assistantUnavailable:'The assistant is temporarily unavailable. Please try again later.',assistantInvalid:'The reply could not be safely displayed. Please try again.',assistantNoResults:'No matching photos were found.',assistantOpen:'Open photo',assistantUnsupported:'This request is not supported yet.'});
   Object.assign(words.zh,{assistantTitle:'拾光助手',assistantHelp:'仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。搜索后，可以问“介绍这些结果”来听简要概览。需要指定项目时，可以说“打开编号 123”。识别文本、发送的命令和处理状态将保留 30 天。录音仅临时使用，与保存的家人故事分开。',assistantPrompt:'你想找什么？',assistantSend:'查找',assistantClear:'清空',assistantCancel:'取消请求',assistantCancelled:'已取消请求。',assistantWorking:'正在这个相册库中查找…',assistantError:'暂时无法完成查找，请重试。',assistantDenied:'无法确认你的访问权限，请重新登录或联系相册主人。',assistantConflict:'相册库信息已更新，请清空后重新查找。',assistantLimited:'请求过于频繁，请稍后再试。',assistantUnavailable:'助手暂时不可用，请稍后重试。',assistantInvalid:'无法安全显示这条回复，请重试。',assistantNoResults:'没有找到匹配的照片。',assistantOpen:'打开照片',assistantUnsupported:'暂不支持这个请求。'});
+  Object.assign(words.en,{assistantSearchPerspective:'Search perspective: {label}',assistantSearchPerspectiveDefault:'Search perspective: current library',assistantSearchSummaryTitle:'Search conditions',assistantSearchPeopleAny:'Any of: {labels}',assistantSearchPeopleAll:'Together in the photo: {labels}',assistantSearchText:'Text: {text}',assistantSearchDate:'Capture date: {range}',assistantSearchMedia:'Media: {media}',assistantSearchTags:'Tags: {labels}',assistantSearchLocations:'Places: {labels}',assistantReasonMemory:'Saved photo memory match',assistantReasonEdited:'Edited caption match',assistantReasonGenerated:'AI-generated caption match',assistantReasonPerson:'Person: {label}',assistantReasonDate:'Capture date match: {date}'});
+  Object.assign(words.zh,{assistantSearchPerspective:'检索视角：{label}',assistantSearchPerspectiveDefault:'检索视角：当前相册库',assistantSearchSummaryTitle:'检索条件',assistantSearchPeopleAny:'任一人物：{labels}',assistantSearchPeopleAll:'同时出现：{labels}',assistantSearchText:'文字内容：{text}',assistantSearchDate:'拍摄日期：{range}',assistantSearchMedia:'媒体类型：{media}',assistantSearchTags:'标签：{labels}',assistantSearchLocations:'地点：{labels}',assistantReasonMemory:'匹配已保存的照片回忆',assistantReasonEdited:'匹配已编辑的照片说明',assistantReasonGenerated:'匹配 AI 生成的照片说明',assistantReasonPerson:'人物：{label}',assistantReasonDate:'拍摄日期匹配：{date}'});
   Object.assign(words.en,{assistantMic:'Hold to talk',assistantStop:'Stop recording',assistantRecordingCancel:'Cancel recording',assistantCaptureStarting:'Opening the microphone…',assistantCaptureNotStarted:'Recording has not started. Hold to talk again.',assistantRecording:'Recording. Up to 30 seconds.',assistantCaptureError:'The microphone could not be started. Check permission and try again.',assistantTranscribing:'Transcribing your recording…',assistantTranscriptTitle:'Review the transcript before using it',assistantTranscriptLanguage:'Detected language',assistantLangZh:'Chinese',assistantLangEn:'English',assistantLangMixed:'Chinese and English',assistantLangUnknown:'Unknown',assistantTranscriptReady:'Transcript ready. Review it, then choose Use transcript.',assistantTranscriptError:'Transcription failed. Try again.',assistantTranscriptTooLong:'The transcript and your typed text exceed 1,024 UTF-8 bytes. Edit either field; nothing was removed.',assistantUseTranscript:'Use transcript',assistantDiscardTranscript:'Discard transcript',assistantTextTooLong:'Keep the request under 1,024 UTF-8 bytes.'});
   Object.assign(words.zh,{assistantMic:'按住说话',assistantStop:'结束录音',assistantRecordingCancel:'取消录音',assistantCaptureStarting:'正在打开麦克风…',assistantCaptureNotStarted:'录音尚未开始，请再次按住说话。',assistantRecording:'正在录音，最长 30 秒。',assistantCaptureError:'无法启动麦克风，请检查权限后重试。',assistantTranscribing:'正在识别录音…',assistantTranscriptTitle:'请先检查识别文本，再使用',assistantTranscriptLanguage:'识别语言',assistantLangZh:'中文',assistantLangEn:'英文',assistantLangMixed:'中英混合',assistantLangUnknown:'无法判断',assistantTranscriptReady:'识别完成。请检查文本，再选择放入搜索框。',assistantTranscriptError:'语音识别失败，请重试。',assistantTranscriptTooLong:'识别文本与已输入内容合计超过 1,024 个 UTF-8 字节。请编辑任一文本；内容均未删除。',assistantUseTranscript:'放入搜索框',assistantDiscardTranscript:'丢弃识别文本',assistantTextTooLong:'请输入不超过 1,024 个 UTF-8 字节的内容。'});
   Object.assign(words.en,{assistantVoiceStart:'Start voice search',assistantVoicePause:'Pause',assistantVoiceResume:'Resume',assistantVoiceEnd:'End voice search',assistantVoiceReady:'Voice search is off. Start to allow continuous listening while this page stays open.',assistantVoiceListening:'Listening. Pause or end voice search at any time.',assistantVoiceTranscribing:'Recognizing your request…',assistantVoiceWorking:'Searching this library…',assistantVoiceSpeaking:'Speaking the results…',assistantVoiceReview:'Paused. Read the reply, then resume when ready.',assistantVoiceError:'Voice search paused. Read the message and resume when ready.',assistantVoiceNoSpeech:'No speech was detected. Voice search paused.',assistantVoiceTooShort:'That utterance was too short. Voice search paused.',assistantVoiceLimit:'The 30-second recording limit was reached. Voice search paused.',assistantVoiceScope:'Voice search ended because this page context changed.'});
@@ -516,12 +518,13 @@
         const error=new Error('Request failed');error.status=response.status;
         // Keep only the one public recovery discriminator needed by the chat
         // UI. Error bodies may contain private details, so never expose them.
-        if([422,429,502,503,504].includes(response.status)&&response.body){
+        const unsupportedSearchCapability=response.status===400&&/^\/assistant\/workspace\/v1\/capabilities\?/.test(path)&&extraHeaders?.['X-PhotoHouse-Search-Version']==='2';
+        if(([422,429,502,503,504].includes(response.status)||unsupportedSearchCapability)&&response.body){
           const contentType=response.headers.get('content-type')||'';
           const reader=response.body.getReader(),parts=[];let size=0;
           try{
             while(true){const part=await reader.read();if(stale(epoch)){part.value?.fill?.(0);throw new DOMException('Stale request','AbortError');}if(part.done)break;size+=part.value.byteLength;if(size>4096){part.value.fill(0);for(const chunk of parts)chunk.fill(0);parts.length=0;break;}parts.push(part.value);}
-            if(size<=4096&&/^application\/json(?:\s*;|$)/i.test(contentType)){const bytes=new Uint8Array(size);try{let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}const payload=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(payload&&typeof payload==='object'&&!Array.isArray(payload)&&typeof payload.detail==='string'&&payload.detail.trim()){const keys=Object.keys(payload).sort().join(',');if(keys==='code,detail'&&response.status===429&&payload.code==='memory_conversation_full')error.code='memory_conversation_full';if(keys==='detail,error'&&assistantAsrErrorStatuses[payload.error]===response.status)error.code=payload.error;}}finally{bytes.fill(0);}}
+            if(size<=4096&&/^application\/json(?:\s*;|$)/i.test(contentType)){const bytes=new Uint8Array(size);try{let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}const payload=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(payload&&typeof payload==='object'&&!Array.isArray(payload)&&typeof payload.detail==='string'&&payload.detail.trim()){const keys=Object.keys(payload).sort().join(',');if(keys==='code,detail'&&response.status===429&&payload.code==='memory_conversation_full')error.code='memory_conversation_full';if(keys==='detail,error'&&assistantAsrErrorStatuses[payload.error]===response.status)error.code=payload.error;if(keys==='detail,error'&&unsupportedSearchCapability&&payload.error==='invalid_request'&&payload.detail==='Search version is not supported on this endpoint')error.code='search_version_unsupported';}}finally{bytes.fill(0);}}
           }catch(parseError){if(parseError?.name==='AbortError')throw parseError;}
           finally{for(const part of parts)part.fill(0);try{await reader.cancel();}catch(_){}}
           if(stale(epoch))throw new DOMException('Stale request','AbortError');
@@ -554,7 +557,7 @@
     assistantState.context=null;assistantState.binding=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.pendingTurn=null;assistantState.turnAttempt=null;assistantState.controller=null;assistantState.busy=false;
     assistantState.transcriptionAttempt=null;assistantState.transcriptionController=null;assistantState.transcriptRequestId=null;assistantState.pendingTranscriptRequestId=null;assistantState.transcriptReviewBinding=null;assistantState.transcriptReviewPending=false;assistantState.transcriptLanguage=null;assistantState.turnRequestId=null;assistantState.turnReceipt=null;assistantState.receipt=null;
     if($('assistant-receipt')){$('assistant-receipt').hidden=true;$('assistant-pending-turn').hidden=true;$('assistant-generic-receipt').hidden=false;$('assistant-pending-status').textContent='';$('assistant-pending-question').textContent='';$('assistant-pending-help').textContent='';$('assistant-receipt-status').textContent='';$('assistant-receipt-id').value='';$('assistant-receipt-check').disabled=false;$('assistant-pending-check').disabled=false;}
-    if($('assistant-results'))$('assistant-results').replaceChildren();
+    if($('assistant-results'))$('assistant-results').replaceChildren();clearAssistantSearchSummary();
     if($('assistant-reply'))$('assistant-reply').textContent='';
     renderAssistantTrail();
     if($('assistant-status'))$('assistant-status').textContent='';
@@ -609,7 +612,7 @@
     const receipt={id:saved.request_id,operation:'turn',tracking:'unknown',status:null,binding,recovered:true,recoveryCleared:false};
     assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.turnRequestId=null;assistantState.transcriptRequestId=null;
     assistantState.binding=binding;assistantState.receipt=receipt;assistantState.turnReceipt=null;
-    $('assistant-results').replaceChildren();$('assistant-reply').textContent='';renderAssistantTrail();
+    $('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();renderAssistantTrail();
     showAssistantReceipt(receipt,'assistantRecoveryOffer');
     $('assistant-panel').open=true;if(reveal)$('assistant-panel').scrollIntoView({block:'start'});
     if(reveal)$('assistant-receipt-check').focus({preventScroll:true});syncAssistantControls();
@@ -1271,9 +1274,33 @@
     }
   }
 
+  function clearAssistantSearchSummary(){const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;}
+  function assistantSearchLines(turn){
+    if(turn?.version!==2||!turn.interpretation||!turn.filters)return [];
+    const lines=[],labels=rows=>rows.map(row=>row.label).join('、');
+    const fill=(key,values)=>Object.entries(values).reduce((text,[name,value])=>text.replace(`{${name}}`,value),t(key));
+    if(turn.filters.people?.ids?.length){const key=turn.filters.people.match==='all'?'assistantSearchPeopleAll':'assistantSearchPeopleAny';lines.push(fill(key,{labels:labels(turn.interpretation.people)}));}
+    if(turn.filters.text||turn.filters.caption)lines.push(fill('assistantSearchText',{text:turn.filters.text||turn.filters.caption}));
+    if(turn.filters.date){const from=turn.filters.date.from||'…',to=turn.filters.date.to||'…';lines.push(fill('assistantSearchDate',{range:from===to?from:`${from} – ${to}`}));}
+    if(turn.filters.media?.length){const names=turn.filters.media.map(kind=>t(kind==='image'?'photo':kind==='video'?'video':'other')).join('、');lines.push(fill('assistantSearchMedia',{media:names}));}
+    if(turn.filters.tags?.ids?.length)lines.push(fill('assistantSearchTags',{labels:labels(turn.interpretation.tags)}));
+    if(turn.filters.locations?.length)lines.push(fill('assistantSearchLocations',{labels:labels(turn.interpretation.locations)}));
+    if(turn.interpretation.perspective?.label)lines.push(fill('assistantSearchPerspective',{label:turn.interpretation.perspective.label}));
+    return lines;
+  }
+  function assistantMatchReason(reason,turn){
+    if(reason.source==='photo_memory')return t('assistantReasonMemory');
+    if(reason.source==='edited_caption')return t('assistantReasonEdited');
+    if(reason.source==='generated_caption')return t('assistantReasonGenerated');
+    if(reason.source==='reviewed_person'){const person=turn.interpretation?.people.find(row=>row.id===reason.source_id);return person?t('assistantReasonPerson').replace('{label}',person.label):'';}
+    if(reason.source==='capture_date')return t('assistantReasonDate').replace('{date}',reason.value);
+    return '';
+  }
   function renderAssistantTurn(turn,epoch) {
     stopAssistantSpeech();
     const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;assistantState.items=turn.items;
+    const summary=$('assistant-search-summary'),summaryItems=$('assistant-search-summary-items');
+    if(summary&&summaryItems){summaryItems.replaceChildren();for(const line of assistantSearchLines(turn)){const item=document.createElement('li');item.textContent=line;summaryItems.append(item);}summary.hidden=summaryItems.childElementCount===0;}
     $('assistant-reply').textContent=turn.reply;
     const privateSpeech=privateAssistant?.state(),privateReplyReady=assistantState.speech&&privateSpeech?.speechReady===true;
     const privateSpeechEnabled=privateSpeech?.capabilities?.reply_speech===true;
@@ -1337,6 +1364,7 @@
       image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});card.append(image);
       const title=document.createElement('p');title.textContent=assetLabel(item);card.append(title);
       if(item.match&&typeof item.match.excerpt==='string'){const excerpt=document.createElement('p');excerpt.className='fine';excerpt.textContent=item.match.excerpt.slice(0,1200);card.append(excerpt);}
+      if(Array.isArray(item.match_reasons)&&item.match_reasons.length){const reasons=document.createElement('ul');reasons.className='assistant-match-reasons';for(const reason of item.match_reasons){const label=assistantMatchReason(reason,turn);if(label){const entry=document.createElement('li');entry.textContent=label;reasons.append(entry);}}if(reasons.childElementCount)card.append(reasons);}
       const button=document.createElement('button');button.type='button';button.className='quiet';button.textContent=t('assistantOpen');button.addEventListener('click',()=>{if(stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;reportAssistantOutcome(assistantState.turnReceipt,'open_requested');void openAsset(item,{sequence:assistantState.items,origin:'assistant'});});card.append(button);root.append(card);
     }
     if(turn.kind==='results'&&turn.items.length){const button=storyButton('storyWorkspaceResults',()=>{if(!stale(epoch)&&!state.locked){closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});storyWorkspace.fromResults(turn.items);}});button.id='assistant-shape-story';button.classList.add('assistant-story-action');root.append(button);}
@@ -1366,7 +1394,7 @@
       const sameTrailScope=assistantState.binding?.account===binding.account&&assistantState.binding?.library===binding.library;
       assistantState.context=null;assistantState.items=[];
       if(!sameTrailScope){assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;}
-      assistantState.binding=binding;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';renderAssistantTrail();
+      assistantState.binding=binding;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();renderAssistantTrail();
     }
     const requestId=assistantRequestId(),receipt={id:requestId,operation:'turn',tracking:'unknown',status:null,binding};
     writeAssistantRecoveryPointer(requestId,binding);
@@ -1375,7 +1403,7 @@
     const pending=Object.freeze({text,context,parentRequestId:assistantState.transcriptRequestId,requestId,binding,receipt});
     const attempt={pending,controller:new AbortController()};
     assistantState.pendingTurn=pending;assistantState.receipt=receipt;assistantState.turnReceipt=receipt;assistantState.turnRequestId=null;
-    assistantState.items=[];$('assistant-results').replaceChildren();$('assistant-reply').textContent='';
+    assistantState.items=[];$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();
     assistantState.turnAttempt=attempt;assistantState.controller=attempt.controller;assistantState.busy=true;$('assistant-speech').hidden=true;$('assistant-status').textContent=t('assistantWorking');
     showAssistantReceipt(receipt,'assistantReceiptUnknown');syncAssistantControls();
     const parentRequestId=pending.parentRequestId,extraHeaders={'X-PhotoHouse-Request-Id':requestId};if(parentRequestId)extraHeaders['X-PhotoHouse-Parent-Request-Id']=parentRequestId;
@@ -1410,6 +1438,8 @@
 
   function renderPrivateAssistant(snapshot){
     if(!$('assistant-private'))return;
+    const searchPerspective=$('assistant-search-perspective'),perspective=snapshot.capabilities?.search?.perspective;
+    if(searchPerspective){searchPerspective.hidden=snapshot.capabilities?.search?.version!==2;searchPerspective.textContent=searchPerspective.hidden?'':perspective?.label?t('assistantSearchPerspective').replace('{label}',perspective.label):t('assistantSearchPerspectiveDefault');}
     if(assistantMemoryActionTarget&&snapshot.currentResult!==assistantMemoryActionTarget.turn){
       const oldTarget=$('assistant-results')?.querySelector('.assistant-memory-card--action-target');
       oldTarget?.classList.remove('assistant-memory-card--action-target');oldTarget?.removeAttribute('aria-current');assistantMemoryActionTarget=null;
@@ -1609,7 +1639,7 @@
       const detail=await privateAssistant.read(id);
       stopAssistantSpeech();assistantState.context=null;assistantState.items=[];
       assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
-      renderAssistantTrail();$('assistant-results').replaceChildren();$('assistant-reply').textContent='';
+      renderAssistantTrail();$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();
       $('assistant-private-older').hidden=!detail.has_older_exchanges||privateAssistant.state().capabilities?.history_paging===true;
       $('assistant-text').value=privateAssistant.state().draft;
       if(detail.current_result)showPrivateAssistantResult({status:'completed',result:detail.current_result,recovered:true},'',{historical:true});
@@ -3556,7 +3586,7 @@
   const privateManagementRequired=()=>{const snapshot=privateAssistant?.state();return !snapshot?.activeThread||!!snapshot.pendingTurn||!!snapshot.pendingCreation||!!privateCreationRetryId||!$('assistant-private-delete-confirm').hidden||!$('assistant-private-abandon-confirm').hidden;};
   $('assistant-private-management-toggle').addEventListener('click',event=>{if(privateManagementRequired())event.preventDefault();});
   privateManagement.addEventListener('toggle',()=>{const snapshot=privateAssistant?.state();if(privateManagementRequired()&&!privateManagement.open)privateManagement.open=true;syncPrivateManagement(snapshot);});
-  const clearPrivateView=()=>{stopAssistantSpeech();assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.pendingTurn=null;assistantState.turnReceipt=null;assistantState.turnRequestId=null;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';$('assistant-receipt').hidden=true;$('assistant-private-older').hidden=true;$('assistant-private-delete-confirm').hidden=true;renderAssistantTrail();syncAssistantControls();};
+  const clearPrivateView=()=>{stopAssistantSpeech();assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.pendingTurn=null;assistantState.turnReceipt=null;assistantState.turnRequestId=null;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();$('assistant-receipt').hidden=true;$('assistant-private-older').hidden=true;$('assistant-private-delete-confirm').hidden=true;renderAssistantTrail();syncAssistantControls();};
   const newPrivateConversation=()=>privateAssistantAction(async()=>{await privateAssistant.create();clearPrivateView();$('assistant-text').value=privateAssistant.state().draft;await privateAssistant.list();});
   $('assistant-private-new').addEventListener('click',()=>void newPrivateConversation());
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));

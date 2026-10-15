@@ -16829,6 +16829,112 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "private-workspace-and-web-search-v2-interpretation-recovery",
+      "source_commit": "3594fc0c43acf9492d86e86f40d8986eaaa2b0e5",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "667f0f352b6a2eebd128048e0c6c68113229706833a5336d53df2253f47de919",
+          "sha256": "93ace8ac43d41a9957fbf9d5e380c1aa472e16032fdf2d08ad27dea12de83508"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "3eb94756591be96abcf2be6c08bc7791abf477c6babfb746575c5defe43c3226",
+          "sha256": "e454d36acfe32497b9c7b506c149d1aca1097ac7b0ffa4de78768351db16f974"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "85e51f6d26557938783970e72a566a6f97138dd4d1fcf6b239402d6f84b8150d",
+          "sha256": "ee1bc5915e086311ce6fdc9940dad795428a428c5d70bb4d9e37076315fcf13c"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "3c9f2f1adede26a198dfc4b1301429109b81ee3d79745155c52c456379e9cd71",
+          "sha256": "03232c88ca66d3684710ce73ab5e990bd3dd669395ac99df3e9ac750dc816825"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "12218847e0aeb863b0451622f2a666d8fdaab189b04e51f0af395aaa1ef9f421",
+          "sha256": "2773b239a45b179971aff534aa70c7963d79fe85132823a5f6245bfa56260307"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "aa989677da69a2d51fbff64305ef4304ddd886b5aa7f7f10ef3ababa754be50d",
+          "sha256": "e01e8ce253cbbab1ce1791330a3002c9f49912ad935caab1c2b72c769a78d93e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "1269bdee0818cc435412838df58cc53464b3188e5528d80b764203cb09359f93",
+          "sha256": "2424d2ba2fb08ca00f0b8ab14965fc79161ee1c79379cc193f91d2ff3976f178"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "2bf3b7507d80607b6f93eb3ce519f607057adfe75023740e3e5f5cf26f50e0b2",
+          "sha256": "4203dff51c13d3d305cc24c99f383668a9581db8302b56cf5451f64db7caaadd"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "dff10872f0861be176be08c16744e9a1873eae06730c25794b597ae494de6ad6",
+          "sha256": "e63eb580e496583e1447dc7fe461bfe6d5ce2ee5848c62707d2934d3285d3b2e"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "34a0bd17f66e5e7c2b46ca6072ca3816941e499d49afbb387d574224474d48a9",
+          "sha256": "9b924b4807d3ef16ca088af5247126b4eb5a22bfd762dad8e35a56769c275d75"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "8225d0975350b6253a48bb8f394530db7f73d3c6d3718b794f73b150e79c2c63",
+          "sha256": "01cc522f1d38990b4900399be26af40ca78f0281104641232f514555c64961e3"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7538351b0408c9f6a3359acc08a7e4c6ca90d7876764a9a1d06bb01f0aaec8a3",
+          "sha256": "8218ef3ef63741c14e946b607a0be440051098925f5d6a609667266731e28092"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "bbd0afb570b9ca8ac775b72ead1d60cc6fdb7fcfa65d96a0bcfe9b965ec5e4d9",
+          "sha256": "dca56a37bb59eb9980fa6d86b5e206fa9346689d9dcade082c9e08e9a726c900"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "ad85762378907b455e11e9cf24b5b7de52310b01197c952d2a5f325203552563",
+          "sha256": "b0422235cfb95f37f02586a85f88e7524652db400e937f1cd1e1474260a2ba20"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": null,
+          "sha256": "2b43f380c20314d11503961217880ecc55b0c5fe3074343d2292544cb20b5969"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_reply_speech.py",
+          "before_sha256": "defeaa597ab2fb5ae3fa0b65df7976a46180bf524f39b745b797b22f781b9d3c",
+          "sha256": "f10333633af243b85136497ccaef32768470043ee2fa30caa6f7357e95760954"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "40ff4719739d432752b1e4cdafa5318ec99ad80bee34ab4819fb587c69808cb9",
+          "sha256": "f854af609ec486a67c4ea18f9d61fa07e4efdef87fe3c2a0a4ffec33547b1e8e"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "before_sha256": "4c9b031c7427941b803ab87b6882ffdb395e50a52b3e4a5ca22d24aa837ad8fc",
+          "sha256": "8a97597334237fa9ac5604ba628a3610d6f13c95ec529a01424662ae097b9b2d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "28df77bb8d819bc284a6a5f1750fb1e1bb76d20d9b82e8e4456fb3f732076ce4",
+          "sha256": "8ef212b5722b1419a93f103c3cca141f92731b216bb4f1c6355edff34382779f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "persisted_json_extended": true,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

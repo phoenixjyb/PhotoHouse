@@ -10,7 +10,7 @@
   const CANONICAL_MEMORY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   const PREFS = Object.freeze({locale:[null,'zh','en'], reply_length:[null,'brief','standard'], voice_pace:[null,'slow','normal']});
   const CARD_TYPES = new Set(['media','album','story','memoir','timeline','unavailable']);
-  const SAFE_CODES = new Set(['unavailable','invalid_response','conflict','request_failed','aborted','scope_changed','closed','invalid_input']);
+  const SAFE_CODES = new Set(['unavailable','invalid_response','conflict','request_failed','aborted','scope_changed','closed','invalid_input','search_version_unsupported']);
   const STORE_ERRORS = new Set(['assistant_unavailable','context_changed','request_cancelled','access_denied','invalid_request','storage_unavailable','turn_interrupted']);
   const MAX_ASSET_ID = 9223372036854775807n;
   const MAX_MEMORY_REVISION = 9223372036854775806n;
@@ -97,11 +97,18 @@
     return Object.freeze({exchange_id:row.exchange_id,revision:row.revision,created_at:row.created_at,expires_at:row.expires_at,input_text:row.input_text,reply:row.reply,cards:Object.freeze(cards),receipt_count:row.receipt_count,...(row.request_id?{request_id:row.request_id}:{})});
   }
   function validateCapabilities(v) {
-    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech'])||v.version!==1||
+    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech','search'])||v.version!==1||
       ['available','threads','preferences','preferences_applied','server_owned_turns'].some(k=>typeof v[k]!=='boolean')||
       ['thread_labels','history_paging','reply_speech'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
       (Object.hasOwn(v,'applied_preferences')&&(!Array.isArray(v.applied_preferences)||v.applied_preferences.some(x=>x!=='locale')||new Set(v.applied_preferences).size!==v.applied_preferences.length)))fail('invalid_response');
-    return Object.freeze({...v,thread_labels:v.thread_labels===true,history_paging:v.history_paging===true,reply_speech:v.reply_speech===true,
+    let search=null;
+    if(Object.hasOwn(v,'search')){
+      const raw=v.search;
+      if(!exactKeys(raw,['version','date_basis','perspective'])||raw.version!==2||raw.date_basis!=='capture'||
+        !(raw.perspective===null||(isObject(raw.perspective)&&exactKeys(raw.perspective,['label'])&&validInterpretationLabel(raw.perspective.label))))fail('invalid_response');
+      search=Object.freeze({version:2,date_basis:'capture',perspective:raw.perspective===null?null:Object.freeze({label:raw.perspective.label})});
+    }
+    return Object.freeze({...v,thread_labels:v.thread_labels===true,history_paging:v.history_paging===true,reply_speech:v.reply_speech===true,search,
       ...(v.applied_preferences?{applied_preferences:Object.freeze([...v.applied_preferences])}:{})});
   }
   function validateSavedMemoryFollowupCapabilities(v) {
@@ -115,8 +122,10 @@
     return Object.freeze({locale:v.locale,reply_length:v.reply_length,voice_pace:v.voice_pace,revision:v.revision});
   }
   function assetId(value) { return typeof value==='string'&&/^[1-9][0-9]{0,18}$/.test(value)&&BigInt(value)<=MAX_ASSET_ID; }
-  function validateFilters(value) {
-    if(!isObject(value)||Object.keys(value).some(k=>!['people','date','caption','tags','locations','media'].includes(k)))fail('invalid_response');
+  function safeDisplayText(value,maxBytes) { return typeof value==='string'&&!!value.trim()&&byteLength(value)<=maxBytes&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value); }
+  function validInterpretationLabel(value) { return safeDisplayText(value,512); }
+  function validateFilters(value,searchVersion=1) {
+    if(!isObject(value)||Object.keys(value).some(k=>!['people','date','caption','tags','locations','media',...(searchVersion===2?['text']:[])].includes(k)))fail('invalid_response');
     const idsOk=ids=>Array.isArray(ids)&&ids.length>0&&ids.length<=20&&new Set(ids).size===ids.length&&ids.every(assetId);
     if(Object.hasOwn(value,'people')||Object.hasOwn(value,'tags'))for(const key of ['people','tags'])if(Object.hasOwn(value,key)){
       const item=value[key];if(!exactKeys(item,['ids','match'])||!idsOk(item.ids)||!['any','all'].includes(item.match))fail('invalid_response');
@@ -125,25 +134,43 @@
     if(Object.hasOwn(value,'media')){const vals=value.media;if(!Array.isArray(vals)||vals.length<1||vals.length>3||new Set(vals).size!==vals.length||vals.some(x=>!['image','video','other'].includes(x)))fail('invalid_response');}
     if(Object.hasOwn(value,'date')){const d=value.date;if(!exactKeys(d,['from','to'])||!(d.from===null||validDay(d.from))||!(d.to===null||validDay(d.to))||(d.from===null&&d.to===null)||(d.from&&d.to&&d.from>d.to))fail('invalid_response');}
     if(Object.hasOwn(value,'caption')&&(typeof value.caption!=='string'||!value.caption.trim()||byteLength(value.caption)>512||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value.caption)))fail('invalid_response');
+    if(Object.hasOwn(value,'text')&&!safeDisplayText(value.text,512))fail('invalid_response');
     return Object.freeze({...value});
   }
   function validDay(value) { if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const d=new Date(`${value}T00:00:00Z`);return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value; }
   function canonical(value) { if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;if(isObject(value))return `{${Object.keys(value).sort().map(k=>`${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;return JSON.stringify(value); }
-  function validateContext(value, library) {
+  function validateContext(value, library, searchVersion=1) {
     if(value===null)return null;
-    if(!exactKeys(value,['library_id','binding','fingerprint','filters','visible_ids','total'])||value.library_id!==library||!/^([0-9a-f]{64})$/.test(value.binding)||!/^([0-9a-f]{64})$/.test(value.fingerprint)||!Array.isArray(value.visible_ids)||value.visible_ids.length>20||
+    const v2=value.search_version===2;
+    if(!exactKeys(value,['library_id','binding','fingerprint','filters','visible_ids','total'],['search_version'])||value.library_id!==library||!/^([0-9a-f]{64})$/.test(value.binding)||!/^([0-9a-f]{64})$/.test(value.fingerprint)||!Array.isArray(value.visible_ids)||value.visible_ids.length>20||
       new Set(value.visible_ids).size!==value.visible_ids.length||!value.visible_ids.every(assetId)||!safeInt(value.total)||value.total>100000||value.visible_ids.length!==Math.min(20,value.total)||!isObject(value.filters))fail('invalid_response');
-    return Object.freeze({library_id:value.library_id,binding:value.binding,fingerprint:value.fingerprint,filters:validateFilters(value.filters),visible_ids:Object.freeze([...value.visible_ids]),total:value.total});
+    if(Object.hasOwn(value,'search_version')&&value.search_version!==2)fail('invalid_response');
+    if(Object.hasOwn(value.filters,'text')&&!v2)fail('invalid_response');
+    return Object.freeze({library_id:value.library_id,binding:value.binding,fingerprint:value.fingerprint,filters:validateFilters(value.filters,v2?2:searchVersion),visible_ids:Object.freeze([...value.visible_ids]),total:value.total,...(v2?{search_version:2}:{})});
   }
-  function validateItem(item, library) {
-    if(!exactKeys(item,['id','kind','width','height','duration_sec','taken_at','thumbnail_url'])||!assetId(item.id)||!['image','video','other'].includes(item.kind)||
+  function validateMatchReason(reason) {
+    if(!isObject(reason)||typeof reason.source!=='string')fail('invalid_response');
+    if(reason.source==='photo_memory'){
+      if(!exactKeys(reason,['source','source_id','revision'])||!safeDisplayText(reason.source_id,128)||!Number.isSafeInteger(reason.revision)||reason.revision<1)fail('invalid_response');
+    }else if(reason.source==='edited_caption'||reason.source==='generated_caption'){
+      if(!exactKeys(reason,['source','source_id','revision'])||!assetId(reason.source_id)||!/^([0-9a-f]{64})$/.test(reason.revision))fail('invalid_response');
+    }else if(reason.source==='reviewed_person'){
+      if(!exactKeys(reason,['source','source_id'])||!assetId(reason.source_id))fail('invalid_response');
+    }else if(reason.source==='capture_date'){
+      if(!exactKeys(reason,['source','value'])||!validDay(reason.value))fail('invalid_response');
+    }else fail('invalid_response');
+    return Object.freeze({...reason});
+  }
+  function validateItem(item, library, searchVersion=1) {
+    if(!exactKeys(item,['id','kind','width','height','duration_sec','taken_at','thumbnail_url'],searchVersion===2?['match_reasons']:[])||!assetId(item.id)||!['image','video','other'].includes(item.kind)||
       ![item.width,item.height].every(x=>x===null||(Number.isSafeInteger(x)&&x>=1&&x<=1000000))||
       !(item.duration_sec===null||(typeof item.duration_sec==='number'&&Number.isFinite(item.duration_sec)&&item.duration_sec>=0&&item.duration_sec<=1e9))||
       !(item.taken_at===null||(typeof item.taken_at==='string'&&byteLength(item.taken_at)<=64&&!/[\u0000-\u001f\u007f]/.test(item.taken_at)))||typeof item.thumbnail_url!=='string')fail('invalid_response');
     if(!item.thumbnail_url.startsWith('/')||item.thumbnail_url.startsWith('//')||item.thumbnail_url.includes('\\'))fail('invalid_response');
     let parsed;try{parsed=new URL(item.thumbnail_url,'https://photohouse.invalid/');}catch(_){fail('invalid_response');}
     if(parsed.origin!=='https://photohouse.invalid'||parsed.pathname!==`/assets/${item.id}/thumbnail`||parsed.hash||parsed.searchParams.getAll('library').length!==1||parsed.searchParams.get('library')!==library||[...parsed.searchParams.keys()].some(k=>k!=='library'))fail('invalid_response');
-    return Object.freeze({...item});
+    if(Object.hasOwn(item,'match_reasons')&&(!Array.isArray(item.match_reasons)||item.match_reasons.length>64))fail('invalid_response');
+    return Object.freeze({...item,...(Object.hasOwn(item,'match_reasons')?{match_reasons:Object.freeze(item.match_reasons.map(validateMatchReason))}:{})});
   }
   function validMemoryText(value,maxPoints,maxBytes,{allowNewlines=false}={}) {
     if(typeof value!=='string'||!value.trim()||[...value].length>maxPoints||byteLength(value)>maxBytes)return false;
@@ -202,29 +229,48 @@
     return Object.freeze({...v,context:Object.freeze({kind:'saved_memory',library_id:library,source_revision:v.context.source_revision,references:Object.freeze(references)}),
       filters:null,items:Object.freeze([]),effect:null,memory_cards:Object.freeze(cards),...(memoryAction?{memory_action:memoryAction}:{})});
   }
-  function validateResult(v, library, recovered=false, allowMemory=false, allowMemoryActions=false) {
+  function validateInterpretation(value,filters) {
+    if(!exactKeys(value,['date_basis','people','tags','locations','perspective'])||value.date_basis!=='capture'||
+      !Array.isArray(value.people)||!Array.isArray(value.tags)||!Array.isArray(value.locations)||
+      !(value.perspective===null||(isObject(value.perspective)&&exactKeys(value.perspective,['label'])&&validInterpretationLabel(value.perspective.label))))fail('invalid_response');
+    const labels=(rows,key)=>{
+      if(rows.length>20)fail('invalid_response');
+      return Object.freeze(rows.map(row=>{if(!exactKeys(row,['id','label'])||!assetId(row.id)||!validInterpretationLabel(row.label))fail('invalid_response');return Object.freeze({id:row.id,label:row.label});}));
+    };
+    const people=labels(value.people,'people'),tags=labels(value.tags,'tags'),locations=labels(value.locations,'locations');
+    const selectedPeople=filters.people?.ids||[],selectedTags=filters.tags?.ids||[],selectedLocations=filters.locations||[];
+    const ids=rows=>rows.map(row=>row.id);
+    if(canonical(ids(people))!==canonical(selectedPeople)||canonical(ids(tags))!==canonical(selectedTags)||canonical(ids(locations))!==canonical(selectedLocations))fail('invalid_response');
+    return Object.freeze({date_basis:'capture',people,tags,locations,perspective:value.perspective===null?null:Object.freeze({label:value.perspective.label})});
+  }
+  function validateResult(v, library, recovered=false, allowMemory=false, allowMemoryActions=false, searchVersion=1) {
     if(isObject(v)&&(v.kind==='memory_cards'||Object.hasOwn(v,'memory_cards'))){
       if(!allowMemory||recovered)fail('invalid_response');
       return validateSavedMemoryResult(v,library,allowMemoryActions);
     }
-    if(!exactKeys(v,['version','kind','reply','context','filters','items','total','has_more','effect'])||v.version!==1||!['results','open','clarification','unsupported'].includes(v.kind)||typeof v.reply!=='string'||v.reply.length>4000||byteLength(v.reply)>8192||
+    const v2=v?.version===2;
+    if(searchVersion===1&&v2)fail('invalid_response');
+    if(searchVersion===2&&!v2&&!recovered)fail('invalid_response');
+    if(!exactKeys(v,['version','kind','reply','context','filters','items','total','has_more','effect'],v2?['interpretation']:[])||(!v2&&v.version!==1)||!['results','open','clarification','unsupported'].includes(v.kind)||typeof v.reply!=='string'||v.reply.length>4000||byteLength(v.reply)>8192||
       !Array.isArray(v.items)||v.items.length>20||!safeInt(v.total)||v.total>100000||typeof v.has_more!=='boolean') fail('invalid_response');
-    const context=validateContext(v.context,library),filters=v.filters===null?null:validateFilters(v.filters),items=v.items.map(item=>validateItem(item,library));
+    if(v2&&!Object.hasOwn(v,'interpretation'))fail('invalid_response');
+    const context=validateContext(v.context,library,v2?2:1),filters=v.filters===null?null:validateFilters(v.filters,v2?2:1),items=v.items.map(item=>validateItem(item,library,v2?2:1));
     if(context===null){if(items.length!==0||v.total!==0||filters!==null||v.has_more||v.effect!==null)fail('invalid_response');}
-    else if(context.library_id!==library||canonical(filters)!==canonical(context.filters)||v.total!==context.total||items.length!==context.visible_ids.length||items.some((item,i)=>item.id!==context.visible_ids[i])||v.has_more!==(context.total>context.visible_ids.length))fail('invalid_response');
+    else if(context.library_id!==library||canonical(filters)!==canonical(context.filters)||v.total!==context.total||items.length!==context.visible_ids.length||items.some((item,i)=>item.id!==context.visible_ids[i])||v.has_more!==(context.total>context.visible_ids.length)||v2&&context.search_version!==2||!v2&&context.search_version===2)fail('invalid_response');
+    const interpretation=v2&&Object.hasOwn(v,'interpretation')?validateInterpretation(v.interpretation,filters||{}):undefined;
     if(v.effect!==null&&(!exactKeys(v.effect,['type','asset_id'])||v.effect.type!=='open_asset'||!assetId(v.effect.asset_id)||!items.some(x=>x.id===v.effect.asset_id)))fail('invalid_response');
     if((v.kind==='open')!==(v.effect!==null))fail('invalid_response');
     if(recovered&&(v.kind==='open'||v.effect!==null))fail('invalid_response');
-    return Object.freeze({...v,context,filters,items:Object.freeze(items),effect:v.effect===null?null:Object.freeze({...v.effect})});
+    return Object.freeze({...v,context,filters,items:Object.freeze(items),...(interpretation?{interpretation}:{}),effect:v.effect===null?null:Object.freeze({...v.effect})});
   }
-  function validateEnvelope(v, threadId, requestId, library, mode, allowMemory=false, allowMemoryActions=false) {
+  function validateEnvelope(v, threadId, requestId, library, mode, allowMemory=false, allowMemoryActions=false, searchVersion=1) {
     if(!exactKeys(v,['version','thread_id','request_id','status','revision','recovered','error','result'])||v.version!==1||v.thread_id!==threadId||v.request_id!==requestId||
       !['pending','completed','failed','interrupted'].includes(v.status)||!safeInt(v.revision)||typeof v.recovered!=='boolean'||(mode==='GET'&&!v.recovered)||
       !(v.error===null||(typeof v.error==='string'&&STORE_ERRORS.has(v.error)))||
-      !(v.result===null||(v.status==='completed'&&validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered)))) fail('invalid_response');
+      !(v.result===null||(v.status==='completed'&&validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered,searchVersion)))) fail('invalid_response');
     if((v.status==='completed')!==!!v.result || (v.status==='failed'||v.status==='interrupted')!==(v.error!==null))fail('invalid_response');
     if((v.status==='pending'||v.status==='completed')&&v.error!==null)fail('invalid_response');
-    return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered):null});
+    return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered,searchVersion):null});
   }
   function validateThreadDetail(v, library, expectedId) {
     if(!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges'])||v.version!==1||!Array.isArray(v.exchanges)||
@@ -259,19 +305,21 @@
     if(error instanceof PrivateAssistantError)return error;
     if(error?.name==='AbortError')return new PrivateAssistantError('aborted');
     const status=Number(error?.status);
+    if(error?.code==='search_version_unsupported'&&status===400)return new PrivateAssistantError('search_version_unsupported',400);
     if(status===401||status===403)return new PrivateAssistantError('access_denied',status);
     if(status===404)return new PrivateAssistantError('unavailable',404);
     if(status===409)return new PrivateAssistantError('context_changed',409);
-    return new PrivateAssistantError('request_failed');
+    return new PrivateAssistantError('request_failed',Number.isInteger(status)&&status>=400?status:null);
   }
 
   function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result}={}) {
     if(typeof scope!=='function'||typeof request!=='function')throw new TypeError('scope and request are required');
-    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,savedMemoryAvailable=false,savedMemorySpeechAvailable=false,savedMemoryReaderAvailable=false,savedMemoryFollowupAvailable=false,savedMemoryReadingAvailable=false,savedMemorySegmentReadingAvailable=false,savedMemoryActionsAvailable=false,savedMemoryProbeNonce=0,savedMemorySpeechProbeNonce=0,savedMemoryReaderProbeNonce=0,savedMemoryFollowupProbeNonce=0,savedMemoryReadingProbeNonce=0,savedMemorySegmentReadingProbeNonce=0,savedMemoryActionsProbeNonce=0,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),speechControllers=new Set(),readGeneration=0,speechSource=null,savedMemoryReaderSource=null,openingMemoryCard=false,openingMemorySpeechOrdinal=null,openingMemorySpeechEntry=null,segmentMemorySpeechOrdinal=null,segmentMemorySpeechIndex=null,segmentMemorySpeechEntry=null;
+    let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',pendingTurn=null,pendingCreation=null,capabilities=null,capabilitiesProbeNonce=0,savedMemoryAvailable=false,savedMemorySpeechAvailable=false,savedMemoryReaderAvailable=false,savedMemoryFollowupAvailable=false,savedMemoryReadingAvailable=false,savedMemorySegmentReadingAvailable=false,savedMemoryActionsAvailable=false,savedMemoryProbeNonce=0,savedMemorySpeechProbeNonce=0,savedMemoryReaderProbeNonce=0,savedMemoryFollowupProbeNonce=0,savedMemoryReadingProbeNonce=0,savedMemorySegmentReadingProbeNonce=0,savedMemoryActionsProbeNonce=0,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),speechControllers=new Set(),readGeneration=0,speechSource=null,savedMemoryReaderSource=null,openingMemoryCard=false,openingMemorySpeechOrdinal=null,openingMemorySpeechEntry=null,segmentMemorySpeechOrdinal=null,segmentMemorySpeechIndex=null,segmentMemorySpeechEntry=null;
     const snapshot=()=>{const s=scope()||{};return {account:s.account??null,library:s.library==null?null:String(s.library),generation:s.generation??s.membershipGeneration??s.epoch??null,locked:!!s.locked};};
     const stamp=s=>JSON.stringify([s.account,s.library,s.generation,s.locked]);
     const stateValue=()=>{const s=snapshot(),memorySpeechReady=!speechSource?.savedMemory||(savedMemoryAvailable&&savedMemorySpeechAvailable),readerReady=!!savedMemoryReaderSource&&savedMemoryReaderAvailable&&savedMemoryAvailable&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),freshMemorySource=!!savedMemoryReaderSource&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&activeThread?.revision===revision&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&currentResult?.kind==='memory_cards'&&currentResult.memory_cards.length>0&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),followupReady=freshMemorySource&&savedMemoryFollowupAvailable&&savedMemoryAvailable,savedMemoryReadingReady=freshMemorySource&&savedMemoryReadingAvailable&&savedMemoryAvailable,savedMemorySegmentReadingReady=freshMemorySource&&savedMemorySegmentReadingAvailable&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.available===true&&capabilities?.server_owned_turns===true&&capabilities?.reply_speech===true,savedMemoryActionReady=freshMemorySource&&savedMemoryActionsAvailable&&savedMemoryAvailable,speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&memorySpeechReady&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,savedMemoryAvailable,savedMemorySpeechAvailable,savedMemoryReaderAvailable,savedMemoryFollowupAvailable,savedMemoryReadingAvailable,savedMemorySegmentReadingAvailable,savedMemorySegmentReadingReady,savedMemoryActionsAvailable,savedMemoryActionReady,savedMemoryFollowupReady:followupReady,savedMemoryReaderReady:readerReady,savedMemoryReadingReady,openingMemoryCard,openingMemorySpeechOrdinal,segmentMemorySpeechOrdinal,segmentMemorySpeechIndex,threads:Object.freeze(threads.slice()),activeThread,draft,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
     const resultContextState=value=>value?.context?'ready':'requires_search';
+    const negotiatedSearchVersion=()=>capabilities?.search?.version===2?2:1;
     const ownHistory=detail=>Object.freeze({...detail,snapshot_revision:detail.thread.revision,
       before_revision:detail.exchanges[0]?.revision??null,history_stale:false,history_limit_reached:false});
     const staleHistory=detail=>Object.freeze({...detail,before_revision:null,has_older_exchanges:false,history_stale:true,history_limit_reached:false});
@@ -284,7 +332,7 @@
     const publish=()=>{try{onChange(stateValue());}catch(_){}};
     const state=()=>{sync();return stateValue();};
     const abortHydrations=()=>{for(const c of hydrationControllers)c.abort();hydrationControllers.clear();};
-    function clearScopeData(){instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';clearSpeechSource();}
+    function clearScopeData(){instance++;capabilitiesProbeNonce++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';clearSpeechSource();}
     function sync(){const s=snapshot(),key=stamp(s);if(key!==scopeStamp){scopeStamp=key;revokedStamp=null;clearScopeData();publish();}return s;}
     const assertCurrent=(base,token)=>{if(closed)fail('closed');const now=snapshot();if(stamp(now)!==scopeStamp)sync();if(stamp(now)!==stamp(base)||token!==instance||base.locked||!base.account||!base.library||revokedStamp===stamp(now))fail('scope_changed');};
     function revoke(base){revokedStamp=stamp(base);clearScopeData();publish();}
@@ -295,7 +343,15 @@
     function begin(){if(closed)fail('closed');const s=sync();if(s.locked||!s.account||!s.library||revokedStamp===stamp(s))fail('scope_changed');return {base:s,token:instance};}
     async function hydrateResult(value,t,metadata={}){assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');const c=new AbortController();hydrationControllers.add(c);try{const hydrated=await hydrateResults(value,{...metadata,signal:c.signal});assertCurrent(t.base,t.token);if(metadata.readTicket!==undefined&&metadata.readTicket!==readGeneration)fail('scope_changed');return hydrated;}catch(e){throw safeFailure(e);}finally{hydrationControllers.delete(c);}}
     function setDraft(value){begin();if(typeof value!=='string'||byteLength(value)>1024)fail('invalid_input');draft=value;publish();return draft;}
-    async function capabilitiesRead(){const t=begin();const v=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));capabilities=v;if(!v.available||!v.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}else if(v.reply_speech!==true){savedMemorySpeechProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}publish();return v;}
+    async function capabilitiesRead(){
+      const t=begin(),nonce=++capabilitiesProbeNonce,path=`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`;
+      let raw;
+      try{raw=await call(path,'GET',undefined,t.base,t.token,{extraHeaders:{'X-PhotoHouse-Search-Version':'2'}});}
+      catch(error){if(error.status!==400||error.code!=='search_version_unsupported')throw error;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}raw=await call(path,'GET',undefined,t.base,t.token);}
+      assertCurrent(t.base,t.token);if(nonce!==capabilitiesProbeNonce)fail('conflict');
+      const v=validateCapabilities(raw);capabilities=v;
+      if(!v.available||!v.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}else if(v.reply_speech!==true){savedMemorySpeechProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}publish();return v;
+    }
     async function savedMemoryCapabilitiesRead(){const t=begin(),nonce=++savedMemoryProbeNonce;savedMemoryAvailable=false;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();abortSpeechCalls(source=>source?.savedMemoryOpening===true);clearMemorySpeechSource();publish();if(capabilities?.available!==true||capabilities?.server_owned_turns!==true)return false;try{
       const raw=await call(`${BASE}/saved-memory-capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);
       assertCurrent(t.base,t.token);if(nonce!==savedMemoryProbeNonce)return savedMemoryAvailable;
@@ -311,7 +367,7 @@
       publish();return savedMemoryActionsAvailable;
     }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed')throw safe;assertCurrent(t.base,t.token);
       if(safe.status===403){
-        const base=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));
+        const base=await capabilitiesRead();
         assertCurrent(t.base,t.token);if(nonce!==savedMemoryActionsProbeNonce)return savedMemoryActionsAvailable;
         capabilities=base;
         if(!base.available||!base.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemoryReaderSource=null;clearMemorySpeechSource();}
@@ -334,7 +390,7 @@
     }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed')throw safe;assertCurrent(t.base,t.token);
       if(safe.status===403){
         try{
-          const base=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));
+          const base=await capabilitiesRead();
           assertCurrent(t.base,t.token);if(nonce!==savedMemoryReadingProbeNonce)return savedMemoryReadingAvailable;
           capabilities=base;
           if(!base.available||!base.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReaderSource=null;clearMemorySpeechSource();}
@@ -352,7 +408,7 @@
     }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed')throw safe;assertCurrent(t.base,t.token);
       if(safe.status===403){
         try{
-          const base=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));
+          const base=await capabilitiesRead();
           assertCurrent(t.base,t.token);if(nonce!==savedMemorySegmentReadingProbeNonce)return savedMemorySegmentReadingAvailable;
           capabilities=base;
           if(!base.available||!base.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemoryReaderSource=null;clearMemorySpeechSource();}
@@ -378,7 +434,7 @@
       assertCurrent(t.base,t.token);
       if(safe.status===403){
         try{
-          const base=validateCapabilities(await call(`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));
+          const base=await capabilitiesRead();
           assertCurrent(t.base,t.token);if(nonce!==savedMemoryFollowupProbeNonce)return savedMemoryFollowupAvailable;
           capabilities=base;
           if(!base.available||!base.server_owned_turns){savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryReaderSource=null;clearMemorySpeechSource();}
@@ -398,7 +454,7 @@
           else if(latest.status==='completed')contextState='stale';
           else if(latest.status==='pending')contextState='pending';
           else contextState='requires_search';
-          if(latest.status==='pending'){const saved=detail.exchanges.find(x=>x.request_id===latest.request_id);pendingTurn={thread_id:id,request_id:latest.request_id,expected_revision:latest.revision,text:saved?.input_text||'',status:'pending'};}
+          if(latest.status==='pending'){const saved=detail.exchanges.find(x=>x.request_id===latest.request_id);pendingTurn={thread_id:id,request_id:latest.request_id,expected_revision:latest.revision,text:saved?.input_text||'',status:'pending',search_version:negotiatedSearchVersion()};}
         }catch(e){const safe=safeFailure(e);if(safe.status===409||safe.status===404){latest=null;currentResult=null;contextState='requires_search';}else throw safe;}}
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;publish();
       const latestSummary=latest?Object.freeze({request_id:latest.request_id,status:latest.status,revision:latest.revision,error:latest.error}):null;
@@ -407,7 +463,7 @@
       try{const raw=await call(`${BASE}/threads`,'POST',{library_id:t.base.library,thread_id:id},t.base,t.token);const created=validateCreation(raw,t.base.library,id);assertCurrent(t.base,t.token);pendingCreation=null;if(ticket!==readGeneration){threads=[created.thread,...threads.filter(x=>x.thread_id!==id)];publish();return created;}activeThread=created.thread;revision=created.thread.revision;currentResult=null;contextState='requires_search';publish();return created;}
       catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed')throw safe; // retain ID and require explicit reconciliation or retry
         throw safe;}}
-    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const env=await getRequest(id,rid,{_ticket:t,hydrate:true});assertCurrent(t.base,t.token);if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else{if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
+    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const searchVersion=pendingTurn.search_version===2?2:1;const env=await getRequest(id,rid,{_ticket:t,hydrate:true,searchVersion});assertCurrent(t.base,t.token);if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text;pendingTurn=null;if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);}else{if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
     function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
     function discardSpeechSource(){
       // This is a local revocation path (Pause/End), so it must still wipe the
@@ -448,21 +504,22 @@
         throw error;
       }
     }
-    async function getRequest(id,rid,{_ticket,hydrate=true}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token),id,rid,t.base.library,'GET');
+    async function getRequest(id,rid,{_ticket,hydrate=true,searchVersion=negotiatedSearchVersion()}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const options=searchVersion===2?{extraHeaders:{'X-PhotoHouse-Search-Version':'2'}}:{};const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token,options),id,rid,t.base.library,'GET',false,false,searchVersion);
       if(env.status==='completed'&&hydrate){const hydrated=await hydrateResult(env.result,t,{readTicket:t.readTicket,threadId:id,revision:env.revision});return Object.freeze({...env,result:hydrated});}return env;}
-    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');const memoryOptIn=savedMemoryAvailable===true&&capabilities?.available===true&&capabilities?.server_owned_turns===true,memoryProbeNonce=savedMemoryProbeNonce,memorySpeechProbeNonce=savedMemorySpeechProbeNonce,memorySpeechAllowedAtSend=memoryOptIn&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true;
+    async function send(text=draft){const t=begin();if(!activeThread||activeThread.library_id!==t.base.library)fail('invalid_input');if(typeof text!=='string'||!text.trim()||byteLength(text)>1024)fail('invalid_input');if(pendingTurn)fail('conflict');const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');const searchVersion=negotiatedSearchVersion();const memoryOptIn=savedMemoryAvailable===true&&capabilities?.available===true&&capabilities?.server_owned_turns===true,memoryProbeNonce=savedMemoryProbeNonce,memorySpeechProbeNonce=savedMemorySpeechProbeNonce,memorySpeechAllowedAtSend=memoryOptIn&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true;
       // Capture the current fresh display cohort before the send clears the result
       // and reader source. This anchor is independent of reply speech and survives
       // the voice End action until an explicit new turn or history/scope change.
       const source=savedMemoryReaderSource,memoryParentReady=stateValue().savedMemoryFollowupReady||stateValue().savedMemoryActionReady;
       const memoryParent=memoryParentReady&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable)&&source&&source.result===currentResult&&source.thread_id===activeThread.thread_id&&activeThread.revision===revision&&source.revision===revision&&source.account===t.base.account&&source.library===t.base.library&&source.generation===t.base.generation&&CANONICAL_MEMORY_UUID.test(source.request_id)&&safeInt(source.revision)?{request_id:source.request_id,revision:source.revision}:null;
-      clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text};pendingTurn={...sent,status:'sending'};publish();
+      clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text,search_version:searchVersion};pendingTurn={...sent,status:'sending'};publish();
       const memoryActionsOptIn=memoryOptIn&&savedMemoryActionsAvailable===true,memoryActionsProbeNonce=savedMemoryActionsProbeNonce;
       try{const body={library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text};if(memoryOptIn)body.accepts=memoryActionsOptIn?['saved_memory_cards_v1','saved_memory_actions_v1']:['saved_memory_cards_v1'];if(memoryParent&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable))body.memory_parent=memoryParent;
-        const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',body,t.base,t.token),sent.thread_id,rid,t.base.library,'POST',memoryOptIn,memoryActionsOptIn);
+        const turnOptions=searchVersion===2?{extraHeaders:{'X-PhotoHouse-Search-Version':'2'}}:{};
+        const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',body,t.base,t.token,turnOptions),sent.thread_id,rid,t.base.library,'POST',memoryOptIn,memoryActionsOptIn,searchVersion);
         if(memoryOptIn&&v.status==='completed'&&!v.recovered&&Object.hasOwn(v.result,'memory_cards')&&memoryProbeNonce!==savedMemoryProbeNonce){pendingTurn={...sent,status:'uncertain'};publish();fail('context_changed');}
         if(memoryActionsOptIn&&v.status==='completed'&&!v.recovered&&Object.hasOwn(v.result,'memory_action')&&memoryActionsProbeNonce!==savedMemoryActionsProbeNonce){pendingTurn={...sent,status:'uncertain'};publish();fail('context_changed');}
-        if(v.status==='completed'){const memoryResult=Object.hasOwn(v.result,'memory_cards');const result=memoryResult?v.result:await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=memoryResult?'requires_search':resultContextState(result);if(draft===text)draft='';if(!v.recovered&&memoryResult)savedMemoryReaderSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,result};if(!v.recovered&&memoryResult&&memorySpeechAllowedAtSend&&memorySpeechProbeNonce===savedMemorySpeechProbeNonce&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,savedMemory:true};else if(!v.recovered&&!memoryResult)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind};publish();return Object.freeze({...v,result});}
+        if(v.status==='completed'){const memoryResult=Object.hasOwn(v.result,'memory_cards');const result=memoryResult?v.result:await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=memoryResult?'requires_search':resultContextState(result);if(draft===text)draft='';if(!v.recovered&&memoryResult)savedMemoryReaderSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,result};if(!v.recovered&&memoryResult&&memorySpeechAllowedAtSend&&memorySpeechProbeNonce===savedMemorySpeechProbeNonce&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,savedMemory:true,search_version:1};else if(!v.recovered&&!memoryResult)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,search_version:result.version===2?2:1};publish();return Object.freeze({...v,result});}
         if(v.status==='failed'||v.status==='interrupted'){if(!draft)draft=text;pendingTurn=null;contextState='requires_search';publish();return v;}
         pendingTurn={...sent,status:'uncertain'};publish();return v;
       }catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401||safe.status===403)throw safe;pendingTurn={...sent,status:'uncertain'};publish();throw safe;}}
@@ -498,7 +555,7 @@
         const raw=await call(`${threadPath(source.thread_id)}/requests/${encodeURIComponent(source.request_id)}/speech`, 'POST',
           {library_id:t.base.library,expected_revision:source.revision},t.base,t.token,{
             responseType:'blob',signal:audioController.signal,
-            extraHeaders:{'X-PhotoHouse-Request-Id':speechId,'X-PhotoHouse-Parent-Request-Id':source.request_id},
+            extraHeaders:{'X-PhotoHouse-Request-Id':speechId,'X-PhotoHouse-Parent-Request-Id':source.request_id,...(source.search_version===2&&!source.savedMemory?{'X-PhotoHouse-Search-Version':'2'}:{})},
             onResponse:response=>{
               const headers=response?.headers;
               if(!headers||typeof headers.get!=='function')return;

@@ -251,7 +251,8 @@ def _context_value(value, library_id):
     if value is None:
         return None
     fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
-    if type(value) is not dict or set(value) != fields or value['library_id'] != library_id:
+    if (type(value) is not dict or set(value) - {'search_version'} != fields or value['library_id'] != library_id or
+            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] != 2))):
         raise ValueError('Invalid context')
     if any(type(value[name]) is not str or re.fullmatch(r'[0-9a-f]{64}', value[name]) is None
            for name in ('binding', 'fingerprint')):
@@ -273,7 +274,8 @@ def _context_value(value, library_id):
         raise ValueError('Invalid context')
     return dict(library_id=library_id, binding=value['binding'],
                 fingerprint=value['fingerprint'], filters=filters,
-                visible_ids=list(ids), total=value['total'])
+                visible_ids=list(ids), total=value['total'],
+                **({'search_version': 2} if 'search_version' in value else {}))
 
 
 def _result_summary(value, library_id):
@@ -281,12 +283,14 @@ def _result_summary(value, library_id):
               'has_more', 'effect'}
     if type(value) is not dict or set(value) != fields:
         raise ValueError('Invalid result summary')
-    if type(value['version']) is not int or value['version'] != 1:
+    if type(value['version']) is not int or value['version'] not in (1, 2):
         raise ValueError('Invalid result summary')
     if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
         raise ValueError('Invalid result summary')
     reply = _text(value['reply'], MAX_REPLY_BYTES)
     ctx = _context_value(value['context'], library_id)
+    if ctx is not None and ctx.get('search_version', 1) != value['version']:
+        raise ValueError('Invalid result summary')
     filters = None if value['filters'] is None else _filters(value['filters'])
     if type(value['total']) is not int or not 0 <= value['total'] <= 100000:
         raise ValueError('Invalid result summary')
@@ -306,7 +310,7 @@ def _result_summary(value, library_id):
         raise ValueError('Invalid result summary')
     if ctx is not None and value['has_more'] != (ctx['total'] > len(ctx['visible_ids'])):
         raise ValueError('Invalid result summary')
-    result = dict(version=1, kind=value['kind'], reply=reply, context=ctx,
+    result = dict(version=value['version'], kind=value['kind'], reply=reply, context=ctx,
                   filters=filters, total=value['total'], has_more=value['has_more'],
                   effect=None if effect is None else dict(effect))
     return json.loads(_json_value(result, 32 * 1024, 'result summary'))

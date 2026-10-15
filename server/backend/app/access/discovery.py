@@ -296,6 +296,9 @@ class DiscoveryReads:
     def _rank(self, found):
         return found
 
+    def _search_presentation(self, facets, filters):
+        return {}
+
     def __init__(self, access: AccessService, provider, budget: ReadBudget):
         if not isinstance(access,AccessService) or not isinstance(budget,ReadBudget): raise ValueError('Explicit access and shared budget required')
         self.access,self.provider,self.budget=access,provider,budget
@@ -476,5 +479,6 @@ class DiscoveryReads:
             offset=(page-1)*page_size
             return {'library_id':library,'binding':context,'fingerprint':expected,'page':page,'page_size':page_size,
                     'total':len(found),'has_more':offset+page_size<len(found),'originals_allowed':bool(member['originals']),
-                    'items':found[offset:offset+page_size]}
+                    'items':found[offset:offset+page_size],
+                    **self._search_presentation(facets, normalized)}
         return self._run(token,library,binding,action,cancelled)

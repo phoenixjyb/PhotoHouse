@@ -90,6 +90,7 @@ WEB_TESTS = (
     "server/tests/ui/voice-turn-timing.test.mjs",
     "server/tests/ui/assistant-private-workspace.test.mjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
+    "server/tests/security/test_assistant_search_browser.cjs",
     "server/tests/security/test_assistant_saved_memory_browser.cjs",
     "server/tests/security/test_annotation_web_wav.cjs",
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",

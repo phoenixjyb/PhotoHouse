@@ -379,8 +379,8 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual([item['id'] for item in first['items']], ['103', '101', '422', '421', '420'])
         self.assertEqual([item['id'] for item in second['items']], ['419', '418', '417', '416', '415'])
 
-    def test_private_workspace_does_not_accept_the_new_search_contract(self):
-        for endpoint in ('capabilities', 'saved-memory-capabilities',
+    def test_unrelated_private_workspace_endpoints_do_not_accept_the_new_search_contract(self):
+        for endpoint in ('saved-memory-capabilities',
                          'saved-memory-followup-capabilities', 'saved-memory-reader-capabilities'):
             with self.subTest(endpoint=endpoint):
                 response = self.client.get('/assistant/workspace/v1/' + endpoint + '?library_id=family-a',

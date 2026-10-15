@@ -57,7 +57,8 @@ class WorkspaceRoute(APIRoute):
         async def guarded(request):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
-                if _single(request, 'x-photohouse-search-version') not in (None, '1'):
+                version = _single(request, 'x-photohouse-search-version')
+                if version not in (None, '1', '2') or (version == '2' and not assistant_engine._search_v2_endpoint(request)):
                     raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
@@ -307,6 +308,11 @@ def _turn_text(value):
 
 
 def _turn_result(engine, token, library, summary, *, recovered):
+    from .assistant_search import SearchRuntime
+    if summary['version'] == 2 and not isinstance(engine, SearchRuntime):
+        raise assistant_engine.AssistantChanged()
+    if summary['version'] == 1 and isinstance(engine, SearchRuntime):
+        engine = engine.runtime
     result = dict(summary)
     context = summary['context']
     items = []
@@ -314,6 +320,14 @@ def _turn_result(engine, token, library, summary, *, recovered):
         context = assistant_engine._context(context, library)
         found = assistant_engine._context_result(engine, token, library, context)
         items = found['items']
+    if summary['version'] == 2:
+        interpretation = found.get('interpretation') if context is not None else None
+        if interpretation is None:
+            presentation = engine.call('presentation', token, library, lambda: False,
+                {'binding': context['binding']} if context else {})
+            interpretation = {key: value for key, value in presentation.items() if key != 'version'}
+            interpretation.update(people=[], tags=[], locations=[])
+        result['interpretation'] = interpretation
     result['items'] = items
     if recovered:
         result['effect'] = None
@@ -880,7 +894,7 @@ async def create_turn(request: Request, thread_id: str):
         if memory_outcome is None:
             result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
                 words, row['context'], access.clock, language=preferences['locale'])
-            summary = {key: value for key, value in result.items() if key != 'items'}
+            summary = {key: value for key, value in result.items() if key not in ('items', 'interpretation')}
             context = result['context']
             cards = ([] if context is None else [dict(type='media', id=item['id'],
                      revision=context['binding'], fingerprint=context['fingerprint'])
@@ -1263,6 +1277,12 @@ async def capabilities(request: Request):
              'server_owned_turns': turns}
     if getattr(request.app.state, 'assistant_reply_speech_enabled', False):
         value['reply_speech'] = await _reply_speech_available(request, account)
+    if turns and _single(request, 'x-photohouse-search-version') == '2':
+        token, _mode = credentials_from_request(request, allow_query=True)
+        value['search'] = await run_in_threadpool(engine.call, 'presentation', token,
+                                                library, lambda: False, {})
+        if await _principal(request, library) != account:
+            raise AccessDenied()
     return JSONResponse(value, headers=PRIVACY_HEADERS)
 
 

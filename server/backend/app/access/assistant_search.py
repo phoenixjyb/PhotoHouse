@@ -101,6 +101,8 @@ class AssistantSearchReads(d.DiscoveryReads):
                 reasons.append({k: source[k] for k in ('source', 'source_id', 'revision')})
         if 'text' in filters and not reasons:
             return False, []
+        # Keep all selected-person/date reasons within the bounded card shape.
+        reasons = reasons[:43]
         if row:
             for person in sorted(row['people'] & set(filters.get('people', {}).get('ids', ())), key=int):
                 reasons.append({'source': 'reviewed_person', 'source_id': person})
@@ -114,6 +116,24 @@ class AssistantSearchReads(d.DiscoveryReads):
         return sorted(found, key=lambda item: (
             any(r['source'] in ('photo_memory', 'edited_caption')
                 for r in item.get('match_reasons', ())), int(item['id'])), reverse=True)
+
+    def _perspective(self):
+        if self.kinship is None:
+            return None
+        person = self.kinship.people[self.kinship.perspective_id]
+        return {'label': person['name_zh'] or person['name_en']}
+
+    def _search_presentation(self, facets, filters):
+        interpretation = {'date_basis': 'capture', 'perspective': self._perspective()}
+        for facet in ('people', 'tags', 'locations'):
+            selected = filters.get(facet, []) if facet == 'locations' else filters.get(facet, {}).get('ids', [])
+            labels = {row['id']: row['label'] for row in facets[facet]}
+            interpretation[facet] = [{'id': ident, 'label': labels[ident]} for ident in selected]
+        return {'interpretation': interpretation}
+
+    def presentation(self, token, library, *, binding=None, cancelled=lambda: False):
+        return self._run(token, library, binding, lambda index, facts, context, member, check:
+            {'version': 2, 'date_basis': 'capture', 'perspective': self._perspective()}, cancelled)
 
     def entities(self, token, library, *, words, binding=None, cancelled=lambda: False):
         d.text(words, 1024)
@@ -150,7 +170,8 @@ class AssistantSearchReads(d.DiscoveryReads):
                            for a in first_hits for b in name_hits(working_words, second.label, second.aliases, person=True)):
                         ambiguous = True
             return {'binding': context, 'enabled': list(index.enabled) + ['text'],
-                    'groups': groups, 'labels': labels, 'ambiguous': ambiguous}
+                    'groups': groups, 'labels': labels, 'ambiguous': ambiguous,
+                    **self._search_presentation(facts[2], {})}
         return self._run(token, library, binding, action, cancelled)
 
 
@@ -180,7 +201,8 @@ class SearchRuntime:
                         kinship = None
             reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget, kinship=kinship)
             methods = {'entities': reader.entities, 'search': reader.search,
-                       'facets': reader.facets, 'assistant_asset': reader.assistant_asset}
+                       'facets': reader.facets, 'assistant_asset': reader.assistant_asset,
+                       'presentation': reader.presentation}
             d.require(operation in methods)
             if operation == 'search':
                 SearchPlan(2, values['filters'])

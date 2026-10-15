@@ -145,6 +145,14 @@ class AssistantRoute(APIRoute):
 router = APIRouter(route_class=AssistantRoute)
 
 
+def _search_v2_endpoint(request):
+    path = request.url.path
+    return (path in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities',
+                     '/assistant/workspace/v1/capabilities') or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/turns', path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
+
+
 def _engine(request):
     access = _runtime(request, allow_query=request.method == 'GET')
     discovery = getattr(request.app.state, 'discovery_runtime', None)
@@ -156,7 +164,7 @@ def _engine(request):
     if version not in (None, '1', '2'):
         raise AssistantInvalid()
     if version == '2':
-        if request.url.path not in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities'):
+        if not _search_v2_endpoint(request):
             raise TransportError(400, 'Search version is not supported on this endpoint')
         from .assistant_search import SearchRuntime
         discovery = SearchRuntime(discovery, getattr(request.app.state, 'assistant_kinship_provider', None))
@@ -288,7 +296,9 @@ async def _body(request, fields=frozenset({'library_id', 'text', 'context'}), *,
 
 
 def _context(value, library):
-    if type(value) is not dict or set(value) != {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}:
+    if (type(value) is not dict or set(value) - {'search_version'} !=
+            {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'} or
+            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] != 2))):
         raise AssistantInvalid()
     if value['library_id'] != library:
         raise AssistantChanged()
@@ -479,6 +489,9 @@ def _search(engine, token, library, binding, filters, fingerprint=None):
 
 
 def _context_result(engine, token, library, context):
+    from .assistant_search import SearchRuntime
+    if context.get('search_version', 1) != (2 if isinstance(engine, SearchRuntime) else 1):
+        raise AssistantChanged()
     # Singleton lookup contexts use the same bounded wire shape as search. The
     # fingerprint binds the explicit ID and current session/membership/source.
     ids = context['visible_ids']
@@ -495,13 +508,41 @@ def _context_result(engine, token, library, context):
 
 def _turn(engine, token, library, words, previous, clock, *, language=None):
     from .assistant_search import SearchRuntime
+    v2 = isinstance(engine, SearchRuntime)
+    if previous is not None:
+        previous = _context(previous, library)
+    # A new explicit search may leave a legacy result behind. Refinements and
+    # ordinal opens must retain the original protocol and source binding.
+    if (previous is not None and previous.get('search_version', 1) != (2 if v2 else 1)
+            and re.match(SEARCH_PREFIX, words.strip().casefold())):
+        previous = None
+    source = {}
+    result = _turn_impl(engine, token, library, words, previous, clock, language=language, source=source)
+    if v2:
+        result['version'] = 2
+        interpretation = source.get('interpretation')
+        if result['context'] is not None:
+            result['context'] = dict(result['context'], search_version=2)
+        if interpretation is None:
+            presentation = engine.call('presentation', token, library, lambda: False,
+                {'binding': result['context']['binding']} if result['context'] else {})
+            interpretation = {key: value for key, value in presentation.items() if key != 'version'}
+            interpretation.update(people=[], tags=[], locations=[])
+        result['interpretation'] = interpretation
+    return result
+
+
+def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None):
+    from .assistant_search import SearchRuntime
     search_v2 = isinstance(engine, SearchRuntime)
+    source = {} if source is None else source
     lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
     existing = None
     if previous is not None:
         previous = _context(previous, library)
         existing = _context_result(engine, token, library, previous)
+        source.update(existing)
     if _describe_results(words):
         if existing is None:
             return {'version': 1, 'kind': 'clarification',
@@ -519,6 +560,9 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
                             {'facet': 'people', 'page': 1, 'page_size': 1})
         found = _normalize_cards(engine.call('assistant_asset', token, library, lambda: False,
             {'asset_id': asset_id, 'binding': first['binding']}))
+        if found['items']:
+            source.clear()
+            source.update(found)
         if not found['items']:
             return {'version': 1, 'kind': 'clarification',
                     'reply': ('当前相册库中没有可访问的这个编号。请确认编号和相册库。' if lang == 'zh' else
@@ -580,6 +624,8 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     first = engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
                         {'words': condition_words} if search_v2 else
                         {'facet': 'people', 'page': 1, 'page_size': 100})
+    if existing is None:
+        source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
     filters = dict(previous['filters']) if refine else {}
     if re.search(r'视频|影片|videos?\b|movies?\b', condition_lower):
@@ -670,6 +716,8 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
                 'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
                 'has_more': existing['has_more'] if existing else False, 'effect': None}
     result = _search(engine, token, library, binding, filters)
+    source.clear()
+    source.update(result)
     context = {'library_id': library, 'binding': result['binding'],
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}

@@ -25,6 +25,17 @@ v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
+The current local integration connects negotiated search v2 to the private
+workspace, Web and phone. It presents the chosen family perspective, actual
+person/text/date/media/place conditions and evidence labels, including explicit
+AI-caption wording. Recovery retains the original search version and revalidates
+current source order; it neither resubmits the request nor replays navigation or
+speech. Only the exact unsupported-version capability response allows a legacy
+capability retry. See [the updated contract](ASSISTANT_JOINT_SEARCH_V2.md).
+Final integrated checks for this slice are recorded after the source freeze;
+earlier API-only cohorts below remain bound to their stated revisions.
+
+
 The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
 for search v2. It binds an explicit library/account allowlist and chosen
 perspective, resolves bilingual relative chains only to current reviewed
@@ -47,9 +58,9 @@ protected projection, separate source-bound contexts, authored-evidence-first
 ordering and provenance reasons. Default v1 clients retain their wire contract.
 See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Work is isolated on
 `codex/search-redesign-20261015`; the concurrent story branch is separate.
-This is not deployed or enabled in Web/phone/private-workspace clients. Real
-index readiness, video date bases, local semantic understanding and relevance
-qualification remain ahead.
+That earlier API-only cohort was not integrated into clients. The current
+local client integration above remains undeployed. Real index readiness, video
+date bases, local semantic understanding and relevance qualification remain ahead.
 
 The focused generated-data joint-search suite passes 19 tests, including short
 Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
