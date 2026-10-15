@@ -19917,6 +19917,59 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "affirmative-scene-evidence-and-complete-request-clarification",
+      "source_commit": "71605ee27c611fc72ac56816e81e0ec531e0c06e",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "d8becb1d0cd1f7e857e9d3328caf988e588fca0e85e46f119f59407239ad5b57",
+          "sha256": "2c791a416bb0a319e3864cbdbe01aa00ba0fcf7fbee2def19c5822787cd73789"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "e6e1aa41d241ed95da3e00b121a88c86215b9d11aa5a8fdd7fece3d3604633c2",
+          "sha256": "a4784b2c0dd86f585b99d8ea87224e0093a98286c4bf735ee3a638f5c432391c"
+        },
+        {
+          "path": "server/backend/app/access/search_description.py",
+          "before_sha256": "bbdb3361179a5cf16fa48e287d8d9ef330b87e8c7591d0ec49dc2613530080aa",
+          "sha256": "091b1b9063743ef5aee77feb11723a5a116e5cdd402923d7abe0d1290f8962a6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "c367d1d531c924a1a9db013e041195b4277be79bd71bb4dc7d5037b043cfb604",
+          "sha256": "3a34e9947caabacbaa3a21c221f34957f4645e50ddcc28e3404101dc224ab6dd"
+        },
+        {
+          "path": "server/tests/security/test_descriptive_search.py",
+          "before_sha256": "c9d8ab21d7780841f2b112e82a9996f264344ca2fe1b0e59db815743ae4f2726",
+          "sha256": "4706aeee4644639d7b01b8208721babbccd61e4b136106678d0d9503904dd371"
+        },
+        {
+          "path": "server/tests/security/test_search_description.py",
+          "before_sha256": "189b8d795a53cc0b760759bf3fab40ab1b87fb2be7cf0691500145574b54adb7",
+          "sha256": "e1f1c66d38a48573072d598d9e99e37482a6394f638285e2e68a453a6389c265"
+        },
+        {
+          "path": "server/tests/security/test_assistant_description_clarification.py",
+          "before_sha256": null,
+          "sha256": "118272e7f46c48af630ff1fbd28d96567f5b0a70841a06440568f57460069aee"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "description_policy_version": 2,
+      "v3_source_bindings_changed": true,
+      "v2_source_bindings_preserved": true,
+      "literal_quoted_text_unchanged": true,
+      "general_negation_understanding_claimed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

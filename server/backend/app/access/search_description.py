@@ -8,6 +8,7 @@ text remains an independent filter handled by ``search_text``.
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
@@ -20,9 +21,54 @@ MAX_ALTERNATIVES = 4
 MAX_PHRASE_BYTES = 128
 MAX_DESCRIPTION_BYTES = 4096
 MAX_MATCH_REASONS = 43
-SEARCH_DESCRIPTION_POLICY_VERSION = 1
+SEARCH_DESCRIPTION_POLICY_VERSION = 2
 _AUTHORED_SOURCES = frozenset(("photo_memory", "edited_caption"))
 _APPROVED_SOURCES = _AUTHORED_SOURCES | {"generated_caption"}
+
+# Scene evidence must make a positive assertion. A negated clause is ambiguous
+# about which parts remain positive, so exclude it as a whole. This deliberately
+# trades some recall for precision; it is not general semantic negation parsing.
+_CLAUSE_BREAK = re.compile(
+    r'[.!?。！？;；\n]+|(?a:\b(?:but|however)\b)|但是|然而|不过|但', re.I)
+_NEGATED_CLAUSE = re.compile(
+    r"(?a:\b(?:no|not|never|without|neither|nor|cannot)\b|"
+    r"\b(?:is|are|was|were|do|does|did|ca|could|would|should|has|have|had|wo|must)n['’]t\b)|"
+    r'没有|沒有|并无|並無|并非|並非|不是|未曾|从未|從未|不曾|未见|未見|'
+    r'(?:没|沒|不|未)(?:曾|能|在|有|是|去|到|下|穿|戴|拿|带|帶|看|吃|喝|玩|跑|骑|騎|走|跳|打|吹|读|讀|写|寫|切|笑|见|見|出现|出現)', re.I)
+
+
+def _latin_word_character(char):
+    return (char == '_' or char.isdigit() or
+            unicodedata.name(char, '').startswith('LATIN ') or
+            unicodedata.category(char).startswith('M'))
+
+
+def _positive_phrase_match(clauses, phrase):
+    """Return best ordinary boundary quality, or None for absent evidence.
+
+    Latin words cannot match within another Latin word/number. Han phrases
+    retain substring matching because ordinary Chinese has no word spaces.
+    """
+    best = None
+    for clause in clauses:
+        offset = 0
+        while True:
+            start = clause.find(phrase, offset)
+            if start < 0:
+                break
+            end = start + len(phrase)
+            left = (start == 0 or not _latin_word_character(phrase[0]) or
+                    not _latin_word_character(clause[start - 1]))
+            right = (end == len(clause) or not _latin_word_character(phrase[-1]) or
+                     not _latin_word_character(clause[end]))
+            if left and right:
+                quality = int((start == 0 or not (clause[start - 1].isalnum() or clause[start - 1] == '_')) and
+                              (end == len(clause) or not (clause[end].isalnum() or clause[end] == '_')))
+                best = quality if best is None else max(best, quality)
+                if best == 1:
+                    return best
+            offset = start + 1
+    return best
 
 
 def _invalid() -> ValueError:
@@ -107,28 +153,14 @@ def prepare_description(value: object) -> PreparedDescription:
     ))
 
 
-def _whole_phrase_boundary(content: str, phrase: str) -> bool:
-    """Mirror literal text search's edge rule for stable quality ordering."""
-    offset = 0
-    while True:
-        start = content.find(phrase, offset)
-        if start < 0:
-            return False
-        end = start + len(phrase)
-        left_ok = start == 0 or not (content[start - 1].isalnum() or content[start - 1] == "_")
-        right_ok = end == len(content) or not (content[end].isalnum() or content[end] == "_")
-        if left_ok and right_ok:
-            return True
-        offset = start + 1
-
-
 def match_prepared_description(sources: Sequence[NormalizedSource], description: PreparedDescription,
                                check: Callable[[], None] = lambda: None) -> tuple[bool, list, tuple[int, ...]]:
     """Match all concepts against current approved normalized sources.
 
-    An alternative is a normalized substring, as in literal text matching. The
-    returned reasons identify matching source records only; source prose and
-    concept text never leave this pure matcher.
+    Alternatives require affirmative-clause evidence with Latin word edges.
+    Han phrases use substring matching. Explicitly negated clauses cannot supply
+    positive scene evidence. Literal quoted-text matching is independent.
+    Reasons identify matching source records only; no source prose leaves here.
     """
     check()
     if type(description) is not PreparedDescription or not 1 <= len(description.alternatives) <= MAX_CONCEPTS:
@@ -140,6 +172,7 @@ def match_prepared_description(sources: Sequence[NormalizedSource], description:
     authored_concepts = 0
     boundary_concepts = 0
     best_source_lengths = 0
+    affirmative = {}
 
     for alternatives in description.alternatives:
         check()
@@ -152,10 +185,14 @@ def match_prepared_description(sources: Sequence[NormalizedSource], description:
                 raise _invalid()
             for alternative in alternatives:
                 check()
-                if alternative not in source.normalized_text:
+                if source.normalized_text not in affirmative:
+                    affirmative[source.normalized_text] = tuple(
+                        clause for clause in _CLAUSE_BREAK.split(source.normalized_text)
+                        if clause and not _NEGATED_CLAUSE.search(clause))
+                boundary = _positive_phrase_match(affirmative[source.normalized_text], alternative)
+                if boundary is None:
                     continue
                 concept_matched = True
-                boundary = int(_whole_phrase_boundary(source.normalized_text, alternative))
                 authored = int(source.source in _AUTHORED_SOURCES)
                 quality = (authored, boundary, -len(source.normalized_text))
                 if best_quality is None or quality > best_quality:

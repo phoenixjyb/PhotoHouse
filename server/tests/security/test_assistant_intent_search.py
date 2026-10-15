@@ -103,6 +103,23 @@ class AssistantIntentSearchTests(unittest.TestCase):
         self.assertEqual(refined['filters']['descriptive'], literal['filters']['descriptive'])
         self.assertEqual(len(self.planner.calls), calls)
 
+    def test_negated_scene_evidence_is_excluded_while_quoted_text_remains_literal(self):
+        self.mutate("UPDATE captions SET text='Not playing in snow wearing a red coat.' WHERE id=1")
+        self.mutate("UPDATE captions SET text='没有在雪地玩，也没穿红外套。' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        scene = self.intent('find photos of Sample Child playing in snow red coat in September 2032')
+        self.assertEqual(scene.status_code, 200, scene.text)
+        self.assertEqual(scene.json()['kind'], 'results')
+        self.assertEqual(scene.json()['items'], [])
+        self.assertEqual(scene.json()['total'], 0)
+        literal = self.intent('find photos containing "Not playing in snow"')
+        self.assertEqual(literal.status_code, 200, literal.text)
+        self.assertEqual([item['id'] for item in literal.json()['items']], ['101'])
+        self.assertIsNone(literal.json()['effect'])
+
     def test_model_cannot_consume_reviewed_names_dates_media_or_unknown_residue(self):
         for surface in ('Sample Child', 'September 2032', 'photos'):
             with self.subTest(surface=surface):
