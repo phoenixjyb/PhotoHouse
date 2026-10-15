@@ -279,6 +279,25 @@ The empty-state reply explains this explicit option without claiming to know whi
 clue caused the empty result. Removing a clue changes the search only; it edits no
 family record.
 
+## Asking why a result matched
+
+`why the first result`, `为什么是第一项` and other supported current-list ordinals
+explain that item without opening it or changing the result order or filters.
+`why this photo`, `why this video`, `为什么这张照片` and `为什么这个视频` require
+one current result of the requested type. A missing result, an out-of-page ordinal
+or an ambiguous singleton reference asks for clarification.
+
+This read-only path works with v1, v2 and v3 and makes no model request. It first
+replays the current authorized result snapshot. The bounded reply summarizes the
+active conditions and may name matching saved photo memories, edited captions or
+generated captions. Reviewed-person and capture-date reasons must agree with the
+active filters and current item metadata. It exposes no source IDs, raw source
+prose, model alternatives or unselected names. Provenance is not a claim about
+every visual detail, a clue-to-source mapping, or calibrated ranking confidence.
+Source/access changes withhold stale explanations; private workspace recovery
+returns the saved reply without submitting another turn. Explicit opening
+commands retain their existing behavior.
+
 ## Answering a missing-date question
 
 In a private v3 workspace conversation, an explicit new search with one supported
