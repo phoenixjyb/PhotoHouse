@@ -70,7 +70,7 @@ class GroupedStoryCreationUiTest {
         rule.onNodeWithTag("grouped-story-select-102").performScrollTo().performClick()
         rule.onNodeWithTag("grouped-story-selection-list").performScrollToNode(hasTestTag("grouped-story-select-101"))
         rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
-        rule.onNodeWithTag("grouped-story-selection-preview").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-selection-preview").assertIsDisplayed().performClick()
         rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.editor?.state?.value?.guideStep == StoryGuideStep.WORDS }
         val title = if (zh) "风里的那一天" else "That day in the breeze"
         val words = if (zh) "奶奶带我们认花。稍后再继续讲。" else "Grandma showed us the flowers. We will continue later."
