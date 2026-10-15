@@ -227,3 +227,104 @@ class AssistantIntentSearchTests(unittest.TestCase):
         self.assertEqual(recovered.json()['result'], original)
         self.assertEqual(original['context']['search_version'], 2)
         self.assertEqual(self.planner.calls, [])
+
+    def test_paired_scene_correction_retrieves_other_evidence_and_keeps_every_hard_filter(self):
+        self.planner.concepts.update({'blue coat': ['blue coat', '蓝外套'],
+                                      '蓝外套': ['blue coat', '蓝外套']})
+        self.mutate("UPDATE captions SET text='示例儿童穿蓝外套在雪地玩' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        for query, correction, old, new in (
+            ('find photos of Sample Child in September 2032 playing in snow red coat containing "海边"',
+             'not red coat, but blue coat', 'red coat', 'blue coat'),
+            ('找示例儿童2032年9月玩雪红外套的照片包含"海边"',
+             '不是红外套，是蓝外套', '红外套', '蓝外套'),
+            ('find示例儿童2032年9月玩雪red coat的photos包含"海边"',
+             '不是red coat，是蓝外套', 'red coat', '蓝外套'),
+        ):
+            with self.subTest(correction=correction):
+                initial = self.intent(query).json()
+                self.assertEqual(initial['kind'], 'results', initial)
+                self.assertEqual([item['id'] for item in initial['items']], ['101'])
+                calls = len(self.planner.calls)
+                response = self.intent(correction, initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual([item['id'] for item in result['items']], ['103'])
+                self.assertEqual({k: v for k, v in result['filters'].items() if k != 'descriptive'},
+                                 {k: v for k, v in initial['filters'].items() if k != 'descriptive'})
+                before = initial['filters']['descriptive']['concepts']
+                after = result['filters']['descriptive']['concepts']
+                self.assertEqual(len(before), len(after))
+                self.assertEqual([c for c in before if c['surface'] != old],
+                                 [c for c in after if c['surface'] != new])
+                self.assertEqual(len(self.planner.calls), calls + 1)
+                self.assertEqual(self.planner.calls[-1][0], new)
+                self.assertIsNone(result['effect'])
+
+    def test_failed_scene_correction_preserves_scope_and_revalidates_authorization(self):
+        self.planner.concepts['blue coat'] = ['blue coat', '蓝外套']
+        initial = self.intent('find photos of Sample Child in September 2032 playing in snow red coat').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.planner.calls.clear()
+        mismatch = self.intent('not green coat, but blue coat', initial['context']).json()
+        self.assertEqual(mismatch['kind'], 'clarification', mismatch)
+        self.assertEqual(mismatch['context'], initial['context'])
+        self.assertEqual(mismatch['filters'], initial['filters'])
+        self.assertEqual(self.planner.calls, [])
+        self.planner.failure = True
+        unavailable = self.intent('not red coat, but blue coat', initial['context']).json()
+        self.assertEqual(unavailable['kind'], 'clarification', unavailable)
+        self.assertEqual(unavailable['filters'], initial['filters'])
+        self.assertEqual(unavailable['items'], initial['items'])
+        self.assertEqual(len(self.planner.calls), 1)
+        self.planner.failure = False
+        calls = len(self.planner.calls)
+        denied = self.intent('not red coat, but blue coat', initial['context'], token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertEqual(len(self.planner.calls), calls)
+        self.planner.before_reply = lambda: self.mutate("UPDATE captions SET text='changed synthetic scene' WHERE id=1")
+        changed = self.intent('not red coat, but blue coat', initial['context'])
+        self.assertEqual(changed.status_code, 409, changed.text)
+        self.assertNotIn('blue coat', changed.text)
+
+    def test_saved_scene_correction_replays_without_another_model_call(self):
+        self.planner.concepts['blue coat'] = ['blue coat', '蓝外套']
+        store = initialize_v2(self.database.parent.resolve() / 'correction-workspace.sqlite', clock=lambda: NOW)
+        self.app.state.assistant_workspace_store = store
+        self.app.state.assistant_workspace_healthy = True
+        headers = {'Authorization': 'Bearer ' + TOKEN, 'X-PhotoHouse-Search-Version': '3'}
+        base = '/assistant/workspace/v1'
+        thread_response = self.client.post(base + '/threads', json={'library_id': 'family-a'},
+            headers={'Authorization': headers['Authorization']})
+        self.assertEqual(thread_response.status_code, 201, thread_response.text)
+        thread = thread_response.json()['thread']['thread_id']
+        def send(words, revision, rid):
+            return self.client.post(f'{base}/threads/{thread}/turns', headers=headers,
+                json={'library_id': 'family-a', 'request_id': rid,
+                      'expected_revision': revision, 'text': words})
+        original_query = 'find photos of Sample Child in September 2032 playing in snow red coat'
+        first = send(original_query, 0, str(uuid.uuid4()))
+        self.assertEqual(first.status_code, 200, first.text)
+        correction = 'not red coat, but blue coat'
+        rid = str(uuid.uuid4())
+        response = send(correction, 1, rid)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters']['descriptive']['concepts'][-1]['surface'], 'blue coat')
+        calls = len(self.planner.calls)
+        self.planner.failure = True
+        recovered = send(correction, 1, rid)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result'], result)
+        self.assertEqual(len(self.planner.calls), calls)
+        history = self.client.get(f'{base}/threads/{thread}?library_id=family-a',
+            headers={'Authorization': headers['Authorization']})
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
+                         [original_query, correction])

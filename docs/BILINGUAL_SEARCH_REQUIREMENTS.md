@@ -225,6 +225,24 @@ latency, family relevance, speech accuracy or device usability. Missing-date
 questions such as “childhood” must not invent dates. The bounded date-answer
 continuation below is separate from free-form model-generated questions.
 
+## Correcting one scene clue
+
+A v3 refinement can replace one stored descriptive clue with an anchored paired
+correction such as `not red coat, but blue coat`, `不是红外套，是蓝外套` or
+`不是red coat，是蓝外套`. The old clue must match exactly one normalized surface
+shown in the current search summary. Model-proposed alternative phrases do not
+identify a correction target.
+
+The replacement phrase alone goes through the bounded compiler. It must produce
+one descriptive concept without people, date, media, exact-text or other hard
+filter changes. The other descriptive concepts and all existing hard filters
+remain required. Unknown or ambiguous targets, unsupported replacements and
+provider failures retain the current search and ask for clarification. The
+ordinary media/date correction flow remains available. The original correction
+is stored as the user's turn; recovery replays its stored result without asking
+the provider again. This flow changes search conditions only, not captions,
+memories or family facts.
+
 ## Answering a missing-date question
 
 In a private v3 workspace conversation, an explicit new search with one supported

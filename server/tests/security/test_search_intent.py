@@ -253,6 +253,197 @@ class SearchIntentTests(unittest.TestCase):
         self.assertEqual({**previous, 'media': ['video']}, result.filters)
         self.assertEqual([], planner.calls)
 
+    def test_paired_descriptive_corrections_replace_one_surface_and_preserve_context(self):
+        previous = {
+            'people': {'ids': ['301'], 'match': 'any'},
+            'media': ['image'],
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+            'text': 'Exact Family Phrase',
+            'descriptive': {'version': 1, 'concepts': [
+                {'surface': 'red coat', 'alternatives': ['red coat', '红外套']},
+                {'surface': 'playing in snow', 'alternatives': ['playing in snow', '在雪地里玩']},
+            ]},
+        }
+        cases = (
+            ('not red coat, but blue coat', 'red coat', 'blue coat', ['blue coat', '蓝外套']),
+            ('不是红外套，是蓝外套', '红外套', '蓝外套', ['blue coat', '蓝外套']),
+            ('不是red coat，而是蓝外套', 'red coat', '蓝外套', ['blue coat', '蓝外套']),
+        )
+        for query, old_surface, replacement_surface, alternatives in cases:
+            with self.subTest(query=query):
+                case_previous = {**previous, 'descriptive': {'version': 1, 'concepts': [
+                    {'surface': old_surface, 'alternatives': [old_surface]},
+                    previous['descriptive']['concepts'][1],
+                ]}}
+                planner = Proposal(ready(replacement_surface,
+                                         [(replacement_surface, alternatives)]))
+                result = plan_query(query, now=NOW, entities=entities(people=('301',)),
+                                    previous_filters=case_previous, planner=planner)
+                expected = {**case_previous, 'descriptive': {'version': 1, 'concepts': [
+                    {'surface': replacement_surface, 'alternatives': alternatives},
+                    previous['descriptive']['concepts'][1],
+                ]}}
+                self.assertEqual(('ready', None, expected),
+                                 (result.status, result.reason, result.filters))
+                self.assertEqual([(replacement_surface, '2032-09-14', False)], planner.calls)
+
+    def test_descriptive_correction_requires_unique_exact_stored_surface_and_one_concept(self):
+        previous = {'descriptive': {'version': 1, 'concepts': [
+            {'surface': 'red coat', 'alternatives': ['red coat', '红外套']},
+            {'surface': 'snow', 'alternatives': ['snow', '雪']},
+        ]}}
+        planner = Proposal(ready('blue coat', [('blue coat', ['blue coat'])]))
+        result = plan_query('not RED COAT but blue coat', now=NOW, entities=entities(),
+                            previous_filters=previous, planner=planner)
+        self.assertEqual('ready', result.status)
+        self.assertEqual('blue coat', result.filters['descriptive']['concepts'][0]['surface'])
+        self.assertEqual([('blue coat', '2032-09-14', False)], planner.calls)
+
+        planner = Proposal(ready('blue coat', [('blue coat', ['blue coat'])]))
+        mismatch = plan_query('not scarlet coat but blue coat', now=NOW,
+                              entities=entities(), previous_filters=previous, planner=planner)
+        self.assertEqual(('clarification', 'description_correction_mismatch', previous),
+                         (mismatch.status, mismatch.reason, mismatch.filters))
+        self.assertEqual([], planner.calls)
+
+        alternative_only = plan_query('不是红外套，是蓝外套', now=NOW,
+                                      entities=entities(), previous_filters=previous,
+                                      planner=Proposal(None))
+        self.assertEqual(('clarification', 'description_correction_mismatch', previous),
+                         (alternative_only.status, alternative_only.reason,
+                          alternative_only.filters))
+
+        no_description = {'media': ['image']}
+        planner = Proposal(None)
+        unavailable = plan_query('not red coat but blue coat', now=NOW,
+                                 entities=entities(), previous_filters=no_description,
+                                 planner=planner)
+        self.assertEqual(('clarification', 'description_correction_target_unavailable',
+                          no_description),
+                         (unavailable.status, unavailable.reason, unavailable.filters))
+        self.assertEqual([], planner.calls)
+
+        planner = Proposal(None)
+        no_previous = plan_query('not red coat but blue coat', now=NOW,
+                                 entities=entities(), previous_filters=None, planner=planner)
+        self.assertEqual(('clarification', 'refine_without_context'),
+                         (no_previous.status, no_previous.reason))
+        self.assertEqual([], planner.calls)
+
+        # A malformed stale context is refused before provider work.
+        stale = {'descriptive': {'version': 1, 'concepts': [
+            {'surface': 'red coat', 'alternatives': ['red coat']},
+            {'surface': 'RED COAT', 'alternatives': ['red coat two']},
+        ]}}
+        planner = Proposal(None)
+        invalid = plan_query('not red coat but blue coat', now=NOW,
+                             entities=entities(), previous_filters=stale, planner=planner)
+        self.assertEqual(('clarification', 'invalid_previous_filters'),
+                         (invalid.status, invalid.reason))
+        self.assertEqual([], planner.calls)
+
+    def test_descriptive_correction_never_consumes_protected_or_hardfilter_new_phrases(self):
+        previous = {
+            'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+            'descriptive': {'version': 1, 'concepts': [
+                {'surface': 'red coat', 'alternatives': ['red coat']}]},
+        }
+        cases = (
+            ('not red coat but "blue coat"', entities(), 'description_correction_unsupported'),
+            ('not red coat but Blue Coat', entities(labels=('Blue Coat',)), 'ambiguous_entities'),
+            ('not red coat but blue coat', entities(labels=('But',)), 'ambiguous_entities'),
+            ('not red coat but Blue Coat!', entities(labels=('Blue Coat!',)), 'ambiguous_entities'),
+            ('not red coat but September 2032', entities(), 'description_correction_unsupported'),
+            ('not red coat but videos', entities(), 'description_correction_unsupported'),
+            ('not red coat but delete photos', entities(), 'description_correction_unsupported'),
+            ('not red coat but clear date filter', entities(), 'description_correction_unsupported'),
+        )
+        for query, resolved, reason in cases:
+            with self.subTest(query=query):
+                planner = Proposal(None)
+                result = plan_query(query, now=NOW, entities=resolved,
+                                    previous_filters=previous, planner=planner)
+                self.assertEqual(('clarification', reason, previous),
+                                 (result.status, result.reason, result.filters))
+                self.assertEqual([], planner.calls)
+
+        invalid_date = plan_query('not red coat but February 31 2032', now=NOW,
+                                  entities=entities(), previous_filters=previous,
+                                  planner=Proposal(None))
+        self.assertEqual(('clarification', 'invalid_date', previous),
+                         (invalid_date.status, invalid_date.reason, invalid_date.filters))
+
+        same_media = {**previous, 'media': ['image']}
+        media_attempt = plan_query('not red coat but blue coat photos', now=NOW,
+                                   entities=entities(), previous_filters=same_media,
+                                   planner=Proposal(None))
+        self.assertEqual(('clarification', 'description_correction_unsupported', same_media),
+                         (media_attempt.status, media_attempt.reason, media_attempt.filters))
+
+        # The date is already present with this exact value, but NEW still
+        # contributes a hard filter and cannot be accepted as a description.
+        date_attempt = plan_query('not red coat but September 2032', now=NOW,
+                                  entities=entities(), previous_filters=previous,
+                                  planner=Proposal(None))
+        self.assertEqual(('clarification', 'description_correction_unsupported', previous),
+                         (date_attempt.status, date_attempt.reason, date_attempt.filters))
+
+        query = 'not red coat but my children playing in snow'
+        planner = Proposal(ready(query.split('but ', 1)[1], [
+            (query.split('but ', 1)[1], ['my children playing in snow'])]))
+        result = plan_query(query, now=NOW, entities=entities(),
+                            previous_filters=previous, planner=planner)
+        self.assertEqual(('clarification', 'description_correction_unsupported', previous),
+                         (result.status, result.reason, result.filters))
+        self.assertEqual([(query.split('but ', 1)[1], '2032-09-14', False)], planner.calls)
+
+        planner = Proposal(ready('blue coat and red hat', [
+            ('blue coat', ['blue coat']), ('red hat', ['red hat'])]))
+        multiple = plan_query('not red coat but blue coat and red hat', now=NOW,
+                              entities=entities(), previous_filters=previous, planner=planner)
+        self.assertEqual(('clarification', 'description_correction_unsupported', previous),
+                         (multiple.status, multiple.reason, multiple.filters))
+        self.assertEqual([('blue coat and red hat', '2032-09-14', False)], planner.calls)
+
+    def test_descriptive_correction_provider_failures_preserve_prior_plan_and_do_not_retry(self):
+        previous = {'media': ['image'], 'descriptive': {'version': 1, 'concepts': [
+            {'surface': 'red coat', 'alternatives': ['red coat']}]}}
+
+        class Down:
+            def __init__(self):
+                self.calls = []
+
+            def propose(self, query, today, has_previous_search):
+                self.calls.append((query, today, has_previous_search))
+                from app.access.search_intent import IntentUnavailable
+                raise IntentUnavailable()
+
+        planner = Down()
+        result = plan_query('not red coat but blue coat', now=NOW, entities=entities(),
+                            previous_filters=previous, planner=planner)
+        self.assertEqual(('clarification', 'intent_unavailable', previous),
+                         (result.status, result.reason, result.filters))
+        self.assertEqual([('blue coat', '2032-09-14', False)], planner.calls)
+
+        unsupported = Proposal({'version': 1, 'status': 'clarification',
+                                'concepts': [], 'question': 'description'})
+        result = plan_query('not red coat but blue coat', now=NOW, entities=entities(),
+                            previous_filters=previous, planner=unsupported)
+        self.assertEqual(('clarification', 'description_correction_unsupported', previous),
+                         (result.status, result.reason, result.filters))
+        self.assertEqual([('blue coat', '2032-09-14', False)], unsupported.calls)
+
+    def test_existing_date_and_media_paired_corrections_remain_authoritative(self):
+        previous = {'media': ['image'], 'descriptive': {'version': 1, 'concepts': [
+            {'surface': 'red coat', 'alternatives': ['red coat']}]}}
+        planner = Proposal(None)
+        result = plan_query('not images but videos', now=NOW, entities=entities(),
+                            previous_filters=previous, planner=planner)
+        self.assertEqual(('ready', {**previous, 'media': ['video']}),
+                         (result.status, result.filters))
+        self.assertEqual([], planner.calls)
+
 
 if __name__ == '__main__':
     unittest.main()
