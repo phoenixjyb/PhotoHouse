@@ -1,6 +1,6 @@
 # Current project status
 
-Reviewed **2026-10-15 after the v64 story-review delivery**. PR #25 is merged at
+Reviewed **2026-10-16 after the first native story capture**. PR #25 is merged at
 `4e94650b9b75c2921a1990a6cdcd05a9a29ce1a4`. API/Web source
 `5480a0cc99133acc1308caf19a0e33d372cc32f6` is deployed and the Windows phone
 HTTPS OTA feed serves **v64 / 0.64-story-review**. TV remains v30. The update
@@ -28,6 +28,16 @@ It is merged through PR #26 with all five review-head CI jobs passing, but is no
 part of the frozen v64 release. Citations are review pointers, not
 proof of factual accuracy; actual model quality retains a separate gate.
 
+PR #27 merged the offline review workspace and capture validation at `b194741`,
+with all five review-head CI jobs passing. The following
+[native story trial](STORY_MODEL_TRIAL_2026-10-16.md) captured one valid synthetic
+9B output, taking 85.875 seconds inside the cold-start canary. Its overall trial
+failed natural provider-helper drain; guarded cleanup completed and the eight
+preserved tasks/root processes matched. Human quality remains unreviewed.
+Following source changes tighten attribution/questions and add an explicit
+temporary-provider teardown option, verified with synthetic native processes.
+They have not been evaluated by another real model request or deployed.
+
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
@@ -36,8 +46,8 @@ proof of factual accuracy; actual model quality retains a separate gate.
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
 | Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
 | TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
-| Public source | Release PR #25 and companion/docs PR #26 merged; all five review-head CI jobs passed for each | Following source-only operator tooling and later delivery |
-| Following storytelling | Citation rule merged; a new [private quality review page](MEMOIR_QUALITY_REVIEW.md) and capture validation correction pass 79 focused tests/104 subchecks and five browser groups | Tooling hosted checks, actual provider/human review, later delivery and family quality |
+| Public source | PRs #25–27 merged; all five review-head CI jobs passed for each | Following trial findings/prompt/cleanup source review and later delivery |
+| Following storytelling | [Private quality review page](MEMOIR_QUALITY_REVIEW.md) merged; one real synthetic capture and [native trial findings](STORY_MODEL_TRIAL_2026-10-16.md) retained | Revised prompt/model cleanup qualification, human review, remaining cases, later delivery and family quality |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
 Earlier dated source, test and release records below retain their exact scope.

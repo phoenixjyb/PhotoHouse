@@ -290,6 +290,14 @@ class LocalMemoryNarratorTests(unittest.TestCase):
                     self.assertIn('do not present transcript wording as a verbatim quote', prompt)
                     self.assertIn('You may paraphrase supported transcript content with attribution.', prompt)
                     self.assertIn('Grounded paraphrase and sensory details supported by the sources are allowed.', prompt)
+                    self.assertIn('only when unresolved ambiguity prevents a supported response', prompt)
+                    self.assertIn('Missing optional detail is not a contradiction', prompt)
+                    self.assertIn('not necessarily the person depicted, speaker, or uploader', prompt)
+                    self.assertIn('without repeating the same author label in parentheses', prompt)
+                    self.assertIn('Repeat attribution when the account or source kind changes', prompt)
+                    self.assertIn('uncertainty or disagreement', prompt)
+                    if task == 'narrative':
+                        self.assertIn('An empty questions list is valid', prompt)
 
     def test_overflow_http_error_is_sanitized_and_not_retried_for_both_tasks(self):
         for task in ('narrative', 'companion'):

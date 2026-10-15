@@ -5,6 +5,14 @@ lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
 
+October 16 [native storytelling findings](STORY_MODEL_TRIAL_2026-10-16.md) now
+include one valid synthetic 9B capture. Its failed natural helper drain and
+85.875-second cold request keep runtime/interactive acceptance open. Following
+source changes reduce unnecessary questions and repetitive attribution and add
+an explicit owned-job teardown policy for temporary providers. Next qualify
+those changes with a newly authorized pinned model trial and human source review;
+do not enable generation based on the single capture.
+
 ## Current priority: make natural-language search useful
 
 The owner's October 15 feedback makes retrieval a priority. Search redesign and
