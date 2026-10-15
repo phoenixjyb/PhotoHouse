@@ -508,13 +508,24 @@ def _context_result(engine, token, library, context):
 
 def _turn(engine, token, library, words, previous, clock, *, language=None):
     from .assistant_search import SearchRuntime
+    if isinstance(engine, SearchRuntime):
+        with engine.turn_scope():
+            return _turn_scoped(engine, token, library, words, previous, clock, language=language)
+    return _turn_scoped(engine, token, library, words, previous, clock, language=language)
+
+
+def _turn_scoped(engine, token, library, words, previous, clock, *, language=None):
+    from .assistant_search import SearchRuntime
     v2 = isinstance(engine, SearchRuntime)
     if previous is not None:
         previous = _context(previous, library)
     # A new explicit search may leave a legacy result behind. Refinements and
     # ordinal opens must retain the original protocol and source binding.
+    from .assistant_query_plan import query_mode
+    new_search = (query_mode(words) == 'search' if v2 else
+                  bool(re.match(SEARCH_PREFIX, words.strip().casefold())))
     if (previous is not None and previous.get('search_version', 1) != (2 if v2 else 1)
-            and re.match(SEARCH_PREFIX, words.strip().casefold())):
+            and new_search):
         previous = None
     source = {}
     result = _turn_impl(engine, token, library, words, previous, clock, language=language, source=source)
@@ -595,6 +606,11 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     lower = words.strip().casefold()
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
+    if search_v2:
+        from .assistant_query_plan import query_mode
+        planned_mode = query_mode(words)
+        refine = refine or planned_mode == 'refine'
+        search = search or planned_mode == 'search'
     if not (refine or search):
         # Do not silently rewrite a transcript or treat a possible capture
         # request as permission to search. Ask the user to correct it instead.
@@ -627,6 +643,39 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     if existing is None:
         source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
+    if search_v2:
+        from .assistant_query_plan import plan_query
+        plan = plan_query(words, now=now, entities=first,
+                          previous_filters=previous['filters'] if previous else None, refine=refine)
+        if plan.status != 'ready':
+            reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
+                     if lang == 'zh' else
+                     'Some details could not be matched. Use a reviewed person, label, place, or an explicit capture date.')
+            if plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
+                reply = ('有个词既可能是已登记的名称，也可能是日期或媒体类型。请补充完整名称，或明确日期和类型。'
+                         if lang == 'zh' else
+                         'A word could mean a reviewed name or a date/media type. Use the full name or specify the date and type.')
+            elif plan.reason in ('ambiguous_entities', 'ambiguous_people', 'ambiguous'):
+                reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
+                         if lang == 'zh' else
+                         'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
+            elif plan.reason in ('invalid_date', 'conflicting_dates'):
+                reply = ('日期条件无效或互相冲突，请明确一个拍摄日期范围。' if lang == 'zh' else
+                         'The date conditions are invalid or conflicting. Specify one capture-date range.')
+            elif plan.reason == 'date_unavailable':
+                reply = ('这个相册库暂时没有可用的日期索引。' if lang == 'zh' else
+                         'Date search is not available in this library yet.')
+            elif plan.reason == 'text_too_long':
+                reply = ('要匹配的文字太长，请缩短引号内的内容后再查找。' if lang == 'zh' else
+                         'The quoted text is too long. Shorten it and search again.')
+            elif 'people' not in enabled:
+                reply += (' 当前相册库尚未启用人物检索；未识别的条件不会被忽略。' if lang == 'zh' else
+                          ' People search is not enabled in this library. Unmatched details were not ignored.')
+            return {'version': 1, 'kind': 'clarification', 'reply': reply,
+                    'context': previous, 'filters': previous['filters'] if previous else None,
+                    'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
+                    'has_more': existing['has_more'] if existing else False, 'effect': None}
+        return _search_reply(engine, token, library, binding, plan.filters, source, lang)
     filters = dict(previous['filters']) if refine else {}
     if re.search(r'视频|影片|videos?\b|movies?\b', condition_lower):
         filters['media'] = ['video']
@@ -643,10 +692,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     if dated is not None:
         filters['date'] = dated
     labels = []
-    ambiguous = search_v2 and first['ambiguous']
+    ambiguous = False
     if 'people' in enabled:
-        people, hits = ((first['groups']['people'], first['labels']) if search_v2 else
-                        _matches(words, _facets(engine, token, library, 'people', binding)))
+        people, hits = _matches(words, _facets(engine, token, library, 'people', binding))
         labels.extend(hits)
         if people:
             connective_words = d.fold(condition_words)
@@ -662,44 +710,15 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif together:
                 ambiguous = True
     if 'tags' in enabled:
-        tags, hits = ((first['groups']['tags'], first['labels']) if search_v2 else
-                      _matches(words, _facets(engine, token, library, 'tags', binding)))
+        tags, hits = _matches(words, _facets(engine, token, library, 'tags', binding))
         labels.extend(hits)
         if tags:
             filters['tags'] = {'ids': tags, 'match': 'any'}
     if 'locations' in enabled:
-        places, hits = ((first['groups']['locations'], first['labels']) if search_v2 else
-                        _matches(words, _facets(engine, token, library, 'locations', binding)))
+        places, hits = _matches(words, _facets(engine, token, library, 'locations', binding))
         labels.extend(hits)
         if places:
             filters['locations'] = places
-    # Explicit content forms keep unknown identities, dates and negation out of
-    # the lexical fallback. Quotes preserve spaces and literal short Chinese.
-    if search_v2:
-        quoted = re.search(r'[“"]([^“”"]+)[”"]', words)
-        candidate = None
-        if quoted and not _unmatched(words.replace(quoted.group(0), ''), labels + ['包含', '内容', '关于', 'containing', 'about']):
-            candidate = quoted.group(1)
-            labels.append(quoted.group(0))
-            labels.extend(['包含', '内容', '关于', 'containing', 'about'])
-        else:
-            residual = _unmatched(words, labels)
-            scene = re.fullmatch(r'在([^不要没有排除删除]{1,40}?)(?:游玩|玩)(?:的)?', residual)
-            if scene is None:
-                # Noun-only scenes stay deliberately bounded. Unrecognized
-                # people, actions, dates and exclusions remain unmatched.
-                scene = re.fullmatch(r'在(海边|海滩|沙滩|河边|湖边|公园|草地|山上)(?:的)?', residual)
-            if scene:
-                candidate = scene.group(1)
-                labels.append(residual)
-            elif residual == '在' and any(first['groups'][facet] for facet in ('tags', 'locations')):
-                # A current named tag/place already consumed the scene noun.
-                labels.append(residual)
-        if candidate:
-            if re.search(r'不要|没有|排除|删除|\b(?:not|without|except|delete)\b', condition_lower):
-                ambiguous = True
-            else:
-                filters['text'] = candidate
     if ambiguous or _unmatched(words, labels):
         reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或指定年月。'
                  if lang == 'zh' else
@@ -722,6 +741,10 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 'context': previous, 'filters': previous['filters'] if previous else None,
                 'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
                 'has_more': existing['has_more'] if existing else False, 'effect': None}
+    return _search_reply(engine, token, library, binding, filters, source, lang)
+
+
+def _search_reply(engine, token, library, binding, filters, source, lang):
     result = _search(engine, token, library, binding, filters)
     source.clear()
     source.update(result)
@@ -754,7 +777,7 @@ async def capabilities(request: Request):
             'max_audio_seconds': MAX_AUDIO_SECONDS if transcribe else 0}
     if _single(request, 'x-photohouse-search-version') == '2':
         result.update(version=2, search={'version': 2, 'text_sources': ['current_caption', 'photo_memory'],
-                                      'date_basis': 'capture', 'ranking': 'authored_then_asset_id'})
+                                      'date_basis': 'capture', 'ranking': 'authored_then_literal_quality_then_asset_id'})
     return result
 
 

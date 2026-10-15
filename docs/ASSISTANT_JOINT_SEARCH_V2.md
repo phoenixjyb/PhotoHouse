@@ -36,6 +36,10 @@ Examples using fictional reviewed names:
 - `找示例儿童和示例成人一起的照片`: both reviewed identities on the same asset.
 - `find photos containing "family at park"`: preserve the complete quoted phrase.
 - `只看去年九月的`: refine the current query after source/context revalidation.
+- `Could you show photographs taken in September 2032 containing "海边"`:
+  explicit English calendar month plus the exact quoted content.
+- `昨天的照片呢`: replace the date/media conditions of the previous search,
+  retaining its person and content conditions.
 
 Quoted text is content, not an identity hint. Two-character Chinese and NFKC /
 case-folded mixed-language matching work without an FTS tokenizer. Unquoted
@@ -89,9 +93,50 @@ incremental projection remains an option after measuring this baseline.
 ## Ordering and explanation
 
 Assets are deduplicated before pagination. A matching photo memory or edited
-caption sorts before generated-caption-only matches, then descending asset ID
-provides deterministic ties. This is an explicit policy baseline without semantic
-or visual ranking claims. All hard filters remain conjunctive.
+caption sorts before generated-caption-only matches. Within that tier, literal
+token coverage, complete phrase boundaries and shorter matching source text
+provide deterministic quality ordering, followed by descending asset ID for
+ties. Eligibility remains NFKC/case-folded literal substring matching. These
+quality signals do not expand the candidate set or establish family relevance.
+This is an explicit policy baseline without semantic or visual ranking claims.
+All hard filters remain conjunctive. The ranking policy participates in source
+bindings so old contexts cannot silently adopt a different result order.
+
+## Planning and turn-local reuse
+
+The negotiated v2 path uses `assistant_query_plan.plan_query`, a pure local
+planner supplied with the authorized entity resolver's exact ID groups and the
+server clock. Its internal versioned plan contains only existing filters or a
+clarification reason. It cannot read databases, open providers, infer IDs, change
+access, or execute mutations. V1 parsing and wire contracts remain independent.
+Quoted content remains opaque; unknown modifiers, unsupported negation and
+conflicting dates/media require clarification. Today/yesterday, Monday-based
+weeks, calendar months/years and explicit Chinese/English dates use the supplied
+server civil date. No user-time-zone inference is introduced by this increment.
+Resolved names that overlap a date or media keyword (for example, `May`) also
+require clarification instead of silently adding that condition. Quoted text
+must fit the existing 512-byte text filter limit; a longer literal asks for a
+shorter phrase without sending an invalid plan to retrieval.
+
+Within a synchronous v2 turn, `SearchRuntime.turn_scope` reuses derived facts and
+lazy text normalization only for an identical current binding. Every operation
+still authenticates, reads the bounded current source/index and recomputes its
+binding before using those facts. An edit, membership change or changed private
+graph therefore refuses an old context. The cache is cleared on success/error
+and is never reused across turns. This reduces projection work, not SQL scans;
+the existing per-read budgets remain, rather than one aggregate turn deadline.
+Matching and ranking check the read deadline and any supplied cancellation
+callback. Existing turn transports do not supply a disconnect cancellation
+callback, so disconnect cancellation is not claimed. Built-in sorting remains
+cooperative with checks before/after it and within Python preparation/output
+loops; it is not forcibly preempted.
+
+The legacy text embedding helper's placeholder-vector fallback is not connected
+to this path. General paraphrase understanding, cross-language semantic recall
+and text-to-image retrieval still need a qualified local planner/compatible real
+query encoder and measured relevance. This source increment activates none of
+those models. See [readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md)
+for the separate reviewed data and evaluation gates.
 
 Version-2 cards with text/person/date evidence add `match_reasons`; media-only
 cards may omit it. Text reasons identify `photo_memory`,
