@@ -931,11 +931,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return Boolean(view?.active&&view.panel.isConnected&&view.card.contains(view.panel)&&$('story-workspace').open&&
       current(view.ticket,view.owner)&&draft===view.story&&view.story.saved===true&&view.story.can_edit===true&&
       view.refs===refsFor(view.story)&&view.refs?.available===true&&!view.refs.refreshUnavailable&&
-      view.story.chapters.some(section=>section.id===view.chapterId)&&!frozen()&&!scope().locked&&dictationGuard());
+      view.story.chapters.some(section=>section.id===view.chapterId)&&!scope().locked);
   }
   function closeContributionChooser(view,restoreFocus=true){if(view){view.active=false;view.panel.remove();view.trigger?.setAttribute('aria-expanded','false');if(restoreFocus&&view.trigger?.isConnected)view.trigger.focus();}}
   async function loadContributionCandidates(view,page){
-    if(!candidateChooserCurrent(view)||view.loading||!Number.isSafeInteger(page)||page<1||page>100000)return;
+    if(!candidateChooserCurrent(view)||frozen()||!dictationGuard()||view.loading||!Number.isSafeInteger(page)||page<1||page>100000)return;
     view.loading=true;view.status.textContent=text('candidateLoading');if(page===1){view.list.replaceChildren();view.seen.clear();}view.more.disabled=true;
     try{
       const result=await savedRequest(`/memory-community/v1/stories/${view.story.id}/contribution-candidates?revision=${encodeURIComponent(view.story.revision)}&chapter_id=${encodeURIComponent(view.chapterId)}&page=${page}`);
@@ -950,7 +950,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const detail=[item.byline||text('sourceContribution'),text(item.kind==='text'?'candidateKindText':'candidateKindAudio'),`${text('candidateSubmitted')}${text('candidateDate')(new Date(item.created_at*1000))}`];
         if(item.kind==='audio'&&item.duration_ms!==null)detail.push(`${Math.ceil(item.duration_ms/1000)}${scope().language==='en'?'s':'秒'}`);
         const row=node('div',undefined,'story-contribution-reference'),choice=button(detail.join(' · '),()=>{
-          if(!candidateChooserCurrent(view))return;
+          if(!candidateChooserCurrent(view)||frozen()||!dictationGuard())return;
           const refs=refsFor(view.story),values=refs?.groups.get(view.chapterId)||[];
           if(values.includes(`contribution-${item.id}`)){view.status.textContent=text('candidateAlreadyAdded');return;}
           if(values.length>=12){view.status.textContent=text('candidateLimit');return;}
@@ -961,7 +961,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(!view.list.children.length)view.status.textContent=text('candidateEmpty');
       view.more.hidden=!view.hasMore;view.more.disabled=!view.hasMore;
     }catch(error){if(candidateChooserCurrent(view)){view.failedPage=page;view.status.textContent=text('candidateFailed');view.more.hidden=true;view.retry.hidden=false;}}
-    finally{view.loading=false;if(candidateChooserCurrent(view)){view.more.disabled=!view.hasMore;view.cancel.disabled=frozen();}}
+    finally{view.loading=false;if(candidateChooserCurrent(view)){view.more.disabled=!view.hasMore;view.cancel.disabled=false;}}
   }
   function openContributionChooser(card,story,chapterId,owner,ticket,refs,trigger){
     if(frozen()||!$('story-workspace').open||!current(ticket,owner)||draft!==story||!story.saved||story.can_edit!==true||refs!==refsFor(story)||!refs?.available||refs.refreshUnavailable||!dictationGuard())return;
@@ -1542,6 +1542,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(sourceReviewOptedIn)path+=(path.includes('?')?'&':'?')+'source_review=1';
       pendingSave={path,method:draft.id?'PUT':'POST',body};
     }
+    for(const card of $('story-chapter-editor').querySelectorAll('.story-contribution-references'))closeContributionChooser(contributionCandidateViews.get(card),false);
     const pending=pendingSave,submittedStory=draft;busy=true;setSelectionCount();message('savingMemory');
     let journalRevision=null;
     if(activeLocalRevision){

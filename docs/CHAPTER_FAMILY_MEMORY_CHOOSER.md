@@ -67,7 +67,8 @@ source evidence; they do not establish installed Web, phone or family acceptance
 
 The browser journey passed against the closed ASGI application and generated
 SQLite data, including cancel/late-response fencing, exact failed-page retry,
-explicit save/reopen and original disclosure. Chinese and English compact views
+explicit save/reopen and original disclosure. Starting Save closes an in-flight
+chooser; failed-save recovery cannot strand it in a loading state. Chinese and English compact views
 were rendered at an effective 260 CSS pixels (390 pixels enlarged to 150%).
 At compact widths, editor header/actions scroll with the content so they do not
 cover the bounded source list; choices retain 44-pixel touch targets. Keyboard
