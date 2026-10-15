@@ -319,6 +319,9 @@ class DiscoveryReads:
     def _search_presentation(self, facets, filters):
         return {}
 
+    def _prepared_facts(self, index, source, people, places, check, binding):
+        return self._facts(index, source, people, places, check)
+
     def __init__(self, access: AccessService, provider, budget: ReadBudget):
         if not isinstance(access,AccessService) or not isinstance(budget,ReadBudget): raise ValueError('Explicit access and shared budget required')
         self.access,self.provider,self.budget=access,provider,budget
@@ -349,7 +352,7 @@ class DiscoveryReads:
                 if expected is not None:
                     require(hashed(expected))
                     if binding!=expected: raise DiscoveryChanged()
-                facts=self._facts(index,dict(source, **extra),people,places,check)
+                facts=self._prepared_facts(index,dict(source, **extra),people,places,check,binding)
                 result=action(index,facts,binding,member,check)
                 check()
                 if len(packed(result))>self.budget.response_bytes: raise DiscoveryUnavailable()

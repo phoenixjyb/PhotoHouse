@@ -5,10 +5,15 @@ projection reads current captions and saved photo notes after authorization,
 inside the same transaction and budget. Private conversations are never sources.
 """
 from collections import defaultdict
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 import re
 
 from . import discovery as d
+from . import search_text
+
+_TURN_FACTS = ContextVar("search_turn_facts", default=None)
 
 KINSHIP = frozenset(('妈妈', '妈咪', '爸爸', '母亲', '父亲', '爷爷', '奶奶', '外公', '外婆',
                      '姥姥', '姥爷', '哥哥', '姐姐', '弟弟', '妹妹', '儿子', '女儿', '老公', '老婆',
@@ -45,10 +50,13 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 
 class AssistantSearchReads(d.DiscoveryReads):
-    def __init__(self, access, provider, budget, *, kinship=None):
+    def __init__(self, access, provider, budget, *, kinship=None, facts_cache=None):
         super().__init__(access, provider,
                          budget.search_view() if isinstance(budget, d.ReadBudget) else budget)
         self.kinship = kinship
+        self._facts_cache = facts_cache
+        self._quality_by_id = {}
+        self._check = lambda: None
 
     def _extra_source(self, index, source, read, check):
         captions = source['captions'] if 'caption' in index.enabled else read(
@@ -65,11 +73,28 @@ class AssistantSearchReads(d.DiscoveryReads):
             JOIN access_asset_libraries m ON m.asset_id=a.id
             WHERE m.library_id=? AND s.library_id=m.library_id AND s.deleted=0
             AND (a.status='active' OR a.status IS NULL) ORDER BY s.id''', (index.library_id,))
-        return {'text_projection_version': 2, 'text_captions': captions, 'photo_notes': notes,
+        return {'text_projection_version': 3, 'ranking_policy': search_text.SEARCH_TEXT_POLICY_VERSION,
+                'text_captions': captions, 'photo_notes': notes,
                 **({'kinship_digest': self.kinship.digest} if self.kinship is not None else {})}
 
     def _search_fields(self, index):
         return super()._search_fields(index) | {'text'}
+
+    def _prepared_facts(self, index, source, people, places, check, binding):
+        # Authorization, index/source validation and the complete bounded reads
+        # have ALREADY run on every call. Reuse only derived facts for the exact
+        # same opaque binding within one synchronous turn, never across turns.
+        self._check = check
+        check()
+        cache = self._facts_cache
+        if cache is not None and cache.get('binding') == binding:
+            return cache['facts']
+        facts = self._facts(index, source, people, places, check)
+        check()
+        if cache is not None:
+            cache.clear()
+            cache.update(binding=binding, facts=facts)
+        return facts
 
     def _facts(self, index, source, people, places, check):
         assets, rows, facets, coverage = super()._facts(index, source, people, places, check)
@@ -84,6 +109,7 @@ class AssistantSearchReads(d.DiscoveryReads):
                     'revision': revision, 'content': title + '\n' + content})
         for aid, row in rows.items():
             check()
+            row['_asset_id'] = aid
             row['text_sources'] = list(notes[aid])
             caption = d.current_caption(captions[aid])
             if caption is not None:
@@ -94,17 +120,14 @@ class AssistantSearchReads(d.DiscoveryReads):
         return assets, rows, facets, coverage
 
     def _content_match(self, row, filters):
-        reasons = []
-        for source in row.get('text_sources', ()) if row and 'text' in filters else ():
-            if filters['text'] in d.fold(source['content']):
-                # A reason identifies provenance without copying private prose
-                # into context or implying that a generated caption is fact.
-                reasons.append({k: source[k] for k in ('source', 'source_id', 'revision')})
-        if 'text' in filters and not reasons:
+        if row and 'text' in filters and '_normalized_sources' not in row:
+            row['_normalized_sources'] = search_text.normalize_sources(row['text_sources'], self._check)
+        matched, reasons, quality = search_text.match_text(
+            {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check)
+        if not matched:
             return False, []
-        # Keep all selected-person/date reasons within the bounded card shape.
-        reasons = reasons[:43]
         if row:
+            self._quality_by_id[row['_asset_id']] = quality
             for person in sorted(row['people'] & set(filters.get('people', {}).get('ids', ())), key=int):
                 reasons.append({'source': 'reviewed_person', 'source_id': person})
             if 'date' in filters:
@@ -112,11 +135,10 @@ class AssistantSearchReads(d.DiscoveryReads):
         return True, reasons
 
     def _rank(self, found):
-        # Stable deterministic baseline: authored evidence first, then ID.
-        # This is a policy baseline, not a qualified relevance model.
-        return sorted(found, key=lambda item: (
-            any(r['source'] in ('photo_memory', 'edited_caption')
-                for r in item.get('match_reasons', ())), int(item['id'])), reverse=True)
+        self._check()
+        result = search_text.rank_results(found, self._quality_by_id, self._check)
+        self._check()
+        return result
 
     def _perspective(self):
         if self.kinship is None:
@@ -142,45 +164,10 @@ class AssistantSearchReads(d.DiscoveryReads):
         Internal operator read, never a public capability or an identity roster.
         A current source can still have incomplete metadata or a partial index.
         """
-        def action(index, facts, context, member, check):
-            assets, rows, facets, _ = facts
-            by_media = {}
-            for kind in ('image', 'video', 'other'):
-                selected = {aid: asset for aid, asset in assets.items() if asset['kind'] == kind}
-                values = {aid: rows[aid] for aid in selected if aid in rows}
-                counts = {'catalog_assets': len(selected), 'indexed_assets': len(values),
-                          'unindexed_assets': len(selected) - len(values)}
-                counts['capture_dates_recorded'] = sum(d.taken_day(a['taken_at']) is not None for a in selected.values())
-                counts['capture_dates_missing'] = len(selected) - counts['capture_dates_recorded']
-                counts['capture_dates_searchable'] = (sum(row['date'] is not None for row in values.values())
-                                                       if 'date' in index.enabled else 0)
-                counts['text_searchable'] = sum(bool(row['text_sources']) for row in values.values())
-                counts['people_searchable'] = (sum(bool(row['people']) for row in values.values())
-                                                if 'people' in index.enabled else 0)
-                for source in ('photo_memory', 'edited_caption', 'generated_caption'):
-                    check()
-                    counts[source] = sum(any(item['source'] == source for item in row['text_sources'])
-                                         for row in values.values())
-                by_media[kind] = counts
-            issues = []
-            if len(rows) < len(assets):
-                issues.append({'code': 'assets_outside_reviewed_index', 'count': len(assets) - len(rows)})
-            if by_media['video']['capture_dates_missing']:
-                issues.append({'code': 'videos_without_recorded_capture_date',
-                               'count': by_media['video']['capture_dates_missing']})
-            if not any(value['text_searchable'] for value in by_media.values()):
-                issues.append({'code': 'no_eligible_text', 'count': len(rows)})
-            if 'people' not in index.enabled or not facets['people']:
-                issues.append({'code': 'reviewed_people_unavailable', 'count': 0})
-            return {'version': 1, 'search_version': 2, 'status': 'current', 'binding': context,
-                    'index_revision': index.revision, 'date_basis': 'capture',
-                    'enabled': [field for field in d.FIELDS if field in index.enabled] + ['text'],
-                    'catalog_assets': len(assets), 'indexed_assets': len(rows),
-                    'index_complete': len(assets) == len(rows), 'by_media': by_media,
-                    'reviewed_person_count': len(facets['people']),
-                    'kinship_available': self.kinship is not None,
-                    'relevance_measured': False, 'issues': issues}
-        return self._run(token, library, binding, action, cancelled)
+        from .search_readiness import build_readiness
+        return self._run(token, library, binding,
+            lambda index, facts, context, member, check:
+                build_readiness(index, facts, context, self.kinship, check), cancelled)
 
     def entities(self, token, library, *, words, binding=None, cancelled=lambda: False):
         d.text(words, 1024)
@@ -228,6 +215,16 @@ class SearchRuntime:
         self.runtime = runtime
         self.kinship_provider = kinship_provider
 
+    @contextmanager
+    def turn_scope(self):
+        cache = {}
+        marker = _TURN_FACTS.set((self, cache))
+        try:
+            yield
+        finally:
+            cache.clear()
+            _TURN_FACTS.reset(marker)
+
     def authorize(self, token, library):
         return self.runtime.authorize(token, library)
 
@@ -246,7 +243,10 @@ class SearchRuntime:
                     if not isinstance(kinship, KinshipGraph): raise KinshipUnavailable()
                     if not kinship.allows(account, library):
                         kinship = None
-            reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget, kinship=kinship)
+            entry = _TURN_FACTS.get()
+            cache = entry[1] if entry is not None and entry[0] is self else None
+            reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget,
+                                          kinship=kinship, facts_cache=cache)
             methods = {'entities': reader.entities, 'search': reader.search,
                        'facets': reader.facets, 'assistant_asset': reader.assistant_asset,
                        'presentation': reader.presentation, 'readiness': reader.readiness}

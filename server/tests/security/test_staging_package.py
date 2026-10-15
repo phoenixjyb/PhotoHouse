@@ -18,6 +18,9 @@ class StagingPackageTests(unittest.TestCase):
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
             'backend/app/access/assistant_search.py',
+            'backend/app/access/assistant_query_plan.py',
+            'backend/app/access/search_readiness.py',
+            'backend/app/access/search_text.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/assistant_journal.py',

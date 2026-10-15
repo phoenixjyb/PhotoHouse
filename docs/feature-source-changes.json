@@ -17565,6 +17565,91 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "search-v2-typed-planning-readiness-and-turn-local-ranking",
+      "source_commit": "a4ed3068bbf832eec6ce44d9be17bb9238298a01",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "0f01939917631cca3845f92bbb3008c649a77256000b7638d270eb182c96d490",
+          "sha256": "9d53773c79f4024bf43e4da29ff086b28fad099ab3eea852bacfd65e6c41c7d2"
+        },
+        {
+          "path": "docs/SEARCH_READINESS_AND_RELEVANCE.md",
+          "before_sha256": "16187eb058a6f8e77d708d883ac3b4d095b41cff728a905a5b21c7f046399b23",
+          "sha256": "b3f6cca8d69be2906d1a871554d6e350331b084d77fde89788d2219aed22470e"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "5f793d089359b0479c02d5d1c2e66aa98255b0c460c4f3f57d137317745306c9",
+          "sha256": "a2ae2fcd4949d0fdae12e066062a10a6a4d6156b5d9ed7b4c7ecf430aad37c5e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": null,
+          "sha256": "11be70026f9318524ccaa576a1bf77c6e1dfed34cc8e4a890a4af4305b9877f8"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "86b9e29d891741fc1f8da43f5262a76a9b8835c20ba7edf43a3d38e396faeb71",
+          "sha256": "3056353144a1656b97d884d5eb8a2d963eba52f89dbf45904985c20928eb46da"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "ed73db832135b6e7dff035575cdd37b57f3813bff523de4bcb719a8c6b5ca952",
+          "sha256": "04da74c7770188d7ec17fde418d14da311eacad95d4c788630aa32306c44f9bf"
+        },
+        {
+          "path": "server/backend/app/access/search_readiness.py",
+          "before_sha256": null,
+          "sha256": "91681404b6bbd3a25ae0512281aacbc64b92a43f45624db82fd590394ee7d36e"
+        },
+        {
+          "path": "server/backend/app/access/search_text.py",
+          "before_sha256": null,
+          "sha256": "8823f05a000ae9db35bf55111be4a8c1ff5f4672516aa60ae270ba86b66c2b70"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "a154c4a351f692ad1c6dd09c23aebfd409af20fbb62a0e7811345d949a7080c3",
+          "sha256": "26caec4b57b8154270c867477ed02b222f96ab498548d865c5cdb84ecbb39a33"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": null,
+          "sha256": "ae8fec39ee7036a12523117da0da6984ddaa53b355778258e024063444bd47e2"
+        },
+        {
+          "path": "server/tests/security/test_search_readiness.py",
+          "before_sha256": "c0fbeb31d4817ca087a1e6e0551b385fcd9d1082260c09dcb287afc8a8ce4c1e",
+          "sha256": "c7ae492084bd865e860b4fb741abeb373e355151c14ebc46ebf6401edaa16716"
+        },
+        {
+          "path": "server/tests/security/test_search_text.py",
+          "before_sha256": null,
+          "sha256": "81fc8f95744c098aff0c3695c0cd4a68ebe560094438085ccbe4d128bf11f66d"
+        },
+        {
+          "path": "server/tests/security/test_search_turn_projection.py",
+          "before_sha256": null,
+          "sha256": "943ad95e24f1557924a3129d028c58ee6a501716eb541cec92170ad5b9f20b6f"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "93e6c55659bf956f896b5c9e64e8a2486963c673190304b0fa2b34fb2ddf540c",
+          "sha256": "9f93ada065c7b557149987359f9ed1512dc974026ce0cdadb979bfaa533b909a"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a470f1b6c76514702c481afb9fad9cf9d8f6e931a8764bceabd6a41887d7cdc0",
+          "sha256": "0f8cd13ec1e7d80b89b7828a71781dd9ca6c93b511d5e98765902ef13c1180e1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }
