@@ -228,6 +228,22 @@ class AssistantJointSearchTests(unittest.TestCase):
                 self.assertIsNone(body['context'])
                 self.assertIsNone(body['effect'])
 
+    def test_library_alias_does_not_supply_a_users_personal_kinship_mapping(self):
+        child, adult = self.index.people
+        self.install(replace(self.index, people=(child, replace(adult, aliases=adult.aliases + ('妈妈', 'my mother')))))
+        for phrase in ('找妈妈的照片', 'find photos of my mother'):
+            with self.subTest(phrase=phrase):
+                response = self.turn(phrase)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()['kind'], 'clarification', response.json())
+                self.assertEqual(response.json()['items'], [])
+        # A literal word in quoted content remains searchable without making
+        # any relationship/identity assertion.
+        response = self.turn('找包含“妈妈”的照片')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['kind'], 'results', response.json())
+        self.assertEqual(response.json()['filters'], {'media': ['image'], 'text': '妈妈'})
+
     def test_roster_over_500_is_resolved_in_one_authorized_candidate_read(self):
         people = list(self.index.people)
         people.extend(ReviewedPerson('family-a', str(1000 + number),

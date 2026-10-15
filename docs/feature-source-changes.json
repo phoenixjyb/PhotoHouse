@@ -16660,6 +16660,30 @@
       "routes_added": false,
       "schema_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "require-personal-mapping-for-kinship-search-aliases",
+      "source_commit": "1d70294a73f13fa9672d1b0b859902eea378ee2f",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "6d5073120f292bfd2322678ecc6560ad60b22d4404d672b946804287a8940d97",
+          "sha256": "6cfcf9b9c80eb9570b612690e7fda61de174239b54dcf38136c111710954ba6b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "4b769c744518f000c29d2e9537b139bd98b10160bf89440f2f44bb64379a6fd3",
+          "sha256": "ad85762378907b455e11e9cf24b5b7de52310b01197c952d2a5f325203552563"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3155e8820b2d6fe7f78f330f82e53c0ab146a70d830d5a9948feea69468cf070",
+          "sha256": "2c40e4217bd4198475eb0e02f778418ae77362665df22ffdcf944ed30f0058e1"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
     }
   ]
 }

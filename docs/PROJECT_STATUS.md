@@ -36,7 +36,7 @@ This is not deployed or enabled in Web/phone/private-workspace clients. Real
 index readiness, video date bases, local semantic understanding and relevance
 qualification remain ahead.
 
-The focused generated-data joint-search suite passes 18 tests, including short
+The focused generated-data joint-search suite passes 19 tests, including short
 Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
 ranking/paging, current-result opening/refinement and version isolation. Existing
 discovery/index suites and the shared assistant/workspace checks also passed at

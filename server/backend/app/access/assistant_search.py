@@ -10,6 +10,18 @@ import re
 
 from . import discovery as d
 
+KINSHIP = frozenset(('妈妈', '妈咪', '爸爸', '母亲', '父亲', '爷爷', '奶奶', '外公', '外婆',
+                     '姥姥', '姥爷', '哥哥', '姐姐', '弟弟', '妹妹', '儿子', '女儿', '老公', '老婆',
+                     '丈夫', '妻子', '叔叔', '阿姨', '舅舅', '姑姑', 'mom', 'mum', 'mummy',
+                     'mother', 'dad', 'daddy', 'father', 'grandma', 'grandpa', 'grandmother',
+                     'grandfather', 'sister', 'brother', 'son', 'daughter', 'husband', 'wife'))
+
+
+def kinship_name(name):
+    parts = [re.sub(r'^(?:my |our |我的|我们的)', '', d.fold(part.strip()))
+             for part in name.split('/')]
+    return bool(parts) and all(part in KINSHIP for part in parts)
+
 
 @dataclass(frozen=True)
 class SearchPlan:
@@ -22,11 +34,11 @@ class SearchPlan:
         d.require(type(self.filters) is dict and set(self.filters) <= set(d.FIELDS) | {'text'})
 
 
-def name_hits(words, label, aliases=()):
+def name_hits(words, label, aliases=(), *, person=False):
     haystack = d.fold(words)
     names = [label, *aliases]
     names += [part.strip() for name in names for part in name.split('/')]
-    return [name for name in names if name.strip() and (
+    return [name for name in names if name.strip() and not (person and kinship_name(name)) and (
         re.search(r'(?<![a-z0-9_])' + re.escape(d.fold(name)) + r'(?![a-z0-9_])', haystack)
         if re.fullmatch(r'[\w .-]+', name, flags=re.ASCII) else d.fold(name) in haystack)]
 
@@ -68,7 +80,7 @@ class AssistantSearchReads(d.DiscoveryReads):
             row['text_sources'] = list(notes[aid])
             caption = d.current_caption(captions[aid])
             if caption is not None:
-                eligible = [r for r in captions[aid] if r[2] == caption and r[6] == 0]
+                eligible = [r for r in captions[aid] if r[2] == caption and r[6] == 0 and r[5] in (0, 1)]
                 chosen = max(eligible, key=lambda r: r[5])
                 row['text_sources'].append({'source': 'edited_caption' if chosen[5] == 1 else 'generated_caption',
                     'source_id': str(chosen[0]), 'revision': d.digest(chosen), 'content': caption})
@@ -105,7 +117,7 @@ class AssistantSearchReads(d.DiscoveryReads):
                 hits = []
                 for item in items:
                     check()
-                    names = name_hits(words, item['label'], item.get('aliases', ()))
+                    names = name_hits(words, item['label'], item.get('aliases', ()), person=facet == 'people')
                     if names:
                         hits.append(item['id']); labels.append(max(names, key=len))
                 if len(hits) > 20:
@@ -114,10 +126,10 @@ class AssistantSearchReads(d.DiscoveryReads):
             # A shared/overlapping alias is never resolved to multiple identities.
             matched_people = [p for p in index.people if p.id in groups['people']]
             for pos, first in enumerate(matched_people):
-                first_hits = name_hits(words, first.label, first.aliases)
+                first_hits = name_hits(words, first.label, first.aliases, person=True)
                 for second in matched_people[pos + 1:]:
                     if any(d.fold(a) in d.fold(b) or d.fold(b) in d.fold(a)
-                           for a in first_hits for b in name_hits(words, second.label, second.aliases)):
+                           for a in first_hits for b in name_hits(words, second.label, second.aliases, person=True)):
                         ambiguous = True
             return {'binding': context, 'enabled': list(index.enabled) + ['text'],
                     'groups': groups, 'labels': labels, 'ambiguous': ambiguous}
