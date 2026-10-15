@@ -1,6 +1,6 @@
 # Feature and acceptance matrix
 
-Maintained summary, reviewed **2026-10-15** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
+Maintained summary, reviewed **2026-10-16** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
 binds the exact release/runtime observations; [Roadmap](ROADMAP.md) owns active
 next work. “Implemented” describes source, “enabled” describes an inspected
 installation, and family acceptance requires physical use.
@@ -14,6 +14,7 @@ installation, and family acceptance requires physical use.
 | Upload queue/history folding and retry/status | Client source and delivered app; approval, preparation and visibility remain distinct | Family queue/recovery UX trial |
 | Chinese-first UI and visible voice phases | Phone v60 / Web deployed; source/browser/emulator and large-text checks recorded | Device microphone/audio-focus and user perception |
 | Text/audio original family contributions | Revisioned, attributed original and derivation contracts; collaboration/originals enabled | Family quality/recovery checks; not the assistant's transient audio path |
+| Manually link a family memory to a chapter | [Following Web/API source](CHAPTER_FAMILY_MEMORY_CHOOSER.md): accepted/consented metadata chooser, explicit selection/save and original-source review | Source qualification, paired Web/API delivery, Android chooser parity and family trial; no schema/model activation |
 | Upload/folder annotation intake and automatic polish/tags | Source adapters/contracts present | Separate annotation intake off; provider/queue activation and source-quality review |
 | Story/memoir composition, reviewed chapter sources, albums and reading continuity | Source supports protected composition/readers; separate manual chapter narration exists | Larger real-family story/album reading and contribution acceptance |
 | Guided first-story creation | Delivered on Web and phone v61, retained in v62: select moments, type/review dictation, literal preview, explicit save | Physical family trial |
@@ -21,7 +22,7 @@ installation, and family acceptance requires physical use.
 | Story suggestion wording review | [Delivered Web/phone v64](STORY_PROPOSAL_WORDING_REVIEW.md): counts literal chapter changes; optional focus collapses matching prose while references/questions stay available | Provider path remains off; model quality and family review remain separate |
 | Chapter-opening title shortcut | [Delivered Web/phone v64](CHAPTER_OPENING_TITLE.md): explicit adoption from authored text or reviewed dictation, editable title and exact private-draft persistence | Physical family trial; no model activation or automatic save |
 | Story companion answer citations | [Following source](STORY_COMPANION_GROUNDING.md): answers require known source IDs; insufficient context prompts clarification; sanitized invalid output | Not in frozen v64; hosted regression, later delivery and factual quality remain separate |
-| Story quality review workspace | [Offline operator page](MEMOIR_QUALITY_REVIEW.md): captured wording beside cited sources and current rubric; [one native synthetic capture](STORY_MODEL_TRIAL_2026-10-16.md) rendered | Overall trial failed natural helper drain; revised prompt/cleanup, remaining cases and human review need qualification; generation stays off |
+| Story quality review workspace | [Offline operator page](MEMOIR_QUALITY_REVIEW.md): wording beside cited sources; [two separately authorized captures](STORY_MODEL_TRIAL_2026-10-16.md), revised declared cleanup verified | Initial natural-drain failure retained; human review and remaining cases open; cold latency remains high and generation stays off |
 | Automatic story/title proposals, memoir editorial and reviewed editions | Source and generated qualification; source/derivation/consent and CAS guards | Generation/title/editorial/edition flags off; schema, model quality, paired backup and native delivery |
 | Adjustable activity/shared-memory grouping | Manual group and time/similarity candidate contracts; source/version revalidation | Groups off; compatible schema/vector identity, withdrawal replay, native recovery and family adjustment trial |
 | Private assistant threads/history and reply-language preference | Separate owned schema-v2 store, 30-day retention, idempotent requests and GET recovery; configured in the current installation | Family/private account continuation checks; response length and voice pace are not applied |
@@ -39,7 +40,7 @@ installation, and family acceptance requires physical use.
 | Story/memoir preview recovery | Delivered phone v60 / Web: explicit protected-preview retry, corrupt-cache recovery, visible loading and stale-scope fences; focused bilingual emulator/browser checks pass | Signed/served delivery verified; real-device recovery trial remains |
 | Explicit TV preview retry | TV v31 reserved in October 15 source: visible current-page failures, explicit missing-preview retry and persistent focused recovery action; three emulator cases | Signed TV delivery and physical remote/projector trial |
 | Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | v60 native qualification and live delivery passed; future candidates retain their own gates |
-| OTA and recovery | Phone v63, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
+| OTA and recovery | Phone v64, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
 
 See the [v60 delivery record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
 for exact artifacts, backup, worker restoration and complete HTTPS APK readback.

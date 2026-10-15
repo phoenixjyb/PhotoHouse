@@ -1,6 +1,10 @@
 # First native story capture and follow-up fixes
 
-## Result and scope
+Two separately authorized, single-request runs are recorded below. The initial
+run's natural-drain failure remains intact; the revised run explicitly uses
+owned-job teardown. Neither establishes human storytelling quality.
+
+## Initial capture: result and scope
 
 On October 16, one installed `qwen3.5:9b-q4_K_M` candidate processed the pinned
 `synthetic-coherence` narrative case from source
@@ -91,7 +95,7 @@ to the new policy by this source change.
 The native canary used `bounded_windows_job.py` SHA-256
 `9ffd012c12afc44a7caa54b8aa40e360640ad8bf390a1b3f547fb162b44d3f79`.
 
-## Next qualification gates
+## Initial follow-up gates (before the revised capture)
 
 1. Prepare a fresh pinned harness declaring the cleanup policy and its receipts;
    retain failed evidence. A new real model run requires its own authority.
@@ -108,3 +112,43 @@ The native canary used `bounded_windows_job.py` SHA-256
 See the [offline review page](MEMOIR_QUALITY_REVIEW.md),
 [model qualification procedure](MODEL_QUALIFICATION.md) and
 [project status](PROJECT_STATUS.md).
+
+## Revised capture after PR #28
+
+The next authorized run used source
+`01c9f159c1cd07e7775cf68f8dc4fb532d2563d4` (merged through PR #28 at `ea43c48`)
+and the same pinned case/input. Its private 18-member packet SHA-256 was
+`dfc41072c7217b11edabd68bcbd5bb1d1695008dfa78526ca636391c98935d29`;
+27 harness checks and extracted eight-case planning passed before execution.
+It made exactly one model request, with no retry or other model run.
+
+- The proposal validated and was captured with canonical output SHA-256
+  `eb0d59068ce4879d4ae128788aae90251717a397e1b82b3dfbe0ddc08eca4fee`.
+- Canary duration was **80.422 seconds**, with **80.875 seconds** around its
+  child invocation. The unchanged 90/180-second, 24 GiB, 12-process and 4K
+  context bounds applied. These two cold observations do not separate model
+  loading from generation or demonstrate acceptable interactive latency.
+- Post-request loaded-model size/GPU placement matched the first run. The
+  selected GPU's sampled maximum was again **6,787 MiB**, across 73 samples.
+- The supervisor explicitly reported `terminate_descendants_after_exit`,
+  observed **3 → 0** remaining processes, recorded one successful owned-job
+  termination and returned child exit code 0. The declared teardown gate passed;
+  this is not evidence of natural provider shutdown.
+- Eight task definitions/states/identified roots matched before and after. The
+  temporary listener was closed; a later read-only GPU observation found the
+  selected GPU back at **264 MiB** used. No service or model selection changed.
+- The actual capture was rendered at desktop and 390 px / 150% text without
+  external requests or horizontal overflow, then visually inspected.
+
+The new output asks zero follow-up questions, compared with three in the earlier
+capture, and no longer duplicates an author label in parentheses. A preliminary
+assistant comparison still finds formulaic attribution; its wording can also
+blur a recording's byline with the person speaking. Those are review issues,
+not automatically passed criteria. The chapter order and cited IDs validate;
+**all human quality items remain unreviewed**. One sample per prompt cannot
+establish a general improvement or qualify the remaining cases.
+
+Next record independent human judgments and qualify conflicting accounts,
+speaker/uploader/subject separation, provenance and the separate title cases.
+Additional model requests need their own authority. Generation stays off while
+latency, complete-case quality, schema/recovery and family acceptance remain open.

@@ -30,7 +30,7 @@ API_TESTS = (
     "test_family_note_deletions.py", "test_family_note_deletion_boundaries.py",
     "test_family_note_erasure_api.py", "test_upgrade_original_deletion_journal.py",
     "test_private_storage.py", "test_model_deployment.py", "test_model_binding.py", "test_model_qualification.py", "test_model_topology.py", "test_apply_memory_editorial_schema.py",
-    "test_oral_history_intake.py", "test_oral_history_withdrawal.py", "test_qualify_oral_history.py", "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_books.py",
+    "test_oral_history_intake.py", "test_oral_history_withdrawal.py", "test_qualify_oral_history.py", "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_contribution_candidates.py", "test_memory_books.py",
     "test_memoir_quality_cases.py", "test_memoir_quality_canary.py", "test_memoir_review_page.py",
     "test_memory_book_editorial_service.py", "test_memory_book_editorial_http.py",
     "test_memory_book_editorial_migration.py", "test_model_diagnostics.py",
@@ -65,7 +65,7 @@ API_TESTS = (
     "test_editorial_rehearsal_database_guard.py",
 )
 MEMORY_TESTS = (
-    "test_private_storage.py", "test_oral_history_intake.py", "test_oral_history_withdrawal.py", "test_qualify_oral_history.py", "test_memory_contributions.py", "test_memory_contribution_refs.py",
+    "test_private_storage.py", "test_oral_history_intake.py", "test_oral_history_withdrawal.py", "test_qualify_oral_history.py", "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_contribution_candidates.py",
     "test_memory_books.py", "test_memory_book_editorial_service.py", "test_memory_book_editorial_http.py",
     "test_family_note_identity.py", "test_family_note_identity_migration.py",
     "test_family_note_deletions.py", "test_family_note_deletion_boundaries.py",

@@ -4231,6 +4231,20 @@
    "source": "backend/app/access/memory_transport.py",
    "owner": "router",
    "method": "GET",
+   "path": "/memory-community/v1/stories/{story_id}/contribution-candidates",
+   "handler": "contribution_candidates",
+   "surface": "photohouse",
+   "capabilities": [
+    "library.read"
+   ],
+   "scope": "Current approved library, readable full parent story/media and current saved revision/chapter; library owner or contributing story author only. Accepted, locally consented contributions bound to this story and matching chapter or unbound.",
+   "current_control": "Existing collaboration/originals and healthy-retention gates, admitted reference schema, strict query/revision, filtered 16-item metadata-only pagination. No contribution original text/audio or derivation fields selected; explicit save revalidates all link eligibility.",
+   "gap": "Following Web/API source; paired delivery, Android chooser parity and family acceptance remain. No schema or model activation."
+  },
+  {
+   "source": "backend/app/access/memory_transport.py",
+   "owner": "router",
+   "method": "GET",
    "path": "/memory-community/v1/stories/{story_id}/contributions",
    "handler": "contributions",
    "surface": "photohouse",

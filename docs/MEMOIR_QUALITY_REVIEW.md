@@ -85,9 +85,10 @@ corrected before the passing run. Desktop and narrow rendered pages were inspect
 Render data uses a fake provider and does not constitute a model run.
 
 The [October 16 native trial](STORY_MODEL_TRIAL_2026-10-16.md) now supplies one real
-coherence capture and an inspected private page. Its overall runtime trial failed
-natural descendant cleanup; quality remains unreviewed. Wording and cleanup
-follow-up source changes need a fresh model trial before qualification.
+initial coherence capture and an inspected private page, followed by a separately
+authorized revised capture. The initial trial failed natural descendant cleanup;
+the revised run passed explicit owned-job teardown. Both quality rubrics remain
+unreviewed. Broader cases, human judgments and latency still need qualification.
 
 For subsequent separately authorized captures, inspect the exact sources and record human judgments
 with the [qualification worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet),
