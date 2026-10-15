@@ -14,6 +14,7 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
+    "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
     "test_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",

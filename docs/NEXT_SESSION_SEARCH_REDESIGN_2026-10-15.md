@@ -6,6 +6,11 @@
 
 ### 后续源码进度：第一批联合检索
 
+后续已有可选的[私有亲属检索合同](PRIVATE_KINSHIP_SEARCH.md)：显式中心视角、
+指定账号/相册 allowlist、当前已审核人物绑定、关系/撤权变更失效。真实家庭
+图谱、中文姓名和待注册账号预批准均在 Git 外；不要复制到测试、文档或源码。
+本地 draft 不代表账号创建、生产权限开通或 Windows 部署。
+
 检索开发已隔离在 `codex/search-redesign-20261015` worktree，避免与并行的
 `codex/story-first-guide-20261015` 会话互相写入。主 checkout 保留原状态。
 [第一批合同](ASSISTANT_JOINT_SEARCH_V2.md) 记录显式协商的 search-v2 API：

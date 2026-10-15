@@ -25,6 +25,17 @@ v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
+The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
+for search v2. It binds an explicit library/account allowlist and chosen
+perspective, resolves bilingual relative chains only to current reviewed
+identities, and invalidates contexts on graph/perspective/access changes.
+Household data and pending account approvals remain outside Git. The focused
+generated graph/provider/HTTP suite passes 29 tests; staging/runtime forwarding
+and existing joint/conversational tests also pass. Live activation still needs
+confirmed account/library/person bindings, client perspective display and the
+separate server delivery gate. No account creation or live permission change is
+implied by source checks or a private draft.
+
 The next local source increment adds an explicitly negotiated search-v2 API
 slice joining eligible current captions, saved photo memories and reviewed
 people with existing date/media/place constraints. It uses a request-time

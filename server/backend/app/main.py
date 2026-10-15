@@ -41,7 +41,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                memory_generation_enabled=False, memory_editorial_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
-               assistant_workspace_store=None, update_root=None,
+               assistant_workspace_store=None, assistant_kinship_provider=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
     if type(memory_groups_enabled) is not bool:
@@ -63,6 +63,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if assistant_workspace_store is not None and (
             not assistant_enabled or type(assistant_workspace_store) is not AssistantWorkspaceStore):
         raise ValueError('Explicit enabled assistant workspace store required')
+    if assistant_kinship_provider is not None and (
+            not assistant_enabled or not callable(getattr(assistant_kinship_provider, 'get', None))):
+        raise ValueError('Explicit enabled assistant kinship provider required')
     if assistant_saved_memory_cards_enabled and (not assistant_enabled or
             not memory_collaboration_enabled or
             type(assistant_workspace_store) is not AssistantWorkspaceStore):
@@ -173,6 +176,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_saved_memory_cards_enabled = assistant_saved_memory_cards_enabled
     app.state.assistant_journal_healthy = True
     app.state.assistant_workspace_store = assistant_workspace_store
+    app.state.assistant_kinship_provider = assistant_kinship_provider
     app.state.assistant_workspace_healthy = assistant_workspace_store is not None
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime

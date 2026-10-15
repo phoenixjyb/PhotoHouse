@@ -18,9 +18,10 @@ KINSHIP = frozenset(('妈妈', '妈咪', '爸爸', '母亲', '父亲', '爷爷',
 
 
 def kinship_name(name):
+    from .kinship import SELECTORS
     parts = [re.sub(r'^(?:my |our |我的|我们的)', '', d.fold(part.strip()))
              for part in name.split('/')]
-    return bool(parts) and all(part in KINSHIP for part in parts)
+    return bool(parts) and all(part in KINSHIP or part in SELECTORS for part in parts)
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,10 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 
 class AssistantSearchReads(d.DiscoveryReads):
+    def __init__(self, access, provider, budget, *, kinship=None):
+        super().__init__(access, provider, budget)
+        self.kinship = kinship
+
     def _extra_source(self, index, source, read, check):
         captions = source['captions'] if 'caption' in index.enabled else read(
             'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
@@ -59,7 +64,8 @@ class AssistantSearchReads(d.DiscoveryReads):
             JOIN access_asset_libraries m ON m.asset_id=a.id
             WHERE m.library_id=? AND s.library_id=m.library_id AND s.deleted=0
             AND (a.status='active' OR a.status IS NULL) ORDER BY s.id''', (index.library_id,))
-        return {'text_projection_version': 2, 'text_captions': captions, 'photo_notes': notes}
+        return {'text_projection_version': 2, 'text_captions': captions, 'photo_notes': notes,
+                **({'kinship_digest': self.kinship.digest} if self.kinship is not None else {})}
 
     def _search_fields(self, index):
         return super()._search_fields(index) | {'text'}
@@ -112,24 +118,36 @@ class AssistantSearchReads(d.DiscoveryReads):
     def entities(self, token, library, *, words, binding=None, cancelled=lambda: False):
         d.text(words, 1024)
         def action(index, facts, context, member, check):
-            groups = {}; labels = []; ambiguous = False
+            from .kinship import KinshipUnavailable
+            groups = {}; labels = []; ambiguous = False; related = set(); working_words = words
+            if self.kinship is not None:
+                targets, phrases, ambiguous = self.kinship.mentions(words)
+                labels.extend(phrases)
+                for phrase in phrases: working_words = working_words.replace(phrase, ' ')
+                if targets:
+                    try:
+                        related = self.kinship.catalog_ids(targets, index.people)
+                    except KinshipUnavailable:
+                        ambiguous = True
+                    if 'people' not in index.enabled: ambiguous = True
             for facet, items in facts[2].items():
                 hits = []
                 for item in items:
                     check()
-                    names = name_hits(words, item['label'], item.get('aliases', ()), person=facet == 'people')
+                    names = name_hits(working_words, item['label'], item.get('aliases', ()), person=facet == 'people')
                     if names:
                         hits.append(item['id']); labels.append(max(names, key=len))
+                if facet == 'people': hits = sorted(set(hits) | related, key=int)
                 if len(hits) > 20:
                     ambiguous = True
                 groups[facet] = hits[:20]
             # A shared/overlapping alias is never resolved to multiple identities.
             matched_people = [p for p in index.people if p.id in groups['people']]
             for pos, first in enumerate(matched_people):
-                first_hits = name_hits(words, first.label, first.aliases, person=True)
+                first_hits = name_hits(working_words, first.label, first.aliases, person=True)
                 for second in matched_people[pos + 1:]:
                     if any(d.fold(a) in d.fold(b) or d.fold(b) in d.fold(a)
-                           for a in first_hits for b in name_hits(words, second.label, second.aliases, person=True)):
+                           for a in first_hits for b in name_hits(working_words, second.label, second.aliases, person=True)):
                         ambiguous = True
             return {'binding': context, 'enabled': list(index.enabled) + ['text'],
                     'groups': groups, 'labels': labels, 'ambiguous': ambiguous}
@@ -138,20 +156,37 @@ class AssistantSearchReads(d.DiscoveryReads):
 
 class SearchRuntime:
     """Internal adapter selected only by explicit transport negotiation."""
-    def __init__(self, runtime):
+    def __init__(self, runtime, kinship_provider=None):
         self.runtime = runtime
+        self.kinship_provider = kinship_provider
 
     def authorize(self, token, library):
         return self.runtime.authorize(token, library)
 
     def call(self, operation, token, library, cancelled, values):
         from .service import AccessService
+        from .kinship import KinshipGraph, KinshipUnavailable
         with self.runtime.access.connection_factory() as connection:
-            reader = AssistantSearchReads(AccessService(connection, clock=self.runtime.access.clock),
-                                          self.runtime.provider, self.runtime.budget)
+            access = AccessService(connection, clock=self.runtime.access.clock)
+            kinship = None; account = None
+            if self.kinship_provider is not None:
+                # Authenticate BEFORE opening even the private graph file. A
+                # provider cannot choose an account/library on a caller's behalf.
+                account = access.library_principal(token, library)
+                kinship = self.kinship_provider.get(account, library)
+                if kinship is not None:
+                    if not isinstance(kinship, KinshipGraph): raise KinshipUnavailable()
+                    if not kinship.allows(account, library):
+                        kinship = None
+            reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget, kinship=kinship)
             methods = {'entities': reader.entities, 'search': reader.search,
                        'facets': reader.facets, 'assistant_asset': reader.assistant_asset}
             d.require(operation in methods)
             if operation == 'search':
                 SearchPlan(2, values['filters'])
-            return methods[operation](token, library, cancelled=cancelled, **values)
+            result = methods[operation](token, library, cancelled=cancelled, **values)
+            if kinship is not None:
+                latest = self.kinship_provider.get(account, library)
+                if not isinstance(latest, KinshipGraph) or latest.digest != kinship.digest:
+                    raise d.DiscoveryChanged()
+            return result

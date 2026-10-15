@@ -187,6 +187,7 @@ class RuntimeConfiguration:
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
     assistant_workspace_path: Path | None = None
+    assistant_kinship_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -284,6 +285,25 @@ class RuntimeConfiguration:
             raise ValueError('Explicit annotation intake opt-in required')
         if type(self.assistant_enabled) is not bool:
             raise ValueError('Explicit assistant opt-in required')
+        assistant_kinship_provider = None
+        if self.assistant_kinship_path is not None:
+            selected = self.assistant_kinship_path
+            protected = (self.database, self.derived_root, *self.original_roots,
+                         *self.discovery_indexes,
+                         *((self.incoming_root,) if self.incoming_root else ()),
+                         *((self.update_root,) if self.update_root else ()),
+                         *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                         *((self.assistant_workspace_path,) if self.assistant_workspace_path else ()),
+                         *((self.original_deletion_journal_path,)
+                           if self.original_deletion_journal_path else ()))
+            if (not self.assistant_enabled or not isinstance(selected, Path) or
+                    not selected.is_absolute() or '..' in selected.parts or
+                    any(selected.is_relative_to(other) or other.is_relative_to(selected)
+                        for other in protected)):
+                raise ValueError('Assistant kinship catalog must be explicit and separate from runtime data')
+            from .kinship import PrivateKinshipProvider
+            assistant_kinship_provider = PrivateKinshipProvider(
+                selected, source_root=Path(__file__).resolve().parents[4])
         if type(self.assistant_reply_speech_enabled) is not bool:
             raise ValueError('Explicit private reply speech opt-in required')
         if type(self.assistant_saved_memory_cards_enabled) is not bool:
@@ -369,6 +389,7 @@ class RuntimeConfiguration:
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
                           assistant_workspace_store=assistant_workspace_store,
+                          assistant_kinship_provider=assistant_kinship_provider,
                           assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           update_root=self.update_root)

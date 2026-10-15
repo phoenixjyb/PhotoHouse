@@ -16708,6 +16708,102 @@
       "routes_added": false,
       "schema_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "private-scoped-kinship-graph-and-relative-search",
+      "source_commit": "d8b48caa99b722397e16c551f1108594bf021e98",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "15995ead00c238ff3de4107a780e37af37e44dae89683e153c16485cc2fc2db3",
+          "sha256": "667f0f352b6a2eebd128048e0c6c68113229706833a5336d53df2253f47de919"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "f9f560e99a37bb9b456869aae39382b02f4c074e5341ef9a6c945894aee57d4b",
+          "sha256": "79b70673f45c381de31effb24af396d539ffc2f34231de0b2953298d3f034de5"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": null,
+          "sha256": "b8b65e75f1f66f3dedad40b041a92be530e156cdcf8cb91d3922cbb717f9d8c0"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "e0156b8978ffca6ed32022c40c6e1145cb27bb475118efae0c76761af9dce01e",
+          "sha256": "9f3fdf3684c2be8b2ef2309bc784ddbcf9235ef0e8b38985b1f05aee59f6f8be"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "2c0a3947b1d3657cf00476b388459397f90e6d3ba7500306ae1fbcc7f6198053",
+          "sha256": "3c9f2f1adede26a198dfc4b1301429109b81ee3d79745155c52c456379e9cd71"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "6cfcf9b9c80eb9570b612690e7fda61de174239b54dcf38136c111710954ba6b",
+          "sha256": "12218847e0aeb863b0451622f2a666d8fdaab189b04e51f0af395aaa1ef9f421"
+        },
+        {
+          "path": "server/backend/app/access/kinship.py",
+          "before_sha256": null,
+          "sha256": "e6e8b8df323e2204193e6ac4651c3f0ac4abcbf618e518aaf99f1c8c75eeebab"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "c9550f703af1c3f21939ad5df9e2c2558e9a7d463b58cbad2d3b03083ce15b39",
+          "sha256": "deb548a471be0138dd9e34f5ec6bcda81fc71de3489e00d42a298cacc79d7b49"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "00dbd8447ff0e78c2b4f7c1c59999bee6e273812711d18b26fb75e2c5443ee43",
+          "sha256": "0aba5599f590bf17f4a86344d4be611b364b249532b1f037e2769a57c9c3a764"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "ac980b4929e22f177dd525c79f854b561ee04415ba0f5c1b715f0cc120064842",
+          "sha256": "564afbd7cc7802381c76a964bc2b942afca35c090721f28fe7d928a5c3a59604"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "82fd978835ebf98a62c7a65a067a74d6238038156f131f23e887ce1668f9fb0c",
+          "sha256": "790a993b8404884ad021e1c1df66c6e479b7831a8a9b4beb9f7516644f8a5449"
+        },
+        {
+          "path": "server/tests/security/test_assistant_kinship.py",
+          "before_sha256": null,
+          "sha256": "a251d19d91ac6ee8d97e71069b0c1d3a8f7a0afa953f7cd15d030e5d9df49111"
+        },
+        {
+          "path": "server/tests/security/test_kinship.py",
+          "before_sha256": null,
+          "sha256": "e505f5fd9785f334473f4d295fbea9bbe4d10dea3d680886633ecb0070203038"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "bebcc44fbec9ae04d52e179fbdd1145ffd70464838961663b540a2a8de61d79b",
+          "sha256": "b5f8c98a6a312c1f044b5068112bf0f9891406a218eefecd942ed24cf51a607e"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "62800235c96c21b51e40636fa9f683a7c04e6ea3a0a60e1ce74215510ebd9093",
+          "sha256": "90472703e4d16b739fd0359efa5a8ca59aceba530ad7ac6880bc629a65cc0be0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "33f3b58803d3cf4391ef01877af006567066cccd213e18928dcfdbb462be4d78",
+          "sha256": "0f2b441da30f6fbc7ee1d8dc1e5c48110d5acd50883e3a182647d5f6a450f5b1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "77e1c77507f4b7db7be1a0accfc7ce4a739eb8054424d1586aa49e5f1f13eb55",
+          "sha256": "28df77bb8d819bc284a6a5f1750fb1e1bb76d20d9b82e8e4456fb3f732076ce4"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

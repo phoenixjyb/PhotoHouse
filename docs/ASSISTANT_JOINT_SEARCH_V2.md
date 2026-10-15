@@ -33,9 +33,14 @@ Examples using fictional reviewed names:
 Quoted text is content, not an identity hint. Two-character Chinese and NFKC /
 case-folded mixed-language matching work without an FTS tokenizer. Unquoted
 scene parsing currently supports only the bounded `在…玩/游玩` form. Arbitrary
-unmatched details, unknown/ambiguous names, personal kinship mappings and
+unmatched details, unknown/ambiguous names, unconfigured personal kinship mappings and
 unsupported negation require clarification; there is no model or cloud fallback.
 This is a lexical baseline, not general semantic understanding.
+
+An optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md) now adds
+selected-account, library and explicit-perspective relationship resolution.
+It joins only current reviewed identities; household graph data stays outside
+source and a local draft does not enable the running service.
 
 ## Source adapters and lifecycle
 

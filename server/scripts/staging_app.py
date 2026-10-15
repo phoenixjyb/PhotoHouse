@@ -28,6 +28,7 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
                    'assistant_workspace_path',
+                   'assistant_kinship_path',
                    'assistant_reply_speech_enabled',
                    'assistant_saved_memory_cards_enabled',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
@@ -85,6 +86,7 @@ class StagingConfiguration:
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
     assistant_workspace_path: Path | None = None
+    assistant_kinship_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -296,7 +298,22 @@ class StagingConfiguration:
                                      *((self.incoming_root,) if self.incoming_root else ()),
                                      *((self.update_root,) if self.update_root else ()),
                                      *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
-                                     *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))):
+                                     *((self.original_deletion_journal_path,)
+                                       if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
+            if self.assistant_kinship_path is not None:
+                catalog = self.assistant_kinship_path
+                if (not self.assistant_enabled or not isinstance(catalog, Path)
+                        or _path(str(catalog)) != catalog):
+                    raise InvalidConfiguration()
+                if any(catalog.is_relative_to(other) or other.is_relative_to(catalog)
+                       for other in (*media, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.assistant_workspace_path,) if self.assistant_workspace_path else ()),
+                                     *((self.original_deletion_journal_path,)
+                                       if self.original_deletion_journal_path else ()))):
                     raise InvalidConfiguration()
             if (self.assistant_reply_speech_enabled and
                     (not self.assistant_enabled or self.assistant_tts_url is None or
@@ -358,6 +375,7 @@ class StagingConfiguration:
             original_deletion_namespace=self.original_deletion_namespace,
             assistant_journal_path=self.assistant_journal_path,
             assistant_workspace_path=self.assistant_workspace_path,
+            assistant_kinship_path=self.assistant_kinship_path,
             assistant_asr_url=self.assistant_asr_url,
             assistant_asr_model=self.assistant_asr_model,
             assistant_asr_token=self.assistant_asr_token,
@@ -428,6 +446,7 @@ def parse_configuration(value):
             original_deletion_namespace=value.get('original_deletion_namespace'),
             assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,
             assistant_workspace_path=_path(value['assistant_workspace_path']) if value.get('assistant_workspace_path') is not None else None,
+            assistant_kinship_path=_path(value['assistant_kinship_path']) if value.get('assistant_kinship_path') is not None else None,
             assistant_asr_url=value.get('assistant_asr_url'),
             assistant_asr_model=value.get('assistant_asr_model'),
             assistant_asr_token=value.get('assistant_asr_token'),
@@ -470,13 +489,19 @@ def load_configuration(path):
             raise InvalidConfiguration()
         if path in (config.database, config.tls_certificate, config.tls_private_key,
                     *config.discovery_indexes, *((config.assistant_workspace_path,)
-                                                   if config.assistant_workspace_path else ())):
+                                                   if config.assistant_workspace_path else ()),
+                    *((config.assistant_kinship_path,)
+                      if config.assistant_kinship_path else ())):
             raise InvalidConfiguration()
         if config.update_root is not None and path.is_relative_to(config.update_root):
             raise InvalidConfiguration()
         if (config.assistant_workspace_path is not None and
                 (path.is_relative_to(config.assistant_workspace_path) or
                  config.assistant_workspace_path.is_relative_to(path))):
+            raise InvalidConfiguration()
+        if (config.assistant_kinship_path is not None and
+                (path.is_relative_to(config.assistant_kinship_path) or
+                 config.assistant_kinship_path.is_relative_to(path))):
             raise InvalidConfiguration()
         return config
     except (OSError, ValueError, UnicodeError, RecursionError):

@@ -159,7 +159,7 @@ def _engine(request):
         if request.url.path not in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities'):
             raise TransportError(400, 'Search version is not supported on this endpoint')
         from .assistant_search import SearchRuntime
-        discovery = SearchRuntime(discovery)
+        discovery = SearchRuntime(discovery, getattr(request.app.state, 'assistant_kinship_provider', None))
     return access, discovery
 
 
