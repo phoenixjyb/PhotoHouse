@@ -285,6 +285,54 @@ async function openPrivateWorkspace(){
   await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'intent-v3-why-result-phone-390-font150.png'),fullPage:false});
 
+  // A fresh browser negotiates v2 when the optional planner is off. Its
+  // deterministic date question must survive history reads and a lost answer.
+  await rpc({command:'planner-off'});
+  const callsBeforeV2Pending=await plannerCalls();
+  await context.close();
+  context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  context.setDefaultTimeout(15000);await installSyntheticTransport(context);
+  page=await context.newPage();page.on('pageerror',error=>pageErrors.push(error.stack||error.message));
+  await page.goto('https://photohouse.test/ui');
+  await page.locator('#phone').fill('+12025550102');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();
+  await page.locator('#grid .asset').first().waitFor();
+  if(!await page.locator('#assistant-panel').evaluate(element=>element.open))await page.locator('#assistant-panel > summary').click();
+  await page.locator('#assistant-search-perspective').waitFor({state:'visible'});
+  await page.locator('#assistant-private-new').click();
+  await page.waitForFunction(()=>document.querySelector('#assistant-private-select')?.value&&!document.querySelector('#assistant-private-new').disabled);
+  const v2Query='find示例儿童小时候photos containing "secret memory phrase"';
+  const v2Question=await send(v2Query);
+  assert.equal(v2Question.headers['x-photohouse-search-version'],'2');
+  assert.equal(v2Question.response.result.version,2);assert.equal(v2Question.response.result.kind,'clarification');
+  assert.equal(await plannerCalls(),callsBeforeV2Pending);
+  const v2Thread=await page.locator('#assistant-private-select').inputValue();
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-refresh').click();
+  await page.locator('#assistant-private-select').selectOption('');
+  const v2QuestionRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`/assistant/workspace/v1/threads/${v2Thread}?`));
+  await page.locator('#assistant-private-select').selectOption(v2Thread);await v2QuestionRead;
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  await send('2032年9月',{lose:true});
+  const v2Answer=turnEntries().at(-1),v2PostsBeforeRecovery=turnEntries().length;
+  assert.equal(v2Answer.headers['x-photohouse-search-version'],'2');
+  assert.equal(v2Answer.response.result.kind,'results');assert.equal(v2Answer.response.result.context.search_version,2);
+  assert.deepEqual(v2Answer.response.result.filters,{people:{ids:['301'],match:'any'},media:['image'],text:'secret memory phrase',date:{from:'2032-09-01',to:'2032-09-30'}});
+  assert.deepEqual(v2Answer.response.result.items.map(item=>item.id),['101','103']);
+  await page.locator('#assistant-private-recover').waitFor({state:'visible'});await page.locator('#assistant-private-recover').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-result').length===2&&!document.querySelector('#assistant-private-new').disabled);
+  assert.equal(turnEntries().length,v2PostsBeforeRecovery);assert.equal(await plannerCalls(),callsBeforeV2Pending);
+  const v2Reads=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes(`/requests/${v2Answer.response.request_id}`));
+  assert.ok(v2Reads.length>0&&v2Reads.every(entry=>entry.headers['x-photohouse-search-version']==='2'));
+  const v2HistoryRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`/assistant/workspace/v1/threads/${v2Thread}?`));
+  await page.locator('#assistant-private-select').selectOption('');await page.locator('#assistant-private-select').selectOption(v2Thread);await v2HistoryRead;
+  const v2History=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes(`/assistant/workspace/v1/threads/${v2Thread}?`)&&entry.status===200).at(-1).response;
+  assert.deepEqual(v2History.exchanges.map(entry=>entry.input_text),[v2Query,'2032年9月']);
+  assert.equal(JSON.stringify(v2History).includes('pending_intent'),false);
+  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:path.join(artifacts,'intent-v2-provider-off-pending-date-recovered-phone-390-font150.png'),fullPage:false});
+
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
@@ -297,7 +345,8 @@ async function openPrivateWorkspace(){
     'v3 client hydrates an older saved v2 result with a version-bound history read',
     'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history',
     'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call',
-    'a Chinese why-result question explains current filters and edited-caption evidence while preserving result order and invoking no model or open action'],
+    'a Chinese why-result question explains current filters and edited-caption evidence while preserving result order and invoking no model or open action',
+    'with the planner off, v2 preserves a mixed-language date question through history, resolves a short Chinese answer, and recovers a lost reply with GET only'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2));
   for(const checkpoint of evidence.checkpoints)console.log('PASS '+checkpoint);

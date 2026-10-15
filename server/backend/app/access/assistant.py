@@ -568,7 +568,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     search_v3 = search_v2 and engine.search_version == 3
     if continuation is not None:
         from .assistant_query_plan import _valid_previous
-        if (not search_v3 or previous is not None or type(continuation) is not dict
+        if (not search_v2 or previous is not None or type(continuation) is not dict
                 or set(continuation) != {'binding', 'date'}
                 or type(continuation['binding']) is not str
                 or re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None
@@ -761,6 +761,12 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             plan = (people_answer if people_answer is not None else
                     plan_query(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None, refine=refine))
+            if continuation is not None and plan.status == 'ready':
+                if plan.filters.get('date') not in (None, continuation['date']):
+                    raise AssistantChanged()
+                from .assistant_query_plan import QueryPlan
+                plan = QueryPlan(plan.version, 'ready',
+                                 dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
             reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
                      if lang == 'zh' else

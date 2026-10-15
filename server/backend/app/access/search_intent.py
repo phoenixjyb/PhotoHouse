@@ -55,6 +55,13 @@ _DESCRIPTIVE_CORRECTIONS = (
     re.compile(r'^\s*不是\s*(?P<old>.+?)\s*[，,]?\s*(?:而)?是\s*(?P<new>.+?)\s*$'),
 )
 _CORRECTION_EDGE = ' \t\r\n,，;；、。.!！?？:'
+_STRONG_CONTENT_INTRO = re.compile(
+    r'包含|含有|關於|关于|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', re.I)
+
+
+def _strong_content_cue_before(words, boundary):
+    outside_quotes = _QUOTE.sub(lambda match: ' ' * len(match.group(0)), words)
+    return any(match.end() <= boundary for match in _STRONG_CONTENT_INTRO.finditer(outside_quotes))
 
 
 def intent_mode(words):
@@ -236,7 +243,13 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
     quoted = list(_QUOTE.finditer(words))
     updates = literal_plan(grammar_words, now=now, entities=entities,
                            previous_filters={} if refine else None, refine=refine)
-    if original.status == 'ready' and ('text' not in updates.filters or quoted):
+    outside_quotes = _QUOTE.sub(lambda match: ' ' * len(match.group(0)), grammar_words)
+    date_spans = _vague_date_hits(grammar_words)
+    explicit_content_literal = any(
+        not any(match.start() < end and match.end() > start for start, end, _ in date_spans)
+        for match in _STRONG_CONTENT_INTRO.finditer(outside_quotes))
+    if original.status == 'ready' and ('text' not in updates.filters or quoted or
+                                       explicit_content_literal):
         filters = dict(original.filters)
         if refine and 'descriptive' in kept:
             filters['descriptive'] = kept['descriptive']

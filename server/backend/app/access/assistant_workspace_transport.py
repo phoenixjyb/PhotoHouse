@@ -820,23 +820,25 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
                             pending_intent=None):
     """Resolve one server-owned date slot without changing either user input.
 
-    Only explicit new v3 searches create pending state. The slot belongs to the
+    Explicit v2/v3 searches may create pending state when the selected parser
+    can account for the whole date-masked query. The slot belongs to the
     current stored thread revision; the provider never sees a rewritten answer
     or private pending metadata, and recovery does not call this function.
     """
     from datetime import datetime
     from .assistant_search import SearchRuntime
-    from .search_intent import intent_mode
+    from .search_intent import intent_mode, _strong_content_cue_before
+    from .search_refinement import plan_query as plan_deterministic, query_mode
     from .search_pending import (current_pending, find_date_slot, make_pending,
                                  resolve_date_answer)
 
-    if not isinstance(engine, SearchRuntime) or engine.search_version != 3:
+    if not isinstance(engine, SearchRuntime) or engine.search_version not in (2, 3):
         return assistant_engine._turn(engine, token, library, words, previous, clock,
                                        language=language), None
     stamp = int(clock())
     now = datetime.fromtimestamp(stamp)
     lang = language if language in ('zh', 'en') else assistant_engine._language(words)
-    new_search = intent_mode(words) == 'search'
+    new_search = (intent_mode(words) if engine.search_version == 3 else query_mode(words)) == 'search'
 
     def question(state, *, expired=False):
         presentation = engine.call('presentation', token, library, lambda: False,
@@ -849,7 +851,7 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
         else:
             reply = ('大概是哪一年或哪几个月？可以只回答时间，我会保留这次查找的其他条件。' if lang == 'zh' else
                      'About which year or months? Answer with the time; I will keep the other search details.')
-        return {'version': 3, 'kind': 'clarification', 'reply': reply,
+        return {'version': engine.search_version, 'kind': 'clarification', 'reply': reply,
                 'context': None, 'filters': None, 'items': [], 'total': 0,
                 'has_more': False, 'effect': None, 'interpretation': interpretation}
 
@@ -877,6 +879,27 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
         entities = engine.call('entities', token, library, lambda: False, {'words': words})
         slot = (find_date_slot(words, entities, now) if not entities['ambiguous']
                 and 'date' in entities['enabled'] else None)
+        if slot is not None:
+            # A date-like phrase can be ordinary literal content after an
+            # explicit cue (for example, "containing childhood snow"). If
+            # the untouched request already compiles completely, honor that
+            # interpretation and let the regular turn path search it as-is.
+            original = plan_deterministic(words, now=now, entities=entities,
+                                          previous_filters=None, refine=False)
+            if (original.status == 'ready' and
+                    _strong_content_cue_before(words, slot[0])):
+                slot = None
+        if slot is not None and engine.search_version == 2:
+            # V2 has no intent provider. Ask only if its deterministic parser
+            # can account for every other condition after the vague date is
+            # removed, so the follow-up cannot promise to retain unsupported
+            # scene or action text.
+            masked = list(words)
+            masked[slot[0]:slot[1]] = ' ' * (slot[1] - slot[0])
+            supported = plan_deterministic(''.join(masked), now=now, entities=entities,
+                                           previous_filters=None, refine=False)
+            if supported.status != 'ready':
+                slot = None
         if slot is not None:
             state = make_pending(words, slot, entities['binding'], stamp)
             return question(state), state

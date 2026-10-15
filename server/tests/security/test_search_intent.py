@@ -45,6 +45,44 @@ def ready(query, spans):
 
 
 class SearchIntentTests(unittest.TestCase):
+    def test_about_approximate_time_is_not_an_unquoted_content_cue(self):
+        for query in ('find photos about two years ago',
+                      'find photos about a few winters ago'):
+            with self.subTest(query=query):
+                planner = Proposal(None)
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'intent_date'),
+                                 (result.status, result.reason))
+                self.assertEqual([], planner.calls)
+
+    def test_strong_unquoted_content_cues_stay_literal_without_provider_calls(self):
+        cases = (
+            ('find photos containing childhood snow', 'childhood snow'),
+            ('find photos about childhood red coat', 'childhood red coat'),
+            ('find photos with the words childhood snow', 'childhood snow'),
+            ('找包含小时候玩雪的照片', '小时候玩雪'),
+            ('找关于小时候玩雪的照片', '小时候玩雪'),
+        )
+        for query, expected in cases:
+            with self.subTest(query=query):
+                planner = Proposal(None)
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('ready', result.status, result)
+                self.assertEqual(expected, result.filters['text'])
+                self.assertNotIn('descriptive', result.filters)
+                self.assertEqual([], planner.calls)
+
+        # A bare content noun does not activate the literal-cue fast path.
+        planner = Proposal(ready('find photos content birthday cake',
+                                 [('birthday cake', ['birthday cake'])]))
+        result = plan_query('find photos content birthday cake', now=NOW,
+                            entities=entities(), previous_filters=None, planner=planner)
+        self.assertEqual(('clarification', 'unsupported_condition'),
+                         (result.status, result.reason))
+        self.assertEqual(1, len(planner.calls))
+
     def test_and_concepts_keep_hard_filters_and_resolve_each_authored_alternative(self):
         query = 'find Sample Child at Home yesterday videos wearing red holding a cake "family day"'
         planner = Proposal(ready(query, [
