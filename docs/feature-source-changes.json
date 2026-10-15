@@ -18901,6 +18901,46 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "reviewed-people-answers-retain-revalidated-search-scope",
+      "source_commit": "312f3a23bb7b4ee935a09fe075633aa6415ebacc",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1a303963d8b53dc702189e41a5228900d9fbf2ce687dbcd38a980c5d683d0bff",
+          "sha256": "20ecaf8bc9c6fb67ca8eb2a38d58aa771c5a76760c6fdb1cfe5115ab53abccf5"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "e76e0765a86b5815955caa081b4b35f7b630f6ba475fdfb3c9dfdff9dd59ec3f",
+          "sha256": "359d2253ad3400caf9825497783c24ea786c367722a176a0c0a526ee286bb4d2"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "725dc2bc4315a99a6a7fa51382d29965fb898e3b00fccffaee899c3678525ad4",
+          "sha256": "41f3e7a7e9c8098060ee666c90943d608a091a2bcbcf3d6ab5d431e66345cded"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "a9a1331f190d314e9af08cb5bc0f06688523ca5b2a1f2df8bb444e31c358062d",
+          "sha256": "b786bc8f09013e3084c549d60a692647e81bee84b23f29b58261e831ff73c737"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "537306b46ed93ec457f4154405b44b1d97cbacaa2b0f980c0960f460443dbdc2",
+          "sha256": "789f8c26a71653746c2f45e12118f322a67c76171f0e723426e340ee0d042591"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "e6b799adaed71def2062b8585f6fbfb5fbf8bf2783e48476441bd123abee0e88",
+          "sha256": "14053ea4ec8b51ddb483fc749219fef58ee6bb7c6b0ea7ccc5552e3bc26f16a9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

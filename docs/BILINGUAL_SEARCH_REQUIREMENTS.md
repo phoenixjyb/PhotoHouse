@@ -73,6 +73,15 @@ inferred from those generated conversations.
 
 ## Correcting a search in conversation
 
+A complete reviewed name can also replace the people selected in an existing,
+revalidated v2 search. For example, `Sample Adult` retains the current date,
+media, text, tags and locations while selecting that person. Multiple names
+require `and` / `和` for everyone together or `or` / `或` for any of them.
+Unjoined names ask for that distinction. Extra wording, actions and quoted
+names do not become bare-name answers. A fresh thread still needs a search;
+this does not retain or complete an unresolved earlier request. Saved turns,
+recovery and membership/source revalidation use the normal search context.
+
 Negotiated v2 supports a bounded one-filter correction after a search. Intro
 forms such as `no, I meant videos`, `I meant August 2032`,
 `actually, videos`, `不对，我说的是视频`, and `我说的是2032年8月` replace one

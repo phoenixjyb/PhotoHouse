@@ -117,6 +117,32 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
         return self.auth | {'X-PhotoHouse-Search-Version': '2'}
 
+    def test_bare_reviewed_people_answer_is_saved_recoverable_and_thread_scoped(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        initial = self.turn(tid, text='find photos in 2025', headers=headers).json()['result']
+        self.assertEqual(initial['kind'], 'results', initial)
+        rid = new_id()
+        response = self.turn(tid, rid, 1, 'Sample Adult', headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['result']
+        self.assertEqual(result['filters'], {**initial['filters'],
+                                            'people': {'ids': ['302'], 'match': 'any'}})
+        self.assertEqual([item['id'] for item in result['items']], ['103'])
+        self.assertIsNone(result['effect'])
+        recovered = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a',
+                                 headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertEqual(recovered.json()['result'], result)
+        other = self.thread()['thread_id']
+        unrelated = self.turn(other, text='Sample Adult', headers=headers).json()['result']
+        self.assertNotEqual(unrelated['kind'], 'results', unrelated)
+        self.assertIsNone(unrelated['context'])
+        self.update("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        denied = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a',
+                              headers=headers)
+        self.assertIn(denied.status_code, (401, 403))
+
     def test_search_v2_capability_is_negotiated_and_other_workspace_routes_stay_legacy(self):
         headers = self.enable_search()
         legacy = self.request('GET', '/capabilities?library_id=family-a')

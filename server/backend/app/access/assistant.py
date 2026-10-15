@@ -628,11 +628,23 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     lower = words.strip().casefold()
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
+    people_answer = None
+    answer_entities = None
     if search_v2:
-        from .search_refinement import query_mode
+        from .search_refinement import query_mode, plan_people_answer
         planned_mode = query_mode(words)
         refine = refine or planned_mode == 'refine'
         search = search or planned_mode == 'search'
+        if existing is not None and not (refine or search):
+            # A complete reviewed name can answer a conversational question.
+            # Resolve it only after the previous scope has been revalidated;
+            # the pure planner still rejects extra conditions or actions.
+            answer_entities = engine.call('entities', token, library, lambda: False,
+                                          {'words': words})
+            people_answer = plan_people_answer(words, now=now, entities=answer_entities,
+                                               previous_filters=previous['filters'])
+            if people_answer is not None:
+                refine = True
     if not (refine or search):
         # Do not silently rewrite a transcript or treat a possible capture
         # request as permission to search. Ask the user to correct it instead.
@@ -659,16 +671,18 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
 
     condition_words = re.sub(r'[“"][^“”"]+[”"]', ' ', words) if search_v2 else words
     condition_lower = condition_words.casefold()
-    first = engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
-                        {'words': condition_words} if search_v2 else
-                        {'facet': 'people', 'page': 1, 'page_size': 100})
+    first = (answer_entities if people_answer is not None else
+             engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
+                         {'words': condition_words} if search_v2 else
+                         {'facet': 'people', 'page': 1, 'page_size': 100}))
     if existing is None:
         source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
     if search_v2:
         from .search_refinement import plan_query
-        plan = plan_query(words, now=now, entities=first,
-                          previous_filters=previous['filters'] if previous else None, refine=refine)
+        plan = (people_answer if people_answer is not None else
+                plan_query(words, now=now, entities=first,
+                           previous_filters=previous['filters'] if previous else None, refine=refine))
         if plan.status != 'ready':
             reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
                      if lang == 'zh' else
@@ -687,6 +701,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')
+            elif plan.reason == 'ambiguous_people_answer':
+                reply = ('请在姓名之间加“和”表示需要同时出现，或加“或”表示任意一位。' if lang == 'zh' else
+                         'Join the names with "and" to require everyone together, or "or" to match any of them.')
             elif plan.reason == 'conflicting_people_reference':
                 reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
                          'Keep the selected people or change the people filter in a separate request.')

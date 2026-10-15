@@ -144,6 +144,48 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(unresolved['context'], initial['context'])
         self.assertIsNone(unresolved['effect'])
 
+    def test_reviewed_people_answers_retain_the_other_current_conditions(self):
+        initial = self.turn('find photos of Sample Child in September 2032 containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        for words, people, expected in (
+            ('Sample Adult', {'ids': ['302'], 'match': 'any'}, ['103']),
+            ('示例成人', {'ids': ['302'], 'match': 'any'}, ['103']),
+            ('Sample Child and 示例成人', {'ids': ['301', '302'], 'match': 'all'}, ['103']),
+            ('示例儿童 or Sample Adult', {'ids': ['301', '302'], 'match': 'any'}, ['103', '101']),
+        ):
+            with self.subTest(words=words):
+                response = self.turn(words, context=initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], 'results', body)
+                self.assertEqual(body['filters'], {**initial['filters'], 'people': people})
+                self.assertEqual([item['id'] for item in body['items']], expected)
+                self.assertIsNone(body['effect'])
+
+    def test_people_answers_need_a_search_and_never_ignore_extra_conditions(self):
+        fresh = self.turn('Sample Adult').json()
+        self.assertNotEqual(fresh['kind'], 'results', fresh)
+        self.assertIsNone(fresh['context'])
+        self.assertEqual(fresh['items'], [])
+        initial = self.turn('find photos in September 2032 containing "海边"').json()
+        for words in ('Sample Adult delete everything', '示例成人陌生条件',
+                      'Sample Child Sample Adult', '"Sample Adult"'):
+            with self.subTest(words=words):
+                body = self.turn(words, context=initial['context']).json()
+                self.assertIn(body['kind'], ('clarification', 'unsupported'), body)
+                self.assertEqual(body['context'], initial['context'])
+                self.assertEqual(body['filters'], initial['filters'])
+                self.assertIsNone(body['effect'])
+
+    def test_people_answer_revalidates_membership_and_source_before_resolution(self):
+        initial = self.turn('find photos of Sample Child').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        denied = self.turn('Sample Adult', context=initial['context'], token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.mutate("UPDATE captions SET text='updated synthetic caption' WHERE id=1")
+        stale = self.turn('Sample Adult', context=initial['context'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+
     def test_mocked_transcript_keeps_language_and_text_before_explicit_search(self):
         # Silence plus a mocked provider verifies the transport contract only;
         # it is not an ASR accuracy or dialect qualification.
