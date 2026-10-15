@@ -179,6 +179,13 @@ alter library stories, or establish story quality.
 
 ### Inspect captured wording beside its sources
 
+The [October 16 trial](STORY_MODEL_TRIAL_2026-10-16.md) records the first native
+coherence capture, cold latency, GPU observations and failed natural teardown.
+Its following prompt/temporary-provider cleanup fixes do not qualify that run
+or activate a model. Future controllers must declare and report any use of
+`terminate_descendants_after_exit`; forced owned-job drain is distinct from
+natural provider shutdown.
+
 The source-only [private review page](MEMOIR_QUALITY_REVIEW.md) renders one existing
 synthetic canary capture without a provider request. It shows proposed wording,
 chapter input, cited source records, recent conversation and the current rubric.

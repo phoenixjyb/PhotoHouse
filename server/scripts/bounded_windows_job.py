@@ -58,8 +58,15 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
                 *, timeout_seconds: float, memory_limit: int = 2 * 1024**3,
                 process_limit: int = 16, minimum_free_ram: int = 8 * 1024**3,
                 descendant_grace_seconds: float = 5,
+                terminate_descendants_after_exit: bool = False,
                 monotonic=time.monotonic, sleep=time.sleep) -> int:
-    """Start suspended, assign before resume, retain the Job until descendants drain."""
+    """Run an assigned child Job and retain it until descendants drain.
+
+    Callers may explicitly enable ``terminate_descendants_after_exit`` only for
+    temporary providers whose owned descendants must not outlive the parent.
+    Callers must report this teardown policy and qualify it natively. Successful
+    forced teardown does not establish that descendants shut down naturally.
+    """
     if not executable or not cwd or not argv or argv[0] != executable or not 0 < timeout_seconds <= 900:
         raise CheckRefused('invalid_launch')
     if memory_limit <= 0 or process_limit <= 0 or minimum_free_ram < 0:
@@ -69,6 +76,8 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
             or not 0 < descendant_grace_seconds <= 60
             or not math.isfinite(descendant_grace_seconds)):
         raise CheckRefused('invalid_descendant_grace')
+    if type(terminate_descendants_after_exit) is not bool:
+        raise CheckRefused('invalid_descendant_exit_policy')
     environment_block(environment)
     if api.free_ram() < minimum_free_ram:
         raise CheckRefused('free_ram_below_minimum')
@@ -105,7 +114,16 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
         if outcome != 'exited':
             raise CheckRefused('process_timeout' if outcome == 'timeout' else 'process_wait_failed')
         code = api.exit_code(process)
-        drain(min(deadline, monotonic() + descendant_grace_seconds))
+        if terminate_descendants_after_exit:
+            count = api.active_processes(job)
+            if type(count) is not int or count < 0:
+                raise CheckRefused('job_inventory_invalid')
+            if count:
+                if not api.terminate_job(job):
+                    raise CheckRefused('job_termination_failed')
+                drain(min(deadline, monotonic() + descendant_grace_seconds))
+        else:
+            drain(min(deadline, monotonic() + descendant_grace_seconds))
         completed = True
         return code
     finally:

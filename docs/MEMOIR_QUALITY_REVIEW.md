@@ -84,8 +84,12 @@ requests. The first narrow render exposed long-label overflow; wrapping was
 corrected before the passing run. Desktop and narrow rendered pages were inspected.
 Render data uses a fake provider and does not constitute a model run.
 
-Next obtain a separately authorized bounded synthetic capture from the intended
-installed provider, inspect it against its exact sources, record human judgments
+The [October 16 native trial](STORY_MODEL_TRIAL_2026-10-16.md) now supplies one real
+coherence capture and an inspected private page. Its overall runtime trial failed
+natural descendant cleanup; quality remains unreviewed. Wording and cleanup
+follow-up source changes need a fresh model trial before qualification.
+
+For subsequent separately authorized captures, inspect the exact sources and record human judgments
 with the [qualification worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet),
 and retain the separate runtime/schema/recovery gates before family generation.
 The existing Web/API and phone v64 delivery remain unchanged.
