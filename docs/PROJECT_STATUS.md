@@ -24,7 +24,8 @@ passed. See [the v64 release record](../clients/android/docs/PHONE_V64_RELEASE_2
 A following source-only [companion answer contract](STORY_COMPANION_GROUNDING.md)
 requires an answer to cite available inputs, with clarification when context is
 insufficient. It passed 64 focused tests and 70 subchecks, without a model.
-It is not part of the frozen v64 release. Citations are review pointers, not
+It is merged through PR #26 with all five review-head CI jobs passing, but is not
+part of the frozen v64 release. Citations are review pointers, not
 proof of factual accuracy; actual model quality retains a separate gate.
 
 ## Delivery and acceptance
@@ -35,8 +36,8 @@ proof of factual accuracy; actual model quality retains a separate gate.
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
 | Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
 | TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
-| Public source | v64 release PR #25 merged; its five review-head CI jobs passed | Following source-only companion change and delivery-document review |
-| Following storytelling | Citation requirement and clarification guidance in source; 64 focused tests/70 subchecks | Hosted regression, later delivery and family/model quality |
+| Public source | Release PR #25 and companion/docs PR #26 merged; all five review-head CI jobs passed for each | Following source-only operator tooling and later delivery |
+| Following storytelling | Citation rule merged; a new [private quality review page](MEMOIR_QUALITY_REVIEW.md) and capture validation correction pass 79 focused tests/104 subchecks and five browser groups | Tooling hosted checks, actual provider/human review, later delivery and family quality |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
 Earlier dated source, test and release records below retain their exact scope.

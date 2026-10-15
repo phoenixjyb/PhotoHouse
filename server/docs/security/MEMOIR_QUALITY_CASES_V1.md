@@ -115,3 +115,12 @@ no provider requests, subprocess calls, model loads, database connections or
 writes. Its synthetic fixtures are not evidence of model quality, native GPU
 readiness, family acceptance or memoir-wide drafting capability. Any future
 execution needs a separately reviewed case, resource budget and authority.
+
+## Inspect one captured case
+
+The source-only [private review page](../../../docs/MEMOIR_QUALITY_REVIEW.md)
+shows captured proposals, cited sources and the current case-specific expectations
+without inference or a quality verdict. The canary independently validates all
+three task outputs before capture; failed contract checks retain only the input
+and sanitized failure record. This adds no case or rubric and changes no existing
+canonical bundle hash.

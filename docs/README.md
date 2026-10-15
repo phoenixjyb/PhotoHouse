@@ -24,6 +24,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
 | First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
 | Guided Web story creation | [Source flow and recovery contract](STORY_FIRST_GUIDE.md) |
+| Compare synthetic story output with its sources | [Private operator review page](MEMOIR_QUALITY_REVIEW.md) |
 | Companion answer grounding | [Cited answers and clarification](STORY_COMPANION_GROUNDING.md) |
 | Review wording changes in story suggestions | [Review summary and local focus](STORY_PROPOSAL_WORDING_REVIEW.md) |
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
