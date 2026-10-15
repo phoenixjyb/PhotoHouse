@@ -252,7 +252,7 @@ class AssistantJointSearchTests(unittest.TestCase):
     def test_zero_result_guidance_relaxes_only_an_explicitly_chosen_filter(self):
         initial = self.turn('find Sample Child and Sample Adult photos in 2099 containing "海边"').json()
         self.assertEqual(initial['total'], 0)
-        self.assertIn('any date', initial['reply'])
+        self.assertIn('不限日期', initial['reply'])
         for words in ('why no results?', '为什么没有结果？', '为什么没有results'):
             with self.subTest(words=words):
                 response = self.turn(words, context=initial['context'])
