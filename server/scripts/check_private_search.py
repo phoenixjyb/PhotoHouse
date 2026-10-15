@@ -197,7 +197,8 @@ def main(argv=None):
             guard = deletion_guard(args.deletion_journal, args.deletion_namespace)
         access = AccessRuntime(ExistingDatabase(args.database, read_only=True, original_deletions=guard),
                                'https://offline-search.invalid')
-        budget = d.ReadBudget()
+        from app.access.discovery_index import shared_budget
+        budget = shared_budget(None)
         discovery = DiscoveryRuntime(access, SelectedIndex(args.index, budget), budget)
         kinship = None
         if args.kinship is not None:

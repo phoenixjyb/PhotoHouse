@@ -23,6 +23,17 @@ recorded but not searchable. A disabled date/people field is not counted as
 searchable. Unknown capture dates remain unknown. Issue codes identify missing
 coverage; readiness itself always says `relevance_measured: false`.
 
+The production factory and operator CLI explicitly allow up to 64 MiB of
+serialized search-v2 source, while legacy discovery retains its 16 MiB limit.
+Both use the same admission semaphore; the 100,000-row, two-second, index,
+response and cancellation limits remain unchanged. An explicitly supplied
+budget inherits its own source limit for search unless its caller selects a
+separate allowance. The independent text fallback excludes superseded captions
+at SQL selection time, so historical caption revisions cannot consume the
+current-text projection. Current caption edits, supersession and ambiguity
+still invalidate the source binding. The allowance is bounded capacity, not a
+claim that every library fits or that a query meets a user latency target.
+
 ## Private operator command
 
 Prepare an existing login token in an owner-only file, outside every Git

@@ -1,6 +1,8 @@
 """Readiness uses protected search facts, not a second metadata inventory."""
 from dataclasses import replace
+from contextlib import closing
 import json
+import sqlite3
 import sys
 from pathlib import Path
 import unittest
@@ -75,6 +77,55 @@ class SearchReadinessTests(unittest.TestCase):
         self.fixture.mutate("UPDATE captions SET text='changed' WHERE id=1")
         with self.assertRaises(d.DiscoveryChanged):
             engine.call('readiness', TOKEN, 'family-a', lambda: False, {'binding': old['binding']})
+
+    def test_explicit_text_allowance_preserves_legacy_limits_and_shared_admission(self):
+        budget = d.ReadBudget(source_bytes=32, search_source_bytes=256, concurrency=1)
+        view = budget.search_view()
+        self.assertIs(view.slots, budget.slots)
+        self.assertEqual((view.rows, view.seconds, view.response_bytes, view.index_bytes),
+                         (budget.rows, budget.seconds, budget.response_bytes, budget.index_bytes))
+        with closing(sqlite3.connect(':memory:')) as db:
+            with self.assertRaises(d.DiscoveryUnavailable):
+                with budget.attempt(db, lambda: False) as (_, read):
+                    read('SELECT ?', ('字' * 20,))
+            with view.attempt(db, lambda: False) as (_, read):
+                self.assertEqual(read('SELECT ?', ('字' * 20,)), [('字' * 20,)])
+                with self.assertRaises(d.DiscoveryBusy):
+                    with budget.attempt(db, lambda: False):
+                        self.fail('search must not bypass shared admission')
+        for invalid in (0, -1, True, 1.5):
+            with self.assertRaises(d.DiscoveryInvalid):
+                d.ReadBudget(search_source_bytes=invalid)
+        from app.access.discovery_index import shared_budget
+        production = shared_budget(None)
+        self.assertEqual((production.source_bytes, production.search_source_bytes),
+                         (16 * 1024**2, 64 * 1024**2))
+
+    def test_superseded_history_does_not_exhaust_current_text_projection(self):
+        from app.access.discovery_provider import ProjectedIndex, MemoryIndexProvider
+        from app.access.discovery_transport import DiscoveryRuntime
+        with self.fixture.connection() as db:
+            # This fixture connection is query-only; source writes use its own
+            # mutation helper so ordinary reads retain the protected boundary.
+            source = d.projected_source('family-a', lambda sql, args: db.execute(sql, args).fetchall(), ('media',))
+        ids = tuple(str(row[0]) for row in source['assets'])
+        index = ProjectedIndex(library_id='family-a', revision='1', scope_ids=ids,
+                               indexed_ids=ids, source_digest=d.digest(source),
+                               people=(), pinned_ids=(), assignments=(), places=(),
+                               regions=(), enabled=('media',))
+        self.fixture.mutate('''INSERT INTO captions(id,asset_id,text,user_edited,superseded)
+                              SELECT 1000+value,101,?,0,1 FROM json_each(?)''',
+                            ('old history ' * 100, json.dumps(list(range(100)))))
+        budget = d.ReadBudget(rows=20, source_bytes=1024, search_source_bytes=32768)
+        engine = SearchRuntime(DiscoveryRuntime(self.fixture.access, MemoryIndexProvider((index,)), budget))
+        before = engine.call('readiness', TOKEN, 'family-a', lambda: False, {})
+        self.assertGreater(before['by_media']['image']['text_searchable'], 0)
+        self.fixture.mutate("UPDATE captions SET text='changed old history' WHERE id=1000")
+        after = engine.call('readiness', TOKEN, 'family-a', lambda: False, {'binding': before['binding']})
+        self.assertEqual(after['binding'], before['binding'])
+        self.fixture.mutate("UPDATE captions SET text='changed current caption' WHERE id=1")
+        with self.assertRaises(d.DiscoveryChanged):
+            engine.call('readiness', TOKEN, 'family-a', lambda: False, {'binding': before['binding']})
 
 
 if __name__ == '__main__':

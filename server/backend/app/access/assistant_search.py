@@ -46,14 +46,15 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 class AssistantSearchReads(d.DiscoveryReads):
     def __init__(self, access, provider, budget, *, kinship=None):
-        super().__init__(access, provider, budget)
+        super().__init__(access, provider,
+                         budget.search_view() if isinstance(budget, d.ReadBudget) else budget)
         self.kinship = kinship
 
     def _extra_source(self, index, source, read, check):
         captions = source['captions'] if 'caption' in index.enabled else read(
             'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
             'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
-            'FROM captions x' + d.SCOPE + ' ORDER BY x.id', (index.library_id,))
+            'FROM captions x' + d.SCOPE + ' AND x.superseded=0 ORDER BY x.id', (index.library_id,))
         # Same child AND parent scope as Stories.search; no revisions/history,
         # annotation drafts, saved multi-image stories, or assistant receipts.
         notes = read('''SELECT s.id,s.asset_id,s.revision,

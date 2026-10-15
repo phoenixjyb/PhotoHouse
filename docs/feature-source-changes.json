@@ -17433,6 +17433,51 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "bound-current-text-projection-for-larger-bilingual-libraries",
+      "source_commit": "e6be8a6b408b4f63f39d64e6b432aca1847358a5",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "7d7591d01b84f787b4880cdc0d321e9cd7e91173e4875784b246417517b2a8fa",
+          "sha256": "729221ac9fb80e770fddf5cd9f1cdd81efa844a8eb1daf10b443f2279a3273f1"
+        },
+        {
+          "path": "docs/SEARCH_READINESS_AND_RELEVANCE.md",
+          "before_sha256": "70c19b57c1e33812750f60f54e89159b9a1dc8ab603435d9a7b49bf5df893b1a",
+          "sha256": "55a783c55f9061233769f2f8fc24b6d398c81f70ba7963ecc1943836cbb61d1f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "d9897d2c3760d2401271211cd5641c8a9a2f48f8ed1cbfe0c1b21af63fa3afbc",
+          "sha256": "86b9e29d891741fc1f8da43f5262a76a9b8835c20ba7edf43a3d38e396faeb71"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "4203dff51c13d3d305cc24c99f383668a9581db8302b56cf5451f64db7caaadd",
+          "sha256": "e37f58794d8d1177e0e0e422bdd8b0df3e653f520235ca1ce64ada8efcd1df39"
+        },
+        {
+          "path": "server/backend/app/access/discovery_index.py",
+          "before_sha256": "404ad89e448e9afc960f05740879aa14c7995b431136aead07088e8e8ca1adbf",
+          "sha256": "bf21ffeccbabd776515a35823609cab54435ffe09218c09653d58e412f6e638e"
+        },
+        {
+          "path": "server/scripts/check_private_search.py",
+          "before_sha256": "e63ad84583df36f61901f27cea9ab21a950a72657cadce879240de5e52592808",
+          "sha256": "1e383c127e87e5fd8a7e5e636c1be5a98b36ab5fd5e0e2033ed4f84e8aab8e50"
+        },
+        {
+          "path": "server/tests/security/test_search_readiness.py",
+          "before_sha256": "f08f229bb660257b52eecfd71095af128c2414edbd803bd9db313ada7d5914ec",
+          "sha256": "15161ed83c66ec73985e9f32c0e2772611ee5dab08f4e0eccebfc80f8d5b8870"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

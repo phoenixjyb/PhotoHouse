@@ -5,6 +5,7 @@ No SQL writes, filesystem/index loading, models, HTTP routes or original grants.
 """
 from collections import Counter, defaultdict
 from contextlib import contextmanager
+from copy import copy
 from dataclasses import asdict, replace
 from datetime import date, datetime
 import hashlib
@@ -93,12 +94,27 @@ class ReadBudget:
     connection progress callback during a call; no ambient callback is preserved.
     """
     def __init__(self, *, rows=100000, source_bytes=16*1024**2, index_bytes=4*1024**2,
-                 response_bytes=512*1024, seconds=2.0, concurrency=2, clock=monotonic):
+                 response_bytes=512*1024, seconds=2.0, concurrency=2, clock=monotonic,
+                 search_source_bytes=None):
         require(all(type(v) is int and v>0 for v in (rows,source_bytes,index_bytes,response_bytes,concurrency)))
         require(type(seconds) in (int,float) and math.isfinite(seconds) and seconds>0)
         self.rows,self.source_bytes,self.index_bytes,self.response_bytes=rows,source_bytes,index_bytes,response_bytes
         self.seconds,self.clock=seconds,clock
+        if search_source_bytes is not None:
+            require(type(search_source_bytes) is int and search_source_bytes > 0)
+        self.search_source_bytes = source_bytes if search_source_bytes is None else search_source_bytes
         self.slots=threading.BoundedSemaphore(concurrency)
+
+    def search_view(self):
+        """Use an explicit text allowance while retaining the SAME admission pool.
+
+        Counters/deadlines remain per-attempt; rows, response/index limits,
+        cancellation, clock and concurrency are unchanged. No request gets a new
+        semaphore just because its transport wraps the runtime for search v2.
+        """
+        view = copy(self)
+        view.source_bytes = self.search_source_bytes
+        return view
 
     @contextmanager
     def attempt(self, connection, cancelled):

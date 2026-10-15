@@ -1,5 +1,11 @@
 # Protected text and reviewed-person search, first slice
 
+The release preparation adds an explicit production search-v2 source allowance
+of 64 MiB, with legacy discovery still at 16 MiB. Both share the original
+admission pool and retain the existing row/deadline/index/response limits.
+Superseded captions are excluded from the independent current-text fallback
+before loading it. See [readiness and resource limits](SEARCH_READINESS_AND_RELEVANCE.md).
+
 October 15 source increment, following the [search handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md).
 This is a locally runnable API path, not a Windows deployment or a Web/phone
 feature activation. New story creation remains deferred.
