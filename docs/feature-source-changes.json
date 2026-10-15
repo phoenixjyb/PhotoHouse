@@ -19876,6 +19876,47 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "spoken-single-scene-clue-removal-without-quotation-marks",
+      "source_commit": "7cc5460a991fcb8d08e0ae3b2c9fdaaf3e01d10e",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "f383ed9691b1713ca56af4d18e40343083c419feb01f750c86800c58fadaae38",
+          "sha256": "d8becb1d0cd1f7e857e9d3328caf988e588fca0e85e46f119f59407239ad5b57"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "b5edd4a3830c409e6696d40d47fcab8ab6522bcf1b0289107c9f894c2d7479c2",
+          "sha256": "4f0fbbbf4126f457d0b211a6cc7c80ac7b62f6b2d7d39d0689de68ec9ef26ec6"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_clue_removal.py",
+          "before_sha256": "8d6ff485511da72665d03a92974db61cc26be164c03cebe439b9797206136112",
+          "sha256": "c2f2cc366b64dfe0ebfe47690934fc7282a7834ed50210bc5e58a5a533ab844b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "85c0d38510604d34e712d5a8b9babbf96ca7bf08299ddb11be34b2a5d79b0df1",
+          "sha256": "c367d1d531c924a1a9db013e041195b4277be79bd71bb4dc7d5037b043cfb604"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "5f5678260d8229398b56a6749219dfb45372eb994e0d8d416d96ebf7a51d1b00",
+          "sha256": "ba961d1adcc15a0070b028090cacdb3af2c3bdf640096ac39614bde4b4d88a11"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "model_calls_for_clue_removal": 0,
+      "exact_current_surface_required": true,
+      "hard_conditions_preserved": true,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

@@ -253,7 +253,7 @@ async function openPrivateWorkspace(){
   assert.ok((await page.locator('#assistant-search-summary').innerText()).includes('green coat'));
   assert.match(await page.locator('#assistant-reply').innerText(),/remove the "clue wording" clue|去掉“某条线索”线索/);
   const beforeRemovalCalls=await plannerCalls(),beforeRemovalTurns=turnEntries().length;
-  await send('去掉“green coat”这条线索',{lose:true});
+  await send('请去掉green coat这条线索',{lose:true});
   assert.equal(await plannerCalls(),beforeRemovalCalls,'explicit single-clue removal does not call the model');
   if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
   await page.locator('#assistant-private-recover').waitFor({state:'visible'});

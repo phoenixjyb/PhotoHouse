@@ -267,7 +267,11 @@ memories or family facts.
 When a v3 search is too narrow, `remove the "red coat" clue`, `drop "red coat" clue`
 or `去掉“红外套”这条线索` removes one exact normalized surface shown in the current
 search conditions. Straight double quotes and matched curly double quotes are
-supported. Alternative phrases do not identify the target. The other descriptive
+supported. Speech transcripts can omit quotation marks: `please remove red coat clue`
+or `请去掉红外套这条线索`. The target must still match one current clue exactly;
+conjunctions, multiple targets, malformed quotation marks and remove-all wording
+require clarification. Quoted literal targets retain the existing behavior.
+Alternative phrases do not identify the target. The other descriptive
 clues, people, capture dates, media type, exact quoted text, tags and places remain
 unchanged. Removing the last clue clears only the descriptive filter.
 

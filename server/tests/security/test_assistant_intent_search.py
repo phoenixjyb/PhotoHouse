@@ -293,7 +293,8 @@ class AssistantIntentSearchTests(unittest.TestCase):
 
     def test_explicit_clue_removal_repairs_empty_results_without_losing_hard_filters(self):
         self.planner.concepts['green coat'] = ['green coat', '绿外套']
-        for removal in ('remove the "green coat" clue', '去掉“green coat”这条线索'):
+        for removal in ('remove the "green coat" clue', '去掉“green coat”这条线索',
+                        'please remove green coat clue', '请去掉green coat这条线索'):
             with self.subTest(removal=removal):
                 initial = self.intent('find photos of Sample Child in September 2032 '
                                       'playing in snow green coat containing "海边"').json()
