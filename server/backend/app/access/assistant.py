@@ -554,6 +554,28 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         previous = _context(previous, library)
         existing = _context_result(engine, token, library, previous)
         source.update(existing)
+    if search_v2:
+        from .search_explanation import (describe_filter_query, explain_filters,
+                                         describe_empty_query, no_results_guidance)
+        explain_request = describe_filter_query(words)
+        empty_request = describe_empty_query(words)
+        if explain_request or empty_request:
+            if existing is None:
+                return {'version': 1, 'kind': 'clarification',
+                        'reply': ('请先查找照片或视频，再询问当前筛选条件。' if lang == 'zh' else
+                                  'Search for photos or videos first, then ask about the current filters.'),
+                        'context': None, 'filters': None, 'items': [], 'total': 0,
+                        'has_more': False, 'effect': None}
+            if explain_request:
+                reply = explain_filters(previous['filters'], existing.get('interpretation', {}), lang)
+            elif existing['total'] == 0:
+                reply = no_results_guidance(previous['filters'], lang)
+            else:
+                reply = (f'当前查找有 {existing["total"]} 项结果。可以问“现在筛选了哪些条件”。' if lang == 'zh' else
+                         f'The current search has {existing["total"]} results. Ask "what filters are active" to review the conditions.')
+            return {'version': 1, 'kind': 'results', 'reply': reply,
+                    'context': previous, 'filters': previous['filters'], 'items': existing['items'],
+                    'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
     if _describe_results(words):
         if existing is None:
             return {'version': 1, 'kind': 'clarification',
@@ -659,6 +681,24 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
                          if lang == 'zh' else
                          'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
+            elif plan.reason == 'people_reference_unavailable':
+                reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
+                         'The current search has no selected people to refer to. Use a reviewed name first.')
+            elif plan.reason == 'ambiguous_people_reference':
+                reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
+                         'That reference does not match the number of selected people. Use full names or clarify who you mean.')
+            elif plan.reason == 'conflicting_people_reference':
+                reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
+                         'Keep the selected people or change the people filter in a separate request.')
+            elif plan.reason == 'correction_target_unavailable':
+                reply = ('当前查找还没有这个日期或媒体类型条件。请先明确要查找的日期或类型。' if lang == 'zh' else
+                         'The current search has no such date or media filter to correct. Specify that filter first.')
+            elif plan.reason == 'correction_mismatch':
+                reply = ('要更正的原条件与当前查找不一致。请确认当前日期或媒体类型，再更正。' if lang == 'zh' else
+                         'The old value does not match the current search. Check the date or media filter before correcting it.')
+            elif plan.reason == 'unsupported_correction':
+                reply = ('一次只能更正一个日期或媒体类型条件，例如“不是照片，是视频”。其他条件请分别调整。' if lang == 'zh' else
+                         'Correct one date or media filter at a time, for example “not photos, but videos”. Change other filters separately.')
             elif plan.reason == 'conflicting_refinement':
                 reply = ('同一个条件不能同时取消和重新指定。请分别操作，或保留一个条件。' if lang == 'zh' else
                          'A filter cannot be removed and replaced in the same request. Choose one change or send them separately.')
@@ -755,7 +795,11 @@ def _search_reply(engine, token, library, binding, filters, source, lang):
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}
     reply = _result_overview(result, lang)
-    if result['total'] == 0 and 'date' in filters:
+    from .assistant_search import SearchRuntime
+    if result['total'] == 0 and isinstance(engine, SearchRuntime):
+        from .search_explanation import no_results_guidance
+        reply = no_results_guidance(filters, lang)
+    elif result['total'] == 0 and 'date' in filters:
         reply = ('没有找到符合条件且已记录拍摄日期的照片或视频。未记录拍摄日期的素材'
                  '不包含在日期搜索中；可以先只按照片或视频查找。' if lang == 'zh' else
                  'No matching photos or videos with a recorded capture date were found. '

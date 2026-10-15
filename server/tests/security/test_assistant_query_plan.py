@@ -89,6 +89,56 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_ready('find videos of Sample Child',
                           {'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'}})
 
+    def test_mixed_scripts_do_not_require_spaces_at_language_boundaries(self):
+        cases = {
+            'find示例儿童昨天的photos': {
+                'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                'date': {'from': '2032-09-13', 'to': '2032-09-13'}},
+            '找last week的videos': {
+                'media': ['video'], 'date': {'from': '2032-09-06', 'to': '2032-09-12'}},
+            '找September 2032的photos': {
+                'media': ['image'], 'date': {'from': '2032-09-01', 'to': '2032-09-30'}},
+            '找yesterday的photos': {
+                'media': ['image'], 'date': {'from': '2032-09-13', 'to': '2032-09-13'}},
+            '找from March to June 2024的photos': {
+                'media': ['image'], 'date': {'from': '2024-03-01', 'to': '2024-06-30'}},
+            '找March 5, 2032的photos': {
+                'media': ['image'], 'date': {'from': '2032-03-05', 'to': '2032-03-05'}},
+            '找5 March的photos': {
+                'media': ['image'], 'date': {'from': '2032-03-05', 'to': '2032-03-05'}},
+            '找September的photos': {
+                'media': ['image'], 'date': {'from': '2032-09-01', 'to': '2032-09-30'}},
+            '找示例儿童and示例成人的photos': {
+                'media': ['image'], 'people': {'ids': ['301', '302'], 'match': 'all'}},
+            '找示例儿童or示例成人的videos': {
+                'media': ['video'], 'people': {'ids': ['301', '302'], 'match': 'any'}},
+            'find照片containing“原样 Mixed 昨天 videos”': {
+                'media': ['image'], 'text': '原样 Mixed 昨天 videos'},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'search')
+                self.assert_ready(words, expected)
+        self.assertEqual(query_mode('only视频'), 'refine')
+        self.assert_ready('only视频', {'media': ['video'], 'text': 'beach'},
+                          previous={'media': ['image'], 'text': 'beach'}, refine=True)
+
+    def test_mixed_unknown_words_and_negation_never_drop_constraints(self):
+        for words, reason in (
+            ('找示例儿童without示例成人的photos', 'unsupported_negation'),
+            ('找from June to March 2024的photos', 'invalid_date'),
+            ('找March 32, 2032的photos', 'invalid_date'),
+            ('find示例儿童的photos陌生条件', 'unsupported_condition'),
+            ('找示例儿童在未知方言场景的photos', 'unsupported_condition'),
+            ('find示例儿童的photosUnknown', 'unsupported_condition'),
+            ('找示例儿童someday的photos', 'unsupported_condition'),
+        ):
+            with self.subTest(words=words):
+                self.assert_clarifies(words, reason)
+        # English words must still have a boundary inside Latin text.
+        self.assertIsNone(query_mode('findphotos'))
+        self.assertIsNone(query_mode('onlyvideos'))
+
     def test_explicit_dates_chinese_english_and_iso_day(self):
         cases = {
             'find photos taken in 2032-09-03': {'media': ['image'], 'date': {'from': '2032-09-03', 'to': '2032-09-03'}},
