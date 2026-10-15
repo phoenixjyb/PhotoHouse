@@ -169,6 +169,11 @@ planner proposes exact input spans and bounded Chinese/English alternatives.
 The server, rather than the model, resolves reviewed people and hard filters.
 The planner receives the query, civil date and a previous-search flag; it receives
 no family roster, captions, credentials or database access.
+The local extraction instruction leaves names and resolvable dates to that
+server path; an unfamiliar name does not authorize guessing an identity or
+consuming it as a scene. Generic bilingual examples distinguish descriptive
+spans from the surrounding name/date/media/quoted-text conditions. Prompt
+examples are source-defined fictional text, not a family vocabulary.
 
 Each descriptive concept is required. Its alternatives are interchangeable
 phrases, so `snow` and `red coat` require evidence for both concepts on the same
@@ -220,7 +225,12 @@ bounded, deterministic replies.
 Generated tests establish the protocol and retrieval contracts with a stand-in
 planner. The separate twelve-case synthetic qualification runner measures the
 installed model in English, Chinese and mixed cohorts with no family records,
-retries or hidden warm-up. A passing generated test does not establish native
+retries or hidden warm-up. Its private measurement records the validated
+proposal for each fixed fictional case, including proposals the compiler
+refuses, so interpretation failures can be diagnosed without another provider
+request. Invalid extensions are excluded. Ordinary user requests and provider
+responses are not added to production logs by this measurement feature.
+A passing generated test does not establish native
 latency, family relevance, speech accuracy or device usability. Missing-date
 questions such as “childhood” must not invent dates. The bounded date-answer
 continuation below is separate from free-form model-generated questions.

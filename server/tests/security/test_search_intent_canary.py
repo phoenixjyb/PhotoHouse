@@ -134,6 +134,8 @@ class SearchIntentQualificationTests(unittest.TestCase):
                             for row in report["cases"]))
         self.assertTrue(all(row["hard_filters_preserved"] for row in report["cases"]))
         self.assertTrue(all(row["compiler_replay_calls"] == 1 for row in report["cases"]))
+        for case, row in zip(CASES, report["cases"]):
+            self.assertEqual(row['actual_proposal'], proposal_for(case))
         self.assertEqual({"en": "expectations_met", "zh": "expectations_met",
                           "mixed": "expectations_met"},
                          {name: cohort["status"] for name, cohort in report["cohorts"].items()})
@@ -147,6 +149,35 @@ class SearchIntentQualificationTests(unittest.TestCase):
         self.assertTrue(all(len(row["evidence_checks"]) == 4
                             for row in report["cases"] if row["expected_status"] == "ready"))
 
+    def test_valid_proposal_is_retained_when_the_compiler_refuses_a_protected_span(self):
+        case = CASES[0]
+        start = case['query'].index('Sample Child')
+        refused = {'version': 1, 'status': 'ready', 'question': None,
+                   'concepts': [{'start': start, 'end': start + len('Sample Child'),
+                                 'alternatives': ['Sample Child']}]}
+        class ProtectedSpanPlanner(FakePlanner):
+            def propose(self, query, today, has_previous_search):
+                value = super().propose(query, today, has_previous_search)
+                return refused if query == case['query'] else value
+        planner = ProtectedSpanPlanner()
+        report = qualify.run_qualification(planner, now=NOW_VALUE)
+        first = report['cases'][0]
+        self.assertEqual(first['actual_proposal'], refused)
+        self.assertEqual((first['actual_plan_status'], first['plan_reason']),
+                         ('clarification', 'invalid_intent'))
+        self.assertFalse(first['expectations_met'])
+        self.assertEqual(len(planner.calls), 12)
+        self.assertEqual(first['compiler_replay_calls'], 1)
+
+    def test_invalid_provider_extensions_do_not_enter_proposal_diagnostics(self):
+        class InvalidExtensionPlanner(FakePlanner):
+            def propose(self, query, today, has_previous_search):
+                result = super().propose(query, today, has_previous_search)
+                return {**result, 'debug': {'private-marker-not-for-report': object()}}
+        report = qualify.run_qualification(InvalidExtensionPlanner(), now=NOW_VALUE)
+        self.assertTrue(all(row['actual_proposal'] is None for row in report['cases']))
+        self.assertNotIn('private-marker-not-for-report', json.dumps(report, allow_nan=False))
+
     def test_failed_provider_call_marks_its_cohort_without_hiding_it_in_aggregate(self):
         planner = FakePlanner(failed_case="zh_rain_umbrella_and")
         report = qualify.run_qualification(planner, now=NOW_VALUE, clock=lambda: 100.0)
@@ -157,6 +188,7 @@ class SearchIntentQualificationTests(unittest.TestCase):
         self.assertEqual("expectations_met", report["cohorts"]["mixed"]["status"])
         failed = next(row for row in report["cases"] if row["case_id"] == "zh_rain_umbrella_and")
         self.assertEqual("intent_unavailable", failed["provider_outcome"])
+        self.assertIsNone(failed['actual_proposal'])
         self.assertFalse(failed["expectations_met"])
         self.assertFalse(report["quality_evaluated"])
 
