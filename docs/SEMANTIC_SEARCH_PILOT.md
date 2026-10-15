@@ -4,8 +4,9 @@ This source-only pilot provides a separate protected text-to-image API. The
 ordinary assistant v1/v2 continues to use its existing literal text contract.
 No local model, service, image-vector preparation, schema migration, private
 configuration, Web control or Android feature is activated by importing or
-deploying these source files. A real encoder service and measured relevance
-are separate delivery gates.
+deploying these source files. The [local provider implementation](LOCAL_SEMANTIC_TEXT_PROVIDER.md)
+has an explicit probe/serve path; its native installation, qualification and
+measured relevance remain separate delivery gates.
 
 ## Search behavior
 
@@ -69,8 +70,9 @@ The opaque binding covers the exact query, reviewed metadata, current image
 source hashes, immutable vector manifests and joint-space configuration.
 Page sizes and filters participate in the fingerprint. Membership and source
 binding are rechecked in a fresh transaction after encoding, so concurrent
-revocation or a source edit withholds stale cards. The whole runtime call shares
-one elapsed-time allowance across its reads and provider work. Checks are
+revocation or a source edit withholds stale cards. After initial authorization,
+retrieval/source rechecks and provider work share one elapsed-time allowance;
+HTTP admission and body receipt have separate bounds. Checks are
 cooperative; a synchronous provider socket operation can wait for its phase
 timeout before the next deadline/cancellation check. No provider cancellation
 acknowledgement is claimed.
@@ -92,7 +94,8 @@ operation, not a side effect of search.
 
 `LocalSemanticEncoder` accepts only an explicit loopback HTTP URL ending in
 `/v1/encode-text`, with an explicit port. It disables environment proxies and
-redirects. Its request has exactly:
+redirects. The standalone local provider requires a separately configured
+`bearer_token`, sent only as an Authorization header. Its JSON request has exactly:
 
 ```json
 {"version": 1, "binding_sha256": "<joint binding digest>", "query": "<exact query>"}
@@ -118,7 +121,7 @@ revocation/source edits and the unchanged closed default application. These
 tests use synthetic vectors and HTTP mock transport. They establish source
 behavior, not model quality, GPU operation or family acceptance.
 
-Before a live pilot: implement/install the local encoder service, qualify its
+Before a live pilot: install and qualify the local encoder service, qualify its
 exact text/image pair and language coverage, prepare compatible immutable image
 artifacts, verify the native runtime and resource bounds, and measure relevance
 against reviewed examples. Runtime configuration/client wiring and deployment

@@ -418,6 +418,10 @@
   {
    "source": "backend/app/main.py",
    "expression": "app.include_router(semantic_search_router)"
+  },
+  {
+   "source": "backend/app/access/semantic_provider_transport.py",
+   "expression": "app.add_middleware(_Boundary, port=port, token=bearer_token.encode(\"ascii\"), seconds=float(seconds))"
   }
  ],
  "routes": [
@@ -4655,7 +4659,21 @@
     "library.read"
    ],
    "current_control": "Unmounted by default; explicit matching SemanticSearchRuntime factory only. Reviewed boundary binds method/template/handler. Authorization before body, metadata, vector files and loopback encoder. Existing hard filters precede bounded full-cohort cosine ranking; source and membership rechecked after encoding. Query-specific binding/fingerprint, aggregate deadline, disconnect cancellation, no-store and bounded response. No placeholder vectors or cross-library candidates.",
-   "gap": "Source and generated-fixture evidence only. Requires an explicitly installed local encoder implementing the pinned protocol, separately measured joint-space qualification and compatible immutable image artifacts. No default runtime config, Web/Android integration, model activation or real family relevance acceptance."
+   "gap": "Source/generated-fixture evidence only. Optional OpenCLIP provider and probe/serve tool exist, but native installation, exact text/image pair qualification and compatible image artifacts remain separate. No default runtime config, Web/Android integration, model activation or real family relevance acceptance."
+  },
+  {
+   "source": "backend/app/access/semantic_provider_transport.py",
+   "owner": "app",
+   "method": "POST",
+   "path": "/v1/encode-text",
+   "handler": "encode_text",
+   "surface": "semantic-text-provider",
+   "scope": "Explicit standalone loopback service and exact bearer credential; scene text to one qualified vector only",
+   "capabilities": [
+    "service.invoke"
+   ],
+   "current_control": "Not mounted by the PhotoHouse default application. Explicit local socket, loopback peer and exact Host/port, bearer authentication before body, no browser/proxy/query credential access. Strict bounded UTF8 JSON, exact joint binding/query digest/checksum, one inference lease retained until actual worker completion, bounded response and cooperative deadline; no logs or filesystem/model selection from requests.",
+   "gap": "Native dependency/checkpoint/GPU/resource/relevance qualification and service deployment are separate. The source probe records observed implementation identity and never grants library access or qualifies multilingual recall. In-progress inference cannot be forcibly preempted by ASGI shutdown."
   }
  ]
 }

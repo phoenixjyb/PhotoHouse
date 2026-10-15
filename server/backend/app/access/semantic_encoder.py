@@ -139,7 +139,8 @@ class LocalSemanticEncoder:
 
     def __init__(self, binding: JointSpaceBinding, url: str, timeout: float = 2.0,
                  transport: httpx.BaseTransport | None = None,
-                 monotonic: Callable[[], float] | None = None) -> None:
+                 monotonic: Callable[[], float] | None = None,
+                 bearer_token: str | None = None) -> None:
         if type(binding) is not JointSpaceBinding:
             raise ValueError("invalid_encoder_configuration")
         try:
@@ -155,10 +156,14 @@ class LocalSemanticEncoder:
         if (type(timeout) not in (int, float) or not math.isfinite(float(timeout))
                 or not 0 < float(timeout) <= _MAX_TIMEOUT):
             raise ValueError("invalid_encoder_configuration")
+        if bearer_token is not None and (type(bearer_token) is not str or
+                re.fullmatch(r'[A-Za-z0-9_-]{32,128}', bearer_token, flags=re.ASCII) is None):
+            raise ValueError("invalid_encoder_configuration")
         self._binding = binding
         self._url = url
         self._timeout = float(timeout)
         self._transport = transport
+        self._bearer_token = bearer_token
         self._monotonic = monotonic or time.monotonic
 
     @property
@@ -203,8 +208,10 @@ class LocalSemanticEncoder:
             timeout = httpx.Timeout(remaining)
             with httpx.Client(transport=self._transport, timeout=timeout,
                               follow_redirects=False, trust_env=False) as client:
-                with client.stream("POST", self._url, content=request_body,
-                                   headers={"content-type": "application/json"}) as response:
+                headers = {"content-type": "application/json"}
+                if self._bearer_token is not None:
+                    headers['authorization'] = 'Bearer ' + self._bearer_token
+                with client.stream("POST", self._url, content=request_body, headers=headers) as response:
                     _checked(check)
                     if response.status_code != 200:
                         raise SemanticUnavailable()

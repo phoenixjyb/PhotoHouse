@@ -34,6 +34,7 @@ FILES = (
     'backend/app/access/semantic_encoder.py',
     'backend/app/access/semantic_search.py',
     'backend/app/access/semantic_search_transport.py',
+    'backend/app/access/semantic_provider_transport.py',
     'backend/app/access/search_text.py',
     'backend/app/access/search_evaluation.py',
     'backend/app/access/kinship.py',
@@ -228,6 +229,9 @@ FILES = (
     'scripts/upgrade_original_deletion_journal.py',
     'scripts/run_memory_worker.py',
     'scripts/serve_windows_tts.py',
+    'scripts/image_embedding_receipts.py',
+    'scripts/semantic_openclip.py',
+    'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
 )
 

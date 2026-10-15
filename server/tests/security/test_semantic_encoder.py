@@ -63,6 +63,21 @@ def encoder(binding, handler, **kwargs):
     )
 
 
+def test_bearer_credential_is_header_only_and_invalid_credentials_are_refused(binding):
+    token = 'synthetic_private_token_' + 'x'*24
+    seen = []
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, content=response(binding))
+    encoder(binding, handler, bearer_token=token).encode('blue sky')
+    assert seen[0].headers['authorization'] == 'Bearer '+token
+    assert token.encode() not in seen[0].content
+    assert token not in str(seen[0].url)
+    for invalid in ('short', 'x'*129, 'x'*32+'\n', True):
+        with pytest.raises(ValueError):
+            encoder(binding, handler, bearer_token=invalid)
+
+
 def test_binding_is_domain_separated_and_allows_reviewed_distinct_artifacts(binding):
     assert binding.image_identity.artifact_sha256 != binding.text_identity.artifact_sha256
     assert len(binding.binding_sha256) == 64
