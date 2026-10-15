@@ -60,6 +60,10 @@ controllers: inspect existing receipts and current task/feed state first.
 
 ## New priority from the owner: search quality
 
+A dedicated [natural-language search session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md)
+now provides the source map, phased implementation, regression commands and copyable
+new-session prompt. Use it for the next search development session.
+
 Story creation is paused. Recent receipts confirm ASR and turn intake; ordinary
 search phrases, a possible ASR homophone, missing person/caption indexing and
 unknown video capture dates explain the reported failures. The exact private

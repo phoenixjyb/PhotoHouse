@@ -16544,6 +16544,32 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "dedicated-natural-language-search-redesign-session-handoff",
+      "source_commit": "5e608acd27d90a2bf1ff9a2643b4140fefef03e3",
+      "files": [
+        {
+          "path": "docs/NEXT_SESSION_HANDOFF_2026-10-15.md",
+          "before_sha256": "9f3eda195061a519195ce5c9ae1c4dbaf963ca5adb81a24ac0ca425c927c7edb",
+          "sha256": "d76df6f438ce5a2bd8839a803f895da4c47b571751ae051b65df184e6fe30ae6"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "c3cc599e4b4296300d1378c8ce617b85e08ff9873d37db525d66fd26925a57a5"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "2390462fd195deca530c75e5b272746f5507a8e4ca01254d113fd4afc0b45345",
+          "sha256": "6590f09a67fcaffb51c04c47cc5ab47568ffd6ae912bcb5c8017a6c68d98529b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
