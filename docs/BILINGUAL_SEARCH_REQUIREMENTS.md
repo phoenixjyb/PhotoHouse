@@ -437,3 +437,19 @@ refinement command, such as `Find`, `找` or `only`. Recognition is anchored to 
 original unquoted query, before earlier hard conditions can leave gaps. Later
 scene words are not promoted to commands. Original code-point offsets and hard
 conditions remain authoritative, including normalization-expanding characters.
+
+## Explicit unquoted content phrases
+
+Negotiated v2 search can compile one explicit content cue into the existing
+exact text filter, without the optional intent provider. Examples include
+`find photos containing birthday cake`, `找包含切蛋糕的照片` and
+`find 2032年9月 photos containing 切蛋糕`. Person, date and media conditions
+remain separate AND filters. A closed terminal media suffix such as `的照片`
+is syntax; the remaining text retains its original spelling and spacing.
+
+This is literal caption/photo-memory matching, with the existing 512-byte
+text limit and current library/source authorization. It does not translate,
+reorder words or expand synonyms. Ambiguous hard conditions inside the phrase,
+multiple cues, unsupported actions, negation and malformed quotes still ask
+for clarification. Quotation marks remain available for intentional literal
+wording that would otherwise be treated as search syntax.

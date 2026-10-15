@@ -146,6 +146,64 @@ class AssistantConversationalSearchTests(unittest.TestCase):
                             ('不包含', '不会包含', '已排除', '排除')),
                         body['reply'])
 
+    def test_v2_unquoted_content_cues_retrieve_exact_synthetic_caption_with_hard_filters(self):
+        with closing(sqlite3.connect(self.database)) as connection, connection:
+            connection.execute("UPDATE captions SET text='birthday cake 切蛋糕' WHERE id=2")
+            connection.execute('''CREATE TABLE access_stories (
+                id TEXT PRIMARY KEY, asset_id INTEGER NOT NULL, library_id TEXT NOT NULL,
+                author_id TEXT NOT NULL, revision INTEGER NOT NULL, title TEXT NOT NULL,
+                text TEXT NOT NULL, updated_at INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0)''')
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(connection, clock=lambda: NOW))
+        discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((index,)), d.ReadBudget())
+        app = create_app(access_runtime=self.access, discovery_runtime=discovery,
+                         assistant_enabled=True)
+        client = TestClient(app, base_url=ORIGIN)
+        self.addCleanup(client.close)
+        cases = (
+            ('find photos of Sample Child from September 2032 containing birthday cake',
+             {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': 'birthday cake'}),
+            ('请找示例儿童2032年9月包含切蛋糕的照片',
+             {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': '切蛋糕'}),
+            ('find示例儿童2032年9月photos containing切蛋糕',
+             {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': '切蛋糕'}),
+        )
+        for words, expected_filters in cases:
+            with self.subTest(words=words):
+                response = client.post('/assistant/v1/turns',
+                    json={'library_id': 'family-a', 'text': words, 'context': None},
+                    headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], expected_filters)
+                self.assertEqual([item['id'] for item in result['items']], ['103'])
+                self.assertIsNone(result['effect'])
+
+        prior = result
+        for words in (
+            'find photos containing birthday cake; open all photos',
+            '找照片包含切蛋糕；打开第一张',
+            '找照片包含切蛋糕然后帮我打开第一张',
+            'find photos containing birthday cake then could you please open the first photo',
+        ):
+            with self.subTest(followup=words):
+                response = client.post('/assistant/v1/turns',
+                    json={'library_id': 'family-a', 'text': words,
+                          'context': prior['context']},
+                    headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+                self.assertEqual(response.status_code, 200, response.text)
+                followup = response.json()
+                self.assertEqual(followup['kind'], 'clarification', followup)
+                self.assertEqual(followup['filters'], prior['filters'])
+                self.assertEqual(followup['items'], prior['items'])
+                self.assertEqual(followup['context'], prior['context'])
+                self.assertIsNone(followup['effect'])
+
     def test_disabled_people_caption_and_tag_fields_are_explained(self):
         # Isolate an explicitly sparse index, with no reviewed people roster.
         with closing(sqlite3.connect(self.database)) as connection:

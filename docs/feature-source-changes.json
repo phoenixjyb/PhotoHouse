@@ -20083,6 +20083,72 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "explicit-unquoted-content-cues-with-preserved-hard-filters",
+      "source_commit": "1ec240a676f79686440842c8aaf2b1ac4c521ed1",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "beb67761bdf636c36e1b7c1e6751a594fed7a5c4056f28f2631f065d708a4e3b",
+          "sha256": "d54fc8a63ba1b5f78470cf623fa478da8980200a253797f3617515b2a74585ec"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "75ce49aab9d3f7c5ccf3dafed264ec508ceaf0d9ccc88ac1d9a90e681bdd0c0d",
+          "sha256": "17e629465f5fa57d95a56e0c1c30c430efc58a496ebf5d3bad9299602d9d04b3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "b66fbc6d16592cebfbd67f8bb505c615d51b01aa425ec03963b47641feab3310",
+          "sha256": "368358ecbcd65229d7844d03a17b5142e0383cefaa4ba32254e26a2c3d023c76"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "52113e91f8c7f2958e9055c1028fe1a6d20030fd03bdbca4b23f87eee4d8d309",
+          "sha256": "e3bd7fed6796ef7918fb7d7e88497fed5249ac04e3067f8b978405226d90403d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "exact_text_byte_limit": 512,
+      "semantic_expansion_added": false,
+      "text_capability_required": true,
+      "hard_conditions_preserved": true,
+      "provider_required": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
+    },
+    {
+      "feature": "unquoted-content-polite-action-continuation-refusal",
+      "source_commit": "e2c168087983df216323cffdc45b4b189baeec42",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "17e629465f5fa57d95a56e0c1c30c430efc58a496ebf5d3bad9299602d9d04b3",
+          "sha256": "7a65c09bc575de4e0d3195521aca54ca6de070d389e7316f5e168008f9e50fde"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "368358ecbcd65229d7844d03a17b5142e0383cefaa4ba32254e26a2c3d023c76",
+          "sha256": "e8e106c37fa23cfedf1b127932400851e848a3a9733a922239c924bbbfd9ffb5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "e3bd7fed6796ef7918fb7d7e88497fed5249ac04e3067f8b978405226d90403d",
+          "sha256": "e5b9fce8888def5a5f13a28a751a52e5dd87928cc9ca9f73c77fa2947c4a67da"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "read_only_context_preserved": true,
+      "actions_executed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

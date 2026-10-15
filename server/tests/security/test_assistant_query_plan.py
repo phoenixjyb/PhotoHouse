@@ -61,6 +61,70 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_ready('find photos containing "' + literal + '"',
                           {'media': ['image'], 'text': literal})
 
+    def test_explicit_unquoted_content_cues_compile_only_the_exact_tail(self):
+        cases = (
+            ('find photos containing birthday cake',
+             {'media': ['image'], 'text': 'birthday cake'}),
+            ('请找照片，关于切蛋糕', {'media': ['image'], 'text': '切蛋糕'}),
+            ('找包含切蛋糕的照片', {'media': ['image'], 'text': '切蛋糕'}),
+            ('find示例儿童2032年9月photos containing切蛋糕', {
+                'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': '切蛋糕'}),
+            ('find photos with the words Birthday   Cake',
+             {'media': ['image'], 'text': 'Birthday   Cake'}),
+        )
+        for words, expected in cases:
+            with self.subTest(words=words):
+                self.assert_ready(words, expected)
+        self.assert_ready('find photos containing ' + 'x' * 512,
+                          {'media': ['image'], 'text': 'x' * 512})
+        self.assert_clarifies('find photos containing ' + 'x' * 513, 'text_too_long')
+        self.assert_clarifies('find photos containing ' + '海' * 171, 'text_too_long')
+
+    def test_unquoted_content_cues_do_not_swallow_quotes_actions_or_bad_conditions(self):
+        for words, reason in (
+            ('find photos birthday cake', 'unsupported_condition'),
+            ('find photos containing', 'empty_literal'),
+            ('find photos containing cake about tea', 'unsupported_condition'),
+            ('find photos containing birthday cake then open the first result', 'unsupported_condition'),
+            ('find photos containing birthday cake; open all photos', 'unsupported_condition'),
+            ('find photos containing birthday cake\nopen all photos', 'unsupported_condition'),
+            ('找照片包含切蛋糕；打开第一张', 'unsupported_condition'),
+            ('找照片包含切蛋糕然后帮我打开第一张', 'unsupported_condition'),
+            ('找照片包含切蛋糕然后给我打开第一张', 'unsupported_condition'),
+            ('找照片包含切蛋糕；请帮我打开第一张', 'unsupported_condition'),
+            ('find photos containing birthday cake then could you please open the first photo', 'unsupported_condition'),
+            ('找照片包含切蛋糕\n打开第一张', 'unsupported_condition'),
+            ('find photos containing open all photos', 'unsupported_condition'),
+            ('find photos containing birthday cake without a dog', 'unsupported_negation'),
+            ('find photos containing cake from September 2032 then find park photos', 'unsupported_condition'),
+            ('find photos from 2032-13 containing cake', 'invalid_date'),
+            ('find photos of Unknown Child', 'unsupported_condition'),
+            ('find photos containing "birthday cake', 'ambiguous_quote'),
+        ):
+            with self.subTest(words=words):
+                self.assert_clarifies(words, reason)
+        self.assert_ready('find photos containing "birthday cake"',
+                          {'media': ['image'], 'text': 'birthday cake'})
+        self.assert_ready('find photos containing "birthday cake; open all photos"',
+                          {'media': ['image'], 'text': 'birthday cake; open all photos'})
+        self.assert_ready('find photos containing playing chess',
+                          {'media': ['image'], 'text': 'playing chess'})
+        self.assert_ready('find photos containing playful dog',
+                          {'media': ['image'], 'text': 'playful dog'})
+        self.assert_ready('find photos "containing birthday cake"',
+                          {'media': ['image'], 'text': 'containing birthday cake'})
+
+    def test_unquoted_content_cue_still_requires_text_capability_and_avoids_label_collision(self):
+        no_text = {**ENTITIES, 'enabled': ['people', 'date', 'media', 'tags', 'locations'],
+                   'groups': {'people': [], 'tags': [], 'locations': []}}
+        self.assert_clarifies('find photos containing birthday cake', 'text_unavailable',
+                              entities=no_text)
+        label_collision = {**ENTITIES, 'labels': ['about'],
+                           'groups': {'people': [], 'tags': ['501'], 'locations': []}}
+        self.assert_clarifies('find photos about cake', 'ambiguous_entities',
+                              entities=label_collision)
+
     def assert_ready(self, words, expected, **kwargs):
         result = plan(words, **kwargs)
         self.assertIsInstance(result, QueryPlan)
