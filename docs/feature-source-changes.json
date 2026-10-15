@@ -18527,6 +18527,73 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "native-story-trial-wording-and-owned-provider-teardown",
+      "source_commit": "a0c4a125b10fe76756df32a8a9db08517bcaf3fa",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "9a8643f136d5367695ebe5e8f12794a6e01ddadf99df160b241ccfc5a1d453be",
+          "sha256": "04a2b5a214b90242473ab19b9e9ef2b0ee2aed339bd200a9ff7250dda8033c03"
+        },
+        {
+          "path": "docs/MEMOIR_QUALITY_REVIEW.md",
+          "before_sha256": "1ef934f3ba10664511b30807d8e54c1603ce2ebd30b1e1ebc48c65b495baf2bc",
+          "sha256": "b4adafcd2fb9927e25ed91f89e03bcf7c57595c9126553de016213444f0deb80"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "before_sha256": "6ca26155e807fc30d41ca57c9e06510708f9f251656149fb49002632b9203723",
+          "sha256": "af2aef22cf09c493dce815cd35c31d8daf0d9676dfd9929abe166a5da2c92852"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "5db17ae24a6827e9562d2af0363e55112ad45db50e92a43bb37759c278be7bd1",
+          "sha256": "cd1d30cd1afbfdc5f77be101b47368e5c70718060a129b9557806060d53013e1"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "e3c4afa7220377127e98faec0d53fd6cb841b77653e8e2479beea54a82098950",
+          "sha256": "627ab6c3ac06211832545045e0977a4a3381d79855e41635e99b7af054a04328"
+        },
+        {
+          "path": "docs/STORY_MODEL_TRIAL_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "a9834748669077aaf50b2a6d64856f696539b5c5bfe1592f13b43d310b6d2672"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "a63014e8bf6ad431ea2a64edebf7d5ff07c5dd85c5b4e529320cb7e40297a89d",
+          "sha256": "85c0bf31e953a81ede56b7f912a623f2347be3a65494a649df0c0bdb379adb1d"
+        },
+        {
+          "path": "server/scripts/bounded_windows_job.py",
+          "before_sha256": "91ea2bdd389cfc1e037b9e526720cc98085fddff29a2e8adbc170346b663cd2f",
+          "sha256": "9ffd012c12afc44a7caa54b8aa40e360640ad8bf390a1b3f547fb162b44d3f79"
+        },
+        {
+          "path": "server/tests/security/test_bounded_windows_job.py",
+          "before_sha256": "c1b8a4c7984be51e81a6cbf0c173af00b3257c05e2212c6aa2ef1b803b3787e6",
+          "sha256": "0526ef1106477928b9e34f7e7feaa86776407e15ba2a4a9fc937d9a3bcaca370"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "5a7747f7ee9f9a5b58465f6b87efce97a54482259627001e72995afe3b113423",
+          "sha256": "f224d43ca6c8a29dbd144dc534042b966dacc37a1b562db881a91083d37cb081"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "real_model_requests_in_trial": 1,
+      "real_model_requests_after_source_change": 0,
+      "trial_runtime_qualified": false,
+      "human_quality_reviewed": false,
+      "native_synthetic_cleanup_qualified": true,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
