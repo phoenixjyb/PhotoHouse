@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -189,6 +191,90 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual("unverified", oversized["status"])
         self.assertEqual("node_probe_output_truncated", oversized["detail"])
 
+    def test_successful_probe_waits_for_delayed_stdout_drain(self):
+        payload = b'{"resolved":true,"nodeEngine":">=999.0.0"}'
+
+        class DelayedStream:
+            def __init__(self):
+                self.reads = 0
+
+            def read(self, _size):
+                self.reads += 1
+                if self.reads == 1:
+                    time.sleep(0.2)
+                    return payload
+                return b""
+
+            def close(self):
+                pass
+
+        class CompletedProcess:
+            def __init__(self):
+                self.stdout = DelayedStream()
+
+            @staticmethod
+            def wait(timeout=None):
+                return 0
+
+        result = doctor._run_probe(
+            ["node", "-e", "probe"], popen_factory=lambda *_a, **_k: CompletedProcess()
+        )
+        self.assertEqual("available", result["status"])
+        self.assertEqual(payload.decode(), result["output"])
+        checked = doctor._playwright_check(
+            Path("server/tests/security"), {}, "node",
+            {"status": "available", "version": "22.17.0"},
+            lambda *_a, **_k: result,
+        )
+        self.assertEqual("missing", checked["status"])
+        self.assertEqual("node_below_playwright_minimum", checked["detail"])
+
+    def test_probe_drain_timeout_does_not_close_a_stream_while_reader_owns_it(self):
+        started = threading.Event()
+        release = threading.Event()
+        closed = threading.Event()
+        caller_thread = threading.get_ident()
+
+        class BlockedStream:
+            def __init__(self):
+                self.reads = 0
+
+            def read(self, _size):
+                self.reads += 1
+                started.set()
+                if self.reads == 1:
+                    release.wait()
+                    return b"v22.17.0"
+                return b""
+
+            def close(self):
+                if threading.get_ident() == caller_thread:
+                    raise AssertionError("caller closed a reader-owned stream")
+                closed.set()
+
+        class CompletedProcess:
+            def __init__(self):
+                self.stdout = BlockedStream()
+
+            @staticmethod
+            def wait(timeout=None):
+                if not started.wait(timeout=1):
+                    raise AssertionError("stdout reader did not start")
+                return 0
+
+        process = CompletedProcess()
+        try:
+            with mock.patch.object(doctor, "MAX_PROBE_SECONDS", 0.02):
+                result = doctor._run_probe(
+                    ["node", "--version"], popen_factory=lambda *_a, **_k: process
+                )
+            self.assertEqual("unverified", result["status"], result)
+            self.assertEqual("probe_output_drain_timeout", result["detail"], result)
+            self.assertFalse(closed.is_set())
+        finally:
+            release.set()
+        self.assertTrue(closed.wait(timeout=1), "reader did not close its stream after release")
+
     def test_failed_and_unreadable_version_probes_are_unverified(self):
         result = doctor._node_check(
             {},
@@ -288,8 +374,8 @@ class DoctorTests(unittest.TestCase):
                 node_status,
                 doctor._run_probe,
             )
-        self.assertEqual("missing", status["status"])
-        self.assertEqual("node_below_playwright_minimum", status["detail"])
+        self.assertEqual("missing", status["status"], status)
+        self.assertEqual("node_below_playwright_minimum", status["detail"], status)
         self.assertEqual("999.0.0", status["required_node_version"])
 
     def test_windows_sdk_requires_native_executable_names(self):

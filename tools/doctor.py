@@ -220,19 +220,24 @@ def _run_probe(
         stream = getattr(process, "stdout", None)
         if stream is None:
             return
-        while True:
-            try:
-                chunk = stream.read(1024)
-            except (OSError, ValueError):
-                return
-            if not chunk:
-                return
-            nonlocal truncated
-            remaining = MAX_PROBE_OUTPUT - len(captured)
-            if remaining > 0:
-                captured.extend(chunk[:remaining])
-            if len(chunk) > remaining:
-                truncated = True
+        try:
+            while True:
+                try:
+                    chunk = stream.read(1024)
+                except (OSError, ValueError):
+                    return
+                if not chunk:
+                    return
+                nonlocal truncated
+                remaining = MAX_PROBE_OUTPUT - len(captured)
+                if remaining > 0:
+                    captured.extend(chunk[:remaining])
+                if len(chunk) > remaining:
+                    truncated = True
+        finally:
+            # If the caller's bounded drain wait expires, the reader remains
+            # the sole owner responsible for closing this stream once it exits.
+            _close_probe_stream(process)
 
     reader = threading.Thread(target=drain_output, daemon=True)
     reader.start()
@@ -252,7 +257,12 @@ def _run_probe(
         reader.join(timeout=0.1)
         _close_probe_stream(process)
         return _status("unverified", "probe_failed", output="")
-    reader.join(timeout=0.1)
+    # The child has exited, so a normal pipe reaches EOF and the reader can
+    # finish. Give it a bounded drain window before parsing; a short grace
+    # period can race a descheduled reader and misclassify valid output.
+    reader.join(timeout=MAX_PROBE_SECONDS)
+    if reader.is_alive():
+        return _status("unverified", "probe_output_drain_timeout", output="")
     _close_probe_stream(process)
     output = bytes(captured).decode("utf-8", errors="replace")
     if returncode != 0:

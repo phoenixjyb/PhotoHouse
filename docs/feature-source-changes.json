@@ -20215,6 +20215,27 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "bounded-readiness-probe-output-drain",
+      "source_commit": "7b284ceac1bf58a142a6682bf6fb0e64039eaf04",
+      "files": [
+        {
+          "path": "tools/doctor.py",
+          "before_sha256": "972906e75dc3b2c22a8451367597995af6685a62739a66db57d15d3a9d8cd1da",
+          "sha256": "d34bd8f095712d641c2016da8ada9840dfb08d173db98e5662930e38736b0a70"
+        },
+        {
+          "path": "tools/tests/test_doctor.py",
+          "before_sha256": "43c1b4b9f9871237c9a6e862ec67d3ce9f6261bf1c8b3c768ada98b1c660e992",
+          "sha256": "f32740236297beb5283f1b17fe96099870af37155f3a1a643048a3fbdf2fc0b5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "partial_probe_output_refused": true,
+      "runtime_or_model_settings_changed": false,
+      "household_data_included": false
     }
   ]
 }
