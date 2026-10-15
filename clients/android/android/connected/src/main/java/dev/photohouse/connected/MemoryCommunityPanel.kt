@@ -1435,8 +1435,8 @@ private fun NarrativePanel(store: ConnectedStore, reading: SavedMemoryStoriesRea
     }
 }
 
-private data class StoryProposalChapter(val id: String, val narration: String, val sourceIds: List<String>)
-private data class StoryProposal(val title: String, val chapters: List<StoryProposalChapter>, val questions: List<String>)
+internal data class StoryProposalChapter(val id: String, val narration: String, val sourceIds: List<String>)
+internal data class StoryProposal(val title: String, val chapters: List<StoryProposalChapter>, val questions: List<String>)
 
 /** The API decoder validates these exact shapes; keep the UI defensive around optional JSON values. */
 private fun parseStoryProposal(value: JsonElement?): StoryProposal? {
@@ -1466,7 +1466,7 @@ private fun parseStoryProposal(value: JsonElement?): StoryProposal? {
 }
 
 @Composable
-private fun StoryProposalReview(
+internal fun StoryProposalReview(
     tagPrefix: String,
     readerScopeId: Long,
     story: SavedMemoryStory?,
@@ -1480,26 +1480,67 @@ private fun StoryProposalReview(
     val boundStory = story?.takeIf {
         bindOriginals && it.id == community.storyId && it.revision == job.baseRevision && job.state == "ready"
     }
+    val scopeKeys = arrayOf(tagPrefix, readerScopeId, community.storyId, story?.id, story?.revision,
+        boundStory?.id, boundStory?.revision, job.id, job.kind, job.state, job.baseRevision,
+        boundStory?.chapters, proposal.title, proposal.chapters, proposal.questions)
+    var focusChangedOnly by remember(*scopeKeys) { mutableStateOf(false) }
+    val originalChaptersById = boundStory?.chapters.orEmpty().groupBy { it.id }
+    val proposalIdCounts = proposal.chapters.groupingBy { it.id }.eachCount()
+    val originals = proposal.chapters.map { chapter ->
+        if (proposalIdCounts[chapter.id] != 1) null
+        else originalChaptersById[chapter.id]?.singleOrNull()
+    }
+    val comparisons = proposal.chapters.mapIndexed { index, chapter ->
+        val original = originals[index]
+        when {
+            original == null -> null
+            original.narration == chapter.narration -> true
+            else -> false
+        }
+    }
+    val changedCount = comparisons.count { it == false }
+    val sameCount = comparisons.count { it == true }
+    val unavailableCount = comparisons.count { it == null }
     Column(Modifier.fillMaxWidth().testTag("$tagPrefix-review"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(t("AI suggestion · review required", "AI 建议 · 待核对"),
             style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.testTag("$tagPrefix-review-badge"))
         Text(proposal.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif,
             modifier = Modifier.testTag("$tagPrefix-title"))
+        Text(t("Chapter wording: $changedCount different · $sameCount matching · $unavailableCount unavailable",
+            "章节正文：$changedCount 章不同 · $sameCount 章相同 · $unavailableCount 章暂不可对照"),
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("$tagPrefix-wording-summary"))
+        Text(t("Only chapter wording is compared. Review the title, references and questions separately.",
+            "这里只比较章节正文，标题、来源和问题仍需另行核对。"),
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("$tagPrefix-wording-scope"))
+        TextButton(onClick = { focusChangedOnly = !focusChangedOnly },
+            modifier = Modifier.testTag("$tagPrefix-wording-filter")) {
+            Text(if (focusChangedOnly) t("Show all wording", "显示全部正文") else t("Focus on changed wording", "只看正文变化"))
+        }
         proposal.chapters.forEachIndexed { index, chapter ->
-            val original = boundStory?.chapters?.firstOrNull { it.id == chapter.id }
-            var comparisonExpanded by remember(tagPrefix, readerScopeId, story?.id, story?.revision, job.id, chapter.id) {
+            val original = originals[index]
+            val sameWording = comparisons[index] == true
+            var comparisonExpanded by remember(*scopeKeys, chapter.id) {
                 mutableStateOf(false)
             }
-            var sourcesExpanded by remember(tagPrefix, readerScopeId, story?.id, story?.revision, job.id, chapter.id) {
+            var sourcesExpanded by remember(*scopeKeys, chapter.id) {
                 mutableStateOf(false)
             }
             Column(Modifier.fillMaxWidth().testTag("$tagPrefix-chapter-$index"), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(original?.title ?: t("Suggested section ${index + 1}", "建议段落 ${index + 1}"),
                     style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif,
                     modifier = Modifier.testTag("$tagPrefix-chapter-title-$index"))
-                Text(chapter.narration, style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.testTag("$tagPrefix-narration-$index"))
+                if (sameWording && focusChangedOnly) {
+                    Text(t("Wording matches the current story", "正文与当前故事相同"),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag("$tagPrefix-wording-same-$index"))
+                } else {
+                    Text(chapter.narration, style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.testTag("$tagPrefix-narration-$index"))
+                }
+                if (original == null) Text(t("Current wording unavailable", "当前正文暂不可对照"),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("$tagPrefix-wording-unavailable-$index"))
                 if (chapter.sourceIds.isNotEmpty()) {
                     TextButton(onClick = { sourcesExpanded = !sourcesExpanded },
                         modifier = Modifier.testTag("$tagPrefix-sources-toggle-$index")) {
@@ -1518,7 +1559,7 @@ private fun StoryProposalReview(
                         }
                     }
                 }
-                if (original != null) {
+                if (original != null && (!focusChangedOnly || !sameWording)) {
                     TextButton(onClick = { comparisonExpanded = !comparisonExpanded },
                         modifier = Modifier.testTag("$tagPrefix-original-toggle-$index")) {
                         Text(if (comparisonExpanded) t("Hide current chapter", "收起当前章节") else
