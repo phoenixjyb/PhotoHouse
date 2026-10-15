@@ -20270,6 +20270,21 @@
       "models_activated": false,
       "household_data_included": false,
       "apk_published": false
+    },
+    {
+      "feature": "preserve-prefix-offsets-for-reviewed-label-collisions",
+      "source_commit": "5121389fdbda42d6d10e4993800e8b4bd5afa30f",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "88774aad0696101727ca22e75a61a2e39e25b685e71cc4ab83b586ca00e72aa8",
+          "sha256": "eff033fca1d03d42ac2ca90d697505296ecf0a34ad7b986f48d749f5c730991b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }

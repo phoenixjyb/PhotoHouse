@@ -371,9 +371,14 @@ def _previous_month(day):
 
 
 def _strip_prefix(text):
-    value = text.strip()
-    value = _SEARCH_OPEN.sub(' ', value, count=1)
-    value = _REFINE_OPEN.sub(' ', value, count=1)
+    # Keep offsets aligned for the reviewed-label collision check.
+    value = re.sub(r'^\s+', lambda match: ' ' * len(match.group(0)), text)
+    leading = len(value) - len(value.lstrip())
+    prefix = value[:leading]
+    value = value[leading:]
+    value = _SEARCH_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
+    value = _REFINE_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
+    value = prefix + value
     return value
 
 
