@@ -47,3 +47,14 @@ package, Windows qualification, live API switch, release signing/OTA publication
 and family/device acceptance are separate gates. No dated v60 controller or
 one-time authorization may be replayed for this candidate. Production operations
 need a new exact source/package plan with backup, verification and rollback.
+
+## Qualification repair
+
+The release browser qualification exposed a pre-existing delayed-capability
+layout path: saved-memory reader and speech controls added after a card rendered
+bypassed its primary action row. The repair uses the same wrapping action row
+for those late controls, preserving the existing readiness and scope checks.
+The browser regression holds all three optional probes pending, then checks
+Chinese and English cards after they resolve, including the existing narrow
+viewport and 48-pixel target checks. This changes Web presentation only; Android
+source, API contracts, schema and provider activation remain unchanged.

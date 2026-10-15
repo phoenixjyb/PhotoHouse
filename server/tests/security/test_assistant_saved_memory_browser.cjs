@@ -22,10 +22,23 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Saved-memory browser bri
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const requests=[],errors=[],external=[],checks=[];
 let probeMode='live',speechProbeMode='live',readingProbeMode='live',segmentReadingProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null,openingSpeechGate=null,segmentSpeechGate=null;
+let lateReaderCapabilityGate=null,lateReadingCapabilityGate=null,lateSegmentCapabilityGate=null;
 let followupProbeMode='live',followupProbeGate=null,voiceTranscript='',reloadRequestStart=0;
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const deferredGate=()=>{let arrive,release;const reached=new Promise(resolve=>{arrive=resolve;}),waiting=new Promise(resolve=>{release=resolve;});return {reached,arrive,release,waiting};};
+async function holdPrimaryActionCapabilities(){
+  await page.waitForFunction(()=>{const state=window.__privateAssistantController?.state();return state?.savedMemoryAvailable===true&&state.savedMemorySpeechAvailable===true&&state.savedMemoryReaderAvailable===true&&state.savedMemoryReadingAvailable===true&&state.savedMemorySegmentReadingAvailable===true&&state.savedMemoryFollowupAvailable===true;},{},{timeout:10000});
+  const reader=deferredGate(),opening=deferredGate(),segments=deferredGate();
+  lateReaderCapabilityGate=reader;lateReadingCapabilityGate=opening;lateSegmentCapabilityGate=segments;
+  await page.evaluate(()=>{const controller=window.__privateAssistantController;
+    window.__latePrimaryActionCapabilityReads=Promise.all([controller.savedMemoryReaderCapabilities(),controller.savedMemoryReadingCapabilities(),controller.savedMemorySegmentReadingCapabilities()]);});
+  let deadline;
+  try{await Promise.race([Promise.all([reader.reached,opening.reached,segments.reached]),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(new Error('Optional capability gates were not reached')),10000);})]);}
+  catch(error){reader.release();opening.release();segments.release();throw error;}
+  finally{clearTimeout(deadline);} 
+  return {release(){reader.release();opening.release();segments.release();},complete(){return page.evaluate(()=>window.__latePrimaryActionCapabilityReads);}};
+}
 const decode=response=>JSON.parse(Buffer.from(response.body,'base64').toString('utf8'));
 const turns=()=>requests.filter(item=>item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/turns$/.test(item.path));
 const cards=()=>page.locator('#assistant-results .assistant-memory-card');
@@ -48,6 +61,12 @@ async function installTransport(target){
     const item={method:request.method(),path:url.pathname+url.search,
       headers:await request.allHeaders(),body:request.postData()||'',serverReached:false};
     requests.push(item);
+    const lateCapabilityGate=item.method==='GET'&&url.pathname===routeMemoryReaderPath?lateReaderCapabilityGate:
+      item.method==='GET'&&url.pathname===routeMemoryReadingPath?lateReadingCapabilityGate:
+      item.method==='GET'&&url.pathname===routeMemorySegmentReadingPath?lateSegmentCapabilityGate:null;
+    if(lateCapabilityGate){if(url.pathname===routeMemoryReaderPath)lateReaderCapabilityGate=null;
+      else if(url.pathname===routeMemoryReadingPath)lateReadingCapabilityGate=null;else lateSegmentCapabilityGate=null;
+      lateCapabilityGate.arrive();await lateCapabilityGate.waiting;}
     if(item.method==='GET'&&url.pathname===routeMemorySegmentReadingPath){item.syntheticSegmentCapability=true;item.status=segmentReadingProbeMode==='missing'?404:segmentReadingProbeMode==='forbidden'?403:200;item.response=item.status===200?{version:1,available:true}:undefined;item.responseHeaders={'cache-control':'no-store'};await route.fulfill({status:item.status,contentType:'application/json',headers:item.responseHeaders,body:JSON.stringify(item.response||{detail:'Not Found'})});return;}
     if(item.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/memory-cards\/(?:0|[1-9]|1[01])\/segments\/(?:0|[1-9][0-9]?|1[01][0-9]|12[0-7])\/speech$/.test(url.pathname)){
       if(segmentSpeechGate){const gate=segmentSpeechGate;segmentSpeechGate=null;gate.arrive();await gate.waiting;}
@@ -291,8 +310,15 @@ async function reloadAndLogin(){
   const initialMediaRequests=requests.filter(item=>/^\/assets\/[^/]+\/(?:thumbnail|open|original)(?:\?|$)/.test(item.path)).length;
   const speechBefore=await page.evaluate(()=>window.__phSpeechCalls);
   const storyQuery='搜索故事 野餐';
+  const delayedChinesePrimaryActions=await holdPrimaryActionCapabilities();
   const storyTurn=await submit(storyQuery);
   await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(await cards().first().locator(':scope > .assistant-memory-primary-actions').count(),0,'Chinese card initially renders without a primary action row while optional capabilities are pending');
+  delayedChinesePrimaryActions.release();await delayedChinesePrimaryActions.complete();
+  await page.waitForFunction(()=>{const state=window.__privateAssistantController?.state(),card=document.querySelector('#assistant-results .assistant-memory-card'),row=card?.querySelector(':scope > .assistant-memory-primary-actions');
+    return state?.savedMemoryReaderReady===true&&state?.savedMemoryReadingReady===true&&state?.savedMemorySegmentReadingAvailable===true&&
+      row?.querySelector('.assistant-memory-open')&&row.querySelector('.assistant-memory-opening')&&row.querySelector('.assistant-memory-segment-reading')&&row.querySelector('.assistant-memory-segment-stop');},{},{timeout:10000});
+  assert.equal(await cards().first().locator(':scope > .assistant-memory-primary-actions').count(),1,'late Chinese readiness creates exactly one direct primary action row');
   const storyCard=cards().first();
   await storyCard.screenshot({path:path.join(artifacts,'assistant-saved-memory-card-desktop-zh.png')});
   await page.screenshot({path:path.join(artifacts,'assistant-saved-memory-desktop-zh.png'),fullPage:true});
@@ -1042,6 +1068,7 @@ async function reloadAndLogin(){
   await page.waitForFunction(()=>document.querySelector('#assistant-workspace-title')?.textContent==='PhotoHouse Memory Assistant',{},{timeout:10000});
   const workspacePanel=page.locator('#assistant-panel');if(!await workspacePanel.evaluate(node=>node.open))await workspacePanel.locator(':scope > summary').click();
   await page.locator('#assistant-private').waitFor({state:'visible',timeout:10000});await ensureThread();
+  const delayedEnglishPrimaryActions=await holdPrimaryActionCapabilities();
   const englishSegmentTurn=await submit('搜索故事 野餐');
   assert.equal(englishSegmentTurn.response.result.kind,'memory_cards','English story request returns the expected current card result');
   try{
@@ -1060,6 +1087,12 @@ async function reloadAndLogin(){
     throw error;
   }
   await cards().waitFor({state:'visible',timeout:10000});
+  assert.equal(await cards().first().locator(':scope > .assistant-memory-primary-actions').count(),0,'late optional reader probes leave the freshly rendered English card without a primary action row');
+  delayedEnglishPrimaryActions.release();await delayedEnglishPrimaryActions.complete();
+  await page.waitForFunction(()=>{const controller=window.__privateAssistantController,state=controller?.state(),card=document.querySelector('#assistant-results .assistant-memory-card'),row=card?.querySelector(':scope > .assistant-memory-primary-actions');
+    return state?.savedMemoryReaderReady===true&&state?.savedMemoryReadingReady===true&&state?.savedMemorySegmentReadingAvailable===true&&
+      row?.querySelector('.assistant-memory-open')&&row.querySelector('.assistant-memory-opening')&&row.querySelector('.assistant-memory-segment-reading')&&row.querySelector('.assistant-memory-segment-stop');},{},{timeout:10000});
+  assert.equal(await cards().first().locator(':scope > .assistant-memory-primary-actions').count(),1,'late readiness creates exactly one direct primary action row');
   assert.equal(await cards().first().locator('.assistant-memory-segment-reading').innerText(),'Read the first chapter in sections');
   assert.equal(await cards().first().locator('.assistant-memory-segment-help').innerText(),'Reads one section at a time. Choose Continue after playback; the microphone stays off.');
   const englishAllMemories=page.getByRole('button',{name:'All memories. introduce these memories',exact:true});

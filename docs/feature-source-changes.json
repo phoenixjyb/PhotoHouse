@@ -17034,6 +17034,31 @@
       "live_schema_changed": false,
       "providers_activated": false,
       "apk_published": false
+    },
+    {
+      "feature": "late-saved-memory-controls-use-primary-action-row",
+      "source_commit": "ae9cb4b6d71fec727ff970cdad799ea9d1f1e756",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "dff10872f0861be176be08c16744e9a1873eae06730c25794b597ae494de6ad6",
+          "sha256": "bae3dd4f3f3ca269070f3316d259cc5f3563d870d71b9e77e6e7a8a4bc046416"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "a35f797f6d96c15bf8c418014da6546200312d2e159dfa8380be24a6e21dd19e",
+          "sha256": "d072516222bc55e6b1099012e9d82c9a4303763ea1214efa899c9db7f010f1b4"
+        },
+        {
+          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
+          "before_sha256": "51ca5e67998d479c2e5008b9761f6a9bdfac551766439ff7bfb7cf8abb4aa4d5",
+          "sha256": "d7aea4277ef41142c0a5d7ac8b6b021d9c8f52a635b8209062cd2d0e40051ba0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

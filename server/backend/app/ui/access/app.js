@@ -1236,6 +1236,12 @@
     return button;
   }
 
+  function ensureAssistantMemoryPrimaryActions(card){
+    let actions=card.querySelector(':scope > .assistant-memory-primary-actions');
+    if(!actions){actions=document.createElement('div');actions.className='assistant-memory-primary-actions';card.append(actions);}
+    return actions;
+  }
+
   function ensureAssistantMemoryFollowups(snapshot){
     const root=$('assistant-results'),turn=snapshot?.currentResult,epoch=state.generation;
     if(!root||snapshot?.savedMemoryFollowupReady!==true||snapshot.currentResult?.kind!=='memory_cards'||
@@ -1436,12 +1442,12 @@
         const ordinal=Number(card.dataset.memoryOrdinal);if(!Number.isSafeInteger(ordinal)||ordinal<0||ordinal>=turn.memory_cards.length)continue;
         const memory=turn.memory_cards[ordinal];let reader=card.querySelector('.assistant-memory-open');
         if(snapshot.savedMemoryReaderReady){
-          if(!reader){reader=document.createElement('button');reader.type='button';reader.className='quiet assistant-memory-open';reader.addEventListener('click',()=>{void openPrivateMemoryCard(memory,turn,epoch,ordinal,reader);});card.append(reader);}
+          if(!reader){reader=document.createElement('button');reader.type='button';reader.className='quiet assistant-memory-open';reader.addEventListener('click',()=>{void openPrivateMemoryCard(memory,turn,epoch,ordinal,reader);});ensureAssistantMemoryPrimaryActions(card).append(reader);}
           reader.textContent=t(memory.kind==='story'?'assistantOpenSavedStory':'assistantOpenMemoir');reader.hidden=false;reader.disabled=snapshot.openingMemoryCard===true;
         }else if(reader)reader.hidden=true;
         let button=card.querySelector('.assistant-memory-opening');
         if(snapshot.savedMemoryReadingReady){
-          if(!button){button=document.createElement('button');button.type='button';button.className='quiet assistant-memory-opening';button.dataset.ordinal=String(ordinal);button.addEventListener('click',()=>{if(assistantState.memoryOpeningPlayback?.ordinal===ordinal)stopAssistantSpeech(false);else void playAssistantMemoryOpening(memory,turn,epoch,ordinal,button);});card.append(button);}
+          if(!button){button=document.createElement('button');button.type='button';button.className='quiet assistant-memory-opening';button.dataset.ordinal=String(ordinal);button.addEventListener('click',()=>{if(assistantState.memoryOpeningPlayback?.ordinal===ordinal)stopAssistantSpeech(false);else void playAssistantMemoryOpening(memory,turn,epoch,ordinal,button);});ensureAssistantMemoryPrimaryActions(card).append(button);}
           button.hidden=false;
         }else if(button)button.hidden=true;
         let segmentHelp=card.querySelector('.assistant-memory-segment-help'),segmentStatus=card.querySelector('.assistant-memory-segment-status'),segmentButton=card.querySelector('.assistant-memory-segment-reading'),segmentStop=card.querySelector('.assistant-memory-segment-stop');
@@ -1449,9 +1455,9 @@
           if(!segmentHelp){segmentHelp=document.createElement('p');segmentHelp.className='fine assistant-memory-segment-help';card.append(segmentHelp);}
           segmentHelp.textContent=t('assistantMemorySegmentHelp');segmentHelp.hidden=snapshot.savedMemorySegmentReadingReady!==true;
           if(!segmentStatus){segmentStatus=document.createElement('p');segmentStatus.className='fine assistant-memory-segment-status';segmentStatus.setAttribute('role','status');segmentStatus.setAttribute('aria-live','polite');segmentStatus.hidden=true;card.append(segmentStatus);}
-          if(!segmentButton){segmentButton=document.createElement('button');segmentButton.type='button';segmentButton.className='quiet assistant-memory-segment-reading';segmentButton.dataset.ordinal=String(ordinal);segmentButton.addEventListener('click',()=>{const current=assistantState.memorySegmentPlayback;if(current?.ordinal===ordinal&&current.turn===turn&&current.phase==='complete'&&current.segment+1<current.segmentCount)void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton,current.segment+1,current.segmentCount);else void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton);});card.append(segmentButton);}
+          if(!segmentButton){segmentButton=document.createElement('button');segmentButton.type='button';segmentButton.className='quiet assistant-memory-segment-reading';segmentButton.dataset.ordinal=String(ordinal);segmentButton.addEventListener('click',()=>{const current=assistantState.memorySegmentPlayback;if(current?.ordinal===ordinal&&current.turn===turn&&current.phase==='complete'&&current.segment+1<current.segmentCount)void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton,current.segment+1,current.segmentCount);else void playAssistantMemorySegment(memory,turn,epoch,ordinal,segmentButton);});ensureAssistantMemoryPrimaryActions(card).append(segmentButton);}
           segmentButton.hidden=false;
-          if(!segmentStop){segmentStop=document.createElement('button');segmentStop.type='button';segmentStop.className='quiet assistant-memory-segment-stop';segmentStop.addEventListener('click',()=>{if(assistantState.memorySegmentPlayback?.card===memory)stopAssistantSpeech(false);});card.append(segmentStop);}
+          if(!segmentStop){segmentStop=document.createElement('button');segmentStop.type='button';segmentStop.className='quiet assistant-memory-segment-stop';segmentStop.addEventListener('click',()=>{if(assistantState.memorySegmentPlayback?.card===memory)stopAssistantSpeech(false);});ensureAssistantMemoryPrimaryActions(card).append(segmentStop);}
           segmentStop.hidden=true;segmentStop.disabled=true;
         }else{if(segmentHelp)segmentHelp.hidden=true;if(segmentStatus)segmentStatus.hidden=true;if(segmentButton)segmentButton.hidden=true;if(segmentStop){segmentStop.hidden=true;segmentStop.disabled=true;}}
       }
