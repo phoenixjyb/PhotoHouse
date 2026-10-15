@@ -25,6 +25,69 @@ class GroupedStoryReviewUiTest {
     @get:Rule val rule = createComposeRule()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     @After fun stop() { scope.cancel() }
+
+    private class DraftPersistenceFixture : StoryDraftPersistence {
+        var record: StoryDraftRecord? = null
+        override fun load(scope: StoryDraftScope) = record?.takeIf { it.scope == scope }
+        override fun write(record: StoryDraftRecord, expectedRevision: Long?, expectedRecordId: String?): StoryDraftRecord {
+            val current = load(record.scope)
+            if (expectedRevision == null) require(current == null)
+            else require(current?.revision == expectedRevision && current.recordId == expectedRecordId)
+            return record.copy(revision = (expectedRevision ?: 0L) + 1L).also { this.record = it }
+        }
+        override fun delete(scope: StoryDraftScope, expectedRecordId: String, expectedRevision: Long): Boolean {
+            if (record?.scope != scope || record?.recordId != expectedRecordId || record?.revision != expectedRevision) return false
+            record = null
+            return true
+        }
+        override fun unreadableFingerprint(scope: StoryDraftScope): String? = null
+        override fun deleteUnreadable(scope: StoryDraftScope, expectedFingerprint: String) = false
+        override fun occupiedSlots() = if (record == null) 0 else 1
+    }
+
+    @Test fun explicitSaveDraftButtonStoresOnlyTheWordsTheUserEdited() {
+        val bound = MemoryCommunityBinding(Bearer.from(SessionToken(86400, "D".repeat(43), "Bearer")), "family-a", 3)
+        val api = object : StoryWorkspaceApi {
+            override suspend fun storyPreview(token: Bearer, library: String, json: String) =
+                """{"version":1,"library_id":"family-a","selection_revision":"${"d".repeat(64)}","state":"draft","saved":false,"title":"Generated title","theme":"everyday","language":"zh","generator":"evidence_outline","needs_review":true,"items":[{"id":"1","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family-a","date_hint":null,"evidence":[]}],"chapters":[{"id":"chapter-1","title":"Generated chapter","narration":"Generated outline scaffold","asset_ids":["1"],"evidence_ids":[]}],"questions":[]}""".toByteArray()
+            override suspend fun storyTitleCapabilities(token: Bearer, library: String) =
+                """{"version":1,"enabled":false,"max_suggestions":3,"needs_review":true}""".toByteArray()
+            override suspend fun storyTitles(token: Bearer, library: String, json: String) = error("unused")
+            override suspend fun createGroupedStory(token: Bearer, library: String, json: String) = error("unused")
+        }
+        val persistence = DraftPersistenceFixture()
+        val store = StoryWorkspaceStore(StoryWorkspaceRepository(api, { bound }), scope, { bound }, dictationApi = null,
+            currentAccount = { "synthetic-member" }, localDraftPersistence = persistence)
+        assertTrue(store.selectAsset("1"))
+        var zh by mutableStateOf(true)
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                PhotoHouseTheme { GroupedStoryReview(store, zh, {}, {}) }
+            }
+        }
+        rule.onNodeWithTag("grouped-story-preview").performClick()
+        rule.waitUntil(5000) { store.state.value.status == StoryWorkspaceStoreStatus.EDITING }
+        rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement("We planted basil together.")
+        rule.onNodeWithTag("grouped-story-opening-title").performScrollTo().assertExists()
+        rule.onNodeWithTag("grouped-story-opening-title-preview").assertTextEquals("We planted basil together.")
+        rule.onNodeWithTag("grouped-story-opening-title-use").performScrollTo().assertIsEnabled()
+        capture("chapter-opening-title-zh150.png")
+        rule.runOnIdle { zh = false }
+        rule.onNodeWithText("Title from a chapter opening").performScrollTo().assertExists()
+        rule.onNodeWithTag("grouped-story-opening-title-use").performScrollTo().assertIsEnabled()
+        capture("chapter-opening-title-en150.png")
+        rule.onNodeWithTag("grouped-story-opening-title-use").performClick()
+        rule.onNodeWithTag("grouped-story-title").performScrollTo().assertTextContains("We planted basil together.")
+        rule.onNodeWithTag("local-story-draft-save").performScrollTo().assertIsEnabled().performClick()
+
+        val saved = requireNotNull(persistence.record)
+        assertTrue(saved.titleAuthored)
+        assertEquals("We planted basil together.", saved.title)
+        assertTrue(saved.chapters.single().narrationAuthored)
+        assertEquals("We planted basil together.", saved.chapters.single().narration)
+        assertFalse(saved.chapters.single().sourceIds.isNotEmpty())
+        rule.onNodeWithTag("local-story-draft-saved").assertExists()
+    }
     @Test fun bilingualLargeTextReviewAndUncertainRetryRemainReachable() {
         val bound = MemoryCommunityBinding(Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer")), "family-a", 1)
         val personal = """{"id":"family-11111111-1111-4111-8111-111111111111","source":"family","title":"合成个人讲述","text":"这是家人的原话，保留原本的语气。","revision":1}"""

@@ -372,6 +372,7 @@ class ConnectedStore(
     private val now: () -> Long = System::currentTimeMillis,
     private val memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
     assistantWorkspaceApi: AssistantWorkspaceApi? = null,
+    private val localStoryDraftPersistence: StoryDraftPersistence? = null,
 ) {
     /** Keeps historical trailing-lambda clock construction source-compatible. */
     constructor(
@@ -388,7 +389,7 @@ class ConnectedStore(
         savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
         clock: () -> Long,
     ) : this(api, scope, persistence, uploadNetwork, batchPersistence, batchSource, memoryCommunityApi,
-        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null)
+        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null, null)
 
     private var assistantSpeechJob: Job? = null
     private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
@@ -940,6 +941,7 @@ class ConnectedStore(
                 val editorAccount = identity?.account_id.orEmpty()
                 editor = StoryWorkspaceStore(repository, scope, binding, dictationApi = api,
                     currentAccount = { identity?.account_id },
+                    localDraftPersistence = localStoryDraftPersistence,
                     onDictationDenied = {
                         if (active(generation) && token === credential && identity?.account_id == editorAccount &&
                             state.value.library == library) {
@@ -950,6 +952,7 @@ class ConnectedStore(
                             retry = { foreground() }
                         }
                     }).also { created ->
+                    created.inspectLocalDraft()
                     created.observeRelatedCandidates { candidates ->
                         updateGroupedStoryRelatedPreviews(created, candidates)
                     }
@@ -1565,6 +1568,44 @@ class ConnectedStore(
         groupedStoryReviewPreviewRequest++
         live.reviewPreviews.values.forEach { it.fill(0) }
         mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviews = emptyMap(), reviewPreviewsBusy = false))
+    }
+
+    /** A cached creation role is not authority to restore private wording later. */
+    fun resumeGroupedStoryLocalDraft(): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        val editor = creation.editor ?: return false
+        val library = state.value.library ?: return false
+        val credential = token ?: return false
+        val account = identity?.account_id ?: return false
+        if (!allowed() || creation.checking || creation.canCreate != true ||
+            editor.state.value.busy || editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        val request = ++groupedStoryRequest
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(checking = true, problem = null))
+        launch { generation ->
+            fun current() = active(generation) && token === credential && identity?.account_id == account &&
+                state.value.library == library && request == groupedStoryRequest &&
+                state.value.groupedStoryCreation?.editor === editor
+            try {
+                val capability = api.savedMemoryStories(credential, library, 1)
+                if (!current()) return@launch
+                validResponse(capability.libraryId == library && capability.page == 1 &&
+                    capability.pageSize == 8 && capability.items.size <= 8)
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(checking = false, canCreate = capability.canCreate))
+                if (capability.canCreate) editor.resumeLocalDraft()
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                if (!current()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { beginGroupedStoryCreation(creation.guided) }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(checking = false, problem = problem(failure)))
+                }
+            }
+        }
+        return true
     }
 
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {

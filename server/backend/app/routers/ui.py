@@ -40,6 +40,11 @@ async def ui_js():
     return _ui_file_response(APP_FILE, "application/javascript")
 
 
+@router.get("/ui/story-draft-store.js")
+async def ui_story_draft_store():
+    return _ui_file_response(UI_DIR / "story-draft-store.js", "application/javascript")
+
+
 @router.get("/ui/story-workspace.js")
 async def ui_story_workspace():
     return _ui_file_response(UI_DIR / "story-workspace.js", "application/javascript")

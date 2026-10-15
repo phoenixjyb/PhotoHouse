@@ -256,6 +256,7 @@ with ExitStack() as guards:
             assert reopened.status_code==200, reopened.text
             assert reopened.json()['chapters'][0]['narration']=='这是家人写下的一段回忆。'
             assert client.get('/ui/story-workspace.js').status_code==200
+            assert client.get('/ui/story-draft-store.js').status_code==200
 print(json.dumps({'package_smoke':'pass','synthetic_migration_revision':REQUIRED_REVISION,
     'asgi_checks':7,'operator_commands':19,'database_preparation_commands':9,
     'saved_story_checks':7,'local_tts_plan_checks':1,

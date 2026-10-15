@@ -16,6 +16,9 @@ from access_ui_overlay import (ASSETS, MANIFEST_NAME, OverlayVerificationError,
 import build_access_ui_overlay as builder
 
 SYNTHETIC_FILES = {
+    'backend/app/ui/access/assistant-private-workspace.js': b'window.syntheticAssistant = true;\n',
+    'backend/app/ui/access/voice-turn-timing.js': b'window.syntheticTiming = true;\n',
+    'backend/app/ui/access/story-draft-store.js': b'window.syntheticStoryDraftStore = true;\n',
     'backend/app/ui/access/app.js': b'window.syntheticOverlay = true;\n',
     'backend/app/ui/access/index.html': b'<!doctype html><title>synthetic overlay</title>\n',
     'backend/app/ui/access/memory-community.js': b'window.syntheticCommunity = true;\n',
@@ -193,6 +196,9 @@ class OverlayBindTests(unittest.TestCase):
             routes = {
                 '/ui': ('backend/app/ui/access/index.html', 'text/html'),
                 '/ui/app.js': ('backend/app/ui/access/app.js', 'application/javascript'),
+                '/ui/assistant-private-workspace.js': ('backend/app/ui/access/assistant-private-workspace.js', 'application/javascript'),
+                '/ui/voice-turn-timing.js': ('backend/app/ui/access/voice-turn-timing.js', 'application/javascript'),
+                '/ui/story-draft-store.js': ('backend/app/ui/access/story-draft-store.js', 'application/javascript'),
                 '/ui/story-workspace.js': ('backend/app/ui/access/story-workspace.js', 'application/javascript'),
                 '/ui/memory-community.js': ('backend/app/ui/access/memory-community.js', 'application/javascript'),
                 '/ui/memory-groups.js': ('backend/app/ui/access/memory-groups.js', 'application/javascript'),
@@ -246,7 +252,7 @@ class OverlayBindTests(unittest.TestCase):
                 with self.subTest(route=route):
                     self.assertTrue(route.startswith('/ui/'))
                     asset = 'backend/app/ui/access/' + route.removeprefix('/ui/')
-                    self.assertIn(asset, files)
+                    self.assertIn(asset, set(files))
                     response = client.get(route)
                     self.assertEqual(response.status_code, 200)
                     self.assertEqual(response.content, files[asset])

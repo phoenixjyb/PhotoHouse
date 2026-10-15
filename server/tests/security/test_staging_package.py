@@ -92,6 +92,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/home_catalog.py',
             'backend/app/ui/access/memory-community.js',
             'backend/app/ui/access/story-workspace.js',
+            'backend/app/ui/access/story-draft-store.js',
             'backend/app/ui/access/memory-groups.js',
             'backend/app/access/memory_groups.py',
             'backend/app/access/memory_group_transport.py',

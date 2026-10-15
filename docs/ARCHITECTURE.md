@@ -48,6 +48,7 @@ remove that transport contract or grant protected library access.
 | Original-deletion journal | Separate durable ledger/namespace and restore replay; matched backup prevents restored primary data from bypassing withdrawn access |
 | Assistant receipt journal | Recognized input/processing status, 30-day expiry; transient assistant recordings are not retained |
 | Private assistant workspace | Separate validated schema-v2 SQLite store, owned threads/preferences/request context, 30-day exchange expiry; independent of primary Alembic and troubleshooting receipts |
+| Private device story drafts (new source increment) | Web IndexedDB AES-GCM / AndroidKeyStore atomic no-backup files; origin/account/library scoped, bounded author text and exact uncertain-save journal; fresh server authorization/evidence on explicit resume; no publication or server migration |
 | Models and OTA | External runtime model installations/licenses; separately signed APKs and immutable HTTPS channel artifacts |
 
 Main entry points are `server/backend/app/main.py` (closed application factory),

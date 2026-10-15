@@ -6,6 +6,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import java.io.ByteArrayOutputStream
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
@@ -44,6 +47,71 @@ class GroupedStoryCreationUiTest {
 
     @Test fun chineseFirstStoryGuideKeepsWordsAndSavesOnlyAfterReviewAt150Percent() = guidedJourney(true)
     @Test fun englishFirstStoryGuideKeepsWordsAndSavesOnlyAfterReviewAt150Percent() = guidedJourney(false)
+
+    @Test fun chinesePrivateDraftResumesThroughFreshEditorAt150Percent() = privateDraftJourney(true)
+    @Test fun englishPrivateDraftResumesThroughFreshEditorAt150Percent() = privateDraftJourney(false)
+
+    private fun privateDraftJourney(zh: Boolean) {
+        val api = SyntheticGroupedStoryApi().also { it.expectedSimpleIds = listOf("102", "101") }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val origin = "https://guided-draft-${if (zh) "zh" else "en"}.synthetic.example.test"
+        val persistence = KeystoreStoryDraftPersistence(context, origin)
+        val fixtureScope = StoryDraftScope("synthetic-account", SyntheticGroupedStoryApi.LIBRARY)
+        // Remove only this generated fixture's prior interrupted-run slot, never a family scope.
+        persistence.load(fixtureScope)?.let { previous ->
+            check(previous.pendingSave == null)
+            check(persistence.delete(fixtureScope, previous.recordId, previous.revision))
+        }
+        var active by mutableStateOf(ConnectedStore(api, scope,
+            localStoryDraftPersistence = persistence))
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(active, initialLanguage = if (zh) "zh" else "en")
+            }
+        }
+        rule.runOnIdle { active.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { active.state.value.library == SyntheticGroupedStoryApi.LIBRARY }
+        rule.onNodeWithTag("open-story-first-guide").performScrollTo().performClick()
+        rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.gallery != null }
+        rule.onNodeWithTag("grouped-story-select-102").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToNode(hasTestTag("grouped-story-select-101"))
+        rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-selection-preview").assertIsDisplayed().performClick()
+        rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.editor?.state?.value?.guideStep == StoryGuideStep.WORDS }
+        val title = if (zh) "风里的那一天" else "That day in the breeze"
+        val words = if (zh) "奶奶带我们认花。稍后再继续讲。" else "Grandma showed us the flowers. We will continue later."
+        rule.onNodeWithTag("grouped-story-title").performScrollTo().performTextReplacement(title)
+        rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement(words)
+        rule.onNodeWithTag("local-story-draft-save").performScrollTo().assertIsEnabled().performClick()
+        rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.editor?.state?.value?.localDraftStatus == LocalStoryDraftStatus.SAVED }
+        val previewsBefore = api.storyPreviewRequests
+        rule.runOnIdle {
+            assertEquals(0, api.saveRequests)
+            assertTrue(active.closeGroupedStoryCreation(discard = true))
+            // A new store and encryption adapter model loss of the former editor/session objects.
+            active = ConnectedStore(api, scope,
+                localStoryDraftPersistence = KeystoreStoryDraftPersistence(context, origin))
+            active.authenticate("+12025550123", "synthetic-password")
+        }
+        rule.waitUntil(5000) { active.state.value.library == SyntheticGroupedStoryApi.LIBRARY }
+        rule.onNodeWithTag("open-story-first-guide").performScrollTo().performClick()
+        rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.editor?.state?.value?.localDraftStatus == LocalStoryDraftStatus.AVAILABLE }
+        rule.onNodeWithTag("local-story-draft-resume").assertIsEnabled().performClick()
+        rule.waitUntil(5000) { active.state.value.groupedStoryCreation?.editor?.state?.value?.guideStep == StoryGuideStep.WORDS }
+        val restored = requireNotNull(active.state.value.groupedStoryCreation?.editor)
+        rule.runOnIdle {
+            assertEquals(listOf("102", "101"), restored.state.value.selectedAssetIds)
+            assertEquals(title, restored.state.value.title)
+            assertEquals(words, restored.state.value.editableChapters.first().narration)
+            assertFalse(restored.state.value.reviewed)
+            assertEquals(previewsBefore + 1, api.storyPreviewRequests)
+            assertEquals(0, api.saveRequests)
+        }
+        rule.onNodeWithTag("local-story-draft-save").performScrollTo().assertIsDisplayed()
+        capture("grouped-story-review", if (zh) "private-draft-resumed-zh150.png" else "private-draft-resumed-en150.png")
+        rule.runOnIdle { assertTrue(restored.deleteLocalDraft()) }
+    }
 
     private fun guidedJourney(zh: Boolean) {
         val api = SyntheticGroupedStoryApi().also { it.expectedSimpleIds = listOf("102", "101") }

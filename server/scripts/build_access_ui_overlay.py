@@ -19,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = tuple(sorted((
     'backend/app/ui/access/index.html',
     'backend/app/ui/access/app.js',
+    'backend/app/ui/access/assistant-private-workspace.js',
+    'backend/app/ui/access/voice-turn-timing.js',
     'backend/app/ui/access/story-workspace.js',
+    'backend/app/ui/access/story-draft-store.js',
     'backend/app/ui/access/memory-community.js',
     'backend/app/ui/access/memory-groups.js',
     'backend/app/ui/access/styles.css',

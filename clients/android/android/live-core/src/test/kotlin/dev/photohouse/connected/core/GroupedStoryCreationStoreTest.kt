@@ -281,6 +281,22 @@ class GroupedStoryCreationStoreTest {
         return editor
     }
 
+    @Test fun privateDraftResumeRechecksCreatePermissionBeforeRestoringWords() = runTest {
+        val api = FakeApi(role = "owner", canCreate = true)
+        val store = newStore(api)
+        store.authenticate("+12025550123", "synthetic-password")
+        runCurrent()
+        assertTrue(store.beginGroupedStoryCreation(guided = true))
+        runCurrent()
+        assertEquals(1, api.listCalls)
+        api.canCreate = false
+        assertTrue(store.resumeGroupedStoryLocalDraft())
+        runCurrent()
+        assertEquals(2, api.listCalls)
+        assertEquals(false, store.state.value.groupedStoryCreation?.canCreate)
+        assertNull(store.state.value.groupedStoryCreation?.editor?.state?.value?.draft)
+    }
+
     @Test fun guidedEntryStillRequiresServerCanCreate() = runTest {
         val api = FakeApi(role = "owner", canCreate = false)
         val store = newStore(api)
