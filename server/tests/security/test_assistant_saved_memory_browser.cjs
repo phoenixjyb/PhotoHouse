@@ -206,7 +206,19 @@ async function submit(text,{keyboard=false}={}){
     assert.equal(await page.evaluate(()=>document.activeElement?.id),'assistant-send','keyboard Tab reaches the send action');
     await page.keyboard.press('Enter');
   }else await page.locator('#assistant-send').click();
-  return waitForTurnCount(before);
+  const current=await waitForTurnCount(before);
+  if(current.response?.status==='completed'&&current.response.result?.kind==='memory_cards'){
+    // The bridge records a response before fetch JSON and the UI render finish.
+    // Bind subsequent assertions to this exact revision and rendered cohort.
+    await page.waitForFunction(({revision,ids})=>{
+      const state=window.__privateAssistantController?.state(),result=state?.currentResult;
+      const nodes=[...document.querySelectorAll('#assistant-results .assistant-memory-card')];
+      return state?.revision===revision&&!state.pendingTurn&&result?.kind==='memory_cards'&&
+        nodes.length===ids.length&&nodes.every((node,index)=>
+          node.__assistantMemorySource===result.memory_cards[index]&&node.__assistantMemorySource?.id===ids[index]);
+    },{revision:current.response.revision,ids:current.response.result.memory_cards.map(card=>card.id)},{timeout:10000});
+  }
+  return current;
 }
 async function ensureThread(){
   const select=page.locator('#assistant-private-select');
