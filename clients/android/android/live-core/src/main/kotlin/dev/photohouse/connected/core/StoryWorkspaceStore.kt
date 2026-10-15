@@ -252,13 +252,25 @@ class StoryWorkspaceStore(
         val persistence = localDraftPersistence ?: return false
         val scope = localDraftScope() ?: return false
         return try {
-            val record = persistence.load(scope) ?: return false
+            val observed = localDraftRecord ?: return false
+            val record = persistence.load(scope) ?: run {
+                localDraftPublicationConfirmed = false
+                inspectLocalDraft()
+                return false
+            }
+            if (observed.scope != scope || record.scope != scope ||
+                observed.recordId != record.recordId || observed.revision != record.revision) {
+                localDraftPublicationConfirmed = false
+                inspectLocalDraft()
+                return false
+            }
             if (record.pendingSave != null && !localDraftPublicationConfirmed) return false
             val deleted = persistence.delete(scope, record.recordId, record.revision)
             if (deleted) {
                 localDraftRecord = null
                 localDraftSlotOccupied = false
                 localDraftAttached = false
+                localDraftPublicationConfirmed = false
                 localDraftUnreadableFingerprint = null
                 mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.EMPTY,
                     localDraftRevision = null, localDraftError = false, localDraftRequiresRecovery = false,

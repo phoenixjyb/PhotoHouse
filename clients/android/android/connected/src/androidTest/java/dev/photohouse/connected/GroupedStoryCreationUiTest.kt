@@ -55,8 +55,15 @@ class GroupedStoryCreationUiTest {
         val api = SyntheticGroupedStoryApi().also { it.expectedSimpleIds = listOf("102", "101") }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val origin = "https://guided-draft-${if (zh) "zh" else "en"}.synthetic.example.test"
+        val persistence = KeystoreStoryDraftPersistence(context, origin)
+        val fixtureScope = StoryDraftScope("synthetic-account", SyntheticGroupedStoryApi.LIBRARY)
+        // Remove only this generated fixture's prior interrupted-run slot, never a family scope.
+        persistence.load(fixtureScope)?.let { previous ->
+            check(previous.pendingSave == null)
+            check(persistence.delete(fixtureScope, previous.recordId, previous.revision))
+        }
         var active by mutableStateOf(ConnectedStore(api, scope,
-            localStoryDraftPersistence = KeystoreStoryDraftPersistence(context, origin)))
+            localStoryDraftPersistence = persistence))
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {

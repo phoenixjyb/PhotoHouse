@@ -308,6 +308,39 @@ class StoryWorkspaceStoreTest {
         assertNull(persistence.stored)
     }
 
+    @Test fun publicationConfirmationCannotDeleteANewerPendingReplacement() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val first = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, uuidSupplier = { mutation }, localDraftPersistence = persistence)
+        readyForEdit(first)
+        assertTrue(first.editTitle("Published words"))
+        assertTrue(first.saveLocalDraft())
+        assertTrue(first.confirmReviewed(true))
+        assertTrue(first.save()); runCurrent()
+        first.clear()
+
+        val resumed = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(resumed.inspectLocalDraft())
+        assertTrue(resumed.resumeLocalDraft()); runCurrent()
+        persistence.failNextDelete = true
+        api.saveResponse = savedReply(listOf("1"))
+        assertTrue(resumed.retrySave()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, resumed.state.value.status)
+
+        val oldRecovery = requireNotNull(persistence.stored)
+        val replacement = oldRecovery.copy(recordId = "99999999-9999-4999-8999-999999999999",
+            revision = oldRecovery.revision + 1, updatedAtEpochMillis = oldRecovery.updatedAtEpochMillis + 1,
+            pendingSave = oldRecovery.pendingSave!!.copy(mutationId = "77777777-7777-4777-8777-777777777777"))
+        persistence.stored = replacement
+
+        assertFalse(resumed.deleteLocalDraft())
+        assertEquals(replacement, persistence.stored)
+        assertTrue(resumed.state.value.localDraftRequiresRecovery)
+    }
+
     @Test fun unreadableDraftDeletionRequiresTheFingerprintObservedDuringInspection() = runTest {
         var current = binding()
         val api = Fake()

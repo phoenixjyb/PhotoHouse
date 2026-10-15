@@ -101,7 +101,7 @@ class KeystoreStoryDraftPersistenceTest {
                 pool.submit<Boolean> {
                     ready.countDown()
                     check(start.await(5, TimeUnit.SECONDS))
-                    runCatching { adapter.write(initial.copy(title = "writer-$index"), initial.revision, initial.recordId) }.isSuccess
+                    runCatching { adapter.write(initial.copy(title = "writer-$index", titleAuthored = true), initial.revision, initial.recordId) }.isSuccess
                 }
             }
             assertTrue(ready.await(5, TimeUnit.SECONDS))
