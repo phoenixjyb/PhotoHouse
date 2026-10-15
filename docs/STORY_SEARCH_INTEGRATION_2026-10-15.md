@@ -58,3 +58,9 @@ The browser regression holds all three optional probes pending, then checks
 Chinese and English cards after they resolve, including the existing narrow
 viewport and 48-pixel target checks. This changes Web presentation only; Android
 source, API contracts, schema and provider activation remain unchanged.
+
+Visual inspection also identified an unlabeled Stop control in that late path.
+The common playback-control refresh now assigns its localized visible label;
+the browser checks require named Chinese and English Stop buttons. The standalone
+edition-shelf test harness now includes the guide controls from production HTML,
+while retaining its intentional legacy font-control omission.
