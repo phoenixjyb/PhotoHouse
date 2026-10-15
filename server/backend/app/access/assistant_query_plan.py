@@ -51,13 +51,13 @@ _DATE_ONLY_WORD = re.compile(
     r'^(?:today|yesterday|this\s+week|last\s+week|this\s+month|last\s+month|'
     r'this\s+year|last\s+year|今天|昨天|本周|这周|上周|本月|这个月|這個月|上个月|上個月|今年|去年)$', re.I)
 _DATE_ONLY_SHAPE = re.compile(
-    rf'^(?:20\d{{2}}(?:年|[-/.](?:\d{{1,2}}(?:[-/.]\d{{1,2}})?))'
-    rf'|20\d{{2}}年\d{{1,2}}月?(?:\d{{1,2}}日?)?'
-    rf'|20\d{{2}}年(?:十一|十二|十|[一二三四五六七八九])月'
-    rf'|(?:去年|今年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月|{_MONTH_PATTERN})'
+    rf'^(?:(?:19|20)\d{{2}}(?:年?|[-/.](?:\d{{1,2}}(?:[-/.]\d{{1,2}})?))'
+    rf'|(?:19|20)\d{{2}}年\d{{1,2}}月?(?:\d{{1,2}}日?)?'
+    rf'|(?:19|20)\d{{2}}年(?:十一|十二|十|[一二三四五六七八九])月'
+    rf'|(?:去年|今年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月|(?:{_MONTH_PATTERN}))'
     rf'|(?:\d{{1,2}}|十一|十二|十|[一二三四五六七八九])月'
-    rf'|{_MONTH_PATTERN}(?:\s+\d{{1,2}}(?:st|nd|rd|th)?(?:[,]?\s+20\d{{2}})?|\s+20\d{{2}})?'
-    rf'|\d{{1,2}}(?:st|nd|rd|th)?\s+{_MONTH_PATTERN}(?:[,]?\s+20\d{{2}})?)$', re.I)
+    rf'|(?:{_MONTH_PATTERN})(?:\s+\d{{1,2}}(?:st|nd|rd|th)?(?:[,]?\s+(?:19|20)\d{{2}})?|\s+(?:19|20)\d{{2}})?'
+    rf'|\d{{1,2}}(?:st|nd|rd|th)?\s+(?:{_MONTH_PATTERN})(?:[,]?\s+(?:19|20)\d{{2}})?)$', re.I)
 _BARE_MEDIA = re.compile(r'^(?:照片|图片|相片|视频|影片|photos?|photographs?|pictures?|images?|videos?|movies?)(?:呢)?$', re.I)
 _DATE_MEDIA = re.compile(
     rf'^(?P<date>.+?)\s*(?:的\s*)?(?:照片|图片|相片|视频|影片|photos?|photographs?|pictures?|images?|videos?|movies?)(?:呢)?$', re.I)
@@ -97,6 +97,12 @@ def query_mode(words):
         return 'refine'
     if _DATE_ONLY_SHAPE.fullmatch(value):
         return 'refine'
+    # A complete explicit range is also a closed follow-up. A fixed civil
+    # date suffices here because supported range endpoints are explicit.
+    if len(value) <= 1024 and re.search(r'\b(?:to|through|between)\b|到|至|[–—]', value):
+        ranges, residue, error = _extract_dates(value, date(2000, 1, 1))
+        if ranges and not error and not residue.strip():
+            return 'refine'
     media = _DATE_MEDIA.fullmatch(value)
     if media and (_DATE_ONLY_WORD.fullmatch(media.group('date')) or
                   _DATE_ONLY_SHAPE.fullmatch(media.group('date'))):
@@ -121,11 +127,69 @@ def _extract_dates(text, today):
         spans.append(match.span())
         candidates.append((start, end))
 
+    def overlaps(match):
+        return any(a < match.end() and match.start() < b for a, b in spans)
+
+    def month_bounds(year, month):
+        if not 1 <= month <= 12:
+            raise ValueError('invalid month')
+        return _month_bounds(year, month)
+
+    # Consume supported ranges before individual dates, so both endpoints
+    # become one inclusive interval. Omitted years inherit only from an
+    # explicit adjacent endpoint in the documented shortened forms.
+    range_specs = (
+        (re.compile(r'\bfrom\s+(?P<a>(?:19|20)\d{2}-\d{2}-\d{2})\s+to\s+(?P<b>(?:19|20)\d{2}-\d{2}-\d{2})\b', re.I), 'iso'),
+        (re.compile(r'(?<![0-9a-z_])(?P<a>(?:19|20)\d{2}-\d{2}-\d{2})\s*(?:to|through|至|到|[-–—])\s*(?P<b>(?:19|20)\d{2}-\d{2}-\d{2})(?!\d)', re.I), 'iso'),
+        (re.compile(r'\bfrom\s+(?P<m1>' + _MONTH_PATTERN + r')\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english_shared'),
+        (re.compile(r'\bfrom\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english'),
+        (re.compile(r'\bbetween\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+and\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english'),
+        (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月(?P<d1>\d{1,2})日?\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?P<d2>\d{1,2})日?(?!\d)'), 'numeric_days'),
+        (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?!\d)'), 'numeric_months'),
+        (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<m2>\d{1,2})月(?!\d)'), 'numeric_shared'),
+    )
+    for pattern, kind in range_specs:
+        for match in pattern.finditer(text):
+            if overlaps(match):
+                continue
+            try:
+                if kind == 'iso':
+                    start, end = date.fromisoformat(match.group('a')), date.fromisoformat(match.group('b'))
+                elif kind in ('english', 'english_shared'):
+                    y1 = int(match.groupdict().get('y1') or match.group('y2'))
+                    y2 = int(match.group('y2'))
+                    start = month_bounds(y1, _MONTHS[match.group('m1').casefold()])[0]
+                    end = month_bounds(y2, _MONTHS[match.group('m2').casefold()])[1]
+                elif kind == 'numeric_days':
+                    start = date(int(match.group('y1')), int(match.group('m1')), int(match.group('d1')))
+                    end = date(int(match.group('y2')), int(match.group('m2')), int(match.group('d2')))
+                else:
+                    y1 = int(match.group('y1'))
+                    y2 = int(match.groupdict().get('y2') or y1)
+                    start = month_bounds(y1, int(match.group('m1')))[0]
+                    end = month_bounds(y2, int(match.group('m2')))[1]
+            except (ValueError, OverflowError, KeyError):
+                return [], text, 'invalid_date'
+            if start > end:
+                return [], text, 'invalid_date'
+            add(match, start, end)
+
+    # Do not let a truncated range fall through as one endpoint.
+    for match in re.finditer(r'\b(?:from|between)\b|从', text, re.I):
+        if overlaps(match):
+            continue
+        tail = text[match.start():]
+        connector = r'\bto\b' if re.match(r'\bfrom\b', match.group(), re.I) else r'\band\b' if re.match(r'\bbetween\b', match.group(), re.I) else r'到|至'
+        if re.search(connector, tail, re.I) and re.search(r'(?:19|20)\d{2}|\b(?:' + _MONTH_PATTERN + r')\b|\d{1,2}月', tail, re.I):
+            return [], text, 'invalid_date'
+
     # ISO and Chinese numeric year/month/day forms. A date-shaped but invalid
     # calendar value is an error, never a partially consumed year/month.
     numeric = re.compile(
-        r'(?<!\d)(20\d{2})(?:[-/.](\d{1,2})(?:[-/.](\d{1,2}))?|年(\d{1,2})月?(?:(\d{1,2})日?)?)(?!\d)')
+        r'(?<!\d)((?:19|20)\d{2})(?:[-/.](\d{1,2})(?:[-/.](\d{1,2}))?|年(\d{1,2})月?(?:(\d{1,2})日?)?)(?!\d)')
     for match in numeric.finditer(text):
+        if overlaps(match):
+            continue
         year = int(match.group(1))
         month = int(match.group(2) or match.group(4) or 1)
         day_value = match.group(3) or match.group(5)
@@ -142,24 +206,36 @@ def _extract_dates(text, today):
 
     # Preserve the prior parser's Chinese year-only and Chinese numeral
     # year/month forms as complete spans (including forms such as 2032年九月).
-    chinese_year_month = re.compile(r'(?<!\d)(20\d{2})年(十一|十二|十|[一二三四五六七八九])月')
+    chinese_year_month = re.compile(r'(?<!\d)((?:19|20)\d{2})年(十一|十二|十|[一二三四五六七八九])月')
     for match in chinese_year_month.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         year, month = int(match.group(1)), _ZH_MONTHS[match.group(2)]
         add(match, *_month_bounds(year, month))
-    year_only = re.compile(r'(?<!\d)(20\d{2})年(?!\d)')
+    year_only = re.compile(r'(?<!\d)((?:19|20)\d{2})年(?!\d)')
     for match in year_only.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
+            continue
+        year = int(match.group(1))
+        add(match, date(year, 1, 1), date(year, 12, 31))
+
+    bare_year = re.compile(r'(?<!\d)((?:19|20)\d{2})(?!\d)')
+    for match in bare_year.finditer(text):
+        if overlaps(match):
+            continue
+        before = text[max(0, match.start() - 32):match.start()]
+        if re.search(r'(?:\b(?:' + _MONTH_PATTERN + r')\s+(?:\d{1,2}(?:st|nd|rd|th)?[,]?\s+)?|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:' + _MONTH_PATTERN + r')[,]?\s+)$', before, re.I):
             continue
         year = int(match.group(1))
         add(match, date(year, 1, 1), date(year, 12, 31))
 
     # English month names: March 5, 2032; March 2032; 5 March 2032.
     english_date = re.compile(
-        rf'\b(?:(?P<month1>{_MONTH_PATTERN})\s+(?:(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?[,]?\s+)?(?P<year1>20\d{{2}})|'
-        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>{_MONTH_PATTERN})[,]?\s+(?P<year2>20\d{{2}}))\b', re.I)
+        rf'\b(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?:(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?[,]?\s+)?(?P<year1>(?:19|20)\d{{2}})|'
+        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN}))[,]?\s+(?P<year2>(?:19|20)\d{{2}}))\b', re.I)
     for match in english_date.finditer(text):
+        if overlaps(match):
+            continue
         month = _MONTHS[(match.group('month1') or match.group('month2')).casefold()]
         year = int(match.group('year1') or match.group('year2'))
         raw_day = match.group('day1') or match.group('day2')
@@ -172,10 +248,10 @@ def _extract_dates(text, today):
         add(match, start, end)
 
     english_day_month = re.compile(
-        rf'\b(?:(?P<month1>{_MONTH_PATTERN})\s+(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?|'
-        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>{_MONTH_PATTERN}))\b', re.I)
+        rf'\b(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?|'
+        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN})))\b', re.I)
     for match in english_day_month.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         month = _MONTHS[(match.group('month1') or match.group('month2')).casefold()]
         raw_day = match.group('day1') or match.group('day2')
@@ -188,9 +264,9 @@ def _extract_dates(text, today):
     relative_month = re.compile(
         rf'(?P<year>去年|今年|last\s+year|this\s+year)\s*'
         rf'(?:(?P<month_num>1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月|'
-        rf'(?P<month_name>{_MONTH_PATTERN}))', re.I)
+        rf'(?P<month_name>(?:{_MONTH_PATTERN})))', re.I)
     for match in relative_month.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         year = today.year - (1 if match.group('year').casefold() in {'去年', 'last year'} else 0)
         raw_month = match.group('month_num')
@@ -201,9 +277,9 @@ def _extract_dates(text, today):
         add(match, *_month_bounds(year, month))
 
     # Yearless month names use this year and remain explicit calendar ranges.
-    month_only = re.compile(rf'\b(?P<month>{_MONTH_PATTERN})\b', re.I)
+    month_only = re.compile(rf'\b(?P<month>(?:{_MONTH_PATTERN}))\b', re.I)
     for match in month_only.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         month = _MONTHS[match.group('month').casefold()]
         start, end = _month_bounds(today.year, month)
@@ -211,7 +287,7 @@ def _extract_dates(text, today):
 
     chinese_month = re.compile(r'(?<!\d)(十一|十二|十|[一二三四五六七八九])月')
     for match in chinese_month.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         add(match, *_month_bounds(today.year, _ZH_MONTHS[match.group(1)]))
 
@@ -219,7 +295,7 @@ def _extract_dates(text, today):
     # invalid month as a date condition instead of consuming only its suffix.
     numeric_month = re.compile(r'(?<!\d)(\d{1,2})月')
     for match in numeric_month.finditer(text):
-        if any(a <= match.start() < b for a, b in spans):
+        if overlaps(match):
             continue
         month = int(match.group(1))
         if not 1 <= month <= 12:
@@ -238,7 +314,7 @@ def _extract_dates(text, today):
     )
     for pattern, bounds in relatives:
         for match in re.finditer(pattern, text, re.I):
-            if any(a <= match.start() < b for a, b in spans):
+            if overlaps(match):
                 continue
             add(match, *bounds())
 

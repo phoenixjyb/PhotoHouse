@@ -521,7 +521,7 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
         previous = _context(previous, library)
     # A new explicit search may leave a legacy result behind. Refinements and
     # ordinal opens must retain the original protocol and source binding.
-    from .assistant_query_plan import query_mode
+    from .search_refinement import query_mode
     new_search = (query_mode(words) == 'search' if v2 else
                   bool(re.match(SEARCH_PREFIX, words.strip().casefold())))
     if (previous is not None and previous.get('search_version', 1) != (2 if v2 else 1)
@@ -607,7 +607,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
     if search_v2:
-        from .assistant_query_plan import query_mode
+        from .search_refinement import query_mode
         planned_mode = query_mode(words)
         refine = refine or planned_mode == 'refine'
         search = search or planned_mode == 'search'
@@ -644,7 +644,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
     if search_v2:
-        from .assistant_query_plan import plan_query
+        from .search_refinement import plan_query
         plan = plan_query(words, now=now, entities=first,
                           previous_filters=previous['filters'] if previous else None, refine=refine)
         if plan.status != 'ready':
@@ -659,6 +659,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
                          if lang == 'zh' else
                          'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
+            elif plan.reason == 'conflicting_refinement':
+                reply = ('同一个条件不能同时取消和重新指定。请分别操作，或保留一个条件。' if lang == 'zh' else
+                         'A filter cannot be removed and replaced in the same request. Choose one change or send them separately.')
             elif plan.reason in ('invalid_date', 'conflicting_dates'):
                 reply = ('日期条件无效或互相冲突，请明确一个拍摄日期范围。' if lang == 'zh' else
                          'The date conditions are invalid or conflicting. Specify one capture-date range.')

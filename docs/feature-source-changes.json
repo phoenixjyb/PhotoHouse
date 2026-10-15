@@ -18054,6 +18054,236 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "inclusive-capture-date-ranges-and-explicit-search-slot-removal",
+      "source_commit": "75125a93a5d7376d5877a639e9a28f99bc7eb288",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "87abcf03a7f3e97c0957a85a30eec18457b56d5955d80f9caa621fd83045c79d",
+          "sha256": "c07dfd0979d6b0d53d2fff1ce4d69759fc773857687a09399a11d0394c2ab872"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "391e1e9f8e9403015bd95b59a2d90e170f8e5bc120e7c8c1f34029dbac43ee8e",
+          "sha256": "1b2606b125ab50bc7b693940a409c2804f103d286cd28577c6bf1b1310504d5e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "615ce1c52648903a6764ebe4120c2ba5655e1c61e2d7e312d158a3455bb0019b",
+          "sha256": "98d5e16a511e837126a4e8352eafd47890fa04f6c8d4cbf6e61c38d914bd15e1"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": null,
+          "sha256": "7db1971ac83c3ee4cfa9ab34cd9878187930567434d904436b761c91f94367fe"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "aa1eef09868ebce727758e7a452d3016ee5ddc912add83b2c6b430a6e50dbe67",
+          "sha256": "6bcd799a2704ab6c43d787e95fd918fec559f44d14c8211c9f2f761036e5cb3e"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "7d3590ccfed803f2f554372040b566d6e5c3bf7bea40c697928e6fa34e15d9f0",
+          "sha256": "ac7cc9dddce7d2502468179e8e96cd9fe2883c3228dcd2aab3d126f0bd1d2061"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": null,
+          "sha256": "f681722bc03c25baf83889349a49ba75b475dfc30b8f46014aa1644b5cc04643"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9f5ab530df6199444e9e897605df8ad5731ccc3960f6496d6851f2162c01024e",
+          "sha256": "438faaac4f787cdf7df4812a947fff2a62af901c3ae0cf98094a2fecb4d353de"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "explicit-protected-semantic-image-search-pilot",
+      "source_commit": "e86058769a9ebc964bca8e5db9caaa97c1ba1ed9",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "c07dfd0979d6b0d53d2fff1ce4d69759fc773857687a09399a11d0394c2ab872",
+          "sha256": "7307bd923072ff4a0d1ea8d20b5d4e88b47ce11aaf128d3940d9424a063b5eeb"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": null,
+          "sha256": "a7c53f69005b21c9f518a4311cbc80feeabce97e9f56a4198c09069efad36f10"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "ca1abd0b97250374965a64c82f92c57cef651d01c32a7fd4dc13f3d3cde2e51f",
+          "sha256": "4c94e837561aedbc8a4ec00f8b40e9a0b0a49b311512cafc9a6f3846412b3170"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": null,
+          "sha256": "b4cf922c81feb880bff61849fbd27d01c37cfe2fcc336a3db370f7fb9ec3ece4"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": null,
+          "sha256": "88b7d5e026f0e3834b993e7217217217a3dd65815e17ab88d1b2aca50c190d94"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search_transport.py",
+          "before_sha256": null,
+          "sha256": "0654f9d0e78bc34949e8436ed6296d2f3812dd97612729e0ceec43c1c7963283"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "0aba5599f590bf17f4a86344d4be611b364b249532b1f037e2769a57c9c3a764",
+          "sha256": "c24551bb76d3c16394560442beb37635db20ebce0fd50816fb19d280e18f07fb"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "722e995131544053a0e56f4dabc35ea9da80486f6b4fe9e832f931989f0059c7",
+          "sha256": "296bd3b53939040a973491da00b7ef8cc44decc4288230626ea93c3b0bae0155"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6bcd799a2704ab6c43d787e95fd918fec559f44d14c8211c9f2f761036e5cb3e",
+          "sha256": "8f8eaf996e6c4459701275cc57982b0f7257245364423ec3c2ab6c9b3feaed48"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "before_sha256": null,
+          "sha256": "af91d162311b3e805118ed0c79c8d72858a25cc82329c86dd2f477935fbc2c4f"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": null,
+          "sha256": "31850eb19a114b475bff4c8c2c8d21ee4439863fd7a960450679d40c267d094b"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "438faaac4f787cdf7df4812a947fff2a62af901c3ae0cf98094a2fecb4d353de",
+          "sha256": "607ca270cfa1a9fd0c01797a82208403b4028fcddd2a91a9482a9f42e0b81697"
+        }
+      ],
+      "routes_added": true,
+      "default_routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "offline-local-openclip-provider-with-authenticated-bounded-serving",
+      "source_commit": "9f91943434bb2f9f525f2456005526ddcd6a4706",
+      "files": [
+        {
+          "path": "docs/LOCAL_SEMANTIC_TEXT_PROVIDER.md",
+          "before_sha256": null,
+          "sha256": "d3e51f1219d838c7dcb03820e264542e946e229420bfc5c7071d0f2d16847ffc"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "a7c53f69005b21c9f518a4311cbc80feeabce97e9f56a4198c09069efad36f10",
+          "sha256": "d7e69440ddef0f10296acab9d7cbee8311a7ca397e1d41eca6e29f2af31294fe"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": "b4cf922c81feb880bff61849fbd27d01c37cfe2fcc336a3db370f7fb9ec3ece4",
+          "sha256": "da9731a5044165304e8144085aa9208e5cd81ab3d7a6fa43cee6b63d636cce0d"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "before_sha256": null,
+          "sha256": "93dcd1d0e1e9cadd0e3be487db36554830685112c9b26e8fa86606d87e79679c"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "296bd3b53939040a973491da00b7ef8cc44decc4288230626ea93c3b0bae0155",
+          "sha256": "a3b82f07bc93e8c428aeb7dba433620ad5603b9668aec4a72bd8f34f4f7d73e6"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8f8eaf996e6c4459701275cc57982b0f7257245364423ec3c2ab6c9b3feaed48",
+          "sha256": "16064c32677d62e05da65aae1a9bb75cfcb1e419beb9abfe0e37fac2f83def04"
+        },
+        {
+          "path": "server/scripts/semantic_openclip.py",
+          "before_sha256": null,
+          "sha256": "02b8c0eaee7cb4d35eaccecd3a054db601382941530c2df2364c1ea43fdb0b10"
+        },
+        {
+          "path": "server/scripts/serve_semantic_text.py",
+          "before_sha256": null,
+          "sha256": "75f78f074af0dafef91e18d9a5ef2319bdabd09ef2c7c79bf8020cccd81c1c42"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "before_sha256": "af91d162311b3e805118ed0c79c8d72858a25cc82329c86dd2f477935fbc2c4f",
+          "sha256": "afbef3100399288176d716700566c6adc38127e99985da8e7f15d79199292075"
+        },
+        {
+          "path": "server/tests/security/test_semantic_openclip.py",
+          "before_sha256": null,
+          "sha256": "ef823e348a47403e8fa023954448f95502103b67a92541e3f142e4ab0e6833fa"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_integration.py",
+          "before_sha256": null,
+          "sha256": "40c689b6d78c490f3470becf6f86cbf6c17ac44e7359c6efb7711ca0de37dd12"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_transport.py",
+          "before_sha256": null,
+          "sha256": "6d0880954e771d2789581d26e10de9e080a9c21862b354ad23c5f65307c5f53b"
+        },
+        {
+          "path": "server/tests/security/test_serve_semantic_text.py",
+          "before_sha256": null,
+          "sha256": "66eaaacb6db48ec0f822c01cb03ba254caac392f86891720aa2d1ec3e1581df7"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "607ca270cfa1a9fd0c01797a82208403b4028fcddd2a91a9482a9f42e0b81697",
+          "sha256": "e5862e3ca8f49656babee9f2582d872e78ca2ea8ebffe91bc08c5ed2bc058e82"
+        }
+      ],
+      "routes_added": true,
+      "default_routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "integrate-search-ranges-and-optional-semantic-provider-with-current-story-main",
+      "source_commit": "f8bbecf41484db417c196c9bba0f5de1d562b5e3",
+      "merged_main_commit": "47789f22539d517a8cbcf375b90b294d18544d13",
+      "files": [
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "4c94e837561aedbc8a4ec00f8b40e9a0b0a49b311512cafc9a6f3846412b3170",
+          "sha256": "1988a867db191fe9117cda1e2b27012c565d5d255e1316cd3831b7e49e9dfc8a"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "a3b82f07bc93e8c428aeb7dba433620ad5603b9668aec4a72bd8f34f4f7d73e6",
+          "sha256": "3e0661e9172542f7448f419768507832198c935dcc8407ace14bb0d22f7540ba"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "16064c32677d62e05da65aae1a9bb75cfcb1e419beb9abfe0e37fac2f83def04",
+          "sha256": "7d3a4d9560792175ef6d93d67a395bfd0c716bebf7b356f73768ad86ca9e58e1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e5862e3ca8f49656babee9f2582d872e78ca2ea8ebffe91bc08c5ed2bc058e82",
+          "sha256": "e20f74dee1db39b309663dc76d5ca2a7657b41f286e8d39c70d58f410ec9a581"
+        }
+      ],
+      "notes": "Imported search overlays follow the current main ledger; their before hashes reflect that replay order. This final overlay records the combined source bytes. Provider activation requires separate runtime qualification."
     }
   ]
 }

@@ -104,7 +104,8 @@ bindings so old contexts cannot silently adopt a different result order.
 
 ## Planning and turn-local reuse
 
-The negotiated v2 path uses `assistant_query_plan.plan_query`, a pure local
+The negotiated v2 path uses `search_refinement.plan_query` around
+`assistant_query_plan.plan_query`, a pure local
 planner supplied with the authorized entity resolver's exact ID groups and the
 server clock. Its internal versioned plan contains only existing filters or a
 clarification reason. It cannot read databases, open providers, infer IDs, change
@@ -117,6 +118,27 @@ Resolved names that overlap a date or media keyword (for example, `May`) also
 require clarification instead of silently adding that condition. Quoted text
 must fit the existing 512-byte text filter limit; a longer literal asks for a
 shorter phrase without sending an invalid plan to retrieval.
+
+Explicit ranges include `from March to June 2024`, `between March 2024 and
+June 2024`, `from 2024-03-05 to 2024-06-07`, `从2024年3月到2024年6月` and
+`2024年3月至6月`. Month endpoints include their entire calendar month; day
+endpoints are inclusive. In the shortened month forms the explicit endpoint's
+year is shared; a reversed interval does not imply a year rollover. Explicit
+years from 1900 through 2099 also cover older family photos. Unsupported date
+shorthand, invalid dates and conflicting conditions require clarification.
+A complete range can refine an existing search without repeating “only”.
+
+Existing searches also accept explicit removal of one constraint, for example
+`any date` / `不限日期`, `anyone` / `不限人物`, `anywhere` / `不限地点`,
+`any tag` / `取消标签筛选`, `any text` / `不限内容`, and
+`any media type` / `不限类型`. `Only videos, any date` changes the media type
+and removes the date while preserving people, text, tags and locations. These
+commands require a current, authorized result context. Removing a date can
+include items with no capture date; it does not assign a date to those items.
+Quoted command-like text stays literal. A removal phrase that collides with a
+reviewed name or a request that removes and replaces the same condition asks
+for clarification and preserves the current results. Removal is read-only and
+never means deleting memories, excluding a person or changing account access.
 
 Within a synchronous v2 turn, `SearchRuntime.turn_scope` reuses derived facts and
 lazy text normalization only for an identical current binding. Every operation
@@ -135,7 +157,10 @@ The legacy text embedding helper's placeholder-vector fallback is not connected
 to this path. General paraphrase understanding, cross-language semantic recall
 and text-to-image retrieval still need a qualified local planner/compatible real
 query encoder and measured relevance. This source increment activates none of
-those models. See [readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md)
+those models. A separate [opt-in semantic API pilot](SEMANTIC_SEARCH_PILOT.md)
+provides source integration for a qualified encoder and immutable image-vector
+cohort; it does not change assistant v2 filters or activate a model.
+See [readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md)
 for the separate reviewed data and evaluation gates.
 
 Version-2 cards with text/person/date evidence add `match_reasons`; media-only
