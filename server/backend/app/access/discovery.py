@@ -95,7 +95,7 @@ class ReadBudget:
     """
     def __init__(self, *, rows=100000, source_bytes=16*1024**2, index_bytes=4*1024**2,
                  response_bytes=512*1024, seconds=2.0, concurrency=2, clock=monotonic,
-                 search_source_bytes=None):
+                 search_source_bytes=None, search_seconds=None):
         require(all(type(v) is int and v>0 for v in (rows,source_bytes,index_bytes,response_bytes,concurrency)))
         require(type(seconds) in (int,float) and math.isfinite(seconds) and seconds>0)
         self.rows,self.source_bytes,self.index_bytes,self.response_bytes=rows,source_bytes,index_bytes,response_bytes
@@ -103,6 +103,9 @@ class ReadBudget:
         if search_source_bytes is not None:
             require(type(search_source_bytes) is int and search_source_bytes > 0)
         self.search_source_bytes = source_bytes if search_source_bytes is None else search_source_bytes
+        if search_seconds is not None:
+            require(type(search_seconds) in (int, float) and math.isfinite(search_seconds) and search_seconds > 0)
+        self.search_seconds = seconds if search_seconds is None else search_seconds
         self.slots=threading.BoundedSemaphore(concurrency)
 
     def search_view(self):
@@ -114,6 +117,7 @@ class ReadBudget:
         """
         view = copy(self)
         view.source_bytes = self.search_source_bytes
+        view.seconds = self.search_seconds
         return view
 
     @contextmanager

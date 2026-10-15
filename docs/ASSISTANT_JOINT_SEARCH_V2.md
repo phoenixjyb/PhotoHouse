@@ -2,7 +2,8 @@
 
 The release preparation adds an explicit production search-v2 source allowance
 of 64 MiB, with legacy discovery still at 16 MiB. Both share the original
-admission pool and retain the existing row/deadline/index/response limits.
+admission pool and retain the existing row/index/response limits. Search v2 uses
+a fixed five-second per-read deadline; legacy discovery retains two seconds.
 Superseded captions are excluded from the independent current-text fallback
 before loading it. See [readiness and resource limits](SEARCH_READINESS_AND_RELEVANCE.md).
 

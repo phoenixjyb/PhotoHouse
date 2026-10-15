@@ -25,10 +25,12 @@ coverage; readiness itself always says `relevance_measured: false`.
 
 The production factory and operator CLI explicitly allow up to 64 MiB of
 serialized search-v2 source, while legacy discovery retains its 16 MiB limit.
-Both use the same admission semaphore; the 100,000-row, two-second, index,
-response and cancellation limits remain unchanged. An explicitly supplied
-budget inherits its own source limit for search unless its caller selects a
-separate allowance. The independent text fallback excludes superseded captions
+Both use the same admission semaphore and retain the 100,000-row, index,
+response and cancellation limits. Search v2 has a fixed five-second per-read
+deadline; legacy discovery retains two seconds. This bounds the larger text
+projection without changing the legacy allowance. An explicitly supplied budget
+inherits its own source/deadline limits unless its caller selects separate
+search allowances. The independent text fallback excludes superseded captions
 at SQL selection time, so historical caption revisions cannot consume the
 current-text projection. Current caption edits, supersession and ambiguity
 still invalidate the source binding. The allowance is bounded capacity, not a

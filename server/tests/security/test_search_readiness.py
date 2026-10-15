@@ -100,6 +100,26 @@ class SearchReadinessTests(unittest.TestCase):
         production = shared_budget(None)
         self.assertEqual((production.source_bytes, production.search_source_bytes),
                          (16 * 1024**2, 64 * 1024**2))
+        self.assertEqual((production.seconds, production.search_seconds), (2.0, 5.0))
+
+    def test_selected_text_deadline_stays_bounded_without_changing_legacy(self):
+        elapsed = [0.0]
+        budget = d.ReadBudget(seconds=2, search_seconds=5, clock=lambda: elapsed[0])
+        with closing(sqlite3.connect(':memory:')) as db:
+            with budget.attempt(db, lambda: False) as (check, _):
+                elapsed[0] = 3.0
+                with self.assertRaises(d.DiscoveryUnavailable):
+                    check()
+            elapsed[0] = 0.0
+            with budget.search_view().attempt(db, lambda: False) as (check, _):
+                elapsed[0] = 3.0
+                check()
+                elapsed[0] = 6.0
+                with self.assertRaises(d.DiscoveryUnavailable):
+                    check()
+        for invalid in (0, -1, True, float('nan'), float('inf')):
+            with self.assertRaises(d.DiscoveryInvalid):
+                d.ReadBudget(search_seconds=invalid)
 
     def test_superseded_history_does_not_exhaust_current_text_projection(self):
         from app.access.discovery_provider import ProjectedIndex, MemoryIndexProvider
