@@ -55,8 +55,13 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   assert.equal(await fontDefault.getAttribute('aria-pressed'),'true','Default is selected when a story opens');
   assert(await fontGroup.locator('button').evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().width>=48&&node.getBoundingClientRect().height>=48)),'all story reading-size controls meet the 48px target at390px/150%');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Chinese story text controls fit a390px viewport at150%');
+  // Focusing the control and changing viewport can expose lazy thumbnails.
+  // Finish that existing image work before attributing any request to sizing.
+  await fontLarger.focus();
+  await page.locator('img').evaluateAll(images=>images.forEach(image=>{image.loading='eager';}));
+  await page.waitForFunction(()=>Array.from(document.images).every(image=>image.complete),null,{timeout:10000});
   const requestsBeforeFont=requests.length;
-  await fontLarger.focus();const storyFontFocusBefore=await fontLarger.evaluate(node=>node===document.activeElement),storyFontScrollBefore=await page.evaluate(()=>({x:scrollX,y:scrollY,dialog:document.querySelector('#story-reader').scrollTop}));
+  const storyFontFocusBefore=await fontLarger.evaluate(node=>node===document.activeElement),storyFontScrollBefore=await page.evaluate(()=>({x:scrollX,y:scrollY,dialog:document.querySelector('#story-reader').scrollTop}));
   await fontLarger.click();
   assert.equal(await fontLarger.getAttribute('aria-pressed'),'true');assert.equal(await fontDefault.getAttribute('aria-pressed'),'false');
   assert(Math.abs(parseFloat(await fontText.evaluate(node=>getComputedStyle(node).fontSize))/storyBaseFont-1.25)<.01,'Larger applies the1.25 prose scale');
