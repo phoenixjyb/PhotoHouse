@@ -129,11 +129,233 @@ class StoryWorkspaceStoreTest {
         ProtectedMemoryStoriesWire.detail(savedEditStoryJson(revision, narration).toByteArray(),
             "family-a", "66666666-6666-4666-8666-666666666666", revision)
 
+    private class DraftPersistenceFake : StoryDraftPersistence {
+        var stored: StoryDraftRecord? = null
+        var failNextWrite = false
+        var failNextDelete = false
+        var corruptFingerprint: String? = null
+        override fun load(scope: StoryDraftScope): StoryDraftRecord? {
+            if (corruptFingerprint != null) throw StoryDraftStorageException("fixture corrupt record")
+            return stored?.takeIf { it.scope == scope }
+        }
+        override fun write(record: StoryDraftRecord, expectedRevision: Long?, expectedRecordId: String?): StoryDraftRecord {
+            if (failNextWrite) { failNextWrite = false; throw StoryDraftStorageException("fixture write failure") }
+            val current = load(record.scope)
+            if (expectedRevision == null) require(current == null) else require(current?.revision == expectedRevision && current.recordId == expectedRecordId)
+            return record.copy(revision = (expectedRevision ?: 0L) + 1L).also { stored = it }
+        }
+        override fun delete(scope: StoryDraftScope, expectedRecordId: String, expectedRevision: Long): Boolean {
+            if (failNextDelete) { failNextDelete = false; throw StoryDraftStorageException("fixture delete failure") }
+            if (stored?.scope != scope || stored?.recordId != expectedRecordId || stored?.revision != expectedRevision) return false
+            stored = null
+            return true
+        }
+        override fun unreadableFingerprint(scope: StoryDraftScope) = corruptFingerprint
+        override fun deleteUnreadable(scope: StoryDraftScope, expectedFingerprint: String): Boolean {
+            if (corruptFingerprint != expectedFingerprint) return false
+            corruptFingerprint = null
+            return true
+        }
+        override fun occupiedSlots() = if (stored == null) 0 else 1
+    }
+
     private suspend fun TestScope.readyForEdit(store: StoryWorkspaceStore) {
         assertTrue(store.selectAsset("1"))
         assertTrue(store.preview())
         runCurrent()
         assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
+    }
+
+    @Test fun durableDraftResumesAfterProcessLossAndRetriesTheExactFrozenBody() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val first = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null, currentAccount = { "member-a" },
+            uuidSupplier = { mutation }, localDraftPersistence = persistence)
+        readyForEdit(first)
+        assertTrue(first.saveLocalDraft())
+        assertTrue(first.editTitle("Our park day"))
+        assertTrue(first.editChapterNarration(0, "We laughed by the pond."))
+        assertEquals("", persistence.stored?.title)
+
+        assertTrue(first.confirmReviewed(true))
+        assertTrue(first.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, first.state.value.status)
+        val frozenBody = api.saveBodies.single()
+        assertEquals(frozenBody, persistence.stored?.pendingSave?.body)
+
+        // Simulate process death, then return a fresh preview with changed generated evidence.
+        first.clear()
+        api.previewReplies += preview(listOf("1"), revision = "b".repeat(64), evidenceId = "caption-202")
+        val resumed = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null, currentAccount = { "member-a" },
+            uuidSupplier = { UUID.fromString("88888888-8888-4888-8888-888888888888") }, localDraftPersistence = persistence)
+        assertTrue(resumed.inspectLocalDraft())
+        assertTrue(resumed.resumeLocalDraft()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, resumed.state.value.status)
+        assertEquals("Our park day", resumed.state.value.title)
+        assertEquals("We laughed by the pond.", resumed.state.value.editableChapters.single().narration)
+        assertFalse(resumed.state.value.reviewed)
+        assertTrue(resumed.state.value.sourcesReloaded)
+        assertTrue(resumed.retrySave()); runCurrent()
+        assertEquals(frozenBody, api.saveBodies.last())
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, resumed.state.value.status)
+    }
+
+    @Test fun untouchedGuidedDraftDoesNotRestoreOutlineNarrationAsUserWords() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val guide = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(guide.startGuide())
+        assertTrue(guide.selectAsset("1"))
+        assertTrue(guide.continueGuide()); runCurrent()
+        assertEquals(StoryGuideStep.WORDS, guide.state.value.guideStep)
+        assertTrue(guide.saveLocalDraft())
+        guide.clear()
+
+        api.previewReplies += preview(listOf("1")).decodeToString()
+            .replace("\"narration\":\"\"", "\"narration\":\"Outline scaffold\"").toByteArray()
+        val resumed = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(resumed.resumeLocalDraft()); runCurrent()
+        assertEquals("", resumed.state.value.editableChapters.single().narration)
+    }
+
+    @Test fun unrelatedSavedSlotIsNotCheckpointedByANewCreationWithoutResumeOrReplacement() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val original = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        readyForEdit(original)
+        assertTrue(original.editTitle("Existing saved words"))
+        assertTrue(original.saveLocalDraft())
+        original.clear()
+        val originalRecord = requireNotNull(persistence.stored)
+
+        val freshCreation = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(freshCreation.inspectLocalDraft())
+        readyForEdit(freshCreation)
+        assertTrue(freshCreation.editTitle("A separate new story"))
+        assertTrue(freshCreation.confirmReviewed(true))
+        assertTrue(freshCreation.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, freshCreation.state.value.status)
+        assertEquals(originalRecord.recordId, persistence.stored?.recordId)
+        assertEquals(originalRecord.revision, persistence.stored?.revision)
+        assertEquals("Existing saved words", persistence.stored?.title)
+        assertNull(persistence.stored?.pendingSave)
+    }
+
+    @Test fun durableCheckpointFailurePreventsNetworkAndPendingRecoveryCannotBeOverwritten() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null, currentAccount = { "member-a" },
+            uuidSupplier = { mutation }, localDraftPersistence = persistence)
+        readyForEdit(store)
+        assertTrue(store.editTitle("Saved words"))
+        assertTrue(store.saveLocalDraft())
+        persistence.failNextWrite = true
+        assertTrue(store.confirmReviewed(true))
+        assertFalse(store.save())
+        runCurrent()
+        assertTrue(api.saveBodies.isEmpty())
+        assertNull(persistence.stored?.pendingSave)
+
+        assertTrue(store.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, store.state.value.status)
+        val oldBody = persistence.stored?.pendingSave?.body
+        assertNotNull(oldBody)
+        store.clear()
+
+        val fresh = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null, currentAccount = { "member-a" },
+            localDraftPersistence = persistence)
+        assertTrue(fresh.inspectLocalDraft())
+        assertTrue(fresh.state.value.localDraftRequiresRecovery)
+        assertFalse(fresh.selectAsset("2"))
+        assertEquals(oldBody, persistence.stored?.pendingSave?.body)
+        assertFalse(fresh.deleteLocalDraft()) // unknown publication cannot be discarded
+        assertEquals(oldBody, persistence.stored?.pendingSave?.body)
+    }
+
+    @Test fun confirmedPublicationAllowsExplicitCleanupAfterDeleteFailure() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val first = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, uuidSupplier = { mutation }, localDraftPersistence = persistence)
+        readyForEdit(first)
+        assertTrue(first.editTitle("Durable title"))
+        assertTrue(first.saveLocalDraft())
+        assertTrue(first.confirmReviewed(true))
+        assertTrue(first.save()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVE_UNCERTAIN, first.state.value.status)
+        first.clear()
+
+        val resumed = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(resumed.inspectLocalDraft())
+        assertTrue(resumed.resumeLocalDraft()); runCurrent()
+        persistence.failNextDelete = true
+        api.saveResponse = savedReply(listOf("1"))
+        assertTrue(resumed.retrySave()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, resumed.state.value.status)
+        assertTrue(resumed.state.value.localDraftError)
+        assertNotNull(persistence.stored?.pendingSave)
+        assertTrue(resumed.deleteLocalDraft())
+        assertNull(persistence.stored)
+    }
+
+    @Test fun publicationConfirmationCannotDeleteANewerPendingReplacement() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake()
+        val first = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, uuidSupplier = { mutation }, localDraftPersistence = persistence)
+        readyForEdit(first)
+        assertTrue(first.editTitle("Published words"))
+        assertTrue(first.saveLocalDraft())
+        assertTrue(first.confirmReviewed(true))
+        assertTrue(first.save()); runCurrent()
+        first.clear()
+
+        val resumed = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertTrue(resumed.inspectLocalDraft())
+        assertTrue(resumed.resumeLocalDraft()); runCurrent()
+        persistence.failNextDelete = true
+        api.saveResponse = savedReply(listOf("1"))
+        assertTrue(resumed.retrySave()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, resumed.state.value.status)
+
+        val oldRecovery = requireNotNull(persistence.stored)
+        val replacement = oldRecovery.copy(recordId = "99999999-9999-4999-8999-999999999999",
+            revision = oldRecovery.revision + 1, updatedAtEpochMillis = oldRecovery.updatedAtEpochMillis + 1,
+            pendingSave = oldRecovery.pendingSave!!.copy(mutationId = "77777777-7777-4777-8777-777777777777"))
+        persistence.stored = replacement
+
+        assertFalse(resumed.deleteLocalDraft())
+        assertEquals(replacement, persistence.stored)
+        assertTrue(resumed.state.value.localDraftRequiresRecovery)
+    }
+
+    @Test fun unreadableDraftDeletionRequiresTheFingerprintObservedDuringInspection() = runTest {
+        var current = binding()
+        val api = Fake()
+        val persistence = DraftPersistenceFake().apply { corruptFingerprint = "observed-corrupt-bytes" }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        assertFalse(store.inspectLocalDraft())
+        assertTrue(store.state.value.localDraftCanDeleteUnreadable)
+        persistence.corruptFingerprint = "newer-replacement-bytes"
+        assertFalse(store.deleteUnreadableLocalDraft())
+        assertEquals("newer-replacement-bytes", persistence.corruptFingerprint)
+
+        assertFalse(store.inspectLocalDraft())
+        assertTrue(store.deleteUnreadableLocalDraft())
+        assertNull(persistence.corruptFingerprint)
     }
 
     @Test fun selectionCapRejectsTheTwentyFifthWithoutDroppingEarlierChoices() = runTest {
@@ -635,8 +857,9 @@ class StoryWorkspaceStoreTest {
     @Test fun chapterDictationReviewsTranscriptPreservesLatestTypedTextAndKeepsOverflow() = runTest {
         var current = binding()
         val voice = DictationApi()
+        val persistence = DraftPersistenceFake()
         val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current },
-            dictationApi = voice, currentAccount = { "member" })
+            dictationApi = voice, currentAccount = { "member" }, localDraftPersistence = persistence)
         readyForEdit(store)
         assertTrue(store.editChapterNarration(0, "先写下的内容"))
         assertTrue(store.openChapterDictation(0)); runCurrent()
@@ -648,11 +871,15 @@ class StoryWorkspaceStoreTest {
         assertFalse(store.editTitle("Blocked while reviewing"))
         assertFalse(store.confirmReviewed(true))
         assertFalse(store.save())
+        assertFalse(store.saveLocalDraft())
         assertFalse(store.insertChapterTranscript(0, composing = true))
         assertEquals("ASR words", session.state.value.transcript)
         assertTrue(store.insertChapterTranscript(0, composing = false))
         assertEquals("核对时补充的内容\n\nASR words", store.state.value.editableChapters.single().narration)
         assertNull(session.state.value.transcript)
+        assertTrue(store.saveLocalDraft())
+        assertEquals("核对时补充的内容\n\nASR words", persistence.stored?.chapters?.single()?.narration)
+        assertNull(store.chapterDictation.value)
 
         store.closeChapterDictation()
         assertTrue(store.editChapterNarration(0, "字".repeat(2000))) // 6,000 UTF-8 bytes.

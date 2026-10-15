@@ -17,14 +17,16 @@ class ConnectedViewModel(api: PhotoHouseApi?, persistence: SessionPersistence? =
                          memoryGroupsApi: MemoryGroupsApi? = null, memoryGroupsEnabled: Boolean = false,
                          savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
                          memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
-                         assistantWorkspaceApi: AssistantWorkspaceApi? = null) : ViewModel() {
+                         assistantWorkspaceApi: AssistantWorkspaceApi? = null,
+                         localStoryDraftPersistence: StoryDraftPersistence? = null) : ViewModel() {
     val store = api?.let { ConnectedStore(it, viewModelScope, persistence, uploadNetwork = uploadNetwork,
         batchPersistence = batchPersistence, batchSource = batchSource, memoryCommunityApi = memoryCommunityApi,
         memoryCommunityEnabled = memoryCommunityEnabled, memoryGroupsApi = memoryGroupsApi,
         memoryGroupsEnabled = memoryGroupsEnabled,
         savedStoryReaderPositionPersistence = savedStoryReaderPositionPersistence,
         memoryBookReaderPositionPersistence = memoryBookReaderPositionPersistence,
-        assistantWorkspaceApi = assistantWorkspaceApi).also { store -> store.restoreSession() } }
+        assistantWorkspaceApi = assistantWorkspaceApi,
+        localStoryDraftPersistence = localStoryDraftPersistence).also { store -> store.restoreSession() } }
 }
 class MainActivity : ComponentActivity() {
     private val model by viewModels<ConnectedViewModel> {
@@ -58,6 +60,9 @@ class MainActivity : ComponentActivity() {
                     },
                     memoryBookReaderPositionPersistence = origin?.let {
                         KeystoreMemoryBookReaderPositionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
+                    },
+                    localStoryDraftPersistence = origin?.let {
+                        KeystoreStoryDraftPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
                     },
                     assistantWorkspaceApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_ASSISTANT_ENABLED }?.let {
                         HttpsAssistantWorkspaceApi(it,

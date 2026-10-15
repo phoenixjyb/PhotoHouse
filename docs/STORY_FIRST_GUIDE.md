@@ -1,5 +1,10 @@
 # Guided first-story creation
 
+The guide shipped in v61 and remains in v62. The following
+[private draft increment](STORY_DRAFT_RESUME.md) replaces session-only retention
+in new source, with explicit device-local save/resume; it is not yet deployed.
+Historical checkpoints below retain their original source boundaries.
+
 The initial Web increment adds an optional flow in the existing story workspace:
 **Choose moments → Tell your memory → Review and save**. Native phone parity is
 described below. Neither increment adds an API route, schema migration or model

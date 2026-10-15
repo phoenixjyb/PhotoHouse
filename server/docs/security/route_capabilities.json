@@ -3943,6 +3943,20 @@
    "source": "backend/app/routers/ui.py",
    "owner": "router",
    "method": "GET",
+   "path": "/ui/story-draft-store.js",
+   "handler": "ui_story_draft_store",
+   "surface": "photohouse",
+   "scope": "Code only, no embedded family data",
+   "capabilities": [
+    "public.ui"
+   ],
+   "current_control": "Same-origin code-only AES-GCM storage helper; local prose requires explicit scoped save, fresh authorization and evidence on resume",
+   "gap": "No public media, draft database or story projection"
+  },
+  {
+   "source": "backend/app/routers/ui.py",
+   "owner": "router",
+   "method": "GET",
    "path": "/ui/story-workspace.js",
    "handler": "ui_story_workspace",
    "surface": "photohouse",

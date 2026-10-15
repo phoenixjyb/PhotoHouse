@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.Collections
@@ -19,6 +23,7 @@ enum class StoryWorkspaceStoreStatus {
 }
 
 enum class StoryGuideStep { FRAMES, WORDS, REVIEW }
+enum class LocalStoryDraftStatus { UNAVAILABLE, UNKNOWN, EMPTY, AVAILABLE, SAVED, ERROR, SAVING, RESUMING }
 
 data class StoryWorkspaceStoreState(
     val status: StoryWorkspaceStoreStatus = StoryWorkspaceStoreStatus.SELECTION,
@@ -48,6 +53,12 @@ data class StoryWorkspaceStoreState(
     val savedStoryIsNewerThanEditBase: Boolean = false,
     val failureStatus: Int? = null,
     val guideStep: StoryGuideStep? = null,
+    val localDraftStatus: LocalStoryDraftStatus = LocalStoryDraftStatus.UNAVAILABLE,
+    val localDraftRevision: Long? = null,
+    val localDraftOccupiedSlots: Int? = null,
+    val localDraftError: Boolean = false,
+    val localDraftRequiresRecovery: Boolean = false,
+    val localDraftCanDeleteUnreadable: Boolean = false,
 ) {
     val hasUnfinishedWork: Boolean get() = dirty || composing || invalidInput || busy || hasPendingSave ||
         (draft != null && status != StoryWorkspaceStoreStatus.SAVED)
@@ -62,6 +73,8 @@ class StoryWorkspaceStore(
     private val currentAccount: () -> String? = { null },
     private val onDictationDenied: () -> Unit = {},
     private val uuidSupplier: () -> UUID = UUID::randomUUID,
+    private val localDraftPersistence: StoryDraftPersistence? = null,
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     /** Preserves the historical trailing/positional UUID supplier constructor. */
     constructor(
@@ -78,6 +91,14 @@ class StoryWorkspaceStore(
     private var bound: MemoryCommunityBinding? = null
     private var operation: Job? = null
     private var pending: PendingGroupedStorySave? = null
+    private var localDraftRecord: StoryDraftRecord? = null
+    private var localDraftSlotOccupied = false
+    private var localDraftAttached = false
+    private var localDraftPublicationConfirmed = false
+    private var localDraftUnreadableFingerprint: String? = null
+    private var authoredTitle = false
+    private val authoredChapterTitles = mutableSetOf<String>()
+    private val authoredChapterNarrations = mutableSetOf<String>()
     private var savedEditStory: SavedMemoryStory? = null
     private var savedEditReferences: SavedMemoryStoryContributionReferences? = null
     private var titleRevision = 0L
@@ -103,12 +124,281 @@ class StoryWorkspaceStore(
     val isSavedStoryEdit: Boolean get() = savedEditStory != null
     val savedEditStoryId: String? get() = savedEditStory?.id
     val savedEditStoryRevision: Long? get() = savedEditStory?.revision
+    private fun pendingRecoveryBlocksNewStory() = localDraftRecord?.pendingSave != null && !localDraftAttached
+
+    /** Reads only this fresh account/library slot; errors remain visible and never erase bytes. */
+    fun inspectLocalDraft(): Boolean {
+        val persistence = localDraftPersistence ?: run {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.UNAVAILABLE)
+            return false
+        }
+        val scope = localDraftScope() ?: return false
+        return try {
+            val record = persistence.load(scope)
+            localDraftRecord = record
+            localDraftSlotOccupied = record != null
+            localDraftUnreadableFingerprint = null
+            localDraftPublicationConfirmed = false
+            val slots = persistence.occupiedSlots()
+            mutable.value = state.value.copy(localDraftStatus = if (record == null) LocalStoryDraftStatus.EMPTY else LocalStoryDraftStatus.AVAILABLE,
+                localDraftRevision = record?.revision, localDraftOccupiedSlots = slots, localDraftError = false,
+                localDraftCanDeleteUnreadable = false)
+            mutable.value = state.value.copy(localDraftRequiresRecovery = record?.pendingSave != null)
+            true
+        } catch (_: Exception) {
+            localDraftRecord = null
+            localDraftSlotOccupied = true
+            localDraftUnreadableFingerprint = runCatching { persistence.unreadableFingerprint(scope) }.getOrNull()
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true,
+                localDraftCanDeleteUnreadable = localDraftUnreadableFingerprint != null)
+            false
+        }
+    }
+
+    /** Explicitly stores only authored text, selected IDs and grouping for a new story. */
+    fun saveLocalDraft(replaceExisting: Boolean = false): Boolean {
+        val persistence = localDraftPersistence ?: return false
+        val live = state.value
+        if (!ensureCurrent() || isSavedStoryEdit || live.status != StoryWorkspaceStoreStatus.EDITING || live.draft == null ||
+            live.busy || live.composing || live.invalidInput || live.hasPendingSave || pending != null ||
+            hasUnfinishedChapterDictation) return false
+        closeChapterDictation()
+        val scope = localDraftScope() ?: return false
+        val previous = localDraftRecord ?: runCatching { persistence.load(scope) }.getOrNull()
+        if (previous?.pendingSave != null && !localDraftAttached) {
+            localDraftRecord = previous
+            localDraftSlotOccupied = true
+            mutable.value = live.copy(localDraftStatus = LocalStoryDraftStatus.AVAILABLE,
+                localDraftRevision = previous.revision, localDraftRequiresRecovery = true, localDraftError = false)
+            return false
+        }
+        val replacing = previous != null && !localDraftAttached
+        if (replacing && !replaceExisting) {
+            localDraftRecord = previous
+            localDraftSlotOccupied = true
+            mutable.value = live.copy(localDraftStatus = LocalStoryDraftStatus.AVAILABLE,
+                localDraftRevision = requireNotNull(previous).revision, localDraftError = false)
+            return false
+        }
+        val timestamp = now().coerceAtLeast(1L)
+        val recordId = previous?.takeIf { !replacing }?.recordId ?: UUID.randomUUID().toString()
+        val next = StoryDraftRecord(
+            scope = scope, recordId = recordId, revision = (previous?.revision ?: 0L) + 1L,
+            createdAtEpochMillis = previous?.takeIf { !replacing }?.createdAtEpochMillis ?: timestamp,
+            updatedAtEpochMillis = timestamp,
+            selectionRevision = live.draft.selectionRevision,
+            selectedAssetIds = live.selectedAssetIds.toList(), theme = live.theme, language = live.language,
+            title = if (authoredTitle) live.title else "", titleAuthored = authoredTitle,
+            chapters = live.editableChapters.map { chapter -> StoryDraftChapter(chapter.id,
+                if (chapter.id in authoredChapterTitles) chapter.title else "", chapter.id in authoredChapterTitles,
+                if (chapter.id in authoredChapterNarrations) chapter.narration else "", chapter.id in authoredChapterNarrations,
+                chapter.assetIds.toList(), if (live.sourceReviewEnabled) chapter.evidenceIds.toList() else emptyList()) },
+            sourceReviewEnabled = live.sourceReviewEnabled, guideMode = live.guideStep != null,
+            guideStep = live.guideStep?.name,
+        )
+        return try {
+            mutable.value = live.copy(localDraftStatus = LocalStoryDraftStatus.SAVING, localDraftError = false)
+            val written = persistence.write(next, previous?.revision, previous?.recordId)
+            localDraftRecord = written
+            localDraftSlotOccupied = true
+            localDraftAttached = true
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.SAVED,
+                localDraftRevision = written.revision, localDraftOccupiedSlots = runCatching { persistence.occupiedSlots() }.getOrNull(),
+                localDraftError = false, localDraftRequiresRecovery = written.pendingSave != null)
+            true
+        } catch (_: Exception) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+            false
+        }
+    }
+
+    /** Freshly previews every selected asset before any stored wording is restored to the editor. */
+    fun resumeLocalDraft(): Boolean {
+        val persistence = localDraftPersistence ?: return false
+        if (!ensureCurrent() || isSavedStoryEdit || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
+            state.value.busy || state.value.hasPendingSave || state.value.composing || hasUnfinishedChapterDictation) return false
+        val scope = localDraftScope() ?: return false
+        val record = try { persistence.load(scope) } catch (_: Exception) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+            return false
+        } ?: run {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.EMPTY, localDraftError = false)
+            return false
+        }
+        if (!validSavedDraft(record, scope)) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+            return false
+        }
+        val expected = snapshotBinding() ?: return false
+        val ticket = epoch + 1
+        closeChapterDictation()
+        operation?.cancel(); operation = null
+        relatedOperation?.cancel(); relatedOperation = null
+        epoch = ticket
+        bound = expected
+        localDraftRecord = record
+        localDraftSlotOccupied = true
+        pending = null
+        val selected = immutable(record.selectedAssetIds)
+        mutable.value = StoryWorkspaceStoreState(status = StoryWorkspaceStoreStatus.PREVIEWING,
+            selectedAssetIds = selected, theme = record.theme, language = record.language, busy = true,
+            dirty = true, localDraftStatus = LocalStoryDraftStatus.RESUMING, localDraftRevision = record.revision,
+            localDraftRequiresRecovery = record.pendingSave != null)
+        operation = scopeCoroutineLaunch(expected, ticket, record)
+        return operation != null
+    }
+
+    /** Deletes a readable slot only by its observed record ID and revision. */
+    fun deleteLocalDraft(): Boolean {
+        val persistence = localDraftPersistence ?: return false
+        val scope = localDraftScope() ?: return false
+        return try {
+            val observed = localDraftRecord ?: return false
+            val record = persistence.load(scope) ?: run {
+                localDraftPublicationConfirmed = false
+                inspectLocalDraft()
+                return false
+            }
+            if (observed.scope != scope || record.scope != scope ||
+                observed.recordId != record.recordId || observed.revision != record.revision) {
+                localDraftPublicationConfirmed = false
+                inspectLocalDraft()
+                return false
+            }
+            if (record.pendingSave != null && !localDraftPublicationConfirmed) return false
+            val deleted = persistence.delete(scope, record.recordId, record.revision)
+            if (deleted) {
+                localDraftRecord = null
+                localDraftSlotOccupied = false
+                localDraftAttached = false
+                localDraftPublicationConfirmed = false
+                localDraftUnreadableFingerprint = null
+                mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.EMPTY,
+                    localDraftRevision = null, localDraftError = false, localDraftRequiresRecovery = false,
+                    localDraftCanDeleteUnreadable = false)
+            }
+            deleted
+        } catch (_: Exception) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+            false
+        }
+    }
+
+    /** Explicit corrupt-slot removal, bound to the fingerprint seen during inspection. */
+    fun deleteUnreadableLocalDraft(): Boolean {
+        val persistence = localDraftPersistence ?: return false
+        val scope = localDraftScope() ?: return false
+        val fingerprint = localDraftUnreadableFingerprint ?: return false
+        if (state.value.localDraftStatus != LocalStoryDraftStatus.ERROR) return false
+        return try {
+            val deleted = persistence.deleteUnreadable(scope, fingerprint)
+            if (deleted) {
+                localDraftRecord = null
+                localDraftSlotOccupied = false
+                localDraftAttached = false
+                localDraftUnreadableFingerprint = null
+                mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.EMPTY,
+                    localDraftRevision = null, localDraftError = false, localDraftRequiresRecovery = false,
+                    localDraftCanDeleteUnreadable = false)
+            } else {
+                inspectLocalDraft()
+            }
+            deleted
+        } catch (_: Exception) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true,
+                localDraftCanDeleteUnreadable = false)
+            false
+        }
+    }
+
+    private fun localDraftScope(): StoryDraftScope? {
+        val account = currentAccount()?.takeIf { it.isNotBlank() } ?: return null
+        val library = snapshotBinding()?.libraryId ?: return null
+        return StoryDraftScope(account, library)
+    }
+
+    private fun validSavedDraft(record: StoryDraftRecord, expectedScope: StoryDraftScope): Boolean =
+        record.scope == expectedScope && runCatching { StoryDraftRecordCodec.validate(record) }.isSuccess
+
+    private fun PendingGroupedStorySave.bodyMutationId(): String =
+        Json.parseToJsonElement(body).jsonObject.getValue("mutation_id").jsonPrimitive.content
+
+    private fun scopeCoroutineLaunch(expected: MemoryCommunityBinding, ticket: Long, record: StoryDraftRecord): Job =
+        scope.launch {
+            try {
+                val fresh = repository.preview(record.selectedAssetIds, record.theme, record.language, "") { current(expected, ticket) }
+                val detached = detachDraft(fresh)
+                if (record.sourceReviewEnabled) {
+                    val capabilities = repository.sourceCapabilities { current(expected, ticket) }
+                    if (capabilities?.sourcePolicy != ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+                        throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                }
+                if (!current(expected, ticket)) return@launch
+                if (detached.items.map { it.asset.id } != record.selectedAssetIds ||
+                    record.chapters.flatMap { it.assetIds } != record.selectedAssetIds ||
+                    record.chapters.size > MAX_CHAPTERS ||
+                    !record.sourceReviewEnabled && detached.chapters.map { it.id to it.assetIds } !=
+                        record.chapters.map { it.id to it.assetIds }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val freshByAsset = detached.items.associate { it.asset.id to it.evidence.map(MemoryStoryEvidence::id).toSet() }
+                val restoredChapters = record.chapters.map { saved ->
+                    val eligible = saved.assetIds.flatMap { freshByAsset[it].orEmpty() }.toSet()
+                    saved.copy(sourceIds = saved.sourceIds.filter { it in eligible })
+                }
+                val sourceChanged = restoredChapters.zip(record.chapters).any { (freshChapter, old) -> freshChapter.sourceIds != old.sourceIds }
+                val changed = detached.selectionRevision != record.selectionRevision || sourceChanged
+                val restored = detached.copy(chapters = immutable(restoredChapters.map { chapter ->
+                    val freshChapter = detached.chapters.firstOrNull { it.id == chapter.id }
+                        ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                    val savedChapter = record.chapters.first { it.id == chapter.id }
+                    freshChapter.copy(title = if (savedChapter.titleAuthored) chapter.title else freshChapter.title,
+                        narration = when {
+                            savedChapter.narrationAuthored -> chapter.narration
+                            record.guideMode -> ""
+                            else -> freshChapter.narration
+                        },
+                        assetIds = immutable(chapter.assetIds), evidenceIds = immutable(chapter.sourceIds))
+                }))
+                authoredTitle = record.titleAuthored
+                authoredChapterTitles.clear(); authoredChapterTitles.addAll(record.chapters.filter { it.titleAuthored }.map { it.id })
+                authoredChapterNarrations.clear(); authoredChapterNarrations.addAll(record.chapters.filter { it.narrationAuthored }.map { it.id })
+                val restoredPending = record.pendingSave?.let { pendingSave ->
+                    if (pendingSave.assetIds != record.selectedAssetIds)
+                        throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                    PendingGroupedStorySave(expected, pendingSave.body, pendingSave.assetIds,
+                        pendingSave.sourceReview, targetStoryId = null, baseRevision = 0, contributionReferences = false)
+                }
+                pending = restoredPending
+                localDraftAttached = true
+                mutable.value = StoryWorkspaceStoreState(
+                    status = if (restoredPending == null) StoryWorkspaceStoreStatus.EDITING else StoryWorkspaceStoreStatus.SAVE_UNCERTAIN,
+                    selectedAssetIds = immutable(record.selectedAssetIds), theme = record.theme, language = record.language,
+                    title = if (record.titleAuthored) record.title else detached.title, draft = restored,
+                    editableChapters = immutable(restored.chapters.map(::detachChapter)),
+                    sourceReviewEnabled = record.sourceReviewEnabled, sourceCapabilitiesChecked = record.sourceReviewEnabled,
+                    reviewed = false, sourcesReloaded = changed, dirty = true, hasPendingSave = restoredPending != null,
+                    invalidInput = !validText(if (record.titleAuthored) record.title else detached.title, 640,
+                        maxCodePoints = 160, allowNewline = false, allowBlank = false) || restored.chapters.any {
+                        !validText(it.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) ||
+                            !validText(it.narration, 6000, allowNewline = true)
+                    },
+                    guideStep = record.guideStep?.let { runCatching { StoryGuideStep.valueOf(it) }.getOrNull() }
+                        ?.takeIf { record.guideMode },
+                    localDraftStatus = LocalStoryDraftStatus.SAVED, localDraftRevision = record.revision,
+                    localDraftRequiresRecovery = restoredPending != null,
+                )
+            } catch (_: CancellationException) { stale(ticket) }
+            catch (_: Exception) {
+                if (current(expected, ticket)) mutable.value = state.value.copy(status = StoryWorkspaceStoreStatus.UNAVAILABLE,
+                    busy = false, localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+                else stale(ticket)
+            } finally { if (ticket == epoch) operation = null }
+        }
 
     /** Starts the optional first-story path for a fresh, currently bound selection. */
     fun startGuide(): Boolean {
         if (!ensureCurrent() || isSavedStoryEdit || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
             state.value.draft != null || state.value.busy || state.value.hasPendingSave || pending != null || state.value.composing ||
-            hasUnfinishedChapterDictation || state.value.guideStep != null) return false
+            hasUnfinishedChapterDictation || state.value.guideStep != null || pendingRecoveryBlocksNewStory()) return false
         val expected = snapshotBinding() ?: return false
         bound = expected
         mutable.value = state.value.copy(guideStep = StoryGuideStep.FRAMES)
@@ -331,13 +621,17 @@ class StoryWorkspaceStore(
         val target = state.value.editableChapters.getOrNull(index) ?: return false
         if (target.id != activeDictationChapterId) return false
         val helper = chapterDictationBinding ?: return false
-        return helper.insertTranscript { transcript ->
+        val inserted = helper.insertTranscript { transcript ->
             val chapter = state.value.editableChapters.getOrNull(index)?.takeIf { it.id == activeDictationChapterId }
                 ?: return@insertTranscript false
             val joined = if (chapter.narration.isEmpty()) transcript else chapter.narration + "\n\n" + transcript
             if (!validText(joined, 6000, allowNewline = true)) return@insertTranscript false
             editChapterNarration(index, joined)
         }
+        // The StateFlow collector may run later; the next explicit action must see
+        // that the reviewed transcript has already been consumed.
+        mutableDictationUnfinished.value = helper.hasUnfinishedInput
+        return inserted
     }
 
     /** Set by the owning connected editor without changing its UUID supplier API. */
@@ -369,7 +663,7 @@ class StoryWorkspaceStore(
 
     /** Selection order is preserved. A 25th item is rejected without dropping an existing choice. */
     fun selectAsset(assetId: String, selected: Boolean = true, discardDraft: Boolean = false): Boolean {
-        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit) return false
+        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || pendingRecoveryBlocksNewStory()) return false
         val numericId = assetId.toLongOrNull() ?: return false
         if (numericId.toString() != assetId || numericId <= 0) return false
         val ids = state.value.selectedAssetIds
@@ -391,7 +685,7 @@ class StoryWorkspaceStore(
         expectedSelectedIds: List<String>,
         confirmedReplace: Boolean,
     ): Boolean {
-        if (!editable() || isSavedStoryEdit || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
+        if (!editable() || isSavedStoryEdit || pendingRecoveryBlocksNewStory() || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
             state.value.draft != null || state.value.hasPendingSave || pending != null || state.value.composing ||
             hasUnfinishedChapterDictation || chapterDictationBinding != null) return false
         val currentIds = state.value.selectedAssetIds
@@ -412,7 +706,7 @@ class StoryWorkspaceStore(
     }
 
     fun setTheme(value: String, discardDraft: Boolean = false): Boolean {
-        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || value !in SAVED_MEMORY_STORY_THEMES) return false
+        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || pendingRecoveryBlocksNewStory() || value !in SAVED_MEMORY_STORY_THEMES) return false
         if (state.value.theme == value) return true
         if (state.value.draft != null && !discardDraft) return false
         invalidatePreview()
@@ -423,7 +717,7 @@ class StoryWorkspaceStore(
     }
 
     fun setLanguage(value: String, discardDraft: Boolean = false): Boolean {
-        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || value !in setOf("zh", "en")) return false
+        if (!editable() || hasUnfinishedChapterDictation || isSavedStoryEdit || pendingRecoveryBlocksNewStory() || value !in setOf("zh", "en")) return false
         if (state.value.language == value) return true
         if (state.value.draft != null && !discardDraft) return false
         invalidatePreview()
@@ -501,7 +795,8 @@ class StoryWorkspaceStore(
 
     /** Makes one explicit protected preview request for the current ordered selection. */
     fun preview(): Boolean {
-        if (!editable() || isSavedStoryEdit || hasUnfinishedChapterDictation || state.value.selectedAssetIds.isEmpty() || state.value.selectedAssetIds.size > MAX_ASSETS) return false
+        if (!editable() || isSavedStoryEdit || pendingRecoveryBlocksNewStory() || hasUnfinishedChapterDictation ||
+            state.value.selectedAssetIds.isEmpty() || state.value.selectedAssetIds.size > MAX_ASSETS) return false
         return startPreview(reloadSources = false)
     }
 
@@ -532,6 +827,11 @@ class StoryWorkspaceStore(
         val language = previous.language
         val oldDraft = previous.draft?.let(::detachDraft)
         val oldChapters = previous.editableChapters.map(::detachChapter)
+        if (!reloadSources) {
+            authoredTitle = false
+            authoredChapterTitles.clear()
+            authoredChapterNarrations.clear()
+        }
         if (reloadSources && (oldDraft == null || oldDraft.items.map { it.asset.id } != ids)) return false
         clearRelated()
         clearOperationOnly()
@@ -763,7 +1063,20 @@ class StoryWorkspaceStore(
         closeChapterDictation()
         invalidateTitleWork()
         titleRevision++
+        val prior = state.value.editableChapters
+        val priorTitleIds = authoredChapterTitles.toSet()
+        val priorNarrationIds = authoredChapterNarrations.toSet()
+        val authoredTitles = prior.filter { it.id in priorTitleIds }.map { it.title }.toSet()
+        val authoredWords = prior.filter { it.id in priorNarrationIds }.map { it.narration }.toSet()
         val frozen = immutable(chapters.map(::detachChapter))
+        authoredChapterTitles.clear()
+        authoredChapterNarrations.clear()
+        frozen.forEach { chapter ->
+            if (chapter.title in authoredTitles || prior.any { it.id == chapter.id && it.id in priorTitleIds })
+                authoredChapterTitles.add(chapter.id)
+            if (chapter.narration in authoredWords || prior.any { it.id == chapter.id && it.id in priorNarrationIds })
+                authoredChapterNarrations.add(chapter.id)
+        }
         val updatedDraft = detachDraft(originalDraft).copy(chapters = frozen)
         mutable.value = state.value.copy(draft = updatedDraft, editableChapters = frozen,
             reviewed = false, dirty = true, titleCandidates = emptyList(), invalidInput = false)
@@ -798,6 +1111,7 @@ class StoryWorkspaceStore(
         if (!editorReady() || hasUnfinishedChapterDictation) return false
         invalidateTitleWork()
         titleRevision++
+        authoredTitle = true
         val valid = validText(value, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false)
         mutable.value = state.value.copy(title = value, titleCandidates = emptyList(), reviewed = false,
             dirty = true, invalidInput = !valid || state.value.editableChapters.any { !validText(it.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) || !validText(it.narration, 6000, allowNewline = true) })
@@ -810,6 +1124,7 @@ class StoryWorkspaceStore(
         if (index !in chapters.indices) return false
         invalidateTitleWork()
         titleRevision++
+        authoredChapterTitles.add(chapters[index].id)
         val updated = immutable(chapters.mapIndexed { i, chapter ->
             if (i == index) chapter.copy(title = value) else chapter
         }.map(::detachChapter))
@@ -825,6 +1140,7 @@ class StoryWorkspaceStore(
         if (index !in chapters.indices) return false
         invalidateTitleWork()
         titleRevision++
+        authoredChapterNarrations.add(chapters[index].id)
         val updated = immutable(chapters.mapIndexed { i, chapter ->
             if (i == index) chapter.copy(narration = value) else chapter
         }.map(::detachChapter))
@@ -855,6 +1171,7 @@ class StoryWorkspaceStore(
         val candidate = state.value.titleCandidates.getOrNull(index) ?: return false
         invalidateTitleWork()
         titleRevision++
+        authoredTitle = true
         mutable.value = state.value.copy(title = candidate.text, titleCandidates = emptyList(), reviewed = false, dirty = true)
         return true
     }
@@ -868,6 +1185,7 @@ class StoryWorkspaceStore(
 
     fun save(): Boolean {
         if (!editorReady() || state.value.composing || state.value.invalidInput || !state.value.reviewed || hasUnfinishedChapterDictation) return false
+        if (localDraftRecord?.pendingSave != null && !localDraftAttached) return false
         if (state.value.guideStep != null && (state.value.guideStep != StoryGuideStep.REVIEW ||
                 !guideWordsAreValid(state.value) || state.value.editableChapters.none { it.narration.isNotBlank() })) return false
         closeChapterDictation()
@@ -889,6 +1207,34 @@ class StoryWorkspaceStore(
                 reviewed = false, failureStatus = failure.status)
             return false
         }
+        if (localDraftRecord != null && localDraftAttached) {
+            val before = requireNotNull(localDraftRecord)
+            val savedRequest = requireNotNull(pending)
+            val currentState = state.value
+            val currentDraft = requireNotNull(currentState.draft)
+            val journal = before.copy(revision = before.revision + 1, updatedAtEpochMillis = now().coerceAtLeast(1L),
+                selectionRevision = currentDraft.selectionRevision, selectedAssetIds = currentState.selectedAssetIds.toList(),
+                theme = currentState.theme, language = currentState.language,
+                title = if (authoredTitle) currentState.title else "", titleAuthored = authoredTitle,
+                chapters = currentState.editableChapters.map { chapter -> StoryDraftChapter(chapter.id,
+                    if (chapter.id in authoredChapterTitles) chapter.title else "", chapter.id in authoredChapterTitles,
+                    if (chapter.id in authoredChapterNarrations) chapter.narration else "", chapter.id in authoredChapterNarrations,
+                    chapter.assetIds.toList(), if (currentState.sourceReviewEnabled) chapter.evidenceIds.toList() else emptyList()) },
+                sourceReviewEnabled = currentState.sourceReviewEnabled, guideMode = currentState.guideStep != null,
+                guideStep = currentState.guideStep?.name,
+                pendingSave = StoryDraftPendingSave(savedRequest.body, savedRequest.bodyMutationId(),
+                    savedRequest.sourceReview, savedRequest.assetIds))
+            try {
+                localDraftRecord = requireNotNull(localDraftPersistence).write(journal, before.revision, before.recordId)
+            } catch (_: Exception) {
+                pending = null
+                mutable.value = state.value.copy(status = StoryWorkspaceStoreStatus.EDITING, busy = false,
+                    hasPendingSave = false, localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+                return false
+            }
+            mutable.value = state.value.copy(localDraftRevision = localDraftRecord?.revision,
+                localDraftStatus = LocalStoryDraftStatus.SAVED, localDraftError = false, localDraftRequiresRecovery = true)
+        }
         return submitPending()
     }
 
@@ -907,11 +1253,19 @@ class StoryWorkspaceStore(
                 val saved = repository.save(frozen) { current(expected, ticket) }
                 if (current(expected, ticket)) {
                     pending = null
+                    val draftRemoved = clearPublishedLocalDraft()
                     val editBaseRevision = savedEditStory?.revision
                     mutable.value = StoryWorkspaceStoreState(status = StoryWorkspaceStoreStatus.SAVED,
                         selectedAssetIds = immutable(state.value.selectedAssetIds), theme = state.value.theme,
                         language = state.value.language, savedStory = detachSavedStory(saved),
-                        savedStoryIsNewerThanEditBase = editBaseRevision != null && saved.revision > editBaseRevision + 1)
+                        savedStoryIsNewerThanEditBase = editBaseRevision != null && saved.revision > editBaseRevision + 1,
+                        localDraftStatus = when {
+                            !draftRemoved -> LocalStoryDraftStatus.ERROR
+                            localDraftRecord != null -> LocalStoryDraftStatus.AVAILABLE
+                            else -> LocalStoryDraftStatus.EMPTY
+                        },
+                        localDraftRevision = localDraftRecord?.revision, localDraftError = !draftRemoved,
+                        localDraftRequiresRecovery = !draftRemoved)
                 }
             } catch (_: CancellationException) { stale(ticket) }
             catch (failure: ApiFailure) {
@@ -956,11 +1310,42 @@ class StoryWorkspaceStore(
         operation?.cancel(); operation = null
         bound = null
         pending = null
+        localDraftRecord = null
+        localDraftSlotOccupied = false
+        localDraftAttached = false
+        localDraftPublicationConfirmed = false
+        localDraftUnreadableFingerprint = null
+        authoredTitle = false
+        authoredChapterTitles.clear()
+        authoredChapterNarrations.clear()
         savedEditStory = null
         savedEditReferences = null
         titleRevision++
         clearRelated()
         mutable.value = StoryWorkspaceStoreState()
+    }
+
+    private fun clearPublishedLocalDraft(): Boolean {
+        val record = localDraftRecord ?: return true
+        if (record.pendingSave == null) return true
+        localDraftPublicationConfirmed = true
+        val persistence = localDraftPersistence ?: return false
+        val scope = record.scope
+        try {
+            if (persistence.delete(scope, record.recordId, record.revision)) {
+                localDraftRecord = null
+                localDraftSlotOccupied = false
+                mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.EMPTY,
+                    localDraftRevision = null, localDraftError = false)
+                return true
+            } else {
+                mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+                return false
+            }
+        } catch (_: Exception) {
+            mutable.value = state.value.copy(localDraftStatus = LocalStoryDraftStatus.ERROR, localDraftError = true)
+            return false
+        }
     }
 
     private fun clearOperationOnly() { epoch++; operation?.cancel(); operation = null }

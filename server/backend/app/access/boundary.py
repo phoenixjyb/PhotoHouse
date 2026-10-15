@@ -38,7 +38,7 @@ class ClosedBoundary:
         ('GET', '/auth/session'), ('POST', '/auth/logout'),
         ('POST', '/auth/invitations/accept'),
     }
-    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/assistant-private-workspace.js', '/ui/voice-turn-timing.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
+    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/story-draft-store.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/assistant-private-workspace.js', '/ui/voice-turn-timing.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
 
     REVIEWED = {(method, route.path, route.endpoint)
                 for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)

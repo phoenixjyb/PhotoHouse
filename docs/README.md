@@ -70,3 +70,5 @@ these documents. Use the exact current operation scope and preserved rollback pl
 
 - [Oral-history intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md): internal
   bounded section/receipt contract and remaining withdrawal/transport gates.
+
+- [Private story draft save/resume contract](STORY_DRAFT_RESUME.md): encrypted device-local creation drafts, fresh access/evidence and exact uncertain-save recovery.

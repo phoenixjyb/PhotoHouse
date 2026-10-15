@@ -17685,6 +17685,250 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "private-device-story-drafts-and-explicit-emulator-test-boundary",
+      "source_commit": "375a7b2d71c2da3c54b58d6bb7d75ce113abfdcc",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "745aa81817e9ef90e5dd30f60a53a91e83daadf3b8670e0becfcd7236a9ce3a9",
+          "sha256": "b3c7fdc7430b398c634d12fab4c35827d3e16877424e00ad231bd2a2fd44de69"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryReviewUiTest.kt",
+          "before_sha256": "aaff1162d7f27e71aca797e38182c93d580b98d4b8b71ef022115debb4ceb6ec",
+          "sha256": "a9ed5cc66982983c6ad0a4505251fcb439488a0cfd6235b2bb67454c878a19ee"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/KeystoreStoryDraftPersistenceTest.kt",
+          "before_sha256": null,
+          "sha256": "6cfdc905dc583b6267379f6a7221fb087ac03fba822a04ae8ed33ff94fc6e07f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "95fd2466cdbaa387ad87c0d657712fc55c336a6e208c9fab1f06b4e809e81fa8",
+          "sha256": "4918cba3be2d9662fecfeb0a5ce8553d9a44ba4cf0eab85227fceafb60ebe760"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "d8452e69c36212b3c615b4bb7fa2062aae016e7bf84292e86846eb081dc2fd89",
+          "sha256": "315639636410036eabc270c1b399b64eed854b2670ab80540082310cce3ea424"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreStoryDraftPersistence.kt",
+          "before_sha256": null,
+          "sha256": "9e03ba00be03a2544cfb49a8bc7edead0e4f61cc0f503accda46ff01e5a0e875"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "before_sha256": "38253016475c3b3c3f26d15d681adc817a00a3871680fc294e8202668cb3ca1d",
+          "sha256": "d683a1239244192a3b59d85ed88cd4dccdf8da6af07e435b2544bb2ec74108e3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "083cab94a32ce002a23da3a8c4d98e5328cefb907ca37cf8331763d4e8dcdc71",
+          "sha256": "5b460ba085b212717ad65c44ffe97e925fbdccceb8c91dc1857a1e35a9e3a33b"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryDraftPersistence.kt",
+          "before_sha256": null,
+          "sha256": "88efa425a3b9444d38964a3d363e3973314221b290bdca20b6b4af9162a67d5d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "b88c95a12122fcfc19dd45793a3b9f2e74d3e7cf18c5abe66fbdb0602f426c5f",
+          "sha256": "3f9a02f54ed203e9688cab3a1c419b61d0904b96f675c9dcd4dc898ad8a85712"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryCreationStoreTest.kt",
+          "before_sha256": "54dfb46adb0e87990ab765c4ad78c49f8928529d2c1d383dbdf017af1dbadd39",
+          "sha256": "47e428f97a5ff61b8b740a00d8dbc3ce08507da55271859e5f81236b5d543dcd"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryDraftRecordCodecTest.kt",
+          "before_sha256": null,
+          "sha256": "385781be795cebe8d82649862c8da5fd3184ad11c0fe151a0d4adf0843fcae93"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "7c9e6cf0927e1083ecffe845823161b7e036f19cbac5a2973ae2f9f539f1b546",
+          "sha256": "17485fb17750e8c8fc06301c61dc5d564710a3ccda84f269ae0e8316e2498ebb"
+        },
+        {
+          "path": "clients/android/docs/PHONE_FIRST_STORY_GUIDE.md",
+          "before_sha256": "5939d1d9e36e0915c930ba2b298f4563b43ada640089d77728abb5a03347b0d0",
+          "sha256": "bd75173163b6b5c72bc276532dc64756c88358bc6d1a7989c68de76934fb1269"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "7162b06023dbbbd60a35e460199ea688e2148894f06027d01d66eb4d36dc1e61",
+          "sha256": "d2ef9210bfa4015b2fb64c53d6d8ad40fa80ba562f3fecc9e83cb1d137356bf5"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "3595c84b3ca41d7a8c365febebf241f8da09d3ed336094758e187a0bf665aa9a",
+          "sha256": "1990ecb2c70fe8aab910ffe689d8b177ee8f582c0105eabf986adcac900aab91"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "61a059249cc783bf95ad5a96b774cd69354ce0ca68484302ee1c541024207151",
+          "sha256": "037e4d994b84e9abb8328b21cf0f24c956df1ec1f4cd8a2726db1bf154a45d24"
+        },
+        {
+          "path": "docs/FIRST_STORY_GUIDE_ZH.md",
+          "before_sha256": "e508a84299e809d718f9a293887581a9ed21f7840501ba34294f5efd624fcbf1",
+          "sha256": "f5cc3313901be2b1a4ff5ad6e6f0387c258635ded0c5284acef30969079f1a41"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b89f6dc712016eba1ae5ac5b1c2d84a32f9a2451b97065bfe354a5692467820d",
+          "sha256": "595f782563d849b98c5126d8a9dee8ea0b57b03d27f29d2f0bba2d20f22f45ac"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "84f85b607b119de8942379fc5f65981cc025eb4fcfc6c0cb065ab1365021c436",
+          "sha256": "e16e93532118cb44f6d408aeeb32dd88567b741371e68fc3945186a64e8ae454"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "7c79ae4c7597a6024631b08a703ed6f90925eef2a748f382e3899cd82469bceb",
+          "sha256": "287366986ea549263863567b5297e3f0eeb75add1cc029e1418be7a043f975b1"
+        },
+        {
+          "path": "docs/STORY_DRAFT_RESUME.md",
+          "before_sha256": null,
+          "sha256": "707e66848c855b83233231236b4570fe7d85d09bb118b5035c1515a9828081ac"
+        },
+        {
+          "path": "docs/STORY_FIRST_GUIDE.md",
+          "before_sha256": "334c3054fb61a797e27c9aedceaf1a493364c6bfba626f1baf9416335c6fb328",
+          "sha256": "d4188ecb0601a6ddafb3fce09b30291229c0e174d1088a531d7776dd3f2e04d1"
+        },
+        {
+          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
+          "before_sha256": "299838e5747c45862fa771018253387f7d0047cfed7473a20022bbe51e05023f",
+          "sha256": "fe29030234c0c77955499787aeac42b34bafa82235ea0cc3a8dbfd13d6f0b3bb"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "28877f9991acf8cc21f33cabcc1d6e790bc212007c409672d5931d2cda92cc1b",
+          "sha256": "ca1abd0b97250374965a64c82f92c57cef651d01c32a7fd4dc13f3d3cde2e51f"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "cc7c8bcfa346d60ab99f02079146548226a3c4d704a52266cac71fa4c41e8132",
+          "sha256": "a5a266d4fb8b8f769279046129a10731e0e2333a33de42c89fdda2e3a9a75f64"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "903d81d92b262d65c26cfe77f5d03c23fadb39a2b215f5717a0dc9f15289cd78",
+          "sha256": "8728d2adb474c96c9a8996f5e6178554876faceda1883c4977c5a9518a70b118"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-draft-store.js",
+          "before_sha256": null,
+          "sha256": "21cc80bc33bb12c8effdbf9ea0bef6a0091c4a6725164715ce4065945ee23c19"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "1d1ccca36299d5063776433114c07e542ec1058723498dcb04990a689b62c1cd",
+          "sha256": "8cad15cdd7887dd1ee5440d100d096372d4cfb333a168b79b3175d6222936f2e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "fb32ca6128e6c2c1fe7d93a2c160112a9235bbd0ba13e8c86222e06e0fcead0b",
+          "sha256": "3703410fdde0d78f9091977fc742e1e917268137d4c84b71c70575178a0477e6"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "dffe967f38d9eb9b146228523732d21b89ceb871cc9f284d1ed28ad1fc668498",
+          "sha256": "722e995131544053a0e56f4dabc35ea9da80486f6b4fe9e832f931989f0059c7"
+        },
+        {
+          "path": "server/scripts/access_ui_overlay.py",
+          "before_sha256": "fcaaabe797d20efe0fa1bf9ffc01f2b394b7dd5dd581885c33ff77d40474023f",
+          "sha256": "8945c3b16aeb6bd43136057924a9aee5f978ae25f10c6840b2dc4246fb156d42"
+        },
+        {
+          "path": "server/scripts/build_access_ui_overlay.py",
+          "before_sha256": "668cdeefcb7536f53cb5d69af0aca4da4248c796dd5668559df2fb6c16d3d700",
+          "sha256": "1daa592fd05f15d7d92c2386aaf28c0edf8d210e21c8f3879763aee43309bba5"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "26caec4b57b8154270c867477ed02b222f96ab498548d865c5cdb84ecbb39a33",
+          "sha256": "aa1eef09868ebce727758e7a452d3016ee5ddc912add83b2c6b430a6e50dbe67"
+        },
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "d9b1ed4cca8c0cfb60c923b2b0aa44db8857c9cf256ffa50e634b5b6b39f5e3e",
+          "sha256": "a9a2d8e9b862f1d2c1cc0ac230083532ecc64e87ac03dbda39da0e3d34570254"
+        },
+        {
+          "path": "server/tests/security/test_access_ui_overlay.py",
+          "before_sha256": "49f4e2900e2ec32b4760e186465957abe70476aac1c6c0f97e6b9c41dde48ee6",
+          "sha256": "3d0936658d1d46850e46bc68280810f9b0b9e695c7f904b8cd47d1e7e6ff7324"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "01356a9f3c18f56ae3771656a25e27b29d408e577462428374cffc5f6c2f99b2",
+          "sha256": "60462af9691beed8580c392ce79a1447729aeedc9c7d37209eee3a0eb731480e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "9f93ada065c7b557149987359f9ed1512dc974026ce0cdadb979bfaa533b909a",
+          "sha256": "136678fa1efc40f871c2ca241bccfde2960e207cb3460191c6643a759cf6d226"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_resume_browser.cjs",
+          "before_sha256": null,
+          "sha256": "50464721f3d60aa31c7d0770dfdbdd4d95277cd3962b791972fe0cfba81d72da"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_store.cjs",
+          "before_sha256": null,
+          "sha256": "6e0235caacd5ccae3dd88205c43266be9b5e725c042b4a99b1bb24b72e652594"
+        },
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": null,
+          "sha256": "13ffbda7eda8449fb3727fc3e4cfdd6481e119185309caa1b1a25731134f7c3d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0f8cd13ec1e7d80b89b7828a71781dd9ca6c93b511d5e98765902ef13c1180e1",
+          "sha256": "9f5ab530df6199444e9e897605df8ad5731ccc3960f6496d6851f2162c01024e"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": null,
+          "sha256": "bd6cc86cf5c4fcdceffa2416b80269002976f55112aaa279b08b12699c1a8ee6"
+        }
+      ],
+      "protected_routes_added": false,
+      "public_code_only_static_routes_added": true,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false,
+      "integrated_main_commit": "75125a93a5d7376d5877a639e9a28f99bc7eb288"
+    },
+    {
+      "feature": "phone-v63-private-story-drafts-release-version",
+      "source_commit": "6fc56125d0fb18eca113e92c3899fef70d5a2995",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "4a201ea66816a2915b693a65fe08fd4380225393c0d3bbd0aa406ed4b98b9dc9",
+          "sha256": "681a1c5044a52ff20355ce42fe2f76394d5b796e0a4182643ba8cc5a18d8e564"
+        }
+      ],
+      "schema_changed": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
