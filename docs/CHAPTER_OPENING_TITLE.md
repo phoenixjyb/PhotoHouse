@@ -1,8 +1,8 @@
 # Title from a chapter opening
 
-October 15 source increment after v63. Implemented for new Web/phone stories;
-not part of the served v63 Web UI or signed phone APK. Provider-backed title
-suggestions keep their separate, default-off qualification gate.
+Delivered for new Web/phone stories in the [October 15 v64 release](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
+Provider-backed title suggestions keep their separate, default-off qualification
+gate.
 
 ## Experience
 
@@ -55,6 +55,6 @@ The explicit QA-emulator button/private-save case also passed with Chinese/Engli
 and adoption action remain readable and reachable. These are synthetic fixtures,
 not family/device acceptance.
 
-Hosted CI, signed APK publication, Windows service delivery and family use are
-separate gates. This source increment changes no protected API route, database
+Hosted CI, signed APK publication and Windows service delivery passed for v64.
+Family use remains a separate gate. This increment changes no protected API route, database
 schema, provider activation, recording retention or permissions.

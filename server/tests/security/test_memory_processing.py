@@ -282,7 +282,8 @@ class MemoryProcessingTests(unittest.TestCase):
             def companion(inner, bundle):
                 seen['recent'] = bundle['recent_turns']
                 return {'version': 1, 'kind': 'answer', 'reply': 'Current reply.',
-                        'source_ids': [], 'questions': [], 'proposal': None}
+                        'source_ids': [bundle['sources'][0]['id']],
+                        'questions': [], 'proposal': None}
 
         with self.connection() as db:
             result = process_job(db, narrator=InspectContext(), clock=lambda: self.library.now)
