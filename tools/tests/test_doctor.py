@@ -277,9 +277,10 @@ class DoctorTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (module / "index.js").write_text("module.exports = {};\n", encoding="utf-8")
-            node_status = doctor._node_check(
-                {}, lambda _name: node, doctor._run_probe
-            )[0]
+            # This fixture tests real package resolution and its engine rule.
+            # Node availability is a separate check; an empty probe environment
+            # can misclassify optional runner-installed Node wrappers.
+            node_status = {"status": "available", "version": "22.17.0"}
             status = doctor._playwright_check(
                 server,
                 {"PLAYWRIGHT_MODULE": str(module), "PATH": os.environ.get("PATH", "")},

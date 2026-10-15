@@ -19720,6 +19720,21 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "deterministic-node-status-for-real-playwright-engine-fixture",
+      "source_commit": "e8f088f3d39e767474d177f67a476e7a5ef5bd4b",
+      "files": [
+        {
+          "path": "tools/tests/test_doctor.py",
+          "before_sha256": "79e90101445c08692d7695587cfbaa630be2ca6de466bbdcd24c24e4e17ec699",
+          "sha256": "43c1b4b9f9871237c9a6e862ec67d3ce9f6261bf1c8b3c768ada98b1c660e992"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_behavior_changed": false,
+      "package_engine_assertion_preserved": true
     }
   ]
 }
