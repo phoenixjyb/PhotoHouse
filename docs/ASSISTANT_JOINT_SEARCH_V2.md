@@ -157,7 +157,10 @@ The legacy text embedding helper's placeholder-vector fallback is not connected
 to this path. General paraphrase understanding, cross-language semantic recall
 and text-to-image retrieval still need a qualified local planner/compatible real
 query encoder and measured relevance. This source increment activates none of
-those models. See [readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md)
+those models. A separate [opt-in semantic API pilot](SEMANTIC_SEARCH_PILOT.md)
+provides source integration for a qualified encoder and immutable image-vector
+cohort; it does not change assistant v2 filters or activate a model.
+See [readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md)
 for the separate reviewed data and evaluation gates.
 
 Version-2 cards with text/person/date evidence add `match_reasons`; media-only

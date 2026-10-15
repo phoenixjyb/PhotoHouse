@@ -414,6 +414,10 @@
   {
    "source": "tests/security/test_access_transport.py",
    "expression": "app.include_router(router)"
+  },
+  {
+   "source": "backend/app/main.py",
+   "expression": "app.include_router(semantic_search_router)"
   }
  ],
  "routes": [
@@ -4638,6 +4642,20 @@
    "scope": "Current approved library membership AND original authenticated request author; own unexpired succeeded speech receipt only.",
    "current_control": "Closed UUIDv4 path; same-origin cookie CSRF; bounded terminal outcome; first event wins with idempotent repeats; separate journal events preserve legacy receipt envelopes.",
    "gap": "Source candidate; native qualification, live activation and physical playback acceptance remain separate."
+  },
+  {
+   "source": "backend/app/access/semantic_search_transport.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/libraries/{library_id}/semantic-search/v1/query",
+   "handler": "search",
+   "surface": "photohouse-semantic-pilot",
+   "scope": "Current approved member, active mapped images, reviewed hard filters, complete eligible qualified-vector cohort",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Unmounted by default; explicit matching SemanticSearchRuntime factory only. Reviewed boundary binds method/template/handler. Authorization before body, metadata, vector files and loopback encoder. Existing hard filters precede bounded full-cohort cosine ranking; source and membership rechecked after encoding. Query-specific binding/fingerprint, aggregate deadline, disconnect cancellation, no-store and bounded response. No placeholder vectors or cross-library candidates.",
+   "gap": "Source and generated-fixture evidence only. Requires an explicitly installed local encoder implementing the pinned protocol, separately measured joint-space qualification and compatible immutable image artifacts. No default runtime config, Web/Android integration, model activation or real family relevance acceptance."
   }
  ]
 }

@@ -17735,6 +17735,77 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "explicit-protected-semantic-image-search-pilot",
+      "source_commit": "e86058769a9ebc964bca8e5db9caaa97c1ba1ed9",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "c07dfd0979d6b0d53d2fff1ce4d69759fc773857687a09399a11d0394c2ab872",
+          "sha256": "7307bd923072ff4a0d1ea8d20b5d4e88b47ce11aaf128d3940d9424a063b5eeb"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": null,
+          "sha256": "a7c53f69005b21c9f518a4311cbc80feeabce97e9f56a4198c09069efad36f10"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "28877f9991acf8cc21f33cabcc1d6e790bc212007c409672d5931d2cda92cc1b",
+          "sha256": "4c94e837561aedbc8a4ec00f8b40e9a0b0a49b311512cafc9a6f3846412b3170"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": null,
+          "sha256": "b4cf922c81feb880bff61849fbd27d01c37cfe2fcc336a3db370f7fb9ec3ece4"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": null,
+          "sha256": "88b7d5e026f0e3834b993e7217217217a3dd65815e17ab88d1b2aca50c190d94"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search_transport.py",
+          "before_sha256": null,
+          "sha256": "0654f9d0e78bc34949e8436ed6296d2f3812dd97612729e0ceec43c1c7963283"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "0aba5599f590bf17f4a86344d4be611b364b249532b1f037e2769a57c9c3a764",
+          "sha256": "c24551bb76d3c16394560442beb37635db20ebce0fd50816fb19d280e18f07fb"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "dffe967f38d9eb9b146228523732d21b89ceb871cc9f284d1ed28ad1fc668498",
+          "sha256": "296bd3b53939040a973491da00b7ef8cc44decc4288230626ea93c3b0bae0155"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6bcd799a2704ab6c43d787e95fd918fec559f44d14c8211c9f2f761036e5cb3e",
+          "sha256": "8f8eaf996e6c4459701275cc57982b0f7257245364423ec3c2ab6c9b3feaed48"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "before_sha256": null,
+          "sha256": "af91d162311b3e805118ed0c79c8d72858a25cc82329c86dd2f477935fbc2c4f"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": null,
+          "sha256": "31850eb19a114b475bff4c8c2c8d21ee4439863fd7a960450679d40c267d094b"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "438faaac4f787cdf7df4812a947fff2a62af901c3ae0cf98094a2fecb4d353de",
+          "sha256": "607ca270cfa1a9fd0c01797a82208403b4028fcddd2a91a9482a9f42e0b81697"
+        }
+      ],
+      "routes_added": true,
+      "default_routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

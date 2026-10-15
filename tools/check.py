@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_search_readiness.py", "test_search_evaluation.py", "test_private_search_cli.py",
     "test_assistant_query_plan.py", "test_search_text.py", "test_search_turn_projection.py", "test_search_refinement.py",
+    "test_semantic_encoder.py", "test_semantic_search.py",
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",

@@ -1,0 +1,242 @@
+"""Explicit semantic API over generated SQLite and immutable vector artifacts."""
+from contextlib import closing
+from dataclasses import replace
+import hashlib
+import json
+from pathlib import Path
+import sqlite3
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+import httpx
+from fastapi.testclient import TestClient
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests/security')]
+
+from app.main import create_app
+from app.access import discovery as d
+from app.access.discovery_transport import DiscoveryRuntime
+from app.access.service import AccessService
+from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
+from app.access.semantic_search import SemanticSearchRuntime
+from app.access.visual_candidates import canonical_vector_checksum
+from app.access.visual_vector_schema import create_visual_vector_schema
+from app.access.visual_vector_loader import _read_vector
+import test_assistant_joint_search as fixtures
+import test_visual_vector_loader as vector_fixtures
+IDENTITY = vector_fixtures.IDENTITY
+from phone_discovery_fixture import OTHER, TOKEN, NOW, reviewed
+
+BASE = '/libraries/family-a/semantic-search/v1/query'
+BINDING = JointSpaceBinding(IDENTITY, replace(IDENTITY, artifact_sha256='c'*64,
+                          preprocessing_sha256='d'*64, model_version='text-v1'), 'e'*64)
+
+
+class SemanticSearchTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = fixtures.AssistantJointSearchTests('test_text_union_dedup_reasons_and_authored_first_order')
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        directory = tempfile.TemporaryDirectory(prefix='semantic-search-vectors-')
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name).resolve()
+        self.files = {}
+        with closing(sqlite3.connect(self.fixture.database)) as db, db:
+            db.execute('PRAGMA journal_mode=WAL')
+            db.execute('ALTER TABLE assets ADD COLUMN hash_sha256 TEXT')
+            for aid, in db.execute('SELECT id FROM assets').fetchall():
+                db.execute('UPDATE assets SET hash_sha256=? WHERE id=?', (hashlib.sha256(str(aid).encode()).hexdigest(), aid))
+            create_visual_vector_schema(db)
+            holder = SimpleNamespace(db=db, root=self.root)
+            for aid, vector in ((101, (0.0, 1.0)), (103, (1.0, 0.0)),
+                                (201, (1.0, 0.0)), (999, (1.0, 0.0))):
+                path, record = vector_fixtures.VisualVectorLoaderTests.add_vector(holder, aid, vector,
+                    source_hash=hashlib.sha256(str(aid).encode()).hexdigest())
+                self.files[str(aid)] = (path, record)
+        self.calls = []
+        self.during_encode = None
+
+        def provider(request):
+            body = json.loads(request.content)
+            self.calls.append(body)
+            if self.during_encode is not None:
+                self.during_encode()
+            vector = [1.0, 0.0]
+            return httpx.Response(200, json={'version': 1,
+                'binding_sha256': BINDING.binding_sha256,
+                'query_sha256': hashlib.sha256(body['query'].encode()).hexdigest(),
+                'vector': vector, 'checksum_sha256': canonical_vector_checksum(vector)})
+
+        self.encoder = LocalSemanticEncoder(BINDING, 'http://127.0.0.1:43210/v1/encode-text',
+                                           transport=httpx.MockTransport(provider))
+        self.runtime = SemanticSearchRuntime(self.fixture.discovery_runtime, self.root, self.encoder)
+        app = create_app(access_runtime=self.fixture.access, discovery_runtime=self.fixture.discovery_runtime,
+                         assistant_enabled=True, semantic_search_runtime=self.runtime)
+        self.client = TestClient(app, base_url=fixtures.ORIGIN)
+        self.addCleanup(self.client.close)
+
+    def query(self, *, query='a child flying a kite', filters=None, token=TOKEN, **kwargs):
+        return self.client.post(BASE, headers={'Authorization': 'Bearer ' + token},
+                                json={'query': query, 'filters': filters or {}, **kwargs})
+
+    def test_semantic_scores_replace_literal_eligibility_only_on_the_explicit_api(self):
+        seen = []
+        def checked(root, artifact):
+            seen.append(artifact.asset_id)
+            return _read_vector(root, artifact)
+        with patch('app.access.semantic_search._read_vector', checked):
+            response = self.query()
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual([item['id'] for item in body['items']], ['103', '101'])
+        self.assertEqual(set(seen), {'101', '103'})
+        self.assertEqual(body['filters'], {'media': ['image']})
+        self.assertEqual(body['semantic'], {'mode': 'text_to_image', 'score_kind': 'cosine',
+                         'coverage': 'complete_eligible_images', 'candidate_count': 2, 'needs_review': True})
+        self.assertGreater(body['items'][0]['semantic_score'], body['items'][1]['semantic_score'])
+        self.assertEqual(set(self.calls[0]), {'version', 'query', 'binding_sha256'})
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        for private in ('vector', 'qualification_sha256', str(self.root), 'Foreign caption secret'):
+            self.assertNotIn(private, response.text)
+        literal = self.fixture.turn('find photos containing "a child flying a kite"').json()
+        self.assertEqual(literal['total'], 0)
+
+    def test_people_date_location_tags_and_literal_text_are_joint_hard_filters(self):
+        cases = (
+            ({'people': {'ids': ['301', '302'], 'match': 'all'}}, ['103']),
+            ({'date': {'from': '2032-09-01', 'to': '2032-09-01'}}, ['101']),
+            ({'tags': {'ids': ['501'], 'match': 'all'}}, ['103']),
+            ({'locations': ['601'], 'text': 'Family beach'}, ['101']),
+            ({'people': {'ids': ['301', '302'], 'match': 'all'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-01'}}, []),
+        )
+        for filters, expected in cases:
+            with self.subTest(filters=filters):
+                seen = []
+                def checked(root, artifact):
+                    seen.append(artifact.asset_id)
+                    return _read_vector(root, artifact)
+                before = len(self.calls)
+                with patch('app.access.semantic_search._read_vector', checked):
+                    response = self.query(filters=filters)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual([item['id'] for item in response.json()['items']], expected)
+                self.assertEqual(set(seen), set(expected))
+                self.assertEqual(len(self.calls)-before, int(bool(expected)))
+
+    def test_missing_corrupt_or_stale_eligible_artifact_refuses_without_partial_results(self):
+        self.files['101'][0].write_bytes(b'corrupt')
+        response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(self.calls, [])
+        # A corrupt image outside an explicit person filter is never read.
+        response = self.query(filters={'people': {'ids': ['302'], 'match': 'all'}})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual([item['id'] for item in response.json()['items']], ['103'])
+        self.files['103'][0].unlink()
+        self.assertEqual(self.query(filters={'people': {'ids': ['302'], 'match': 'all'}}).status_code, 503)
+
+    def test_source_digest_mismatch_refuses_before_encoder(self):
+        self.fixture.mutate('UPDATE assets SET hash_sha256=? WHERE id=101', ('f'*64,))
+        self.assertEqual(self.query().status_code, 503)
+        self.assertEqual(self.calls, [])
+
+    def test_unknown_person_or_video_mode_is_invalid_and_never_calls_encoder(self):
+        for filters in ({'people': {'ids': ['401'], 'match': 'any'}}, {'media': ['video']},
+                        {'text': 'x'*513}, {'unknown': True}):
+            self.assertEqual(self.query(filters=filters).status_code, 400)
+        self.assertEqual(self.calls, [])
+
+    def test_oversized_eligible_cohort_refuses_before_vector_files_and_encoder(self):
+        with closing(sqlite3.connect(self.fixture.database)) as db, db:
+            db.execute('PRAGMA foreign_keys=ON')
+            for aid in range(1000, 1513):
+                db.execute('INSERT INTO assets(id,status,mime,hash_sha256) VALUES(?,?,?,?)',
+                           (aid, 'active', 'image/jpeg', 'f'*64))
+                db.execute('INSERT INTO access_asset_libraries VALUES(?,?)', (aid, 'family-a'))
+            db.commit()
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        provider = self.fixture.discovery_runtime.provider
+        with patch.object(provider, 'get', return_value=index), patch(
+                'app.access.semantic_search._read_vector', side_effect=AssertionError('truncated cohort')):
+            response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(self.calls, [])
+
+    def test_membership_precedes_body_provider_and_path_reads(self):
+        with patch.object(type(self.fixture.discovery_runtime.provider), 'get', side_effect=AssertionError('metadata before auth')):
+            denied = self.query(token=OTHER)
+            anonymous = self.client.post(BASE, content=b'not-json')
+        self.assertEqual(denied.status_code, 401, denied.text)
+        self.assertEqual(anonymous.status_code, 401, anonymous.text)
+        self.assertEqual(self.calls, [])
+
+    def test_pagination_is_bound_to_query_and_current_source(self):
+        first = self.query(page_size=1).json()
+        self.assertEqual(first['total'], 2)
+        self.assertTrue(first['has_more'])
+        second = self.query(page=2, page_size=1, binding=first['binding'], fingerprint=first['fingerprint'])
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual([item['id'] for item in second.json()['items']], ['101'])
+        changed = self.query(query='different query', page=2, page_size=1,
+                             binding=first['binding'], fingerprint=first['fingerprint'])
+        self.assertEqual(changed.status_code, 409, changed.text)
+        self.assertEqual(self.query(page=2).status_code, 400)
+
+    def test_revocation_during_encoding_withholds_cards(self):
+        self.during_encode = lambda: self.fixture.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        response = self.query()
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotIn('items', response.json())
+
+    def test_source_change_during_encoding_withholds_cards(self):
+        self.during_encode = lambda: self.fixture.mutate("UPDATE access_stories SET revision=2,text='changed' WHERE id='note-101'")
+        response = self.query()
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertNotIn('items', response.json())
+
+    def test_aggregate_deadline_and_cancellation_apply_before_provider(self):
+        cancelled = lambda: True
+        with self.assertRaises(d.DiscoveryCancelled):
+            self.runtime.call('search', TOKEN, 'family-a', cancelled, {'query': 'scene', 'filters': {}})
+        clock = iter([0, 1, 20])
+        self.runtime.discovery.budget.clock = lambda: next(clock, 20)
+        with self.assertRaises(d.DiscoveryUnavailable):
+            self.runtime.call('search', TOKEN, 'family-a', lambda: False, {'query': 'scene', 'filters': {}})
+        self.assertEqual(self.calls, [])
+
+    def test_invalid_json_limits_and_route_neighbours_are_refused(self):
+        auth = {'Authorization': 'Bearer '+TOKEN, 'content-type': 'application/json'}
+        for raw in ('{"query":"scene","query":"other","filters":{}}',
+                    '{"query":"scene","filters":{},"extra":true}',
+                    '{"query":NaN,"filters":{}}'):
+            self.assertEqual(self.client.post(BASE, headers=auth, content=raw).status_code, 400)
+        self.assertEqual(self.query(page_size=21).status_code, 400)
+        self.assertEqual(self.query(query='x'*513).status_code, 400)
+        self.assertEqual(self.query(query='scene\nextra').status_code, 400)
+        for method, path in (('get', BASE), ('post', BASE+'/extra'), ('post', BASE+'/')):
+            self.assertNotEqual(getattr(self.client, method)(path, headers=auth).status_code, 200)
+        self.assertEqual(self.calls, [])
+
+    def test_cookie_csrf_and_query_string_credentials_cannot_bypass_admission(self):
+        from app.access.transport import COOKIE, csrf_token
+        cookie = {'Cookie': COOKIE+'='+TOKEN, 'Origin': fixtures.ORIGIN,
+                  'Sec-Fetch-Site': 'same-origin'}
+        denied = self.client.post(BASE, headers=cookie, json={'query': 'scene', 'filters': {}})
+        self.assertEqual(denied.status_code, 403, denied.text)
+        allowed = self.client.post(BASE, headers={**cookie, 'X-CSRF-Token': csrf_token(TOKEN)},
+                                   json={'query': 'scene', 'filters': {}})
+        self.assertEqual(allowed.status_code, 200, allowed.text)
+        self.assertNotEqual(self.client.post(BASE+'?token='+TOKEN,
+            json={'query': 'scene', 'filters': {}}).status_code, 200)
+
+    def test_route_is_unmounted_by_default_and_configuration_must_match(self):
+        response = self.fixture.client.post(BASE, headers=self.fixture.auth, json={'query': 'scene', 'filters': {}})
+        self.assertNotEqual(response.status_code, 200)
+        self.assertNotIn(BASE.replace('family-a', '{library_id}'), [r.path for r in self.fixture.client.app.routes])
+        with self.assertRaises(ValueError):
+            create_app(semantic_search_runtime=self.runtime)
