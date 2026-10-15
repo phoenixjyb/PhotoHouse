@@ -1,8 +1,8 @@
 # Review wording changes in a story proposal
 
-October 15 Web/phone source increment after v63. This extends the existing
-chapter comparison. It does not enable a provider, generate a story or publish
-a new release.
+Delivered in October 15 Web/API and phone v64. This extends the existing
+chapter comparison without enabling a provider or generating a story. See the
+[release record](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
 
 ## Family experience
 
@@ -51,7 +51,8 @@ Chinese/English 150% Web and emulator renders were inspected. The focused Web
 fixture passed five groups; the full actual-ASGI community journey also passed.
 QA APK and instrumentation builds passed; no physical phone was used.
 
-These checks use synthetic data and no model. Hosted CI, Windows delivery,
-signing/OTA, actual model quality and family acceptance remain separate gates.
+These checks use synthetic data and no model. The release record confirms hosted
+CI, Windows delivery and signing/OTA. Actual model quality and family acceptance
+remain separate gates; generation remains off in this installation.
 No database schema, route, provider, permission or recording-retention change
 is included.

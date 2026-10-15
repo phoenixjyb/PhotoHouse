@@ -177,6 +177,18 @@ observed runtime/artifact/device/resource identities and human review in the
 qualification schema below. A captured proposal does not enable generation,
 alter library stories, or establish story quality.
 
+### Inspect captured wording beside its sources
+
+The source-only [private review page](MEMOIR_QUALITY_REVIEW.md) renders one existing
+synthetic canary capture without a provider request. It shows proposed wording,
+chapter input, cited source records, recent conversation and the current rubric.
+All criteria stay unreviewed. Canonical content and current contracts are checked;
+this does not authenticate model execution or establish semantic quality.
+Narrative and companion capture outputs are now independently revalidated before
+persistence, matching the title check; malformed results retain the input and a
+sanitized failure record without an output or retry. The eight-case inventory and
+its canonical bundles are unchanged.
+
 ### Enter human judgments with a private worksheet
 
 [`review_model_qualification.py`](../tools/review_model_qualification.py) exports

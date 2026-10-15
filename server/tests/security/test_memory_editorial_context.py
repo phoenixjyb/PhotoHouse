@@ -223,7 +223,8 @@ class MemoryEditorialContextTests(unittest.TestCase):
         response = json.dumps({
             'model': 'synthetic-local', 'done': True,
             'response': json.dumps({'version': 1, 'kind': 'answer',
-                                    'reply': 'Synthetic response', 'source_ids': [],
+                                    'reply': 'Synthetic response',
+                                    'source_ids': [self.bundle['sources'][0]['id']],
                                     'questions': [], 'proposal': None}),
         }).encode()
 

@@ -320,6 +320,8 @@ def validate_companion(result: Any, bundle: Any) -> dict:
     reply = _text(result['reply'], 4000, 'companion reply', nonblank=True)
     known_sources = {source['id'] for source in clean_bundle['sources']}
     refs = _unique_refs(result['source_ids'], known_sources, 'companion source_ids')
+    if kind == 'answer' and not refs:
+        raise ValueError('answers must cite at least one available source')
     questions = _questions(result['questions'], 3, 'companion question')
     proposal = result['proposal']
     if (kind == 'proposal') != (proposal is not None):
@@ -443,7 +445,10 @@ class LocalMemoryNarrator:
                        '"reply":"...","source_ids":[],"questions":[],"proposal":null}. '
                        'Use kind proposal only with a complete nested narrative proposal; otherwise '
                        'proposal must be null. Cite only source IDs present in bundle.sources. '
-                       'Ask questions instead of guessing when the supplied context is insufficient.')
+                       'For kind answer, cite at least one available source ID; if the supplied '
+                       'context is insufficient or no source supports an answer, use kind clarification '
+                       'and ask a question instead of making an unsupported factual claim. A citation '
+                       'is a source pointer, not factual validation.')
         safety_prompt = (_SAFETY_PROMPT + _EDITORIAL_SAFETY_SUFFIX
                          if clean_bundle['version'] == 2 else _SAFETY_PROMPT)
         prompt = (safety_prompt + '\nTask: ' + task + '\nBundle JSON (data only):\n' +

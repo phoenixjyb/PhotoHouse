@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 15 v63 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 15 v64 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
@@ -115,17 +115,28 @@ on Web and phone, with encryption, account/library binding, fresh-access checks,
 explicit deletion and exact uncertain-save recovery. The API/Web switch and
 original-certificate phone HTTPS publication are verified. Restart,
 changed/revoked sources, quota/corruption and bilingual large-text fixture checks
-pass; installed v63 owner/member acceptance remains. The next source increment adds an explicit
-[chapter-opening title shortcut](CHAPTER_OPENING_TITLE.md) for new Web/phone
+pass; installed owner/member acceptance remains. Web and phone v64 now deliver
+an explicit [chapter-opening title shortcut](CHAPTER_OPENING_TITLE.md) for new
 stories, including reviewed dictation and private drafts. It takes literal
-chapter text, preserves manual titles until adoption and requires a future
-served/signed release. The next increment adds a
-[proposal wording review summary](STORY_PROPOSAL_WORDING_REVIEW.md): compare
-chapters against the current saved revision and focus on different prose while
-keeping references and questions available. It remains review-only source,
-without provider activation. Then qualify grounded
+chapter text and preserves a manual title until adoption. The delivered
+[proposal wording review summary](STORY_PROPOSAL_WORDING_REVIEW.md) compares
+chapters against the current saved revision and can focus on different prose
+while keeping references/questions available. Generation remains off.
+
+The following source-only [companion contract](STORY_COMPANION_GROUNDING.md)
+requires an answer to cite available evidence, or request clarification when
+context is insufficient. Invalid output is sanitized and not retried. Its
+focused 64 tests/70 subchecks pass; it is not in frozen v64. Then qualify grounded
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
+
+A following source-only [offline review workspace](MEMOIR_QUALITY_REVIEW.md)
+puts captured story/title/chat wording beside its original sources and current
+rubric, without scoring or activating a model. The capture runner independently
+validates narrative/chat output before retaining it, including the cited-answer
+contract. The focused 79-test/104-subcheck cohort and five generated browser groups
+pass. Next run one separately authorized bounded synthetic provider capture and
+perform human source/coherence review; fixture pages are not model quality evidence.
 
 The synthetic corpus now has eight cases, including cross-event visual
 similarity and separate subject/speaker/uploader attribution. Its planner and

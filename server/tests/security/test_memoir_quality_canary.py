@@ -79,7 +79,14 @@ class MemoirQualityCanaryTests(unittest.TestCase):
             self.entry["methods"].append("companion")
             if self.fail == "answer":
                 return {"version": 1, "kind": "answer", "reply": "A valid answer.",
+                        "source_ids": [bundle["sources"][0]["id"]],
+                        "questions": [], "proposal": None}
+            if self.fail == "uncited-answer":
+                return {"version": 1, "kind": "answer", "reply": "An unsupported answer.",
                         "source_ids": [], "questions": [], "proposal": None}
+            if self.fail == "unknown-answer":
+                return {"version": 1, "kind": "answer", "reply": "An unsupported answer.",
+                        "source_ids": ["unknown-source"], "questions": [], "proposal": None}
             if self.fail == "clarification":
                 return {"version": 1, "kind": "clarification", "reply": "A useful clarification.",
                         "source_ids": [], "questions": ["Which approved source should I use?"],
@@ -333,6 +340,46 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         self.assertEqual("invalid_response", record["failure_category"])
         self.assertEqual([case["task"]], calls[0]["methods"])
 
+    def test_narrative_citations_and_order_are_revalidated_before_capture(self):
+        import copy
+
+        mutations = ("uncited", "unknown", "misordered", "foreign_chapter")
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                case, criteria = self.case("synthetic-coherence")
+                calls = []
+
+                class InvalidNarrator:
+                    def narrative(self, bundle):
+                        calls.append("narrative")
+                        result = copy.deepcopy(MemoirQualityCanaryTests.narrative_output(bundle))
+                        if mutation == "uncited":
+                            result["chapters"][0]["source_ids"] = []
+                        elif mutation == "unknown":
+                            result["chapters"][0]["source_ids"] = ["unknown-source"]
+                        elif mutation == "misordered":
+                            result["chapters"].reverse()
+                        else:
+                            result["chapters"][0]["source_ids"] = list(
+                                bundle["chapters"][1]["evidence_ids"])
+                        return result
+
+                output = self.root / ("invalid-narrative-" + mutation)
+                report = canary._run_case(
+                    case, criteria,
+                    {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture",
+                     "timeout_seconds": 12.0},
+                    output, narrator_factory=lambda *_args, **_kwargs: InvalidNarrator())
+                self.assertEqual("request_failed", report["status"])
+                self.assertEqual("invalid_response", report["error_code"])
+                self.assertEqual(["narrative"], calls)
+                self.assertTrue((output / "input-bundle.json").is_file())
+                self.assertFalse((output / "output.json").exists())
+                record = json.loads((output / "record.json").read_text(encoding="utf-8"))
+                self.assertEqual("invalid_response", record["failure_category"])
+                self.assertEqual({criterion: "unreviewed" for criterion in criteria},
+                                 record["quality"])
+
     def test_valid_companion_answer_and_clarification_are_captured(self):
         for kind in ("answer", "clarification"):
             with self.subTest(kind=kind):
@@ -346,6 +393,25 @@ class MemoirQualityCanaryTests(unittest.TestCase):
                 self.assertEqual(kind, private_output["kind"])
                 record = json.loads((output / "record.json").read_text(encoding="utf-8"))
                 self.assertEqual({criterion: "unreviewed" for criterion in criteria}, record["quality"])
+                if kind == "clarification":
+                    self.assertEqual([], private_output["source_ids"])
+
+    def test_uncited_or_unknown_companion_answers_fail_without_output_capture(self):
+        for failure in ("uncited-answer", "unknown-answer"):
+            with self.subTest(failure=failure):
+                calls = []
+                output = self.root / failure
+                report, _case, criteria = self.run_fake(
+                    "synthetic-provenance", output, calls=calls, fail=failure)
+                self.assertEqual("request_failed", report["status"])
+                self.assertEqual("invalid_response", report["error_code"])
+                self.assertEqual(["companion"], calls[0]["methods"])
+                self.assertTrue((output / "input-bundle.json").is_file())
+                self.assertFalse((output / "output.json").exists())
+                record = json.loads((output / "record.json").read_text(encoding="utf-8"))
+                self.assertEqual("invalid_response", record["failure_category"])
+                self.assertEqual({criterion: "unreviewed" for criterion in criteria},
+                                 record["quality"])
 
     def test_provider_failure_text_is_discarded_and_public_output_has_no_proposal(self):
         calls = []

@@ -1,53 +1,47 @@
 # Current project status
 
-Reviewed **2026-10-15 after the v63 private-draft delivery**. Search PR #19 and
-draft PR #20 are merged; the release merge is
-`6b1a08a61f8a33cf81a4bdc06ff397db61c2b213`. API/Web source
-`975968ed8800493f9c1bd42688f21ca7f7348531` is deployed and phone HTTPS OTA serves
-**v63 / 0.63-private-story-drafts**. TV remains v30. The update used the newer
-live search backend (`1913152`) as its incumbent, preserving those improvements.
+Reviewed **2026-10-15 after the v64 story-review delivery**. PR #25 is merged at
+`4e94650b9b75c2921a1990a6cdcd05a9a29ce1a4`. API/Web source
+`5480a0cc99133acc1308caf19a0e33d372cc32f6` is deployed and the Windows phone
+HTTPS OTA feed serves **v64 / 0.64-story-review**. TV remains v30. The update
+preserved the newer live `78a433b` search backend as its incumbent.
 
-The 209-file API candidate passed native synthetic qualification. The guarded
-cutover completed a verified four-store stopped-writer backup, served-file and
-anonymous-denial checks, and restoration of five upload workers. Independent
-postflight verified all 66 task enabled states, only the API action changed,
-startup/settings preserved and ASR/OCR/TTS processes unchanged. Schema
-`a0c9d2e4f817` and configuration are unchanged. No model, generation, grouping,
-kinship binding or historical date backfill was activated.
+The 217-file API candidate passed Windows synthetic qualification. The guarded
+switch verified a four-store stopped-writer backup, served assets and anonymous
+access boundaries, and restored five upload workers. Independent postflight
+verified all 66 task enabled states, preserved API startup/settings and unchanged
+ASR/OCR/TTS processes. Configuration and schema `a0c9d2e4f817` are unchanged.
+No model, generation, grouping, kinship binding or historical backfill was activated.
 
-The release adds [private device drafts](STORY_DRAFT_RESUME.md) for new stories
-on Web and phone: explicitly save encrypted wording and grouping, resume with
-fresh access/evidence, delete locally, and recover the exact uncertain save.
-These drafts remain separate from shared stories and do not sync across devices.
-Guided stories and negotiated search v2 remain available. Phone v63 build/lint,
-embedded-profile and original-icon checks, original-certificate signing and
-Windows and independent Mac trusted HTTPS full APK readback passed. Installation and family
-search/story/voice acceptance of v63 remain open; v62 was the last confirmed
-installed phone version. See [the v63 release record](../clients/android/docs/PHONE_V63_RELEASE_2026-10-15.md).
+The release adds an explicit [title from chapter wording](CHAPTER_OPENING_TITLE.md)
+for new stories and a [proposal wording review](STORY_PROPOSAL_WORDING_REVIEW.md)
+summary/focus. Private device drafts, guided creation, search v2 and voice remain
+available. Proposal review does not enable generation; the current installation
+keeps that provider path off. The original phone signing certificate and artwork
+are preserved. Windows and independent Mac full trusted HTTPS APK readbacks
+passed. See [the v64 release record](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
 
-Local qualification passes: full API profile **1,607 tests / 1,074 subchecks**
-after integrating PR #19; Web storage and draft-resume suites each cover seven
-checkpoint groups, the guide covers six and the existing editor covers thirty.
-Nine guarded QA-emulator tests pass, including AndroidKeyStore and recreated
-Chinese/English editors at 150% text. Later focused store tests and QA build also
-pass for stale deletion and immediate saving after reviewed dictation. These
-cohorts overlap and are not summed. See [the draft evidence](STORY_DRAFT_RESUME.md#qualification-checkpoint).
+A following source-only [companion answer contract](STORY_COMPANION_GROUNDING.md)
+requires an answer to cite available inputs, with clarification when context is
+insufficient. It passed 64 focused tests and 70 subchecks, without a model.
+It is merged through PR #26 with all five review-head CI jobs passing, but is not
+part of the frozen v64 release. Citations are review pointers, not
+proof of factual accuracy; actual model quality retains a separate gate.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `975968e`, 209-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
-| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
-| Phone | v63 signed with original certificate/artwork, published and completely read back over trusted HTTPS on Windows | Update from installed v62; physical draft, reading/listening and search/story trial |
-| TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
-| Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | PR #20 merged; release head passed all five GitHub jobs; exact package provenance and ordered source overlays retained; reader fixture timing correction passes locally | Follow-up hosted CI and delivery record synchronization |
-| Following UX | Three-step guide retained; private draft save/resume delivered in v63 | Family trial; grounded title/narrative provider qualification |
+| API/Web | Source `5480a0c`, 217-file archive; Windows qualification, guarded backup/switch, served-asset and anonymous-denial checks | Real owner/member voice and UX acceptance |
+| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
+| Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
+| TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
+| Public source | Release PR #25 and companion/docs PR #26 merged; all five review-head CI jobs passed for each | Following source-only operator tooling and later delivery |
+| Following storytelling | Citation rule merged; a new [private quality review page](MEMOIR_QUALITY_REVIEW.md) and capture validation correction pass 79 focused tests/104 subchecks and five browser groups | Tooling hosted checks, actual provider/human review, later delivery and family quality |
+| Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
-The [v61 story release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
-binds that guided-story delivery. The later v62 search release supersedes its
-API/phone versions; historical sections below describe their stated checkpoints.
+Earlier dated source, test and release records below retain their exact scope.
+Their versions and pending statements do not override the current summary.
 v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Earlier search checkpoints (historical)

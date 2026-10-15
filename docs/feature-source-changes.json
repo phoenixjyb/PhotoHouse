@@ -18588,6 +18588,203 @@
       "providers_activated": false,
       "household_data_included": false,
       "dialect_relevance_measured": false
+    },
+    {
+      "feature": "phone-v64-story-review-release-version",
+      "source_commit": "b111787c54bf00597686947e3e4fb51cf17f2382",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "681a1c5044a52ff20355ce42fe2f76394d5b796e0a4182643ba8cc5a18d8e564",
+          "sha256": "facdfa29e851d49974d4a1ac8768977a3618cf49c447428f656ad2615bd4879a"
+        }
+      ],
+      "schema_changed": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
+    },
+    {
+      "feature": "story-companion-cited-answer-contract",
+      "source_commit": "489c64bb40454f416b964d220ce523aab0982fc4",
+      "files": [
+        {
+          "path": "docs/STORY_COMPANION_GROUNDING.md",
+          "before_sha256": null,
+          "sha256": "a2faefa19a12ccd2929e34355cac31dddc7e10253e0d46c9d3c18cd48f5d3963"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "a8c58a935e9a84e6a11c8341975ebd29001bacde3d59de16e16308b7ed345c72",
+          "sha256": "a63014e8bf6ad431ea2a64edebf7d5ff07c5dd85c5b4e529320cb7e40297a89d"
+        },
+        {
+          "path": "server/tests/security/test_memory_editorial_context.py",
+          "before_sha256": "e825633ca8e7e0ba85fa051031f870e4b1a00c753556196bcaaa41276a11b66b",
+          "sha256": "96c5a036b88c75a92e5efda55bd8eb30ad03164a571fe113bab07ddcaaebb304"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "e66df76158b92f8c9fce7c8314d262db34b65be7b0db488d98bfac894376df7d",
+          "sha256": "5a7747f7ee9f9a5b58465f6b87efce97a54482259627001e72995afe3b113423"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "fb4a2d4dffabe2f0bf8a1313b5e165b75262d8d4473eaa88db07b34f626c52ee",
+          "sha256": "fcb9779c8a986cde05f234de9ee7a55343d4c76200b6de7475d0952fdf67e818"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
+    },
+    {
+      "feature": "v64-verified-runtime-and-phone-delivery-docs",
+      "source_commit": "eea566a913689c68aff40db2b0b86ef5fbf01443",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "d30a2499e149556ca3c172ae8d824efce3ca605c53de2d7a71ddf1d0b93b5edb"
+        },
+        {
+          "path": "docs/CHAPTER_OPENING_TITLE.md",
+          "before_sha256": "31a544ef0979f2438a26c289967f8390c1c4a746a16359b169cb3be39385054f",
+          "sha256": "49a6423200513951db406c96a3c9e9594b85b1ec5474e97a9b2ed7a1fec78231"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "361991687a8c51a097a14a240f970cb7c9e330698e07a530891e60441ae8e30e",
+          "sha256": "71b33a2c7dbd261cfd946b3b954205ceb4d72752125a8185a586138eeb048b1c"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "59a7a79d63b9ec4ea36163f89ec34f572f79992a69223bc348b399e1142d523f",
+          "sha256": "b17dac67511ac500544d0bc24e01569934eb7e7ee67a169b244b0df112e06db9"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "3ff8ec42291ea401ebf95f3bbf0e1dcda9dd0148af692c6766e2174e70a32602",
+          "sha256": "c5288f156063b7c75503664df808b90e98b2c27cfd8916321c0cb419224cef8f"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "860c8e8a18f48b36b0eb98c57a3b771a06c6840ec031ac9cea0d5e4cb161b39f",
+          "sha256": "9fa57291b73c25e214f5134e08881800c57a34cf57b3f3f79018c6a02020574b"
+        },
+        {
+          "path": "docs/STORY_PROPOSAL_WORDING_REVIEW.md",
+          "before_sha256": "2a789d0aa7088d32c5fe46550e4714a3b22fecb6d4c9516dacfdbb5e0c60800c",
+          "sha256": "de6e13af1244ee18416acf67b03642b14b12b68126886e51afb9b4e3a1916ac3"
+        }
+      ],
+      "application_code_changed": false,
+      "migrations_run": false,
+      "configuration_changed": false,
+      "models_activated": false,
+      "api_web_deployed": true,
+      "phone_ota_published": true,
+      "tv_changed": false,
+      "family_acceptance": false
+    },
+    {
+      "feature": "offline-story-source-review-and-capture-validation",
+      "source_commit": "45378da609eff55ff37e98670f71df745656f458",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "71b33a2c7dbd261cfd946b3b954205ceb4d72752125a8185a586138eeb048b1c",
+          "sha256": "9a8643f136d5367695ebe5e8f12794a6e01ddadf99df160b241ccfc5a1d453be"
+        },
+        {
+          "path": "docs/MEMOIR_QUALITY_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "1ef934f3ba10664511b30807d8e54c1603ce2ebd30b1e1ebc48c65b495baf2bc"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "before_sha256": "21269d68d6c3593e02b5cbf7ee0c17b5d7e37761446c7cda73f0ea688d85c5f8",
+          "sha256": "6ca26155e807fc30d41ca57c9e06510708f9f251656149fb49002632b9203723"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b17dac67511ac500544d0bc24e01569934eb7e7ee67a169b244b0df112e06db9",
+          "sha256": "5db17ae24a6827e9562d2af0363e55112ad45db50e92a43bb37759c278be7bd1"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "c5288f156063b7c75503664df808b90e98b2c27cfd8916321c0cb419224cef8f",
+          "sha256": "afeaacf504647586ded88ffa7199b1e0ff4a73335a224c65e30df6d743bee949"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9fa57291b73c25e214f5134e08881800c57a34cf57b3f3f79018c6a02020574b",
+          "sha256": "e3c4afa7220377127e98faec0d53fd6cb841b77653e8e2479beea54a82098950"
+        },
+        {
+          "path": "server/docs/security/MEMOIR_QUALITY_CASES_V1.md",
+          "before_sha256": "75390fbea58439c887a4b8551920974a3fad2db73aadc34a2dad1e39084deed1",
+          "sha256": "a3630dd2220056d420d2b9707199dc7935a062a9b6508e4605bfe6f73009b6e5"
+        },
+        {
+          "path": "server/scripts/build_memoir_review_page.py",
+          "before_sha256": null,
+          "sha256": "7f562f53b9de4eca6cc0f0a7d89dcff0c49391683b1a79e437be2940fb348dd3"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "before_sha256": "f0eea8d039ecd417ea2ba9f7f6f5a4d1a56eeddb90feaa8835e211f6cc50cba2",
+          "sha256": "70df365bb29ffc51dc484b87238702fd06ee036dae5b98dba3008cf656a33d71"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "before_sha256": "fc8b9ed4b66c695280c75672f79f1af107d7853a7781dca22162958e7c8bba00",
+          "sha256": "ec6bf87bbd6ed595496bbafeecd5961094361e55aaa5673841c0ddf1f054f228"
+        },
+        {
+          "path": "server/tests/security/test_memoir_review_page.py",
+          "before_sha256": null,
+          "sha256": "0996504e6a99c6c99a8068e1cf3abcb7a8a3401752206118bc61818f6f9d181a"
+        },
+        {
+          "path": "server/tests/security/test_memoir_review_page_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f95640f22e0f0448c7a3cc362e67eb421c3b1683f84fbdcf61adfa13d3ba8db5"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "models_run": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false,
+      "upstream_tooling_records": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8",
+          "sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0"
+        }
+      ]
+    },
+    {
+      "feature": "integrate-search-conversations-with-current-story-main-check-profile",
+      "source_commit": "b194741c95b92f76bef895429cc1341e1507200a",
+      "integration_base_commit": "0d215ed4a4ecf3e5a22cedd6d5eb92fa76c11c17",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "4c6c46d4904060b66142fca4fd83a412c7e7b0f8fa8d3bc5753a68a39042a983",
+          "sha256": "65ef71b910c351fe910fb1a55b77d5926cb9b5105df9df692a1e367a02e474f2"
+        }
+      ],
+      "upstream_tooling_records_retained": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
     }
   ]
 }
