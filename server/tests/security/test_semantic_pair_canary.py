@@ -46,7 +46,11 @@ class PairCanaryTests(unittest.TestCase):
                 subject, 'load_model', side_effect=AssertionError), redirect_stdout(output):
             self.assertEqual(subject.run([]), 0)
         value = json.loads(output.getvalue())
-        self.assertEqual(value['queries'], 8)
+        plan = subject.case_plan()
+        self.assertEqual(value['images'], len(plan['images']))
+        self.assertEqual(value['queries'], len(plan['queries']))
+        self.assertEqual(value['languages'], ['en', 'zh', 'zh-en'])
+        self.assertFalse(value['dialect_relevance_measured'])
         self.assertFalse(value['models_loaded'])
 
     def test_exact_private_configuration_and_versions_are_required(self):
@@ -172,10 +176,13 @@ class PairCanaryTests(unittest.TestCase):
                 subject, 'render_case', side_effect=lambda *args:(SimpleNamespace(close=Mock()),'d'*64)):
             result = subject.measure(model, {name:'1.2.3' for name in subject.IMAGE_PACKAGES})
         self.assertEqual(encode.call_count, 4)
-        self.assertEqual(model._vector.call_count, 8)
+        self.assertEqual(model._vector.call_count, 12)
         transform.image_transform_v2.assert_called_once_with({'size':224}, is_train=False)
         self.assertEqual(result['metrics']['languages']['en']['top1'], 4)
         self.assertEqual(result['metrics']['languages']['zh']['top1'], 4)
+        self.assertEqual(result['metrics']['languages']['zh-en']['top1'], 4)
+        self.assertEqual(result['metrics']['overall']['cases'], 12)
+        self.assertFalse(result['metrics']['dialect_relevance_measured'])
         self.assertFalse(result['pair_binding_created'])
         self.assertEqual(len(result['images']), 4)
 

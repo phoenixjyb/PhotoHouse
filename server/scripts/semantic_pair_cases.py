@@ -7,14 +7,14 @@ import math
 from typing import Any
 
 
-_SCHEMA = "photohouse.semantic_pair_cases.v1"
+_SCHEMA = "photohouse.semantic_pair_cases.v2"
 _DIMENSION = 512
 _TIE_EPSILON = 1e-7
 _INVALID = "invalid_semantic_pair_vectors"
 
 
 def case_plan() -> dict[str, Any]:
-    """Return a fresh primitive-only plan for four synthetic color/shape pairs."""
+    """Return a fresh primitive-only plan for fixed synthetic color/shape pairs."""
     images = [
         {"id": "red-circle", "color": [220, 20, 20], "shape": "circle"},
         {"id": "blue-circle", "color": [20, 40, 220], "shape": "circle"},
@@ -27,6 +27,8 @@ def case_plan() -> dict[str, Any]:
         ("red-square", "a red square on a white background", "白色背景上的红色方形"),
         ("blue-square", "a blue square on a white background", "白色背景上的蓝色方形"),
     )
+    # Preserve the v1 English and Chinese cohorts exactly. The mixed-script
+    # cohort is separate so its performance remains visible in evaluation.
     queries = [
         {"id": f"{language}-{image_id}", "language": language,
          "text": text, "expected_image": image_id}
@@ -34,8 +36,19 @@ def case_plan() -> dict[str, Any]:
         for image_id, *texts in words
         for text in (texts[index - 1],)
     ]
+    queries.extend(
+        {"id": f"zh-en-{image_id}", "language": "zh-en", "text": text,
+         "expected_image": image_id}
+        for image_id, text in (
+            ("red-circle", "白色背景上的red circle"),
+            ("blue-circle", "a blue circle，白色背景"),
+            ("red-square", "白色背景上的red square"),
+            ("blue-square", "a blue square，白色背景"),
+        )
+    )
     return {
         "schema": _SCHEMA,
+        "dialect_relevance_measured": False,
         "rendering": {
             "background_rgb": [255, 255, 255],
             "canvas_px": [256, 256],
@@ -89,7 +102,8 @@ def evaluate(image_vectors: object, text_vectors: object) -> dict[str, Any]:
     images = _vectors(image_vectors, image_ids)
     queries = _vectors(text_vectors, query_ids)
     cases = []
-    by_language = {"en": [], "zh": []}
+    language_order = list(dict.fromkeys(query["language"] for query in plan["queries"]))
+    by_language = {language: [] for language in language_order}
     for query in plan["queries"]:
         vector = queries[query["id"]]
         scores = {
@@ -106,19 +120,22 @@ def evaluate(image_vectors: object, text_vectors: object) -> dict[str, Any]:
                   "score_margin": margin}
         cases.append(result)
         by_language[query["language"]].append(result)
-    languages = {}
-    for language, rows in by_language.items():
-        languages[language] = {
+    def summarize(rows):
+        return {
             "cases": len(rows),
             "top1": sum(row["rank"] == 1 for row in rows),
             "top2": sum(row["rank"] <= 2 for row in rows),
             "mean_reciprocal_rank": math.fsum(1.0 / row["rank"] for row in rows) / len(rows),
         }
+
+    languages = {language: summarize(rows) for language, rows in by_language.items()}
     return {
-        "schema": "photohouse.semantic_pair_evaluation.v1",
+        "schema": "photohouse.semantic_pair_evaluation.v2",
         "plan_sha256": plan_sha256(),
         "cases": cases,
+        "overall": summarize(cases),
         "languages": languages,
+        "dialect_relevance_measured": False,
         "family_relevance_measured": False,
         "human_reviewed": False,
         "activation_approved": False,

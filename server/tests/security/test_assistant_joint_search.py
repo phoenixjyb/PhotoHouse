@@ -1,11 +1,15 @@
 """Negotiated assistant search v2 on synthetic SQLite; no runtime services."""
 from contextlib import closing, contextmanager
 from dataclasses import asdict, replace
+import io
 from pathlib import Path
 import sqlite3
 import sys
 import tempfile
 import unittest
+import wave
+
+import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -15,6 +19,7 @@ from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access.discovery_provider import MemoryIndexProvider, ProjectedIndex, ReviewedPerson
 from app.access.assistant_search import name_hits
+from app.access.assistant_speech import LocalAssistantAsr
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.transport import AccessRuntime
 from app.access.service import AccessService
@@ -74,6 +79,7 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.discovery_runtime = runtime
         app = create_app(access_runtime=self.access, discovery_runtime=runtime,
                          assistant_enabled=True)
+        self.app = app
         client = TestClient(app, base_url=ORIGIN)
         old = getattr(self, 'client', None)
         if old is not None:
@@ -93,6 +99,94 @@ class AssistantJointSearchTests(unittest.TestCase):
         return self.client.post('/assistant/v1/turns',
             json={'library_id': 'family-a', 'text': words, 'context': context},
             headers=headers)
+
+    def test_mixed_scripts_reach_authorized_search_without_separator_spaces(self):
+        for words in ('find示例儿童去年九月的photos',
+                      '找示例儿童last year九月的photos'):
+            with self.subTest(words=words):
+                response = self.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['version'], 2)
+                self.assertEqual(body['kind'], 'results', body)
+                self.assertEqual(body['filters'], {
+                    'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                    'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+                self.assertEqual([item['id'] for item in body['items']], ['103', '101'])
+                self.assertIsNone(body['effect'])
+
+    def test_mixed_unrecognized_wording_clarifies_without_a_broader_search(self):
+        for words in ('find示例儿童的photos陌生条件',
+                      '找示例儿童without示例成人的photos'):
+            with self.subTest(words=words):
+                response = self.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['version'], 2)
+                self.assertEqual(body['kind'], 'clarification', body)
+                self.assertEqual(body['items'], [])
+                self.assertIsNone(body['context'])
+                self.assertIsNone(body['effect'])
+
+    def test_mixed_refinement_preserves_people_and_date(self):
+        initial = self.turn('find示例儿童2032年9月的photos').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        response = self.turn('only视频', context=initial['context'])
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body['kind'], 'results', body)
+        self.assertEqual(body['filters'], {
+            **initial['filters'], 'media': ['video']})
+        self.assertIsNone(body['effect'])
+        unresolved = self.turn('only视频陌生条件', context=initial['context']).json()
+        self.assertEqual(unresolved['kind'], 'clarification', unresolved)
+        self.assertEqual(unresolved['filters'], initial['filters'])
+        self.assertEqual(unresolved['context'], initial['context'])
+        self.assertIsNone(unresolved['effect'])
+
+    def test_mocked_transcript_keeps_language_and_text_before_explicit_search(self):
+        # Silence plus a mocked provider verifies the transport contract only;
+        # it is not an ASR accuracy or dialect qualification.
+        output = io.BytesIO()
+        with wave.open(output, 'wb') as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(16000)
+            wav.writeframes(b'\0\0' * 160)
+        headers = {**self.auth, 'Content-Type': 'audio/wav',
+                   'X-PhotoHouse-Library-Id': 'family-a'}
+        cases = (
+            ('find photos of Sample Child from September 2032', 'en', 'results'),
+            ('找示例儿童2032年9月的照片', 'zh', 'results'),
+            ('find示例儿童2032年9月的photos', 'mixed', 'results'),
+            ('find示例儿童的photos陌生条件', 'mixed', 'clarification'),
+        )
+        for words, language, kind in cases:
+            with self.subTest(words=words):
+                self.app.state.assistant_asr = LocalAssistantAsr(
+                    url='http://127.0.0.1:7350/transcribe', model='mocked-test',
+                    transport=httpx.MockTransport(lambda _: httpx.Response(
+                        200, json={'success': True, 'text': words})))
+                transcript = self.client.post('/assistant/v1/transcribe',
+                    content=output.getvalue(), headers=headers)
+                self.assertEqual(transcript.status_code, 200, transcript.text)
+                self.assertEqual(transcript.json(), {
+                    'version': 1, 'text': words, 'language': language})
+                self.assertEqual(transcript.headers['cache-control'], 'no-store')
+                # Submit the unchanged transcript as a separate explicit action.
+                response = self.turn(transcript.json()['text'])
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], kind, body)
+                if kind == 'results':
+                    self.assertEqual(body['filters'], {
+                        'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                        'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+                    self.assertEqual([item['id'] for item in body['items']], ['103', '101'])
+                else:
+                    self.assertEqual(body['items'], [])
+                    self.assertIsNone(body['context'])
+                self.assertIsNone(body['effect'])
 
     def test_text_union_dedup_reasons_and_authored_first_order(self):
         response = self.turn('帮我找包含“海边”的照片')

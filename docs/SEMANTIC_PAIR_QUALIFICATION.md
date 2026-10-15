@@ -1,9 +1,13 @@
 # Generated image/text pair measurements
 
 The optional `qualify_semantic_pair.py` command measures the pinned local
-OpenCLIP provider against four generated color/shape images and eight fixed
-queries, split between English and Chinese. It helps distinguish a model that
-loads from a pair that retrieves these elementary generated inputs correctly.
+OpenCLIP provider against four generated color/shape images and twelve fixed
+queries: four each in English, Chinese, and mixed Chinese-English. It helps
+distinguish a model that loads from a pair that retrieves these elementary
+generated inputs correctly. The original eight English and Chinese queries,
+all four images, and the rendering recipe remain unchanged from v1. The new
+mixed-script cohort is reported separately so it cannot be hidden by an
+aggregate score.
 It reads no family media, database, legacy vector files, library metadata or
 credentials, creates no joint-space binding, and starts no service.
 
@@ -17,7 +21,16 @@ coverage. Source capability does not prove installed schema or ready artifacts.
 
 ## Plan and explicit execution
 
-Planning reads no private configuration and loads no optional model packages:
+Planning reads no private configuration and loads no optional model packages.
+The case-plan and evaluation schemas are v2. The v2 case-plan digest is
+`abd45ca17c022de3875324a9ebda8c747a98c590e3cacb858e0bbad3fafc4fa4`; the
+v1 baseline digest was
+`6380eb66df9262f173b1cece62a5b0cc749ba64bcf941ea221eba840d4750d5f`.
+The v2 digest includes the new cohort and an explicit false dialect-relevance
+marker. Earlier v1 results remain tied to their original digest and cannot be
+compared as though they measured the new cases. The fixed mixed-script queries
+are `白色背景上的red circle`, `a blue circle，白色背景`,
+`白色背景上的red square`, and `a blue square，白色背景`:
 
 ```sh
 python server/scripts/qualify_semantic_pair.py
@@ -76,10 +89,12 @@ are not saved. Source/checkpoint identities are checked throughout and fully
 rehashed after the measurement.
 
 Every query is scored against all four images. Reports include per-case ranks
-and score margins, plus top-1, top-2 and mean reciprocal rank for each language.
-Ties within `1e-7` use the worst rank among tied candidates. A collapsed or
-constant encoder therefore cannot receive arbitrary tie-breaking credit.
-Scores are relative cosine similarities, not probabilities or factual labels.
+and score margins, plus top-1, top-2 and mean reciprocal rank for each language
+cohort and a separate twelve-case overall summary. English, Chinese, and mixed
+Chinese-English remain distinct in the report. Ties within `1e-7` use the worst
+rank among tied candidates. A collapsed or constant encoder therefore cannot
+receive arbitrary tie-breaking credit. Scores are relative cosine similarities,
+not probabilities or factual labels.
 
 `measurement.json` records the case-plan digest, text implementation recipe,
 separate generated-image preprocessing recipe, timings and results. The image
@@ -91,10 +106,14 @@ failures use a fixed error without local paths or provider diagnostics.
 ## Remaining activation gates
 
 Even perfect results on four simple drawings establish only this generated
-case performance. They do not establish scene retrieval, names, identities,
-family-photo relevance, multilingual recall generally or acceptable serving
-latency. Human review and family relevance stay explicitly unverified, and
-activation and legacy-vector qualification stay false.
+case performance. The mixed-script cohort uses fixed printed text, so it does
+not measure ASR, spoken mixed-language recognition, Shanxi/Jin dialect
+recognition, or family relevance. No dialect phrases or aliases are inferred
+from these cases. These results do not establish scene retrieval, names,
+identities, family-photo relevance, multilingual recall generally or acceptable
+serving latency. Human review, dialect relevance, and family relevance stay
+explicitly unverified, and activation and legacy-vector qualification stay
+false. The v1 plan digest remains a distinct historical baseline.
 
 Before a family pilot, prepare compatible immutable image artifacts under a
 separately reviewed production image recipe, measure a larger reviewed case

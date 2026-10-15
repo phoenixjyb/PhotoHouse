@@ -185,7 +185,8 @@ def measure(model, image_package_versions):
         'image_preprocessing_sha256': recipe_sha256(recipe), 'images': image_records,
         'metrics': metrics, 'timings_seconds': timings, 'device': model._device,
         'pair_binding_created': False, 'legacy_vectors_qualified': False,
-        'family_media_read': False, 'activation_performed': False, 'resource_limits_enforced_by_cli': False}
+        'family_media_read': False, 'activation_performed': False, 'resource_limits_enforced_by_cli': False,
+        'dialect_relevance_measured': False}
 
 
 def execute(path, output, *, model_factory=load_model, measure_fn=measure):
@@ -209,7 +210,8 @@ def execute(path, output, *, model_factory=load_model, measure_fn=measure):
     return {'status': 'synthetic_pair_measured', 'case_plan_sha256': plan_sha256(),
         'measurement_sha256': hashlib.sha256(canonical(record)+b'\n').hexdigest(),
         'metrics': record['metrics'], 'activation_performed': False,
-        'family_relevance_measured': False, 'pair_binding_created': False}
+        'family_relevance_measured': False, 'dialect_relevance_measured': False,
+        'pair_binding_created': False}
 
 
 @contextmanager
@@ -245,9 +247,12 @@ def run(argv=None):
         if not args.run:
             if args.configuration is not None or args.output_directory is not None:
                 raise PairRefused()
+            plan = case_plan()
+            languages = list(dict.fromkeys(query['language'] for query in plan['queries']))
             print(json.dumps({'status': 'synthetic_pair_plan', 'case_plan_sha256': plan_sha256(),
-                'images': 4, 'queries': 8, 'languages': ['en', 'zh'], 'models_loaded': False,
-                'activation_performed': False}, sort_keys=True))
+                'images': len(plan['images']), 'queries': len(plan['queries']),
+                'languages': languages, 'models_loaded': False,
+                'activation_performed': False, 'dialect_relevance_measured': False}, sort_keys=True))
             return 0
         if args.configuration is None or args.output_directory is None:
             raise PairRefused()
