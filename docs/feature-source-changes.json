@@ -20236,6 +20236,40 @@
       "partial_probe_output_refused": true,
       "runtime_or_model_settings_changed": false,
       "household_data_included": false
+    },
+    {
+      "feature": "model-free-bilingual-natural-search-openings",
+      "source_commit": "7b1f98d4f1517bf76be5dd039a6dd99ae45660cd",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "a98a7999b42ac02d9bf83ad6d95aecdb4b6d95bcc9bcfcac90f525dbb50141a6",
+          "sha256": "0963f36a9405778360cd55a362c5d1cc72caecae1c6c4cf89d2141e72ffb4236"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "7a65c09bc575de4e0d3195521aca54ca6de070d389e7316f5e168008f9e50fde",
+          "sha256": "88774aad0696101727ca22e75a61a2e39e25b685e71cc4ab83b586ca00e72aa8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "e5b9fce8888def5a5f13a28a751a52e5dd87928cc9ca9f73c77fa2947c4a67da",
+          "sha256": "49ee4f48817174539347b9b15a0b35416d6e4d2d6155ca6c564430484c06e70c"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "e8e106c37fa23cfedf1b127932400851e848a3a9733a922239c924bbbfd9ffb5",
+          "sha256": "552f7953b76a55365d039e20550151692e621832e62d5e27c8144b9ac17720e6"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_required": false,
+      "unknown_conditions_preserved": true,
+      "reviewed_label_collisions_clarify": true,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false
     }
   ]
 }
