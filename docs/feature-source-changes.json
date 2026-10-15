@@ -18699,6 +18699,32 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "chapter-source-chooser-pending-save-recovery",
+      "source_commit": "cd84600b782fc82babea50f851e0c3c018994438",
+      "files": [
+        {
+          "path": "docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md",
+          "before_sha256": "d165cb5ae8594e82b53983d15b055f2a880b41fc6de8a72aa4da773feb9f7210",
+          "sha256": "ca73d9a075505546e7ead98ccdaf9a336e196718cbbddc5823f7d9d314280d26"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "d90105467e1df40774367528f0304c50f38cb62ab9714403a46a20aa58411d79",
+          "sha256": "26d0439c3a03c88493cbe14316201b097bf67088c8f787c43030ee68809c3c89"
+        },
+        {
+          "path": "server/tests/security/test_story_contribution_refs_browser.cjs",
+          "before_sha256": "f2ab211219ba51abef40d929c83e22ab2c247d90b62cca5f07950bb2c32baa4d",
+          "sha256": "fbb1f39bba9ec764abfafbe58f5bcbc1ea31259167a4f825f46daf27d6c3e51e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false
     }
   ]
 }
