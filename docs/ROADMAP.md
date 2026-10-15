@@ -5,6 +5,15 @@ lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
 
+## Current priority: make natural-language search useful
+
+The owner's October 15 feedback pauses new story-creation UX. First fix ordinary
+query forms, connect existing text/confirmed people to scoped retrieval, restore
+useful video-date evidence and then qualify typed local language understanding
+and relevance ranking. See the [search diagnosis and implementation plan](ASSISTANT_SEARCH_REVIEW_2026-10-15.md).
+The current local parser/coverage-message patch is not yet deployed. v60 device
+feedback remains useful, while the broader sections below retain the backlog.
+
 ## 1. Accept the delivered experience
 
 Run the [v60 phone/Web trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
@@ -61,7 +70,7 @@ delivered in v60; TV preview retry remains an unpublished v31 source candidate. 
 
 ## 3. Improve grounded family storytelling
 
-The next UX slice is a guided first saved story: choose a few related frames,
+After the current search work, resume the guided first saved story: choose a few related frames,
 keep one shared narrator statement, review an editable title/attribution and
 preview before explicit save. It should reuse the existing authorized picker,
 draft and save/retry contracts. It must not copy that statement silently into

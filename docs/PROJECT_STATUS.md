@@ -23,6 +23,21 @@ The [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md
 binds exact APK/archive/certificate hashes, native qualification and delivery.
 v59 remains an unused earlier frozen proposal; it was not published.
 
+## Current search issue and local fix
+
+A later read-only owner-requested investigation confirmed ASR/turn intake but
+weak deterministic query parsing and missing searchable fields in the inspected
+library index. Its active fields are date, reviewed locations and media; stored
+captions and confirmed face records are not yet part of this assistant index.
+Unknown capture dates also cause date queries to omit videos. Private transcripts
+and aggregate household coverage are retained outside Git.
+
+A local, undeployed patch accepts ordinary conversational search openings,
+clarifies possible ASR verb confusion and explains disabled indexes/missing dates.
+Five focused tests and a 63-test shared HTTP cohort passed. See the
+[search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md) for the ordered text/person,
+date and language-understanding work. New story-creation UX is deferred.
+
 ## Delivered reading and assistant increment
 
 v60 includes temporary prose-size presets, compact phone memoir navigation,

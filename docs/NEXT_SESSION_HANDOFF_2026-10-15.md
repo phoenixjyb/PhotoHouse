@@ -58,6 +58,18 @@ owner/member trials, real audio quality and projector acceptance remain open.
 Home TV still needs an interactive desktop session. Do not rerun one-shot release
 controllers: inspect existing receipts and current task/feed state first.
 
+## New priority from the owner: search quality
+
+Story creation is paused. Recent receipts confirm ASR and turn intake; ordinary
+search phrases, a possible ASR homophone, missing person/caption indexing and
+unknown video capture dates explain the reported failures. The exact private
+inputs/counts are outside Git. The [search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md)
+records source evidence, the locally tested parser/diagnostic patch and the next
+text/person/date/semantic retrieval design. Live Windows remains frozen v60;
+this later source fix has not been deployed or published. Preserve its distinct
+source/runtime boundary and do not reuse the consumed v60 release authority for
+a new live switch.
+
 ## Work to resume
 
 1. Establish current source, task/feed identities and any later user feedback.
@@ -67,14 +79,14 @@ controllers: inspect existing receipts and current task/feed state first.
    and linked assistant scenarios. Verify actual playback/Continue/Stop, retained
    drafts, account/library fences and enlarged text on physical devices.
 3. Complete the deferred member and projector/library/playback checks when ready.
-4. Review the fictional first-story prototype, then implement the guided saved
-   story path as a new source increment. It is not in the v60 runtime package.
+4. Prioritize the search plan and qualify the local parser fix; first-story
+   creation work is deferred until the owner resumes it.
 5. Keep model, grouping/editorial, long recorder, erasure and later schema
    activation behind their own qualification and explicit operation scope.
 
 ## Next product work after acceptance
 
-Prioritize a guided first saved story and clearer source/contribution entry;
+After the current search priority, resume a guided first saved story and clearer source/contribution entry;
 users may have photo memories but no saved multi-image stories for assistant
 search. A private, fictional three-step first-story prototype passes desktop/
 390/320 px and enlarged-text journeys with no network/storage/recording. It is

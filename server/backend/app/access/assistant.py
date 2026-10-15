@@ -39,7 +39,12 @@ CHINESE_MONTHS = dict(ORDINALS, 十一=11, 十二=12)
 
 # Recognized command openings only. Unmatched details still require clarification;
 # a conversational prefix never supplies a person, place or unrestricted action.
-SEARCH_PREFIX = r'^(?:请)?(?:帮我找|帮我查找|帮我搜索|我想看看|我想看|给我看看|给我看|查找|搜索|显示|看看|找|find|search|show)'
+SEARCH_PREFIX = (
+    r'^(?:(?:(?:请|麻烦)(?:你)?\s*)?'
+    r'(?:(?:帮我|替我|我想)(?:找一找|搜一搜|查找|搜索|找|查|搜|看看|看)|'
+    r'给我(?:看看|看)|找一找|搜一搜|查找|搜索|显示|看看|找|查|搜)(?:一下)?|'
+    r'(?:(?:please|can you|could you)\s+)?(?:find|search|show)\b'
+    r'(?:\s+(?:me|for)\b)?)')
 REFINE_PREFIX = r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|refine|only|filter|just|what about|how about|same but)'
 BARE_FOLLOWUP = re.compile(
     r'(?:视频|影片|照片|图片|相片|videos?|movies?|photos?|pictures?|images?|'
@@ -537,6 +542,18 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
     if not (refine or search):
+        # Do not silently rewrite a transcript or treat a possible capture
+        # request as permission to search. Ask the user to correct it instead.
+        if re.match(r'^(?:请)?(?:帮我)?照一下', lower):
+            reply = ('语音可能把“找一下”识别成了“照一下”。如果要查找已有照片，'
+                     '请更正文字或说“帮我找一下……”。' if lang == 'zh' else
+                     'The transcript may mean taking a photo rather than finding one. '
+                     'Please correct it or say “find photos”.')
+            return {'version': 1, 'kind': 'clarification', 'reply': reply, 'context': previous,
+                    'filters': previous['filters'] if previous else None,
+                    'items': existing['items'] if existing else [],
+                    'total': existing['total'] if existing else 0,
+                    'has_more': existing['has_more'] if existing else False, 'effect': None}
         reply = ('请说“找照片”、“找去年九月的视频”、“打开第二个”或“打开编号123”。' if lang == 'zh' else
                  'Try “find photos”, “find videos from last year”, “open the second result”, or “open asset id 123”.')
         return {'version': 1, 'kind': 'unsupported', 'reply': reply, 'context': previous,
@@ -586,6 +603,15 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
         reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或指定年月。'
                  if lang == 'zh' else
                  'Some details could not be matched. Try a library person, label, place, or month.')
+        missing = [field for field in ('people', 'caption', 'tags') if field not in enabled]
+        if missing:
+            names = ({'people': '人物', 'caption': '照片说明', 'tags': '标签'} if lang == 'zh' else
+                     {'people': 'people', 'caption': 'captions', 'tags': 'tags'})
+            unavailable = ('、' if lang == 'zh' else ', ').join(names[field] for field in missing)
+            reply = (f'有些条件还无法准确匹配。当前相册库尚未启用{unavailable}检索。'
+                     '可以先按已登记地点或年月查找；未识别的条件不会被忽略。' if lang == 'zh' else
+                     f'Some details could not be matched. Search for {unavailable} is not enabled '
+                     'in this library. Try a recorded place or month. Unmatched details were not ignored.')
         return {'version': 1, 'kind': 'clarification', 'reply': reply,
                 'context': previous, 'filters': previous['filters'] if previous else None,
                 'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
@@ -595,6 +621,12 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}
     reply = _result_overview(result, lang)
+    if result['total'] == 0 and 'date' in filters:
+        reply = ('没有找到符合条件且已记录拍摄日期的照片或视频。未记录拍摄日期的素材'
+                 '不包含在日期搜索中；可以先只按照片或视频查找。' if lang == 'zh' else
+                 'No matching photos or videos with a recorded capture date were found. '
+                 'Items without a capture date are excluded from date searches. '
+                 'Try searching by media type without a date.')
     return {'version': 1, 'kind': 'results', 'reply': reply, 'context': context,
             'filters': filters, 'items': result['items'], 'total': result['total'],
             'has_more': result['has_more'], 'effect': None}

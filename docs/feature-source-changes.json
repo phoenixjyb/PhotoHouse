@@ -16483,6 +16483,67 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "conversational-search-forms-and-truthful-index-date-diagnostics",
+      "source_commit": "9f482e324a86687e416a46a496c018c929a933bb",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SEARCH_REVIEW_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "28a1f9230e10de3a164fe5a83445d4464766921dee97fc506c89671ac405b5c0"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "3761ee94f874bb8d0b851c1e916bb112b06d1583cfb8ac539b5f900e154985db",
+          "sha256": "20b06bc3329364005f03f37e2ec367a6ed6b13b21319ba5a9b101e8949476c2f"
+        },
+        {
+          "path": "docs/NEXT_SESSION_HANDOFF_2026-10-15.md",
+          "before_sha256": "0d0c5b7a94d38dbecc694c6feb58fa58f1b763d7750e59ae4818eb599469fb66",
+          "sha256": "9f3eda195061a519195ce5c9ae1c4dbaf963ca5adb81a24ac0ca425c927c7edb"
+        },
+        {
+          "path": "docs/PERSONAL_ASSISTANT.md",
+          "before_sha256": "29f89218def161952f26f9bff38c25d36fc8f734f577f1f828239518bf8edceb",
+          "sha256": "fcc93a97814a2a2fcb8faebb6611dfab8194c17b0485e7b49b9a96d0ed3be32e"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f777f32a5f9e5e7cc9cc4540f3055b22b53f4c54035f2887738245d15d48a696",
+          "sha256": "b60c906fb05b5d63f2fe110433e595a5604b94ce2dc080dba03b8821038c01fd"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "622547c2db0a90e6a4dd0e3b2343716cf604eafa72f8d2db13e5d63a522398ff",
+          "sha256": "2390462fd195deca530c75e5b272746f5507a8e4ca01254d113fd4afc0b45345"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "5e95de293481135491464a19fcd4099e6396991a1d44be001a468f37b9c7a06c",
+          "sha256": "9f2eec28bf9f14a7ef9011f18777a0aa51380887432add5eead5eeebca2300a6"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "b833d99514f625a5e9dc22145cca14d3473350f0776cf61dc0078b1dbe175b80",
+          "sha256": "df4ad52655dd175bfe91aaa1fdfac5e95e852f360b92979bf1688b9c2a4b2d5b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": null,
+          "sha256": "52113e91f8c7f2958e9055c1028fe1a6d20030fd03bdbca4b23f87eee4d8d309"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "5b0d978ea1cfb5709ba69fd8bfd30f305c81bf38603559eaf6d7c0e6ea488d84",
+          "sha256": "3b6ae61fd50c8166dc8357387cc9a2e39099f6f0b0808c3fcdd91321e9b5c62e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

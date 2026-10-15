@@ -6,9 +6,19 @@ The [interactive prototype](assistant-design/prototype.html) uses synthetic
 examples and does not connect, record, run models or save family data. Product
 aspirations below are distinct from the delivered scope.
 
+## Current priority: search quality
+
+The October 15 owner trial confirmed that ordinary natural-language requests can
+reach the server but fail parsing or lack the required index. We are prioritizing
+existing captions, confirmed people, date evidence and scoped natural-language
+retrieval; new story creation is deferred. The
+[search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md) separates the inspected
+runtime, local parsing fixes and proposed richer retrieval. Existing saved notes
+remain search evidence; this does not start story generation or activate a model.
+
 ## Current implementation boundary
 
-API/Web and phone v58 deliver the central assistant, protected retrieval,
+API/Web and phone v60 deliver the central assistant, protected retrieval,
 foreground voice loop, owned private threads/history, applied reply language,
 saved-story/memoir cards, current-card followups and short opening speech.
 [Project Status](PROJECT_STATUS.md) separates installation evidence and family
@@ -235,4 +245,4 @@ the draft, same-thread revision refresh retains it, and navigation sends no
 turn or transcription and starts no capture. Drafts remain composition-local;
 they are not saved to preferences, disk or server.
 [Project Status](PROJECT_STATUS.md) records the final source/package/device gates;
-this section does not alter the delivered v58 baseline above.
+the v60 release record binds the delivered source; the later search patch remains local.
