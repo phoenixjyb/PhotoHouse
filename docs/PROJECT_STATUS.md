@@ -25,6 +25,21 @@ v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
+The next local source round adds an internal search-readiness inventory and a
+private offline relevance runner. It separates recorded metadata from searchable
+coverage, runs actual protected search/refine/open interpretation and emits
+content-free scores/check outcomes. It opens databases read-only and discards
+partial results on source drift. New ingestion and video-probe handling accept
+only a valid explicit QuickTime capture timestamp, preserve its local day and
+leave unknown dates unknown; the worker fills null dates only. No historical
+backfill, production write, model or permission activation occurred. The
+[operator guide](SEARCH_READINESS_AND_RELEVANCE.md) records limitations and commands.
+The focused search/source/storage cohort passes **131 tests / 81 subchecks**.
+The video cohort passes **12 tests / 13 subchecks**, including a generated MP4
+through real FFmpeg/ffprobe. Later full release profiles and native Windows,
+real-library relevance and family/device acceptance remain open. The Android
+emulator remains closed as requested; this round changes no client UI.
+
 The current local integration connects negotiated search v2 to the private
 workspace, Web and phone. It presents the chosen family perspective, actual
 person/text/date/media/place conditions and evidence labels, including explicit

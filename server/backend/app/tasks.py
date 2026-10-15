@@ -1046,6 +1046,8 @@ class TaskExecutor:
         asset.duration_sec = float(meta['duration_sec'])
         asset.fps = float(meta['fps'])
         asset.width, asset.height = int(meta['width']), int(meta['height'])
+        if getattr(asset, 'taken_at', None) is None and meta.get('taken_at') is not None:
+            asset.taken_at = meta['taken_at']
         if meta.get('gps_lat') is not None and meta.get('gps_lon') is not None:
             asset.gps_lat, asset.gps_lon = float(meta['gps_lat']), float(meta['gps_lon'])
         session.add(Task(type='video_keyframes', priority=70,

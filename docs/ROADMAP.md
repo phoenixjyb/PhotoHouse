@@ -20,9 +20,13 @@ source-bound request-time projection. The local Web/phone integration now shows
 the chosen perspective, interpreted conditions and match reasons, and preserves
 the original search version through private-workspace recovery. The current
 qualification and delivery boundaries are recorded in [Project Status](PROJECT_STATUS.md).
-Next admit the reviewed person/text index for a real library and qualify a small
-owner-reviewed query set, then improve video date bases and local semantic
-understanding/ranking. Source checks and synthetic results do not establish
+The next local source round adds a [private readiness/relevance runner](SEARCH_READINESS_AND_RELEVANCE.md)
+and conservative explicit QuickTime capture-date propagation for newly processed
+videos. Next use the read-only report on the data-owning host, admit a reviewed
+person/text index for a real library and qualify a small owner-reviewed query
+set. Prepare a separately approved historical date repair only after measuring
+the missing-date cohort. Then improve local semantic understanding/ranking
+against those cases. Source checks and synthetic results do not establish
 real-library readiness or relevance. Private kinship activation still requires
 verified account/library/person bindings; future-account approvals grant no
 access until those bindings are confirmed.

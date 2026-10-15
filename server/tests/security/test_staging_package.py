@@ -18,6 +18,7 @@ class StagingPackageTests(unittest.TestCase):
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
             'backend/app/access/assistant_search.py',
+            'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/assistant_journal.py',
             'backend/app/access/assistant_workspace_store.py',
@@ -31,6 +32,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/ui/access/voice-turn-timing.js',
             'scripts/prepare_assistant_workspace.py',
             'scripts/qualify_private_assistant.py',
+            'scripts/check_private_search.py',
             'scripts/qualify_oral_history.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
@@ -165,12 +167,14 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'import qualify_oral_history\n'
+                'import check_private_search\n'
+                'from app.access.search_evaluation import evaluate_cases\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

@@ -135,6 +135,52 @@ class AssistantSearchReads(d.DiscoveryReads):
         return self._run(token, library, binding, lambda index, facts, context, member, check:
             {'version': 2, 'date_basis': 'capture', 'perspective': self._perspective()}, cancelled)
 
+    def readiness(self, token, library, *, binding=None, cancelled=lambda: False):
+        """Aggregate diagnostics from the exact authorized search projection.
+
+        Internal operator read, never a public capability or an identity roster.
+        A current source can still have incomplete metadata or a partial index.
+        """
+        def action(index, facts, context, member, check):
+            assets, rows, facets, _ = facts
+            by_media = {}
+            for kind in ('image', 'video', 'other'):
+                selected = {aid: asset for aid, asset in assets.items() if asset['kind'] == kind}
+                values = {aid: rows[aid] for aid in selected if aid in rows}
+                counts = {'catalog_assets': len(selected), 'indexed_assets': len(values),
+                          'unindexed_assets': len(selected) - len(values)}
+                counts['capture_dates_recorded'] = sum(d.taken_day(a['taken_at']) is not None for a in selected.values())
+                counts['capture_dates_missing'] = len(selected) - counts['capture_dates_recorded']
+                counts['capture_dates_searchable'] = (sum(row['date'] is not None for row in values.values())
+                                                       if 'date' in index.enabled else 0)
+                counts['text_searchable'] = sum(bool(row['text_sources']) for row in values.values())
+                counts['people_searchable'] = (sum(bool(row['people']) for row in values.values())
+                                                if 'people' in index.enabled else 0)
+                for source in ('photo_memory', 'edited_caption', 'generated_caption'):
+                    check()
+                    counts[source] = sum(any(item['source'] == source for item in row['text_sources'])
+                                         for row in values.values())
+                by_media[kind] = counts
+            issues = []
+            if len(rows) < len(assets):
+                issues.append({'code': 'assets_outside_reviewed_index', 'count': len(assets) - len(rows)})
+            if by_media['video']['capture_dates_missing']:
+                issues.append({'code': 'videos_without_recorded_capture_date',
+                               'count': by_media['video']['capture_dates_missing']})
+            if not any(value['text_searchable'] for value in by_media.values()):
+                issues.append({'code': 'no_eligible_text', 'count': len(rows)})
+            if 'people' not in index.enabled or not facets['people']:
+                issues.append({'code': 'reviewed_people_unavailable', 'count': 0})
+            return {'version': 1, 'search_version': 2, 'status': 'current', 'binding': context,
+                    'index_revision': index.revision, 'date_basis': 'capture',
+                    'enabled': [field for field in d.FIELDS if field in index.enabled] + ['text'],
+                    'catalog_assets': len(assets), 'indexed_assets': len(rows),
+                    'index_complete': len(assets) == len(rows), 'by_media': by_media,
+                    'reviewed_person_count': len(facets['people']),
+                    'kinship_available': self.kinship is not None,
+                    'relevance_measured': False, 'issues': issues}
+        return self._run(token, library, binding, action, cancelled)
+
     def entities(self, token, library, *, words, binding=None, cancelled=lambda: False):
         d.text(words, 1024)
         def action(index, facts, context, member, check):
@@ -202,7 +248,7 @@ class SearchRuntime:
             reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget, kinship=kinship)
             methods = {'entities': reader.entities, 'search': reader.search,
                        'facets': reader.facets, 'assistant_asset': reader.assistant_asset,
-                       'presentation': reader.presentation}
+                       'presentation': reader.presentation, 'readiness': reader.readiness}
             d.require(operation in methods)
             if operation == 'search':
                 SearchPlan(2, values['filters'])
