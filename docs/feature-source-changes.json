@@ -18449,6 +18449,84 @@
       "phone_ota_published": true,
       "tv_changed": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "offline-story-source-review-and-capture-validation",
+      "source_commit": "45378da609eff55ff37e98670f71df745656f458",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "71b33a2c7dbd261cfd946b3b954205ceb4d72752125a8185a586138eeb048b1c",
+          "sha256": "9a8643f136d5367695ebe5e8f12794a6e01ddadf99df160b241ccfc5a1d453be"
+        },
+        {
+          "path": "docs/MEMOIR_QUALITY_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "1ef934f3ba10664511b30807d8e54c1603ce2ebd30b1e1ebc48c65b495baf2bc"
+        },
+        {
+          "path": "docs/MODEL_QUALIFICATION.md",
+          "before_sha256": "21269d68d6c3593e02b5cbf7ee0c17b5d7e37761446c7cda73f0ea688d85c5f8",
+          "sha256": "6ca26155e807fc30d41ca57c9e06510708f9f251656149fb49002632b9203723"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b17dac67511ac500544d0bc24e01569934eb7e7ee67a169b244b0df112e06db9",
+          "sha256": "5db17ae24a6827e9562d2af0363e55112ad45db50e92a43bb37759c278be7bd1"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "c5288f156063b7c75503664df808b90e98b2c27cfd8916321c0cb419224cef8f",
+          "sha256": "afeaacf504647586ded88ffa7199b1e0ff4a73335a224c65e30df6d743bee949"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9fa57291b73c25e214f5134e08881800c57a34cf57b3f3f79018c6a02020574b",
+          "sha256": "e3c4afa7220377127e98faec0d53fd6cb841b77653e8e2479beea54a82098950"
+        },
+        {
+          "path": "server/docs/security/MEMOIR_QUALITY_CASES_V1.md",
+          "before_sha256": "75390fbea58439c887a4b8551920974a3fad2db73aadc34a2dad1e39084deed1",
+          "sha256": "a3630dd2220056d420d2b9707199dc7935a062a9b6508e4605bfe6f73009b6e5"
+        },
+        {
+          "path": "server/scripts/build_memoir_review_page.py",
+          "before_sha256": null,
+          "sha256": "7f562f53b9de4eca6cc0f0a7d89dcff0c49391683b1a79e437be2940fb348dd3"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "before_sha256": "f0eea8d039ecd417ea2ba9f7f6f5a4d1a56eeddb90feaa8835e211f6cc50cba2",
+          "sha256": "70df365bb29ffc51dc484b87238702fd06ee036dae5b98dba3008cf656a33d71"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "before_sha256": "fc8b9ed4b66c695280c75672f79f1af107d7853a7781dca22162958e7c8bba00",
+          "sha256": "ec6bf87bbd6ed595496bbafeecd5961094361e55aaa5673841c0ddf1f054f228"
+        },
+        {
+          "path": "server/tests/security/test_memoir_review_page.py",
+          "before_sha256": null,
+          "sha256": "0996504e6a99c6c99a8068e1cf3abcb7a8a3401752206118bc61818f6f9d181a"
+        },
+        {
+          "path": "server/tests/security/test_memoir_review_page_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f95640f22e0f0448c7a3cc362e67eb421c3b1683f84fbdcf61adfa13d3ba8db5"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8",
+          "sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "models_run": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
