@@ -197,6 +197,40 @@ class MemoryContributions:
             result['derivation'] = self._present_derivation(derivation) if derivation else None
             return result
 
+    def candidates(self, token, library, story_id, revision, chapter_id, page):
+        """Metadata-only choices for an explicit, current saved-chapter edit."""
+        if (type(revision) is not int or not 1 <= revision <= 2**63 - 1
+                or type(page) is not int or not 1 <= page <= 100000
+                or type(chapter_id) is not str
+                or chapter_id not in {f'chapter-{index}' for index in range(1, 7)}):
+            raise TransportError(400, 'Invalid contribution candidate request')
+        from .memory_source_refs import available
+        with self.access._transaction():
+            member, story, detail = self._parent(token, library, story_id)
+            if not self._can_review(member, story):
+                raise AccessDenied('Access denied')
+            if not available(self.db):
+                raise TransportError(503, 'Contribution references unavailable')
+            if story['revision'] != revision:
+                raise TransportError(409, 'Story changed; reload before choosing sources')
+            if chapter_id not in {chapter['id'] for chapter in detail['chapters']}:
+                raise TransportError(422, 'Chapter is no longer available')
+            # Filter before pagination. Never read original words/audio or a
+            # derivation merely to populate the source chooser.
+            cursor = self.db.execute('''SELECT id,kind,byline,language,chapter_id,
+                created_at,duration_ms FROM access_memory_contributions
+                WHERE story_id=? AND library_id=? AND state='accepted'
+                  AND local_processing_consent=1
+                  AND (chapter_id IS NULL OR chapter_id=?)
+                ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?''',
+                (story['id'], library, chapter_id, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE))
+            columns = tuple(column[0] for column in cursor.description)
+            rows = [dict(zip(columns, row)) for row in cursor.fetchmany(PAGE_SIZE + 1)]
+            return {'version': 1, 'story_id': story['id'], 'library_id': library,
+                'revision': str(revision), 'chapter_id': chapter_id, 'page': page,
+                'page_size': PAGE_SIZE, 'has_more': len(rows) > PAGE_SIZE,
+                'items': rows[:PAGE_SIZE]}
+
     @staticmethod
     def _present_derivation(row):
         result = dict(row)

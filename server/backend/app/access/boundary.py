@@ -83,6 +83,8 @@ class ClosedBoundary:
         if method in {'GET','DELETE'} and re.fullmatch(prefix+r'/jobs/[0-9a-f-]{36}',path): return True
         if method == 'DELETE' and re.fullmatch(prefix+r'/conversations/[0-9a-f-]{36}',path): return True
         if method in {'GET','POST'} and re.fullmatch(prefix+r'/conversations/[0-9a-f-]{36}/turns',path): return True
+        if method == 'GET' and re.fullmatch(prefix+r'/stories/[0-9a-f-]{36}/contribution-candidates', path):
+            return True
         base = prefix+r'/stories/[0-9a-f-]{36}/contributions'
         if method == 'GET' and path and re.fullmatch(base,path): return True
         if method == 'POST' and re.fullmatch(base+r'/(?:text|audio)',path): return True

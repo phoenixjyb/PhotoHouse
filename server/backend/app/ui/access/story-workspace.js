@@ -12,7 +12,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       chapters:'章节',chapterTitle:'章节标题',narration:'这一章的故事',references:'参考这章的资料',family:'家人写下的话',ai:'AI 观察 · 待核实',
       readerSources:'查看本章素材来源',sourceDisclaimer:'以下是本章引用的参考资料，不代表已核实事实。',sourceFamily:'家人提供的文字',sourceAI:'AI 观察 · 需核对',sourceByline:'原记录署名',sharedMemoryFromPhoto:'来源素材',chooseSources:'选择各章来源',sourceChoiceHelp:'启用后，每章只会引用本章勾选的画面文字或 AI 观察；请逐章检查，也可以全部不选。不会删改章节正文或单独链接的家人回忆。',sourceCount:n=>`已选择 ${n} / 最多 12 项`,sourceLimit:'每章最多引用 12 项资料。',sourceRefreshRequired:'参考资料已变化。请刷新并重新核对各章来源后再保存。',sourceRefreshAction:'刷新参考资料',sourceRefreshBusy:'正在刷新参考资料…',sourceRefreshFailed:'参考资料刷新失败。草稿仍保留，请重试。',sourceRefreshAcknowledge:'我已重新核对每一章的参考资料',sourceRefreshReady:'参考资料已更新。请逐章核对后勾选确认，再明确保存。',
       splitChapterAfter:n=>`在第 ${n} 个画面后分章`,mergeChapterNext:'与下一章合并',chapterStructureHelp:'只调整这个未保存草稿的分组。每个故事最多 6 章，每章最多 4 个画面；改动后请检查标题、正文和来源，再另行保存。',chapterSplitLimit:'最多 6 章。当前分组未更改。',chapterMergeLimit:'合并后每章最多 4 个画面。当前分组未更改。',chapterJoinTextLimit:'合并后的标题或正文超过长度限制。当前分组未更改。',chapterJoinSourceLimit:'合并后每章最多保留 12 项来源。当前分组未更改。',
-      savedContributionRefs:'已保存的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
+      savedContributionRefs:'本章的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
       bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',bookRefsRetry:'重试核实来源',bookRefsAvailable:n=>`本章已核实 ${n} 条家人回忆来源链接；引用资料仍需核对。`,bookRefsAvailableNone:'本章没有已保存的家人回忆来源链接；如需依赖画面资料，请先核对素材来源。',
       unknown:'拍摄时间待补充',filename:'文件名日期 · 非拍摄证明',received:'收到日期 · 非拍摄证明',capture:'记录的拍摄日期',
@@ -28,7 +28,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       chapters:'Chapters',chapterTitle:'Chapter title',narration:'The story in this chapter',references:'References for this chapter',family:'Family words',ai:'AI observation · verify',
       readerSources:'View sources for this chapter',sourceDisclaimer:'These are references cited for this chapter; they are not verified facts.',sourceFamily:'Family-provided wording',sourceAI:'AI observation · verify',sourceByline:'Original byline',sharedMemoryFromPhoto:'Source item',chooseSources:'Choose sources for each chapter',sourceChoiceHelp:'After opting in, each chapter uses only its checked frame wording or AI observations. Review every chapter; you can leave all unchecked. This does not change chapter text or separately linked family memories.',sourceCount:n=>`Selected ${n} / up to 12`,sourceLimit:'A chapter can cite up to 12 references.',sourceRefreshRequired:'References changed. Refresh and review each chapter’s sources before saving.',sourceRefreshAction:'Refresh references',sourceRefreshBusy:'Refreshing references…',sourceRefreshFailed:'Could not refresh references. Your draft is kept; try again.',sourceRefreshAcknowledge:'I reviewed the updated references for every chapter',sourceRefreshReady:'References are updated. Review each chapter, check to confirm, then save explicitly.',
       splitChapterAfter:n=>`Split after frame ${n}`,mergeChapterNext:'Merge with next chapter',chapterStructureHelp:'These controls change grouping in this unsaved draft only. A story can have up to 6 chapters, with up to 4 frames each. Review titles, wording and sources before saving separately.',chapterSplitLimit:'A story can have up to 6 chapters. No change was made.',chapterMergeLimit:'A chapter can have up to 4 frames after merging. No change was made.',chapterJoinTextLimit:'The merged title or wording exceeds its limit. No change was made.',chapterJoinSourceLimit:'A chapter can keep up to 12 sources after merging. No change was made.',
-      savedContributionRefs:'Saved family-memory sources',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
+      savedContributionRefs:'Family memory sources for this chapter',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
       bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',bookRefsRetry:'Retry source check',bookRefsAvailable:n=>`${n} saved family-memory source link${n===1?'':'s'} checked for this chapter. The cited material still needs review.`,bookRefsAvailableNone:'No saved family-memory source links were found for this chapter. Review any frame references before relying on them.',
       unknown:'Capture date to add',filename:'Filename date · not proof of capture',received:'Received date · not proof of capture',capture:'Recorded capture date',
@@ -48,6 +48,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   let guide=null,shelfReady=false;
   Object.assign(labels.zh,{guideNarrativePlaceholder:'那天发生了什么？你最记得哪个细节？',guideNeedsWords:'先留下一句你记得的事，可以输入，也可以录音转写后加入。'});
   Object.assign(labels.en,{guideNarrativePlaceholder:'What happened that day? Which detail stays with you?',guideNeedsWords:'Leave one sentence you remember. Type it, or record, review and add the transcript.'});
+  Object.assign(labels.zh,{addContribution:'添加家人回忆来源',contributionSourceHelp:'这里只保存来源链接，不会复制或改写家人的原始文字或录音。保存故事前，可先查看已选来源。',candidatePanelTitle:'选择已接受的家人回忆',candidateLoading:'正在读取可用来源…',candidateEmpty:'本章没有可添加的已接受来源。',candidateFailed:'暂时无法读取可添加来源。当前草稿和已核实链接均已保留。',candidateRetry:'重试读取来源',candidateMore:'更多来源',candidateCancel:'取消选择',candidateAdded:'已添加来源链接；请保存故事以保留更改。',candidateAlreadyAdded:'本章已引用这条来源。',candidateLimit:'每章最多添加 12 条家人回忆来源。',candidateKindText:'文字回忆',candidateKindAudio:'录音回忆',candidateSubmitted:'提交于 ',candidateDate:d=>d?new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'medium'}).format(d):'日期待补充'});
+  Object.assign(labels.en,{addContribution:'Add family memory source',contributionSourceHelp:'This saves a source link only. It does not copy or rewrite the family member’s original words or recording. Review selected sources before saving the story.',candidatePanelTitle:'Choose an accepted family memory',candidateLoading:'Loading available sources…',candidateEmpty:'There are no accepted sources available for this chapter.',candidateFailed:'Available sources could not be loaded. Your draft and verified links are kept.',candidateRetry:'Retry loading sources',candidateMore:'More sources',candidateCancel:'Cancel selection',candidateAdded:'Source link added. Save the story to keep the change.',candidateAlreadyAdded:'This chapter already cites that source.',candidateLimit:'A chapter can link up to 12 family memories.',candidateKindText:'Written memory',candidateKindAudio:'Recorded memory',candidateSubmitted:'Submitted ',candidateDate:d=>d?new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'medium'}).format(d):'Date unavailable'});
   let shelf=[], shelfPage=1, shelfLoad=0, shelfBinding=null, shelfTheme=null, canCreate=false, pendingSave=null, playTimer=null, playing=false, bookReader=null, narrationEpoch=0, narrationState=null;
   // Session-only positions contain references, never family prose or audio.
   // Clearing protected scope clears every position; nothing goes to storage.
@@ -169,6 +171,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   // Opaque contribution IDs only. This volatile sidecar never changes the exact
   // v1 story draft payload returned by the existing saved-story endpoint.
   let contributionRefs=null,refsLoadEpoch=0;
+  const contributionCandidateViews=new WeakMap();
   const text = key => labels[scope().language==='en'?'en':'zh'][key] || key;
   const canDiscardDraft = () => (!dirty&&!pendingSave) || downloaded || localDraftMatches() || window.confirm(text(pendingSave?'saveFailed':'leave'));
   const canDiscard = () => {if(dictation){dictation.status.textContent=text('dictationNeedResolve');return false;}return canDiscardDraft();};
@@ -913,6 +916,64 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return groups;
   }
   function refsFor(story=draft){return contributionRefs?.storyId===story?.id&&contributionRefs?.revision===story?.revision?contributionRefs:null;}
+  const candidateIdOK=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+  function validContributionCandidates(value,story,owner,chapterId,page){
+    const keys='chapter_id,has_more,items,library_id,page,page_size,revision,story_id,version';
+    if(!value||Object.keys(value).sort().join(',')!==keys||value.version!==1||value.story_id!==story.id||value.library_id!==owner.library||value.revision!==story.revision||value.chapter_id!==chapterId||value.page!==page||value.page_size!==16||typeof value.has_more!=='boolean'||!Array.isArray(value.items)||value.items.length>16)return false;
+    const ids=new Set();
+    for(const item of value.items){
+      if(!item||Object.keys(item).sort().join(',')!=='byline,chapter_id,created_at,duration_ms,id,kind,language'||!candidateIdOK(item.id)||ids.has(item.id)||!['text','audio'].includes(item.kind)||typeof item.byline!=='string'||!boundedContributionText(item.byline,256)||!['zh','en','mixed','und'].includes(item.language)||!Number.isSafeInteger(item.created_at)||item.created_at<0||item.created_at>253402300799||(item.chapter_id!==null&&item.chapter_id!==chapterId)||(item.duration_ms!==null&&(!Number.isSafeInteger(item.duration_ms)||item.duration_ms<=0)))return false;
+      ids.add(item.id);
+    }
+    return true;
+  }
+  function candidateChooserCurrent(view){
+    return Boolean(view?.active&&view.panel.isConnected&&view.card.contains(view.panel)&&$('story-workspace').open&&
+      current(view.ticket,view.owner)&&draft===view.story&&view.story.saved===true&&view.story.can_edit===true&&
+      view.refs===refsFor(view.story)&&view.refs?.available===true&&!view.refs.refreshUnavailable&&
+      view.story.chapters.some(section=>section.id===view.chapterId)&&!frozen()&&!scope().locked&&dictationGuard());
+  }
+  function closeContributionChooser(view,restoreFocus=true){if(view){view.active=false;view.panel.remove();view.trigger?.setAttribute('aria-expanded','false');if(restoreFocus&&view.trigger?.isConnected)view.trigger.focus();}}
+  async function loadContributionCandidates(view,page){
+    if(!candidateChooserCurrent(view)||view.loading||!Number.isSafeInteger(page)||page<1||page>100000)return;
+    view.loading=true;view.status.textContent=text('candidateLoading');if(page===1){view.list.replaceChildren();view.seen.clear();}view.more.disabled=true;
+    try{
+      const result=await savedRequest(`/memory-community/v1/stories/${view.story.id}/contribution-candidates?revision=${encodeURIComponent(view.story.revision)}&chapter_id=${encodeURIComponent(view.chapterId)}&page=${page}`);
+      if(!candidateChooserCurrent(view))return;
+      if(!validContributionCandidates(result,view.story,view.owner,view.chapterId,page))throw new Error('Invalid contribution candidates');
+      view.page=page;view.failedPage=null;view.hasMore=result.has_more;view.status.textContent='';view.retry.hidden=true;
+      const known=view.seen;
+      const already=new Set(view.refs.groups.get(view.chapterId)||[]);
+      for(const item of result.items){
+        if(known.has(item.id)||already.has(`contribution-${item.id}`))continue;
+        known.add(item.id);
+        const detail=[item.byline||text('sourceContribution'),text(item.kind==='text'?'candidateKindText':'candidateKindAudio'),`${text('candidateSubmitted')}${text('candidateDate')(new Date(item.created_at*1000))}`];
+        if(item.kind==='audio'&&item.duration_ms!==null)detail.push(`${Math.ceil(item.duration_ms/1000)}${scope().language==='en'?'s':'秒'}`);
+        const row=node('div',undefined,'story-contribution-reference'),choice=button(detail.join(' · '),()=>{
+          if(!candidateChooserCurrent(view))return;
+          const refs=refsFor(view.story),values=refs?.groups.get(view.chapterId)||[];
+          if(values.includes(`contribution-${item.id}`)){view.status.textContent=text('candidateAlreadyAdded');return;}
+          if(values.length>=12){view.status.textContent=text('candidateLimit');return;}
+          refsLoadEpoch++;refs.groups.set(view.chapterId,[...values,`contribution-${item.id}`]);dirty=true;downloaded=false;closeContributionChooser(view,false);message('candidateAdded');updateContributionRefViews(view.story);view.card.querySelector(`[data-contribution-id="${item.id}"] button`)?.focus();
+        },'quiet');
+        row.style.display='flex';row.style.flexWrap='wrap';row.style.minWidth='0';choice.style.whiteSpace='normal';choice.style.overflowWrap='anywhere';choice.style.maxWidth='100%';choice.style.minHeight='44px';row.append(choice);view.list.append(row);
+      }
+      if(!view.list.children.length)view.status.textContent=text('candidateEmpty');
+      view.more.hidden=!view.hasMore;view.more.disabled=!view.hasMore;
+    }catch(error){if(candidateChooserCurrent(view)){view.failedPage=page;view.status.textContent=text('candidateFailed');view.more.hidden=true;view.retry.hidden=false;}}
+    finally{view.loading=false;if(candidateChooserCurrent(view)){view.more.disabled=!view.hasMore;view.cancel.disabled=frozen();}}
+  }
+  function openContributionChooser(card,story,chapterId,owner,ticket,refs,trigger){
+    if(frozen()||!$('story-workspace').open||!current(ticket,owner)||draft!==story||!story.saved||story.can_edit!==true||refs!==refsFor(story)||!refs?.available||refs.refreshUnavailable||!dictationGuard())return;
+    if(contributionCandidateViews.has(card)){const prior=contributionCandidateViews.get(card);if(prior.active){closeContributionChooser(prior);return;}}
+    const panel=node('section',undefined,'story-contribution-candidate-chooser'),heading=node('h4',text('candidatePanelTitle')),help=node('p',text('contributionSourceHelp'),'fine'),status=node('p'),list=node('div'),footer=node('div'),cancel=button(text('candidateCancel'),()=>closeContributionChooser(view),'quiet'),more=button(text('candidateMore'),()=>void loadContributionCandidates(view,view.page+1),'quiet'),retry=button(text('candidateRetry'),()=>void loadContributionCandidates(view,view.failedPage||Math.max(1,view.page||1)),'quiet');
+    status.setAttribute('role','status');status.setAttribute('aria-live','polite');list.className='story-contribution-candidate-list';footer.style.display='flex';footer.style.flexWrap='wrap';footer.style.gap='.5rem';footer.style.marginTop='.5rem';
+    list.style.maxHeight='min(22rem,45vh)';list.style.overflowY='auto';list.style.display='grid';list.style.gap='.5rem';list.style.minWidth='0';
+    const header=node('div');header.style.display='flex';header.style.flexWrap='wrap';header.style.alignItems='center';header.style.gap='.5rem';heading.id=`contribution-candidates-heading-${chapterId}`;heading.tabIndex=-1;panel.id=`contribution-candidates-${chapterId}`;panel.setAttribute('aria-labelledby',heading.id);trigger?.setAttribute('aria-controls',panel.id);trigger?.setAttribute('aria-expanded','true');header.append(heading,cancel);
+    more.hidden=true;retry.hidden=true;
+    for(const control of [cancel,more,retry]){control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}
+    const view={panel,card,story,chapterId,owner,ticket,refs,trigger,heading,help,status,list,footer,cancel,more,retry,active:true,loading:false,page:0,hasMore:false,seen:new Set()};footer.append(more,retry);panel.append(header,help,status,list,footer);panel.style.minWidth='0';panel.style.overflowWrap='anywhere';card.append(panel);contributionCandidateViews.set(card,view);heading.focus();void loadContributionCandidates(view,1);
+  }
   async function loadContributionRefs(story,owner,ticket){
     const epoch=++refsLoadEpoch,authorized=()=>current(ticket,owner)&&draft===story&&story?.saved===true&&story.id===draft.id&&story.revision===draft.revision;
     if(!authorized()||!savedRequest)return;
@@ -933,9 +994,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const refs=refsFor(story);
     for(const card of $('story-chapter-editor').querySelectorAll('.story-contribution-references')){
       const id=card.dataset.chapterId,values=refs?.available?refs.groups.get(id)||[]:null;card.replaceChildren();
-      if(values?.length){card.append(node('strong',text('savedContributionRefs')));for(const [index,ref] of values.entries()){const uuid=ref.slice('contribution-'.length),row=node('div',undefined,'story-contribution-reference'),label=node('span',`${text('editorRefLabel')} ${index+1}`),status=node('p','','story-contribution-source-status'),body=node('div',undefined,'story-contribution-source-detail');row.dataset.contributionId=uuid;status.setAttribute('role','status');body.hidden=true;const action=button(text('viewRef'),()=>void loadContributionDetail(row,story,story.chapters.find(section=>section.id===id),uuid,action,status,body,'editor'),'quiet');const remove=button(text('removeSavedRef'),()=>{const currentRefs=refsFor(story);if(frozen()||!dictationGuard()||!currentRefs?.available||draft!==story||currentRefs.revision!==story.revision||!row.isConnected)return;refsLoadEpoch++;currentRefs.groups.set(id,(currentRefs.groups.get(id)||[]).filter(value=>value!==ref));dirty=true;downloaded=false;updateContributionRefViews(story);},'quiet');row.style.display='flex';row.style.flexWrap='wrap';row.style.alignItems='center';row.style.gap='.5rem';row.style.minWidth='0';label.style.overflowWrap='anywhere';for(const control of [action,remove]){control.disabled=frozen();control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}row.append(label,action,remove,status,body);card.append(row);}}
+      if(values?.length){card.append(node('strong',text('savedContributionRefs')));for(const [index,ref] of values.entries()){const uuid=ref.slice('contribution-'.length),row=node('div',undefined,'story-contribution-reference'),label=node('span',`${text('editorRefLabel')} ${index+1}`),status=node('p','','story-contribution-source-status'),body=node('div',undefined,'story-contribution-source-detail');row.dataset.contributionId=uuid;status.setAttribute('role','status');body.hidden=true;const action=button(text('viewRef'),()=>void loadContributionDetail(row,story,story.chapters.find(section=>section.id===id),uuid,action,status,body,'editor'),'quiet');const remove=button(text('removeSavedRef'),()=>{const currentRefs=refsFor(story);if(frozen()||!dictationGuard()||!currentRefs?.available||draft!==story||currentRefs.revision!==story.revision||!row.isConnected)return;refsLoadEpoch++;currentRefs.groups.set(id,(currentRefs.groups.get(id)||[]).filter(value=>value!==ref));dirty=true;downloaded=false;updateContributionRefViews(story);},'quiet');row.style.display='flex';row.style.flexWrap='wrap';row.style.alignItems='center';row.style.gap='.5rem';row.style.minWidth='0';label.style.overflowWrap='anywhere';for(const control of [action,remove]){control.disabled=frozen()||!dictationGuard();control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}row.append(label,action,remove,status,body);card.append(row);}}
       else if(!refs&&story.saved){const note=node('p',text('refLoading'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
       if(refs?.refreshUnavailable||refs&&!refs.available){const note=node('p',text(refs.refreshUnavailable?'refsRefreshUnavailable':'refsUnavailable'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
+      if(refs?.available&&!refs.refreshUnavailable&&story.saved&&story.can_edit===true){const add=button(text('addContribution'),()=>openContributionChooser(card,story,id,{...scope()},generation,refs,add),'quiet');add.className='quiet story-contribution-add';add.setAttribute('aria-expanded','false');add.setAttribute('aria-controls',`contribution-candidates-${id}`);add.disabled=frozen()||!dictationGuard()||scope().locked;add.style.whiteSpace='normal';add.style.maxWidth='100%';add.style.minHeight='44px';card.append(add);}
     }
     if(updateReader&&$('story-reader').open&&draft===story){
       const prose=$('story-reader-title').parentElement;prose.querySelectorAll(':scope > .story-reader-sources').forEach(source=>source.remove());appendChapterSources(prose,story,story.chapters[chapter]);

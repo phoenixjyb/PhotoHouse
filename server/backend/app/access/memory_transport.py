@@ -192,6 +192,19 @@ async def contribution(story_id: str, contribution_id: str, request: Request):
         query['library'], _uuid(story_id), _uuid(contribution_id)))
 
 
+@router.get('/memory-community/v1/stories/{story_id}/contribution-candidates')
+async def contribution_candidates(story_id: str, request: Request):
+    runtime, token, query = await scope(request, originals=True,
+        allowed={'library', 'revision', 'chapter_id', 'page'})
+    revision_text = query.get('revision', '')
+    revision = _integer(revision_text, 2**63 - 1)
+    if str(revision) != revision_text:
+        raise TransportError(400, 'Invalid story revision')
+    return json_response(await run_in_threadpool(call, runtime, MemoryContributions,
+        'candidates', token, query['library'], _uuid(story_id), revision,
+        query.get('chapter_id', ''), _integer(query.get('page', '1'), 100000)))
+
+
 @router.post('/memory-community/v1/stories/{story_id}/contributions/text')
 async def create_text(story_id: str, request: Request):
     runtime, token, query = await scope(request, originals=True)
