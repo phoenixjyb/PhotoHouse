@@ -22,7 +22,10 @@ import dev.photohouse.connected.core.*
 internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose: () -> Unit,
     onReadSaved: (SavedMemoryStory) -> Unit, isSavedEdit: Boolean = store.isSavedStoryEdit,
     savedEditReloading: Boolean = false, savedEditReloadFailed: Boolean = false,
-    onReloadSavedEdit: (() -> Unit)? = null, previewBytes: Map<String, ByteArray> = emptyMap()) {
+    onReloadSavedEdit: (() -> Unit)? = null, previewBytes: Map<String, ByteArray> = emptyMap(),
+    onSaveLocalDraft: () -> Boolean = { store.saveLocalDraft() },
+    onReplaceLocalDraft: () -> Boolean = { store.saveLocalDraft(replaceExisting = true) },
+    onDeleteLocalDraft: () -> Boolean = { store.deleteLocalDraft() }) {
     val state by store.state.collectAsState()
     val dictationStore by store.chapterDictation.collectAsState()
     val dictationUnfinished by store.dictationUnfinished.collectAsState()
@@ -33,6 +36,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     var discard by remember(store) { mutableStateOf(false) }
     var discardDictation by remember(store) { mutableStateOf(false) }
     var confirmSavedEditReload by remember(store) { mutableStateOf(false) }
+    var confirmLocalDraftReplace by remember(store) { mutableStateOf(false) }
     var chapterIndex by remember(store, store.savedEditStoryId, store.savedEditStoryRevision,
         state.draft?.selectionRevision) { mutableIntStateOf(0) }
     val reviewScrollState = rememberScrollState()
@@ -305,6 +309,28 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             Button(onClick = { store.retrySave() }, modifier = Modifier.fillMaxWidth().testTag("grouped-story-retry")) {
                 Text(t("Confirm this save", "再次确认这次保存")) }
         }
+        if (!isSavedEdit && state.status == StoryWorkspaceStoreStatus.EDITING) {
+            Text(t("Saved drafts are encrypted on this device and stay here until you delete or publish them. Anyone using this unlocked device may see them.",
+                "保存的草稿会加密保存在此设备，直到删除或发布；使用这台已解锁设备的人可能会看到它们。"),
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("local-story-draft-device-warning"))
+            OutlinedButton(onClick = {
+                finishTyping()
+                if (!onSaveLocalDraft() && store.state.value.localDraftStatus == LocalStoryDraftStatus.AVAILABLE)
+                    confirmLocalDraftReplace = true
+            }, enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished && !state.localDraftRequiresRecovery,
+                modifier = Modifier.fillMaxWidth().testTag("local-story-draft-save")) {
+                Text(if (state.localDraftStatus == LocalStoryDraftStatus.SAVED) t("Update local draft", "更新本地草稿")
+                    else t("Save draft on this device", "在此设备保存草稿"))
+            }
+            when (state.localDraftStatus) {
+                LocalStoryDraftStatus.SAVED -> Text(t("Draft saved on this device.", "草稿已保存在此设备。"),
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("local-story-draft-saved"))
+                LocalStoryDraftStatus.ERROR -> Text(t("The local draft could not be saved or read. Your editor remains open.",
+                    "本地草稿无法保存或读取，编辑内容仍在当前页面。"), color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("local-story-draft-save-error"))
+                else -> Unit
+            }
+        }
         if (state.status in setOf(StoryWorkspaceStoreStatus.CONFLICT, StoryWorkspaceStoreStatus.UNAVAILABLE)) {
             Text(if (draft != null) t("The story could not be confirmed. Your text remains here. Reload current sources to review this draft again.",
                 "暂时无法确认故事。文字仍保留在这里。请重新加载当前来源，再次核对草稿。")
@@ -343,6 +369,15 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         }
         state.savedStory?.let { saved ->
             Text(t("Story saved", "故事已保存"), style = MaterialTheme.typography.titleLarge)
+            if (state.localDraftRequiresRecovery && state.localDraftError) {
+                Text(t("The story was saved, but its encrypted recovery copy could not be removed. Delete that local copy when you are ready.",
+                    "故事已保存，但无法删除加密的恢复副本。准备好后可删除此设备上的副本。"),
+                    color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("local-story-draft-cleanup-failed"))
+                OutlinedButton(onClick = { onDeleteLocalDraft() }, modifier = Modifier.fillMaxWidth()
+                    .testTag("local-story-draft-delete-after-publish")) {
+                    Text(t("Delete local recovery copy", "删除本地恢复副本"))
+                }
+            }
             if (isSavedEdit && state.savedStoryIsNewerThanEditBase) {
                 Text(t("The update was confirmed, and a newer family version is now available. Open the current story to review its latest saved chapters.",
                     "修改已确认，现在已有更新的家庭版本。请打开当前故事，核对最新保存的篇章。"),
@@ -378,6 +413,16 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         }, modifier = Modifier.testTag("grouped-story-saved-edit-reload-confirm")) {
             Text(t("Discard and reload", "丢弃并重新加载")) } },
         dismissButton = { TextButton(onClick = { confirmSavedEditReload = false }) { Text(t("Keep editing", "继续编辑")) } })
+    if (confirmLocalDraftReplace) AlertDialog(onDismissRequest = { confirmLocalDraftReplace = false },
+        title = { Text(t("Replace the saved local draft?", "替换已保存的本地草稿？")) },
+        text = { Text(t("This replaces the saved draft for this account and family library on this device.",
+            "这会替换此设备上该账户和家庭资料库对应的已保存草稿。")) },
+        confirmButton = { TextButton(onClick = {
+            confirmLocalDraftReplace = false
+            onReplaceLocalDraft()
+        }, modifier = Modifier.testTag("local-story-draft-replace-confirm")) { Text(t("Replace draft", "替换草稿")) } },
+        dismissButton = { TextButton(onClick = { confirmLocalDraftReplace = false },
+            modifier = Modifier.testTag("local-story-draft-replace-cancel")) { Text(t("Cancel", "取消")) } })
 }
 
 
@@ -385,13 +430,16 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
 private fun StorySaveConfirmation(store: StoryWorkspaceStore, state: StoryWorkspaceStoreState,
     zh: Boolean, editable: Boolean, dictationUnfinished: Boolean, finishTyping: () -> Unit) {
     fun t(en: String, cn: String) = if (zh) cn else en
+    if (state.localDraftRequiresRecovery) Text(t("A saved story request still needs checking. Resume that draft before creating another story.",
+        "仍有一条已保存的故事请求需要确认。请先继续该草稿，再创建其他故事。"),
+        color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("local-story-draft-recovery-required"))
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(state.reviewed,
         enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
         onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(state.reviewed, onCheckedChange = null)
         Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
     }
-    Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished,
+    Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished && !state.localDraftRequiresRecovery,
         modifier = Modifier.fillMaxWidth().testTag("grouped-story-save")) { Text(t("Save story", "保存故事")) }
 
 }

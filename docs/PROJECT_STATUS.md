@@ -1,34 +1,40 @@
 # Current project status
 
-Reviewed **2026-10-15 after the v61 delivery**. API/Web source
-`8f4690506106cb156f1bf4cc346c82b1da70357b` is deployed, with phone OTA
-**v61 / 0.61-guided-stories** and TV v30. The guarded story release completed
-backup, HTTPS readback and worker restoration. Physical installation and family
-acceptance remain separate.
+Reviewed **2026-10-15 after the v62 search delivery**. GitHub PR #17 is
+merged into `main` at `a4ed3068bbf832eec6ce44d9be17bb9238298a01`.
+API/Web source `c1ca91e58589196c147ce0b97a8205ec3370f978` is deployed;
+phone OTA is **v62 / 0.62-private-search** and TV remains v30. The guarded API
+operation completed stopped-writer backup, HTTPS readback and upload-worker
+restoration. Schema `a0c9d2e4f817` and configuration are unchanged. No model,
+kinship binding or historical date backfill was activated.
 
-The search candidate `c1ca91e58589196c147ce0b97a8205ec3370f978` preserves that
-story source and prepares phone **v62 / 0.62-private-search**. All hosted API,
-Web, Android and Windows checks pass; the exact 205-file candidate passed native
-Windows qualification and a read-only configured-library resource check using
-production bounds. These checks do not establish authenticated family relevance.
-API cutover and phone publication remain pending. The subsequent repository
-merge imports only documentation and test synchronization; application and
-Android source remain identical to that qualified candidate.
+The v61 guided-story flow remains in v62. Search v2 Web/phone integration shows
+interpreted conditions and match evidence while preserving negotiated search
+version through recovery. The exact 205-file API candidate passed Windows
+qualification; phone signing and complete HTTPS APK readback passed. Physical
+phone installation and authenticated family search/story acceptance remain open.
+
+The following local increment implements [private device drafts](STORY_DRAFT_RESUME.md)
+for new stories. It is **source work, not part of the served v62 artifacts**.
+Encrypted drafts and an exact uncertain-save journal are separate from shared
+stories; resume requires current access and fresh selection evidence. No schema
+migration, model invocation or live operation is included.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `53e3954`, 201-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
+| API/Web | Source `c1ca91e`, 205-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
-| Phone | v60 signed with original certificate/artwork, published and completely read back over trusted HTTPS | Installation and physical reading/listening trial |
+| Phone | v62 signed with original certificate/artwork, published and completely read back over trusted HTTPS | Installation and physical reading/listening trial |
 | TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
 | Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | Monorepo is the development home; exact package provenance and ordered source overlays retained | Remote refs and hosted CI not refreshed by this release |
-| Following UX | Fictional three-step first-story prototype passes responsive/large-text checks outside the v60 archive | Design review and production implementation |
+| Public source | Monorepo is the development home; exact package provenance and ordered source overlays retained | PR #17 merged; reviewed head CI passed; new local draft increment not yet published |
+| Following UX | Three-step guided stories delivered in v61 and retained in v62 | Family trial; private draft increment delivery |
 
-The [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
-binds exact APK/archive/certificate hashes, native qualification and delivery.
+The [v61 story release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
+binds that guided-story delivery. The later v62 search release supersedes its
+API/phone versions; historical sections below describe their stated checkpoints.
 v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix

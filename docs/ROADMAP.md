@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 15 v61 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 15 v62 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
@@ -13,7 +13,7 @@ query forms, connect existing text/confirmed people to scoped retrieval, restore
 useful video-date evidence and then qualify typed local language understanding
 and relevance ranking. See the [search diagnosis and implementation plan](ASSISTANT_SEARCH_REVIEW_2026-10-15.md).
 The parser/coverage-message patch and completed negotiated backend are deployed
-with v61. Search v2 client integration and relevance qualification remain open;
+with v61; negotiated Web/phone search v2 is now delivered in v62. Family relevance qualification remains open;
 the broader sections below retain the backlog.
 
 The [first negotiated text/person API slice](ASSISTANT_JOINT_SEARCH_V2.md) now
@@ -108,13 +108,15 @@ See the [Web contract](STORY_FIRST_GUIDE.md) and
 [phone tutorial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md).
 This guide is now delivered in Web and phone v61, with full Web and seven
 final-source emulator journeys verified. Family/device acceptance remains open.
-Search v2 client integration will be delivered separately.
+Search v2 client integration subsequently shipped in v62.
 
-Next add explicit private draft saving/resume across process loss, then qualify
-source-grounded title/narrative suggestions. Current Back navigation preserves
-process-memory wording only. Durable draft storage needs account/library binding,
-fresh-access checks, deletion and uncertain-save recovery; it must not silently
-publish unfinished words or persist credentials.
+The next source increment adds [explicit private device drafts](STORY_DRAFT_RESUME.md)
+on Web and phone, with encryption, account/library binding, fresh-access checks,
+explicit deletion and exact uncertain-save recovery. This increment is not yet
+in a deployed API or published APK. Qualify restart, changed/revoked sources,
+quota/corruption and owner/member UX before delivery. Then qualify grounded
+source-linked title/narrative suggestions; ordinary draft saving does not activate
+providers or turn original family words into generated facts.
 
 The synthetic corpus now has eight cases, including cross-event visual
 similarity and separate subject/speaker/uploader attribution. Its planner and

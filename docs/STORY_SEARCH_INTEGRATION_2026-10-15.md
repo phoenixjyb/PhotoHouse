@@ -1,5 +1,9 @@
 # Story and search source integration — 2026-10-15
 
+This records the staged v61 integration. Search-client v2 subsequently shipped
+in v62 through PR #17; see [current status](PROJECT_STATUS.md). Version-1 and
+next-search-gate statements below describe the earlier v61 release.
+
 This integration combines the Web guide `259c178`, phone guide `66677db`, and
 completed search backend source through `3594fc0`. The common parent is
 `c4cac82`. It preserves the independent source branches and introduces no

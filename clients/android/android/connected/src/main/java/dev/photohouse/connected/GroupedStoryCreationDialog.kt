@@ -26,6 +26,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
     val words = remember(zh) { Words(zh) }
     val currentCreation by rememberUpdatedState(creation)
     var discard by remember(store) { mutableStateOf(false) }
+    var confirmDraftDelete by remember(store) { mutableStateOf(false) }
     val editor = creation.editor
     val editorState by editor?.state?.collectAsState() ?: remember { mutableStateOf(StoryWorkspaceStoreState()) }
     var requestedPage by remember(editor) { mutableIntStateOf(creation.gallery?.page ?: 1) }
@@ -72,6 +73,9 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                             savedEditReloadFailed = creation.isSavedEdit && creation.problem != null,
                             onReloadSavedEdit = { store.reloadSavedGroupedStoryEdit(editor) },
                             previewBytes = creation.previews + creation.albumPreviews + creation.relatedPreviews + creation.reviewPreviews,
+                            onSaveLocalDraft = { editor.saveLocalDraft() },
+                            onReplaceLocalDraft = { editor.saveLocalDraft(replaceExisting = true) },
+                            onDeleteLocalDraft = { editor.deleteLocalDraft() },
                         )
                     creation.isSavedEdit && creation.checking -> Column(
                         Modifier.fillMaxSize().padding(24.dp),
@@ -138,6 +142,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         zh = zh,
                         words = words,
                         requestedPage = requestedPage,
+                        onRequestDeleteDraft = { confirmDraftDelete = true },
                         onRequestPage = { page ->
                             if (latestSelection() != null && store.loadGroupedStorySelectionPage(page)) requestedPage = page
                         },
@@ -173,6 +178,19 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
             }
         },
     )
+    if (confirmDraftDelete) AlertDialog(
+        onDismissRequest = { confirmDraftDelete = false },
+        title = { Text(t("Delete this local draft?", "删除此本地草稿？")) },
+        text = { Text(t("The saved words and source choices will be removed from this device.",
+            "此设备上保存的文字和来源选择将被删除。")) },
+        confirmButton = { TextButton(onClick = {
+            if (editor?.state?.value?.localDraftStatus == LocalStoryDraftStatus.ERROR) editor.deleteUnreadableLocalDraft()
+            else editor?.deleteLocalDraft()
+            confirmDraftDelete = false
+        }, modifier = Modifier.testTag("local-story-draft-delete-confirm")) { Text(t("Delete", "删除")) } },
+        dismissButton = { TextButton(onClick = { confirmDraftDelete = false },
+            modifier = Modifier.testTag("local-story-draft-delete-cancel")) { Text(t("Cancel", "取消")) } },
+    )
 }
 
 @Composable
@@ -194,6 +212,7 @@ private fun SelectionScreen(
     words: Words,
     requestedPage: Int,
     onRequestPage: (Int) -> Unit,
+    onRequestDeleteDraft: () -> Unit,
     onClose: () -> Unit,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -203,8 +222,9 @@ private fun SelectionScreen(
     val items = (if (album != null) creation.albumAssets else gallery?.items.orEmpty())
         .filter { it.kind == "image" || it.kind == "video" }
     val selected = editorState.selectedAssetIds
-    val canContinue = !creation.pageBusy && !creation.albumBusy && !creation.albumsPageBusy &&
+    val canResume = !creation.pageBusy && !creation.albumBusy && !creation.albumsPageBusy &&
         !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
+    val canContinue = canResume && !editorState.localDraftRequiresRecovery
     val canAct = canContinue && editorState.draft == null
     var confirmNewFrames by remember(editor) { mutableStateOf(false) }
     var limitReached by remember(editor) { mutableStateOf(false) }
@@ -213,6 +233,32 @@ private fun SelectionScreen(
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Header(t("Choose moments", "选择瞬间"), t("Close", "关闭"), onClose)
+        if (!creation.isSavedEdit && editorState.localDraftStatus == LocalStoryDraftStatus.AVAILABLE) {
+            Text(t("A private draft is saved on this device. Anyone using this unlocked device may see it.",
+                "此设备上保存了一份私密草稿。使用这台已解锁设备的人可能会看到它。"),
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("local-story-draft-device-warning"))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { store.resumeGroupedStoryLocalDraft() }, enabled = canResume, modifier = Modifier.weight(1f)
+                    .testTag("local-story-draft-resume")) { Text(t("Resume draft", "继续草稿")) }
+                OutlinedButton(onClick = onRequestDeleteDraft, enabled = !editorState.localDraftRequiresRecovery, modifier = Modifier.weight(1f)
+                    .testTag("local-story-draft-delete")) { Text(t("Delete draft", "删除草稿")) }
+            }
+            if (editorState.localDraftRequiresRecovery) Text(t("The earlier story may already have been saved. Resume it to check or retry the same request before creating another story.",
+                "先前的故事可能已经保存。请继续该草稿，确认或重试同一请求后再创建其他故事。"),
+                color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("local-story-draft-recovery-required"))
+        }
+        if (!creation.isSavedEdit && editorState.localDraftStatus == LocalStoryDraftStatus.EMPTY) {
+            Text(t("Saved drafts stay on this device until you delete or publish them. They do not sync to other devices.",
+                "保存的草稿会留在此设备，直到删除或发布；不会同步到其他设备。"),
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("local-story-draft-local-only"))
+        }
+        if (!creation.isSavedEdit && editorState.localDraftStatus == LocalStoryDraftStatus.ERROR) {
+            Text(t("The saved local draft could not be read. Its encrypted data was kept.",
+                "无法读取本地加密草稿，已保留其加密数据。"), color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("local-story-draft-read-error"))
+            OutlinedButton(onClick = onRequestDeleteDraft, enabled = editorState.localDraftCanDeleteUnreadable, modifier = Modifier.fillMaxWidth()
+                .testTag("local-story-draft-delete-unreadable")) { Text(t("Delete unreadable draft", "删除无法读取的草稿")) }
+        }
         if (editorState.guideStep != null) StoryGuideProgress(StoryGuideStep.FRAMES, zh)
         Text(t("Choose 1–24 photos or videos in story order.", "按故事顺序选择 1–24 个照片或视频。"),
             style = MaterialTheme.typography.bodyMedium)

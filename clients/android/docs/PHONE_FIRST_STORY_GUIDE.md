@@ -40,12 +40,25 @@ transcript review, an active operation or an uncertain save. Source refresh
 preserves user wording and returns to the wording step for renewed review.
 An uncertain save retries the exact frozen body/mutation ID, never a new create.
 
-This is **process-memory draft retention**, not durable draft recovery. Account
-or library teardown wipes the editor; process death loses unsaved drafts. A
-future explicit Save draft / Resume feature needs a separately reviewed private,
-account-bound persistence contract, fresh-access validation, retention/deletion
-and uncertain-save recovery. No private prose or audio is added to generic
-browser preferences or plain app settings by this change.
+Unsaved editor state remains in process memory, but an explicit **Save draft on
+this device** action now stores a bounded encrypted record for a new story.
+Resume reopens only the matching account and family library after the normal
+`can_create` check and a fresh preview of every selected asset. It reattaches
+only still-valid source IDs, preserves authored words, and resets review when
+the evidence changed. It never fetches or submits automatically. These records
+are device-local, do not sync, and remain until explicit deletion or confirmed
+publication; logout or scope teardown clears the editor from memory without
+exposing another account or library's slot. The UI warns that anyone using the
+unlocked device may see a saved draft.
+
+If a saved draft is used for story creation, Android encrypts the exact frozen
+request and mutation ID before making the network call. After process death,
+Resume offers an explicit retry of that same request; it never creates a new
+mutation ID or silently sends it. An unknown save stays as a recovery record
+until publication is confirmed or the user deletes it. The encrypted record
+contains authored title/chapter words, grouping, selected IDs, scope and
+selection revision only. It excludes credentials, audio, thumbnails, cached
+evidence and generated preview wording.
 
 ## Try after a release containing this source
 

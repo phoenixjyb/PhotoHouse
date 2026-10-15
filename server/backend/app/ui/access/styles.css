@@ -819,7 +819,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-workspace[data-guide-step] .story-workspace-heading>div{display:none}
 .story-workspace[data-guide-step] #story-draft-actions{position:static}
 .story-workspace[data-guide-step] #story-draft-actions>button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
-.story-workspace[data-guide-step] .story-questions summary{cursor:pointer;min-height:44px;font-weight:600}
+.story-workspace[data-guide-step] .story-questions summary{cursor:pointer;min-height:44px;font-weight:600;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .story-guide-progress ol{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;padding:0;margin:.75rem 0 1.25rem}
 .story-guide-progress li{display:flex;align-items:center;gap:.5rem;min-width:0;padding:.65rem 0;border-bottom:2px solid var(--line);color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
 .story-guide-progress li[aria-current=step]{border-color:var(--accent);color:var(--ink);font-weight:600}
@@ -843,3 +843,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-workspace[data-guide-step=words] #story-draft-actions>button{display:none}
 .story-workspace[data-guide-step=frames] .story-selection{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:600px){.story-guide-progress ol{gap:.4rem}.story-guide-progress li{align-items:flex-start;flex-direction:column;gap:.4rem;font-size:.85rem}.story-workspace[data-guide-step=frames] .story-selection{grid-template-columns:repeat(2,minmax(0,1fr))}.story-guide-actions button{flex:1 1 9rem}.story-guide-actions #story-guide-advanced{flex-basis:100%;margin-inline-start:0}.story-guide-review-chapter{padding:.9rem}.story-guide-review-chapter .story-chapter-strip img{width:60px;height:60px}}
+
+/* Private device draft controls stay separate from publication. */
+.story-local-draft,.story-local-editor{min-width:0;padding:1rem;border:1px solid var(--line,#ded6cb);border-radius:1rem;margin-block:1rem;overflow-wrap:anywhere}
+.story-local-actions{display:flex;flex-wrap:wrap;gap:.65rem}
+.story-local-actions button,.story-local-editor button{min-height:48px;max-width:100%;white-space:normal}
+.story-local-review{display:flex;align-items:flex-start;gap:.65rem;padding-block:.8rem;min-height:48px}
+.story-local-review input{flex-shrink:0;margin-top:.2em}

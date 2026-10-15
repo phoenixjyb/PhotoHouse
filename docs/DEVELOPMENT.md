@@ -20,6 +20,20 @@ documents the private offline runner, generated fixtures and small video-worker
 test dependency overlay. The ordinary API profile includes readiness/evaluator/
 CLI checks without importing legacy workers or requiring FFmpeg.
 
+## Explicit emulator instrumentation
+
+Build the unconfigured QA variant with `-PphotohousePhoneUiQa=true`; its app ID
+is `dev.photohouse.connected.qa`, separate from the installed family app.
+Do not run broad Gradle `connected*AndroidTest` tasks on a Mac with physical
+phones attached: they can select and remove apps from those devices.
+
+Use `tools/android_emulator_test.py` with an explicit emulator serial, prebuilt
+QA APKs and SDK `aapt`. Its preflight rejects production package IDs and physical
+serials; device identity and the emulator property are rechecked before every
+installation or instrumentation command. `--dry-run` performs no device writes.
+It never uninstalls an application or creates an AVD. A successful compile is
+separate from actual emulator results and inspected UI renders.
+
 ## October 15 v60 delivery closure
 
 The owner authorized release of immutable source `53e3954`. Native Windows

@@ -148,6 +148,7 @@ FILES = (
     'backend/app/ui/access/index.html',
     'backend/app/ui/access/memory-community.js',
     'backend/app/ui/access/story-workspace.js',
+    'backend/app/ui/access/story-draft-store.js',
     'backend/app/ui/access/memory-groups.js',
     'backend/app/ui/access/styles.css',
     'backend/app/ui/photohouse-icon.svg',
