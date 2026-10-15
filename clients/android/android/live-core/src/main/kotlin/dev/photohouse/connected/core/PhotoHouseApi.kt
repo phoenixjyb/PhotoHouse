@@ -146,6 +146,10 @@ interface PhotoHouseApi {
         token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation, sourceReview: Boolean,
     ): SavedMemoryStory = if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403)
         else saveMemoryStoryContributionReferences(token, library, mutation)
+    /** Metadata-only candidates scoped to one saved story revision and chapter. */
+    suspend fun savedMemoryStoryContributionCandidates(
+        token: Bearer, library: String, storyId: String, revision: Long, chapterId: String, page: Int,
+    ): MemoryContributionCandidatePage = throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Explicit source review uses the protected contribution detail route; audio has a separate operation. */
     suspend fun savedMemoryContributionDetail(
         token: Bearer, library: String, storyId: String, contributionId: String,

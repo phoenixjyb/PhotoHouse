@@ -36,11 +36,20 @@ data class SavedMemoryStoriesReading(
     val contributionDetail: MemoryContributionDetail? = null,
     val contributionDetailBusy: Boolean = false, val contributionDetailUnavailable: Boolean = false,
     val contributionReferenceDraft: Map<String, List<String>>? = null,
+    val contributionCandidateChooser: SavedMemoryContributionCandidateChooser? = null,
+    /** Metadata admitted for this exact reader revision; never persisted. */
+    val contributionCandidateMetadata: Map<String, MemoryContributionCandidate> = emptyMap(),
     val contributionReferenceSaveBusy: Boolean = false, val contributionReferenceSaveError: Boolean = false,
     val contributionReferenceSaveConflict: Boolean = false,
     val pendingContributionReferenceMutation: SavedMemoryStoryContributionReferencesMutation? = null,
     val resumePosition: SavedStoryReaderPosition? = null,
     val selectedAssetId: String? = null,
+)
+data class SavedMemoryContributionCandidateChooser(
+    val storyId: String, val revision: Long, val chapterId: String,
+    val page: Int = 0, val hasMore: Boolean = false,
+    val candidates: List<MemoryContributionCandidate> = emptyList(),
+    val loading: Boolean = false, val failedPage: Int? = null, val unavailable: Boolean = false,
 )
 data class MemoryBooksReading(
     val library: String, val page: Int = 1, val busy: Boolean = false,
@@ -491,6 +500,7 @@ class ConnectedStore(
     private var savedMemoryReaderEpoch = 0L
     private var savedMemoryContributionReferencesRequest = 0L
     private var savedMemoryContributionDetailRequest = 0L
+    private var savedMemoryContributionCandidatesRequest = 0L
     private var savedMemoryContributionChapterEpoch = 0L
     private var savedMemoryContributionReferenceSaveRequest = 0L
     private var savedMemoryFramesRequest = 0L
@@ -755,7 +765,7 @@ class ConnectedStore(
         memoryBooksMediaRequest++
         memoryBookResume.clear()
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
-        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
+        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++; savedMemoryContributionCandidatesRequest++
         savedMemoryContributionChapterEpoch++
         assistantSpeechRequest++
         assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
@@ -979,7 +989,8 @@ class ConnectedStore(
         val references = reading.contributionReferences ?: return false
         if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
             reading.library != state.value.library || reading.detailBusy || !story.canEdit ||
-            !completeContributionReferences(story, references) || reading.contributionReferenceSaveBusy ||
+            !completeContributionReferences(story, references) || reading.contributionReferencesBusy ||
+            reading.contributionReferencesUnavailable || reading.contributionReferenceSaveBusy ||
             reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
             reading.pendingContributionReferenceMutation != null ||
             reading.contributionReferenceDraft?.let { draft -> draft != references.chapters.associate { it.chapterId to it.contributionIds } } == true ||
@@ -1649,7 +1660,7 @@ class ConnectedStore(
         clearMemoryCommunity(clearState = true)
         val request = ++savedMemoryListRequest
         savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryHeroRequest++
-        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
+        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++; savedMemoryContributionCandidatesRequest++
         savedMemoryContributionChapterEpoch++
         savedMemoryCoversRequest++
         current?.frames?.values?.forEach { it.fill(0) }
@@ -1680,7 +1691,8 @@ class ConnectedStore(
     fun openSavedMemoryStory(summary: SavedMemoryStorySummary) {
         val initial = state.value.savedMemoryStories ?: return
         if (!api.protectedNativeV2Enabled || !allowed() || state.value.busy || coolingDown() || initial.library != state.value.library ||
-            initial.busy || initial.unavailable || initial.result?.items?.contains(summary) != true || initial.detailBusy) return
+            initial.busy || initial.unavailable || initial.result?.items?.contains(summary) != true || initial.detailBusy ||
+            initial.detail != null && savedStoryReaderSwitchBlocked(initial)) return
         readAuthorizedSavedMemoryStory(summary)
     }
 
@@ -1736,7 +1748,7 @@ class ConnectedStore(
         val request = ++savedMemoryDetailRequest
         savedMemoryContributionReferenceSaveRequest++
         val readerEpoch = ++savedMemoryReaderEpoch
-        savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
+        savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++; savedMemoryContributionCandidatesRequest++
         savedMemoryContributionChapterEpoch++
         reading.frames.values.forEach { it.fill(0) }
         reading.hero?.fill(0)
@@ -1745,6 +1757,10 @@ class ConnectedStore(
             selectedSummary = summary, selectedChapter = 0, frames = emptyMap(), heroAssetId = null, hero = null, heroBusy = false,
             resumePosition = null, selectedAssetId = null,
             contributionReferences = null, contributionReferencesBusy = false, contributionReferencesUnavailable = false,
+            contributionCandidateChooser = null, contributionCandidateMetadata = emptyMap(),
+            contributionReferenceDraft = null, contributionReferenceSaveBusy = false,
+            contributionReferenceSaveError = false, contributionReferenceSaveConflict = false,
+            pendingContributionReferenceMutation = null,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,
             contributionDetailBusy = false, contributionDetailUnavailable = false, problem = null))
         val credential = token!!; val library = reading.library
@@ -1809,10 +1825,25 @@ class ConnectedStore(
     ): Boolean {
         val story = reading.detail ?: return false
         val references = reading.contributionReferences ?: return false
-        return reading.library == library && story.id == storyId && story.libraryId == library && story.revision == revision &&
-            references.id == storyId && references.libraryId == library && references.revision == revision &&
-            reading.contributionDetailChapterId == chapterId && reading.contributionDetailId == contributionId &&
+        val selectedInDraft = reading.contributionReferenceDraft?.get(chapterId)?.contains(contributionId) == true
+        val savedLink = references.id == storyId && references.libraryId == library && references.revision == revision &&
             references.chapters.firstOrNull { it.chapterId == chapterId }?.contributionIds?.contains(contributionId) == true
+        val selectedCandidate = selectedInDraft &&
+            savedMemoryContributionCandidateCurrent(reading, storyId, library, revision, chapterId, contributionId)
+        return reading.library == library && story.id == storyId && story.libraryId == library && story.revision == revision &&
+            reading.contributionDetailChapterId == chapterId && reading.contributionDetailId == contributionId &&
+            selectedInDraft && (savedLink || selectedCandidate)
+    }
+
+    private fun savedMemoryContributionCandidateCurrent(
+        reading: SavedMemoryStoriesReading, storyId: String, library: String, revision: Long,
+        chapterId: String, contributionId: String,
+    ): Boolean {
+        val story = reading.detail ?: return false
+        val candidate = reading.contributionCandidateMetadata[contributionId] ?: return false
+        return reading.library == library && story.libraryId == library && story.id == storyId && story.revision == revision &&
+            candidate.id == contributionId && (candidate.chapterId == null || candidate.chapterId == chapterId) &&
+            chapterId in story.chapters.map { it.id }
     }
 
     private fun loadSavedMemoryStoryContributionReferences(
@@ -1821,10 +1852,19 @@ class ConnectedStore(
         val reading = state.value.savedMemoryStories ?: return
         if (reading.detail?.id != story.id || reading.detail.revision != story.revision || reading.library != story.libraryId) return
         val accountId = identity?.account_id ?: return
+        val retainedDraft = reading.contributionReferenceDraft?.takeIf { draft ->
+            reading.contributionReferences?.let { refs -> refs.id == story.id && refs.libraryId == reading.library &&
+                refs.revision == story.revision && draft != refs.chapters.associate { it.chapterId to it.contributionIds } } == true &&
+            draft.keys == story.chapters.map { it.id }.toSet() && draft.values.all { ids ->
+                ids.size <= 12 && ids.distinct().size == ids.size
+            }
+        }
         val request = ++savedMemoryContributionReferencesRequest
+        closeSavedMemoryStoryContributionChooser()
         savedMemoryContributionDetailRequest++
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(
-            contributionReferences = null, contributionReferencesBusy = true, contributionReferencesUnavailable = false,
+            contributionReferences = reading.contributionReferences, contributionReferencesBusy = true, contributionReferencesUnavailable = false,
+            contributionCandidateChooser = null,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,
             contributionDetailBusy = false, contributionDetailUnavailable = false,
         ))
@@ -1838,7 +1878,7 @@ class ConnectedStore(
                 val current = state.value.savedMemoryStories ?: return@launch
                 mutable.value = state.value.copy(savedMemoryStories = current.copy(
                     contributionReferences = references, contributionReferencesBusy = false, contributionReferencesUnavailable = false,
-                    contributionReferenceDraft = references.chapters.associate { it.chapterId to it.contributionIds },
+                    contributionReferenceDraft = retainedDraft ?: references.chapters.associate { it.chapterId to it.contributionIds },
                     pendingContributionReferenceMutation = null, contributionReferenceSaveError = false,
                     contributionReferenceSaveConflict = false,
                 ))
@@ -1863,26 +1903,140 @@ class ConnectedStore(
     fun retrySavedMemoryStoryContributionReferences() {
         val reading = state.value.savedMemoryStories ?: return
         val story = reading.detail ?: return
-        if (!api.protectedNativeV2Enabled || !allowed() || reading.contributionReferencesBusy) return
+        if (!api.protectedNativeV2Enabled || !allowed() || reading.contributionReferencesBusy ||
+            reading.contributionReferenceSaveBusy || reading.contributionReferenceSaveError ||
+            reading.contributionReferenceSaveConflict || reading.pendingContributionReferenceMutation != null) return
         val credential = token ?: return
         loadSavedMemoryStoryContributionReferences(story, credential, state.value.generation,
             savedMemoryDetailRequest, savedMemoryReaderEpoch)
+    }
+
+    /** Explicitly opens the metadata-only chooser for the current saved-story chapter. */
+    fun openSavedMemoryStoryContributionChooser(chapterId: String) {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return
+        val story = reading.detail ?: return
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return
+        val references = reading.contributionReferences ?: return
+        if (!api.protectedNativeV2Enabled || !allowed() || !story.canEdit || live.library != reading.library ||
+            chapter.id != chapterId || reading.contributionReferencesBusy || reading.contributionReferenceSaveBusy ||
+            reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict || reading.pendingContributionReferenceMutation != null ||
+            reading.contributionReferencesUnavailable || references.id != story.id || references.libraryId != reading.library ||
+            references.revision != story.revision || reading.contributionReferenceDraft == null) return
+        closeSavedMemoryStoryContributionChooser()
+        val chooser = SavedMemoryContributionCandidateChooser(story.id, story.revision, chapterId)
+        val current = state.value.savedMemoryStories ?: return
+        mutable.value = state.value.copy(savedMemoryStories = current.copy(contributionCandidateChooser = chooser))
+        loadSavedMemoryStoryContributionCandidatesPage(1)
+    }
+
+    fun loadMoreSavedMemoryStoryContributionCandidates() {
+        val chooser = state.value.savedMemoryStories?.contributionCandidateChooser ?: return
+        if (!chooser.hasMore || chooser.loading || chooser.failedPage != null) return
+        loadSavedMemoryStoryContributionCandidatesPage(chooser.page + 1)
+    }
+
+    fun retrySavedMemoryStoryContributionCandidates() {
+        val chooser = state.value.savedMemoryStories?.contributionCandidateChooser ?: return
+        val page = chooser.failedPage ?: return
+        if (!chooser.loading) loadSavedMemoryStoryContributionCandidatesPage(page)
+    }
+
+    fun cancelSavedMemoryStoryContributionChooser() = closeSavedMemoryStoryContributionChooser()
+
+    private fun closeSavedMemoryStoryContributionChooser() {
+        savedMemoryContributionCandidatesRequest++
+        val reading = state.value.savedMemoryStories ?: return
+        if (reading.contributionCandidateChooser == null) return
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(contributionCandidateChooser = null))
+    }
+
+    private fun loadSavedMemoryStoryContributionCandidatesPage(page: Int) {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return
+        val story = reading.detail ?: return
+        val chooser = reading.contributionCandidateChooser ?: return
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return
+        if (page !in 1..100000 || chooser.loading || chooser.storyId != story.id || chooser.revision != story.revision ||
+            chooser.chapterId != chapter.id || reading.library != live.library || !story.canEdit || !allowed() ||
+            reading.contributionReferencesBusy || reading.contributionReferenceSaveBusy || reading.contributionReferenceSaveError ||
+            reading.contributionReferenceSaveConflict || reading.pendingContributionReferenceMutation != null ||
+            reading.contributionReferences?.let { it.id == story.id && it.libraryId == reading.library && it.revision == story.revision } != true) return
+        val credential = token ?: return
+        val accountId = identity?.account_id ?: return
+        val generation = live.generation; val detailRequest = savedMemoryDetailRequest; val readerEpoch = savedMemoryReaderEpoch
+        val chapterEpoch = savedMemoryContributionChapterEpoch
+        val request = ++savedMemoryContributionCandidatesRequest
+        val previousCandidates = chooser.candidates
+        val current = reading.copy(contributionCandidateChooser = chooser.copy(loading = true, failedPage = null, unavailable = false))
+        mutable.value = live.copy(savedMemoryStories = current)
+        val job = scope.launch {
+            try {
+                val result = api.savedMemoryStoryContributionCandidates(
+                    credential, reading.library, story.id, story.revision, chooser.chapterId, page,
+                )
+                val activeReading = state.value.savedMemoryStories ?: return@launch
+                if (!savedMemorySourceReaderCurrent(accountId, credential, reading.library, story.id, story.revision,
+                        generation, detailRequest, readerEpoch) || request != savedMemoryContributionCandidatesRequest ||
+                    chapterEpoch != savedMemoryContributionChapterEpoch ||
+                    activeReading.contributionCandidateChooser?.let {
+                        it.storyId == story.id && it.revision == story.revision && it.chapterId == chooser.chapterId && it.loading
+                    } != true) return@launch
+                validResponse(result.storyId == story.id && result.libraryId == reading.library && result.revision == story.revision &&
+                    result.chapterId == chooser.chapterId && result.page == page && result.pageSize == 16 && result.items.size <= 16 &&
+                    result.items.map { it.id }.distinct().size == result.items.size && result.items.all {
+                        it.kind in setOf("text", "audio") && it.language in setOf("zh", "en", "mixed", "und") &&
+                            (it.chapterId == null || it.chapterId == chooser.chapterId) && it.createdAt in 0..253402300799 &&
+                            (it.durationMs == null || it.durationMs in 1..30000)
+                    })
+                val appended = if (page == 1) result.items else previousCandidates + result.items.filter { next -> previousCandidates.none { it.id == next.id } }
+                val latest = state.value.savedMemoryStories ?: return@launch
+                val metadata = latest.contributionCandidateMetadata + result.items.associateBy { it.id }
+                mutable.value = state.value.copy(savedMemoryStories = latest.copy(
+                    contributionCandidateChooser = latest.contributionCandidateChooser!!.copy(page = page,
+                        hasMore = result.hasMore, candidates = appended, loading = false, failedPage = null, unavailable = false),
+                    contributionCandidateMetadata = metadata,
+                ))
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                val activeReading = state.value.savedMemoryStories ?: return@launch
+                if (!savedMemorySourceReaderCurrent(accountId, credential, reading.library, story.id, story.revision,
+                        generation, detailRequest, readerEpoch) || request != savedMemoryContributionCandidatesRequest ||
+                    chapterEpoch != savedMemoryContributionChapterEpoch || activeReading.contributionCandidateChooser?.let {
+                        it.storyId == story.id && it.revision == story.revision && it.chapterId == chooser.chapterId && it.loading
+                    } != true) return@launch
+                if (e is ApiFailure && e.status in listOf(401, 403)) readFailure(e, generation, credential) { closeSavedMemoryStories() }
+                else {
+                    val currentReading = state.value.savedMemoryStories ?: return@launch
+                    mutable.value = state.value.copy(savedMemoryStories = currentReading.copy(
+                        contributionCandidateChooser = currentReading.contributionCandidateChooser!!.copy(
+                            loading = false, failedPage = page, unavailable = true,
+                        ),
+                    ))
+                }
+            }
+        }
+        requests += job
+        job.invokeOnCompletion { requests.remove(job) }
     }
 
     fun toggleSavedMemoryChapterContribution(chapterId: String, contributionId: String) {
         val live = state.value
         val reading = live.savedMemoryStories ?: return
         val story = reading.detail ?: return
-        if (story.chapters.none { it.id == chapterId }) return
+        if (story.chapters.getOrNull(reading.selectedChapter)?.id != chapterId) return
         val draft = reading.contributionReferenceDraft ?: return
         if (!story.canEdit || !api.protectedNativeV2Enabled || !allowed() || reading.contributionReferencesBusy ||
-            reading.contributionReferenceSaveBusy || reading.contributionReferences?.revision != story.revision) return
+            reading.contributionReferenceSaveBusy || reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+            reading.pendingContributionReferenceMutation != null || reading.contributionReferencesUnavailable ||
+            reading.contributionReferences?.let { it.id == story.id && it.libraryId == reading.library && it.revision == story.revision } != true) return
         val selected = draft[chapterId].orEmpty()
         val next = if (contributionId in selected) selected - contributionId else {
-            val known = reading.community?.contributions?.items?.firstOrNull { it.id == contributionId }
-            if (known == null || known.storyId != story.id || known.state != "accepted" || !known.processingConsent ||
-                known.baseStoryRevision !in 1..story.revision || known.chapterId != null && known.chapterId != chapterId ||
-                nextSize(selected) >= 12) return
+            val chooser = reading.contributionCandidateChooser ?: return
+            val known = chooser.candidates.firstOrNull { it.id == contributionId }
+            if (chooser.storyId != story.id || chooser.revision != story.revision || chooser.chapterId != chapterId ||
+                known == null || (known.chapterId != null && known.chapterId != chapterId) ||
+                reading.contributionCandidateMetadata[contributionId] != known || nextSize(selected) >= 12) return
             selected + contributionId
         }
         mutable.value = live.copy(savedMemoryStories = reading.copy(contributionReferenceDraft = draft + (chapterId to next)))
@@ -1900,18 +2054,21 @@ class ConnectedStore(
         val story = reading.detail ?: return
         val accountId = identity?.account_id ?: return
         if (!api.protectedNativeV2Enabled || !allowed() || !story.canEdit || reading.library != live.library ||
-            reading.contributionReferenceSaveBusy || reading.contributionReferencesBusy) return
+            reading.contributionReferenceSaveBusy || reading.contributionReferencesBusy || reading.contributionReferencesUnavailable) return
+        if (!retry && (reading.pendingContributionReferenceMutation != null || reading.contributionReferenceSaveError ||
+                reading.contributionReferenceSaveConflict)) return
+        closeSavedMemoryStoryContributionChooser()
+        val saveReading = state.value.savedMemoryStories ?: return
         val frozen = reading.pendingContributionReferenceMutation
         val mutation = if (retry) frozen ?: return else {
             if (reading.contributionReferences?.let { it.id == story.id && it.libraryId == reading.library && it.revision == story.revision } != true) return
             val draft = reading.contributionReferenceDraft ?: return
-            val pages = reading.community?.contributions?.items.orEmpty().associateBy { it.id }
             val currentRefs = reading.contributionReferences.chapters.associate { it.chapterId to it.contributionIds }
             if (draft.any { (chapterId, ids) ->
                 ids.size > 12 || ids.distinct().size != ids.size || ids.any { id ->
-                    if (id in currentRefs[chapterId].orEmpty()) false else pages[id]?.let { item ->
-                        item.storyId != story.id || item.state != "accepted" || !item.processingConsent ||
-                            item.baseStoryRevision !in 1..story.revision || item.chapterId != null && item.chapterId != chapterId
+                    if (id in currentRefs[chapterId].orEmpty()) false else reading.contributionCandidateMetadata[id]?.let { item ->
+                        item.id != id || item.kind !in setOf("text", "audio") ||
+                            item.chapterId != null && item.chapterId != chapterId
                     } != false
                 }
             }) return
@@ -1927,7 +2084,7 @@ class ConnectedStore(
         val credential = token ?: return
         val generation = live.generation; val detailRequest = savedMemoryDetailRequest; val readerEpoch = savedMemoryReaderEpoch
         val request = if (retry) savedMemoryContributionReferenceSaveRequest else ++savedMemoryContributionReferenceSaveRequest
-        mutable.value = live.copy(savedMemoryStories = reading.copy(contributionReferenceSaveBusy = true,
+        mutable.value = live.copy(savedMemoryStories = saveReading.copy(contributionReferenceSaveBusy = true,
             contributionReferenceSaveError = false, contributionReferenceSaveConflict = false,
             pendingContributionReferenceMutation = mutation))
         val job = scope.launch {
@@ -1970,10 +2127,15 @@ class ConnectedStore(
         val story = reading.detail ?: return
         val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return
         val references = reading.contributionReferences ?: return
-        if (!api.protectedNativeV2Enabled || !allowed() || reading.contributionReferencesBusy ||
+        val verifiedLink = references.id == story.id && references.libraryId == reading.library &&
+            references.revision == story.revision && references.chapters.firstOrNull { it.chapterId == chapterId }
+                ?.contributionIds?.contains(contributionId) == true
+        val selectedInDraft = reading.contributionReferenceDraft?.get(chapterId)?.contains(contributionId) == true
+        val selectedCandidate = selectedInDraft &&
+            savedMemoryContributionCandidateCurrent(reading, story.id, reading.library, story.revision, chapterId, contributionId)
+        if (!api.protectedNativeV2Enabled || !allowed() || reading.contributionReferencesBusy || reading.contributionReferencesUnavailable ||
             references.id != story.id || references.libraryId != reading.library || references.revision != story.revision ||
-            chapter.id != chapterId || references.chapters.firstOrNull { it.chapterId == chapterId }
-                ?.contributionIds?.contains(contributionId) != true) return
+            chapter.id != chapterId || !selectedInDraft || (!verifiedLink && !selectedCandidate)) return
         val credential = token ?: return
         val accountId = identity?.account_id ?: return
         val generation = live.generation
@@ -1996,7 +2158,13 @@ class ConnectedStore(
                     !savedMemoryContributionLinkCurrent(currentReading, story.id, reading.library, story.revision,
                         chapterId, contributionId)) return@launch
                 val contribution = result.receipt.contribution
-                val eligible = contribution.id == contributionId && contribution.storyId == story.id &&
+                val metadata = reading.contributionCandidateMetadata[contributionId]
+                val stillSelected = currentReading.contributionReferenceDraft?.get(chapterId)?.contains(contributionId) == true
+                val selectedMatchesMetadata = metadata == null || stillSelected && metadata.kind == contribution.kind &&
+                    metadata.byline == contribution.byline && metadata.language == contribution.language &&
+                    metadata.chapterId == contribution.chapterId && metadata.createdAt == contribution.createdAt &&
+                    metadata.durationMs == contribution.durationMs
+                val eligible = contribution.id == contributionId && contribution.storyId == story.id && selectedMatchesMetadata &&
                     contribution.state == "accepted" && contribution.processingConsent &&
                     contribution.baseStoryRevision in 1..story.revision &&
                     (contribution.chapterId == null || contribution.chapterId == chapterId)
@@ -2048,8 +2216,9 @@ class ConnectedStore(
         val reading = state.value.savedMemoryStories ?: return
         val summary = reading.selectedSummary ?: return
         if (!api.protectedNativeV2Enabled || !allowed() || state.value.busy || coolingDown() ||
-            reading.library != state.value.library || reading.detailBusy || !reading.detailUnavailable) return
-        if (reading.result == null) readAuthorizedSavedMemoryStory(summary, wholeStoryContribution = true)
+            reading.library != state.value.library || reading.detailBusy || (!reading.detailUnavailable && !reading.contributionReferenceSaveConflict)) return
+        if (reading.contributionReferenceSaveConflict) readAuthorizedSavedMemoryStory(summary)
+        else if (reading.result == null) readAuthorizedSavedMemoryStory(summary, wholeStoryContribution = true)
         else openSavedMemoryStory(summary)
     }
 
@@ -2084,10 +2253,13 @@ class ConnectedStore(
         reading.frames.values.forEach { it.fill(0) }
         reading.hero?.fill(0); savedMemoryHeroRequest++
         val chapter = story.chapters[index]
-        mutable.value = state.value.copy(savedMemoryStories = reading.copy(selectedChapter = index, selectedAssetId = assetId,
+        closeSavedMemoryStoryContributionChooser()
+        val activeReading = state.value.savedMemoryStories ?: return false
+        mutable.value = state.value.copy(savedMemoryStories = activeReading.copy(selectedChapter = index, selectedAssetId = assetId,
             resumePosition = if (clearResume) null else reading.resumePosition, frames = emptyMap(),
             heroAssetId = null, hero = null, heroBusy = false, framesBusy = true,
-            contributionReferences = null, contributionReferencesBusy = true, contributionReferencesUnavailable = false,
+            contributionReferences = reading.contributionReferences, contributionReferencesBusy = true, contributionReferencesUnavailable = false,
+            contributionCandidateChooser = null,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,
             contributionDetailBusy = false, contributionDetailUnavailable = false))
         if (persistPosition) saveSavedStoryReaderPosition(accountId, story, chapter.id, assetId)
@@ -2233,7 +2405,7 @@ class ConnectedStore(
         savedGroupedStoryEditRequest++
         clearMemoryCommunity(clearState = true)
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
-        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
+        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++; savedMemoryContributionCandidatesRequest++
         savedMemoryContributionReferenceSaveRequest++
         savedMemoryContributionChapterEpoch++
         state.value.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
@@ -3905,7 +4077,7 @@ class ConnectedStore(
     fun closeSavedMemoryStoryDetail() {
         clearMemoryCommunity(clearState = true)
         savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryHeroRequest++
-        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
+        savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++; savedMemoryContributionCandidatesRequest++
         savedMemoryContributionReferenceSaveRequest++
         savedMemoryContributionChapterEpoch++
         val reading = state.value.savedMemoryStories ?: return
@@ -3917,6 +4089,7 @@ class ConnectedStore(
             resumePosition = null, frames = emptyMap(), heroAssetId = null,
             hero = null, heroBusy = false, framesBusy = false, contributionReferences = null,
             contributionReferencesBusy = false, contributionReferencesUnavailable = false,
+            contributionCandidateChooser = null, contributionCandidateMetadata = emptyMap(),
             contributionReferenceDraft = null, contributionReferenceSaveBusy = false, contributionReferenceSaveError = false,
             contributionReferenceSaveConflict = false, pendingContributionReferenceMutation = null,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,

@@ -20285,6 +20285,117 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "android-metadata-only-chapter-memory-chooser",
+      "source_commit": "6fbdf8df9c30b4784aad40840b6f8160d812017d",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "1f68ffdb262b10f2a37ea3d6f685328cde21b954714184006ebc384fa1660f07",
+          "sha256": "5862fd2e4d7ce84c3eaf3875046f93199a7b52a0164e50d935099ef5da0deb32"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/SavedMemoryStoriesUiTest.kt",
+          "before_sha256": "2775e2bc56d2c40d9364a9b6b2e46ef5aa603d76740498b56af244cf4c82aaa9",
+          "sha256": "a57051709df607d8b546373b3aef74f5826a5a5e01bdfdf2b70527d683254f72"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/SavedMemoryStoriesDialog.kt",
+          "before_sha256": "18c90792bbc98b062faff9761474866013a607e57afc9a9441102a6b02e9c79c",
+          "sha256": "6a2ed3253fe516457aaaea07009482ab8e4d10e3e13143623974044bf7d439fa"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "5b460ba085b212717ad65c44ffe97e925fbdccceb8c91dc1857a1e35a9e3a33b",
+          "sha256": "db6684c95d79f5f7e27c28bc5f4b467925693160db24ed293eaa193a56f36959"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "85e5b58198b2325ff480469af9a0f89dc1646a1f6834fb8c73cff4a9b4a4ab39",
+          "sha256": "52c14793c3dde883328b8f467f17a5d2854d2013ddb789dc976626db915a7a8f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "before_sha256": "f3acbd6834fb3adffb62668225e51a387620f6e6d9b8a735e26be6226eb08db5",
+          "sha256": "012a455b43ce45a8fcc2cded0eb20398e53569c4fc980552bf69d166a5fcb2b9"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedMemoryCommunity.kt",
+          "before_sha256": "285685ef02a1eaae8f49be9e4fa49bae0664c2f9b2cd1d95a059cb7e1808842a",
+          "sha256": "edeff6708d4209c7414434051304ed000eb8f6ceafc2b3535838fe58c2376d81"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt",
+          "before_sha256": "c7cba761e124734f5e944323f2d5c0d441cf0ac1866a0d500ef3da7a1e1e6850",
+          "sha256": "64d0a78e54d1a29c72e089dbc3413769008200bfc70d95d4936bebc1417afbc4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityWireTest.kt",
+          "before_sha256": "37c2de6fc8f675f68b6c7bcd0c3a93b70bba096859a06b281dc432602c8f4327",
+          "sha256": "fb60303282392b4de88e0cd61f8316d6a0db40e71c895b475e5f79f67886e0db"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/SavedMemoryStoriesStoreTest.kt",
+          "before_sha256": "54931e534441f8d8690569a877e862b8dbdc7b1f427d1ba737fdf334afc224db",
+          "sha256": "9dd394464b86b743fb75f73e58273f63c8c968b3731413230e81c4d942a5775d"
+        },
+        {
+          "path": "docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md",
+          "before_sha256": "ae4cc24546edf75b2f2abcc853dd178db237301c54a628c21449aa166bc55fab",
+          "sha256": "d98fa29c5891f0902f752cd12f6f3d2fe5601b3ed9d323941de11f12502b009c"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "e1953bb38030d9a459f0a7b18d28ae259a0f3629cadb7bd139ca87b0ed6a06f6",
+          "sha256": "f0339e07b95f2e13faa09f4c2b4b88e66a97babfb8df18f2fc639097da881c7e"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "5c0b670db1226c42828fbafb1465134c0747febaadfecd3f68ba2f69df4a1b8e",
+          "sha256": "6a00bac18c76bb93c9d88c1fd863563934296b6c68141fc54ffab57053e7c75b"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "1f9fe94c7fd80e5da209bd86c00c22e4203e276de9b2b7abae97e721c4b0e696",
+          "sha256": "5202a1fd5a36d3adda27a6d5d5c22034ede0dd8bcedbb382bfdc29c4d9c6acb0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "metadata_only_choices": true,
+      "explicit_source_review": true,
+      "revision_bound_atomic_save": true,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
+    },
+    {
+      "feature": "chapter-candidate-recording-duration-bound",
+      "source_commit": "388633dd95fd24236c810aef598a636c78a8c895",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "db6684c95d79f5f7e27c28bc5f4b467925693160db24ed293eaa193a56f36959",
+          "sha256": "86159bdd2a832fcec4fe62f33e507945f746f021b3587ccdc5c3d4fe6a611301"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedMemoryCommunity.kt",
+          "before_sha256": "edeff6708d4209c7414434051304ed000eb8f6ceafc2b3535838fe58c2376d81",
+          "sha256": "911913d926ce245af3f50b1419577276b8f8d33202fa910c3be5f00c3bbe43d7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityWireTest.kt",
+          "before_sha256": "fb60303282392b4de88e0cd61f8316d6a0db40e71c895b475e5f79f67886e0db",
+          "sha256": "25d0aef0e5d8fc6c78ccfde6bf6df26b697704714b56f3efdd816f06c3d0aa5f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "max_recording_duration_ms": 30000,
+      "models_activated": false,
+      "apk_published": false
     }
   ]
 }

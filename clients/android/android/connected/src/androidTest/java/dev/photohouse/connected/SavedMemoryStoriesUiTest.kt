@@ -71,8 +71,12 @@ class SavedMemoryStoriesUiTest {
         var contributionReferenceReads = 0
         val contributionDetailReads = mutableListOf<String>()
         private var savedRevision = summary.revision
-        private var linkedText = true
-        private var linkedAudio = true
+        var linkedText = true
+        var linkedAudio = true
+        var contributionListReads = 0
+        val candidateReads = mutableListOf<Pair<String, Int>>()
+        var candidateFailurePage: Int? = null
+        var referenceSaves = 0
         val longFamilyText = "奶奶说那天的风很轻，我们沿着花园小路慢慢走，看见各色花朵在阳光下摇曳。".repeat(24)
         override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int, theme: String?): SavedMemoryStoryPage {
             listRequests += page to theme
@@ -93,6 +97,7 @@ class SavedMemoryStoriesUiTest {
         override suspend fun capabilities(token: Bearer, library: String) =
             """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
         override suspend fun listContributions(token: Bearer, library: String, storyId: String, page: Int): ByteArray {
+            contributionListReads++
             val items = listOf(
                 """{"id":"$textContributionId","story_id":"$storyId","author_id":"22222222-2222-2222-2222-222222222222","kind":"text","language":"zh","byline":"家人","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","duration_ms":null,"chapter_id":null,"base_story_revision":"2","state":"accepted","created_at":1720000000,"text":"原始家人回忆","processing_consent":true}""",
                 """{"id":"$audioContributionId","story_id":"$storyId","author_id":"22222222-2222-2222-2222-222222222222","kind":"audio","language":"zh","byline":"家人","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","duration_ms":5000,"chapter_id":"chapter-1","base_story_revision":"2","state":"accepted","created_at":1720000000,"text":null,"processing_consent":true}""",
@@ -137,9 +142,24 @@ class SavedMemoryStoriesUiTest {
             SavedMemoryChapterContributionReferences("chapter-1", listOfNotNull(textContributionId.takeIf { linkedText }, audioContributionId.takeIf { linkedAudio })),
             SavedMemoryChapterContributionReferences("chapter-2", emptyList()),
         )).also { contributionReferenceReads++ }
+        override suspend fun savedMemoryStoryContributionCandidates(
+            token: Bearer, library: String, storyId: String, revision: Long, chapterId: String, page: Int,
+        ): MemoryContributionCandidatePage {
+            candidateReads += chapterId to page
+            if (candidateFailurePage == page) { candidateFailurePage = null; throw ApiFailure(FailureKind.HTTP, status = 503) }
+            val all = listOf(
+                MemoryContributionCandidate(textContributionId, "text", "文本署名甲", "zh", null, 1720000000, null),
+                MemoryContributionCandidate(audioContributionId, "audio", "录音署名乙", "zh", "chapter-1", 1720000000, 5000),
+            ) + (1..15).map { index -> MemoryContributionCandidate("55555555-5555-4555-8555-${index.toString().padStart(12, '0')}",
+                "text", "分页测试家人 $index", "zh", null, 1720000000L - index, null) }
+            val eligible = all.filter { it.chapterId == null || it.chapterId == chapterId }
+            return MemoryContributionCandidatePage(storyId, library, revision, chapterId, page, 16, page * 16 < eligible.size,
+                eligible.drop((page - 1) * 16).take(16))
+        }
         override suspend fun saveMemoryStoryContributionReferences(
             token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation,
         ): SavedMemoryStory {
+            referenceSaves++
             savedRevision = mutation.revision + 1
             linkedText = mutation.contributionRefsJson.contains(textContributionId)
             linkedAudio = mutation.contributionRefsJson.contains(audioContributionId)
@@ -473,118 +493,115 @@ class SavedMemoryStoriesUiTest {
     }
 
     @Test fun editableChapterContributionLinksSaveAndReopenAt150Percent() {
-        val editableSummary = summary.copy(canEdit = true)
-        val api = Api(id, editableSummary)
+        val api = Api(id, summary.copy(canEdit = true))
         val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true)
         rule.setContent {
             val base = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(base.density, 1.5f)) {
-                ConnectedApp(store, initialLanguage = "zh")
-            }
+            CompositionLocalProvider(LocalDensity provides Density(base.density, 1.5f)) { ConnectedApp(store, initialLanguage = "zh") }
         }
+        openEditableStory(store)
+        val editor = "saved-memory-contribution-link-editor-chapter-1"
+        val toggle = "saved-memory-contribution-link-toggle-chapter-1"
+        rule.onNodeWithTag(editor).assertDoesNotExist()
+        assertEquals(emptyList<Pair<String, Int>>(), api.candidateReads)
+        assertEquals(emptyList<String>(), api.contributionDetailReads)
+        rule.onNodeWithTag(toggle).performScrollTo().performClick()
+        rule.onNodeWithTag(editor).performScrollTo().assertIsDisplayed()
+        rule.onAllNodes(hasText("原始家人回忆", substring = true) and hasAnyAncestor(hasTestTag(editor)), useUnmergedTree = true).assertCountEquals(0)
+        assertEquals("opening manager does not read metadata", 0, api.candidateReads.size)
+        val baselineLists = api.contributionListReads
+        rule.onNodeWithTag("saved-memory-contribution-add-chapter-1").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionCandidateChooser?.loading == false }
+        rule.onNodeWithTag("saved-memory-contribution-chooser-chapter-1").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("saved-memory-candidate-chapter-1-0").performScrollTo().assertTextContains("文字回忆", substring = true).assertTextContains("提交于", substring = true)
+        rule.onNodeWithTag("saved-memory-candidate-chapter-1-1").performScrollTo().assertTextContains("录音时长 · 0:05")
+        rule.onAllNodes(hasText("原始家人回忆", substring = true) and hasAnyAncestor(hasTestTag(editor)), useUnmergedTree = true).assertCountEquals(0)
+        rule.onNodeWithText(textContributionId).assertDoesNotExist()
+        rule.onNodeWithText(audioContributionId).assertDoesNotExist()
+        assertEquals(baselineLists, api.contributionListReads)
+        assertEquals(emptyList<String>(), api.contributionDetailReads)
+        captureToMediaStore("chapter-memory-chooser-zh-150.png")
+        rule.onNodeWithTag("saved-memory-next").performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.selectedChapter == 1 }
+        assertEquals(null, store.state.value.savedMemoryStories?.contributionCandidateChooser)
+        rule.onNodeWithTag("saved-memory-previous").performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.selectedChapter == 0 }
+        rule.onNodeWithTag("saved-memory-contribution-add-chapter-1").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionCandidateChooser?.loading == false }
+        val choice = "saved-memory-candidate-chapter-1-0"
+        rule.onNodeWithTag("saved-memory-contribution-chooser-chapter-1").performScrollTo()
+        rule.onNodeWithTag(choice).performScrollTo().performClick()
+        rule.waitUntil(3000) { store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1") == listOf(audioContributionId) }
+        rule.onNodeWithTag(choice).assertIsNotSelected().performClick()
+        rule.waitUntil(3000) { store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1")?.contains(textContributionId) == true }
+        rule.onNodeWithTag(choice).performClick()
+        rule.onNodeWithTag("saved-memory-candidate-close").performScrollTo().performClick()
+        rule.onNodeWithTag("saved-memory-contribution-link-save").performScrollTo().performClick()
+        rule.waitUntil(10000) { store.state.value.savedMemoryStories?.contributionReferences?.revision == 4L }
+        assertEquals(listOf(audioContributionId), store.state.value.savedMemoryStories!!.contributionReferences!!.chapters.first().contributionIds)
+        rule.onNodeWithTag("saved-memory-back-list").performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.detail == null }
+        rule.onNodeWithTag("saved-memory-story-$id").performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionReferences?.revision == 4L }
+        rule.onNodeWithTag(editor).assertDoesNotExist()
+        rule.onNodeWithTag("saved-memory-contribution-source-0").performScrollTo().assertExists()
+        captureToMediaStore("chapter-memory-saved-reopened-zh-150.png")
+        rule.onNodeWithTag(toggle).performScrollTo().performClick()
+        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-0").performScrollTo().performClick()
+        rule.waitUntil(3000) { store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1").orEmpty().isEmpty() }
+        rule.onNodeWithTag("saved-memory-contribution-link-save").performScrollTo().performClick()
+        rule.waitUntil(10000) { store.state.value.savedMemoryStories?.contributionReferences?.revision == 5L }
+        assertEquals(emptyList<String>(), store.state.value.savedMemoryStories!!.contributionReferences!!.chapters.first().contributionIds)
+        assertEquals(2, api.referenceSaves)
+    }
+
+    @Test fun metadataChooserPaginatesRetriesAndReviewsUnsavedSourceInEnglishAt150Percent() {
+        val api = Api(id, summary.copy(canEdit = true)).apply { linkedText = false; linkedAudio = false }
+        val store = ConnectedStore(api, scope, memoryCommunityApi = api, memoryCommunityEnabled = true)
+        rule.setContent {
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(base.density, 1.5f)) { ConnectedApp(store, initialLanguage = "en") }
+        }
+        openEditableStory(store)
+        rule.onNodeWithTag("saved-memory-contribution-link-toggle-chapter-1").performScrollTo().performClick()
+        val baselineLists = api.contributionListReads
+        rule.onNodeWithTag("saved-memory-contribution-add-chapter-1").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionCandidateChooser?.candidates?.size == 16 }
+        rule.onNodeWithTag("saved-memory-contribution-chooser-chapter-1").performScrollTo()
+        rule.onNodeWithTag("saved-memory-candidate-chapter-1-0").performScrollTo().assertTextContains("Submitted", substring = true).performClick()
+        rule.waitUntil(3000) { store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1") == listOf(textContributionId) }
+        api.candidateFailurePage = 2
+        rule.onNodeWithTag("saved-memory-candidate-more").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionCandidateChooser?.unavailable == true }
+        assertEquals(16, store.state.value.savedMemoryStories!!.contributionCandidateChooser!!.candidates.size)
+        assertEquals(0, api.referenceSaves)
+        rule.onNodeWithTag("saved-memory-candidate-retry").performScrollTo().assertIsDisplayed()
+        captureToMediaStore("chapter-memory-chooser-retry-en-150.png")
+        rule.onNodeWithTag("saved-memory-candidate-retry").performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionCandidateChooser?.candidates?.size == 17 }
+        assertEquals(listOf("chapter-1" to 1, "chapter-1" to 2, "chapter-1" to 2), api.candidateReads)
+        rule.onNodeWithTag("saved-memory-candidate-close").performScrollTo().performClick()
+        assertEquals(listOf(textContributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        assertEquals(baselineLists, api.contributionListReads)
+        assertEquals(emptyList<String>(), api.contributionDetailReads)
+        rule.onNodeWithTag("saved-memory-contribution-source-0").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionDetail != null }
+        rule.onNodeWithTag("saved-memory-contribution-source-text").performScrollTo().assertIsDisplayed()
+        assertEquals(listOf(textContributionId), api.contributionDetailReads)
+        assertEquals(0, api.referenceSaves)
+        rule.onNodeWithTag("saved-memory-contribution-link-save").performScrollTo().performClick()
+        rule.waitUntil(10000) { store.state.value.savedMemoryStories?.contributionReferences?.revision == 4L }
+        assertEquals(listOf(textContributionId), store.state.value.savedMemoryStories!!.contributionReferences!!.chapters.first().contributionIds)
+    }
+
+    private fun openEditableStory(store: ConnectedStore) {
         rule.runOnIdle { store.authenticate("+8612345678", "synthetic-password") }
         rule.waitUntil(5000) { store.state.value.library == "family" }
         rule.onNodeWithTag("open-saved-memory-stories").performScrollTo().performClick()
         rule.waitUntil(5000) { store.state.value.savedMemoryStories?.result != null }
         rule.onNodeWithTag("saved-memory-story-$id").performClick()
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.detail != null }
         rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionReferences != null }
-        rule.waitUntil(5000) {
-            val community = store.state.value.savedMemoryStories?.community
-            community?.contributions != null || community?.failure != null
-        }
-        assertEquals(null, store.state.value.savedMemoryStories?.community?.failure)
-        val editor = "saved-memory-contribution-link-editor-chapter-1"
-        val editorToggle = "saved-memory-contribution-link-toggle-chapter-1"
-        rule.onNodeWithTag(editor).assertDoesNotExist()
-        rule.onNodeWithTag(editorToggle).performScrollTo().assertIsDisplayed().assertIsEnabled()
-            .assertTextEquals("管理本章回忆")
-        rule.onNodeWithTag("saved-memory-contribution-source-0").performScrollTo().assertExists()
-        assertEquals("Opening the reader does not fetch source details", emptyList<String>(), api.contributionDetailReads)
-        captureToMediaStore("reader-source-controls-collapsed-150-v38.png")
-        rule.onNodeWithTag(editorToggle).performClick()
-        rule.onNodeWithTag(editor).performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("家人回忆 1 · 文字回忆").assertExists()
-        rule.onNodeWithText("家人回忆 2 · 录音").assertExists()
-        rule.onAllNodesWithText("署名：家人").assertCountEquals(2)
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-0").assertTextContains("已选择")
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-1").assertTextContains("已选择")
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-0").assertTextContains("原始家人回忆")
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-1").assertTextContains("录音时长 · 0:05")
-        rule.onNodeWithText("这是已完成的家人录音转写。").assertDoesNotExist()
-        rule.onNodeWithText(textContributionId).assertDoesNotExist()
-        rule.onNodeWithText(audioContributionId).assertDoesNotExist()
-        captureToMediaStore("editor-options-expanded-150-v38.png")
-        rule.onNodeWithTag("saved-memory-next").performClick()
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.selectedChapter == 1 }
-        rule.onNodeWithTag("saved-memory-contribution-link-editor-chapter-2").assertDoesNotExist()
-        rule.onNodeWithTag("saved-memory-contribution-link-toggle-chapter-2").assertTextEquals("管理本章回忆")
-        rule.onNodeWithTag("saved-memory-previous").performClick()
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.selectedChapter == 0 }
-        rule.onNodeWithTag(editor).assertExists()
-        val link = "saved-memory-contribution-link-chapter-1-0"
-        rule.onNodeWithTag(link).performScrollTo().performClick()
-        rule.waitUntil(3000) {
-            store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1") == listOf(audioContributionId)
-        }
-        rule.onNodeWithTag(link).assertIsNotSelected()
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-0").assertTextContains("未选择")
-        rule.onNodeWithTag("saved-memory-contribution-link-chapter-1-1").assertTextContains("已选择")
-        rule.onNodeWithTag(editorToggle).assertIsNotEnabled()
-        rule.onNodeWithTag(editor).assertExists()
-        rule.onNodeWithTag(link).performScrollTo().performClick()
-        rule.waitUntil(3000) {
-            store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1")
-                ?.contains(textContributionId) == true
-        }
-        rule.onNodeWithTag(link).performScrollTo().performClick()
-        rule.onNodeWithTag("saved-memory-contribution-link-save").performScrollTo().performClick()
-        rule.waitUntil(10000) { store.state.value.savedMemoryStories?.detail?.revision == 4L &&
-            store.state.value.savedMemoryStories?.contributionReferences?.revision == 4L }
-        assertEquals(listOf(audioContributionId), store.state.value.savedMemoryStories!!.contributionReferences!!
-            .chapters.first { it.chapterId == "chapter-1" }.contributionIds)
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionReferencesBusy == false }
-        rule.onNodeWithTag(editor).assertDoesNotExist()
-        rule.onNodeWithTag(editorToggle).assertIsEnabled().assertTextEquals("管理本章回忆")
-        rule.onNodeWithTag("saved-memory-back-list").performClick()
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.detail == null }
-        rule.onNodeWithTag("saved-memory-story-$id").performClick()
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.detail?.revision == 4L }
-        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.contributionReferences?.revision == 4L }
-        rule.onNodeWithTag(editor).assertDoesNotExist()
-        rule.onNodeWithTag("saved-memory-contribution-source-0").performScrollTo().assertExists()
-        rule.onNodeWithTag(editorToggle).assertIsEnabled().assertTextEquals("管理本章回忆")
-        captureToMediaStore("links-saved-and-reopened-150-v38.png")
-        rule.onNodeWithTag(editorToggle).performScrollTo().performClick()
-        rule.onNodeWithTag(link).performScrollTo().assertIsNotSelected()
-        val audioLink = "saved-memory-contribution-link-chapter-1-1"
-        rule.onNodeWithTag(audioLink).performScrollTo().assertIsSelected().performClick()
-        rule.waitUntil(3000) {
-            store.state.value.savedMemoryStories?.contributionReferenceDraft?.get("chapter-1").orEmpty().isEmpty()
-        }
-        rule.onNodeWithTag(editorToggle).assertIsNotEnabled()
-        rule.onNodeWithTag(editor).assertExists()
-        rule.onNodeWithTag("saved-memory-contribution-link-save").assertIsEnabled()
-        rule.onNodeWithTag("saved-memory-contribution-link-save").performScrollTo().performClick()
-        rule.waitUntil(10000) {
-            val state = store.state.value.savedMemoryStories
-            state?.detail?.revision == 5L && state.contributionReferences?.revision == 5L ||
-                state?.contributionReferenceSaveError == true || state?.contributionReferenceSaveConflict == true
-        }
-        assertEquals("The second removal save should not leave a stored error", false,
-            store.state.value.savedMemoryStories?.contributionReferenceSaveError)
-        assertEquals("The story revision should remain current during removal", false,
-            store.state.value.savedMemoryStories?.contributionReferenceSaveConflict)
-        assertEquals(emptyList<String>(), store.state.value.savedMemoryStories!!.contributionReferences!!
-            .chapters.first { it.chapterId == "chapter-1" }.contributionIds)
-        rule.onNodeWithTag(editor).assertDoesNotExist()
-        rule.onNodeWithTag(editorToggle).assertIsEnabled().assertTextEquals("管理本章回忆")
-        val original = runBlocking {
-            api.savedMemoryContributionDetail(Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer")),
-                "family", id, textContributionId)
-        }
-        assertEquals(api.longFamilyText, original.receipt.contribution.text)
-        captureToMediaStore("links-removed-150-v38.png")
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.community?.let { it.contributions != null || it.failure != null } == true }
     }
 
     @Test fun deniedStoryReadClearsTheProtectedReader() {
