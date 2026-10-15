@@ -16,10 +16,18 @@ from .search_refinement import plan_query as literal_plan
 PENDING_TTL_SECONDS = 15 * 60
 _MAX_QUERY_BYTES = 1024
 _BINDING = re.compile(r'[0-9a-f]{64}')
-_AGE_PHRASE = re.compile(
+_LEGACY_AGE_PHRASE = re.compile(
     r'(?P<english>(?ai:(?<![a-z0-9_])(?:from[ \t]+childhood|childhood|'
     r'when[ \t]+younger|a[ \t]+long[ \t]+time[ \t]+ago)(?![a-z0-9_])))'
     r'|(?P<chinese>小时候|儿时|小的时候|很久以前|好久以前)', re.I)
+_AGE_PHRASE = re.compile(
+    r'(?P<english>(?ai:(?<![a-z0-9_])(?:'
+    r'(?:maybe|about|around)[ \t]+(?:one|two|three|a[ \t]+few|[1-3])'
+    r'[ \t]+(?:summers|winters|years)[ \t]+ago|'
+    r'from[ \t]+childhood|childhood|when[ \t]+younger|'
+    r'a[ \t]+long[ \t]+time[ \t]+ago)(?![a-z0-9_])))'
+    r'|(?P<chinese>(?:大概|可能)(?:是|在)?[ \t]*(?:[1-3]|一|二|两|三)[ \t]*年[ \t]*前|'
+    r'前(?:[1-3]|一|二|两|三|几)年|前些年|小时候|儿时|小的时候|很久以前|好久以前)', re.I)
 _QUOTE_MARKS = frozenset(('"', '“', '”'))
 def _invalid():
     return ValueError('Invalid pending date')
@@ -104,7 +112,7 @@ def make_pending(query, slot, binding, created_at):
             type(slot[0]) is not int or type(slot[1]) is not int):
         raise _invalid()
     return validate_pending({
-        'version': 1,
+        'version': 2,
         'question': 'date',
         'query': query,
         'start': slot[0],
@@ -119,7 +127,7 @@ def validate_pending(value):
     fields = {'version', 'question', 'query', 'start', 'end', 'binding', 'created_at'}
     if type(value) is not dict or set(value) != fields:
         raise _invalid()
-    if (type(value['version']) is not int or value['version'] != 1 or
+    if (type(value['version']) is not int or value['version'] not in (1, 2) or
             value['question'] != 'date' or type(value['question']) is not str or
             type(value['start']) is not int or type(value['end']) is not int or
             type(value['created_at']) is not int or value['created_at'] < 0 or
@@ -133,7 +141,8 @@ def validate_pending(value):
     if not 0 <= start < end <= len(value['query']):
         raise _invalid()
     outside, quotes, quotes_valid = _quote_mask(value['query'])
-    spans = [(match.start(), match.end()) for match in _AGE_PHRASE.finditer(value['query'])]
+    age_phrase = _LEGACY_AGE_PHRASE if value['version'] == 1 else _AGE_PHRASE
+    spans = [(match.start(), match.end()) for match in age_phrase.finditer(value['query'])]
     if (not quotes_valid or len(spans) != 1 or spans[0] != (start, end) or
             any(start < quote.end() and end > quote.start() for quote in quotes) or
             _has_explicit_date(d.fold(outside), date(2000, 1, 1))):

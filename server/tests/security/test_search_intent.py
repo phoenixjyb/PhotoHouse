@@ -153,7 +153,9 @@ class SearchIntentTests(unittest.TestCase):
         for query, surface in (
                 ('find photos from childhood', 'childhood'),
                 ('find photos from a long time ago', 'a long time ago'),
-                ('找小时候的照片', '小时候')):
+                ('找小时候的照片', '小时候'),
+                ('find photos about two years ago', 'about two years ago'),
+                ('找大概两年前的照片', '大概两年前')):
             with self.subTest(query=query):
                 planner = Proposal(ready(query, [(surface, [surface])]))
                 result = plan_query(query, now=NOW, entities=entities(),

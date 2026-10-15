@@ -136,6 +136,24 @@ let browser,context,page;
       visible:[...list.children].map(item=>({id:item.dataset.assistantTurnId,offset:item.getBoundingClientRect().top-bounds.top,
         visible:item.getBoundingClientRect().bottom>bounds.top&&item.getBoundingClientRect().top<bounds.bottom})).filter(item=>item.visible)};
   });
+  const waitForStableResponsivePage=async()=>{
+    const state=await page.evaluate(()=>new Promise(resolve=>{
+      let previous=null,stableFrames=0,frames=0;
+      const sample=()=>{
+        const current={scrollY:window.scrollY,scrollHeight:document.documentElement.scrollHeight,
+          viewportWidth:window.innerWidth,viewportHeight:window.innerHeight};
+        frames++;
+        if(previous&&Object.keys(current).every(key=>current[key]===previous[key]))stableFrames++;
+        else stableFrames=0;
+        if(stableFrames>=3){resolve({stable:true,frames,current});return;}
+        if(frames>=120){resolve({stable:false,frames,current,previous});return;}
+        previous=current;requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }));
+    assert(state.stable,`responsive page scroll/layout did not stabilize within 120 animation frames: ${JSON.stringify(state)}`);
+    return state;
+  };
   await page.setViewportSize({width:390,height:1024});
   await submit('<img src=x onerror="window.__trailXss=1">');
   assert.equal(await page.locator('#assistant-turn-trail-list img').count(),0,'HTML-looking user and assistant text creates no elements');
@@ -325,7 +343,7 @@ let browser,context,page;
   await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
   assert.match(await page.locator('#assistant-send-shortcut').textContent(),/Ctrl or ⌘ \+ Enter sends; Enter adds a new line\./,'keyboard help updates to English with the application locale');
   await signIn('+12025550100');await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
-  await page.setViewportSize({width:390,height:1024});await submit('find photos');await submit('find more photos');await submit('find another set');await submit('find one more set');await submit('find one more');await submit('find another');
+  await page.setViewportSize({width:390,height:1024});await waitForStableResponsivePage();await submit('find photos');await submit('find more photos');await submit('find another set');await submit('find one more set');await submit('find one more');await submit('find another');
   const englishReading=await page.locator('#assistant-turn-trail-list').evaluate(list=>{list.scrollTop=Math.min(list.scrollHeight-list.clientHeight,list.firstElementChild.getBoundingClientRect().height+20);const bounds=list.getBoundingClientRect();return [...list.children].map(row=>({id:row.dataset.assistantTurnId,offset:row.getBoundingClientRect().top-bounds.top,visible:row.getBoundingClientRect().bottom>bounds.top&&row.getBoundingClientRect().top<bounds.bottom})).filter(row=>row.visible);});
   const englishHeld=responseGate();holdNextTurn=englishHeld;await page.locator('#assistant-text').fill('English reply while reading older turns');await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);
   await page.locator('#assistant-send').click();await englishHeld.arrived;englishHeld.release();await englishHeld.finished;

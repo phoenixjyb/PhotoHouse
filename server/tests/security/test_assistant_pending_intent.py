@@ -1,5 +1,6 @@
 """Generated protected conversations retain an unresolved date request."""
 from dataclasses import replace
+import json
 import unittest
 import uuid
 
@@ -79,6 +80,85 @@ class AssistantPendingIntentTests(unittest.TestCase):
                     headers=self.headers)
                 self.assertEqual(readback.status_code, 200, readback.text)
                 self.assertNotIn('pending_intent', readback.text)
+
+    def test_approximate_age_clarification_retains_the_exact_scene_without_guessing_dates(self):
+        cases = (
+            ('find photos of Sample Child maybe two summers ago playing in snow red coat',
+             'maybe two summers ago', ['playing in snow', 'red coat']),
+            ('找示例儿童大概两年前玩雪红外套的照片', '大概两年前', ['玩雪', '红外套']),
+            ('find示例儿童可能是两年前playing in snow red coat的photos',
+             '可能是两年前', ['playing in snow', 'red coat']),
+        )
+        for query, phrase, surfaces in cases:
+            with self.subTest(query=query):
+                self.thread = self.new_thread()
+                self.planner.calls.clear()
+                asked = self.ask(query)
+                clarification = asked['result']
+                self.assertTrue(
+                    'year' in clarification['reply'].lower() or
+                    '年份' in clarification['reply'] or '哪几个月' in clarification['reply'])
+                self.assertIsNone(clarification['filters'])
+                self.assertEqual(clarification['items'], [])
+                self.assertNotIn('pending_intent', str(asked))
+                self.assertEqual(self.planner.calls, [])
+
+                response = self.send('September 2032', 1)
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()['result']
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual({item['id'] for item in result['items']}, {'101', '103'})
+                self.assertEqual(result['filters']['people'], {'ids': ['301'], 'match': 'any'})
+                self.assertEqual(result['filters']['media'], ['image'])
+                self.assertEqual(result['filters']['date'],
+                                 {'from': '2032-09-01', 'to': '2032-09-30'})
+                self.assertEqual([concept['surface'] for concept in
+                                  result['filters']['descriptive']['concepts']],
+                                 surfaces)
+                expected = query.replace(phrase, ' ' * len(phrase), 1)
+                self.assertEqual(len(self.planner.calls), 1)
+                self.assertEqual(self.planner.calls[0][0], expected)
+                self.assertFalse(self.planner.calls[0][2])
+
+                history = self.client.get(
+                    f'{self.base}/threads/{self.thread}?library_id=family-a',
+                    headers={'Authorization': self.headers['Authorization']})
+                self.assertEqual(history.status_code, 200, history.text)
+                self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
+                                 [query, 'September 2032'])
+
+    def test_legacy_v1_pending_readback_survives_but_ambiguous_continuation_is_rejected(self):
+        asked = self.ask()
+        request_id = asked['request_id']
+        original = 'Find photos from childhood about two years ago'
+        start = original.index('from childhood')
+        with self.store.connection() as db:
+            row = db.execute('''SELECT input_text,result_summary FROM turn_requests
+                WHERE request_id=?''', (request_id,)).fetchone()
+            summary = json.loads(row['result_summary'])
+            summary['pending_intent'].update({
+                'version': 1, 'query': original, 'start': start,
+                'end': start + len('from childhood'),
+            })
+            db.execute('''UPDATE turn_requests SET input_text=?,result_summary=?
+                WHERE request_id=?''',
+                (original, json.dumps(summary, ensure_ascii=False), request_id))
+
+        saved = self.store.get_turn('one', 'family-a', self.thread, request_id)
+        self.assertEqual(saved['result_summary']['pending_intent']['version'], 1)
+        self.assertEqual(saved['result_summary']['pending_intent']['query'], original)
+        self.planner.calls.clear()
+        readback = self.client.get(
+            f'{self.base}/threads/{self.thread}/requests/{request_id}?library_id=family-a',
+            headers=self.headers)
+        self.assertEqual(readback.status_code, 200, readback.text)
+        self.assertEqual(readback.json()['result']['kind'], 'clarification')
+        self.assertNotIn('pending_intent', readback.text)
+        self.assertEqual(self.planner.calls, [])
+
+        ambiguous = self.send('September 2032', 1)
+        self.assertEqual(ambiguous.status_code, 409, ambiguous.text)
+        self.assertEqual(self.planner.calls, [])
 
     def test_invalid_answer_keeps_the_original_question_without_extending_expiry(self):
         asked = self.ask()
