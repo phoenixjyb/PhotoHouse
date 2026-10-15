@@ -422,6 +422,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     session.transcript.value='';session.review.hidden=true;session.stop.hidden=true;session.cancel.hidden=true;
     session.record.hidden=false;session.record.disabled=frozen()||sourceRefreshPending||!capture||!voiceCapabilities||!transcribe;
     session.status.textContent=statusKey?text(statusKey):'';
+    syncLocalControls();
     syncDictationAvailability();
   }
   function cancelDictation(){if(dictation)resetDictation(dictation);}

@@ -857,8 +857,9 @@ class StoryWorkspaceStoreTest {
     @Test fun chapterDictationReviewsTranscriptPreservesLatestTypedTextAndKeepsOverflow() = runTest {
         var current = binding()
         val voice = DictationApi()
+        val persistence = DraftPersistenceFake()
         val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current },
-            dictationApi = voice, currentAccount = { "member" })
+            dictationApi = voice, currentAccount = { "member" }, localDraftPersistence = persistence)
         readyForEdit(store)
         assertTrue(store.editChapterNarration(0, "先写下的内容"))
         assertTrue(store.openChapterDictation(0)); runCurrent()
@@ -870,11 +871,15 @@ class StoryWorkspaceStoreTest {
         assertFalse(store.editTitle("Blocked while reviewing"))
         assertFalse(store.confirmReviewed(true))
         assertFalse(store.save())
+        assertFalse(store.saveLocalDraft())
         assertFalse(store.insertChapterTranscript(0, composing = true))
         assertEquals("ASR words", session.state.value.transcript)
         assertTrue(store.insertChapterTranscript(0, composing = false))
         assertEquals("核对时补充的内容\n\nASR words", store.state.value.editableChapters.single().narration)
         assertNull(session.state.value.transcript)
+        assertTrue(store.saveLocalDraft())
+        assertEquals("核对时补充的内容\n\nASR words", persistence.stored?.chapters?.single()?.narration)
+        assertNull(store.chapterDictation.value)
 
         store.closeChapterDictation()
         assertTrue(store.editChapterNarration(0, "字".repeat(2000))) // 6,000 UTF-8 bytes.

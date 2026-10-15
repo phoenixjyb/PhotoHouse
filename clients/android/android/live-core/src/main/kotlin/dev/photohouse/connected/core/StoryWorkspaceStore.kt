@@ -161,7 +161,8 @@ class StoryWorkspaceStore(
         val live = state.value
         if (!ensureCurrent() || isSavedStoryEdit || live.status != StoryWorkspaceStoreStatus.EDITING || live.draft == null ||
             live.busy || live.composing || live.invalidInput || live.hasPendingSave || pending != null ||
-            hasUnfinishedChapterDictation || chapterDictationBinding != null) return false
+            hasUnfinishedChapterDictation) return false
+        closeChapterDictation()
         val scope = localDraftScope() ?: return false
         val previous = localDraftRecord ?: runCatching { persistence.load(scope) }.getOrNull()
         if (previous?.pendingSave != null && !localDraftAttached) {
@@ -620,13 +621,17 @@ class StoryWorkspaceStore(
         val target = state.value.editableChapters.getOrNull(index) ?: return false
         if (target.id != activeDictationChapterId) return false
         val helper = chapterDictationBinding ?: return false
-        return helper.insertTranscript { transcript ->
+        val inserted = helper.insertTranscript { transcript ->
             val chapter = state.value.editableChapters.getOrNull(index)?.takeIf { it.id == activeDictationChapterId }
                 ?: return@insertTranscript false
             val joined = if (chapter.narration.isEmpty()) transcript else chapter.narration + "\n\n" + transcript
             if (!validText(joined, 6000, allowNewline = true)) return@insertTranscript false
             editChapterNarration(index, joined)
         }
+        // The StateFlow collector may run later; the next explicit action must see
+        // that the reviewed transcript has already been consumed.
+        mutableDictationUnfinished.value = helper.hasUnfinishedInput
+        return inserted
     }
 
     /** Set by the owning connected editor without changing its UUID supplier API. */
