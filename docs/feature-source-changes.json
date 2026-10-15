@@ -17515,111 +17515,6 @@
       "household_data_included": false
     },
     {
-      "feature": "v61-guided-story-delivery-and-current-docs",
-      "source_commit": "8f4690506106cb156f1bf4cc346c82b1da70357b",
-      "files": [
-        {
-          "path": "clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md",
-          "before_sha256": null,
-          "sha256": "22a9dfa0524a4f677b885307f30232d9b44ef9c935a12e0f9e9c6911c1350a04"
-        },
-        {
-          "path": "README.md",
-          "before_sha256": "11ddc4ab95dae86ca3e8f16a6df89ee971ad5691b6010354c14fac90de9b502c",
-          "sha256": "86e425730e577935faaf774b0c46cf301e73ae363c4a7056a001006d8bfb16f9"
-        },
-        {
-          "path": "docs/PROJECT_STATUS.md",
-          "before_sha256": "1eac64c54f8b929ab771b33d688e9886290b2ef76bc71be38509b36e2dfed1c8",
-          "sha256": "4a9e8e0f71a9edcb7a42a0b009fa3eb06d2daf8cab39b08b181f68f0da5c7359"
-        },
-        {
-          "path": "docs/ROADMAP.md",
-          "before_sha256": "3c80790d86021a87c9d74446074b668fbccf39ee3058423e072ec7f92b40d639",
-          "sha256": "e15d6db8818e66811339455e35ac7554ed6f6f42b216985f422d58bf22688ff2"
-        },
-        {
-          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
-          "before_sha256": "10003bbd3daa7980338daac64e23c4f09575b8036f962fda7886202f8c8cd785",
-          "sha256": "299838e5747c45862fa771018253387f7d0047cfed7473a20022bbe51e05023f"
-        }
-      ],
-      "routes_added": false,
-      "schema_changed": false,
-      "providers_activated": false,
-      "household_data_included": false
-    },
-    {
-      "feature": "qualify-windows-worker-command-path-values-portably",
-      "source_commit": "ca999d04f1dc2a22c68188820b5139603316c60c",
-      "files": [
-        {
-          "path": "server/tests/security/test_memory_group_workers_qualification.py",
-          "before_sha256": "bd67eb20d4e897dd8fa14a8a7d041dcb26c9f844a8d252d5350087831a17fe67",
-          "sha256": "6cc63562d2f615ba239e60565eb85ab5cd391c1d655761c8d72911d8de7a4056"
-        }
-      ],
-      "routes_added": false,
-      "schema_changed": false,
-      "providers_activated": false,
-      "household_data_included": false
-    },
-    {
-      "feature": "settle-reader-fixture-thumbnails-before-font-request-assertion",
-      "source_commit": "079d3e1004654e4784e644f3fbb67200fca2a509",
-      "files": [
-        {
-          "path": "server/tests/security/test_story_reader_frames_browser.cjs",
-          "before_sha256": "4d1325b37253319186ff0a277661b2d5be9e080383dadfe13b83fd739f6f51ee",
-          "sha256": "9ee1d884a962f8f479ed3c0ccbfdc7db660815e41deecea06a3567814eac8bd4"
-        }
-      ],
-      "routes_added": false,
-      "schema_changed": false,
-      "providers_activated": false,
-      "household_data_included": false
-    },
-    {
-      "feature": "await-current-memory-response-render-in-browser-submit-fixture",
-      "source_commit": "52796c536fa8c70307f9726111b8f2dc28428d5c",
-      "files": [
-        {
-          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
-          "before_sha256": "3ba2dcedd61104d68c496e4036c110403ec9606346aceaab57e70a2bee353c3e",
-          "sha256": "879a7dc20cbcae6cc454e406f51e030442ef6698a487f61cc93b45ab2f34f2c5"
-        }
-      ],
-      "routes_added": false,
-      "schema_changed": false,
-      "providers_activated": false,
-      "household_data_included": false
-    },
-    {
-      "feature": "record-github-sync-and-public-deployment-boundaries",
-      "source_commit": "52796c536fa8c70307f9726111b8f2dc28428d5c",
-      "files": [
-        {
-          "path": "docs/REPOSITORY_SYNC_2026-10-15.md",
-          "before_sha256": null,
-          "sha256": "23a9f37b775500fef5ef16adace9a473c40f1bfb47c7445b9c6b44ae23837fdf"
-        },
-        {
-          "path": "docs/PROJECT_STATUS.md",
-          "before_sha256": "4a9e8e0f71a9edcb7a42a0b009fa3eb06d2daf8cab39b08b181f68f0da5c7359",
-          "sha256": "17b515e4c168b94825ae8c29299fc14615818da1f46546b40a9dd0d52b910bb3"
-        },
-        {
-          "path": "README.md",
-          "before_sha256": "86e425730e577935faaf774b0c46cf301e73ae363c4a7056a001006d8bfb16f9",
-          "sha256": "08353d76ca0072efff4d01062b264db1265b08503f055748f3e9cc8612725318"
-        }
-      ],
-      "routes_added": false,
-      "schema_changed": false,
-      "providers_activated": false,
-      "household_data_included": false
-    },
-    {
       "feature": "converge-story-repository-sync-with-qualified-search-source",
       "source_commit": "c1ca91e58589196c147ce0b97a8205ec3370f978",
       "integrated_source_commit": "b4f591172836c238b54f08099293f71d30567638",
@@ -17627,42 +17522,42 @@
       "files": [
         {
           "path": "README.md",
-          "before_sha256": "08353d76ca0072efff4d01062b264db1265b08503f055748f3e9cc8612725318",
+          "before_sha256": "11ddc4ab95dae86ca3e8f16a6df89ee971ad5691b6010354c14fac90de9b502c",
           "sha256": "08353d76ca0072efff4d01062b264db1265b08503f055748f3e9cc8612725318"
         },
         {
           "path": "clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md",
-          "before_sha256": "22a9dfa0524a4f677b885307f30232d9b44ef9c935a12e0f9e9c6911c1350a04",
+          "before_sha256": null,
           "sha256": "22a9dfa0524a4f677b885307f30232d9b44ef9c935a12e0f9e9c6911c1350a04"
         },
         {
           "path": "docs/PROJECT_STATUS.md",
-          "before_sha256": "17b515e4c168b94825ae8c29299fc14615818da1f46546b40a9dd0d52b910bb3",
+          "before_sha256": "d9309e033f674f969a065a7d3a934fefd6a14f29d2a1436ab3195e706a1e3e61",
           "sha256": "b89f6dc712016eba1ae5ac5b1c2d84a32f9a2451b97065bfe354a5692467820d"
         },
         {
           "path": "docs/REPOSITORY_SYNC_2026-10-15.md",
-          "before_sha256": "23a9f37b775500fef5ef16adace9a473c40f1bfb47c7445b9c6b44ae23837fdf",
+          "before_sha256": null,
           "sha256": "23a9f37b775500fef5ef16adace9a473c40f1bfb47c7445b9c6b44ae23837fdf"
         },
         {
           "path": "docs/ROADMAP.md",
-          "before_sha256": "e15d6db8818e66811339455e35ac7554ed6f6f42b216985f422d58bf22688ff2",
+          "before_sha256": "3af79d10386710a61a62974dc6be68259f74ccf7fb624850b25c7db27b743cc0",
           "sha256": "7c79ae4c7597a6024631b08a703ed6f90925eef2a748f382e3899cd82469bceb"
         },
         {
           "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
-          "before_sha256": "299838e5747c45862fa771018253387f7d0047cfed7473a20022bbe51e05023f",
+          "before_sha256": "10003bbd3daa7980338daac64e23c4f09575b8036f962fda7886202f8c8cd785",
           "sha256": "299838e5747c45862fa771018253387f7d0047cfed7473a20022bbe51e05023f"
         },
         {
           "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
-          "before_sha256": "879a7dc20cbcae6cc454e406f51e030442ef6698a487f61cc93b45ab2f34f2c5",
+          "before_sha256": "946ef9c3c723855b11312859301850d69296df7babb34b95ded348f2537ea8f2",
           "sha256": "20b84bbc38bd6c49c17d04b04eda98ba68ac82fb43254158f9eb2ccbe6a04a44"
         },
         {
           "path": "server/tests/security/test_story_reader_frames_browser.cjs",
-          "before_sha256": "9ee1d884a962f8f479ed3c0ccbfdc7db660815e41deecea06a3567814eac8bd4",
+          "before_sha256": "4d1325b37253319186ff0a277661b2d5be9e080383dadfe13b83fd739f6f51ee",
           "sha256": "9ee1d884a962f8f479ed3c0ccbfdc7db660815e41deecea06a3567814eac8bd4"
         }
       ],
