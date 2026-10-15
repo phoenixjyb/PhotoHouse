@@ -32,8 +32,28 @@ AI-caption wording. Recovery retains the original search version and revalidates
 current source order; it neither resubmits the request nor replays navigation or
 speech. Only the exact unsupported-version capability response allows a legacy
 capability retry. See [the updated contract](ASSISTANT_JOINT_SEARCH_V2.md).
-Final integrated checks for this slice are recorded after the source freeze;
-earlier API-only cohorts below remain bound to their stated revisions.
+Focused checks pass: the generated joint-search suite (20 tests), workspace HTTP
+suite (14), private kinship suite (29), reply-speech suite (8), Web wire suite
+(75), and phone wire/HTTP/store suites (67). These overlapping cohorts are not
+summed. The generated Web v2 journey passes five checkpoint groups, including
+two reviewed people with a noun-only scene, a year refinement, opening the
+second result, and lost-response GET recovery. Desktop and Chinese/English
+phone layouts at 150% text were inspected. The corrected saved-memory journey
+completes 27 checkpoints, including explicit Chinese/English Stop labels (its
+headless browser needed bounded teardown after all assertions completed); the
+legacy voice journey passes with an explicit unsupported-version capability
+fixture and no search-v2 header on its v1 private turn.
+
+The complete API invocation at `f0c5176` is **incomplete**, stopped after 185
+passes, 96 subchecks and two library-transfer failures. Both failed cases pass
+alone with the same profile flags. Their relevant source and fixture blobs are
+unchanged from the prior search baseline; repeated identity-schema verification
+inside the existing three-second transfer transaction is a likely load-sensitive
+timeout path. This is not a full API pass. The full Web invocation at that
+revision also stopped at the legacy voice fixture's v2 readiness mismatch;
+the corrected fixture and affected playback journey pass separately. A complete
+release regression remains open. Earlier API-only passes below remain bound to
+their stated revisions, and do not qualify this later client integration.
 
 
 The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)

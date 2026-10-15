@@ -817,7 +817,7 @@
       else button.textContent=t(card?.dataset.memoryKind==='story'?'assistantReadMemoryStorySections':'assistantReadMemoryMemoirSections');
       if(status){const value=current&&operation.phase==='playing'?t('assistantMemorySegmentPlayingStatus'):current&&operation.phase==='complete'?operation.segment+1<operation.segmentCount?t('assistantMemorySegmentCompletedStatus').replace('{segment}',String(operation.segment+1)).replace('{count}',String(operation.segmentCount)):t('assistantMemorySegmentsComplete'):'';status.textContent=value;status.hidden=!value;}
       if(help){help.textContent=t('assistantMemorySegmentHelp');help.hidden=privateState?.savedMemorySegmentReadingReady!==true;}
-      if(stop){stop.hidden=!current||!['preparing','playing'].includes(operation.phase);stop.disabled=stop.hidden;}
+      if(stop){stop.textContent=t('assistantStopMemorySegment');stop.hidden=!current||!['preparing','playing'].includes(operation.phase);stop.disabled=stop.hidden;}
     }
   }
   function stopAssistantSpeech(revoke=true) {
