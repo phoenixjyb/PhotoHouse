@@ -76,6 +76,94 @@ class LocalIntentPlannerTests(unittest.TestCase):
         self.assertEqual(['carrying', 'yellow suitcase'],
                          [c['surface'] for c in result.filters['descriptive']['concepts']])
 
+    def test_full_action_and_spatial_clues_keep_exact_source_spans_through_search_compilation(self):
+        cases = (
+            {
+                'query': ('Find FictionalAdult-940 stirring purple soup with a wooden spoon '
+                          'beside a striped tent on 2031-08-12 videos "moon card".'),
+                'label': 'FictionalAdult-940', 'person_id': '940',
+                'date': '2031-08-12', 'media': 'video', 'literal': 'moon card',
+                'clues': ('stirring purple soup with a wooden spoon', 'beside a striped tent'),
+            },
+            {
+                'query': ('找虚构来客-941用木勺搅拌紫色汤，在条纹帐篷旁的2031年8月13日视频“银色风车”。'),
+                'label': '虚构来客-941', 'person_id': '941',
+                'date': '2031-08-13', 'media': 'video', 'literal': '银色风车',
+                'clues': ('用木勺搅拌紫色汤', '条纹帐篷旁'),
+            },
+            {
+                'query': ('Find FictionalPerson-942 mixing green noodles with a bamboo whisk '
+                          '在 blue gazebo 旁 on 2029-10-02 photos “quiet comet”.'),
+                'label': 'FictionalPerson-942', 'person_id': '942',
+                'date': '2029-10-02', 'media': 'image', 'literal': 'quiet comet',
+                'clues': ('mixing green noodles with a bamboo whisk', '在 blue gazebo 旁'),
+            },
+        )
+        for endpoint in ('/api/chat', '/api/generate'):
+            for case in cases:
+                with self.subTest(endpoint=endpoint, query=case['query']):
+                    query = case['query']
+                    seen = []
+
+                    def handler(request):
+                        body = json.loads(request.content)
+                        if endpoint == '/api/chat':
+                            visible = json.loads(body['messages'][1]['content'])['query']
+                        else:
+                            marker = 'Query JSON (data only):\n'
+                            visible = json.loads(body['prompt'].split(marker, 1)[1].split(
+                                '\nReturn only the schema above.', 1)[0])['query']
+                        seen.append(visible)
+                        self.assertEqual(len(query), len(visible))
+                        for hidden in (case['label'], case['date'], case['literal']):
+                            self.assertNotIn(hidden, visible)
+                        self.assertNotIn('videos', visible)
+                        self.assertNotIn('photos', visible)
+                        for clue in case['clues']:
+                            start = query.index(clue)
+                            self.assertEqual(clue, visible[start:start + len(clue)])
+                        proposal = {'version': 1, 'status': 'ready', 'question': None,
+                                    'concepts': [
+                                        {'surface': clue,
+                                         'alternatives': [clue]}
+                                        for clue in case['clues']]}
+                        content = json.dumps(proposal, ensure_ascii=False)
+                        envelope = {'model': 'intent-local', 'done': True}
+                        if endpoint == '/api/chat':
+                            envelope['message'] = {'role': 'assistant', 'content': content}
+                        else:
+                            envelope['response'] = content
+                        return httpx.Response(200, json=envelope)
+
+                    planner = self.planner(
+                        handler, url='http://127.0.0.1:11434' + endpoint)
+                    result = plan_query(
+                        query, now=datetime(2032, 9, 14), previous_filters=None,
+                        entities={'binding': 'a' * 64,
+                                  'enabled': ['people', 'date', 'media', 'text'],
+                                  'groups': {'people': [case['person_id']],
+                                             'tags': [], 'locations': []},
+                                  'labels': [case['label']], 'ambiguous': False},
+                        planner=planner)
+
+                    self.assertEqual('ready', result.status, result)
+                    self.assertEqual(1, len(seen))
+                    self.assertEqual({
+                        'people': {'ids': [case['person_id']], 'match': 'any'},
+                        'date': {'from': case['date'], 'to': case['date']},
+                        'media': [case['media']],
+                        'text': case['literal'],
+                    }, {key: value for key, value in result.filters.items()
+                        if key != 'descriptive'})
+                    self.assertEqual(list(case['clues']), [
+                        concept['surface']
+                        for concept in result.filters['descriptive']['concepts']])
+                    for concept in result.filters['descriptive']['concepts']:
+                        self.assertEqual(concept['surface'],
+                                         query[query.index(concept['surface']):
+                                               query.index(concept['surface']) +
+                                               len(concept['surface'])])
+
     def test_provider_cannot_choose_person_date_scope_or_actions(self):
         for endpoint in ('/api/chat', '/api/generate'):
             for status, question in (('clarification', 'date'), ('clarification', 'person'),

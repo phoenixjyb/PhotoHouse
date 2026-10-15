@@ -446,6 +446,31 @@ checked again after this step; malformed, duplicated or overlapping provider
 proposals remain refused before any retention. There is one provider attempt,
 with no retry, new translation call or change to hard conditions.
 
+## Complete events and spatial clues
+
+The optional local intent prompt requests complete event phrases: keep an action
+with its specified object, tool and result, and keep a spatial relation attached
+to its landmark. For example, `stirring purple soup with a wooden spoon` is one
+event clue, while `beside a striped tent` is a separate location clue. Chinese
+and mixed input retain meaningful constructions such as `用`, `把`, `旁` and
+`穿过`; these are not new ignorable parser words. Independent requirements remain
+AND conditions and can be supported by different approved source records.
+
+Alternatives must express the complete clue, including specified participants,
+tools, results and direction, rather than a lone verb or landmark noun. A generic
+human subject must not acquire an invented age, gender or identity. Unknown
+proper names remain unresolved. If a faithful clue exceeds the existing limits
+or would cross a hidden hard condition, the provider should ask for description
+clarification. The compiler still refuses unaccounted-for residue and protects
+people, dates, media, kinship, negation and literal quoted text.
+
+This is an extraction instruction, not a deterministic proof that a model's
+translation preserves meaning. Retrieval remains affirmative lexical phrase
+matching: complete phrases can reject wrong objects, tools, directions and
+reversed participants when those alternatives preserve the distinction. General
+paraphrase recall and model behavior require separate unchanged-cohort relevance
+qualification before enabling the optional provider.
+
 ## Bilingual person references and scene grammar
 
 English `he` and `she` follow the existing `him`/`her` rule: a singular reference

@@ -20285,6 +20285,46 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "complete-event-and-spatial-intent-phrases",
+      "source_commit": "799a51e7bb23a28319bb010734441976b86a2ab2",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "0963f36a9405778360cd55a362c5d1cc72caecae1c6c4cf89d2141e72ffb4236",
+          "sha256": "e768b0125d51e4eccdaf9f0962b84dd94eac6629289c162122f1f5e674d0c9c7"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "31696a5adce6ae79fbefe79f703cdddfab5cb433c1cd7b674086b6c2987af64e",
+          "sha256": "8bc78b36e3049c7366ef70420d15989d7612eb1637b4278a70643cf5272f54f3"
+        },
+        {
+          "path": "server/tests/security/test_search_description.py",
+          "before_sha256": "e1f1c66d38a48573072d598d9e99e37482a6394f638285e2e68a453a6389c265",
+          "sha256": "b2c330c697a1ef6ae91e6f2e274467e7fc2b5a04538ec14b3cb6227ffbce4fcd"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "24e79f8527b89041fe3d9e858148735a6ebb3fe354249a69eb2a60365c44d937",
+          "sha256": "6e55c9c5657d987cf3de3e82ed9cd0f1587f45b695ddfae5bba3f1a46ef7e4e2"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "4f53be6bd535998974b014bd8567ccd8868ee2c83993e906e2201deb4fb9d1e0",
+          "sha256": "0aaa876b114f6afd1de4447426d3103a85bf68ae05881d0565683be236305720"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_required": true,
+      "compiler_residue_checks_preserved": true,
+      "hard_conditions_preserved": true,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "relevance_qualification_required": true
     }
   ]
 }
