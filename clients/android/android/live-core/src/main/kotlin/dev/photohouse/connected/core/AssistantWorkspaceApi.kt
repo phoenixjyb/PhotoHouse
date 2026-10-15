@@ -12,6 +12,9 @@ data class AssistantWorkspaceCapabilities(
     val historyPaging: Boolean = false,
     val threadLabels: Boolean = false,
     val replySpeech: Boolean = false,
+    val searchVersion: Int = 1,
+    val searchDateBasis: String? = null,
+    val searchPerspectiveLabel: String? = null,
 )
 
 data class AssistantWorkspaceThreadSummary(
@@ -140,11 +143,23 @@ interface AssistantWorkspaceApi {
                            expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
                            memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean): AssistantWorkspaceTurn =
         submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId, acceptSavedMemoryCards, memoryParent)
+    /** Search protocol negotiation applies only to assistant turns. */
+    suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                           expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                           memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean,
+                           searchVersion: Int): AssistantWorkspaceTurn =
+        submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+            acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions)
     suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                        searchVersion: Int): AssistantWorkspaceTurn = getTurn(token, library, threadId, requestId)
     /** Synthesizes only the server-owned reply for an exact completed private turn. */
     suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
                           expectedRevision: Long, speechRequestId: String): AssistantSpeechResult =
         throw ApiFailure(FailureKind.HTTP, 503)
+    suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
+                          expectedRevision: Long, speechRequestId: String, searchVersion: Int): AssistantSpeechResult =
+        speakTurn(token, library, threadId, turnId, expectedRevision, speechRequestId)
     /** Optional explicit reader handoff. Legacy adapters conservatively keep this feature unavailable. */
     suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)

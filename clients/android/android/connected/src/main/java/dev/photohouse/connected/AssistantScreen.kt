@@ -86,6 +86,50 @@ private fun ordinalSuffix(value: Int): String = when (value % 100) {
     else -> when (value % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
 }
 
+private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean): List<String> {
+    fun t(en: String, cn: String) = if (zh) cn else en
+    val interpretation = turn.searchInterpretation ?: return emptyList()
+    val filters = turn.filters
+    val lines = mutableListOf<String>()
+    if (interpretation.people.isNotEmpty()) {
+        val peopleFilter = filters?.get("people") as? kotlinx.serialization.json.JsonObject
+        val all = (peopleFilter?.get("match") as? kotlinx.serialization.json.JsonPrimitive)?.content == "all"
+        val names = interpretation.people.joinToString(if (zh) "、" else ", ") { it.label }
+        lines.add(if (all) t("Together in the photo: $names", "同时出现：$names") else t("Any of: $names", "任一人物：$names"))
+    }
+    if (interpretation.tags.isNotEmpty()) {
+        val names = interpretation.tags.joinToString(if (zh) "、" else ", ") { it.label }
+        lines.add(t("Tags: $names", "标签：$names"))
+    }
+    if (interpretation.locations.isNotEmpty()) {
+        val names = interpretation.locations.joinToString(if (zh) "、" else ", ") { it.label }
+        lines.add(t("Places: $names", "地点：$names"))
+    }
+    val text = (filters?.get("text") as? kotlinx.serialization.json.JsonPrimitive)
+        ?.takeIf { it.isString }?.content
+    if (!text.isNullOrBlank()) lines.add(t("Text: $text", "文字：$text"))
+    val date = filters?.get("date") as? kotlinx.serialization.json.JsonObject
+    val from = (date?.get("from") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
+    val through = (date?.get("to") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
+    if (from != null || through != null) {
+        val range = when {
+            from != null && through != null -> "$from – $through"
+            from != null -> t("From $from", "从 $from 起")
+            else -> t("Through $through", "截至 $through")
+        }
+        lines.add(t("Capture date: $range", "拍摄日期：$range"))
+    }
+    val media = (filters?.get("media") as? kotlinx.serialization.json.JsonArray)
+        ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { value -> value.isString }?.content }
+        .orEmpty()
+    if (media.isNotEmpty()) {
+        val en = media.joinToString(", ") { kind -> when (kind) { "image" -> "photos"; "video" -> "videos"; else -> "other media" } }
+        val cn = media.joinToString("、") { kind -> when (kind) { "image" -> "照片"; "video" -> "视频"; else -> "其他" } }
+        lines.add(t("Media: $en", "媒体：$cn"))
+    }
+    return lines
+}
+
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun AssistantScreen(
@@ -607,6 +651,20 @@ internal fun AssistantScreen(
                             HorizontalDivider()
                             Text(t("PHOTOHOUSE", "拾光相册"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             Text(exchange.turn.reply, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("assistant-reply"))
+                            exchange.turn.searchInterpretation?.let { interpretation ->
+                                val interpretedFilters = exchange.turn.filters
+                                val selections = assistantSearchInterpretationLines(exchange.turn, zh)
+                                Column(Modifier.fillMaxWidth().testTag("assistant-search-interpretation-${exchange.localRequestId}"),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(t("Search interpreted", "搜索条件已识别"), style = MaterialTheme.typography.labelMedium)
+                                    if (interpretedFilters?.get("date") != null) Text(
+                                        t("Dates use capture time", "日期按拍摄时间筛选"), style = MaterialTheme.typography.bodySmall)
+                                    interpretation.perspective?.let { perspective ->
+                                        Text(t("Perspective: ${perspective.label}", "视角：${perspective.label}"), style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    selections.forEach { selection -> Text(selection, style = MaterialTheme.typography.bodySmall) }
+                                }
+                            }
                             if (exchange.turn.kind == "results" && exchange.turn.total == 0) {
                                 Text(t("No matching memories were found in this library.", "在这座资料库中没有找到匹配的回忆。"),
                                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -622,6 +680,26 @@ internal fun AssistantScreen(
                                             Column(Modifier.weight(1f)) {
                                                 Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}", "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"), style = MaterialTheme.typography.titleSmall)
                                                 Text(Words(zh).date(asset), style = MaterialTheme.typography.bodySmall)
+                                                exchange.turn.matchReasons[asset.id].orEmpty().distinct().forEach { reason ->
+                                                    val label = when (reason) {
+                                                        is dev.photohouse.connected.core.AssistantMatchReason.PhotoMemory ->
+                                                            t("Matched a saved photo memory", "匹配到照片回忆")
+                                                        is dev.photohouse.connected.core.AssistantMatchReason.Caption -> if (reason.generated)
+                                                            t("AI-generated caption match", "匹配 AI 生成的照片说明")
+                                                        else t("Matched a family photo description", "匹配到家人填写的照片说明")
+                                                        is dev.photohouse.connected.core.AssistantMatchReason.ReviewedPerson -> {
+                                                            val name = exchange.turn.searchInterpretation?.people
+                                                                ?.firstOrNull { it.id == reason.sourceId }?.label
+                                                            if (name != null) t("Person: $name", "人物：$name")
+                                                            else t("Matched a reviewed person", "匹配到已确认的人物")
+                                                        }
+                                                        is dev.photohouse.connected.core.AssistantMatchReason.CaptureDate ->
+                                                            t("Capture date: ${reason.value}", "拍摄日期：${reason.value}")
+                                                    }
+                                                    Text(label, style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.testTag("assistant-match-reason-${asset.id}"))
+                                                }
                                             }
                                             TextButton(onClick = { onOpen(asset.id, exchange.turn.receipt?.requestId) }, modifier = Modifier.testTag("assistant-open-${asset.id}")) {
                                                 Text(t("Open", "打开"))
@@ -746,6 +824,21 @@ internal fun AssistantScreen(
                     if (!memorySpeech || showMemoryOpeningPlayback) assistant.speechAudio?.let { audio ->
                         AssistantSpeechPlayback(audio, zh, openingSpeech, segmentSpeech,
                             onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
+                    }
+                    savedMemoryWorkspace?.capabilities?.takeIf { it.searchVersion == 2 }?.let { search ->
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                                .testTag("assistant-search-perspective")) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(t("Search uses photo capture dates", "搜索按照片拍摄日期进行"),
+                                    style = MaterialTheme.typography.bodySmall)
+                                search.searchPerspectiveLabel?.let { label ->
+                                    Text(t("Perspective: $label", "视角：$label"),
+                                        style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
                     }
                     OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) setDraft(it) },
                         modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy && voiceSessionState == null,

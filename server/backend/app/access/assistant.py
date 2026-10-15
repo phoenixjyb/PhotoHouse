@@ -692,6 +692,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             if scene:
                 candidate = scene.group(1)
                 labels.append(residual)
+            elif residual == '在' and any(first['groups'][facet] for facet in ('tags', 'locations')):
+                # A current named tag/place already consumed the scene noun.
+                labels.append(residual)
         if candidate:
             if re.search(r'不要|没有|排除|删除|\b(?:not|without|except|delete)\b', condition_lower):
                 ambiguous = True

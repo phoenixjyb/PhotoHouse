@@ -54,6 +54,7 @@ data class AssistantWorkspacePendingTurn(
     val text: String,
     val parentRequestId: String? = null,
     val memoryParent: AssistantSavedMemoryParent? = null,
+    val searchVersion: Int = 1,
 )
 
 data class AssistantWorkspaceState(
@@ -410,6 +411,7 @@ class AssistantWorkspaceStore(
             val savedInput = detail.exchanges.firstOrNull { it.requestId == latest }?.inputText.orEmpty()
             val pending = AssistantWorkspacePendingTurn(
                 detail.thread.threadId, latest, (detail.thread.revision - 1).coerceAtLeast(0), savedInput,
+                searchVersion = mutableState.value.capabilities?.searchVersion ?: 1,
             )
             mutableState.value = mutableState.value.copy(pendingTurn = pending, uncertain = true)
             recoverInternal(scope, pending, detail)
@@ -482,6 +484,7 @@ class AssistantWorkspaceStore(
             catch (_: ApiFailure) { return false }
             val pending = AssistantWorkspacePendingTurn(
                 detail.thread.threadId, request, detail.thread.revision, text, parentRequestId, memoryParent,
+                current.capabilities?.searchVersion ?: 1,
             )
             mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null,
                 memoryFollowupDraftParent = null,
@@ -552,7 +555,7 @@ class AssistantWorkspaceStore(
         val turn = try {
             api.submitTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
                 pending.expectedRevision, pending.text, pending.parentRequestId, acceptSavedMemoryCards, pending.memoryParent,
-                acceptSavedMemoryActions)
+                acceptSavedMemoryActions, searchVersion = pending.searchVersion)
         } catch (cancel: CancellationException) { throw cancel }
         catch (postFailure: Exception) {
             requireCurrent(scope)
@@ -651,7 +654,8 @@ class AssistantWorkspaceStore(
         pending: AssistantWorkspacePendingTurn,
         previousDetail: AssistantWorkspaceThreadDetail?,
     ) {
-        val recovered = api.getTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId)
+        val recovered = api.getTurn(scope.bearer, scope.libraryId, pending.threadId, pending.requestId,
+            searchVersion = pending.searchVersion)
         requireCurrent(scope)
         if (!recovered.recovered) throw ApiFailure(FailureKind.INVALID_RESPONSE)
         if (recovered.status == AssistantWorkspaceRequestStatus.COMPLETED) {

@@ -1278,9 +1278,17 @@ async def capabilities(request: Request):
     if getattr(request.app.state, 'assistant_reply_speech_enabled', False):
         value['reply_speech'] = await _reply_speech_available(request, account)
     if turns and _single(request, 'x-photohouse-search-version') == '2':
+        from .kinship import KinshipUnavailable
         token, _mode = credentials_from_request(request, allow_query=True)
-        value['search'] = await run_in_threadpool(engine.call, 'presentation', token,
-                                                library, lambda: False, {})
+        try:
+            value['search'] = await run_in_threadpool(engine.call, 'presentation', token,
+                                                    library, lambda: False, {})
+        except (discovery_engine.DiscoveryUnavailable, discovery_engine.DiscoveryChanged,
+                discovery_engine.DiscoveryBusy, KinshipUnavailable):
+            # Search readiness must not hide the account's owned history or
+            # preferences. Do not admit new turns against an unready source.
+            value.update(server_owned_turns=False, preferences_applied=False,
+                         applied_preferences=[])
         if await _principal(request, library) != account:
             raise AccessDenied()
     return JSONResponse(value, headers=PRIVACY_HEADERS)

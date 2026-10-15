@@ -1,5 +1,7 @@
 package dev.photohouse.connected.core
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.*
@@ -31,7 +33,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
     private val speechClient = this.client.newBuilder()
         .readTimeout(60, TimeUnit.SECONDS).callTimeout(60, TimeUnit.SECONDS).build()
 
-    private data class Packet(val bytes: ByteArray, val assistantHeaders: Map<String, String>)
+    private data class Packet(val bytes: ByteArray, val assistantHeaders: Map<String, String>, val statusCode: Int = 200)
 
     private class WipingByteArrayOutputStream(initialSize: Int) : java.io.ByteArrayOutputStream(initialSize) {
         fun wipe() { buf.fill(0); reset() }
@@ -118,7 +120,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
                             val body = r.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
                             if (body.contentLength() > responseLimit) throw ApiFailure(FailureKind.TOO_LARGE)
                             val responseBytes = readBounded(body, call, responseLimit)
-                            try { Packet(responseBytes, assistantResponseHeaders(r.headers)) }
+                            try { Packet(responseBytes, assistantResponseHeaders(r.headers), r.code) }
                             catch (e: Exception) { responseBytes.fill(0); throw e }
                         }
                         if (continuation.isActive) continuation.resume(result) { result.bytes.fill(0) } else result.bytes.fill(0)
@@ -153,8 +155,23 @@ class HttpsAssistantWorkspaceApi internal constructor(
         } finally { buffer.fill(0); out.wipe() }
     }
 
-    override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities =
-        decoded(send(token, "/assistant/workspace/v1/capabilities", library), AssistantWorkspaceWire::capabilities)
+    override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities {
+        val path = "/assistant/workspace/v1/capabilities"
+        val probe = send(token, path, library, successCodes = setOf(200, 400),
+            extraHeaders = mapOf("X-PhotoHouse-Search-Version" to "2"), responseLimit = 4096)
+        if (probe.statusCode != 400) return decoded(probe, AssistantWorkspaceWire::capabilities)
+        val unsupported = runCatching {
+            val error = DiscoveryJson.parse(probe.bytes) as? JsonObject ?: return@runCatching false
+            error.keys == setOf("error", "detail") &&
+                error["error"] == JsonPrimitive("invalid_request") &&
+                error["detail"] == JsonPrimitive("Search version is not supported on this endpoint")
+        }.getOrDefault(false)
+        probe.bytes.fill(0)
+        if (!unsupported) throw ApiFailure(FailureKind.HTTP, 400)
+        // Only the exact explicit unsupported-version response permits a legacy retry,
+        // and this fallback is limited to capability discovery.
+        return decoded(send(token, path, library), AssistantWorkspaceWire::capabilities)
+    }
 
     override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList =
         listThreads(token, library, includeLabels = false)
@@ -252,25 +269,44 @@ class HttpsAssistantWorkspaceApi internal constructor(
     override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                     expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
                                     memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean): AssistantWorkspaceTurn {
+        return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+            acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions, searchVersion = 1)
+    }
+
+    override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                    expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                                    memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean,
+                                    searchVersion: Int): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId))
         require(parentRequestId == null || AssistantWire.validRequestId(parentRequestId))
+        require(searchVersion in 1..2)
         val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text,
             acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
             extraHeaders = buildMap {
                 put("X-PhotoHouse-Request-Id", requestId)
                 parentRequestId?.let { put("X-PhotoHouse-Parent-Request-Id", it) }
+                if (searchVersion == 2) put("X-PhotoHouse-Search-Version", "2")
             })
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false,
-            acceptSavedMemoryCards = acceptSavedMemoryCards, acceptSavedMemoryActions = acceptSavedMemoryActions) }
+            acceptSavedMemoryCards = acceptSavedMemoryCards, acceptSavedMemoryActions = acceptSavedMemoryActions,
+            searchVersion = searchVersion) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
 
     override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
+        return getTurn(token, library, threadId, requestId, searchVersion = 1)
+    }
+
+    override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                 searchVersion: Int): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId) && AssistantWorkspaceWire.validUuid4(requestId))
-        val packet = send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library)
-        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true) }
+        require(searchVersion in 1..2)
+        val packet = send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library,
+            extraHeaders = if (searchVersion == 2) mapOf("X-PhotoHouse-Search-Version" to "2") else emptyMap())
+        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true,
+            searchVersion = searchVersion) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
@@ -545,9 +581,15 @@ class HttpsAssistantWorkspaceApi internal constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
-                                   expectedRevision: Long, speechRequestId: String): AssistantSpeechResult {
+                                   expectedRevision: Long, speechRequestId: String): AssistantSpeechResult =
+        speakTurn(token, library, threadId, turnId, expectedRevision, speechRequestId, searchVersion = 1)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override suspend fun speakTurn(token: Bearer, library: String, threadId: String, turnId: String,
+                                   expectedRevision: Long, speechRequestId: String, searchVersion: Int): AssistantSpeechResult {
         if (!assistantWorkspaceEnabled) throw ApiFailure(FailureKind.INVALID_INPUT)
         if (!AssistantWorkspaceWire.validUuid4(threadId)) throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (searchVersion !in 1..2) throw ApiFailure(FailureKind.INVALID_INPUT)
         val bodyText = AssistantWorkspaceWire.replySpeechRequest(library, expectedRevision, turnId, speechRequestId)
         val requestBytes = bodyText.toByteArray(Charsets.UTF_8)
         val request = try {
@@ -556,6 +598,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
                 .header("Cache-Control", "no-store").header("Accept-Encoding", "identity")
                 .header("X-PhotoHouse-Request-Id", speechRequestId)
                 .header("X-PhotoHouse-Parent-Request-Id", turnId)
+                .apply { if (searchVersion == 2) header("X-PhotoHouse-Search-Version", "2") }
                 .post(ownedBody(requestBytes)).build()
         } catch (e: Exception) {
             requestBytes.fill(0)

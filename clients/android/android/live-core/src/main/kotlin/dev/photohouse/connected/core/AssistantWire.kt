@@ -19,6 +19,21 @@ data class AssistantSavedMemoryReference(
     val kind: String, val id: String, val revision: String, val sourceRevision: String,
 )
 data class AssistantSavedMemoryAction(val type: String, val ordinal: Int)
+data class AssistantSearchFacetSelection(val id: String, val label: String)
+data class AssistantSearchPerspective(val label: String)
+data class AssistantSearchInterpretation(
+    val dateBasis: String,
+    val people: List<AssistantSearchFacetSelection>,
+    val tags: List<AssistantSearchFacetSelection>,
+    val locations: List<AssistantSearchFacetSelection>,
+    val perspective: AssistantSearchPerspective?,
+)
+sealed interface AssistantMatchReason {
+    data class PhotoMemory(val sourceId: String) : AssistantMatchReason
+    data class Caption(val generated: Boolean, val sourceId: String) : AssistantMatchReason
+    data class ReviewedPerson(val sourceId: String) : AssistantMatchReason
+    data class CaptureDate(val value: String) : AssistantMatchReason
+}
 data class AssistantTurn(
     val kind: String,
     val reply: String,
@@ -33,6 +48,9 @@ data class AssistantTurn(
     val memoryCards: List<AssistantSavedMemoryCard> = emptyList(),
     val savedMemoryContext: AssistantSavedMemoryContext? = null,
     val memoryAction: AssistantSavedMemoryAction? = null,
+    val searchVersion: Int = 1,
+    val searchInterpretation: AssistantSearchInterpretation? = null,
+    val matchReasons: Map<String, List<AssistantMatchReason>> = emptyMap(),
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,

@@ -105,6 +105,10 @@ response retains the normal version-1 workspace fields and adds:
 {"search":{"version":2,"date_basis":"capture","perspective":null}}
 ```
 
+An unavailable, stale or busy search source withholds turn admission while
+leaving owned conversation history and preferences available. It does not force
+the whole private workspace offline or silently retry a legacy search.
+
 For a currently allowed private graph, `perspective` is instead a bounded object
 with one `label`. This authenticated, library-scoped presentation does not expose
 the graph, its relationships, aliases, allowlist or file location. The chosen

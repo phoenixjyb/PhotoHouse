@@ -67,6 +67,8 @@ class AssistantWorkspaceStoreTest {
         var readerCalls = 0
         var acceptSavedMemoryCardsSent = false
         var acceptSavedMemoryActionsSent = false
+        var submittedSearchVersion: Int? = null
+        var recoveredSearchVersion: Int? = null
         var readerHandler: suspend () -> SavedMemoryReaderPayload = { error("reader not configured") }
         val historyRequests = mutableListOf<Triple<String, Long, Long>>()
         var listHandler: suspend () -> AssistantWorkspaceThreadList = { AssistantWorkspaceThreadList(1, emptyList()) }
@@ -160,8 +162,21 @@ class AssistantWorkspaceStoreTest {
             submittedMemoryParent = memoryParent
             return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId).copy(requestId = requestId)
         }
+        override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                        expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
+                                        memoryParent: AssistantSavedMemoryParent?, acceptSavedMemoryActions: Boolean,
+                                        searchVersion: Int): AssistantWorkspaceTurn {
+            submittedSearchVersion = searchVersion
+            return submitTurn(token, library, threadId, requestId, expectedRevision, text, parentRequestId,
+                acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions)
+        }
         override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String): AssistantWorkspaceTurn {
             getCalls++; return getHandler(threadId, requestId)
+        }
+        override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                     searchVersion: Int): AssistantWorkspaceTurn {
+            recoveredSearchVersion = searchVersion
+            return getTurn(token, library, threadId, requestId)
         }
     }
 
@@ -186,6 +201,33 @@ class AssistantWorkspaceStoreTest {
         assertEquals(AssistantWorkspaceError.CONTEXT_CHANGED, store.state.value.error)
         assertNull(store.state.value.currentTurn?.result?.effect)
         assertNull(store.state.value.pendingTurn)
+    }
+
+    @Test fun pendingTurnKeepsNegotiatedSearchVersionAcrossCapabilityRefreshAndLostPostRecovery() = runTest {
+        val api = FakeApi()
+        val requestId = uuid(9)
+        val response = CompletableDeferred<Unit>()
+        api.capabilityValue = capabilities.copy(searchVersion = 2, searchDateBasis = "capture")
+        api.submitHandler = { _, _, _ -> response.await(); throw ApiFailure(FailureKind.OFFLINE) }
+        api.getHandler = { id, request ->
+            AssistantWorkspaceTurn(1, id, request, AssistantWorkspaceRequestStatus.FAILED, 0, true,
+                "assistant_unavailable", null)
+        }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() }, uuidFactory = { requestId })
+        store.onScopeChanged(); store.refreshCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+        store.setDraft("find photos from the picnic")
+
+        assertTrue(store.sendTurn()); runCurrent()
+        assertTrue(store.cancelWaitingForTurn(requestId))
+        runCurrent()
+        api.capabilityValue = capabilities
+        assertTrue(store.refreshCapabilities()); runCurrent()
+        assertTrue(store.recoverPendingTurn()); runCurrent()
+
+        assertEquals(2, api.submittedSearchVersion)
+        assertEquals(2, api.recoveredSearchVersion)
+        assertEquals(AssistantWorkspaceError.TURN_FAILED, store.state.value.error)
     }
 
     @Test fun scopeChangeCancelsRequestAndClearsAllPrivateBuffers() = runTest {

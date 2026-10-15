@@ -175,6 +175,24 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertNotIn('interpretation', row['result_summary'])
         self.assertNotIn('items', row['result_summary'])
 
+    def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        self.turn(tid)
+        self.app.state.discovery_runtime = DiscoveryRuntime(self.access, MemoryIndexProvider(()), d.ReadBudget())
+        capabilities = self.request('GET', '/capabilities?library_id=family-a', headers=headers)
+        self.assertEqual(capabilities.status_code, 200, capabilities.text)
+        value = capabilities.json()
+        self.assertTrue(value['available'])
+        self.assertTrue(value['threads'])
+        self.assertTrue(value['preferences'])
+        self.assertFalse(value['server_owned_turns'])
+        self.assertNotIn('search', value)
+        history = self.request('GET', f'/threads/{tid}?library_id=family-a')
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual(len(history.json()['exchanges']), 1)
+        self.assertEqual(self.request('GET', '/preferences?library_id=family-a').status_code, 200)
+
     def test_search_v2_rehydrates_reviewed_labels_and_checks_current_source_and_membership(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']

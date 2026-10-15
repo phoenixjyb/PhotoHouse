@@ -150,6 +150,11 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(dated['filters']['date'], {'from': '2032-09-01', 'to': '2032-09-30'})
         self.assertEqual(dated['filters']['people'], result['filters']['people'])
         self.assertEqual(dated['filters']['text'], '海边')
+        known = self.turn('找示例儿童在公园的照片').json()
+        self.assertEqual(known['kind'], 'results', known)
+        self.assertEqual(known['filters']['tags']['ids'], ['501'])
+        self.assertEqual(known['filters']['people']['ids'], ['301'])
+        self.assertEqual([item['id'] for item in known['items']], ['103'])
         for words in ('找陌生人物和示例儿童在海边的照片', '找示例儿童不要在海边的照片',
                       '找示例儿童在海边拍摄的照片', '找示例儿童2032年99月在海边的照片',
                       '找示例儿童在未知场景的照片'):

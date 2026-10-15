@@ -4883,7 +4883,8 @@ class ConnectedStore(
             clearAssistantSpeech()
     }
     private data class PrivateReplySpeechReference(val threadId: String, val turnId: String,
-                                                  val revision: Long, val kind: String, val reply: String)
+                                                  val revision: Long, val kind: String, val reply: String,
+                                                  val searchVersion: Int)
     private data class MemoryOpeningSpeechReference(
         val accountId: String, val library: String, val generation: Long, val threadId: String,
         val turnId: String, val revision: Long, val ordinal: Int,
@@ -5149,7 +5150,8 @@ class ConnectedStore(
             exchange.turn.reply != result.reply || exchange.turn.kind != result.kind || result.effect != null ||
             result.kind !in setOf("results", "clarification", "unsupported") || result.reply.isBlank() ||
             result.reply.toByteArray(Charsets.UTF_8).size !in 1..600) return null
-        return PrivateReplySpeechReference(thread.threadId, completed.requestId, completed.revision, result.kind, result.reply)
+        return PrivateReplySpeechReference(thread.threadId, completed.requestId, completed.revision, result.kind, result.reply,
+            result.searchVersion)
     }
 
     fun canReadAssistantReply(): Boolean {
@@ -5226,7 +5228,7 @@ class ConnectedStore(
                 if (privateReply != null && privateReplySpeechReference() != privateReply)
                     throw ApiFailure(FailureKind.INVALID_RESPONSE)
                 val speech = if (privateReply != null) workspaceApi!!.speakTurn(credential, library,
-                    privateReply.threadId, privateReply.turnId, privateReply.revision, requestId)
+                    privateReply.threadId, privateReply.turnId, privateReply.revision, requestId, privateReply.searchVersion)
                 else api.assistantSpeech(credential, library, context, language, requestId, parentId)
                 bytes = speech.bytes
                 val received = speech.bytes
