@@ -7,6 +7,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
@@ -145,6 +146,19 @@ class DescriptiveSearchTests(unittest.TestCase):
         binding = self.entities(v3)['binding']
         found = self.query({'media': ['image', 'video']}, runtime=v3, binding=binding)
         self.assertEqual([item['id'] for item in found['items']], ['103', '102', '101'])
+
+    def test_matching_policy_change_invalidates_v3_bindings_but_leaves_v2_alone(self):
+        from app.access import search_description
+        v2 = SearchRuntime(self.discovery)
+        v2_binding = self.entities(v2)['binding']
+        self.assertEqual(search_description.SEARCH_DESCRIPTION_POLICY_VERSION, 2)
+        with patch.object(search_description, 'SEARCH_DESCRIPTION_POLICY_VERSION', 1):
+            old_v3_binding = self.entities(self.v3)['binding']
+            self.assertEqual(self.entities(v2)['binding'], v2_binding)
+        self.assertNotEqual(old_v3_binding, self.binding)
+        self.assertEqual(self.entities(v2)['binding'], v2_binding)
+        with self.assertRaises(d.DiscoveryChanged):
+            self.query({'descriptive': self.description()}, binding=old_v3_binding)
 
     def test_caption_edit_and_photo_note_revocation_invalidate_bound_results(self):
         filters = {'media': ['image'], 'descriptive': self.description()}

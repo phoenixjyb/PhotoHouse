@@ -88,6 +88,72 @@ class SearchDescriptionTests(unittest.TestCase):
         self.assertGreater(match_description((authored,), plan)[2],
                            match_description((weak,), plan)[2])
 
+    def test_negative_clauses_do_not_supply_positive_scene_evidence(self):
+        cases = (
+            ('dog', 'No dog was nearby.'),
+            ('dog', 'A dog was not nearby.'),
+            ('dog', "There isn't a dog here."),
+            ('dog', "A dog can't be seen."),
+            ('dog', 'The dog wasn’t there.'),
+            ('dog', 'Not yet a dog in view.'),
+            ('dog', 'Neither a dog nor a cat is described.'),
+            ('red coat', 'Without a red coat, a scarf was worn.'),
+            ('雪', '路面没有积雪。'),
+            ('红外套', '她没穿红外套。'),
+            ('玩雪', '今天不玩雪。'),
+            ('玩雪', '今天没玩雪。'),
+            ('雪', '没去雪山。'),
+            ('雪', '未到雪山。'),
+            ('雪', '照片里沒在下雪。'),
+            ('雪', '路上沒有積雪。'),
+            ('红外套', '不是穿红外套。'),
+            ('敲手鼓', 'The note says not 敲手鼓.'),
+        )
+        for phrase, content in cases:
+            with self.subTest(content=content):
+                source = self.source('generated_caption', '1', content)
+                self.assertEqual((False, [], (0, 0, 0)), match_description(
+                    (source,), self.description((phrase, (phrase,)))))
+
+    def test_positive_sentences_and_explicit_contrasts_remain_usable(self):
+        for content in ('No dog in the first frame. A dog is running in the next.',
+                        'No cat is visible; a dog is running.',
+                        'No cat, but a dog is running.',
+                        'There is no cat. However a dog is running.',
+                        '没有猫，但是有一只dog在跑。'):
+            with self.subTest(content=content):
+                self.assertTrue(match_description(
+                    (self.source('photo_memory', '1', content),),
+                    self.description(('dog', ('dog',))))[0])
+        self.assertTrue(match_description(
+            (self.source('photo_memory', '1', '路上没有车；新雪铺满了小路。'),),
+            self.description(('雪', ('雪',))))[0])
+
+    def test_latin_word_edges_reject_substrings_without_requiring_chinese_spaces(self):
+        for phrase, content in (('cat', 'A vacation at the lake.'),
+                                ('dog', 'A hotdog on a plate.'),
+                                ('rain', 'A train on the tracks.'),
+                                ('dog', 'doghouse'), ('dog', 'dog_2'),
+                                ('dog', '2dog'), ('cafe', 'cafe\u0301')):
+            with self.subTest(phrase=phrase, content=content):
+                self.assertFalse(match_description(
+                    (self.source('edited_caption', '1', content),),
+                    self.description((phrase, (phrase,))))[0])
+        for phrase, content in (('dog', '一只dog在跑。'), ('雪', '雪地里有积雪。'),
+                                ('dog', 'A DOG!'), ('red coat', 'A red coat is visible.')):
+            with self.subTest(content=content):
+                self.assertTrue(match_description(
+                    (self.source('edited_caption', '1', content),),
+                    self.description((phrase, (phrase,))))[0])
+
+    def test_negative_sources_cannot_contribute_reasons_or_authored_quality(self):
+        sources = (self.source('photo_memory', 'private-negative', 'No dog was nearby.'),
+                   self.source('generated_caption', 'positive', 'A dog running.'))
+        matched, reasons, quality = match_description(sources, self.description(('dog', ('dog',))))
+        self.assertTrue(matched)
+        self.assertEqual([{'source':'generated_caption', 'source_id':'positive', 'revision':1}], reasons)
+        self.assertEqual(quality[0], 0)
+
     def test_reasons_are_deduplicated_and_bounded_without_text_leaks(self):
         plan = self.description(("岸边", ("beach",)), ("海滩", ("beach",)))
         sources = tuple(self.source("generated_caption", str(index), "A beach day, private phrase")

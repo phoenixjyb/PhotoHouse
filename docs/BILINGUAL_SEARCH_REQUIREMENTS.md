@@ -387,3 +387,26 @@ The transport fixtures use generated silence and a mocked ASR response. They
 measure no speech recognition accuracy. The mixed canary defines printed text,
 not spoken dialect cases. No provider, private roster, database schema or
 runtime configuration is activated by these source changes.
+
+## Grounding scene clues in positive evidence
+
+Descriptive matching uses Latin word boundaries, so `cat` does not match
+`vacation` and `dog` does not match `hotdog`. Han phrases still use substring
+matching because Chinese normally has no word spaces. Alternatives must state
+needed translations, inflections and plural forms explicitly.
+
+A clause containing a supported explicit negation cannot supply positive scene
+evidence. For example, `No dog was nearby` and `路面没有积雪` do not establish a
+dog or snow scene. Sentence/semicolon boundaries and explicit contrast words
+allow a separate affirmative clause to match. This is a conservative lexical
+rule, not general negation understanding: positive details in the same negative
+clause may be withheld, and unrecognized or indirect negation is not resolved.
+Quoted-text search stays literal and can intentionally find negative wording.
+Policy version 2 participates in the v3 source binding; prior snapshots must be
+refreshed before refinement. No ranking-confidence or visual subject-binding
+claim follows from caption matching.
+
+When description clarification cannot preserve all unresolved conditions, the
+assistant requests a complete search again, including the scene and any person
+or date. It does not promise that a short answer will carry the original query
+forward. Date-only pending questions retain their separate supported flow.
