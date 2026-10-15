@@ -1,5 +1,6 @@
 """Generated E7 worker qualification and bounded Windows launch contract."""
 from contextlib import closing
+import ast
 import json
 import os
 from pathlib import Path
@@ -152,8 +153,9 @@ class MemoryGroupWorkersQualificationTests(unittest.TestCase):
                                   "process_limit": 8, "minimum_free_ram": 8 * 1024**3})
         self.assertEqual(args[2][1:4], ["-I", "-B", "-c"])
         self.assertIn("runpy.run_path", args[2][4])
-        self.assertIn(str(ffmpeg), args[2][4])
-        self.assertIn(str(ffprobe), args[2][4])
+        child_call = ast.parse(args[2][4]).body[1].value
+        self.assertEqual([ast.literal_eval(arg) for arg in child_call.args],
+                         [str(self.target), str(ffmpeg), str(ffprobe)])
         self.assertNotIn("DATABASE_URL", args[3])
         self.assertEqual(report["decoded_keyframes"], 2)
 
