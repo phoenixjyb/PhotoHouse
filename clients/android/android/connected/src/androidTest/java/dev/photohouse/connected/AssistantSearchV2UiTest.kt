@@ -1,22 +1,27 @@
 package dev.photohouse.connected
 
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.connected.core.*
 import dev.photohouse.protocol.Asset
 import kotlinx.serialization.json.Json
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.FileOutputStream
 
 /** Synthetic negotiated search result copy; no account, store, network, or media is used. */
 @RunWith(AndroidJUnit4::class)
@@ -65,13 +70,15 @@ class AssistantSearchV2UiTest {
             }
         }
         rule.onNodeWithTag("assistant-search-perspective").assertIsDisplayed()
+        rule.onNodeWithText(if (zh) "搜索按拍摄日期进行" else "Search uses capture dates", substring = false).assertIsDisplayed()
         rule.onNodeWithText(if (zh) "视角：妈妈" else "Perspective: 妈妈", substring = false).assertIsDisplayed()
         val interpretationTag = "assistant-search-interpretation-synthetic-search-v2"
         rule.onNodeWithTag("assistant-turns").performScrollToNode(
             androidx.compose.ui.test.hasTestTag(interpretationTag))
         rule.onNodeWithTag(interpretationTag).assertIsDisplayed()
+        saveScreenshot("search-v2-${if (zh) "zh" else "en"}-interpretation-150.png")
         listOf(
-            if (zh) "同时出现：妈妈、小雨" else "Together in the photo: 妈妈, 小雨",
+            if (zh) "同时出现：妈妈、小雨" else "All selected people: 妈妈, 小雨",
             if (zh) "文字：海边散步" else "Text: 海边散步",
             if (zh) "拍摄日期：从 2024-01-02 起" else "Capture date: From 2024-01-02",
             if (zh) "媒体：视频" else "Media: videos",
@@ -86,6 +93,20 @@ class AssistantSearchV2UiTest {
         reasons.forEach { reason ->
             rule.onNodeWithTag("assistant-turns").performScrollToNode(androidx.compose.ui.test.hasText(reason, substring = false))
             rule.onNodeWithText(reason, substring = false).assertIsDisplayed()
+        }
+        saveScreenshot("search-v2-${if (zh) "zh" else "en"}-match-reasons-150.png")
+    }
+
+    private fun saveScreenshot(name: String) {
+        rule.waitForIdle()
+        val image = rule.onRoot().captureToImage().asAndroidBitmap()
+        val file = InstrumentationRegistry.getInstrumentation().targetContext.cacheDir.resolve(name)
+        try {
+            FileOutputStream(file).use { output ->
+                check(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output))
+            }
+        } finally {
+            image.recycle()
         }
     }
 

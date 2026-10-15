@@ -95,7 +95,7 @@ private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean)
         val peopleFilter = filters?.get("people") as? kotlinx.serialization.json.JsonObject
         val all = (peopleFilter?.get("match") as? kotlinx.serialization.json.JsonPrimitive)?.content == "all"
         val names = interpretation.people.joinToString(if (zh) "、" else ", ") { it.label }
-        lines.add(if (all) t("Together in the photo: $names", "同时出现：$names") else t("Any of: $names", "任一人物：$names"))
+        lines.add(if (all) t("All selected people: $names", "同时出现：$names") else t("Any of: $names", "任一人物：$names"))
     }
     if (interpretation.tags.isNotEmpty()) {
         val names = interpretation.tags.joinToString(if (zh) "、" else ", ") { it.label }
@@ -831,7 +831,7 @@ internal fun AssistantScreen(
                                 .testTag("assistant-search-perspective")) {
                             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(t("Search uses photo capture dates", "搜索按照片拍摄日期进行"),
+                                Text(t("Search uses capture dates", "搜索按拍摄日期进行"),
                                     style = MaterialTheme.typography.bodySmall)
                                 search.searchPerspectiveLabel?.let { label ->
                                     Text(t("Perspective: $label", "视角：$label"),

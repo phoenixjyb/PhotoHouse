@@ -17110,6 +17110,26 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "phone-search-v2-media-neutral-copy-and-private-synthetic-renders",
+      "source_commit": "e55b9542924e9839eedf5388a4610cac35dfe6b6",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantSearchV2UiTest.kt",
+          "before_sha256": "b9dbe1e9c68bc0fa8d6162dc2ac8bfb80688e4ae9cf4906f0ef84f24add7fb4b",
+          "sha256": "8cfbe66a4d2265e1c3f00e032180b4ad6ac33f803c9f1cd31f036871a344f561"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "f5d1b06cca9f25b9da34f880a8a961317477fc7a48902ec067c7b4a8f7c47511",
+          "sha256": "ba243ab85faf7cedbea7089829123c7254b348316c154d866defd7b47ae71f5b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }
