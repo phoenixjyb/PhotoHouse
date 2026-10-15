@@ -181,6 +181,56 @@ class StagingConfigurationTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(s.InvalidConfiguration):
                 s.parse_configuration(dict(base(), **(valid | change)))
 
+    def test_assistant_intent_planner_is_optional_loopback_only_and_passed_to_runtime(self):
+        legacy = s.parse_configuration(base())
+        self.assertIsNone(legacy.assistant_intent_url)
+        self.assertIsNone(legacy.assistant_intent_model)
+        self.assertEqual(20, legacy.assistant_intent_timeout_seconds)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            legacy.build_app()
+        self.assertIsNone(runtime.call_args.kwargs['assistant_intent_url'])
+        self.assertIsNone(runtime.call_args.kwargs['assistant_intent_model'])
+        self.assertEqual(20, runtime.call_args.kwargs['assistant_intent_timeout_seconds'])
+
+        selected = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_intent_url='http://localhost:19002/api/generate',
+            assistant_intent_model='synthetic-intent', assistant_intent_timeout_seconds=12))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            selected.build_app()
+        forwarded = runtime.call_args.kwargs
+        self.assertEqual('http://localhost:19002/api/generate', forwarded['assistant_intent_url'])
+        self.assertEqual('synthetic-intent', forwarded['assistant_intent_model'])
+        self.assertEqual(12, forwarded['assistant_intent_timeout_seconds'])
+
+        invalid = (
+            {'assistant_intent_url': 'http://localhost:19002'},
+            {'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_intent_url': 'http://localhost:19002', 'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://192.0.2.1:19002',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'https://localhost:19002',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://name:secret@localhost:19002',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002?token=secret',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002/other',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002',
+             'assistant_intent_model': ' '},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002',
+             'assistant_intent_model': 'bad\nname'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002',
+             'assistant_intent_model': '模' * 41},
+        )
+        for change in invalid:
+            with self.subTest(change=change), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **change))
+        for timeout in (0, True, 46, float('nan'), float('inf'), '20'):
+            with self.subTest(timeout=timeout), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), assistant_intent_timeout_seconds=timeout))
+
     def test_reviewed_editions_are_default_off_and_require_collaboration_and_journal(self):
         self.assertFalse(s.parse_configuration(base()).memory_editions_enabled)
         for flag in ('true', 1, None):

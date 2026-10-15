@@ -313,6 +313,10 @@ class DiscoveryReads:
     def _content_match(self, row, filters):
         return True, []
 
+    def _normalize_content_filter(self, name, value):
+        """Normalize a lexical content constraint; extensions may add typed forms."""
+        return fold(text(value,512).strip())
+
     def _rank(self, found):
         return found
 
@@ -473,7 +477,7 @@ class DiscoveryReads:
                             try:date.fromisoformat(endpoint)
                             except ValueError:raise DiscoveryInvalid() from None
                     require(any(x is not None for x in v.values()) and (v['from'] is None or v['to'] is None or v['from']<=v['to']));normalized[f]=dict(v)
-                else:normalized[f]=fold(text(v,512).strip())
+                else:normalized[f]=self._normalize_content_filter(f,v)
             expected=digest({'binding':context,'filters':normalized,'page_size':page_size})
             if page>1:require(fingerprint is not None)
             if fingerprint is not None:

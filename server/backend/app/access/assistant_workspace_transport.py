@@ -58,11 +58,13 @@ class WorkspaceRoute(APIRoute):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
                 version = _single(request, 'x-photohouse-search-version')
-                if version not in (None, '1', '2') or (version == '2' and not assistant_engine._search_v2_endpoint(request)):
+                if version not in (None, '1', '2', '3') or (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)):
                     raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
-                code = ('access_denied' if exc.status in (401, 403) else
+                code = ('search_version_unsupported' if exc.status == 400 and
+                        exc.message == 'Search version is not supported on this endpoint' else
+                        'access_denied' if exc.status in (401, 403) else
                         'request_too_large' if exc.status == 413 else 'invalid_request')
                 response = _failure(exc.status, code, exc.message)
             except AccessDenied:
@@ -309,22 +311,30 @@ def _turn_text(value):
 
 def _turn_result(engine, token, library, summary, *, recovered):
     from .assistant_search import SearchRuntime
-    if summary['version'] == 2 and not isinstance(engine, SearchRuntime):
+    if summary['version'] in (2, 3) and not isinstance(engine, SearchRuntime):
         raise assistant_engine.AssistantChanged()
+    if summary['version'] == 3 and engine.search_version != 3:
+        raise assistant_engine.AssistantChanged()
+    if summary['version'] == 2 and isinstance(engine, SearchRuntime) and engine.search_version != 2:
+        # A v3-capable client can still read a saved v2 exchange against its
+        # original binding policy. History never upgrades an old query silently.
+        engine = SearchRuntime(engine.runtime, engine.kinship_provider)
     if summary['version'] == 1 and isinstance(engine, SearchRuntime):
         engine = engine.runtime
-    result = dict(summary)
+    result = {key: value for key, value in summary.items() if key != 'pending_intent'}
     context = summary['context']
     items = []
     if context is not None:
         context = assistant_engine._context(context, library)
         found = assistant_engine._context_result(engine, token, library, context)
         items = found['items']
-    if summary['version'] == 2:
+    if summary['version'] in (2, 3):
         interpretation = found.get('interpretation') if context is not None else None
         if interpretation is None:
+            binding = (context['binding'] if context else
+                       summary.get('pending_intent', {}).get('binding'))
             presentation = engine.call('presentation', token, library, lambda: False,
-                {'binding': context['binding']} if context else {})
+                {'binding': binding} if binding else {})
             interpretation = {key: value for key, value in presentation.items() if key != 'version'}
             interpretation.update(people=[], tags=[], locations=[])
         result['interpretation'] = interpretation
@@ -806,6 +816,74 @@ def _validate_saved_reader_references(access, token, library, cards):
         raise
 
 
+def _workspace_search_turn(engine, token, library, words, previous, clock, *, language,
+                            pending_intent=None):
+    """Resolve one server-owned date slot without changing either user input.
+
+    Only explicit new v3 searches create pending state. The slot belongs to the
+    current stored thread revision; the provider never sees a rewritten answer
+    or private pending metadata, and recovery does not call this function.
+    """
+    from datetime import datetime
+    from .assistant_search import SearchRuntime
+    from .search_intent import intent_mode
+    from .search_pending import (current_pending, find_date_slot, make_pending,
+                                 resolve_date_answer)
+
+    if not isinstance(engine, SearchRuntime) or engine.search_version != 3:
+        return assistant_engine._turn(engine, token, library, words, previous, clock,
+                                       language=language), None
+    stamp = int(clock())
+    now = datetime.fromtimestamp(stamp)
+    lang = language if language in ('zh', 'en') else assistant_engine._language(words)
+    new_search = intent_mode(words) == 'search'
+
+    def question(state, *, expired=False):
+        presentation = engine.call('presentation', token, library, lambda: False,
+                                  {'binding': state['binding']} if state else {})
+        interpretation = {key: value for key, value in presentation.items() if key != 'version'}
+        interpretation.update(people=[], tags=[], locations=[])
+        if expired:
+            reply = ('这次补充时间的等待已过期，请重新说完整的查找条件。' if lang == 'zh' else
+                     'The time question has expired. Please repeat the full search request.')
+        else:
+            reply = ('大概是哪一年或哪几个月？可以只回答时间，我会保留这次查找的其他条件。' if lang == 'zh' else
+                     'About which year or months? Answer with the time; I will keep the other search details.')
+        return {'version': 3, 'kind': 'clarification', 'reply': reply,
+                'context': None, 'filters': None, 'items': [], 'total': 0,
+                'has_more': False, 'effect': None, 'interpretation': interpretation}
+
+    if pending_intent is not None and not new_search:
+        state = current_pending(pending_intent, stamp)
+        if state is None:
+            return question(None, expired=True), None
+        entities = engine.call('entities', token, library, lambda: False,
+                               {'words': words, 'binding': state['binding']})
+        original_entities = engine.call('entities', token, library, lambda: False,
+                                        {'words': state['query'], 'binding': state['binding']})
+        if find_date_slot(state['query'], original_entities, now) != (state['start'], state['end']):
+            raise assistant_engine.AssistantChanged()
+        resolved = resolve_date_answer(state, words, now, entities)
+        if resolved is None:
+            return question(state), state
+        masked, date_filter = resolved
+        result = assistant_engine._turn(engine, token, library, masked, None, clock,
+            language=language, continuation={'binding': state['binding'], 'date': date_filter})
+        # A temporary planner failure can be retried with the same date answer;
+        # the original question's expiry is never extended by an invalid answer.
+        return result, state if result['kind'] == 'clarification' else None
+
+    if new_search and find_date_slot(words, {'labels': []}, now) is not None:
+        entities = engine.call('entities', token, library, lambda: False, {'words': words})
+        slot = (find_date_slot(words, entities, now) if not entities['ambiguous']
+                and 'date' in entities['enabled'] else None)
+        if slot is not None:
+            state = make_pending(words, slot, entities['binding'], stamp)
+            return question(state), state
+    return assistant_engine._turn(engine, token, library, words, previous, clock,
+                                   language=language), None
+
+
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
 async def create_turn(request: Request, thread_id: str):
     body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts', 'memory_parent'},
@@ -892,9 +970,12 @@ async def create_turn(request: Request, thread_id: str):
             memory_outcome = (await run_in_threadpool(_memory_command, memory_access, token, library,
                                words, preferences['locale']) if memory_opt_in else None)
         if memory_outcome is None:
-            result = await run_in_threadpool(assistant_engine._turn, engine, token, library,
-                words, row['context'], access.clock, language=preferences['locale'])
+            result, pending_intent = await run_in_threadpool(_workspace_search_turn,
+                engine, token, library, words, row['context'], access.clock,
+                language=preferences['locale'], pending_intent=row.get('pending_intent'))
             summary = {key: value for key, value in result.items() if key not in ('items', 'interpretation')}
+            if pending_intent is not None:
+                summary['pending_intent'] = pending_intent
             context = result['context']
             cards = ([] if context is None else [dict(type='media', id=item['id'],
                      revision=context['binding'], fingerprint=context['fingerprint'])
@@ -1277,7 +1358,7 @@ async def capabilities(request: Request):
              'server_owned_turns': turns}
     if getattr(request.app.state, 'assistant_reply_speech_enabled', False):
         value['reply_speech'] = await _reply_speech_available(request, account)
-    if turns and _single(request, 'x-photohouse-search-version') == '2':
+    if turns and _single(request, 'x-photohouse-search-version') in ('2', '3'):
         from .kinship import KinshipUnavailable
         token, _mode = credentials_from_request(request, allow_query=True)
         try:

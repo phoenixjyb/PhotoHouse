@@ -1,0 +1,182 @@
+"""Deterministic support for one narrow pending-date clarification.
+
+This module recognizes a closed set of literal age/vague-time phrases and
+resolves only a date answer. It does not inspect people, captions, or media,
+call a model, or rewrite the original query. A caller must independently bind
+the pending object to its authenticated thread and fresh source snapshot.
+"""
+from datetime import date, datetime
+import re
+
+from . import discovery as d
+from .assistant_query_plan import _QUOTE, _consumed_label, _extract_dates
+from .search_refinement import plan_query as literal_plan
+
+
+PENDING_TTL_SECONDS = 15 * 60
+_MAX_QUERY_BYTES = 1024
+_BINDING = re.compile(r'[0-9a-f]{64}')
+_AGE_PHRASE = re.compile(
+    r'(?P<english>(?ai:(?<![a-z0-9_])(?:from[ \t]+childhood|childhood|'
+    r'when[ \t]+younger|a[ \t]+long[ \t]+time[ \t]+ago)(?![a-z0-9_])))'
+    r'|(?P<chinese>小时候|儿时|小的时候|很久以前|好久以前)', re.I)
+_QUOTE_MARKS = frozenset(('"', '“', '”'))
+def _invalid():
+    return ValueError('Invalid pending date')
+
+
+def _query(value):
+    if type(value) is not str or not value.strip():
+        raise _invalid()
+    try:
+        raw = value.encode('utf-8', errors='strict')
+    except UnicodeError:
+        raise _invalid() from None
+    if len(raw) > _MAX_QUERY_BYTES or any(
+            ord(char) < 32 and char not in '\n\t' or ord(char) == 127
+            for char in value):
+        raise _invalid()
+    # Offsets in the private object are Python code-point offsets. NFKC or
+    # case-fold expansions would make normalized offsets unsafe to persist.
+    folded = d.fold(value)
+    if len(folded) != len(value):
+        raise _invalid()
+    return folded
+
+
+def _quote_mask(query):
+    masked = list(query)
+    quotes = list(_QUOTE.finditer(query))
+    for match in quotes:
+        masked[match.start():match.end()] = ' ' * (match.end() - match.start())
+    residue = ''.join(masked)
+    if any(mark in residue for mark in _QUOTE_MARKS):
+        return residue, quotes, False
+    return residue, quotes, True
+
+
+def _has_explicit_date(text, today):
+    dates, _residue, error = _extract_dates(text, today)
+    return bool(dates) or error is not None
+
+
+def find_date_slot(query, entities, now):
+    """Return the sole eligible vague-time phrase's exact ``(start, end)``.
+
+    Invalid queries, competing phrases, any recognized date, quote overlap,
+    or a phrase consumed as a reviewed label produce ``None``. ``entities`` is
+    an already-authorized resolver result; only its bounded ``labels`` field
+    is inspected. ``now`` supplies the civil date for relative-date checks.
+    """
+    if not isinstance(now, datetime) or type(entities) is not dict:
+        return None
+    today = now.date()
+    labels = entities.get('labels', [])
+    if type(labels) is not list or any(type(label) is not str for label in labels):
+        return None
+    try:
+        folded = _query(query)
+    except ValueError:
+        return None
+    outside, quotes, quotes_valid = _quote_mask(query)
+    if not quotes_valid:
+        return None
+    spans = [(match.start(), match.end()) for match in _AGE_PHRASE.finditer(query)]
+    # More than one candidate is ambiguous even if one candidate is quoted.
+    if len(spans) != 1 or _has_explicit_date(d.fold(outside), today):
+        return None
+    start, end = spans[0]
+    if any(start < quote.end() and end > quote.start() for quote in quotes):
+        return None
+    residue = list(folded)
+    residue[start:end] = ' ' * (end - start)
+    if _consumed_label(folded, ''.join(residue), labels):
+        return None
+    return start, end
+
+
+def make_pending(query, slot, binding, created_at):
+    """Create a strict private date-pending object or refuse the query."""
+    if (type(binding) is not str or _BINDING.fullmatch(binding) is None or
+            type(created_at) is not int or created_at < 0):
+        raise _invalid()
+    if (type(slot) is not tuple or len(slot) != 2 or
+            type(slot[0]) is not int or type(slot[1]) is not int):
+        raise _invalid()
+    return validate_pending({
+        'version': 1,
+        'question': 'date',
+        'query': query,
+        'start': slot[0],
+        'end': slot[1],
+        'binding': binding,
+        'created_at': created_at,
+    })
+
+
+def validate_pending(value):
+    """Validate private pending structure without applying its expiry."""
+    fields = {'version', 'question', 'query', 'start', 'end', 'binding', 'created_at'}
+    if type(value) is not dict or set(value) != fields:
+        raise _invalid()
+    if (type(value['version']) is not int or value['version'] != 1 or
+            value['question'] != 'date' or type(value['question']) is not str or
+            type(value['start']) is not int or type(value['end']) is not int or
+            type(value['created_at']) is not int or value['created_at'] < 0 or
+            type(value['binding']) is not str or _BINDING.fullmatch(value['binding']) is None):
+        raise _invalid()
+    try:
+        folded = _query(value['query'])
+    except ValueError:
+        raise _invalid() from None
+    start, end = value['start'], value['end']
+    if not 0 <= start < end <= len(value['query']):
+        raise _invalid()
+    outside, quotes, quotes_valid = _quote_mask(value['query'])
+    spans = [(match.start(), match.end()) for match in _AGE_PHRASE.finditer(value['query'])]
+    if (not quotes_valid or len(spans) != 1 or spans[0] != (start, end) or
+            any(start < quote.end() and end > quote.start() for quote in quotes) or
+            _has_explicit_date(d.fold(outside), date(2000, 1, 1))):
+        raise _invalid()
+    return dict(value)
+
+
+def current_pending(value, now):
+    """Return valid pending data within its age limit; clock rollback refuses."""
+    try:
+        state = validate_pending(value)
+    except ValueError:
+        return None
+    if (type(now) is not int or now < state['created_at'] or
+            now - state['created_at'] > PENDING_TTL_SECONDS):
+        return None
+    return state
+
+
+def resolve_date_answer(pending, answer, now, entities):
+    """Resolve only a date-only answer and blank its original vague-time slot.
+
+    The return query has exactly the original length, with the question slot
+    replaced by spaces. The answer is never concatenated into or written over
+    the original query. The caller keeps ``date`` as a separate hard filter.
+    """
+    try:
+        state = validate_pending(pending)
+        _query(answer)
+    except ValueError:
+        return None
+    if type(entities) is not dict:
+        return None
+    enabled = entities.get('enabled')
+    if (not isinstance(now, datetime) or type(entities.get('ambiguous')) is not bool or
+            entities['ambiguous'] or type(enabled) is not list or
+            any(type(item) is not str for item in enabled) or 'date' not in enabled or
+            not answer.strip()):
+        return None
+    plan = literal_plan(answer, now=now, entities=entities,
+                       previous_filters=None, refine=False)
+    if plan.status != 'ready' or set(plan.filters) != {'date'}:
+        return None
+    masked = list(state['query'])
+    masked[state['start']:state['end']] = ' ' * (state['end'] - state['start'])
+    return ''.join(masked), dict(plan.filters['date'])

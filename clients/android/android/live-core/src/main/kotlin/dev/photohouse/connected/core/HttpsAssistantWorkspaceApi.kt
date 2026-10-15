@@ -157,21 +157,27 @@ class HttpsAssistantWorkspaceApi internal constructor(
 
     override suspend fun capabilities(token: Bearer, library: String): AssistantWorkspaceCapabilities {
         val path = "/assistant/workspace/v1/capabilities"
-        val probe = send(token, path, library, successCodes = setOf(200, 400),
-            extraHeaders = mapOf("X-PhotoHouse-Search-Version" to "2"), responseLimit = 4096)
-        if (probe.statusCode != 400) return decoded(probe, AssistantWorkspaceWire::capabilities)
-        val unsupported = runCatching {
-            val error = DiscoveryJson.parse(probe.bytes) as? JsonObject ?: return@runCatching false
-            error.keys == setOf("error", "detail") &&
-                error["error"] == JsonPrimitive("invalid_request") &&
-                error["detail"] == JsonPrimitive("Search version is not supported on this endpoint")
-        }.getOrDefault(false)
-        probe.bytes.fill(0)
-        if (!unsupported) throw ApiFailure(FailureKind.HTTP, 400)
-        // Only the exact explicit unsupported-version response permits a legacy retry,
-        // and this fallback is limited to capability discovery.
-        return decoded(send(token, path, library), AssistantWorkspaceWire::capabilities)
+        for (version in listOf(3, 2, 1)) {
+            val probe = send(token, path, library, successCodes = setOf(200, 400),
+                extraHeaders = if (version >= 2) mapOf("X-PhotoHouse-Search-Version" to version.toString()) else emptyMap(),
+                responseLimit = 4096)
+            if (probe.statusCode != 400) return decoded(probe, AssistantWorkspaceWire::capabilities)
+            val unsupported = explicitUnsupportedSearchVersion(probe.bytes)
+            probe.bytes.fill(0)
+            if (!unsupported || version == 1) throw ApiFailure(FailureKind.HTTP, 400)
+            // Capability negotiation descends only after the server explicitly rejects
+            // that protocol version. Permission, availability and transport errors escape.
+        }
+        throw ApiFailure(FailureKind.HTTP, 400)
     }
+
+    private fun explicitUnsupportedSearchVersion(bytes: ByteArray): Boolean = runCatching {
+        val error = DiscoveryJson.parse(bytes) as? JsonObject ?: return@runCatching false
+        if (error.keys != setOf("error", "detail")) return@runCatching false
+        error["error"] == JsonPrimitive("search_version_unsupported") ||
+            error["error"] == JsonPrimitive("invalid_request") &&
+            error["detail"] == JsonPrimitive("Search version is not supported on this endpoint")
+    }.getOrDefault(false)
 
     override suspend fun listThreads(token: Bearer, library: String): AssistantWorkspaceThreadList =
         listThreads(token, library, includeLabels = false)
@@ -279,14 +285,14 @@ class HttpsAssistantWorkspaceApi internal constructor(
                                     searchVersion: Int): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId))
         require(parentRequestId == null || AssistantWire.validRequestId(parentRequestId))
-        require(searchVersion in 1..2)
+        require(searchVersion in 1..3)
         val body = AssistantWorkspaceWire.turnRequest(library, requestId, expectedRevision, text,
             acceptSavedMemoryCards, memoryParent, acceptSavedMemoryActions)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
             extraHeaders = buildMap {
                 put("X-PhotoHouse-Request-Id", requestId)
                 parentRequestId?.let { put("X-PhotoHouse-Parent-Request-Id", it) }
-                if (searchVersion == 2) put("X-PhotoHouse-Search-Version", "2")
+                if (searchVersion >= 2) put("X-PhotoHouse-Search-Version", searchVersion.toString())
             })
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = false,
             acceptSavedMemoryCards = acceptSavedMemoryCards, acceptSavedMemoryActions = acceptSavedMemoryActions,
@@ -302,9 +308,9 @@ class HttpsAssistantWorkspaceApi internal constructor(
     override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                  searchVersion: Int): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId) && AssistantWorkspaceWire.validUuid4(requestId))
-        require(searchVersion in 1..2)
+        require(searchVersion in 1..3)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library,
-            extraHeaders = if (searchVersion == 2) mapOf("X-PhotoHouse-Search-Version" to "2") else emptyMap())
+            extraHeaders = if (searchVersion >= 2) mapOf("X-PhotoHouse-Search-Version" to searchVersion.toString()) else emptyMap())
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true,
             searchVersion = searchVersion) }
         val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
@@ -589,7 +595,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
                                    expectedRevision: Long, speechRequestId: String, searchVersion: Int): AssistantSpeechResult {
         if (!assistantWorkspaceEnabled) throw ApiFailure(FailureKind.INVALID_INPUT)
         if (!AssistantWorkspaceWire.validUuid4(threadId)) throw ApiFailure(FailureKind.INVALID_INPUT)
-        if (searchVersion !in 1..2) throw ApiFailure(FailureKind.INVALID_INPUT)
+        if (searchVersion !in 1..3) throw ApiFailure(FailureKind.INVALID_INPUT)
         val bodyText = AssistantWorkspaceWire.replySpeechRequest(library, expectedRevision, turnId, speechRequestId)
         val requestBytes = bodyText.toByteArray(Charsets.UTF_8)
         val request = try {
@@ -598,7 +604,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
                 .header("Cache-Control", "no-store").header("Accept-Encoding", "identity")
                 .header("X-PhotoHouse-Request-Id", speechRequestId)
                 .header("X-PhotoHouse-Parent-Request-Id", turnId)
-                .apply { if (searchVersion == 2) header("X-PhotoHouse-Search-Version", "2") }
+                .apply { if (searchVersion >= 2) header("X-PhotoHouse-Search-Version", searchVersion.toString()) }
                 .post(ownedBody(requestBytes)).build()
         } catch (e: Exception) {
             requestBytes.fill(0)

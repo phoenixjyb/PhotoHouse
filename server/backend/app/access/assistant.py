@@ -73,7 +73,9 @@ class AssistantRoute(APIRoute):
                 _runtime(request, allow_query=request.method == 'GET')
                 response = await handler(request)
             except TransportError as error:
-                code = ('access_denied' if error.status in (401, 403) else
+                code = ('search_version_unsupported' if error.status == 400 and
+                        error.message == 'Search version is not supported on this endpoint' else
+                        'access_denied' if error.status in (401, 403) else
                         'request_too_large' if error.status == 413 else 'invalid_request')
                 response = failure(error.status, code, error.message)
             except AccessDenied:
@@ -161,13 +163,17 @@ def _engine(request):
             or not isinstance(discovery, DiscoveryRuntime) or discovery.access is not access):
         return access, None
     version = _single(request, 'x-photohouse-search-version')
-    if version not in (None, '1', '2'):
+    if version not in (None, '1', '2', '3'):
         raise AssistantInvalid()
-    if version == '2':
+    if version in ('2', '3'):
         if not _search_v2_endpoint(request):
             raise TransportError(400, 'Search version is not supported on this endpoint')
+        planner = getattr(request.app.state, 'assistant_intent_planner', None)
+        if version == '3' and planner is None:
+            raise TransportError(400, 'Search version is not supported on this endpoint')
         from .assistant_search import SearchRuntime
-        discovery = SearchRuntime(discovery, getattr(request.app.state, 'assistant_kinship_provider', None))
+        discovery = SearchRuntime(discovery, getattr(request.app.state, 'assistant_kinship_provider', None),
+                                  search_version=int(version), intent_planner=planner if version == '3' else None)
     return access, discovery
 
 
@@ -225,22 +231,22 @@ def _query_library(request):
         raise AssistantInvalid() from None
 
 
-def _bounded(value, depth=0, count=None):
+def _bounded(value, depth=0, count=None, *, max_depth=5, max_count=256):
     if count is None:
         count = [0]
     count[0] += 1
-    if count[0] > 256 or depth > 5:
+    if count[0] > max_count or depth > max_depth:
         raise AssistantInvalid()
     if type(value) is str:
         if len(value.encode('utf-8')) > 4096 or any(ord(c) < 32 and c not in '\n\t' for c in value):
             raise AssistantInvalid()
     elif type(value) is dict:
         for key, item in value.items():
-            _bounded(key, depth + 1, count)
-            _bounded(item, depth + 1, count)
+            _bounded(key, depth + 1, count, max_depth=max_depth, max_count=max_count)
+            _bounded(item, depth + 1, count, max_depth=max_depth, max_count=max_count)
     elif type(value) is list:
         for item in value:
-            _bounded(item, depth + 1, count)
+            _bounded(item, depth + 1, count, max_depth=max_depth, max_count=max_count)
     elif value is not None and type(value) not in (bool, int, float):
         raise AssistantInvalid()
 
@@ -277,7 +283,8 @@ async def _body(request, fields=frozenset({'library_id', 'text', 'context'}), *,
     try:
         result = json.loads(raw.decode('utf-8'), object_pairs_hook=unique,
                             parse_constant=lambda _: (_ for _ in ()).throw(AssistantInvalid()))
-        _bounded(result)
+        v3 = _single(request, 'x-photohouse-search-version') == '3'
+        _bounded(result, max_depth=9 if v3 else 5, max_count=512 if v3 else 256)
         if type(result) is not dict or set(result) != fields:
             raise AssistantInvalid()
         _library(result['library_id'])
@@ -298,7 +305,7 @@ async def _body(request, fields=frozenset({'library_id', 'text', 'context'}), *,
 def _context(value, library):
     if (type(value) is not dict or set(value) - {'search_version'} !=
             {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'} or
-            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] != 2))):
+            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] not in (2, 3)))):
         raise AssistantInvalid()
     if value['library_id'] != library:
         raise AssistantChanged()
@@ -490,7 +497,7 @@ def _search(engine, token, library, binding, filters, fingerprint=None):
 
 def _context_result(engine, token, library, context):
     from .assistant_search import SearchRuntime
-    if context.get('search_version', 1) != (2 if isinstance(engine, SearchRuntime) else 1):
+    if context.get('search_version', 1) != (engine.search_version if isinstance(engine, SearchRuntime) else 1):
         raise AssistantChanged()
     # Singleton lookup contexts use the same bounded wire shape as search. The
     # fingerprint binds the explicit ID and current session/membership/source.
@@ -506,15 +513,17 @@ def _context_result(engine, token, library, context):
     return result
 
 
-def _turn(engine, token, library, words, previous, clock, *, language=None):
+def _turn(engine, token, library, words, previous, clock, *, language=None, continuation=None):
     from .assistant_search import SearchRuntime
     if isinstance(engine, SearchRuntime):
         with engine.turn_scope():
-            return _turn_scoped(engine, token, library, words, previous, clock, language=language)
-    return _turn_scoped(engine, token, library, words, previous, clock, language=language)
+            return _turn_scoped(engine, token, library, words, previous, clock, language=language,
+                                continuation=continuation)
+    return _turn_scoped(engine, token, library, words, previous, clock, language=language,
+                        continuation=continuation)
 
 
-def _turn_scoped(engine, token, library, words, previous, clock, *, language=None):
+def _turn_scoped(engine, token, library, words, previous, clock, *, language=None, continuation=None):
     from .assistant_search import SearchRuntime
     v2 = isinstance(engine, SearchRuntime)
     if previous is not None:
@@ -522,18 +531,27 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
     # A new explicit search may leave a legacy result behind. Refinements and
     # ordinal opens must retain the original protocol and source binding.
     from .search_refinement import query_mode
-    new_search = (query_mode(words) == 'search' if v2 else
+    if v2 and engine.search_version == 3:
+        from .search_intent import intent_mode
+        new_search = intent_mode(words) == 'search'
+        if new_search:
+            # An independent new v3 request reads the current authorized
+            # library even when a previous result snapshot has gone stale.
+            previous = None
+    else:
+        new_search = (query_mode(words) == 'search' if v2 else
                   bool(re.match(SEARCH_PREFIX, words.strip().casefold())))
-    if (previous is not None and previous.get('search_version', 1) != (2 if v2 else 1)
+    if (previous is not None and previous.get('search_version', 1) != (engine.search_version if v2 else 1)
             and new_search):
         previous = None
     source = {}
-    result = _turn_impl(engine, token, library, words, previous, clock, language=language, source=source)
+    result = _turn_impl(engine, token, library, words, previous, clock, language=language,
+                        source=source, continuation=continuation)
     if v2:
-        result['version'] = 2
+        result['version'] = engine.search_version
         interpretation = source.get('interpretation')
         if result['context'] is not None:
-            result['context'] = dict(result['context'], search_version=2)
+            result['context'] = dict(result['context'], search_version=engine.search_version)
         if interpretation is None:
             presentation = engine.call('presentation', token, library, lambda: False,
                 {'binding': result['context']['binding']} if result['context'] else {})
@@ -543,9 +561,19 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
     return result
 
 
-def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None):
+def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None,
+               continuation=None):
     from .assistant_search import SearchRuntime
     search_v2 = isinstance(engine, SearchRuntime)
+    search_v3 = search_v2 and engine.search_version == 3
+    if continuation is not None:
+        from .assistant_query_plan import _valid_previous
+        if (not search_v3 or previous is not None or type(continuation) is not dict
+                or set(continuation) != {'binding', 'date'}
+                or type(continuation['binding']) is not str
+                or re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None
+                or not _valid_previous({'date': continuation['date']})):
+            raise AssistantChanged()
     source = {} if source is None else source
     lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
@@ -628,11 +656,34 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     lower = words.strip().casefold()
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
+    people_answer = None
+    answer_entities = None
     if search_v2:
-        from .search_refinement import query_mode
-        planned_mode = query_mode(words)
+        from .search_refinement import query_mode, plan_people_answer
+        if search_v3:
+            from .search_intent import intent_mode
+            planned_mode = intent_mode(words)
+        else:
+            planned_mode = query_mode(words)
         refine = refine or planned_mode == 'refine'
         search = search or planned_mode == 'search'
+        if existing is not None and not (refine or search):
+            # A complete reviewed name can answer a conversational question.
+            # Resolve it only after the previous scope has been revalidated;
+            # the pure planner still rejects extra conditions or actions.
+            answer_entities = engine.call('entities', token, library, lambda: False,
+                                          {'words': words})
+            people_answer = plan_people_answer(words, now=now, entities=answer_entities,
+                                               previous_filters=previous['filters'])
+            if people_answer is not None:
+                refine = True
+        if search_v3 and not (refine or search):
+            # V3 accepts ordinary read-only search language. The bounded
+            # intent compiler must account for all conditions before retrieval.
+            # Preserve the explicit capture/search ambiguity from v2.
+            if not re.match(r'^(?:请)?(?:帮我)?照一下', lower):
+                refine = previous is not None
+                search = not refine
     if not (refine or search):
         # Do not silently rewrite a transcript or treat a possible capture
         # request as permission to search. Ask the user to correct it instead.
@@ -659,16 +710,34 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
 
     condition_words = re.sub(r'[“"][^“”"]+[”"]', ' ', words) if search_v2 else words
     condition_lower = condition_words.casefold()
-    first = engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
-                        {'words': condition_words} if search_v2 else
-                        {'facet': 'people', 'page': 1, 'page_size': 100})
+    first = (answer_entities if people_answer is not None else
+             engine.call('entities' if search_v2 else 'facets', token, library, lambda: False,
+                         {'words': condition_words} if search_v2 else
+                         {'facet': 'people', 'page': 1, 'page_size': 100}))
     if existing is None:
         source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
+    if continuation is not None and binding != continuation['binding']:
+        raise AssistantChanged()
     if search_v2:
         from .search_refinement import plan_query
-        plan = plan_query(words, now=now, entities=first,
-                          previous_filters=previous['filters'] if previous else None, refine=refine)
+        if search_v3:
+            from .search_intent import plan_query as plan_intent
+            plan = plan_intent(words, now=now, entities=first,
+                               previous_filters=previous['filters'] if previous else None,
+                               planner=engine.intent_planner)
+            # Inference can outlive source or membership changes. Withhold
+            # even a clarification until the same authorized snapshot replays.
+            engine.call('presentation', token, library, lambda: False, {'binding': binding})
+            if continuation is not None and plan.status == 'ready':
+                from .assistant_query_plan import QueryPlan
+                if plan.filters.get('date') not in (None, continuation['date']):
+                    raise AssistantChanged()
+                plan = QueryPlan(3, 'ready', dict(plan.filters, date=continuation['date']))
+        else:
+            plan = (people_answer if people_answer is not None else
+                    plan_query(words, now=now, entities=first,
+                               previous_filters=previous['filters'] if previous else None, refine=refine))
         if plan.status != 'ready':
             reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
                      if lang == 'zh' else
@@ -687,6 +756,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')
+            elif plan.reason == 'ambiguous_people_answer':
+                reply = ('请在姓名之间加“和”表示需要同时出现，或加“或”表示任意一位。' if lang == 'zh' else
+                         'Join the names with "and" to require everyone together, or "or" to match any of them.')
             elif plan.reason == 'conflicting_people_reference':
                 reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
                          'Keep the selected people or change the people filter in a separate request.')
@@ -711,10 +783,28 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'text_too_long':
                 reply = ('要匹配的文字太长，请缩短引号内的内容后再查找。' if lang == 'zh' else
                          'The quoted text is too long. Shorten it and search again.')
+            elif plan.reason in ('intent_date', 'intent_person', 'intent_description', 'intent_scope'):
+                replies = {
+                    'intent_date': ('大概是哪一年或哪几个月？请在这次查找中补充时间。',
+                                    'About which year or months? Add that time to this search.'),
+                    'intent_person': ('你指的是谁？请提供相册库中已登记的姓名。',
+                                      'Who do you mean? Use a reviewed name from this library.'),
+                    'intent_description': ('你还记得哪些场景、活动或物品？请补充一个线索。',
+                                           'What scene, activity or object do you remember? Add one clue.'),
+                    'intent_scope': ('这次要继续缩小当前结果，还是开始一次新的查找？',
+                                     'Would you like to refine these results or start a new search?'),
+                }
+                reply = replies[plan.reason][0 if lang == 'zh' else 1]
+            elif plan.reason == 'intent_unavailable':
+                reply = ('本地语言理解服务暂不可用。可以先按已登记姓名、日期或带引号的文字查找。' if lang == 'zh' else
+                         'Local language understanding is temporarily unavailable. Try a reviewed name, date or quoted text.')
+            elif plan.reason in ('unsupported_action', 'intent_unsupported_action'):
+                reply = ('这里可以查找已有照片和视频。请把修改、分享或拍摄请求分开处理。' if lang == 'zh' else
+                         'This search finds existing photos and videos. Handle changes, sharing or capture separately.')
             elif 'people' not in enabled:
                 reply += (' 当前相册库尚未启用人物检索；未识别的条件不会被忽略。' if lang == 'zh' else
                           ' People search is not enabled in this library. Unmatched details were not ignored.')
-            return {'version': 1, 'kind': 'clarification', 'reply': reply,
+            return {'version': 1, 'kind': 'unsupported' if plan.status == 'unsupported' else 'clarification', 'reply': reply,
                     'context': previous, 'filters': previous['filters'] if previous else None,
                     'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,
                     'has_more': existing['has_more'] if existing else False, 'effect': None}
@@ -822,9 +912,13 @@ async def capabilities(request: Request):
     result = {'version': 1, 'enabled': engine is not None, 'text': engine is not None,
             'transcribe': transcribe, 'speech': engine is not None and isinstance(tts, LocalAssistantTts),
             'max_audio_seconds': MAX_AUDIO_SECONDS if transcribe else 0}
-    if _single(request, 'x-photohouse-search-version') == '2':
-        result.update(version=2, search={'version': 2, 'text_sources': ['current_caption', 'photo_memory'],
-                                      'date_basis': 'capture', 'ranking': 'authored_then_literal_quality_then_asset_id'})
+    version = _single(request, 'x-photohouse-search-version')
+    if version in ('2', '3'):
+        result.update(version=int(version), search={'version': int(version), 'text_sources': ['current_caption', 'photo_memory'],
+                                      'date_basis': 'capture',
+                                      'ranking': ('authored_then_descriptive_and_literal_quality_then_asset_id'
+                                                  if version == '3' else
+                                                  'authored_then_literal_quality_then_asset_id')})
     return result
 
 
@@ -840,8 +934,8 @@ async def turns(request: Request):
     await _stage(request, 'action_started')
     result = await run_in_threadpool(_turn, engine, token, library,
                                      payload['text'], payload['context'], access.clock)
-    if _single(request, 'x-photohouse-search-version') == '2':
-        result['version'] = 2
+    if _single(request, 'x-photohouse-search-version') in ('2', '3'):
+        result['version'] = int(_single(request, 'x-photohouse-search-version'))
     request.state.assistant_summary = {'kind':result['kind'], 'total':result['total']}
     return JSONResponse(result)
 

@@ -252,7 +252,7 @@ def _context_value(value, library_id):
         return None
     fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
     if (type(value) is not dict or set(value) - {'search_version'} != fields or value['library_id'] != library_id or
-            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] != 2))):
+            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] not in (2, 3)))):
         raise ValueError('Invalid context')
     if any(type(value[name]) is not str or re.fullmatch(r'[0-9a-f]{64}', value[name]) is None
            for name in ('binding', 'fingerprint')):
@@ -275,15 +275,15 @@ def _context_value(value, library_id):
     return dict(library_id=library_id, binding=value['binding'],
                 fingerprint=value['fingerprint'], filters=filters,
                 visible_ids=list(ids), total=value['total'],
-                **({'search_version': 2} if 'search_version' in value else {}))
+                **({'search_version': value['search_version']} if 'search_version' in value else {}))
 
 
 def _result_summary(value, library_id):
     fields = {'version', 'kind', 'reply', 'context', 'filters', 'total',
               'has_more', 'effect'}
-    if type(value) is not dict or set(value) != fields:
+    if type(value) is not dict or set(value) - {'pending_intent'} != fields:
         raise ValueError('Invalid result summary')
-    if type(value['version']) is not int or value['version'] not in (1, 2):
+    if type(value['version']) is not int or value['version'] not in (1, 2, 3):
         raise ValueError('Invalid result summary')
     if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
         raise ValueError('Invalid result summary')
@@ -313,6 +313,11 @@ def _result_summary(value, library_id):
     result = dict(version=value['version'], kind=value['kind'], reply=reply, context=ctx,
                   filters=filters, total=value['total'], has_more=value['has_more'],
                   effect=None if effect is None else dict(effect))
+    if 'pending_intent' in value:
+        from .search_pending import validate_pending
+        if value['version'] != 3 or value['kind'] != 'clarification' or ctx is not None:
+            raise ValueError('Invalid pending result')
+        result['pending_intent'] = validate_pending(value['pending_intent'])
     return json.loads(_json_value(result, 32 * 1024, 'result summary'))
 
 
@@ -768,6 +773,27 @@ class AssistantWorkspaceStore:
         return (None if row is None else _stored_context(row['context_json'], library_id))
 
     @staticmethod
+    def _pending_for(db, thread_id, account_id, library_id, revision, now, *, include_expired=False):
+        # Only the immediately preceding completed exchange can supply a slot.
+        # An intervening exchange or expired question never revives old intent.
+        row = db.execute('''SELECT result_summary FROM turn_requests
+            WHERE thread_id=? AND account_id=? AND library_id=? AND revision=?
+            AND status='completed' AND expires_at>?''',
+            (thread_id, account_id, library_id, revision, now)).fetchone()
+        if row is None:
+            return None
+        summary = _stored_summary(row['result_summary'], library_id)
+        value = summary.get('pending_intent')
+        if value is None:
+            return None
+        if include_expired:
+            # The transport must explain expiry rather than reinterpret a short
+            # answer as a new, broader search without the original conditions.
+            return value
+        from .search_pending import current_pending
+        return current_pending(value, now)
+
+    @staticmethod
     def _reconcile_lease(db, row, now):
         if row['status'] == 'pending' and row['lease_expires_at'] <= now:
             revision = db.execute('SELECT revision FROM threads WHERE thread_id=?',
@@ -842,6 +868,10 @@ class AssistantWorkspaceStore:
                              (account_id, library_id, request_id)).fetchone()
             result = self._turn_view(row)
             result['context'] = self._context_for(db, thread_id, account_id, library_id, now)
+            pending_intent = self._pending_for(db, thread_id, account_id, library_id,
+                                              expected_revision, now, include_expired=True)
+            if pending_intent is not None:
+                result['pending_intent'] = pending_intent
             db.commit()
             return result
 
@@ -910,6 +940,18 @@ class AssistantWorkspaceStore:
                 raise WorkspaceStoreMissing()
             if thread['revision'] != row['expected_revision']:
                 raise WorkspaceStoreConflict()
+            pending_intent = summary.get('pending_intent')
+            if pending_intent is not None:
+                from .search_pending import current_pending
+                if current_pending(pending_intent, now) is None:
+                    raise WorkspaceStoreConflict()
+                if pending_intent['query'] != row['input_text']:
+                    prior_pending = self._pending_for(db, thread_id, account_id, library_id,
+                                                       row['expected_revision'], now)
+                    if pending_intent != prior_pending:
+                        raise WorkspaceStoreConflict()
+                elif pending_intent['created_at'] < row['created_at']:
+                    raise WorkspaceStoreConflict()
             if (db.execute('SELECT count(*) FROM exchanges').fetchone()[0] >= MAX_EXCHANGES or
                     db.execute('SELECT count(*) FROM exchanges WHERE thread_id=?',
                                (thread_id,)).fetchone()[0] >= MAX_EXCHANGES_PER_THREAD):

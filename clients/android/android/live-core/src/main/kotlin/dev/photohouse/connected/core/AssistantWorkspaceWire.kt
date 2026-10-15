@@ -5,6 +5,8 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.text.Normalizer
+import java.util.Locale
 import java.util.UUID
 
 /** Strict JSON grammar for the optional private assistant workspace. */
@@ -156,11 +158,13 @@ object AssistantWorkspaceWire {
         check(applied.distinct().size == applied.size && applied.all { it == "locale" })
         val appliedFlag = o.getValue("preferences_applied").bool()
         val hasSearch = "search" in o
+        var searchVersion = 1
         val searchPerspectiveLabel = if (hasSearch) {
             val value = o.getValue("search")
             check(o.getValue("available").bool() && o.getValue("threads").bool() && o.getValue("server_owned_turns").bool())
             val presentation = value.obj(setOf("version", "date_basis", "perspective"))
-            check(presentation.getValue("version").count(2) == 2)
+            searchVersion = presentation.getValue("version").count(3)
+            check(searchVersion in 2..3)
             check(presentation.getValue("date_basis").str(16) == "capture")
             val perspective = presentation.getValue("perspective")
             val label = if (perspective == JsonNull) null else perspective.obj(setOf("label"))
@@ -170,7 +174,7 @@ object AssistantWorkspaceWire {
         AssistantWorkspaceCapabilities(1, o.getValue("available").bool(), o.getValue("threads").bool(),
             o.getValue("preferences").bool(), appliedFlag, o.getValue("server_owned_turns").bool(), applied.toSet(),
             o["history_paging"]?.bool() ?: false, o["thread_labels"]?.bool() ?: false,
-            o["reply_speech"]?.bool() ?: false, if (hasSearch) 2 else 1,
+            o["reply_speech"]?.bool() ?: false, searchVersion,
             if (hasSearch) "capture" else null, searchPerspectiveLabel)
     }
 
@@ -438,22 +442,22 @@ object AssistantWorkspaceWire {
                                acceptSavedMemoryCards: Boolean, acceptSavedMemoryActions: Boolean,
                                searchVersion: Int): AssistantTurn {
         val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
-        if (raw["version"] == JsonPrimitive(2)) {
-            check(searchVersion == 2)
-            return validateV2Result(bytes, library, recovered)
+        if (raw["version"] == JsonPrimitive(2) || raw["version"] == JsonPrimitive(3)) {
+            val resultVersion = raw.getValue("version").count(3)
+            check(searchVersion in 2..3 && resultVersion <= searchVersion && (resultVersion == searchVersion || recovered))
+            return validateV2Result(bytes, library, recovered, resultVersion)
         }
-        check(searchVersion in 1..2)
+        check(searchVersion in 1..3)
         if ("memory_cards" in raw || raw["kind"]?.let { (it as? JsonPrimitive)?.content } == "memory_cards") {
             check(bytes.size in 1..SAVED_MEMORY_RESPONSE_LIMIT && acceptSavedMemoryCards && !recovered)
             return savedMemoryResult(raw, library, acceptSavedMemoryActions)
         }
-        check(searchVersion != 2 || recovered)
+        check(searchVersion < 2 || recovered)
         val result = AssistantWire.response(bytes, library)
         val json = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
         val context = json.getValue("context").let { if (it == JsonNull) null else it as? JsonObject ?: bad() }
         if (context != null) {
-            val contextV2 = "search_version" in context
-            check(!contextV2)
+            check((searchVersion == 1 || recovered) && "search_version" !in context)
             val ctx = context.obj(setOf("library_id", "binding", "fingerprint", "filters", "visible_ids", "total"))
             check(ctx.getValue("library_id").str(128) == library)
             check(ctx.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
@@ -474,7 +478,8 @@ object AssistantWorkspaceWire {
 
     /** Validate the persisted form emitted by PhoneFilters.json without display metadata. */
     private fun validateFilters(filters: JsonObject, searchVersion: Int = 1) {
-        check(filters.keys.all { it in PhoneDiscoveryWire.fields || searchVersion == 2 && it == "text" })
+        check(filters.keys.all { it in PhoneDiscoveryWire.fields || searchVersion >= 2 && it == "text" ||
+            searchVersion == 3 && it == "descriptive" })
         fun selected(e: JsonElement, withMatch: Boolean) {
             if (withMatch) {
                 val group = e.obj(setOf("ids", "match"))
@@ -499,12 +504,52 @@ object AssistantWorkspaceWire {
             check(caption.isNotBlank() && caption.toByteArray(Charsets.UTF_8).size <= 512)
         }
         filters["text"]?.let { e ->
-            check(searchVersion == 2)
+            check(searchVersion >= 2)
             memoryText(e, 512, 512)
         }
+        filters["descriptive"]?.let { e ->
+            check(searchVersion == 3)
+            validateDescriptiveFilter(e)
+        }
         check(filters.toString().toByteArray(Charsets.UTF_8).size <= 16 * 1024)
-        val phoneFields = JsonObject(filters.filterKeys { it != "text" })
+        val phoneFields = JsonObject(filters.filterKeys { it != "text" && it != "descriptive" })
         check(phoneFilters(phoneFields).json() == phoneFields)
+    }
+
+    private fun normalizedDescription(value: String): String =
+        Normalizer.normalize(value, Normalizer.Form.NFKC).uppercase(Locale.ROOT).lowercase(Locale.ROOT)
+
+    private fun validateDescriptiveFilter(value: JsonElement) {
+        val description = value.obj(setOf("version", "concepts"))
+        check(description.getValue("version").count(1) == 1)
+        val concepts = description.getValue("concepts").array(6)
+        check(concepts.isNotEmpty())
+        val surfaces = mutableSetOf<String>()
+        concepts.forEach { item ->
+            val concept = item.obj(setOf("surface", "alternatives"))
+            fun phrase(element: JsonElement): String {
+                val p = element as? JsonPrimitive ?: bad()
+                check(p.isString)
+                val text = p.content
+                check(text.isNotEmpty() && text == text.trim())
+                val bytes = strictUtf8(text)
+                try { check(bytes.size <= 128) } finally { bytes.fill(0) }
+                var offset = 0
+                while (offset < text.length) {
+                    val cp = text.codePointAt(offset)
+                    check(!Character.isISOControl(cp))
+                    offset += Character.charCount(cp)
+                }
+                return text
+            }
+            val surface = phrase(concept.getValue("surface"))
+            check(surfaces.add(normalizedDescription(surface)))
+            val alternatives = concept.getValue("alternatives").array(4).map(::phrase)
+            check(alternatives.isNotEmpty())
+            val normalizedAlternatives = alternatives.map(::normalizedDescription)
+            check(normalizedAlternatives.distinct().size == normalizedAlternatives.size)
+        }
+        check(description.toString().toByteArray(Charsets.UTF_8).size <= 4096)
     }
 
     private fun selectedFilterIds(filters: JsonObject?, key: String): List<String> {
@@ -574,19 +619,19 @@ object AssistantWorkspaceWire {
         }
     }
 
-    private fun validateV2Result(bytes: ByteArray, library: String, recovered: Boolean): AssistantTurn {
+    private fun validateV2Result(bytes: ByteArray, library: String, recovered: Boolean, searchVersion: Int): AssistantTurn {
         val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(
             setOf("version", "kind", "reply", "context", "filters", "items", "total", "has_more", "effect", "interpretation"))
-        check(raw.getValue("version").count(2) == 2)
+        check(raw.getValue("version").count(3) == searchVersion)
         val context = raw.getValue("context").let { if (it == JsonNull) null else
             it.obj(setOf("library_id", "binding", "fingerprint", "filters", "visible_ids", "total", "search_version")) }
         val filters = raw.getValue("filters").let { if (it == JsonNull) null else it as? JsonObject ?: bad() }
         if (context != null) {
-            check(context.getValue("library_id").str(128) == library && context.getValue("search_version").count(2) == 2)
+            check(context.getValue("library_id").str(128) == library && context.getValue("search_version").count(3) == searchVersion)
             check(context.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
             check(context.getValue("fingerprint").str(64).matches(Regex("[0-9a-f]{64}")))
             check(filters != null && context.getValue("filters") == filters)
-            validateFilters(filters!!, 2)
+            validateFilters(filters!!, searchVersion)
         } else check(filters == null)
         val interpretation = searchInterpretation(raw.getValue("interpretation"), filters)
         val rawItems = raw.getValue("items").array(20)
@@ -614,7 +659,7 @@ object AssistantWorkspaceWire {
             check(turn.filters == filters && turn.total == raw.getValue("total").count(100000))
         } else check(turn.total == 0 && turn.items.isEmpty() && turn.filters == null && turn.effect == null && !turn.hasMore)
         if (recovered) check(turn.kind != "open" && turn.effect == null)
-        return turn.copy(searchVersion = 2, searchInterpretation = interpretation, matchReasons = reasons)
+        return turn.copy(searchVersion = searchVersion, searchInterpretation = interpretation, matchReasons = reasons)
     }
 
     private fun phoneFilters(filters: JsonObject): PhoneFilters {

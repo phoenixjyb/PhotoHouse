@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests/security')]
 
-from app.access.search_refinement import plan_query, query_mode
+from app.access.search_refinement import plan_people_answer, plan_query, query_mode
 from test_assistant_query_plan import NOW, resolved_entities
 import test_assistant_joint_search as fixtures
 from phone_discovery_fixture import OTHER
@@ -26,6 +26,76 @@ def plan(words, previous=PREVIOUS, **kwargs):
 
 
 class SearchRefinementTests(unittest.TestCase):
+    def people_answer(self, words, *, previous=PREVIOUS, entities=None):
+        return plan_people_answer(words, now=NOW,
+                                  entities=resolved_entities(words) if entities is None else entities,
+                                  previous_filters=previous)
+
+    def test_complete_reviewed_people_answers_replace_only_people_and_preserve_scope(self):
+        cases = {
+            'Sample Child': {**PREVIOUS, 'people': {'ids': ['301'], 'match': 'any'}},
+            '示例儿童': {**PREVIOUS, 'people': {'ids': ['301'], 'match': 'any'}},
+            'Sample Child and Sample Adult': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'all'}},
+            '示例儿童和示例成人': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'all'}},
+            '示例儿童 and Sample Adult': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'all'}},
+            'Sample Child or Sample Adult': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'any'}},
+            'both Sample Child and Sample Adult': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'all'}},
+            'Sample Child together Sample Adult': {
+                **PREVIOUS, 'people': {'ids': ['301', '302'], 'match': 'all'}},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                result = self.people_answer(words)
+                self.assertIsNotNone(result)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, expected)
+
+    def test_people_answer_requires_context_and_a_valid_current_filter_shape(self):
+        missing = self.people_answer('Sample Child', previous=None)
+        self.assertEqual(missing.status, 'clarification')
+        self.assertEqual(missing.reason, 'refine_without_context')
+
+        invalid = self.people_answer('Sample Child', previous={'date': {'from': 'not-a-date', 'to': None}})
+        self.assertEqual(invalid.status, 'clarification')
+        self.assertEqual(invalid.reason, 'invalid_previous_filters')
+
+    def test_people_answer_needs_explicit_relation_for_multiple_names(self):
+        for words in ('Sample Child Sample Adult', '示例儿童 示例成人'):
+            with self.subTest(words=words):
+                result = self.people_answer(words)
+                self.assertEqual(result.status, 'clarification', result)
+                self.assertEqual(result.reason, 'ambiguous_people_answer')
+                self.assertEqual(result.filters, PREVIOUS)
+
+    def test_people_answer_does_not_consume_quotes_actions_or_other_conditions(self):
+        for words in ('"Sample Child"', 'find Sample Child', 'open Sample Child',
+                      'delete Sample Child', 'Sample Child at Mars',
+                      'Sample Child September 2032'):
+            with self.subTest(words=words):
+                self.assertIsNone(self.people_answer(words))
+
+        # A non-people facet in the same phrase is an ordinary search request,
+        # not an answer that should replace only the people slot.
+        self.assertIsNone(self.people_answer('Sample Child and Park'))
+
+    def test_people_answer_rejects_ambiguous_resolvers_and_operator_label_collisions(self):
+        entities = resolved_entities('Sample Child')
+        entities['ambiguous'] = True
+        ambiguous = self.people_answer('Sample Child', entities=entities)
+        self.assertEqual(ambiguous.status, 'clarification')
+        self.assertEqual(ambiguous.reason, 'ambiguous_entities')
+
+        entities = resolved_entities('Sample Child and Sample Adult')
+        entities['labels'].append('and')
+        collision = self.people_answer('Sample Child and Sample Adult', entities=entities)
+        self.assertEqual(collision.status, 'clarification')
+        self.assertEqual(collision.reason, 'ambiguous_entities')
+
     def test_correction_surface_whitespace_mixed_scripts_and_quoted_literals(self):
         cases = {
             '  no, I meant videos  ': {**PREVIOUS, 'media': ['video']},

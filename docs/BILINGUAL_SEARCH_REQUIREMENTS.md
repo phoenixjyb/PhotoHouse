@@ -73,6 +73,15 @@ inferred from those generated conversations.
 
 ## Correcting a search in conversation
 
+A complete reviewed name can also replace the people selected in an existing,
+revalidated v2 search. For example, `Sample Adult` retains the current date,
+media, text, tags and locations while selecting that person. Multiple names
+require `and` / `和` for everyone together or `or` / `或` for any of them.
+Unjoined names ask for that distinction. Extra wording, actions and quoted
+names do not become bare-name answers. A fresh thread still needs a search;
+this does not retain or complete an unresolved earlier request. Saved turns,
+recovery and membership/source revalidation use the normal search context.
+
 Negotiated v2 supports a bounded one-filter correction after a search. Intro
 forms such as `no, I meant videos`, `I meant August 2032`,
 `actually, videos`, `不对，我说的是视频`, and `我说的是2032年8月` replace one
@@ -151,6 +160,94 @@ a separate explicit turn is needed, and all omitted constraints stay intact.
 If the current search has results, the assistant reports its actual count
 instead of inventing an empty-result explanation. Missing context asks for a
 search first. Compound actions and quoted question text are not commands.
+
+## Optional descriptive intent search (v3)
+
+The optional v3 path accepts natural openings such as `I'm looking for`,
+`do we have`, `我想看看` and `有没有`, as well as descriptive requests. A local
+planner proposes exact input spans and bounded Chinese/English alternatives.
+The server, rather than the model, resolves reviewed people and hard filters.
+The planner receives the query, civil date and a previous-search flag; it receives
+no family roster, captions, credentials or database access.
+
+Each descriptive concept is required. Its alternatives are interchangeable
+phrases, so `snow` and `red coat` require evidence for both concepts on the same
+asset. Current captions and photo memories may supply that evidence across
+sources. These are normalized lexical matches of proposed alternatives, not
+image-vector similarity or proof that a model's interpretation is correct.
+Ordinary quoted text remains a separate literal condition. Source reasons name
+the contributing current records; they do not turn generated interpretations
+into family facts.
+
+The compiler refuses spans that hide reviewed labels, known kinship terms,
+supported unresolved vague-time phrases, quoted text, recognized dates, media
+types or negation, and refuses unparsed extra conditions. Kinship words cannot
+become descriptive guesses when the account lacks an authorized graph. Generic
+`children` / `孩子们` can describe a scene without a possessive cue; reviewed
+relationship labels remain protected. Person,
+date, media and exact-text filters remain independent requirements. Refinements
+retain descriptive concepts unless an explicit new search replaces the search,
+or `any description` / `不限描述` removes that filter. A new explicit search can
+refresh a stale result snapshot; refining or opening that snapshot still requires
+its original source and membership binding.
+
+Model outages or invalid proposals ask for clarification without broadening the
+search. The local adapter bounds response size, deadline and concurrent HTTP
+workers. Provider-side admission and GPU/resource lifetime require separate
+native qualification; an HTTP timeout alone cannot prove remote computation
+has stopped. The provider is optional, configured as an explicit loopback URL
+and installed model pair, and disabled by default. Importing or building the
+application starts no provider and downloads no weights.
+
+Web and Android negotiate v3 only through the existing protected routes. An
+explicit unsupported-version response permits fallback to v2, then v1; generic
+errors, timeouts and authentication failures do not. Saved v1/v2 history retains
+its original version and binding when read by a newer client. Recovery never
+calls the planner again, and changes to membership or contributing sources
+withhold stale results. Search summaries show input surfaces, not the model's
+alternative phrases. Descriptive questions and zero-result guidance remain
+bounded, deterministic replies.
+
+Generated tests establish the protocol and retrieval contracts with a stand-in
+planner. The separate twelve-case synthetic qualification runner measures the
+installed model in English, Chinese and mixed cohorts with no family records,
+retries or hidden warm-up. A passing generated test does not establish native
+latency, family relevance, speech accuracy or device usability. Missing-date
+questions such as “childhood” must not invent dates. The bounded date-answer
+continuation below is separate from free-form model-generated questions.
+
+## Answering a missing-date question
+
+In a private v3 workspace conversation, an explicit new search with one supported
+vague-time phrase can ask for a year or date range and retain the original
+request. Supported phrases include `from childhood`, `childhood`, `when younger`,
+`a long time ago`, `小时候`, `儿时`, `小的时候`, `很久以前` and `好久以前`.
+For example, `找示例儿童小时候玩雪红外套的照片` followed by `2032年9月`
+keeps the reviewed person, image type, snow and red-coat requirements and adds
+the supplied capture-date bounds. It does not infer the person's age in 2032.
+
+The pending slot identifies an exact original span; a date-only answer resolves
+through the normal deterministic date parser and fresh reviewed-entity checks.
+The provider sees the original query with only that span blanked, while the
+resolved date is added as a separate hard filter before retrieval. Neither the
+original request nor the answer is overwritten or concatenated into generated
+prose. Unknown extra conditions still require clarification. Quoted time phrases,
+reviewed names that collide with a date, multiple vague-time phrases and existing
+explicit dates do not create this slot.
+
+Pending state is private server metadata in the existing turn record, excluded
+from client results and conversation-history payloads. It is usable only from
+the immediately preceding completed clarification in the same owned thread and
+revision, with the same current session/library/source binding. It expires after
+15 minutes; invalid answers cannot extend that time. Expiry asks for the full
+request again, and a new explicit search replaces pending state. Source or access
+changes withhold continuation. A failed local proposal can be retried with the
+same date answer within the original expiry. Saved request recovery replays the
+stored outcome without another model call.
+
+This is a bounded date-answer flow. Other model questions, pronouns without a
+reviewed person, and arbitrary conversational rewrites do not acquire pending
+state. Existing v1/v2 behavior and database schema remain unchanged.
 
 ## Speech and uncertainty
 

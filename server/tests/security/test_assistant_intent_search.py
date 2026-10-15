@@ -1,0 +1,229 @@
+"""Protected intent-to-evidence conversations over generated records only."""
+from contextlib import closing
+import sqlite3
+import unittest
+import uuid
+
+from fastapi.testclient import TestClient
+
+from app.access.assistant_workspace_store import initialize_v2
+from app.access.discovery_provider import MemoryIndexProvider
+from app.access.search_intent import IntentUnavailable
+from app.access.service import AccessService
+from app.main import create_app
+from phone_discovery_fixture import NOW, TOKEN, OTHER, reviewed
+import test_assistant_joint_search as joint_fixture
+
+ORIGIN = joint_fixture.ORIGIN
+
+
+class FixturePlanner:
+    def __init__(self):
+        self.calls = []
+        self.before_reply = lambda: None
+        self.failure = False
+        self.concepts = {
+            'playing in snow': ['playing in snow', '在雪地玩'],
+            '玩雪': ['playing in snow', '在雪地玩'],
+            'red coat': ['red coat', '红外套'],
+            '红外套': ['red coat', '红外套'],
+        }
+
+    def propose(self, query, today, has_previous_search):
+        self.calls.append((query, today, has_previous_search))
+        self.before_reply()
+        if self.failure:
+            raise IntentUnavailable()
+        concepts = []
+        for surface, alternatives in self.concepts.items():
+            start = query.find(surface)
+            if start >= 0:
+                concepts.append({'start': start, 'end': start + len(surface),
+                                 'alternatives': alternatives})
+        if not concepts:
+            return {'version': 1, 'status': 'clarification', 'concepts': [], 'question': 'description'}
+        return {'version': 1, 'status': 'ready',
+                'concepts': sorted(concepts, key=lambda item: item['start']), 'question': None}
+
+
+class AssistantIntentSearchTests(unittest.TestCase):
+    connection = joint_fixture.AssistantJointSearchTests.connection
+    mutate = joint_fixture.AssistantJointSearchTests.mutate
+    turn = joint_fixture.AssistantJointSearchTests.turn
+
+    def setUp(self):
+        self.planner = FixturePlanner()
+        joint_fixture.AssistantJointSearchTests.setUp(self)
+        self.mutate("UPDATE captions SET text='A child playing in snow wearing a red coat' WHERE id=1")
+        self.mutate("UPDATE captions SET text='示例儿童穿红外套在雪地玩' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+
+    def install(self, index):
+        joint_fixture.AssistantJointSearchTests.install(self, index)
+        self.app.state.assistant_intent_planner = self.planner
+
+    def intent(self, words, context=None, token=TOKEN):
+        return self.client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': words, 'context': context},
+            headers={'Authorization': 'Bearer ' + token, 'X-PhotoHouse-Search-Version': '3'})
+
+    def test_bilingual_concepts_retrieve_current_evidence_under_all_hard_filters(self):
+        for query in ('find photos of Sample Child playing in snow red coat in September 2032',
+                      '找示例儿童2032年9月玩雪红外套的照片',
+                      'find示例儿童2032年9月玩雪red coat的photos'):
+            with self.subTest(query=query):
+                response = self.intent(query)
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual((result['version'], result['kind']), (3, 'results'), result)
+                self.assertEqual(result['context']['search_version'], 3)
+                self.assertEqual(result['filters']['people'], {'ids': ['301'], 'match': 'any'})
+                self.assertEqual(result['filters']['media'], ['image'])
+                self.assertEqual(result['filters']['date'], {'from': '2032-09-01', 'to': '2032-09-30'})
+                self.assertEqual({item['id'] for item in result['items']}, {'101', '103'})
+                self.assertEqual(len(result['filters']['descriptive']['concepts']), 2)
+                self.assertIsNone(result['effect'])
+                self.assertNotIn('Foreign', str(result))
+
+    def test_description_alone_is_a_readonly_search_and_quotes_remain_an_independent_literal(self):
+        found = self.intent('playing in snow red coat').json()
+        self.assertEqual(found['kind'], 'results', found)
+        self.assertEqual({item['id'] for item in found['items']}, {'101', '103'})
+        literal = self.intent('find photos playing in snow red coat containing "secret memory phrase"').json()
+        self.assertEqual(literal['kind'], 'results', literal)
+        self.assertEqual(literal['filters']['text'], 'secret memory phrase')
+        self.assertEqual([item['id'] for item in literal['items']], ['101'])
+        calls = len(self.planner.calls)
+        refined = self.intent('September 2032', literal['context']).json()
+        self.assertEqual(refined['kind'], 'results', refined)
+        self.assertEqual(refined['filters']['text'], literal['filters']['text'])
+        self.assertEqual(refined['filters']['descriptive'], literal['filters']['descriptive'])
+        self.assertEqual(len(self.planner.calls), calls)
+
+    def test_model_cannot_consume_reviewed_names_dates_media_or_unknown_residue(self):
+        for surface in ('Sample Child', 'September 2032', 'photos'):
+            with self.subTest(surface=surface):
+                self.planner.concepts = {surface: ['playing in snow']}
+                result = self.intent('find photos of Sample Child in September 2032').json()
+                # A complete deterministic query needs no model at all.
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(self.planner.calls, [])
+                result = self.intent('find photos of Sample Child in September 2032 unknown clue').json()
+                self.assertEqual(result['kind'], 'clarification', result)
+                self.assertIsNone(result['context'])
+                self.assertEqual(result['items'], [])
+                self.planner.calls.clear()
+        self.planner.concepts = {'playing in snow': ['playing in snow']}
+        result = self.intent('find photos playing in snow unfamiliar extra condition').json()
+        self.assertEqual(result['kind'], 'clarification', result)
+        self.assertEqual(result['items'], [])
+
+    def test_provider_outage_keeps_scope_and_source_changes_during_planning_withhold_results(self):
+        initial = self.intent('find photos in September 2032').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.planner.failure = True
+        result = self.intent('red coat', initial['context']).json()
+        self.assertEqual(result['kind'], 'clarification', result)
+        self.assertEqual(result['context'], initial['context'])
+        self.assertEqual(result['filters'], initial['filters'])
+        self.planner.failure = False
+        self.planner.before_reply = lambda: self.mutate("UPDATE captions SET text='changed synthetic source' WHERE id=1")
+        changed = self.intent('playing in snow')
+        self.assertEqual(changed.status_code, 409, changed.text)
+
+    def test_membership_is_checked_before_provider_and_rechecked_after_it(self):
+        denied = self.intent('playing in snow', token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertEqual(self.planner.calls, [])
+        self.planner.before_reply = lambda: self.mutate(
+            "UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        denied = self.intent('playing in snow')
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertNotIn('playing in snow', denied.text)
+
+    def test_v3_is_explicit_and_unconfigured_servers_keep_v2_available(self):
+        self.app.state.assistant_intent_planner = None
+        response = self.intent('playing in snow')
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()['error'], 'search_version_unsupported')
+        legacy = self.turn('find photos').json()
+        self.assertEqual(legacy['version'], 2)
+        self.assertNotIn('descriptive', legacy['filters'])
+
+    def test_conversational_openings_are_new_searches_and_do_not_require_a_model_for_hard_filters(self):
+        for query in ('I am looking for photos of Sample Adult',
+                      '  I’m looking for photos of Sample Adult',
+                      'do we have photos of Sample Adult?', '我想看看示例成人的照片'):
+            with self.subTest(query=query):
+                result = self.intent(query).json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], {'media': ['image'],
+                                                     'people': {'ids': ['302'], 'match': 'any'}})
+                self.assertEqual([item['id'] for item in result['items']], ['103'])
+        self.assertEqual(self.planner.calls, [])
+
+    def test_new_search_can_refresh_a_stale_snapshot_without_reusing_its_constraints(self):
+        initial = self.intent('find photos of Sample Adult').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        # A current-text projection invalidates old result bindings, while a
+        # fresh independent search can still read the authorized library.
+        self.mutate("UPDATE access_stories SET text='new generated fixture note' WHERE id='note-101'")
+        stale = self.intent('September 2032', initial['context'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+        fresh = self.intent('find photos', initial['context'])
+        self.assertEqual(fresh.status_code, 200, fresh.text)
+        self.assertEqual(fresh.json()['filters'], {'media': ['image']})
+
+    def test_saved_v3_turn_recovery_retains_plan_without_calling_the_model_again(self):
+        store = initialize_v2(self.database.parent.resolve() / 'intent-workspace.sqlite', clock=lambda: NOW)
+        self.app.state.assistant_workspace_store = store
+        self.app.state.assistant_workspace_healthy = True
+        headers = {'Authorization': 'Bearer ' + TOKEN, 'X-PhotoHouse-Search-Version': '3'}
+        base = '/assistant/workspace/v1'
+        caps = self.client.get(base + '/capabilities?library_id=family-a', headers=headers)
+        self.assertEqual(caps.status_code, 200, caps.text)
+        self.assertEqual(caps.json()['search']['version'], 3)
+        thread = self.client.post(base + '/threads', json={'library_id': 'family-a'},
+                                  headers={'Authorization': 'Bearer ' + TOKEN}).json()['thread']['thread_id']
+        rid = str(uuid.uuid4())
+        submitted = self.client.post(f'{base}/threads/{thread}/turns', headers=headers,
+            json={'library_id': 'family-a', 'request_id': rid, 'expected_revision': 0,
+                  'text': 'find photos playing in snow red coat'})
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        result = submitted.json()['result']
+        self.assertEqual((result['version'], result['kind']), (3, 'results'), result)
+        calls = len(self.planner.calls)
+        self.planner.failure = True
+        recovered = self.client.get(f'{base}/threads/{thread}/requests/{rid}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertEqual(recovered.json()['result'], result)
+        self.assertEqual(len(self.planner.calls), calls)
+        self.mutate("UPDATE captions SET text='changed synthetic source' WHERE id=1")
+        stale = self.client.get(f'{base}/threads/{thread}/requests/{rid}?library_id=family-a', headers=headers)
+        self.assertEqual(stale.status_code, 409, stale.text)
+
+    def test_v3_readback_keeps_saved_v2_binding_and_protocol(self):
+        store = initialize_v2(self.database.parent.resolve() / 'legacy-intent-workspace.sqlite', clock=lambda: NOW)
+        self.app.state.assistant_workspace_store = store
+        self.app.state.assistant_workspace_healthy = True
+        base = '/assistant/workspace/v1'
+        auth = {'Authorization': 'Bearer ' + TOKEN}
+        thread = self.client.post(base + '/threads', json={'library_id': 'family-a'},
+                                  headers=auth).json()['thread']['thread_id']
+        rid = str(uuid.uuid4())
+        response = self.client.post(f'{base}/threads/{thread}/turns',
+            headers={**auth, 'X-PhotoHouse-Search-Version': '2'},
+            json={'library_id': 'family-a', 'request_id': rid, 'expected_revision': 0,
+                  'text': 'find photos of Sample Child in September 2032'})
+        self.assertEqual(response.status_code, 200, response.text)
+        original = response.json()['result']
+        recovered = self.client.get(f'{base}/threads/{thread}/requests/{rid}?library_id=family-a',
+                                    headers={**auth, 'X-PhotoHouse-Search-Version': '3'})
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result'], original)
+        self.assertEqual(original['context']['search_version'], 2)
+        self.assertEqual(self.planner.calls, [])

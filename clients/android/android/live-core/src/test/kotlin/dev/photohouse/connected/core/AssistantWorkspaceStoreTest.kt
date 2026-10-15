@@ -37,10 +37,10 @@ class AssistantWorkspaceStoreTest {
         AssistantWorkspaceThreadDetail(1, thread(id, revision), exchanges, latest, hasOlder)
     private fun uuid(n: Int) = "00000000-0000-4000-8000-${n.toString().padStart(12, '0')}"
     private fun completed(id: String, requestId: String, revision: Long, recovered: Boolean,
-                         kind: String = "results", effect: AssistantEffect? = null) = AssistantWorkspaceTurn(
+                         kind: String = "results", effect: AssistantEffect? = null, searchVersion: Int = 1) = AssistantWorkspaceTurn(
         1, id, requestId, AssistantWorkspaceRequestStatus.COMPLETED, revision, recovered, null,
         AssistantTurn(kind, "found", null, null, emptyList(), 0, false,
-            effect ?: if (recovered) null else AssistantEffect("open", "asset-1")),
+            effect ?: if (recovered) null else AssistantEffect("open", "asset-1"), searchVersion = searchVersion),
     )
 
     private inner class FakeApi : AssistantWorkspaceApi {
@@ -207,7 +207,7 @@ class AssistantWorkspaceStoreTest {
         val api = FakeApi()
         val requestId = uuid(9)
         val response = CompletableDeferred<Unit>()
-        api.capabilityValue = capabilities.copy(searchVersion = 2, searchDateBasis = "capture")
+        api.capabilityValue = capabilities.copy(searchVersion = 3, searchDateBasis = "capture")
         api.submitHandler = { _, _, _ -> response.await(); throw ApiFailure(FailureKind.OFFLINE) }
         api.getHandler = { id, request ->
             AssistantWorkspaceTurn(1, id, request, AssistantWorkspaceRequestStatus.FAILED, 0, true,
@@ -225,9 +225,29 @@ class AssistantWorkspaceStoreTest {
         assertTrue(store.refreshCapabilities()); runCurrent()
         assertTrue(store.recoverPendingTurn()); runCurrent()
 
-        assertEquals(2, api.submittedSearchVersion)
-        assertEquals(2, api.recoveredSearchVersion)
+        assertEquals(3, api.submittedSearchVersion)
+        assertEquals(3, api.recoveredSearchVersion)
         assertEquals(AssistantWorkspaceError.TURN_FAILED, store.state.value.error)
+    }
+
+    @Test fun recoveredStoredV2ExchangeKeepsItsActualVersionUnderV3Negotiation() = runTest {
+        val api = FakeApi()
+        val requestId = uuid(9)
+        api.capabilityValue = capabilities.copy(searchVersion = 3, searchDateBasis = "capture")
+        api.submitHandler = { _, _, _ -> throw ApiFailure(FailureKind.OFFLINE) }
+        api.getHandler = { id, request -> completed(id, request, 1, true, searchVersion = 2) }
+        val store = AssistantWorkspaceStore(api, backgroundScope, { scope() }, uuidFactory = { requestId })
+        store.onScopeChanged(); store.refreshCapabilities(); runCurrent()
+        store.openThread(uuid(1)); runCurrent()
+        store.setDraft("find photos from the picnic")
+
+        assertTrue(store.sendTurn()); runCurrent()
+        assertEquals(3, api.submittedSearchVersion)
+        assertTrue(store.recoverPendingTurn()); runCurrent()
+
+        assertEquals(3, api.recoveredSearchVersion)
+        assertEquals(2, store.state.value.currentTurn?.result?.searchVersion)
+        assertNull(store.state.value.pendingTurn)
     }
 
     @Test fun scopeChangeCancelsRequestAndClearsAllPrivateBuffers() = runTest {

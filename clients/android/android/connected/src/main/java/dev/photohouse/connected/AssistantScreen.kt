@@ -108,6 +108,14 @@ private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean)
     val text = (filters?.get("text") as? kotlinx.serialization.json.JsonPrimitive)
         ?.takeIf { it.isString }?.content
     if (!text.isNullOrBlank()) lines.add(t("Text: $text", "文字：$text"))
+    val descriptive = filters?.get("descriptive") as? kotlinx.serialization.json.JsonObject
+    val surfaces = (descriptive?.get("concepts") as? kotlinx.serialization.json.JsonArray)
+        ?.mapNotNull { concept ->
+            ((concept as? kotlinx.serialization.json.JsonObject)?.get("surface") as? kotlinx.serialization.json.JsonPrimitive)
+                ?.takeIf { it.isString }?.content
+        }.orEmpty()
+    if (surfaces.isNotEmpty()) lines.add(t("Descriptions: ${surfaces.joinToString(", ")}",
+        "描述：${surfaces.joinToString("、")}"))
     val date = filters?.get("date") as? kotlinx.serialization.json.JsonObject
     val from = (date?.get("from") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
     val through = (date?.get("to") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
@@ -825,7 +833,7 @@ internal fun AssistantScreen(
                         AssistantSpeechPlayback(audio, zh, openingSpeech, segmentSpeech,
                             onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
                     }
-                    savedMemoryWorkspace?.capabilities?.takeIf { it.searchVersion == 2 }?.let { search ->
+                    savedMemoryWorkspace?.capabilities?.takeIf { it.searchVersion >= 2 }?.let { search ->
                         Surface(color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
                                 .testTag("assistant-search-perspective")) {

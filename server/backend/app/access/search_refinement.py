@@ -7,7 +7,7 @@ import re
 
 from . import discovery as d
 from .assistant_query_plan import QueryPlan, plan_query as _plan_query, query_mode as _query_mode
-from .assistant_query_plan import _QUOTE, _consumed_label
+from .assistant_query_plan import _QUOTE, _consumed_label, _remove_occurrences
 
 
 _SLOTS = {
@@ -42,6 +42,8 @@ _PEOPLE_REFERENCES = re.compile('|'.join(
     rf'(?P<{kind}>(?<![a-z0-9_])(?:{english})(?![a-z0-9_])|{chinese})'
     for kind, (english, chinese) in _REFERENCE_FORMS.items()), re.I)
 _JOIN = r'(?:and(?![a-z0-9_])|和)'
+_PEOPLE_ANSWER_RELATIONS = re.compile(
+    r'(?<![a-z0-9_])(?:and|or|both|together)(?![a-z0-9_])|和|与|及|或者|或|一起|同时', re.I)
 
 _CORRECTION_INTRO = re.compile(
     r'^(?:(?:no(?:\s*[,，:：]\s*|\s+))?i\s+meant(?a:\b)|'
@@ -143,6 +145,64 @@ def _operations(words):
         if before:
             residue[before.start():start] = ' ' * (start - before.start())
     return surface, ''.join(residue), {slot for _, _, slot in spans}, references
+
+
+def plan_people_answer(words, *, now, entities, previous_filters):
+    """Accept a complete reviewed-people answer against a validated search.
+
+    This handles only a bare people-slot replacement. A prior search is
+    required, and multi-person answers must state how the people are related.
+    Other query shapes remain for the ordinary planner to interpret.
+    """
+    if type(words) is not str or not words.strip() or type(entities) is not dict:
+        return None
+    groups = entities.get('groups')
+    if type(groups) is not dict or not groups.get('people'):
+        return None
+
+    # Preserve the ordinary planner's input, entity, quote, date/media and
+    # context checks before considering this narrow conversational shortcut.
+    original = _plan_query(words, now=now, entities=entities,
+                           previous_filters=previous_filters, refine=True)
+    if original.status != 'ready':
+        if original.reason in {'unsupported_condition', 'unsupported_negation',
+                               'incomplete_people_relation', 'conflicting_people_mode'}:
+            return None
+        return original
+
+    # Openings and quoted literals belong to normal search/content handling,
+    # even when the resolver also found a reviewed name in the text.
+    if _QUOTE.search(words) or any(mark in words for mark in '“”"') or _query_mode(words):
+        return None
+    if groups.get('tags') or groups.get('locations'):
+        return None
+
+    surface = d.fold(words.strip())
+    relation_only_mask = _PEOPLE_ANSWER_RELATIONS.sub(
+        lambda match: ' ' * len(match.group(0)), surface)
+    if _consumed_label(surface, relation_only_mask, entities.get('labels', [])):
+        return QueryPlan(1, 'clarification', dict(previous_filters or {}), 'ambiguous_entities')
+    residue = _remove_occurrences(surface, entities.get('labels', []))
+    relations = list(_PEOPLE_ANSWER_RELATIONS.finditer(residue))
+    relation_mask = _PEOPLE_ANSWER_RELATIONS.sub(lambda match: ' ' * len(match.group(0)), residue)
+    residue = _SEPARATORS.sub('', relation_mask)
+    if residue.strip():
+        return None
+
+    people = original.filters.get('people')
+    if type(people) is not dict or not people.get('ids'):
+        return None
+    if len(people['ids']) > 1 and not relations:
+        return QueryPlan(1, 'clarification', dict(previous_filters or {}),
+                         'ambiguous_people_answer')
+
+    # The exact phrase must resolve only the people slot. In particular,
+    # dates, media, scenes, tags and locations cannot hitch a ride here.
+    expected = dict(previous_filters or {})
+    expected['people'] = people
+    if original.filters != expected:
+        return None
+    return QueryPlan(1, 'ready', expected)
 
 
 def query_mode(words):
