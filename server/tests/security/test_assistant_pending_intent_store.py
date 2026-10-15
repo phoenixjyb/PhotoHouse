@@ -111,12 +111,11 @@ class AssistantPendingIntentStoreTests(unittest.TestCase):
         followup = self.begin(revision=1, text='2020')
         self.assertEqual(followup['pending_intent'], pending)
 
-    def test_pending_intent_is_only_valid_on_v3_contextless_clarification(self):
+    def test_pending_intent_is_only_valid_on_v2_or_v3_contextless_clarification(self):
         turn = self.begin()
         pending = pending_for('Find photos from childhood', self.now[0])
         invalid = (
             dict(clarification(pending), version=1),
-            dict(clarification(pending), version=2),
             dict(clarification(pending), kind='results'),
             clarification(pending, context=search_context()),
         )
@@ -125,6 +124,9 @@ class AssistantPendingIntentStoreTests(unittest.TestCase):
                               context=value['context'] is not None):
                 with self.assertRaises(ValueError):
                     self.complete(turn, value)
+        accepted = self.complete(turn, clarification(pending, reply='About which year?') | {'version': 2})
+        self.assertEqual(accepted['result_summary']['version'], 2)
+        self.assertEqual(accepted['result_summary']['pending_intent'], pending)
 
     def test_pending_is_bound_to_immediately_previous_thread_scope_and_revision(self):
         query = 'Find photos from childhood'

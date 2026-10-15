@@ -121,6 +121,10 @@ try:
             print(json.dumps({'id': message['id'], 'ok': True,
                               'calls': len(planner.calls)}), flush=True)
             continue
+        if message.get('command') == 'planner-off':
+            client.app.state.assistant_intent_planner = None
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'],
             headers=message['headers'],

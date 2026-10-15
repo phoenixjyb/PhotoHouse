@@ -261,13 +261,222 @@ class AssistantPendingIntentTests(unittest.TestCase):
         self.assertEqual(independent.json()['result']['filters'],
                          {'media': ['image'], 'people': {'ids': ['302'], 'match': 'any'}})
 
-    def test_quoted_time_phrase_is_literal_and_v2_does_not_create_pending_state(self):
+    def test_quoted_time_phrase_stays_literal_and_v2_pending_date_is_versioned(self):
         quoted = self.send('find photos containing "childhood"')
         self.assertEqual(quoted.status_code, 200, quoted.text)
         self.assertEqual(quoted.json()['result']['filters']['text'], 'childhood')
-        v2 = self.send('find photos from childhood', thread=self.new_thread(),
-                       headers={**self.headers, 'X-PhotoHouse-Search-Version': '2'})
+        headers = {**self.headers, 'X-PhotoHouse-Search-Version': '2'}
+        thread = self.new_thread()
+        v2 = self.send('find photos from childhood', thread=thread, headers=headers)
         self.assertEqual(v2.status_code, 200, v2.text)
-        self.assertEqual(v2.json()['result']['version'], 2)
-        self.assertNotIn('pending_intent', self.store.get_turn('one', 'family-a',
-            v2.json()['thread_id'], v2.json()['request_id'])['result_summary'])
+        self.assertEqual((v2.json()['result']['version'], v2.json()['result']['kind']),
+                         (2, 'clarification'))
+        self.assertNotIn('pending_intent', v2.text)
+        pending = self.store.get_turn('one', 'family-a', thread,
+            v2.json()['request_id'])['result_summary']['pending_intent']
+        self.assertEqual(pending['version'], 3)  # date-slot grammar version, independent of wire v2
+        self.assertEqual(self.planner.calls, [])
+        answered = self.send('September 2032', 1, thread=thread, headers=headers)
+        self.assertEqual(answered.status_code, 200, answered.text)
+        result = answered.json()['result']
+        self.assertEqual((result['version'], result['kind']), (2, 'results'))
+        self.assertEqual(result['filters'], {
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'media': ['image']})
+        self.assertEqual(self.planner.calls, [])
+
+    def test_v2_bilingual_pending_date_retains_only_fully_compiled_filters(self):
+        self.mutate("UPDATE captions SET text='A child at the beach 示范在海边玩' WHERE id=1")
+        self.mutate("UPDATE captions SET text='示例儿童在海边玩 at the beach' WHERE id=2")
+        with self.connection() as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = intent_fixture.reviewed(intent_fixture.AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        self.app.state.assistant_workspace_store = self.store
+        self.app.state.assistant_workspace_healthy = True
+        headers = {**self.headers, 'X-PhotoHouse-Search-Version': '2'}
+        queries = (
+            ('find photos of Sample Child from childhood at the beach', 'beach'),
+            ('找示例儿童小时候在海边的照片', '海边'),
+            ('find示例儿童小时候at the beach的photos', 'beach'),
+        )
+        for query, literal in queries:
+            with self.subTest(query=query):
+                thread = self.new_thread()
+                before_calls = len(self.planner.calls)
+                asked = self.send(query, thread=thread, headers=headers)
+                self.assertEqual(asked.status_code, 200, asked.text)
+                question = asked.json()['result']
+                self.assertEqual((question['version'], question['kind']), (2, 'clarification'))
+                self.assertIsNone(question['context'])
+                self.assertNotIn('pending_intent', asked.text)
+                self.assertEqual(len(self.planner.calls), before_calls)
+                readback = self.client.get(
+                    f'{self.base}/threads/{thread}/requests/{asked.json()["request_id"]}?library_id=family-a',
+                    headers=headers)
+                self.assertEqual(readback.status_code, 200, readback.text)
+                self.assertEqual(readback.json()['result'], question)
+
+                answer_id = str(uuid.uuid4())
+                answer = self.send('2032年9月', 1, thread=thread, rid=answer_id,
+                                   headers=headers)
+                self.assertEqual(answer.status_code, 200, answer.text)
+                result = answer.json()['result']
+                self.assertEqual((result['version'], result['kind']), (2, 'results'), result)
+                self.assertEqual(result['filters']['people'], {'ids': ['301'], 'match': 'any'})
+                self.assertEqual(result['filters']['media'], ['image'])
+                self.assertEqual(result['filters']['text'], literal)
+                self.assertEqual(result['filters']['date'],
+                                 {'from': '2032-09-01', 'to': '2032-09-30'})
+                self.assertEqual({item['id'] for item in result['items']}, {'101', '103'})
+                self.assertEqual(len(self.planner.calls), before_calls)
+                replay = self.send('2032年9月', 1, thread=thread, rid=answer_id,
+                                   headers=headers)
+                self.assertEqual(replay.status_code, 200, replay.text)
+                self.assertTrue(replay.json()['recovered'])
+                self.assertEqual(replay.json()['result'], result)
+                self.assertEqual(len(self.planner.calls), before_calls)
+                history = self.client.get(f'{self.base}/threads/{thread}?library_id=family-a',
+                    headers={'Authorization': headers['Authorization']})
+                self.assertEqual(history.status_code, 200, history.text)
+                self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
+                                 [query, '2032年9月'])
+                self.assertNotIn('pending_intent', history.text)
+
+    def test_cued_vague_time_words_remain_literal_for_v2_and_v3(self):
+        cases = (
+            ('find photos containing childhood snow', 'childhood snow'),
+            ('找包含小时候玩雪的照片', '小时候玩雪'),
+            ('find photos about childhood red coat', 'childhood red coat'),
+        )
+        for version in (2, 3):
+            headers = {**self.headers, 'X-PhotoHouse-Search-Version': str(version)}
+            for query, literal in cases:
+                with self.subTest(version=version, query=query):
+                    thread = self.new_thread()
+                    before_calls = len(self.planner.calls)
+                    response = self.send(query, thread=thread, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()['result']
+                    self.assertEqual((result['version'], result['kind']),
+                                     (version, 'results'), result)
+                    self.assertEqual(result['filters']['text'], literal)
+                    self.assertNotIn('date', result['filters'])
+                    self.assertNotIn('pending_intent', response.text)
+                    self.assertEqual(len(self.planner.calls), before_calls)
+
+    def test_about_approximate_date_still_clarifies_before_literal_retrieval(self):
+        cases = ('find photos of Sample Child about two years ago containing "birthday cake"',
+                 'find photos of Sample Child about a few winters ago containing "birthday cake"')
+        for version in (2, 3):
+            headers = {**self.headers, 'X-PhotoHouse-Search-Version': str(version)}
+            for query in cases:
+                with self.subTest(version=version, query=query):
+                    thread = self.new_thread()
+                    before_calls = len(self.planner.calls)
+                    asked = self.send(query, thread=thread, headers=headers)
+                    self.assertEqual(asked.status_code, 200, asked.text)
+                    question = asked.json()['result']
+                    self.assertEqual((question['version'], question['kind']),
+                                     (version, 'clarification'), question)
+                    self.assertIsNone(question['filters'])
+                    self.assertEqual(len(self.planner.calls), before_calls)
+
+                    answer = self.send('September 2032', 1, thread=thread, headers=headers)
+                    self.assertEqual(answer.status_code, 200, answer.text)
+                    result = answer.json()['result']
+                    self.assertEqual((result['version'], result['kind']),
+                                     (version, 'results'), result)
+                    self.assertEqual(result['filters']['people'],
+                                     {'ids': ['301'], 'match': 'any'})
+                    self.assertEqual(result['filters']['media'], ['image'])
+                    self.assertEqual(result['filters']['text'], 'birthday cake')
+                    self.assertEqual(result['filters']['date'],
+                                     {'from': '2032-09-01', 'to': '2032-09-30'})
+                    self.assertNotIn('descriptive', result['filters'])
+                    self.assertEqual(len(self.planner.calls), before_calls)
+
+    def test_plain_about_approximate_date_accepts_a_short_answer_without_text_filter(self):
+        for version in (2, 3):
+            headers = {**self.headers, 'X-PhotoHouse-Search-Version': str(version)}
+            for query in ('find photos about two years ago',
+                          'find photos about a few winters ago'):
+                with self.subTest(version=version, query=query):
+                    thread = self.new_thread()
+                    asked = self.send(query, thread=thread, headers=headers)
+                    self.assertEqual(asked.status_code, 200, asked.text)
+                    self.assertEqual(asked.json()['result']['kind'], 'clarification')
+                    pending = self.store.get_turn('one', 'family-a', thread,
+                        asked.json()['request_id'])['result_summary']['pending_intent']
+                    self.assertTrue(pending['query'][pending['start']:pending['end']].startswith('about '))
+                    answered = self.send('2032年9月', 1, thread=thread, headers=headers)
+                    self.assertEqual(answered.status_code, 200, answered.text)
+                    result = answered.json()['result']
+                    self.assertEqual((result['version'], result['kind']), (version, 'results'))
+                    self.assertEqual(result['filters'], {'media': ['image'],
+                        'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+                    self.assertEqual(self.planner.calls, [])
+
+    def test_v2_date_question_requires_original_protocol_for_bound_continuation(self):
+        v2 = {**self.headers, 'X-PhotoHouse-Search-Version': '2'}
+        v3 = {**self.headers, 'X-PhotoHouse-Search-Version': '3'}
+        thread = self.new_thread()
+        asked = self.send('find photos of Sample Child from childhood',
+                          thread=thread, headers=v2)
+        self.assertEqual(asked.status_code, 200, asked.text)
+        self.assertEqual((asked.json()['result']['version'], asked.json()['result']['kind']),
+                         (2, 'clarification'))
+        before_calls = len(self.planner.calls)
+
+        answered = self.send('September 2032', 1, thread=thread, headers=v3)
+        self.assertEqual(answered.status_code, 409, answered.text)
+        self.assertEqual(len(self.planner.calls), before_calls)
+        pending = self.store.get_turn('one', 'family-a', thread,
+            asked.json()['request_id'])['result_summary']['pending_intent']
+        self.assertEqual(pending['version'], 3)
+
+        # The rejected negotiation change does not invalidate the pending
+        # question; its original v2 binding still accepts the date answer.
+        answered = self.send('September 2032', 1, thread=thread, headers=v2)
+        self.assertEqual(answered.status_code, 200, answered.text)
+        result = answered.json()['result']
+        self.assertEqual((result['version'], result['kind']), (2, 'results'), result)
+        self.assertEqual(result['filters'], {
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'}})
+        self.assertEqual(len(self.planner.calls), before_calls)
+
+    def test_v2_pending_refuses_unsupported_residue_and_preserves_expiry_and_binding(self):
+        headers = {**self.headers, 'X-PhotoHouse-Search-Version': '2'}
+        unsupported = self.send('find photos of Sample Child from childhood happy trip',
+                                headers=headers)
+        self.assertEqual(unsupported.status_code, 200, unsupported.text)
+        self.assertEqual(unsupported.json()['result']['kind'], 'clarification')
+        self.assertNotIn('pending_intent', unsupported.json()['result'])
+        self.assertEqual(self.planner.calls, [])
+
+        thread = self.new_thread()
+        asked = self.send('find photos from childhood', thread=thread, headers=headers)
+        self.assertEqual(asked.status_code, 200, asked.text)
+        self.now[0] += 901
+        expired = self.send('September 2032', 1, thread=thread, headers=headers)
+        self.assertEqual(expired.status_code, 200, expired.text)
+        self.assertIn('expired', expired.json()['result']['reply'].lower())
+        self.assertEqual(expired.json()['result']['version'], 2)
+        self.assertEqual(self.planner.calls, [])
+
+        self.now[0] = NOW
+        thread = self.new_thread()
+        asked = self.send('find photos from childhood', thread=thread, headers=headers)
+        self.assertEqual(asked.status_code, 200, asked.text)
+        wrong_session = self.send('September 2032', 1, thread=thread,
+            headers={**headers, 'Authorization': 'Bearer ' + RELOGIN})
+        self.assertEqual(wrong_session.status_code, 409, wrong_session.text)
+
+        thread = self.new_thread()
+        asked = self.send('find photos at the beach from childhood', thread=thread,
+                          headers=headers)
+        self.assertEqual(asked.status_code, 200, asked.text)
+        self.mutate("UPDATE captions SET text='changed after the date question' WHERE id=1")
+        changed = self.send('September 2032', 1, thread=thread, headers=headers)
+        self.assertEqual(changed.status_code, 409, changed.text)
+        self.assertEqual(self.planner.calls, [])

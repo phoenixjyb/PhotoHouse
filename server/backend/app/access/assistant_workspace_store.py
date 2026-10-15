@@ -315,7 +315,7 @@ def _result_summary(value, library_id):
                   effect=None if effect is None else dict(effect))
     if 'pending_intent' in value:
         from .search_pending import validate_pending
-        if value['version'] != 3 or value['kind'] != 'clarification' or ctx is not None:
+        if value['version'] not in (2, 3) or value['kind'] != 'clarification' or ctx is not None:
             raise ValueError('Invalid pending result')
         result['pending_intent'] = validate_pending(value['pending_intent'])
     return json.loads(_json_value(result, 32 * 1024, 'result summary'))

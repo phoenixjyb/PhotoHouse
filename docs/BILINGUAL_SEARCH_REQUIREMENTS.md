@@ -304,13 +304,22 @@ commands retain their existing behavior.
 
 ## Answering a missing-date question
 
-In a private v3 workspace conversation, an explicit new search with one supported
+In a private v2 or v3 workspace conversation, an explicit new search with one supported
 vague-time phrase can ask for a year or date range and retain the original
 request. Supported phrases include `from childhood`, `childhood`, `when younger`,
 `a long time ago`, `long ago`, `小时候`, `儿时`, `小的时候`, `很久以前` and `好久以前`.
 For example, `找示例儿童小时候玩雪红外套的照片` followed by `2032年9月`
 keeps the reviewed person, image type, snow and red-coat requirements and adds
 the supplied capture-date bounds. It does not infer the person's age in 2032.
+
+V2 works with the optional planner disabled. Before asking, it requires the
+deterministic parser to account for every other condition in the date-masked
+original. For example, `find photos of Sample Child from childhood containing
+"birthday cake"` followed by `2032年9月` retains the selected person, photos and
+literal phrase while adding September's date bounds. Unsupported descriptive
+residue does not acquire pending state or a promise to retain it. A complete
+literal search such as `find photos containing childhood snow` remains a text
+search for `childhood snow`; the content is not reinterpreted as an age question.
 
 The same question can retain explicitly uncertain phrases such as `maybe two
 summers ago`, `about two years ago`, `around a few winters ago`, `大概两年前`,
@@ -324,7 +333,8 @@ such as `two years ago` and `两年前` do not acquire this continuation.
 
 The pending slot identifies an exact original span; a date-only answer resolves
 through the normal deterministic date parser and fresh reviewed-entity checks.
-The compiler first blanks that exact original time span. Its provider view also
+The compiler first blanks that exact original time span. V2 recompiles it with
+the deterministic parser and makes no provider request. V3's provider view also
 hides the resolved hard conditions described above, while the supplied date is
 added as a separate hard filter before retrieval. Neither the
 original request nor the answer is overwritten or concatenated into generated
@@ -347,8 +357,13 @@ reviewed person, and arbitrary conversational rewrites do not acquire pending
 state. New private pending records use policy version 3. Earlier version 1 and 2
 records retain their frozen phrase-validation policies for stored readback;
 continuation still rechecks the current phrase rules and source binding, so an
-old request that has become ambiguous must be restated. Existing v1/v2 search
-behavior, public payloads and database schema remain unchanged.
+old request that has become ambiguous must be restated. The private grammar
+version is separate from the negotiated result version: v2 conversations keep
+v2 results and recovery headers. Changing the negotiated search version can
+change the source binding; an answer cannot bypass that check. Repeat the full
+search in the new version when the old question no longer matches its binding.
+V1 has no pending-date flow. Public payload fields and the database
+schema remain unchanged.
 
 ## Speech and uncertainty
 
@@ -440,12 +455,14 @@ conditions remain authoritative, including normalization-expanding characters.
 
 ## Explicit unquoted content phrases
 
-Negotiated v2 search can compile one explicit content cue into the existing
-exact text filter, without the optional intent provider. Examples include
+Negotiated v2 and v3 search can compile one explicit content cue into the existing
+exact text filter without a request to the optional intent provider. Examples include
 `find photos containing birthday cake`, `找包含切蛋糕的照片` and
 `find 2032年9月 photos containing 切蛋糕`. Person, date and media conditions
 remain separate AND filters. A closed terminal media suffix such as `的照片`
 is syntax; the remaining text retains its original spelling and spacing.
+An `about` cue that belongs to an approximate time phrase, such as `about two
+years ago`, retains the missing-date clarification rule above.
 
 This is literal caption/photo-memory matching, with the existing 512-byte
 text limit and current library/source authorization. It does not translate,
