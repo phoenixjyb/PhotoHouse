@@ -18350,6 +18350,246 @@
       "integration_base_commit": "938d0be676d74f9c4d986dd0b98078e781122fc3"
     },
     {
+      "feature": "explicit-generated-image-text-pair-measurement-with-bilingual-ranks",
+      "source_commit": "1998c38c19fd6600d4319be748d552209c01183e",
+      "files": [
+        {
+          "path": "docs/LOCAL_SEMANTIC_TEXT_PROVIDER.md",
+          "before_sha256": "d3e51f1219d838c7dcb03820e264542e946e229420bfc5c7071d0f2d16847ffc",
+          "sha256": "1eecdc51d9845b385921baef0c0a709653aec152b051a835e31637f9f4dd8fa3"
+        },
+        {
+          "path": "docs/SEMANTIC_PAIR_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "267a5c5462c4d6ad00bbf519ac6afb90c35b4a3e0754b1207417768db716c32a"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "7d3a4d9560792175ef6d93d67a395bfd0c716bebf7b356f73768ad86ca9e58e1",
+          "sha256": "a21b9123e82aea43c3af15824aa66c1fc410d74261521a95023d5f1bc51afd06"
+        },
+        {
+          "path": "server/scripts/qualify_semantic_pair.py",
+          "before_sha256": null,
+          "sha256": "a3e42f44eba3618f19f8d562686c439b156580431a48a5610f713122862ededd"
+        },
+        {
+          "path": "server/scripts/semantic_pair_cases.py",
+          "before_sha256": null,
+          "sha256": "ce9b1d94a64fe301420ae9348a8615d420d4c206ff4cb102950885b401d6fed1"
+        },
+        {
+          "path": "server/tests/security/test_semantic_pair_canary.py",
+          "before_sha256": null,
+          "sha256": "26fee83206abac5733d011b4e66fc9c8eb7fffa4d21a1eb764c491d3d3264e68"
+        },
+        {
+          "path": "server/tests/security/test_semantic_pair_cases.py",
+          "before_sha256": null,
+          "sha256": "512b9db3046a816b21977a8d81cf4186b7aa0c4d7359d9d7eec28a496ee588fb"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8",
+          "sha256": "2ae7658d32502264a4689b1e311e22ee732d1b502b0b7d6bff76af89c48475ce"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "mixed-chinese-english-query-boundaries-and-separate-semantic-language-cohorts",
+      "source_commit": "f8661fee3f21a0aa4ed9da070eed9a7e1cb9ae48",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": null,
+          "sha256": "c6f4e6a8b347fd7fa4a8f7bb6b3c0c003a6333f065d50ac3e90a7bc5d49bb324"
+        },
+        {
+          "path": "docs/SEMANTIC_PAIR_QUALIFICATION.md",
+          "before_sha256": "267a5c5462c4d6ad00bbf519ac6afb90c35b4a3e0754b1207417768db716c32a",
+          "sha256": "6848e9d66061a5709ed90b4cbf0bc7f8ba7aaad4504e0b4a1904a0f117067788"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "98d5e16a511e837126a4e8352eafd47890fa04f6c8d4cbf6e61c38d914bd15e1",
+          "sha256": "75ce49aab9d3f7c5ccf3dafed264ec508ceaf0d9ccc88ac1d9a90e681bdd0c0d"
+        },
+        {
+          "path": "server/scripts/qualify_semantic_pair.py",
+          "before_sha256": "a3e42f44eba3618f19f8d562686c439b156580431a48a5610f713122862ededd",
+          "sha256": "a7fcdd7bbd3829c9d65f735c864398cf5852b88efae6d6807b8614ed562def5d"
+        },
+        {
+          "path": "server/scripts/semantic_pair_cases.py",
+          "before_sha256": "ce9b1d94a64fe301420ae9348a8615d420d4c206ff4cb102950885b401d6fed1",
+          "sha256": "f86ef68d11e69f8280c71bc05c966071f36e326ce5f25592a3ca36815fc03ccc"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "36d8dd7e193175ec87cf9a3aa002fb2888a5c7c80be920a673e8f97be0a65830",
+          "sha256": "92106dabeaa58f277feb68f97245c29181268636c5946b231755bfe691fbfb7f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "ac7cc9dddce7d2502468179e8e96cd9fe2883c3228dcd2aab3d126f0bd1d2061",
+          "sha256": "b66fbc6d16592cebfbd67f8bb505c615d51b01aa425ec03963b47641feab3310"
+        },
+        {
+          "path": "server/tests/security/test_semantic_pair_canary.py",
+          "before_sha256": "26fee83206abac5733d011b4e66fc9c8eb7fffa4d21a1eb764c491d3d3264e68",
+          "sha256": "13c3bfec222992bc89db273a47badeb56c2e4b62cc9054963b123e589f59f92e"
+        },
+        {
+          "path": "server/tests/security/test_semantic_pair_cases.py",
+          "before_sha256": "512b9db3046a816b21977a8d81cf4186b7aa0c4d7359d9d7eec28a496ee588fb",
+          "sha256": "4225036875727240908408d2df7162aebcaec4033ad659df12dcf9856fd2fd9b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "canary_plan_schema": "photohouse.semantic_pair_cases.v2",
+      "providers_activated": false,
+      "dialect_relevance_measured": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "grounded-bilingual-people-followups-in-protected-search-conversations",
+      "source_commit": "36cd8234fa4bd3f2885dbaa8e5b3aec807a1e8da",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "c6f4e6a8b347fd7fa4a8f7bb6b3c0c003a6333f065d50ac3e90a7bc5d49bb324",
+          "sha256": "368a1e4bc5bfea96c176a88eb2b0b6cd4a28cc7e0935dd900b3fb0b5d2f64634"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "1b2606b125ab50bc7b693940a409c2804f103d286cd28577c6bf1b1310504d5e",
+          "sha256": "cb007a7002a993cd5baafa5de81ca1af70764cf83c6501af895272147664f1be"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "7db1971ac83c3ee4cfa9ab34cd9878187930567434d904436b761c91f94367fe",
+          "sha256": "c4384a2a80f5f13c3c1610a80421b9b5ade74d6a07c6b2a8b1ec66d61c5650f5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "22c30e87c3215937d14cf90002e040a3a33057935276a4eeb12c3ba6ac1fa3d7",
+          "sha256": "521e49ac00308b04fdbed2ce712da6db62ebb567d1e40d1cd3fbdb4ee3d0a21c"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "f681722bc03c25baf83889349a49ba75b475dfc30b8f46014aa1644b5cc04643",
+          "sha256": "5f126a1df08e92a67a539283cfe517cea6d4b3d32969cc6c11e6121dfcbf876e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false,
+      "dialect_relevance_measured": false
+    },
+    {
+      "feature": "explicit-bilingual-single-date-or-media-search-corrections",
+      "source_commit": "44996ab99751d52a03dec63daed1b57c7ffc835f",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "368a1e4bc5bfea96c176a88eb2b0b6cd4a28cc7e0935dd900b3fb0b5d2f64634",
+          "sha256": "33efeea5b7e6b79ca70919b00b94c34d3eb567d40c9a20dd519e05900378c473"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "cb007a7002a993cd5baafa5de81ca1af70764cf83c6501af895272147664f1be",
+          "sha256": "803316685dc48c832aef4487ece4aca7396c7c81369cece8a91c554b1fa797cd"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "c4384a2a80f5f13c3c1610a80421b9b5ade74d6a07c6b2a8b1ec66d61c5650f5",
+          "sha256": "725dc2bc4315a99a6a7fa51382d29965fb898e3b00fccffaee899c3678525ad4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "521e49ac00308b04fdbed2ce712da6db62ebb567d1e40d1cd3fbdb4ee3d0a21c",
+          "sha256": "66764dbfc22c012a74dcf94f61cbce6773dd7cc721156ef91439fc73732b70aa"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "5f126a1df08e92a67a539283cfe517cea6d4b3d32969cc6c11e6121dfcbf876e",
+          "sha256": "537306b46ed93ec457f4154405b44b1d97cbacaa2b0f980c0960f460443dbdc2"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false,
+      "dialect_relevance_measured": false
+    },
+    {
+      "feature": "bounded-bilingual-current-search-filter-explanations-and-owned-reply-speech",
+      "source_commit": "178db4cee576a81e4e1615aa7499fa7e025d2385",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "33efeea5b7e6b79ca70919b00b94c34d3eb567d40c9a20dd519e05900378c473",
+          "sha256": "517483c6740888530e4244dc3c981be4253370de39c1abeacbb29a2b6f2b22ca"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "803316685dc48c832aef4487ece4aca7396c7c81369cece8a91c554b1fa797cd",
+          "sha256": "7576bce8a14505aa80829ba244b81a0f4364a8667d24811175b14b7dba7ff8e5"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": null,
+          "sha256": "a5b5d2a76f051e0b427b6309519b23445cf574c5c683c6beedb6fc563381e711"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "a21b9123e82aea43c3af15824aa66c1fc410d74261521a95023d5f1bc51afd06",
+          "sha256": "6afcdc421886ed879882b39bf9695a1176240a69ce86a3e1d0c53ecb62d8c05d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "92106dabeaa58f277feb68f97245c29181268636c5946b231755bfe691fbfb7f",
+          "sha256": "09572e8c947c656c6a22fc3545a8fcfeaa74ac057a5bc947e6e742a6da72b243"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_reply_speech.py",
+          "before_sha256": "f10333633af243b85136497ccaef32768470043ee2fa30caa6f7357e95760954",
+          "sha256": "a5f88c3156cba3a5379c6ba8875b5f8bb28ed4ee37c3fa6570b1161b35b2554f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "66764dbfc22c012a74dcf94f61cbce6773dd7cc721156ef91439fc73732b70aa",
+          "sha256": "e6b799adaed71def2062b8585f6fbfb5fbf8bf2783e48476441bd123abee0e88"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": null,
+          "sha256": "93f30c6ed275c0c3a56976f828ac6cbad90206452c35a406d07d5c2fa7c9c08e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "136678fa1efc40f871c2ca241bccfde2960e207cb3460191c6643a759cf6d226",
+          "sha256": "9eb8b591199ac1d2ed693bb76e4cc1e5463178063fe27b695c44c5409fab31db"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "2ae7658d32502264a4689b1e311e22ee732d1b502b0b7d6bff76af89c48475ce",
+          "sha256": "4c6c46d4904060b66142fca4fd83a412c7e7b0f8fa8d3bc5753a68a39042a983"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false,
+      "dialect_relevance_measured": false
+    },
+    {
       "feature": "phone-v64-story-review-release-version",
       "source_commit": "b111787c54bf00597686947e3e4fb51cf17f2382",
       "files": [
@@ -18513,11 +18753,6 @@
           "path": "server/tests/security/test_memoir_review_page_browser.cjs",
           "before_sha256": null,
           "sha256": "f95640f22e0f0448c7a3cc362e67eb421c3b1683f84fbdcf61adfa13d3ba8db5"
-        },
-        {
-          "path": "tools/check.py",
-          "before_sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8",
-          "sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0"
         }
       ],
       "routes_added": false,
@@ -18526,7 +18761,79 @@
       "models_run": false,
       "deployed": false,
       "apk_published": false,
-      "family_acceptance": false
+      "family_acceptance": false,
+      "upstream_tooling_records": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8",
+          "sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0"
+        }
+      ]
+    },
+    {
+      "feature": "integrate-search-conversations-with-current-story-main-check-profile",
+      "source_commit": "b194741c95b92f76bef895429cc1341e1507200a",
+      "integration_base_commit": "0d215ed4a4ecf3e5a22cedd6d5eb92fa76c11c17",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "4c6c46d4904060b66142fca4fd83a412c7e7b0f8fa8d3bc5753a68a39042a983",
+          "sha256": "65ef71b910c351fe910fb1a55b77d5926cb9b5105df9df692a1e367a02e474f2"
+        }
+      ],
+      "upstream_tooling_records_retained": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "explicit-bilingual-zero-result-guidance-preserves-other-search-filters",
+      "source_commit": "c0cbfa55ac83a6f0ad19d7389411ffc04000251d",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "517483c6740888530e4244dc3c981be4253370de39c1abeacbb29a2b6f2b22ca",
+          "sha256": "1a303963d8b53dc702189e41a5228900d9fbf2ce687dbcd38a980c5d683d0bff"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "7576bce8a14505aa80829ba244b81a0f4364a8667d24811175b14b7dba7ff8e5",
+          "sha256": "e76e0765a86b5815955caa081b4b35f7b630f6ba475fdfb3c9dfdff9dd59ec3f"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "a5b5d2a76f051e0b427b6309519b23445cf574c5c683c6beedb6fc563381e711",
+          "sha256": "ca345e8a95c08cd2f537dbf75b0220303fe592e3c4d228c8e491462c80ba7718"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "09572e8c947c656c6a22fc3545a8fcfeaa74ac057a5bc947e6e742a6da72b243",
+          "sha256": "cc0cf88927f035f1769cdcf31515db2abe21c182f786987d9d7f491fdedd9f1e"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": "93f30c6ed275c0c3a56976f828ac6cbad90206452c35a406d07d5c2fa7c9c08e",
+          "sha256": "415ad5f0dead470abdc69fc2748d8352b4826ab7156905b0adba9a976b5c02fa"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "align-mixed-language-empty-search-expectation-with-existing-reply-locale",
+      "source_commit": "94f9e41e28f7165e381caa22142ba3b47386e1c7",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "cc0cf88927f035f1769cdcf31515db2abe21c182f786987d9d7f491fdedd9f1e",
+          "sha256": "a9a1331f190d314e9af08cb5bc0f06688523ca5b2a1f2df8bb444e31c358062d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
     },
     {
       "feature": "native-story-trial-wording-and-owned-provider-teardown",
@@ -18683,11 +18990,6 @@
           "path": "server/tests/security/test_story_contribution_refs_browser.cjs",
           "before_sha256": "3d9d23f836ffd4005a41583fd8be11a194ff8a7a1a1d3a3a94c6f8a7a6e66c44",
           "sha256": "f2ab211219ba51abef40d929c83e22ab2c247d90b62cca5f07950bb2c32baa4d"
-        },
-        {
-          "path": "tools/check.py",
-          "before_sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0",
-          "sha256": "3afbc443d4f79ecbdfe7f499728f154b2fe8e883a1ea78b368513963372e5285"
         }
       ],
       "routes_added": true,
@@ -18698,7 +19000,15 @@
       "human_quality_reviewed": false,
       "deployed": false,
       "apk_published": false,
-      "family_acceptance": false
+      "family_acceptance": false,
+      "branch_tooling_records": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "59fd9a21a20c5411cc8ba7afb40aef13eabb85eeca7b1caa1f7e0db25200f9a0",
+          "sha256": "3afbc443d4f79ecbdfe7f499728f154b2fe8e883a1ea78b368513963372e5285"
+        }
+      ],
+      "branch_tooling_records_retained": true
     },
     {
       "feature": "chapter-source-chooser-pending-save-recovery",

@@ -55,7 +55,7 @@ source work, with no schema change or Android publication.
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
 | Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
 | TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
-| Public source | PRs #25–28 merged; all five review-head CI jobs passed for each | Following chapter-source chooser review and later delivery |
+| Public source | PRs #25–29 merged; latest search source and following chapter-source chooser integrated in the current branch | Chooser review-head CI/review and later delivery |
 | Following storytelling | [Private quality review page](MEMOIR_QUALITY_REVIEW.md) merged; initial/revised [native captures](STORY_MODEL_TRIAL_2026-10-16.md) retained, revised declared cleanup verified; manual [Web source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) in following source | Human review, remaining model cases, chooser qualification/delivery and family quality |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 

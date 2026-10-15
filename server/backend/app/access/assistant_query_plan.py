@@ -32,21 +32,25 @@ _MONTHS = {
 _MONTH_PATTERN = '|'.join(sorted(_MONTHS, key=len, reverse=True))
 _ZH_MONTHS = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
               '七': 7, '八': 8, '九': 9, '十': 10, '十一': 11, '十二': 12}
+# Scope English word boundaries to ASCII: Python's Unicode word boundary
+# treats Han and Latin letters as one word ("videos的", "找September").
+# Only boundary assertions use ASCII mode; the surrounding query, labels and
+# quoted literals retain Unicode handling and their original text.
 _MEDIA = (
-    ('video', re.compile(r'影片|视频|\b(?:videos?|movies?)\b', re.I)),
-    ('image', re.compile(r'照片|图片|相片|\b(?:photos?|photographs?|pictures?|images?)\b', re.I)),
+    ('video', re.compile(r'影片|视频|(?a:\b)(?:videos?|movies?)(?a:\b)', re.I)),
+    ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
-_NEGATION = re.compile(r'不要|没有|排除|除外|删除|不包括|\b(?:not|without|except|excluding|exclude|remove|delete)\b', re.I)
+_NEGATION = re.compile(r'不要|没有|排除|除外|删除|不包括|(?a:\b)(?:not|without|except|excluding|exclude|remove|delete)(?a:\b)', re.I)
 _SEARCH_OPEN = re.compile(
     r'^(?:(?:(?:请|麻烦)(?:你)?\s*)?'
     r'(?:(?:帮我|替我|我想|帮忙|帮我忙|能不能|可以)(?:你)?\s*)?'
     r'(?:(?:找一找|搜一搜|查找|搜索|找|查|搜|看看|看)|给我(?:看看|看)|显示)(?:一下)?|'
-    r'(?:(?:please|can you|could you|would you)\s+)?(?:find|search|show)\b'
-    r'(?:\s+(?:me|for)\b)?)', re.I)
+    r'(?:(?:please|can you|could you|would you)\s+)?(?:find|search|show)(?a:\b)'
+    r'(?:\s+(?:me|for)(?a:\b))?)', re.I)
 _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
-    r'refine\b|only\b|filter\b|just\b|what about\b|how about\b|same but\b)', re.I)
-_CONNECTORS = re.compile(r'\b(and|or|both|together)\b|和|与|及|或者|或|一起|同时', re.I)
+    r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b))', re.I)
+_CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
 _DATE_ONLY_WORD = re.compile(
     r'^(?:today|yesterday|this\s+week|last\s+week|this\s+month|last\s+month|'
     r'this\s+year|last\s+year|今天|昨天|本周|这周|上周|本月|这个月|這個月|上个月|上個月|今年|去年)$', re.I)
@@ -99,7 +103,7 @@ def query_mode(words):
         return 'refine'
     # A complete explicit range is also a closed follow-up. A fixed civil
     # date suffices here because supported range endpoints are explicit.
-    if len(value) <= 1024 and re.search(r'\b(?:to|through|between)\b|到|至|[–—]', value):
+    if len(value) <= 1024 and re.search(r'(?a:\b)(?:to|through|between)(?a:\b)|到|至|[–—]', value):
         ranges, residue, error = _extract_dates(value, date(2000, 1, 1))
         if ranges and not error and not residue.strip():
             return 'refine'
@@ -139,11 +143,11 @@ def _extract_dates(text, today):
     # become one inclusive interval. Omitted years inherit only from an
     # explicit adjacent endpoint in the documented shortened forms.
     range_specs = (
-        (re.compile(r'\bfrom\s+(?P<a>(?:19|20)\d{2}-\d{2}-\d{2})\s+to\s+(?P<b>(?:19|20)\d{2}-\d{2}-\d{2})\b', re.I), 'iso'),
+        (re.compile(r'(?a:\b)from\s+(?P<a>(?:19|20)\d{2}-\d{2}-\d{2})\s+to\s+(?P<b>(?:19|20)\d{2}-\d{2}-\d{2})(?a:\b)', re.I), 'iso'),
         (re.compile(r'(?<![0-9a-z_])(?P<a>(?:19|20)\d{2}-\d{2}-\d{2})\s*(?:to|through|至|到|[-–—])\s*(?P<b>(?:19|20)\d{2}-\d{2}-\d{2})(?!\d)', re.I), 'iso'),
-        (re.compile(r'\bfrom\s+(?P<m1>' + _MONTH_PATTERN + r')\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english_shared'),
-        (re.compile(r'\bfrom\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english'),
-        (re.compile(r'\bbetween\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+and\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})\b', re.I), 'english'),
+        (re.compile(r'(?a:\b)from\s+(?P<m1>' + _MONTH_PATTERN + r')\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})(?a:\b)', re.I), 'english_shared'),
+        (re.compile(r'(?a:\b)from\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+to\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})(?a:\b)', re.I), 'english'),
+        (re.compile(r'(?a:\b)between\s+(?P<m1>' + _MONTH_PATTERN + r')\s+(?P<y1>(?:19|20)\d{2})\s+and\s+(?P<m2>' + _MONTH_PATTERN + r')\s+(?P<y2>(?:19|20)\d{2})(?a:\b)', re.I), 'english'),
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月(?P<d1>\d{1,2})日?\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?P<d2>\d{1,2})日?(?!\d)'), 'numeric_days'),
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?!\d)'), 'numeric_months'),
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<m2>\d{1,2})月(?!\d)'), 'numeric_shared'),
@@ -175,12 +179,12 @@ def _extract_dates(text, today):
             add(match, start, end)
 
     # Do not let a truncated range fall through as one endpoint.
-    for match in re.finditer(r'\b(?:from|between)\b|从', text, re.I):
+    for match in re.finditer(r'(?a:\b)(?:from|between)(?a:\b)|从', text, re.I):
         if overlaps(match):
             continue
         tail = text[match.start():]
-        connector = r'\bto\b' if re.match(r'\bfrom\b', match.group(), re.I) else r'\band\b' if re.match(r'\bbetween\b', match.group(), re.I) else r'到|至'
-        if re.search(connector, tail, re.I) and re.search(r'(?:19|20)\d{2}|\b(?:' + _MONTH_PATTERN + r')\b|\d{1,2}月', tail, re.I):
+        connector = r'(?a:\b)to(?a:\b)' if re.match(r'(?a:\b)from(?a:\b)', match.group(), re.I) else r'(?a:\b)and(?a:\b)' if re.match(r'(?a:\b)between(?a:\b)', match.group(), re.I) else r'到|至'
+        if re.search(connector, tail, re.I) and re.search(r'(?:19|20)\d{2}|(?a:\b)(?:' + _MONTH_PATTERN + r')(?a:\b)|\d{1,2}月', tail, re.I):
             return [], text, 'invalid_date'
 
     # ISO and Chinese numeric year/month/day forms. A date-shaped but invalid
@@ -224,15 +228,15 @@ def _extract_dates(text, today):
         if overlaps(match):
             continue
         before = text[max(0, match.start() - 32):match.start()]
-        if re.search(r'(?:\b(?:' + _MONTH_PATTERN + r')\s+(?:\d{1,2}(?:st|nd|rd|th)?[,]?\s+)?|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:' + _MONTH_PATTERN + r')[,]?\s+)$', before, re.I):
+        if re.search(r'(?:(?a:\b)(?:' + _MONTH_PATTERN + r')\s+(?:\d{1,2}(?:st|nd|rd|th)?[,]?\s+)?|(?a:\b)\d{1,2}(?:st|nd|rd|th)?\s+(?:' + _MONTH_PATTERN + r')[,]?\s+)$', before, re.I):
             continue
         year = int(match.group(1))
         add(match, date(year, 1, 1), date(year, 12, 31))
 
     # English month names: March 5, 2032; March 2032; 5 March 2032.
     english_date = re.compile(
-        rf'\b(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?:(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?[,]?\s+)?(?P<year1>(?:19|20)\d{{2}})|'
-        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN}))[,]?\s+(?P<year2>(?:19|20)\d{{2}}))\b', re.I)
+        rf'(?a:\b)(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?:(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?[,]?\s+)?(?P<year1>(?:19|20)\d{{2}})|'
+        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN}))[,]?\s+(?P<year2>(?:19|20)\d{{2}}))(?a:\b)', re.I)
     for match in english_date.finditer(text):
         if overlaps(match):
             continue
@@ -248,8 +252,8 @@ def _extract_dates(text, today):
         add(match, start, end)
 
     english_day_month = re.compile(
-        rf'\b(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?|'
-        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN})))\b', re.I)
+        rf'(?a:\b)(?:(?P<month1>(?:{_MONTH_PATTERN}))\s+(?P<day1>\d{{1,2}})(?:st|nd|rd|th)?|'
+        rf'(?P<day2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<month2>(?:{_MONTH_PATTERN})))(?a:\b)', re.I)
     for match in english_day_month.finditer(text):
         if overlaps(match):
             continue
@@ -277,7 +281,7 @@ def _extract_dates(text, today):
         add(match, *_month_bounds(year, month))
 
     # Yearless month names use this year and remain explicit calendar ranges.
-    month_only = re.compile(rf'\b(?P<month>(?:{_MONTH_PATTERN}))\b', re.I)
+    month_only = re.compile(rf'(?a:\b)(?P<month>(?:{_MONTH_PATTERN}))(?a:\b)', re.I)
     for match in month_only.finditer(text):
         if overlaps(match):
             continue
@@ -303,14 +307,14 @@ def _extract_dates(text, today):
         add(match, *_month_bounds(today.year, month))
 
     relatives = (
-        (r'(?<!\w)today(?!\w)|今天', lambda: (today, today)),
-        (r'(?<!\w)yesterday(?!\w)|昨天', lambda: (today - timedelta(days=1), today - timedelta(days=1))),
-        (r'\bthis\s+week\b|本周|这周', lambda: _week(today)),
-        (r'\blast\s+week\b|上周', lambda: _week(today - timedelta(days=7))),
-        (r'\bthis\s+month\b|本月|这个月|這個月', lambda: _month_bounds(today.year, today.month)),
-        (r'\blast\s+month\b|上个月|上個月', lambda: _previous_month(today)),
-        (r'\bthis\s+year\b|今年', lambda: (date(today.year, 1, 1), date(today.year, 12, 31))),
-        (r'\blast\s+year\b|去年', lambda: (date(today.year - 1, 1, 1), date(today.year - 1, 12, 31))),
+        (r'(?<![a-z0-9_])today(?![a-z0-9_])|今天', lambda: (today, today)),
+        (r'(?<![a-z0-9_])yesterday(?![a-z0-9_])|昨天', lambda: (today - timedelta(days=1), today - timedelta(days=1))),
+        (r'(?a:\b)this\s+week(?a:\b)|本周|这周', lambda: _week(today)),
+        (r'(?a:\b)last\s+week(?a:\b)|上周', lambda: _week(today - timedelta(days=7))),
+        (r'(?a:\b)this\s+month(?a:\b)|本月|这个月|這個月', lambda: _month_bounds(today.year, today.month)),
+        (r'(?a:\b)last\s+month(?a:\b)|上个月|上個月', lambda: _previous_month(today)),
+        (r'(?a:\b)this\s+year(?a:\b)|今年', lambda: (date(today.year, 1, 1), date(today.year, 12, 31))),
+        (r'(?a:\b)last\s+year(?a:\b)|去年', lambda: (date(today.year - 1, 1, 1), date(today.year - 1, 12, 31))),
     )
     for pattern, bounds in relatives:
         for match in re.finditer(pattern, text, re.I):
@@ -323,7 +327,7 @@ def _extract_dates(text, today):
     if re.search(r'(?<!\d)20\d{2}年\d{1,2}月\d{1,2}日?', text):
         if not any(re.search(r'20\d{2}', text[a:b]) for a, b in spans):
             return [], text, 'invalid_date'
-    for orphan in re.finditer(r'\b\d{1,2}(?:st|nd|rd|th)?\s+(?:' + _MONTH_PATTERN + r')\b', text, re.I):
+    for orphan in re.finditer(r'(?a:\b)\d{1,2}(?:st|nd|rd|th)?\s+(?:' + _MONTH_PATTERN + r')(?a:\b)', text, re.I):
         if not any(start <= orphan.start() and end >= orphan.end() for start, end in spans):
             return [], text, 'invalid_date'
 
@@ -507,7 +511,7 @@ def plan_query(words, *, now: datetime, entities: dict,
     # to this same string. The quoted literal remains byte-for-byte as entered.
     outside = d.fold(quote_removed)
     # Content introducers are syntax, not content. Quoted words stay opaque.
-    outside = re.sub(r'包含|含有|關於|关于|内容|內容|\b(?:containing|contains|about|with the words)\b', ' ', outside, flags=re.I)
+    outside = re.sub(r'包含|含有|關於|关于|内容|內容|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', ' ', outside, flags=re.I)
     outside = _strip_prefix(outside)
 
     today = now.date()
@@ -593,7 +597,7 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('locations_unavailable', previous_filters if refine else None)
 
     # Only a small closed vocabulary of grammatical residue is accepted.
-    outside = re.sub(r'\b(?:the|a|an|of|in|on|at|by|from|during|taken|take|photographed|photo|photos|picture|pictures|image|images|please|me|for|and|or)\b', ' ', outside, flags=re.I)
+    outside = re.sub(r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|take|photographed|photo|photos|picture|pictures|image|images|please|me|for|and|or)(?a:\b)', ' ', outside, flags=re.I)
     outside = re.sub(r'请|麻烦|帮忙|帮我|替我|我想|能不能|可以|一下|的|那些|一些|里面|中|所拍|找|搜索|查找|查|搜|看看|看|显示|照片|图片|相片|视频|影片|有关|包含|关于|在|于|年|月|日|里|上|下|呢|吗|么|？|\?|！|!|。|\.|、|，|,|：|:|\s+', ' ', outside, flags=re.I)
     if outside.strip():
         return _clarify('unsupported_condition', previous_filters if refine else None)

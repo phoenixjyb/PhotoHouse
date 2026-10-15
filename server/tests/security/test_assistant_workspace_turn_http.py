@@ -175,6 +175,137 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertNotIn('interpretation', row['result_summary'])
         self.assertNotIn('items', row['result_summary'])
 
+    def test_people_followups_use_owned_context_and_survive_clarification_and_recovery(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        first = self.turn(tid, text='找示例儿童和示例成人一起的照片', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['filters'], {
+            'media': ['image'], 'people': {'ids': ['301', '302'], 'match': 'all'}})
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+
+        changed_id = new_id()
+        changed = self.turn(tid, changed_id, revision=1,
+                            text='他们2026年的photos', headers=headers)
+        self.assertEqual(changed.status_code, 200, changed.text)
+        result = changed.json()['result']
+        self.assertEqual(result['version'], 2)
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters'], {**initial['filters'],
+            'date': {'from': '2026-01-01', 'to': '2026-12-31'}})
+        self.assertEqual(result['items'], [])
+        self.assertIsNone(result['effect'])
+
+        # The wrong singular reference preserves the server-owned search scope.
+        unclear = self.turn(tid, revision=2, text='her videos', headers=headers)
+        self.assertEqual(unclear.status_code, 200, unclear.text)
+        clarification = unclear.json()['result']
+        self.assertEqual(clarification['kind'], 'clarification', clarification)
+        self.assertEqual(clarification['context'], result['context'])
+        self.assertEqual(clarification['filters'], result['filters'])
+        self.assertIsNone(clarification['effect'])
+        resumed = self.turn(tid, revision=3, text='same people, any date', headers=headers)
+        self.assertEqual(resumed.status_code, 200, resumed.text)
+        self.assertEqual(resumed.json()['result']['filters'], initial['filters'])
+        self.assertEqual([item['id'] for item in resumed.json()['result']['items']], ['103'])
+
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{changed_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result']['filters'], result['filters'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        # A different thread has no selected people to borrow from this one.
+        other_tid = self.thread()['thread_id']
+        unrelated = self.turn(other_tid, text='same people', headers=headers)
+        self.assertEqual(unrelated.status_code, 200, unrelated.text)
+        self.assertEqual(unrelated.json()['result']['kind'], 'clarification')
+        self.assertIsNone(unrelated.json()['result']['context'])
+
+    def test_bilingual_corrections_keep_owned_scope_and_recover_exact_request(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        first = self.turn(tid, text='find Sample Child photos in 2025', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+
+        correction_id = new_id()
+        corrected = self.turn(tid, correction_id, revision=1,
+                              text='不是2025年，是2026年', headers=headers)
+        self.assertEqual(corrected.status_code, 200, corrected.text)
+        result = corrected.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters'], {**initial['filters'],
+            'date': {'from': '2026-01-01', 'to': '2026-12-31'}})
+        self.assertEqual([item['id'] for item in result['items']], ['101'])
+        self.assertIsNone(result['effect'])
+
+        mismatch = self.turn(tid, revision=2,
+                             text='not 2025 but 2024', headers=headers)
+        self.assertEqual(mismatch.status_code, 200, mismatch.text)
+        unclear = mismatch.json()['result']
+        self.assertEqual(unclear['kind'], 'clarification', unclear)
+        self.assertEqual(unclear['context'], result['context'])
+        self.assertEqual(unclear['items'], result['items'])
+        self.assertIn('current search', unclear['reply'])
+
+        changed = self.turn(tid, revision=3, text='no, I meant videos', headers=headers)
+        self.assertEqual(changed.status_code, 200, changed.text)
+        self.assertEqual(changed.json()['result']['filters'], {
+            **result['filters'], 'media': ['video']})
+        self.assertEqual(changed.json()['result']['items'], [])
+        self.assertIsNone(changed.json()['result']['effect'])
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{correction_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result']['filters'], result['filters'])
+        self.assertEqual(recovered.json()['result']['items'], result['items'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        isolated = self.turn(self.thread()['thread_id'], text='I meant photos', headers=headers)
+        self.assertEqual(isolated.status_code, 200, isolated.text)
+        self.assertEqual(isolated.json()['result']['kind'], 'clarification')
+        self.assertIsNone(isolated.json()['result']['context'])
+
+    def test_filter_explanation_uses_owned_context_and_recovers_without_changes(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        found = self.turn(tid, text='find Sample Child photos in 2026', headers=headers)
+        self.assertEqual(found.status_code, 200, found.text)
+        initial = found.json()['result']
+        explained_id = new_id()
+        explained = self.turn(tid, explained_id, revision=1,
+                              text='现在筛选了哪些条件？', headers=headers)
+        self.assertEqual(explained.status_code, 200, explained.text)
+        result = explained.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        for key in ('context', 'filters', 'items', 'total', 'interpretation'):
+            self.assertEqual(result[key], initial[key])
+        self.assertIn('Sample Child', result['reply'])
+        self.assertIn('2026-01-01', result['reply'])
+        self.assertIsNone(result['effect'])
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{explained_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertEqual(recovered.json()['result']['reply'], result['reply'])
+        self.assertEqual(recovered.json()['result']['filters'], initial['filters'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        corrected = self.turn(tid, revision=2, text='I meant videos', headers=headers)
+        self.assertEqual(corrected.status_code, 200, corrected.text)
+        self.assertEqual(corrected.json()['result']['filters'], {
+            **initial['filters'], 'media': ['video']})
+        other = self.turn(self.thread()['thread_id'], text='what filters are active', headers=headers)
+        self.assertEqual(other.status_code, 200, other.text)
+        self.assertEqual(other.json()['result']['kind'], 'clarification')
+        self.assertIsNone(other.json()['result']['context'])
+        self.update("UPDATE captions SET text='Changed source' WHERE id=1")
+        stale = self.request('GET',
+            f'/threads/{tid}/requests/{explained_id}?library_id=family-a', headers=headers)
+        self.assertEqual(stale.status_code, 409, stale.text)
+
     def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']

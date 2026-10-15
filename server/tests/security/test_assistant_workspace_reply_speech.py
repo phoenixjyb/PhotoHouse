@@ -158,9 +158,11 @@ class AssistantWorkspaceReplySpeechTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201, response.text)
         return response.json()['thread']['thread_id']
 
-    def create_turn(self, thread_id, *, text='find photos', revision=0, result=None):
+    def create_turn(self, thread_id, *, text='find photos', revision=0, result=None, search_v2=False):
         turn_id = new_id()
         headers = self.headers(request_id=turn_id)
+        if search_v2:
+            headers['X-PhotoHouse-Search-Version'] = '2'
         body = {'library_id': 'family-a', 'request_id': turn_id,
                 'expected_revision': revision, 'text': text}
         if result is None:
@@ -174,14 +176,40 @@ class AssistantWorkspaceReplySpeechTests(unittest.TestCase):
         return turn_id, response.json()
 
     def speak(self, thread_id, turn_id, *, request_id=None, parent_id=None,
-              revision=1, token=TOKEN, body=None):
+              revision=1, token=TOKEN, body=None, search_v2=False):
         request_id = request_id or new_id()
         parent_id = turn_id if parent_id is None else parent_id
         headers = self.headers(token, request_id=request_id, parent_id=parent_id)
+        if search_v2:
+            headers['X-PhotoHouse-Search-Version'] = '2'
         payload = {'library_id': 'family-a', 'expected_revision': revision} if body is None else body
         return request_id, self.client.post(
             f'{BASE}/threads/{thread_id}/requests/{turn_id}/speech',
             headers=headers, json=payload)
+
+    def test_filter_explanation_reply_is_spoken_only_while_source_remains_current(self):
+        self.update('''CREATE TABLE access_stories (
+            id TEXT PRIMARY KEY, asset_id INTEGER, library_id TEXT, author_id TEXT,
+            revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
+        tid = self.create_thread()
+        _, initial = self.create_turn(tid, text='find Sample Child photos in 2026', search_v2=True)
+        turn_id, explained = self.create_turn(tid, text='what filters are active',
+                                              revision=1, search_v2=True)
+        result = explained['result']
+        self.assertEqual(result['filters'], initial['result']['filters'])
+        self.assertIn('Sample Child', result['reply'])
+        self.assertLessEqual(len(result['reply'].encode('utf-8')), 600)
+        _, speech = self.speak(tid, turn_id, revision=2, search_v2=True)
+        self.assertEqual(speech.status_code, 200, speech.text)
+        self.assertEqual(speech.content, self.tts.audio)
+        # Mixed reviewed labels can select the existing Chinese narration voice;
+        # the exact current summary, not a rewritten prompt, reaches the adapter.
+        self.assertEqual(self.tts.calls[-1][0], result['reply'])
+        self.tts.on_synthesize = lambda: self.update(
+            "UPDATE captions SET text='changed source' WHERE id=1")
+        _, stale = self.speak(tid, turn_id, revision=2, search_v2=True)
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertNotEqual(stale.headers.get('content-type'), 'audio/wav')
 
     def test_saved_reply_speech_is_default_opt_in_and_duplicate_receipt_never_synthesizes_twice(self):
         capabilities = self.client.get(BASE + '/capabilities?library_id=family-a',

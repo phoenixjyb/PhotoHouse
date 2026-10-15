@@ -31,6 +31,7 @@ FILES = (
     'backend/app/access/assistant_query_plan.py',
     'backend/app/access/search_readiness.py',
     'backend/app/access/search_refinement.py',
+    'backend/app/access/search_explanation.py',
     'backend/app/access/semantic_encoder.py',
     'backend/app/access/semantic_search.py',
     'backend/app/access/semantic_search_transport.py',
@@ -232,6 +233,9 @@ FILES = (
     'scripts/serve_windows_tts.py',
     'scripts/image_embedding_receipts.py',
     'scripts/semantic_openclip.py',
+    'scripts/image_preprocessing_receipts.py',
+    'scripts/semantic_pair_cases.py',
+    'scripts/qualify_semantic_pair.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
 )
