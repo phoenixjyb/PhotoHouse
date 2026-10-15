@@ -9,6 +9,7 @@ import argparse
 from dataclasses import dataclass
 import ipaddress
 import json
+import math
 from pathlib import Path
 import re
 import stat
@@ -29,6 +30,8 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
                    'assistant_workspace_path',
                    'assistant_kinship_path',
+                   'assistant_intent_url', 'assistant_intent_model',
+                   'assistant_intent_timeout_seconds',
                    'assistant_reply_speech_enabled',
                    'assistant_saved_memory_cards_enabled',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
@@ -101,6 +104,9 @@ class StagingConfiguration:
     memory_group_vector_root: Path | None = None
     # An immutable tuple copied from the private JSON object.  The JSON mapping is never retained.
     memory_group_vector_identity: tuple | None = None
+    assistant_intent_url: str | None = None
+    assistant_intent_model: str | None = None
+    assistant_intent_timeout_seconds: float = 20
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Project private provider settings explicitly without constructing the app."""
@@ -240,6 +246,25 @@ class StagingConfiguration:
                     raise InvalidConfiguration()
             if type(self.assistant_enabled) is not bool:
                 raise InvalidConfiguration()
+            if (type(self.assistant_intent_timeout_seconds) not in (int, float)
+                    or not 0 < self.assistant_intent_timeout_seconds <= 45
+                    or not math.isfinite(self.assistant_intent_timeout_seconds)):
+                raise InvalidConfiguration()
+            if (self.assistant_intent_url is None) != (self.assistant_intent_model is None):
+                raise InvalidConfiguration()
+            if self.assistant_intent_url is not None:
+                import unicodedata
+                if type(self.assistant_intent_url) is not str or not self.assistant_enabled:
+                    raise InvalidConfiguration()
+                intent = urlsplit(self.assistant_intent_url)
+                if (intent.scheme != 'http' or intent.hostname not in {'127.0.0.1', 'localhost'}
+                        or not intent.port or intent.username or intent.password or intent.query or intent.fragment
+                        or intent.path.rstrip('/') not in {'', '/api/generate'}
+                        or type(self.assistant_intent_model) is not str or not self.assistant_intent_model
+                        or self.assistant_intent_model != self.assistant_intent_model.strip()
+                        or len(self.assistant_intent_model.encode('utf-8', errors='strict')) > 120
+                        or any(unicodedata.category(ch) == 'Cc' for ch in self.assistant_intent_model)):
+                    raise InvalidConfiguration()
             if type(self.assistant_reply_speech_enabled) is not bool:
                 raise InvalidConfiguration()
             if type(self.assistant_saved_memory_cards_enabled) is not bool:
@@ -385,6 +410,9 @@ class StagingConfiguration:
             assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
             assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
             assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
+            assistant_intent_url=self.assistant_intent_url,
+            assistant_intent_model=self.assistant_intent_model,
+            assistant_intent_timeout_seconds=self.assistant_intent_timeout_seconds,
             update_root=self.update_root,
             memory_groups_enabled=self.memory_groups_enabled,
             memory_group_vectors=memory_group_vectors)
@@ -456,6 +484,9 @@ def parse_configuration(value):
             assistant_tts_timeout_seconds=value.get('assistant_tts_timeout_seconds', 45),
             assistant_reply_speech_enabled=value.get('assistant_reply_speech_enabled', False),
             assistant_saved_memory_cards_enabled=value.get('assistant_saved_memory_cards_enabled', False),
+            assistant_intent_url=value.get('assistant_intent_url'),
+            assistant_intent_model=value.get('assistant_intent_model'),
+            assistant_intent_timeout_seconds=value.get('assistant_intent_timeout_seconds', 20),
             update_root=None if value.get('update_root') is None else _path(value['update_root']),
             memory_groups_enabled=value.get('memory_groups_enabled', False),
             memory_group_vector_root=None if vector_root_value is None else _path(vector_root_value),

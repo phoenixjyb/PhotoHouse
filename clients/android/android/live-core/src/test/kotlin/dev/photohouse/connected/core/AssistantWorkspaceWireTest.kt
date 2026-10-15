@@ -213,6 +213,65 @@ class AssistantWorkspaceWireTest {
         }
     }
 
+    @Test fun searchV3CapabilityContextAndDescriptionFilterAreStrictAndRecoverable() {
+        val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true}"""
+        val capabilities = AssistantWorkspaceWire.capabilities(
+            (legacy.dropLast(1) + ",\"search\":{\"version\":3,\"date_basis\":\"capture\",\"perspective\":null}}").toByteArray())
+        assertEquals(3, capabilities.searchVersion)
+
+        val descriptive = """{"version":1,"concepts":[{"surface":"garden picnic","alternatives":["family picnic","outdoor meal"]},{"surface":"red kite","alternatives":["kite flying"]}]}"""
+        val filters = """{"descriptive":$descriptive}"""
+        val context = """{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":$filters,"visible_ids":["123"],"total":1,"search_version":3}"""
+        val interpretation = """{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null}"""
+        val item = """{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}"""
+        val result = """{"version":3,"kind":"results","reply":"Found one.","context":$context,"filters":$filters,"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
+        val parsed = AssistantWorkspaceWire.turn(turn(result).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3).result!!
+        assertEquals(3, parsed.searchVersion)
+        assertEquals(descriptive, parsed.filters!!.getValue("descriptive").toString())
+        assertEquals(3, AssistantWorkspaceWire.turn(turn(result, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 3).result!!.searchVersion)
+
+        fun withFilter(filter: String): String = result.replace(filters, "{\"descriptive\":$filter}")
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":2,\"concepts\":[]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"Garden\",\"alternatives\":[\"one\",\"ＯＮＥ\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"garden\",\"alternatives\":[\"one\"]},{\"surface\":\"ＧＡＲＤＥＮ\",\"alternatives\":[\"two\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\" spaced \",\"alternatives\":[\"one\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"bad\\u0000text\",\"alternatives\":[\"one\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"${"x".repeat(129)}\",\"alternatives\":[\"one\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"${"😀".repeat(33)}\",\"alternatives\":[\"one\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter("{\"version\":1,\"concepts\":[{\"surface\":\"one\",\"alternatives\":[\"a\",\"b\",\"c\",\"d\",\"e\"]}]}")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        val oversizedDescription = """{"version":1,"concepts":[""" + (1..6).joinToString(",") { index ->
+            """{"surface":"${"s".repeat(127)}$index","alternatives":["${"a".repeat(128)}","${"b".repeat(128)}","${"c".repeat(128)}","${"d".repeat(128)}"]}"""
+        } + "]}"
+        invalid { AssistantWorkspaceWire.turn(turn(withFilter(oversizedDescription)).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"search_version\":3", "\"search_version\":2")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(turn(result.replace("\"version\":3", "\"version\":2")).toByteArray(),
+            "family-a", thread, request, true, searchVersion = 3) }
+        val storedV2Filters = "{}"
+        val storedV2Context = """{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":$storedV2Filters,"visible_ids":["123"],"total":1,"search_version":2}"""
+        val storedV2 = """{"version":2,"kind":"results","reply":"Found one.","context":$storedV2Context,"filters":$storedV2Filters,"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
+        val recoveredV2 = AssistantWorkspaceWire.turn(turn(storedV2).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3).result!!
+        assertEquals(2, recoveredV2.searchVersion)
+        invalid { AssistantWorkspaceWire.turn(turn(storedV2, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 3) }
+        val v2Context = context.replace("\"search_version\":3", "\"search_version\":2")
+        val v2Result = result.replace("\"version\":3", "\"version\":2").replace(context, v2Context)
+        invalid { AssistantWorkspaceWire.turn(turn(v2Result).toByteArray(), "family-a", thread, request,
+            true, searchVersion = 2) }
+    }
+
     @Test fun privateReplySpeechCapabilityAndRequestStayOptionalAndNarrow() {
         val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":false}"""
         assertFalse(AssistantWorkspaceWire.capabilities(legacy.toByteArray()).replySpeech)

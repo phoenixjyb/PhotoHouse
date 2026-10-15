@@ -7,6 +7,7 @@ never migrates, bootstraps, maps assets, opens listeners or starts workers.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+import math
 import sqlite3
 import stat
 import time
@@ -198,6 +199,9 @@ class RuntimeConfiguration:
     assistant_tts_timeout_seconds: float = 45
     assistant_reply_speech_enabled: bool = False
     assistant_saved_memory_cards_enabled: bool = False
+    assistant_intent_url: str | None = None
+    assistant_intent_model: str | None = None
+    assistant_intent_timeout_seconds: float = 20
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -285,6 +289,16 @@ class RuntimeConfiguration:
             raise ValueError('Explicit annotation intake opt-in required')
         if type(self.assistant_enabled) is not bool:
             raise ValueError('Explicit assistant opt-in required')
+        if (type(self.assistant_intent_timeout_seconds) not in (int, float) or
+                not 0 < self.assistant_intent_timeout_seconds <= 45 or
+                not math.isfinite(self.assistant_intent_timeout_seconds)):
+            raise ValueError('Invalid assistant intent timeout')
+        if (self.assistant_intent_url is None) != (self.assistant_intent_model is None):
+            raise ValueError('Intent URL and model must be selected together')
+        if self.assistant_intent_url is not None and (
+                not self.assistant_enabled or type(self.assistant_intent_url) is not str or
+                type(self.assistant_intent_model) is not str):
+            raise ValueError('Assistant intent planner requires explicit assistant opt-in and settings')
         assistant_kinship_provider = None
         if self.assistant_kinship_path is not None:
             selected = self.assistant_kinship_path
@@ -368,6 +382,11 @@ class RuntimeConfiguration:
             from .assistant_speech import LocalAssistantTts
             assistant_tts = LocalAssistantTts(url=self.assistant_tts_url,
                 token=self.assistant_tts_token, timeout=self.assistant_tts_timeout_seconds)
+        assistant_intent_planner = None
+        if self.assistant_intent_url is not None:
+            from .search_intent_local import LocalIntentPlanner
+            assistant_intent_planner = LocalIntentPlanner(url=self.assistant_intent_url,
+                model=self.assistant_intent_model, timeout=self.assistant_intent_timeout_seconds)
         review = None
         if self.upload_review_enabled:
             from .upload_review import UploadReviewRuntime
@@ -390,6 +409,7 @@ class RuntimeConfiguration:
                           assistant_journal=assistant_journal,
                           assistant_workspace_store=assistant_workspace_store,
                           assistant_kinship_provider=assistant_kinship_provider,
+                          assistant_intent_planner=assistant_intent_planner,
                           assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           update_root=self.update_root)

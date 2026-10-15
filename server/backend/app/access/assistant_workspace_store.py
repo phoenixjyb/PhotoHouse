@@ -252,7 +252,7 @@ def _context_value(value, library_id):
         return None
     fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
     if (type(value) is not dict or set(value) - {'search_version'} != fields or value['library_id'] != library_id or
-            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] != 2))):
+            ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] not in (2, 3)))):
         raise ValueError('Invalid context')
     if any(type(value[name]) is not str or re.fullmatch(r'[0-9a-f]{64}', value[name]) is None
            for name in ('binding', 'fingerprint')):
@@ -275,7 +275,7 @@ def _context_value(value, library_id):
     return dict(library_id=library_id, binding=value['binding'],
                 fingerprint=value['fingerprint'], filters=filters,
                 visible_ids=list(ids), total=value['total'],
-                **({'search_version': 2} if 'search_version' in value else {}))
+                **({'search_version': value['search_version']} if 'search_version' in value else {}))
 
 
 def _result_summary(value, library_id):
@@ -283,7 +283,7 @@ def _result_summary(value, library_id):
               'has_more', 'effect'}
     if type(value) is not dict or set(value) != fields:
         raise ValueError('Invalid result summary')
-    if type(value['version']) is not int or value['version'] not in (1, 2):
+    if type(value['version']) is not int or value['version'] not in (1, 2, 3):
         raise ValueError('Invalid result summary')
     if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
         raise ValueError('Invalid result summary')

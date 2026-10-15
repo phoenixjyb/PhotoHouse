@@ -58,11 +58,13 @@ class WorkspaceRoute(APIRoute):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
                 version = _single(request, 'x-photohouse-search-version')
-                if version not in (None, '1', '2') or (version == '2' and not assistant_engine._search_v2_endpoint(request)):
+                if version not in (None, '1', '2', '3') or (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)):
                     raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
-                code = ('access_denied' if exc.status in (401, 403) else
+                code = ('search_version_unsupported' if exc.status == 400 and
+                        exc.message == 'Search version is not supported on this endpoint' else
+                        'access_denied' if exc.status in (401, 403) else
                         'request_too_large' if exc.status == 413 else 'invalid_request')
                 response = _failure(exc.status, code, exc.message)
             except AccessDenied:
@@ -309,8 +311,14 @@ def _turn_text(value):
 
 def _turn_result(engine, token, library, summary, *, recovered):
     from .assistant_search import SearchRuntime
-    if summary['version'] == 2 and not isinstance(engine, SearchRuntime):
+    if summary['version'] in (2, 3) and not isinstance(engine, SearchRuntime):
         raise assistant_engine.AssistantChanged()
+    if summary['version'] == 3 and engine.search_version != 3:
+        raise assistant_engine.AssistantChanged()
+    if summary['version'] == 2 and isinstance(engine, SearchRuntime) and engine.search_version != 2:
+        # A v3-capable client can still read a saved v2 exchange against its
+        # original binding policy. History never upgrades an old query silently.
+        engine = SearchRuntime(engine.runtime, engine.kinship_provider)
     if summary['version'] == 1 and isinstance(engine, SearchRuntime):
         engine = engine.runtime
     result = dict(summary)
@@ -320,7 +328,7 @@ def _turn_result(engine, token, library, summary, *, recovered):
         context = assistant_engine._context(context, library)
         found = assistant_engine._context_result(engine, token, library, context)
         items = found['items']
-    if summary['version'] == 2:
+    if summary['version'] in (2, 3):
         interpretation = found.get('interpretation') if context is not None else None
         if interpretation is None:
             presentation = engine.call('presentation', token, library, lambda: False,
@@ -1277,7 +1285,7 @@ async def capabilities(request: Request):
              'server_owned_turns': turns}
     if getattr(request.app.state, 'assistant_reply_speech_enabled', False):
         value['reply_speech'] = await _reply_speech_available(request, account)
-    if turns and _single(request, 'x-photohouse-search-version') == '2':
+    if turns and _single(request, 'x-photohouse-search-version') in ('2', '3'):
         from .kinship import KinshipUnavailable
         token, _mode = credentials_from_request(request, allow_query=True)
         try:

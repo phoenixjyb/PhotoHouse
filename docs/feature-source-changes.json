@@ -18941,6 +18941,210 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "optional-v3-descriptive-intent-and-bilingual-evidence-search",
+      "source_commit": "c6bc38a75e72ed564935745f4ac09e5ed06e67a0",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "ba243ab85faf7cedbea7089829123c7254b348316c154d866defd7b47ae71f5b",
+          "sha256": "acf6b6ba8faa7a493608521766d1d5f8f34c06a6618bedafca6f98c63eb45f14"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWire.kt",
+          "before_sha256": "a564bc7e42be671f2a0f31c4f8cfc1ec0ebd8172af8476495ee3f910c0a934c9",
+          "sha256": "cf2ffa74052a39627e598ccafa238074677e51f1e2a48dbaf225cd11dddc9223"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApi.kt",
+          "before_sha256": "4ac197de48d71d9e9a46fc9a325f1d1b33fb6183ff9c8a02f0f643070c9bfd1d",
+          "sha256": "bd15b65603b42b14b95d96714426e1a0d8b459e934d810b20f61969d20796453"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStoreTest.kt",
+          "before_sha256": "a0873f3524e17a9150ff769cf2ef80a0bc9f76e46b61ca1dcbec161452ed9a6f",
+          "sha256": "17d9486f057fe51caf500df0b83a97ce69a78983d3ebbdfbcad460ec31d6f263"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "372f79389150a03117dd52d8584f9f9a8ebea8451eda9b73aa3cb5e3d95f1cc6",
+          "sha256": "93971d985c9955e44bed228538ae7a29651de66e4a727cc0d966a537244c4375"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsAssistantWorkspaceApiTest.kt",
+          "before_sha256": "bfc39b748ca88aefdc5f12cad3a4b8911fd7f6e1b9f7222a3851174ed07aaa47",
+          "sha256": "f396d947a0d681207c5c5d57c866090c20f4eba76e3766a9ea34c30447222872"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "20ecaf8bc9c6fb67ca8eb2a38d58aa771c5a76760c6fdb1cfe5115ab53abccf5",
+          "sha256": "7c369c447ad1f0a4dfc14eb4db1843fbd92c712c2c5d2d8eac1ce3e59f7ef0ae"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "359d2253ad3400caf9825497783c24ea786c367722a176a0c0a526ee286bb4d2",
+          "sha256": "8e6209731351b418e82a0ad5b0df96374910f2cdf365e652713618ce059da146"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "3056353144a1656b97d884d5eb8a2d963eba52f89dbf45904985c20928eb46da",
+          "sha256": "39b901aece2bf49af3ecbae90433fa4251a9d35f60a843652ed4b18d1d1a466a"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "e01e8ce253cbbab1ce1791330a3002c9f49912ad935caab1c2b72c769a78d93e",
+          "sha256": "52db50f672ef64bbdce31234643be3df35b8f1e2f7467b13ad3d52a3baab28fd"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "88183012322b9c0649ba9d4f2141a3946f6ffe5c6ba8072e4a7f030b868f2fc7",
+          "sha256": "f8594fa97c6fb61812969655087bb240a35300655a67878375b4f9fc7d4c295b"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "04da74c7770188d7ec17fde418d14da311eacad95d4c788630aa32306c44f9bf",
+          "sha256": "953fa882e22d026146aca9ecb29b70a1d2022a0e78f2eff251e172f7dd5f890d"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "deb548a471be0138dd9e34f5ec6bcda81fc71de3489e00d42a298cacc79d7b49",
+          "sha256": "d7317cab6d733388c816798e6d03ca04d6029f37ce5074331e4426e021664953"
+        },
+        {
+          "path": "server/backend/app/access/search_description.py",
+          "before_sha256": null,
+          "sha256": "bbdb3361179a5cf16fa48e287d8d9ef330b87e8c7591d0ec49dc2613530080aa"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "ca345e8a95c08cd2f537dbf75b0220303fe592e3c4d228c8e491462c80ba7718",
+          "sha256": "946f2c9e476682641a35d717642dd08d46669e6a618cfdb53df27fa5337c09e8"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": null,
+          "sha256": "603d1ab18452e275f2254c4f7f350a87b71dcac5eb3f461edf692469a9370739"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": null,
+          "sha256": "e8ce6212d5d10395640b10ffaa678ef1a2a64fcba58837ed32c20098c32a3752"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "c24551bb76d3c16394560442beb37635db20ebce0fd50816fb19d280e18f07fb",
+          "sha256": "affa1f0a0e5d3f14865734f3977b9d741459271b03ea5e9305597b227547ce15"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "7cd55a12c3d8962654158a45404d2b3e280b0c03acfe7ead5d90e0cd6344031b",
+          "sha256": "1e3ff3d214ba581f4ae46112815bef1e6a52148040fd12eddcfd0bafb0c8cba2"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "9b924b4807d3ef16ca088af5247126b4eb5a22bfd762dad8e35a56769c275d75",
+          "sha256": "04ff4851b4eaaf95b9a1208dc6f1f7c371cbcde8bb5936b79939817913802063"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6afcdc421886ed879882b39bf9695a1176240a69ce86a3e1d0c53ecb62d8c05d",
+          "sha256": "b6cb21c897f0e6c31c9c1b88d65d88854244ecb747ca98dfcc0ae623c3260cd5"
+        },
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": null,
+          "sha256": "eb96eab7384b8e2132e8ba1ea403dcf410c5dcf8e6dd965a0acc04086599d220"
+        },
+        {
+          "path": "server/scripts/search_intent_cases.py",
+          "before_sha256": null,
+          "sha256": "023cafc6dfdb27657afe1c49bd44a5a63e981cc9269ccd7759b152305724f29a"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "790a993b8404884ad021e1c1df66c6e479b7831a8a9b4beb9f7516644f8a5449",
+          "sha256": "00f36fd8d29712278c87431a253788cf11ad4d7d7f82c4f65f006984454be40a"
+        },
+        {
+          "path": "server/tests/security/assistant_intent_browser_fixture.py",
+          "before_sha256": null,
+          "sha256": "1d104f51734707c1f20c3b6d90a61e578ee58316eb461c2b96245f7e11e42c0d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": null,
+          "sha256": "b56feb3bfa3375c79af7069e0c0afa4c2ca6343d9706f8e1cc1c54803449ec53"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": null,
+          "sha256": "0f29f2fe2e287af44982daf4e7228a885ada270daee5499cfce8d148bae72315"
+        },
+        {
+          "path": "server/tests/security/test_assistant_private_workspace_v3.cjs",
+          "before_sha256": null,
+          "sha256": "dd8d85d7b48bd27af4a6e0000f6f6c856cf1950ea7f4bcab85c73d8fc4a9c8c4"
+        },
+        {
+          "path": "server/tests/security/test_descriptive_search.py",
+          "before_sha256": null,
+          "sha256": "c9d8ab21d7780841f2b112e82a9996f264344ca2fe1b0e59db815743ae4f2726"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "b5f8c98a6a312c1f044b5068112bf0f9891406a218eefecd942ed24cf51a607e",
+          "sha256": "c16e6585ec6a8b58053b5d92a4177f097eededc05eda48a769cdc345205b0ff6"
+        },
+        {
+          "path": "server/tests/security/test_search_description.py",
+          "before_sha256": null,
+          "sha256": "189b8d795a53cc0b760759bf3fab40ab1b87fb2be7cf0691500145574b54adb7"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": "415ad5f0dead470abdc69fc2748d8352b4826ab7156905b0adba9a976b5c02fa",
+          "sha256": "2f1c701ae910564292b53f50f74cb7ed5381830f074f85ae6128e34a4f36617a"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": null,
+          "sha256": "19656cfc23e7ba63c7cc1957057481eeb240eadaafad616b307aa0cac5eafc22"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_canary.py",
+          "before_sha256": null,
+          "sha256": "3b85bd60463c9434e901feb64192de2488c9b571bb7082800bbfc1893ac8df45"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": null,
+          "sha256": "e74afd51685ea7d65334aff7f5db67cef6072b18c325f78b3d9c7d84b9a0093a"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "90472703e4d16b739fd0359efa5a8ca59aceba530ad7ac6880bc629a65cc0be0",
+          "sha256": "1cb0a090e652c924c1ccd1a15d2bcc129f30a85ab1fd364321d52fa522d54a4d"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "9eb8b591199ac1d2ed693bb76e4cc1e5463178063fe27b695c44c5409fab31db",
+          "sha256": "4f7135791d749c169f59420f236b70471c155461d2efa033038933b781e8adfb"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "65ef71b910c351fe910fb1a55b77d5926cb9b5105df9df692a1e367a02e474f2",
+          "sha256": "bd151ad08aea0853deea961671c782eb20ecfcb2a5cfc6e192fb79a607ac2e47"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

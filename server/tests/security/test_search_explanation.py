@@ -42,6 +42,20 @@ def test_filter_query_recognition_is_closed_and_normalized():
     assert all(not describe_filter_query(value) for value in rejected)
 
 
+def test_descriptive_explanation_names_required_clues_without_dumping_model_alternatives():
+    filters = {'text': 'literal words', 'descriptive': {'version': 1, 'concepts': [
+        {'surface': '玩雪', 'alternatives': ['private model alternative']},
+        {'surface': 'red coat', 'alternatives': ['another model alternative']},
+    ]}}
+    for language in ('en', 'zh'):
+        result = explain_filters(filters, {}, language)
+        assert '玩雪' in result and 'red coat' in result and 'literal words' in result
+        assert 'alternative' not in result
+        assert len(result.encode('utf-8')) <= 600
+    assert 'any description' in no_results_guidance({'descriptive': filters['descriptive']}, 'en')
+    assert '不限描述' in no_results_guidance({'descriptive': filters['descriptive']}, 'zh')
+
+
 def test_empty_result_question_recognition_is_closed_and_normalized():
     accepted = (
         'why no results',

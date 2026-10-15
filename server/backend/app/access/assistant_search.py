@@ -12,6 +12,7 @@ import re
 
 from . import discovery as d
 from . import search_text
+from . import search_description
 
 _TURN_FACTS = ContextVar("search_turn_facts", default=None)
 
@@ -36,8 +37,12 @@ class SearchPlan:
     date_basis: str = 'capture'
 
     def __post_init__(self):
-        d.require(self.version == 2 and self.date_basis == 'capture')
-        d.require(type(self.filters) is dict and set(self.filters) <= set(d.FIELDS) | {'text'})
+        d.require(type(self.version) is int and self.version in (2, 3) and self.date_basis == 'capture')
+        allowed = set(d.FIELDS) | {'text'}
+        if self.version == 3:
+            allowed.add('descriptive')
+        d.require(type(self.filters) is dict and set(self.filters) <= allowed)
+        d.require(self.version == 3 or 'descriptive' not in self.filters)
 
 
 def name_hits(words, label, aliases=(), *, person=False):
@@ -50,13 +55,18 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 
 class AssistantSearchReads(d.DiscoveryReads):
-    def __init__(self, access, provider, budget, *, kinship=None, facts_cache=None):
+    def __init__(self, access, provider, budget, *, kinship=None, facts_cache=None,
+                 description_enabled=False):
         super().__init__(access, provider,
                          budget.search_view() if isinstance(budget, d.ReadBudget) else budget)
+        d.require(type(description_enabled) is bool)
         self.kinship = kinship
         self._facts_cache = facts_cache
+        self.description_enabled = description_enabled
         self._quality_by_id = {}
         self._check = lambda: None
+        self._prepared_description = None
+        self._prepared_description_key = None
 
     def _extra_source(self, index, source, read, check):
         captions = source['captions'] if 'caption' in index.enabled else read(
@@ -75,10 +85,28 @@ class AssistantSearchReads(d.DiscoveryReads):
             AND (a.status='active' OR a.status IS NULL) ORDER BY s.id''', (index.library_id,))
         return {'text_projection_version': 3, 'ranking_policy': search_text.SEARCH_TEXT_POLICY_VERSION,
                 'text_captions': captions, 'photo_notes': notes,
+                **({'description_policy': search_description.SEARCH_DESCRIPTION_POLICY_VERSION}
+                   if self.description_enabled else {}),
                 **({'kinship_digest': self.kinship.digest} if self.kinship is not None else {})}
 
     def _search_fields(self, index):
-        return super()._search_fields(index) | {'text'}
+        fields = super()._search_fields(index) | {'text'}
+        if self.description_enabled:
+            fields.add('descriptive')
+        return fields
+
+    def _normalize_content_filter(self, name, value):
+        if name == 'descriptive':
+            if not self.description_enabled:
+                raise d.DiscoveryInvalid()
+            try:
+                normalized = search_description.normalize_description(value)
+                self._prepared_description = search_description.prepare_description(normalized)
+                self._prepared_description_key = normalized
+                return normalized
+            except ValueError:
+                raise d.DiscoveryInvalid() from None
+        return super()._normalize_content_filter(name, value)
 
     def _prepared_facts(self, index, source, people, places, check, binding):
         # Authorization, index/source validation and the complete bounded reads
@@ -120,14 +148,48 @@ class AssistantSearchReads(d.DiscoveryReads):
         return assets, rows, facets, coverage
 
     def _content_match(self, row, filters):
-        if row and 'text' in filters and '_normalized_sources' not in row:
+        if row and ('text' in filters or 'descriptive' in filters) and '_normalized_sources' not in row:
             row['_normalized_sources'] = search_text.normalize_sources(row['text_sources'], self._check)
-        matched, reasons, quality = search_text.match_text(
+        text_match, text_reasons, text_quality = search_text.match_text(
             {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check)
-        if not matched:
+        if not text_match:
             return False, []
+        description_match = True
+        description_reasons = []
+        description_quality = (0, 0, 0)
+        if 'descriptive' in filters:
+            prepared = self._prepared_description
+            if prepared is None or self._prepared_description_key != filters['descriptive']:
+                prepared = search_description.prepare_description(filters['descriptive'])
+                self._prepared_description = prepared
+                self._prepared_description_key = filters['descriptive']
+            description_match, description_reasons, description_quality = search_description.match_prepared_description(
+                row.get('_normalized_sources', ()) if row else (), prepared, self._check)
+        if not description_match:
+            return False, []
+        reasons = text_reasons
+        if self.description_enabled:
+            # Keep the shared reason cap while giving the current hard-filter
+            # evidence a place before descriptive and literal text provenance.
+            reasons = []
+            if row:
+                for person in sorted(row['people'] & set(filters.get('people', {}).get('ids', ())), key=int):
+                    reasons.append({'source': 'reviewed_person', 'source_id': person})
+                if 'date' in filters:
+                    reasons.append({'source': 'capture_date', 'value': row['date']})
+                for reason in description_reasons + text_reasons:
+                    if len(reasons) >= search_description.MAX_MATCH_REASONS:
+                        break
+                    if reason not in reasons:
+                        reasons.append(reason)
+            if row:
+                # With no descriptive filter retain the existing quality shape,
+                # including its all-zero default for assets outside the index.
+                self._quality_by_id[row['_asset_id']] = (
+                    (*description_quality, *text_quality) if 'descriptive' in filters else text_quality)
+            return True, reasons[:search_description.MAX_MATCH_REASONS]
         if row:
-            self._quality_by_id[row['_asset_id']] = quality
+            self._quality_by_id[row['_asset_id']] = text_quality
             for person in sorted(row['people'] & set(filters.get('people', {}).get('ids', ())), key=int):
                 reasons.append({'source': 'reviewed_person', 'source_id': person})
             if 'date' in filters:
@@ -156,7 +218,8 @@ class AssistantSearchReads(d.DiscoveryReads):
 
     def presentation(self, token, library, *, binding=None, cancelled=lambda: False):
         return self._run(token, library, binding, lambda index, facts, context, member, check:
-            {'version': 2, 'date_basis': 'capture', 'perspective': self._perspective()}, cancelled)
+            {'version': getattr(self, 'search_version', 2), 'date_basis': 'capture',
+             'perspective': self._perspective()}, cancelled)
 
     def readiness(self, token, library, *, binding=None, cancelled=lambda: False):
         """Aggregate diagnostics from the exact authorized search projection.
@@ -203,7 +266,10 @@ class AssistantSearchReads(d.DiscoveryReads):
                     if any(d.fold(a) in d.fold(b) or d.fold(b) in d.fold(a)
                            for a in first_hits for b in name_hits(working_words, second.label, second.aliases, person=True)):
                         ambiguous = True
-            return {'binding': context, 'enabled': list(index.enabled) + ['text'],
+            enabled = list(index.enabled) + ['text']
+            if self.description_enabled:
+                enabled.append('descriptive')
+            return {'binding': context, 'enabled': enabled,
                     'groups': groups, 'labels': labels, 'ambiguous': ambiguous,
                     **self._search_presentation(facts[2], {})}
         return self._run(token, library, binding, action, cancelled)
@@ -211,9 +277,14 @@ class AssistantSearchReads(d.DiscoveryReads):
 
 class SearchRuntime:
     """Internal adapter selected only by explicit transport negotiation."""
-    def __init__(self, runtime, kinship_provider=None):
+    def __init__(self, runtime, kinship_provider=None, *, search_version=2, intent_planner=None):
+        if type(search_version) is not int or search_version not in (2, 3):
+            raise ValueError('Supported assistant search versions are 2 and 3')
         self.runtime = runtime
         self.kinship_provider = kinship_provider
+        self.search_version = search_version
+        self.descriptive_enabled = search_version == 3
+        self.intent_planner = intent_planner
 
     @contextmanager
     def turn_scope(self):
@@ -246,13 +317,15 @@ class SearchRuntime:
             entry = _TURN_FACTS.get()
             cache = entry[1] if entry is not None and entry[0] is self else None
             reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget,
-                                          kinship=kinship, facts_cache=cache)
+                                          kinship=kinship, facts_cache=cache,
+                                          description_enabled=self.descriptive_enabled)
+            reader.search_version = self.search_version
             methods = {'entities': reader.entities, 'search': reader.search,
                        'facets': reader.facets, 'assistant_asset': reader.assistant_asset,
                        'presentation': reader.presentation, 'readiness': reader.readiness}
             d.require(operation in methods)
             if operation == 'search':
-                SearchPlan(2, values['filters'])
+                SearchPlan(self.search_version, values['filters'])
             result = methods[operation](token, library, cancelled=cancelled, **values)
             if kinship is not None:
                 latest = self.kinship_provider.get(account, library)

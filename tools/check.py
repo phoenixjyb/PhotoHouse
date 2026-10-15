@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_search_readiness.py", "test_search_evaluation.py", "test_private_search_cli.py",
     "test_assistant_query_plan.py", "test_search_text.py", "test_search_turn_projection.py", "test_search_refinement.py", "test_search_explanation.py",
+    "test_search_description.py", "test_descriptive_search.py", "test_search_intent.py", "test_search_intent_local.py", "test_assistant_intent_search.py", "test_search_intent_canary.py",
     "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_provider_transport.py",
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
     "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
@@ -94,6 +95,8 @@ ANDROID_TASKS = (
 WEB_TESTS = (
     "server/tests/ui/voice-turn-timing.test.mjs",
     "server/tests/ui/assistant-private-workspace.test.mjs",
+    "server/tests/security/test_assistant_private_workspace_v3.cjs",
+    "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
     "server/tests/security/test_assistant_search_browser.cjs",
     "server/tests/security/test_assistant_saved_memory_browser.cjs",

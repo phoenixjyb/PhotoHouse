@@ -96,6 +96,47 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertFalse(enabled.state.assistant_enabled)
         self.assertFalse(enabled.state.memory_generation_enabled)
 
+    def test_assistant_intent_planner_build_is_opt_in_and_never_calls_the_model(self):
+        from dataclasses import replace
+        from app.access.search_intent_local import LocalIntentPlanner
+        with patch('app.access.search_intent_local.LocalIntentPlanner', wraps=LocalIntentPlanner) as adapter, \
+             patch('httpx.Client', side_effect=AssertionError('provider request forbidden')):
+            disabled = self.settings.build_app(clock=lambda: NOW)
+            self.assertIsNone(disabled.state.assistant_intent_planner)
+            adapter.assert_not_called()
+            enabled = replace(self.settings, assistant_enabled=True,
+                assistant_intent_url='http://localhost:19002', assistant_intent_model='synthetic-intent',
+                assistant_intent_timeout_seconds=12).build_app(clock=lambda: NOW)
+            adapter.assert_called_once_with(url='http://localhost:19002', model='synthetic-intent', timeout=12)
+        self.assertIsInstance(enabled.state.assistant_intent_planner, LocalIntentPlanner)
+        self.assertEqual('synthetic-intent', enabled.state.assistant_intent_planner.model)
+        self.assertEqual(12, enabled.state.assistant_intent_planner.timeout)
+        self.assertFalse(enabled.state.memory_generation_enabled)
+
+    def test_assistant_intent_runtime_rejects_partial_disabled_and_invalid_provider_settings(self):
+        from dataclasses import replace
+        valid = dict(assistant_enabled=True, assistant_intent_url='http://127.0.0.1:19002',
+                     assistant_intent_model='synthetic-intent')
+        invalid = (
+            {'assistant_intent_url': 'http://127.0.0.1:19002'},
+            {'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://127.0.0.1:19002'},
+            {'assistant_enabled': True, 'assistant_intent_model': 'synthetic-intent'},
+            valid | {'assistant_enabled': False},
+            valid | {'assistant_intent_url': 'http://192.0.2.1:19002'},
+            valid | {'assistant_intent_url': 'http://user:secret@localhost:19002'},
+            valid | {'assistant_intent_url': 'http://localhost:19002?token=secret'},
+            valid | {'assistant_intent_url': 'http://localhost:19002/other'},
+            valid | {'assistant_intent_model': 'bad\nname'},
+            valid | {'assistant_intent_model': '模' * 41},
+        )
+        for change in invalid:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                replace(self.settings, **change).build_app(clock=lambda: NOW)
+        for timeout in (0, True, 46, float('nan'), float('inf'), '20'):
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                replace(self.settings, **valid, assistant_intent_timeout_seconds=timeout).build_app(clock=lambda: NOW)
+
     def test_private_kinship_provider_is_explicit_and_not_loaded_during_app_build(self):
         from dataclasses import replace
         selected = self.root / 'private' / 'synthetic-kinship.json'

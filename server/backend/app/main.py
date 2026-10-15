@@ -43,7 +43,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                memory_generation_enabled=False, memory_editorial_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
-               assistant_workspace_store=None, assistant_kinship_provider=None, update_root=None,
+               assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
     if semantic_search_runtime is not None and (
@@ -62,6 +62,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         raise ValueError('Explicit annotation intake opt-in required')
     if type(assistant_enabled) is not bool:
         raise ValueError('Explicit assistant opt-in required')
+    if assistant_intent_planner is not None and (not assistant_enabled or
+            not callable(getattr(assistant_intent_planner, 'propose', None))):
+        raise ValueError('Explicit enabled assistant intent planner required')
     if type(assistant_reply_speech_enabled) is not bool:
         raise ValueError('Explicit private reply speech opt-in required')
     if type(assistant_saved_memory_cards_enabled) is not bool:
@@ -185,6 +188,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_journal_healthy = True
     app.state.assistant_workspace_store = assistant_workspace_store
     app.state.assistant_kinship_provider = assistant_kinship_provider
+    app.state.assistant_intent_planner = assistant_intent_planner
     app.state.assistant_workspace_healthy = assistant_workspace_store is not None
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime

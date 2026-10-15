@@ -161,6 +161,57 @@ If the current search has results, the assistant reports its actual count
 instead of inventing an empty-result explanation. Missing context asks for a
 search first. Compound actions and quoted question text are not commands.
 
+## Optional descriptive intent search (v3)
+
+The optional v3 path accepts natural openings such as `I'm looking for`,
+`do we have`, `我想看看` and `有没有`, as well as descriptive requests. A local
+planner proposes exact input spans and bounded Chinese/English alternatives.
+The server, rather than the model, resolves reviewed people and hard filters.
+The planner receives the query, civil date and a previous-search flag; it receives
+no family roster, captions, credentials or database access.
+
+Each descriptive concept is required. Its alternatives are interchangeable
+phrases, so `snow` and `red coat` require evidence for both concepts on the same
+asset. Current captions and photo memories may supply that evidence across
+sources. These are normalized lexical matches of proposed alternatives, not
+image-vector similarity or proof that a model's interpretation is correct.
+Ordinary quoted text remains a separate literal condition. Source reasons name
+the contributing current records; they do not turn generated interpretations
+into family facts.
+
+The compiler refuses spans that hide reviewed labels, quoted text, recognized
+dates, media types or negation, and refuses unparsed extra conditions. Person,
+date, media and exact-text filters remain independent requirements. Refinements
+retain descriptive concepts unless an explicit new search replaces the search,
+or `any description` / `不限描述` removes that filter. A new explicit search can
+refresh a stale result snapshot; refining or opening that snapshot still requires
+its original source and membership binding.
+
+Model outages or invalid proposals ask for clarification without broadening the
+search. The local adapter bounds response size, deadline and concurrent HTTP
+workers. Provider-side admission and GPU/resource lifetime require separate
+native qualification; an HTTP timeout alone cannot prove remote computation
+has stopped. The provider is optional, configured as an explicit loopback URL
+and installed model pair, and disabled by default. Importing or building the
+application starts no provider and downloads no weights.
+
+Web and Android negotiate v3 only through the existing protected routes. An
+explicit unsupported-version response permits fallback to v2, then v1; generic
+errors, timeouts and authentication failures do not. Saved v1/v2 history retains
+its original version and binding when read by a newer client. Recovery never
+calls the planner again, and changes to membership or contributing sources
+withhold stale results. Search summaries show input surfaces, not the model's
+alternative phrases. Descriptive questions and zero-result guidance remain
+bounded, deterministic replies.
+
+Generated tests establish the protocol and retrieval contracts with a stand-in
+planner. The separate twelve-case synthetic qualification runner measures the
+installed model in English, Chinese and mixed cohorts with no family records,
+retries or hidden warm-up. A passing generated test does not establish native
+latency, family relevance, speech accuracy or device usability. Missing-date
+questions such as “childhood” must not invent dates; retaining the unresolved
+request across the user's answer remains a separate conversation feature.
+
 ## Speech and uncertainty
 
 The ASR adapter preserves the returned text after trimming outer whitespace,
