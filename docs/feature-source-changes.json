@@ -18348,6 +18348,21 @@
       "family_acceptance": false,
       "original_source_commit": "e5629aad5bc009a1e1341f18fc0989505f492499",
       "integration_base_commit": "938d0be676d74f9c4d986dd0b98078e781122fc3"
+    },
+    {
+      "feature": "phone-v64-story-review-release-version",
+      "source_commit": "b111787c54bf00597686947e3e4fb51cf17f2382",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "681a1c5044a52ff20355ce42fe2f76394d5b796e0a4182643ba8cc5a18d8e564",
+          "sha256": "facdfa29e851d49974d4a1ac8768977a3618cf49c447428f656ad2615bd4879a"
+        }
+      ],
+      "schema_changed": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
