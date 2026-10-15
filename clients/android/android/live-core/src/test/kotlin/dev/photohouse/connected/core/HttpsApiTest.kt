@@ -126,6 +126,36 @@ class HttpsApiTest {
             assertEquals(503, failure { api.savedMemoryStoryContributionReferences(token, "family", storyId, 4, listOf("chapter-1")) }.status)
         }
     }
+
+    @Test fun chapterCandidateTransportUsesBoundMetadataOnlyRequestAndRejectsRedirects() = runBlocking {
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true)
+            val storyId = "11111111-1111-1111-1111-111111111111"
+            val contributionId = "33333333-3333-3333-3333-333333333333"
+            f.server.enqueue(json("""{"version":1,"story_id":"$storyId","library_id":"family","revision":"4","chapter_id":"chapter-2","page":3,"page_size":16,"has_more":false,"items":[{"id":"$contributionId","kind":"text","byline":"家人","language":"zh","chapter_id":"chapter-2","created_at":1720000000,"duration_ms":null}]}"""))
+            val page = api.savedMemoryStoryContributionCandidates(token, "family", storyId, 4, "chapter-2", 3)
+            assertEquals(contributionId, page.items.single().id)
+            val request = f.server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/memory-community/v1/stories/$storyId/contribution-candidates?library=family&revision=4&chapter_id=chapter-2&page=3", request.path)
+            assertEquals(token.header(), request.getHeader("Authorization"))
+            assertEquals("no-store", request.getHeader("Cache-Control"))
+
+            f.server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/not-followed"))
+            assertEquals(FailureKind.HTTP, failure {
+                api.savedMemoryStoryContributionCandidates(token, "family", storyId, 4, "chapter-2", 4)
+            }.kind)
+            assertEquals("GET", f.server.takeRequest().method)
+            assertNull("candidate redirect is never followed", f.server.takeRequest(100, java.util.concurrent.TimeUnit.MILLISECONDS))
+
+            f.server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setChunkedBody("x".repeat(MemoryCommunityResponseLimits.JSON_BYTES + 1), 8192))
+            assertEquals(FailureKind.TOO_LARGE, failure {
+                api.savedMemoryStoryContributionCandidates(token, "family", storyId, 4, "chapter-2", 5)
+            }.kind)
+            assertEquals("GET", f.server.takeRequest().method)
+        }
+    }
     @Test fun memoirEditorialSourceCatalogUsesMetadataOnlyProtectedRouteAndActualChapterList() = runBlocking {
         TlsFixture().use { f ->
             val api = HttpsMemoryCommunityApi(f.origin, f.client)

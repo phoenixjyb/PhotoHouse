@@ -47,6 +47,10 @@ class SavedMemoryStoriesStoreTest {
         val referencesErrors = mutableMapOf<Int, Exception>()
         val referenceResults = mutableMapOf<Int, SavedMemoryStoryContributionReferences>()
         val referencesCalls = mutableListOf<Pair<Long, List<String>>>()
+        val candidateCalls = mutableListOf<Triple<String, Long, Int>>()
+        val candidateResults = mutableMapOf<Pair<String, Int>, MemoryContributionCandidatePage>()
+        val candidateErrors = mutableMapOf<Int, Exception>()
+        val candidateGates = mutableMapOf<Int, CompletableDeferred<Unit>>()
         var contributionDetailError: Exception? = null
         var contributionDetailGate: CompletableDeferred<Unit>? = null
         val contributionDetailGates = mutableMapOf<Int, CompletableDeferred<Unit>>()
@@ -160,8 +164,24 @@ class SavedMemoryStoriesStoreTest {
             saveGate?.let { withContext(NonCancellable) { it.await() } }
             saveError?.let { throw it }
             nextRevision = mutation.revision + 1
-            savedRefs = refs(nextRevision, if (mutation.contributionRefsJson.contains("\"chapter_id\":\"chapter-1\",\"contribution_ids\":[]")) emptyList() else listOf(contributionId))
+            val savedIds = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .findAll(mutation.contributionRefsJson).map { it.value }.toList()
+            savedRefs = refs(nextRevision, savedIds)
             return savedStory(revision = nextRevision, canEdit = true)
+        }
+        override suspend fun savedMemoryStoryContributionCandidates(
+            token: Bearer, library: String, storyId: String, revision: Long, chapterId: String, page: Int,
+        ): MemoryContributionCandidatePage {
+            candidateCalls += Triple(chapterId, revision, page)
+            val call = candidateCalls.size
+            candidateGates[call]?.let { withContext(NonCancellable) { it.await() } }
+            candidateErrors[call]?.let { throw it }
+            return candidateResults[chapterId to page] ?: MemoryContributionCandidatePage(
+                storyId, library, revision, chapterId, page, 16, false,
+                if (page == 1) availableContributions.map { id -> MemoryContributionCandidate(
+                    id, "text", "家人", "zh", null, 1720000000, null,
+                ) } else emptyList(),
+            )
         }
         override suspend fun savedMemoryContributionDetail(
             token: Bearer, library: String, storyId: String, contributionId: String,
@@ -613,6 +633,7 @@ class SavedMemoryStoriesStoreTest {
         store.openSavedMemoryStory(editable); runCurrent()
         store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
         assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"].orEmpty().isEmpty())
+        store.openSavedMemoryStoryContributionChooser("chapter-1"); runCurrent()
         store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
         assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
         store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
@@ -620,6 +641,17 @@ class SavedMemoryStoriesStoreTest {
         val frozen = api.savedReferenceMutations.single()
         assertTrue(frozen.contributionRefsJson.contains("\"contribution_ids\":[]"))
         assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceSaveError)
+        val readsBeforeFrozenActions = api.referencesCalls.size
+        val choicesBeforeFrozenActions = api.candidateCalls.size
+        store.retrySavedMemoryStoryContributionReferences()
+        store.openSavedMemoryStoryContributionChooser("chapter-1")
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        store.saveSavedMemoryStoryContributionReferences(); runCurrent()
+        assertEquals(readsBeforeFrozenActions, api.referencesCalls.size)
+        assertEquals(choicesBeforeFrozenActions, api.candidateCalls.size)
+        assertEquals(1, api.savedReferenceMutations.size)
+        assertEquals(frozen, store.state.value.savedMemoryStories!!.pendingContributionReferenceMutation)
+        assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"].orEmpty().isEmpty())
         api.saveError = null
         store.retrySavedMemoryStoryContributionReferencesSave(); runCurrent()
         assertEquals(frozen, api.savedReferenceMutations.last())
@@ -627,6 +659,141 @@ class SavedMemoryStoriesStoreTest {
         assertEquals(5L, store.state.value.savedMemoryStories?.detail?.revision)
         assertTrue(store.state.value.savedMemoryStories!!.contributionReferences!!.chapters.first().contributionIds.isEmpty())
         assertEquals("Removing a reference never deletes its contribution original", 0, api.originalDeleteCalls)
+    }
+
+    @Test fun cleanReopenDoesNotInheritTheOldReferenceDraft() = runTest {
+        val api = Api().apply { editMode = true; referenceResults[2] = refs(ids = emptyList()) }
+        val store = newStore(api, community = true); signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        val editable = store.state.value.savedMemoryStories!!.result!!.items.single()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals(2, api.detailReads.size)
+        assertEquals(emptyList<String>(), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        assertTrue(store.state.value.savedMemoryStories!!.contributionCandidateMetadata.isEmpty())
+    }
+
+    @Test fun unsavedCandidateLinksSurviveChapterNavigationButOldChapterActionsAndReaderReplacementAreBlocked() = runTest {
+        val api = Api().apply { editMode = true; savedRefs = refs(ids = emptyList()) }
+        val store = newStore(api, community = true); signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        val editable = store.state.value.savedMemoryStories!!.result!!.items.single()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        store.openSavedMemoryStoryContributionChooser("chapter-1"); runCurrent()
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        api.referencesErrors[2] = ApiFailure(FailureKind.HTTP, 503)
+        store.loadSavedMemoryChapter(1); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories!!.contributionReferencesUnavailable)
+        assertNotNull(store.state.value.savedMemoryStories!!.contributionReferences)
+        store.retrySavedMemoryStoryContributionReferences(); runCurrent()
+        assertFalse(store.state.value.savedMemoryStories!!.contributionReferencesUnavailable)
+        assertEquals(1, store.state.value.savedMemoryStories!!.selectedChapter)
+        assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals(1, api.detailReads.size)
+        store.closeSavedMemoryStoryDetail()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals(emptyList<String>(), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        assertTrue(store.state.value.savedMemoryStories!!.contributionCandidateMetadata.isEmpty())
+    }
+
+    @Test fun conflictReloadReauthorizesAndClearsFrozenLinkChanges() = runTest {
+        val api = Api().apply { editMode = true; saveError = ApiFailure(FailureKind.HTTP, 409) }
+        val store = newStore(api, community = true); signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        store.saveSavedMemoryStoryContributionReferences(); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceSaveConflict)
+        api.nextRevision = 5L; api.savedRefs = refs(5, emptyList())
+        store.retrySavedMemoryStory(); runCurrent()
+        assertEquals(5L, store.state.value.savedMemoryStories!!.detail!!.revision)
+        assertNull(store.state.value.savedMemoryStories!!.pendingContributionReferenceMutation)
+        assertFalse(store.state.value.savedMemoryStories!!.contributionReferenceSaveConflict)
+        assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"].orEmpty().isEmpty())
+    }
+
+    @Test fun chapterChooserUsesExplicitMetadataPagesPreservesFailureAndSavesOnlyChosenDraft() = runTest {
+        val secondId = "44444444-4444-4444-8444-444444444444"
+        val api = Api().apply {
+            editMode = true
+            availableContributions = listOf(secondId)
+            savedRefs = refs(ids = emptyList())
+            candidateResults["chapter-1" to 1] = MemoryContributionCandidatePage(storyId, "family", 4,
+                "chapter-1", 1, 16, true, listOf(MemoryContributionCandidate(
+                    contributionId, "text", "家人", "zh", null, 1720000000, null,
+                )))
+            candidateErrors[2] = ApiFailure(FailureKind.OFFLINE)
+            candidateResults["chapter-1" to 2] = MemoryContributionCandidatePage(storyId, "family", 4,
+                "chapter-1", 2, 16, false, listOf(
+                    MemoryContributionCandidate(contributionId, "text", "家人", "zh", null, 1720000000, null),
+                    MemoryContributionCandidate(secondId, "audio", "另一位家人", "zh", "chapter-1", 1720000001, 2500),
+                ))
+        }
+        val store = newStore(api, community = true); signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        val originalDraft = store.state.value.savedMemoryStories!!.contributionReferenceDraft
+        store.toggleSavedMemoryChapterContribution("chapter-1", secondId)
+        assertEquals("ordinary community list data cannot authorize a link", originalDraft,
+            store.state.value.savedMemoryStories!!.contributionReferenceDraft)
+
+        store.openSavedMemoryStoryContributionChooser("chapter-1"); runCurrent()
+        assertEquals(listOf(Triple("chapter-1", 4L, 1)), api.candidateCalls)
+        assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionCandidateChooser!!.candidates.map { it.id })
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        assertEquals(listOf(contributionId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        store.loadSavedMemoryStoryContributionDetail("chapter-1", contributionId); runCurrent()
+        assertEquals("explicit review of an unsaved candidate uses the existing detail route",
+            "这是家人提供的一段较早文字。", store.state.value.savedMemoryStories!!.contributionDetail?.receipt?.contribution?.text)
+        store.closeSavedMemoryStoryContributionDetail()
+        store.loadMoreSavedMemoryStoryContributionCandidates(); runCurrent()
+        val failed = store.state.value.savedMemoryStories!!.contributionCandidateChooser!!
+        assertEquals(2, failed.failedPage)
+        assertEquals(listOf(contributionId), failed.candidates.map { it.id })
+        store.retrySavedMemoryStoryContributionCandidates(); runCurrent()
+        val loaded = store.state.value.savedMemoryStories!!.contributionCandidateChooser!!
+        assertEquals(listOf(Triple("chapter-1", 4L, 1), Triple("chapter-1", 4L, 2), Triple("chapter-1", 4L, 2)), api.candidateCalls)
+        assertEquals(listOf(contributionId, secondId), loaded.candidates.map { it.id })
+        store.toggleSavedMemoryChapterContribution("chapter-1", secondId)
+        store.cancelSavedMemoryStoryContributionChooser()
+        assertNull(store.state.value.savedMemoryStories!!.contributionCandidateChooser)
+        assertEquals(listOf(contributionId, secondId), store.state.value.savedMemoryStories!!.contributionReferenceDraft!!["chapter-1"])
+        assertEquals("only the explicit View action reads original detail", listOf(contributionId), api.contributionDetailReads)
+
+        store.saveSavedMemoryStoryContributionReferences(); runCurrent()
+        assertEquals(listOf(contributionId, secondId), listOf(contributionId, secondId).filter { id ->
+            api.savedReferenceMutations.single().contributionRefsJson.contains(id)
+        })
+        assertEquals(listOf(contributionId, secondId), store.state.value.savedMemoryStories!!.contributionReferences!!
+            .chapters.first().contributionIds)
+        assertNull(store.state.value.savedMemoryStories!!.contributionCandidateChooser)
+    }
+
+    @Test fun delayedCandidatePageCannotCrossChapterOrLogoutFence() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val api = Api().apply { editMode = true; candidateGates[1] = gate }
+        val store = newStore(api, community = true); signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        store.openSavedMemoryStoryContributionChooser("chapter-1"); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories!!.contributionCandidateChooser!!.loading)
+        store.loadSavedMemoryChapter(1); runCurrent()
+        assertNull(store.state.value.savedMemoryStories!!.contributionCandidateChooser)
+        gate.complete(Unit); runCurrent()
+        assertEquals(1, store.state.value.savedMemoryStories!!.selectedChapter)
+        assertTrue(store.state.value.savedMemoryStories!!.contributionCandidateMetadata.isEmpty())
+
+        val secondGate = CompletableDeferred<Unit>()
+        api.candidateGates[2] = secondGate
+        store.openSavedMemoryStoryContributionChooser("chapter-2"); runCurrent()
+        store.logout(); runCurrent()
+        secondGate.complete(Unit); runCurrent()
+        assertNull(store.state.value.savedMemoryStories)
+        assertNull(store.state.value.session)
     }
 
     @Test fun staleLinkSaveReplyAfterLogoutCannotReopenStoryOrExposePreviousAccountState() = runTest {

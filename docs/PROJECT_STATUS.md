@@ -1,6 +1,8 @@
 # Current project status
 
-Reviewed **2026-10-16 after the revised native story capture**. PR #25 is merged at
+Source reviewed **2026-10-16**. The following live-state statements record the
+last verified v64 delivery; this source review did not recheck service health.
+PR #25 is merged at
 `4e94650b9b75c2921a1990a6cdcd05a9a29ce1a4`. API/Web source
 `5480a0cc99133acc1308caf19a0e33d372cc32f6` is deployed and the Windows phone
 HTTPS OTA feed serves **v64 / 0.64-story-review**. TV remains v30. The update
@@ -42,10 +44,15 @@ valid proposal with zero follow-up questions. Canary duration was 80.422 seconds
 human quality and the remaining cases are still unreviewed. No model was
 activated and the changes have not been deployed to the family API.
 
-The next [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) lets an
+The [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) lets an
 editor explicitly link an accepted, consented contribution to a chapter using
 metadata-only choices and the existing atomic save contract. It is following
-source work, with no schema change or Android publication.
+source work merged through PR #30 at `96a839e`, with all five review-head CI
+jobs passing. Following Android source adds the same explicit metadata chooser
+to chapter-link management. Its 74 focused JVM tests, build/lint and three
+large-text emulator journeys passed, with rendered views inspected. Windows
+qualification and paired delivery remain separate, with no schema change or APK
+publication.
 
 ## Delivery and acceptance
 
@@ -55,8 +62,8 @@ source work, with no schema change or Android publication.
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
 | Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
 | TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
-| Public source | PRs #25–29 merged; latest search source and following chapter-source chooser integrated in the current branch | Chooser review-head CI/review and later delivery |
-| Following storytelling | [Private quality review page](MEMOIR_QUALITY_REVIEW.md) merged; initial/revised [native captures](STORY_MODEL_TRIAL_2026-10-16.md) retained, revised declared cleanup verified; manual [Web source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) in following source | Human review, remaining model cases, chooser qualification/delivery and family quality |
+| Public source | PR #30 merged the Web chooser; main through PR #45 includes the other session's conversational search work | Following Android chooser source review/CI and later paired delivery |
+| Following storytelling | [Private quality review page](MEMOIR_QUALITY_REVIEW.md) merged; initial/revised [native captures](STORY_MODEL_TRIAL_2026-10-16.md) retained, revised declared cleanup verified; manual [Web source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) in following source | Human review, remaining model cases, Windows candidate qualification, paired delivery and family quality |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
 Earlier dated source, test and release records below retain their exact scope.

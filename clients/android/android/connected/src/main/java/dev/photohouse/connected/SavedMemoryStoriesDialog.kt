@@ -228,7 +228,7 @@ internal fun SavedMemoryStoriesDialog(
                             Text(story.title, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("saved-memory-title"))
                             if (story.canEdit && store != null) {
-                                val referencesMatch = reading.contributionReferences?.let { refs ->
+                                val referencesMatch = !reading.contributionReferencesUnavailable && reading.contributionReferences?.let { refs ->
                                     refs.id == story.id && refs.libraryId == reading.library && refs.revision == story.revision &&
                                         refs.chapters.map { it.chapterId } == story.chapters.map { it.id }
                                 } == true
@@ -379,7 +379,10 @@ internal fun SavedMemoryStoriesDialog(
                                             savedMemoryContributionReferenceDraftChanged(reading, story)
                                         val editorExpanded = needsAttention || contributionEditorExpandedByChapter[chapter.id] == true
                                         TextButton(
-                                            onClick = { contributionEditorExpandedByChapter[chapter.id] = !editorExpanded },
+                                            onClick = {
+                                                if (editorExpanded) store?.cancelSavedMemoryStoryContributionChooser()
+                                                contributionEditorExpandedByChapter[chapter.id] = !editorExpanded
+                                            },
                                             enabled = !needsAttention,
                                             modifier = Modifier.fillMaxWidth().testTag("saved-memory-contribution-link-toggle-${chapter.id}"),
                                         ) {
@@ -634,78 +637,74 @@ private fun SavedMemoryChapterContributionLinkEditor(
     val story = reading.detail ?: return
     val refs = reading.contributionReferences?.takeIf { it.id == story.id && it.libraryId == reading.library && it.revision == story.revision }
     val draft = reading.contributionReferenceDraft?.get(chapter.id).orEmpty()
-    val original = refs?.chapters?.firstOrNull { it.chapterId == chapter.id }?.contributionIds.orEmpty()
-    val candidates = reading.community?.contributions?.items.orEmpty().filter { item ->
-        item.storyId == story.id && item.state == "accepted" && item.processingConsent &&
-            item.baseStoryRevision in 1..story.revision && (item.chapterId == null || item.chapterId == chapter.id)
+    val chooser = reading.contributionCandidateChooser?.takeIf {
+        it.storyId == story.id && it.revision == story.revision && it.chapterId == chapter.id
     }
+    val enabled = store != null && refs != null && !reading.contributionReferencesBusy &&
+        !reading.contributionReferencesUnavailable && !reading.contributionReferenceSaveBusy &&
+        !reading.contributionReferenceSaveError && !reading.contributionReferenceSaveConflict &&
+        reading.pendingContributionReferenceMutation == null
     fun t(en: String, cn: String) = if (zh) cn else en
-    Column(Modifier.fillMaxWidth().testTag("saved-memory-contribution-link-editor-${chapter.id}"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(t("Choose family memories for this chapter", "选择要关联到本章的家人回忆"), style = MaterialTheme.typography.labelLarge)
+    Column(Modifier.fillMaxWidth().testTag("saved-memory-contribution-link-editor-${chapter.id}"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(t("Family memory sources for this chapter", "本章的家人回忆来源"), style = MaterialTheme.typography.titleSmall)
+        Text(t("Only source links are saved. Original words and recordings stay unchanged. Review sources above, then save your link changes.",
+            "这里只保存来源链接，原始文字和录音不会改变。可先在上方查看来源，再保存关联更改。"),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             refs == null || reading.contributionReferencesBusy -> Text(t("Link list must finish loading before editing.", "关联来源加载完成后才能编辑。"))
             reading.contributionReferencesUnavailable -> Text(t("Link list is unavailable. Retry before editing.", "关联来源暂不可用，请重试后再编辑。"))
             else -> {
-                val ids = (candidates.map { it.id } + draft).distinct()
-                if (ids.isEmpty()) Text(t("No eligible family memories are available on this page.", "当前页没有可关联的家人回忆。"))
-                ids.forEachIndexed { index, id ->
-                    val candidate = candidates.firstOrNull { it.id == id }
-                    val selected = id in draft
-                    val eligible = candidate != null || id in original
-                    val enabled = store != null && !reading.contributionReferenceSaveBusy &&
-                        !reading.contributionReferenceSaveError && !reading.contributionReferenceSaveConflict && eligible
-                    val ordinal = t("Family memory ${index + 1}", "家人回忆 ${index + 1}")
-                    val kindLabel = when (candidate?.kind) {
-                        "text" -> t("Written memory", "文字回忆")
-                        "audio" -> t("Audio recording", "录音")
-                        else -> t("Previously linked", "已有关联")
+                if (draft.isEmpty()) Text(t("No family memories selected for this chapter.", "本章尚未选择家人回忆。"))
+                draft.forEachIndexed { index, id ->
+                    val candidate = reading.contributionCandidateMetadata[id]
+                    SavedMemoryContributionChoice(candidate, t("Family memory ${index + 1}", "家人回忆 ${index + 1}"),
+                        selected = true, enabled = enabled, zh = zh,
+                        tag = "saved-memory-contribution-link-${chapter.id}-$index") {
+                        store?.toggleSavedMemoryChapterContribution(chapter.id, id)
                     }
-                    val byline = candidate?.byline?.takeIf(String::isNotBlank)
-                        ?: t("Family member", "家人")
-                    val excerpt = candidate?.takeIf { it.kind == "text" }?.text
-                        ?.trim()?.replace(Regex("\\s+"), " ")?.take(120)?.takeIf(String::isNotBlank)
-                    val duration = candidate?.durationMs?.takeIf { candidate.kind == "audio" && it > 0 }
-                        ?.let { millis ->
-                            val seconds = (millis + 999) / 1000
-                            "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
-                        }
-                    Card(
-                        modifier = Modifier.fillMaxWidth()
-                            .selectable(selected = selected, enabled = enabled, role = Role.Checkbox) {
-                                store?.toggleSavedMemoryChapterContribution(chapter.id, id)
+                }
+                OutlinedButton(onClick = { store?.openSavedMemoryStoryContributionChooser(chapter.id) },
+                    enabled = enabled && chooser == null && draft.size < 12,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-contribution-add-${chapter.id}")) {
+                    Text(t("Add family memory source", "添加家人回忆来源"))
+                }
+                if (draft.size >= 12) Text(t("A chapter can link up to 12 family memories. Remove one to add another.",
+                    "每章最多关联 12 条家人回忆；可先移除一条再添加。"), style = MaterialTheme.typography.bodySmall)
+                if (chooser != null) {
+                    Card(Modifier.fillMaxWidth().testTag("saved-memory-contribution-chooser-${chapter.id}"),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(t("Choose accepted family memories", "选择已接受的家人回忆"), style = MaterialTheme.typography.titleSmall)
+                            TextButton(onClick = { store?.cancelSavedMemoryStoryContributionChooser() },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-candidate-close")) {
+                                Text(t("Close choices · keep draft", "收起选择 · 保留草稿"))
                             }
-                            .testTag("saved-memory-contribution-link-${chapter.id}-$index"),
-                        colors = CardDefaults.cardColors(containerColor = if (selected)
-                            MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow),
-                    ) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("$ordinal · $kindLabel", style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.weight(1f))
-                                Row(verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(if (selected) t("Selected", "已选择") else t("Not selected", "未选择"),
-                                        style = MaterialTheme.typography.labelMedium)
-                                    Box(
-                                        modifier = Modifier.size(22.dp)
-                                            .border(1.5.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                                                RoundedCornerShape(4.dp))
-                                            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                                                RoundedCornerShape(4.dp)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        if (selected) Text("✓", color = MaterialTheme.colorScheme.onPrimary,
-                                            style = MaterialTheme.typography.labelMedium)
+                            Text(t("${draft.size}/12 selected · Save links to keep changes", "已选择 ${draft.size}/12 条 · 保存关联后生效"),
+                                style = MaterialTheme.typography.labelMedium)
+                            if (chooser.loading) {
+                                LinearProgressIndicator(Modifier.fillMaxWidth().testTag("saved-memory-candidate-loading"))
+                                Text(t("Loading available sources…", "正在读取可用来源…"), style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (chooser.unavailable) {
+                                Text(t("Sources could not be loaded. Your draft and loaded choices are kept.", "暂时无法读取来源，草稿和已读取的选项均已保留。"),
+                                    color = MaterialTheme.colorScheme.error)
+                                OutlinedButton(onClick = { store?.retrySavedMemoryStoryContributionCandidates() }, enabled = enabled && !chooser.loading,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-candidate-retry")) { Text(t("Retry sources", "重试读取来源")) }
+                            }
+                            if (!chooser.loading && !chooser.unavailable && chooser.candidates.isEmpty()) Text(t("No accepted sources are available for this chapter.", "本章没有可添加的已接受来源。"))
+                            Column(Modifier.fillMaxWidth().heightIn(max = 340.dp).verticalScroll(rememberScrollState())
+                                .testTag("saved-memory-candidate-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                chooser.candidates.forEachIndexed { index, candidate ->
+                                    val selected = candidate.id in draft
+                                    SavedMemoryContributionChoice(candidate, t("Family memory ${index + 1}", "家人回忆 ${index + 1}"), selected,
+                                        enabled && (selected || draft.size < 12), zh, "saved-memory-candidate-${chapter.id}-$index") {
+                                        store?.toggleSavedMemoryChapterContribution(chapter.id, candidate.id)
                                     }
                                 }
                             }
-                            Text(t("By $byline", "署名：$byline"), style = MaterialTheme.typography.bodyMedium)
-                            if (excerpt != null) Text(excerpt, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            if (duration != null) Text(t("Recording · $duration", "录音时长 · $duration"),
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (chooser.hasMore && !chooser.unavailable) OutlinedButton(
+                                onClick = { store?.loadMoreSavedMemoryStoryContributionCandidates() }, enabled = enabled && !chooser.loading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-candidate-more")) { Text(t("More sources", "更多来源")) }
                         }
                     }
                 }
@@ -721,9 +720,41 @@ private fun SavedMemoryChapterContributionLinkEditor(
                         modifier = Modifier.testTag("saved-memory-contribution-link-retry")) { Text(t("Retry same save", "重试相同保存")) }
                 } else {
                     Button(onClick = { store?.saveSavedMemoryStoryContributionReferences() }, enabled = changed && !reading.contributionReferenceSaveBusy,
-                        modifier = Modifier.testTag("saved-memory-contribution-link-save")) {
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-contribution-link-save")) {
                         Text(if (reading.contributionReferenceSaveBusy) t("Saving…", "正在保存…") else t("Save links", "保存关联"))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedMemoryContributionChoice(
+    candidate: MemoryContributionCandidate?, ordinal: String, selected: Boolean, enabled: Boolean,
+    zh: Boolean, tag: String, onToggle: () -> Unit,
+) {
+    fun t(en: String, cn: String) = if (zh) cn else en
+    val kind = when (candidate?.kind) { "text" -> t("Written memory", "文字回忆"); "audio" -> t("Audio recording", "录音"); else -> t("Existing source link", "已有关联") }
+    Card(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        .selectable(selected, enabled, Role.Checkbox, onToggle).testTag(tag),
+        colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("$ordinal · $kind", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+            }
+            Text(if (selected) t("Selected · tap to remove", "已选择 · 点击移除") else t("Not selected · tap to add", "未选择 · 点击添加"), style = MaterialTheme.typography.labelMedium)
+            candidate?.let {
+                Text(t("By ${it.byline.ifBlank { "Family member" }}", "署名：${it.byline.ifBlank { "家人" }}"), style = MaterialTheme.typography.bodyMedium)
+                val date = remember(it.createdAt, zh) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM,
+                    java.text.DateFormat.MEDIUM, if (zh) java.util.Locale.SIMPLIFIED_CHINESE else java.util.Locale.ENGLISH)
+                    .format(java.util.Date(it.createdAt * 1000)) }
+                Text(t("Submitted $date", "提交于 $date"), style = MaterialTheme.typography.bodySmall)
+                it.durationMs?.takeIf { millis -> it.kind == "audio" && millis > 0 }?.let { millis ->
+                    val seconds = (millis + 999) / 1000
+                    Text(t("Recording · ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}",
+                        "录音时长 · ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -739,9 +770,10 @@ private fun SavedMemoryChapterContributionReferences(
         it.id == story.id && it.libraryId == reading.library && it.revision == story.revision
     }
     val chapterReferences = references?.chapters?.firstOrNull { it.chapterId == chapter.id }
+    val visibleIds = reading.contributionReferenceDraft?.get(chapter.id) ?: chapterReferences?.contributionIds.orEmpty()
     fun t(en: String, cn: String) = if (zh) cn else en
     Column(Modifier.fillMaxWidth().testTag("saved-memory-contribution-sources"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(t("Family memories linked to this chapter", "本章关联的家人回忆"),
+        Text(t("Family memory sources for this chapter", "本章的家人回忆来源"),
             style = MaterialTheme.typography.titleSmall)
         when {
             reading.contributionReferencesBusy -> {
@@ -758,11 +790,11 @@ private fun SavedMemoryChapterContributionReferences(
                     }
                 }
             }
-            chapterReferences == null || chapterReferences.contributionIds.isEmpty() ->
+            visibleIds.isEmpty() ->
                 Text(t("No linked family memories for this chapter.", "本章没有关联的家人回忆。"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> {
-                chapterReferences.contributionIds.forEachIndexed { index, contributionId ->
+                visibleIds.forEachIndexed { index, contributionId ->
                     val selected = reading.contributionDetailChapterId == chapter.id &&
                         reading.contributionDetailId == contributionId
                     OutlinedButton(
@@ -777,7 +809,7 @@ private fun SavedMemoryChapterContributionReferences(
                     }
                 }
                 if (reading.contributionDetailChapterId == chapter.id &&
-                    reading.contributionDetailId?.let { it in chapterReferences.contributionIds } == true) {
+                    reading.contributionDetailId?.let { it in visibleIds } == true) {
                     val contributionDetail = reading.contributionDetail
                     when {
                         reading.contributionDetailBusy -> LinearProgressIndicator(Modifier.fillMaxWidth())

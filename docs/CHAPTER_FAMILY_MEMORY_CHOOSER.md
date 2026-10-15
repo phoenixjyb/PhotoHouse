@@ -1,8 +1,8 @@
 # Add an existing family memory to a chapter
 
-October 16 Web/API source following v64. This adds a manual source chooser to
-saved-story editing. Android, live delivery and family acceptance are separate
-following gates. It does not enable model generation or change the schema.
+October 16 Web/API and following Android source after v64. This adds a manual
+source chooser to saved-story chapter links. Web source merged in PR #30;
+Android, paired live delivery and family acceptance have separate gates. It does not enable model generation or change the schema.
 
 ## Family journey
 
@@ -75,3 +75,39 @@ the bounded source list; the page heading stays visible. Choices retain
 44-pixel touch targets. Keyboard
 selection and focus return after Cancel were checked. These renders were
 inspected; they use synthetic people and memories only.
+
+
+## Android flow
+
+Open a saved story, expand **Manage chapter memories / 管理本章回忆**, then tap
+**Add family memory source / 添加家人回忆来源**. Choices are loaded explicitly
+from the same metadata-only endpoint. The list is bounded and scrollable; More
+and Retry are separate actions. An error on a later page retains earlier choices
+and retries the failed page. Selected links stay visible outside the paged list.
+
+Choosing or removing a source edits the volatile link draft. **Close choices ·
+keep draft / 收起选择 · 保留草稿** closes the picker without discarding choices.
+An explicitly selected source can be opened for review before saving; its
+original is never loaded merely to populate the picker. **Save links / 保存关联**
+uses the existing revision-bound atomic update, including its frozen exact-retry
+and conflict handling. Save, chapter navigation, parent refresh/reopen and scope
+changes invalidate an active picker. Candidate metadata is not persisted to
+device drafts, history or server records.
+
+The Android source passed 74 focused JVM tests, compilation, lint and QA debug
+builds. Three emulator journeys passed with Chinese and English at 150% text
+size: selection/save/reopen, paging with exact failed-page retry and unsaved-source
+review, and explicit original-text/ready-transcript review. Their rendered views
+were inspected after recovering an emulator System UI interruption. These are
+synthetic emulator checks, not physical-device acceptance. Audio review here
+shows a ready transcript; it does not automatically fetch or play the recording.
+
+Reader refresh now preserves a dirty link draft against its verified baseline
+while blocking edits during loading or failure. Frozen uncertain saves cannot be
+replaced, and a revision-conflict Reload explicitly reacquires the story. Fresh
+readers clear candidate metadata and old mutation state.
+
+The next configured APK must reserve a new version before signing and
+publication; editing v64-labelled source does not replace the frozen released
+v64 APK. Windows candidate qualification and paired delivery remain separate
+steps. There is no new server schema or model activation in this slice.
