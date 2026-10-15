@@ -253,6 +253,16 @@ For example, `找示例儿童小时候玩雪红外套的照片` followed by `203
 keeps the reviewed person, image type, snow and red-coat requirements and adds
 the supplied capture-date bounds. It does not infer the person's age in 2032.
 
+The same question can retain explicitly uncertain phrases such as `maybe two
+summers ago`, `about two years ago`, `around a few winters ago`, `大概两年前`,
+`可能在3年前`, `前几年` and `前些年`. English forms require `maybe`, `about` or
+`around`, one/two/three/a few (or 1–3), and plural summers/winters/years followed
+by `ago`. Chinese forms accept `大概` or `可能`, optional `是`/`在`, and a
+supported small year count, or `前` followed by that count/`几` and `年`, or
+`前些年`. These phrases trigger a question; they supply no calendar bounds.
+No season, hemisphere or relative-year calculation is inferred. Bare forms
+such as `two years ago` and `两年前` do not acquire this continuation.
+
 The pending slot identifies an exact original span; a date-only answer resolves
 through the normal deterministic date parser and fresh reviewed-entity checks.
 The provider sees the original query with only that span blanked, while the
@@ -274,7 +284,11 @@ stored outcome without another model call.
 
 This is a bounded date-answer flow. Other model questions, pronouns without a
 reviewed person, and arbitrary conversational rewrites do not acquire pending
-state. Existing v1/v2 behavior and database schema remain unchanged.
+state. New private pending records use policy version 2. Earlier version 1
+records retain their original phrase-validation policy for stored readback;
+continuation still rechecks the current phrase rules and source binding, so an
+old request that has become ambiguous must be restated. Existing v1/v2 search
+behavior, public payloads and database schema remain unchanged.
 
 ## Speech and uncertainty
 

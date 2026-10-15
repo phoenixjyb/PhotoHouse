@@ -19568,6 +19568,47 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "uncertain-calendar-clues-with-versioned-date-continuation",
+      "source_commit": "260d8bcede6d4088ac6fec745f2b98f92c7b67b0",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "ffd7f08eda3360d0ad53c581051f7c22ffc8da9097c35ec5a082ec95d8ac5e52",
+          "sha256": "0b6c27fd4f8781b013c5da8546fe00438a02e150c6730b86e2c14138c9c4dc6b"
+        },
+        {
+          "path": "server/backend/app/access/search_pending.py",
+          "before_sha256": "825bf6d31a6bc2eed6caa2db43ea09fdff41c1ac5589b124bbfc03ce318d094b",
+          "sha256": "0f22d2a7760a4c5ff8e1c6e55d820dd1a6b24d69b86973195800a461118f3323"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent.py",
+          "before_sha256": "637463bec3f674838e6a4983da1378e027663df4e35692cc889f4ed84aac60b5",
+          "sha256": "e3e2dc3e6f4c00670890e42ff7b23211056cb984462b76915189b749784bc72e"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "d72f932662441626a5f454a23d46819cce21e9ec294b62334c1d540140f406f0",
+          "sha256": "888de50e47d6b6c16df452e3cffaa1aaaf46f699ab30abc6b5b97e2ed7c8d87a"
+        },
+        {
+          "path": "server/tests/security/test_search_pending.py",
+          "before_sha256": "4116d41b9761b06ed56cf377b22bbea617b9260d4540231a9b73a48d622cf0c0",
+          "sha256": "cfd28685b04ee2ba9d42d2ada5f180f566f443f6b316cd285f3179127015ed18"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "pending_metadata_policy_version": 2,
+      "legacy_pending_readback_preserved": true,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
