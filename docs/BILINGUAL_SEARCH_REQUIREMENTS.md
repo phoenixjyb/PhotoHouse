@@ -167,13 +167,18 @@ The optional v3 path accepts natural openings such as `I'm looking for`,
 `do we have`, `我想看看` and `有没有`, as well as descriptive requests. A local
 planner proposes exact input spans and bounded Chinese/English alternatives.
 The server, rather than the model, resolves reviewed people and hard filters.
-The planner receives the query, civil date and a previous-search flag; it receives
-no family roster, captions, credentials or database access.
-The local extraction instruction leaves names and resolvable dates to that
-server path; an unfamiliar name does not authorize guessing an identity or
-consuming it as a scene. Generic bilingual examples distinguish descriptive
-spans from the surrounding name/date/media/quoted-text conditions. Prompt
-examples are source-defined fictional text, not a family vocabulary.
+The planner receives a view of the query with resolved names/labels, recognized
+dates, media terms and quoted literals replaced by spaces, plus the civil date
+and a previous-search flag. It receives no roster, captions, credentials or
+database access. Code-point offsets stay fixed, including complete Unicode
+normalization clusters; unsafe partial mappings refuse provider invocation.
+Every accepted span must be visible and identical in the untouched original.
+All hard filters and residual requirements still compile from that original.
+An unfamiliar name does not authorize guessing an identity or consuming it as a
+scene. The local adapter accepts only scene extraction or a description question;
+the server owns time, identity, scope and action decisions. Fictional prompt
+examples demonstrate separate required activities and objects, with color/object
+phrases kept together. They are not a family vocabulary.
 
 Each descriptive concept is required. Its alternatives are interchangeable
 phrases, so `snow` and `red coat` require evidence for both concepts on the same
@@ -224,8 +229,12 @@ bounded, deterministic replies.
 
 Generated tests establish the protocol and retrieval contracts with a stand-in
 planner. The separate twelve-case synthetic qualification runner measures the
-installed model in English, Chinese and mixed cohorts with no family records,
-retries or hidden warm-up. Its private measurement records the validated
+production compiler path in English, Chinese and mixed cohorts with no family
+records, retries or hidden warm-up. Qualification policy 2 reports actual
+adapter attempts separately from twelve logical cases: the three deterministic
+age questions need no model, and nine cases may call it once. The fixed case
+digest remains unchanged, while policy 1 raw-proposal/replay measurements remain
+historical evidence. Its private measurement records the masked view and validated
 proposal for each fixed fictional case, including proposals the compiler
 refuses, so interpretation failures can be diagnosed without another provider
 request. Invalid extensions are excluded. Ordinary user requests and provider
@@ -275,7 +284,7 @@ family record.
 In a private v3 workspace conversation, an explicit new search with one supported
 vague-time phrase can ask for a year or date range and retain the original
 request. Supported phrases include `from childhood`, `childhood`, `when younger`,
-`a long time ago`, `小时候`, `儿时`, `小的时候`, `很久以前` and `好久以前`.
+`a long time ago`, `long ago`, `小时候`, `儿时`, `小的时候`, `很久以前` and `好久以前`.
 For example, `找示例儿童小时候玩雪红外套的照片` followed by `2032年9月`
 keeps the reviewed person, image type, snow and red-coat requirements and adds
 the supplied capture-date bounds. It does not infer the person's age in 2032.
@@ -292,8 +301,9 @@ such as `two years ago` and `两年前` do not acquire this continuation.
 
 The pending slot identifies an exact original span; a date-only answer resolves
 through the normal deterministic date parser and fresh reviewed-entity checks.
-The provider sees the original query with only that span blanked, while the
-resolved date is added as a separate hard filter before retrieval. Neither the
+The compiler first blanks that exact original time span. Its provider view also
+hides the resolved hard conditions described above, while the supplied date is
+added as a separate hard filter before retrieval. Neither the
 original request nor the answer is overwritten or concatenated into generated
 prose. Unknown extra conditions still require clarification. Quoted time phrases,
 reviewed names that collide with a date, multiple vague-time phrases and existing
@@ -311,8 +321,8 @@ stored outcome without another model call.
 
 This is a bounded date-answer flow. Other model questions, pronouns without a
 reviewed person, and arbitrary conversational rewrites do not acquire pending
-state. New private pending records use policy version 2. Earlier version 1
-records retain their original phrase-validation policy for stored readback;
+state. New private pending records use policy version 3. Earlier version 1 and 2
+records retain their frozen phrase-validation policies for stored readback;
 continuation still rechecks the current phrase rules and source binding, so an
 old request that has become ambiguous must be restated. Existing v1/v2 search
 behavior, public payloads and database schema remain unchanged.

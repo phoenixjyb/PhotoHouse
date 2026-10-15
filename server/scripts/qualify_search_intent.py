@@ -1,8 +1,9 @@
 """Plan or measure a bounded local descriptive-intent trial on synthetic data.
 
 No arguments only emits the static twelve-case plan. Execution requires an
-explicit loopback URL, model name, and new private output file. The executable
-path has no warm-up or retry: it attempts one proposal per synthetic case.
+explicit loopback URL, model name, and new private output file. Each case goes
+through the real deterministic compiler; it may make zero or one provider call.
+The executable path has no warm-up or retry.
 """
 from __future__ import annotations
 
@@ -20,24 +21,48 @@ sys.path.insert(0, str(ROOT / "server" / "backend"))
 
 from app.access.private_storage import require_private_directory, require_private_file, sync_directory
 from app.access.search_description import match_description
-from app.access.search_intent import IntentUnavailable, POLICY_VERSION, plan_query, validate_proposal
+from app.access.search_intent import IntentUnavailable, plan_query, validate_proposal
 from app.access.search_intent_local import LocalIntentPlanner
 from app.access.search_text import normalize_sources
 from search_intent_cases import CASES, NOW, cases_by_cohort, cases_digest
 
+QUALIFICATION_POLICY_VERSION = 2
 
-class _FixedProposal:
-    """Replay one already-counted provider response into the pure compiler."""
-    def __init__(self, proposal=None, unavailable=False):
-        self.proposal = proposal
-        self.unavailable = unavailable
+
+class _CountingPlanner:
+    """Capture the real compiler's single adapter attempt without retrying."""
+    def __init__(self, planner, *, clock):
+        self.planner = planner
+        self.clock = clock
         self.calls = 0
+        self.query_views = []
+        self.response = None
+        self.outcome = "not_needed"
+        self.error = None
+        self.elapsed_ms = 0
 
-    def propose(self, _query, _today, _has_previous_search):
+    def propose(self, query, today, has_previous_search):
+        if self.calls >= 1:
+            raise RuntimeError("qualification_retry_refused")
         self.calls += 1
-        if self.unavailable:
-            raise IntentUnavailable()
-        return self.proposal
+        self.query_views.append(query)
+        start = self.clock()
+        try:
+            self.response = self.planner.propose(query, today, has_previous_search)
+            self.outcome = "response"
+            return self.response
+        except IntentUnavailable:
+            self.outcome = "intent_unavailable"
+            self.error = "intent_unavailable"
+            raise
+        except Exception:
+            # Normalize opaque adapter failures into the planner's bounded
+            # unavailable path, while retaining only a fixed report code.
+            self.outcome = "adapter_error"
+            self.error = "adapter_error"
+            raise IntentUnavailable() from None
+        finally:
+            self.elapsed_ms = max(0, int((self.clock() - start) * 1000))
 
 
 def plan_summary() -> dict:
@@ -80,39 +105,26 @@ def _evaluate_evidence(case: dict, description: dict) -> tuple[list[dict], bool]
 
 
 def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
-    start = clock()
-    provider_calls = 1
-    proposal = None
-    provider_error = None
-    try:
-        # Exactly one real proposal attempt. No retry or hidden preload occurs here.
-        proposal = planner.propose(case["query"], NOW, False)
-        provider_outcome = "response"
-    except IntentUnavailable:
-        provider_outcome = "intent_unavailable"
-        provider_error = "intent_unavailable"
-    except Exception:
-        # Keep provider errors fixed and non-sensitive in reports.
-        provider_outcome = "adapter_error"
-        provider_error = "adapter_error"
-    elapsed_ms = max(0, int((clock() - start) * 1000))
-
-    fixed = _FixedProposal(proposal, unavailable=provider_error is not None)
+    measured = _CountingPlanner(planner, clock=clock)
     try:
         result = plan_query(case["query"], now=now, entities=case["entities"],
-                            previous_filters=None, planner=fixed)
+                            previous_filters=None, planner=measured)
     except Exception:
         # An unexpected compiler failure aborts the run; it must not become a
         # partial expectation pass or expose exception text in the receipt.
         raise RuntimeError("qualification_operation_failed") from None
 
-    # Only the fixed, source-defined fictional cases are measured here. Keep a
-    # validated proposal so a compiler refusal can be diagnosed without another
-    # model request. Invalid/unbounded provider objects never enter the report.
+    # Preserve only a bounded validated response, checked against the exact
+    # offset-preserving view supplied to the live compiler invocation.
+    proposal = measured.response
+    provider_outcome = measured.outcome
     observed_proposal = None
-    if provider_error is None:
+    validated = None
+    if provider_outcome == "response":
         try:
-            validated = validate_proposal(proposal, case["query"])
+            if len(measured.query_views) != 1:
+                raise ValueError("missing query view")
+            validated = validate_proposal(proposal, measured.query_views[0])
             observed_proposal = {"version": validated["version"], "status": validated["status"],
                 "question": validated["question"], "concepts": [
                     {"start": c["start"], "end": c["end"], "alternatives": list(c["alternatives"])}
@@ -120,14 +132,17 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
         except (ValueError, TypeError, KeyError):
             pass
 
-    actual_question = proposal.get("question") if type(proposal) is dict else None
-    actual_proposal_status = proposal.get("status") if type(proposal) is dict else None
+    actual_question = validated.get("question") if validated is not None else None
+    actual_proposal_status = validated.get("status") if validated is not None else None
     actual_hard = _hard_filters(result.filters)
-    compiler_called_once = fixed.calls == 1
-    status_ok = (provider_error is None
-                 and actual_proposal_status == case["expected_status"]
-                 and result.status == case["expected_status"])
-    question_ok = actual_question == case["expected_question"]
+    provider_not_needed = measured.calls == 0
+    provider_question = actual_question
+    if provider_not_needed and result.reason == "intent_date":
+        provider_question = "date"
+    status_ok = (result.status == case["expected_status"] and
+                 ((actual_proposal_status == case["expected_status"] and provider_outcome == "response") or
+                  (provider_not_needed and case["expected_status"] == "clarification")))
+    question_ok = provider_question == case["expected_question"]
     hard_ok = actual_hard == case["expected_hard_filters"]
 
     evidence_checks = []
@@ -138,19 +153,24 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
             evidence_checks, evidence_ok = _evaluate_evidence(case, description)
         else:
             evidence_ok = False
-    met = status_ok and question_ok and hard_ok and evidence_ok and compiler_called_once
+    invoked_at_most_once = measured.calls <= 1
+    met = status_ok and question_ok and hard_ok and evidence_ok and invoked_at_most_once
     return {
         "case_id": case["id"],
         "cohort": case["cohort"],
-        "provider_call_count": provider_calls,
+        "provider_call_count": measured.calls,
+        "provider_attempt_count": measured.calls,
+        "provider_response_count": int(provider_outcome == "response"),
+        "provider_refusal_count": int(provider_outcome == "intent_unavailable"),
+        "provider_error_count": int(provider_outcome == "adapter_error"),
         "provider_outcome": provider_outcome,
-        "provider_error": provider_error,
-        "elapsed_ms": elapsed_ms,
+        "provider_error": measured.error,
+        "elapsed_ms": measured.elapsed_ms,
         "expected_status": case["expected_status"],
         "actual_proposal_status": actual_proposal_status,
         "actual_proposal": observed_proposal,
         "expected_question": case["expected_question"],
-        "actual_question": actual_question,
+        "actual_question": provider_question,
         "actual_plan_status": result.status,
         "plan_reason": result.reason,
         "expected_hard_filters": case["expected_hard_filters"],
@@ -161,14 +181,15 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
         "hard_filters_preserved": hard_ok,
         "evidence_checks": evidence_checks,
         "evidence_expectations_met": evidence_ok,
-        "compiler_called_once": compiler_called_once,
+        "provider_invoked_at_most_once": invoked_at_most_once,
+        "provider_query_view": measured.query_views[0] if measured.query_views else None,
         "expectations_met": met,
-        "compiler_replay_calls": fixed.calls,
+        "plan_query_invocations": 1,
     }
 
 
 def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_counter) -> dict:
-    """Measure all fixed cases through one local proposal each and pure replay."""
+    """Measure all fixed cases through the real planner and at most one provider call."""
     fixed_now = now or datetime.combine(date.fromisoformat(NOW), datetime.min.time())
     if fixed_now.date().isoformat() != NOW:
         raise ValueError("qualification date must remain fixed")
@@ -186,8 +207,11 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
             "case_ids": [case["id"] for case in group],
             "attempted": len(members),
             "provider_calls": sum(row["provider_call_count"] for row in members),
+            "provider_responses": sum(row["provider_response_count"] for row in members),
+            "not_needed": sum(row["provider_outcome"] == "not_needed" for row in members),
             "timeouts_or_refusals": sum(row["provider_outcome"] == "intent_unavailable"
                                          for row in members),
+            "adapter_errors": sum(row["provider_outcome"] == "adapter_error" for row in members),
             "status": ("expectations_met" if len(members) == len(group)
                        and all(row["expectations_met"] for row in members)
                        else "expectations_missed" if len(members) == len(group)
@@ -197,12 +221,16 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
     complete = len(results) == len(CASES)
     return {
         "status": "complete_synthetic_measurement" if complete else "incomplete",
-        "policy_version": POLICY_VERSION,
+        "policy_version": QUALIFICATION_POLICY_VERSION,
         "cases_sha256": cases_digest(),
         "expected_case_count": len(CASES),
         "attempted_case_count": len(results),
         "provider_call_count": sum(row["provider_call_count"] for row in results),
+        "provider_attempt_count": sum(row["provider_attempt_count"] for row in results),
         "provider_response_count": sum(row["provider_outcome"] == "response" for row in results),
+        "provider_refusal_count": sum(row["provider_outcome"] == "intent_unavailable" for row in results),
+        "provider_error_count": sum(row["provider_outcome"] == "adapter_error" for row in results),
+        "provider_not_needed_count": sum(row["provider_outcome"] == "not_needed" for row in results),
         "timeouts_or_refusals": sum(row["provider_outcome"] == "intent_unavailable"
                                      for row in results),
         "adapter_errors": sum(row["provider_outcome"] == "adapter_error" for row in results),
@@ -259,7 +287,7 @@ def _write_private_report(target: Path, report: dict) -> None:
 def _arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true",
-                        help="explicitly run the twelve synthetic local-model proposals")
+                        help="run the twelve synthetic cases through local intent planning")
     parser.add_argument("--url")
     parser.add_argument("--model")
     parser.add_argument("--out")

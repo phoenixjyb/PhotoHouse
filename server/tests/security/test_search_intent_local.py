@@ -1,5 +1,6 @@
 """Offline transport and lifecycle checks for the opt-in local intent adapter."""
 import json
+from datetime import datetime
 from pathlib import Path
 import sys
 import threading
@@ -11,7 +12,7 @@ from httpx import SyncByteStream
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
 
-from app.access.search_intent import IntentUnavailable
+from app.access.search_intent import IntentUnavailable, plan_query
 from app.access.search_intent_local import (INTENT_CONTEXT_TOKENS, LocalIntentPlanner,
                                             MAX_PROVIDER_BYTES)
 
@@ -42,6 +43,57 @@ class LocalIntentPlannerTests(unittest.TestCase):
         return LocalIntentPlanner(url, 'intent-local',
                                   transport=httpx.MockTransport(handler), **kwargs)
 
+    def test_compiler_sends_only_visible_scenes_and_retains_original_hard_conditions(self):
+        query = 'find videos of Mira on 2031-12-04 carrying a yellow suitcase containing "secret notes"'
+        seen = []
+        def handler(request):
+            body = json.loads(request.content)
+            visible = json.loads(body['messages'][1]['content'])['query']
+            seen.append(visible)
+            self.assertEqual(len(query), len(visible))
+            for hidden in ('Mira', '2031-12-04', 'videos', 'secret notes'):
+                self.assertNotIn(hidden, visible)
+            for surface in ('carrying', 'yellow suitcase'):
+                start = query.index(surface)
+                self.assertEqual(surface, visible[start:start + len(surface)])
+            proposal = {'version': 1, 'status': 'ready', 'question': None, 'concepts': [
+                {'surface': 'carrying', 'alternatives': ['carrying', 'carried', '提着']},
+                {'surface': 'yellow suitcase', 'alternatives': ['yellow suitcase', '黄色行李箱']},
+            ]}
+            return httpx.Response(200, json={'model': 'intent-local', 'done': True,
+                'message': {'role': 'assistant', 'content': json.dumps(proposal)}})
+        planner = self.planner(handler, url='http://127.0.0.1:11434/api/chat')
+        result = plan_query(query, now=datetime(2032, 9, 14), previous_filters=None,
+            entities={'binding': 'a' * 64, 'enabled': ['people', 'date', 'media', 'text'],
+                      'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                      'labels': ['Mira'], 'ambiguous': False}, planner=planner)
+        self.assertEqual('ready', result.status, result)
+        self.assertEqual(1, len(seen))
+        self.assertEqual({'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                          'date': {'from': '2031-12-04', 'to': '2031-12-04'},
+                          'text': 'secret notes'},
+                         {key: value for key, value in result.filters.items() if key != 'descriptive'})
+        self.assertEqual(['carrying', 'yellow suitcase'],
+                         [c['surface'] for c in result.filters['descriptive']['concepts']])
+
+    def test_provider_cannot_choose_person_date_scope_or_actions(self):
+        for endpoint in ('/api/chat', '/api/generate'):
+            for status, question in (('clarification', 'date'), ('clarification', 'person'),
+                                     ('clarification', 'scope'), ('unsupported', 'unsupported_action')):
+                with self.subTest(endpoint=endpoint, question=question):
+                    proposal = {'version': 1, 'status': status, 'concepts': [], 'question': question}
+                    def handler(request):
+                        content = json.dumps(proposal)
+                        body = {'model': 'intent-local', 'done': True}
+                        if endpoint == '/api/chat':
+                            body['message'] = {'role': 'assistant', 'content': content}
+                        else:
+                            body['response'] = content
+                        return httpx.Response(200, json=body)
+                    with self.assertRaises(IntentUnavailable):
+                        self.planner(handler, url='http://127.0.0.1:11434' + endpoint).propose(
+                            'find red cake', '2032-09-14', False)
+
     def assert_schema_contract(self, schema):
         self.assertEqual('object', schema['type'])
         self.assertIs(schema['additionalProperties'], False)
@@ -51,11 +103,10 @@ class LocalIntentPlannerTests(unittest.TestCase):
                          set(schema['required']))
         self.assertEqual({'type': 'integer', 'const': 1}, schema['properties']['version'])
         self.assertEqual({'type': 'string',
-                          'enum': ['ready', 'clarification', 'unsupported']},
+                          'enum': ['ready', 'clarification']},
                          schema['properties']['status'])
         self.assertEqual({'type': ['string', 'null'],
-                          'enum': [None, 'date', 'person', 'description', 'scope',
-                                   'unsupported_action']}, schema['properties']['question'])
+                          'enum': [None, 'description']}, schema['properties']['question'])
         concepts = schema['properties']['concepts']
         self.assertEqual(('array', 6), (concepts['type'], concepts['maxItems']))
         self.assertEqual(('object', False),
