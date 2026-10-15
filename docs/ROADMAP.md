@@ -119,7 +119,11 @@ pass; installed v63 owner/member acceptance remains. The next source increment a
 [chapter-opening title shortcut](CHAPTER_OPENING_TITLE.md) for new Web/phone
 stories, including reviewed dictation and private drafts. It takes literal
 chapter text, preserves manual titles until adoption and requires a future
-served/signed release. Then qualify grounded
+served/signed release. The next increment adds a
+[proposal wording review summary](STORY_PROPOSAL_WORDING_REVIEW.md): compare
+chapters against the current saved revision and focus on different prose while
+keeping references and questions available. It remains review-only source,
+without provider activation. Then qualify grounded
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
 
