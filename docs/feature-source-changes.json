@@ -17089,6 +17089,41 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "v61-guided-story-delivery-and-current-docs",
+      "source_commit": "8f4690506106cb156f1bf4cc346c82b1da70357b",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "22a9dfa0524a4f677b885307f30232d9b44ef9c935a12e0f9e9c6911c1350a04"
+        },
+        {
+          "path": "README.md",
+          "before_sha256": "11ddc4ab95dae86ca3e8f16a6df89ee971ad5691b6010354c14fac90de9b502c",
+          "sha256": "86e425730e577935faaf774b0c46cf301e73ae363c4a7056a001006d8bfb16f9"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "1eac64c54f8b929ab771b33d688e9886290b2ef76bc71be38509b36e2dfed1c8",
+          "sha256": "4a9e8e0f71a9edcb7a42a0b009fa3eb06d2daf8cab39b08b181f68f0da5c7359"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "3c80790d86021a87c9d74446074b668fbccf39ee3058423e072ec7f92b40d639",
+          "sha256": "e15d6db8818e66811339455e35ac7554ed6f6f42b216985f422d58bf22688ff2"
+        },
+        {
+          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
+          "before_sha256": "10003bbd3daa7980338daac64e23c4f09575b8036f962fda7886202f8c8cd785",
+          "sha256": "299838e5747c45862fa771018253387f7d0047cfed7473a20022bbe51e05023f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

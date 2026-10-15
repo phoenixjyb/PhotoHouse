@@ -1,41 +1,35 @@
 # Current project status
 
-Reviewed **2026-10-15 after the v60 release**. API/Web source
-`53e3954725197906771b6dd6ca470a0d1d58da9d` is deployed, and phone
-**v60 / 0.60-reading-comfort** is signed and published on Windows HTTPS OTA.
-The API switch completed at 07:48 Beijing; independent task/backup verification
-and Mac HTTPS checks passed at 07:50. TV OTA remains v30. Physical phone
-installation and real-family acceptance are separate next steps.
-
-## Subsequent source candidates
-
-Guided first-story creation is progressing separately from the active search
-redesign. Web source `259c178` and subsequent native phone parity provide
-selection → wording/dictation → literal review → explicit save, with retained
-Back navigation and the existing immutable uncertain-save retry. The
-[phone guide](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) describes the
-flow and the remaining durable-draft boundary. This is source work; the v60
-release snapshot above is not changed by it.
+Reviewed **2026-10-15 after the v61 delivery**. API/Web source
+`8f4690506106cb156f1bf4cc346c82b1da70357b` is deployed, and phone
+**v61 / 0.61-guided-stories** is signed and published on Windows HTTPS OTA.
+The guarded API switch completed at 13:30 Beijing, with backup, readback and
+worker restoration verified. Phone native/complete HTTPS verification followed;
+TV remains v30. Physical installation and family acceptance remain open.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `53e3954`, 201-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
-| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
-| Phone | v60 signed with original certificate/artwork, published and completely read back over trusted HTTPS | Installation and physical reading/listening trial |
-| TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
-| Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | Monorepo is the development home; exact package provenance and ordered source overlays retained | Remote refs and hosted CI not refreshed by this release |
-| Following UX | Fictional three-step first-story prototype passes responsive/large-text checks outside the v60 archive | Design review and production implementation |
+| API/Web | `8f46905`, 203-file archive; native qualification, guarded backup/cutover, served bytes and anonymous denials passed | Real owner/member UX and voice acceptance |
+| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified, no migration | Later feature activation and recovery qualification |
+| Phone | v61 original certificate/artwork, native and complete trusted HTTPS download verified | Samsung installation and family trial |
+| Guided stories | Web profile passed; seven final-source emulator journeys passed in Chinese/English at 150% text | Real-library create/save/reopen trial; durable private drafts |
+| TV | v30 feed unchanged | Projector/library/playback check; Home TV requires desktop session |
+| Introduction website | Cartoon/fictional public introduction delivered previously | Family/design feedback; [record](../website/RELEASE_2026-10-14.md) |
+| Search v2 | Completed negotiated backend included | Web/phone/private-conversation clients, real relevance and private graph activation |
+| Public source | Monorepo remains development home; source provenance retained | Remote refs and hosted CI not refreshed here |
 
-The [v60 release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
-binds exact APK/archive/certificate hashes, native qualification and delivery.
-v59 remains an unused earlier frozen proposal; it was not published.
+The [v61 release and trial](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
+binds exact archive/APK hashes, qualification reuse and delivery. The
+[v60 record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md) remains history;
+v59 was not published. The [phone guide](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md)
+describes the shipped selection → wording/dictation → literal review → explicit
+save flow and its process-memory draft boundary.
 
 ## Current search issue and local fix
 
-The next source increment adds an optional [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
+The delivered source includes an optional, inactive [private kinship provider](PRIVATE_KINSHIP_SEARCH.md)
 for search v2. It binds an explicit library/account allowlist and chosen
 perspective, resolves bilingual relative chains only to current reviewed
 identities, and invalidates contexts on graph/perspective/access changes.
@@ -50,14 +44,14 @@ confirmed account/library/person bindings, client perspective display and the
 separate server delivery gate. No account creation or live permission change is
 implied by source checks or a private draft.
 
-The next local source increment adds an explicitly negotiated search-v2 API
+The delivered source includes an explicitly negotiated search-v2 API
 slice joining eligible current captions, saved photo memories and reviewed
 people with existing date/media/place constraints. It uses a request-time
 protected projection, separate source-bound contexts, authored-evidence-first
 ordering and provenance reasons. Default v1 clients retain their wire contract.
-See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Work is isolated on
-`codex/search-redesign-20261015`; the concurrent story branch is separate.
-This is not deployed or enabled in Web/phone/private-workspace clients. Real
+See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Completed backend source is merged into the story release; the ongoing client work
+remains separate on `codex/search-redesign-20261015`.
+Version 2 is not enabled in the released Web/phone/private-workspace clients. Real
 index readiness, video date bases, local semantic understanding and relevance
 qualification remain ahead.
 
@@ -77,7 +71,8 @@ profile evidence to a different source revision.
 A later read-only owner-requested investigation confirmed ASR/turn intake but
 weak deterministic query parsing and missing searchable fields in the inspected
 library index. Its active fields are date, reviewed locations and media; stored
-captions and confirmed face records are not yet part of this assistant index.
+captions and confirmed face records are not part of the released v1 client index;
+the negotiated v2 backend has separate eligibility and source checks.
 Unknown capture dates also cause date queries to omit videos. Private transcripts
 and aggregate household coverage are retained outside Git.
 
@@ -142,8 +137,8 @@ for any separately scoped source repair.
   five-worker restoration, original-certificate signing and full native/HTTPS
   phone APK readback. Independent Mac manifest/UI check passed.
 
-Next: install v60 and run owner/member reading and continuous-voice trials; then
-implement the reviewed first-story flow. Long recording intake, model quality,
+Next: install v61 and run guided-story, owner/member reading and continuous-voice trials; then
+add durable private-draft saving/resume. Long recording intake, model quality,
 TV v31 delivery and broader narrative/grouping activation retain separate gates.
 
 ## Earlier progress notes
@@ -254,7 +249,7 @@ The [read-only package inspector](API_PACKAGE_INSPECTION.md) verifies a pinned
 canonical API archive against local committed Git blobs, with no extraction or
 candidate execution. Its 26 generated checks passed. Final integrated full
 profiles and exact release artifacts are recorded separately when complete.
-The live v58/TV v30 snapshot above remains the latest runtime evidence; these
+The historical v58/TV v30 snapshot above predates the v61 delivery recorded at the top; these
 source additions have not changed Windows services, data or feeds.
 
 

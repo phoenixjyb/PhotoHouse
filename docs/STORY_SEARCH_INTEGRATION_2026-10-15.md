@@ -42,11 +42,13 @@ The source verifier must accept the final combined tree.
 
 ## Delivery boundary
 
-Phone version 61 is reserved for this combined candidate. Local source/profile,
-package, Windows qualification, live API switch, release signing/OTA publication
-and family/device acceptance are separate gates. No dated v60 controller or
-one-time authorization may be replayed for this candidate. Production operations
-need a new exact source/package plan with backup, verification and rollback.
+Final release source is `8f4690506106cb156f1bf4cc346c82b1da70357b`. API/Web is
+deployed and phone v61 is signed and published, with native/complete HTTPS
+readback, original icon/certificate and unchanged TV v30 verified.
+[The release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
+distinguishes full profile sources, exact component reuse, native qualification,
+guarded deployment and the still-open family/device acceptance. The unfinished
+search clients were excluded according to the owner's chosen release scope.
 
 ## Qualification repair
 

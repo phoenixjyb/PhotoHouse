@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 15 v60 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 15 v61 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
@@ -12,8 +12,9 @@ guided story creation now proceed in separate source worktrees. Fix ordinary
 query forms, connect existing text/confirmed people to scoped retrieval, restore
 useful video-date evidence and then qualify typed local language understanding
 and relevance ranking. See the [search diagnosis and implementation plan](ASSISTANT_SEARCH_REVIEW_2026-10-15.md).
-The current local parser/coverage-message patch is not yet deployed. v60 device
-feedback remains useful, while the broader sections below retain the backlog.
+The parser/coverage-message patch and completed negotiated backend are deployed
+with v61. Search v2 client integration and relevance qualification remain open;
+the broader sections below retain the backlog.
 
 The [first negotiated text/person API slice](ASSISTANT_JOINT_SEARCH_V2.md) now
 joins current photo notes/captions and reviewed identities in a protected,
@@ -24,7 +25,8 @@ results do not establish real-library readiness or relevance.
 
 ## 1. Accept the delivered experience
 
-Run the [v60 phone/Web trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
+Run the [v61 guided-story trial](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md),
+then the still-relevant [voice/reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
 with owner and member accounts: fresh saved-story search, opening the right card,
 reading its saved sections, actual playback before Continue/relistening, Pause/End,
 account/library change and recovery. Complete TV v30's physical named-library and playback
@@ -46,9 +48,9 @@ acceptance remain in the trial above.
 
 ## 2. Make assistant reading and conversation fluid
 
-API/Web `53e3954` and phone v60 are delivered with complete local/native
+API/Web `8f46905` and phone v61 are delivered with local/native
 qualification, verified backup, worker restoration and original-certificate OTA
-readback. The [release record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
+readback. The [release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
 records exact artifacts; family acceptance remains ahead of broader narration.
 
 v60 includes [temporary reading-size controls](READER_TEXT_SIZE.md),
@@ -85,8 +87,9 @@ source and immutable-save/retry contracts. They retain one shared narrator
 statement without copying it into every photo's original memory.
 See the [Web contract](STORY_FIRST_GUIDE.md) and
 [phone tutorial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md).
-Source/emulator qualification does not imply a deployed Web release or published
-phone APK. Integrate independently developed search changes before release.
+This guide is now delivered in Web and phone v61, with full Web and seven
+final-source emulator journeys verified. Family/device acceptance remains open.
+Search v2 client integration will be delivered separately.
 
 Next add explicit private draft saving/resume across process loss, then qualify
 source-grounded title/narrative suggestions. Current Back navigation preserves

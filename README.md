@@ -7,18 +7,17 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 
 ## 现在在哪里
 
-截至 **2026-10-15** 的只读核对：API/Web v58 对应源码已部署，手机 **v58** 已签名并发布到
-Windows HTTPS OTA，TV OTA 保持 **v30**。原图标和签名保留。手机安装、家庭实际
-语音体验与投影仪检查仍需验证；发布成功不等于这些体验已验收。
+截至 **2026-10-15 13:56（北京时间）**，API/Web 源码 `8f46905` 已部署，手机
+**v61 / 0.61-guided-stories** 已用原证书签名并发布到 Windows HTTPS OTA，
+完整 APK 下载核验通过；TV 保持 **v30**，原图标保留。
 
-下一份 v59 候选已完成本地 API、Android 和完整 Web 检查，等待本次 Windows
-验证、服务切换和签名发布授权；[v59 验收清单](clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md)
-区分已保存首章／引言分段朗读、连续语音、恢复和实体设备听感。
+本轮增加手机/Web **讲一个故事**：挑选画面 → 讲述回忆 → 检查保存。
+[发布与试用说明](clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)记录确切包、
+模拟器和 Windows 证据；实体手机安装、家庭语音与投影仪体验仍需实际验证。
 
-[当前状态](docs/PROJECT_STATUS.md)记录源码、运行配置及验收边界，
-[v58 试用说明](clients/android/docs/PHONE_V58_TEST_GUIDE_ZH.md)给出已核对的语音短句。
-源码检验、托管 CI、APK、服务及实体设备是独立证据；本次文档审查没有刷新远端
-GitHub 分支/CI 状态，也没有自动发布当前工作分支。
+[当前状态](docs/PROJECT_STATUS.md)区分源码、服务与家庭验收。
+搜索 v2 后端契约已包含，Web/手机/私人会话的 v2 客户端改造留待后续发布。
+托管 CI 的结果应绑定各 PR 的确切提交；本地和运行服务记录不能替代它。
 
 ## 产品体验
 
