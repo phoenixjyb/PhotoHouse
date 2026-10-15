@@ -13,7 +13,7 @@ from . import discovery as d
 from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _extract_dates,
                                    _consumed_label, _valid_previous, _strip_prefix)
 from .kinship import SELECTORS
-from .search_refinement import plan_query as literal_plan, query_mode
+from .search_refinement import _operations, plan_query as literal_plan, query_mode
 from .search_description import normalize_description
 from .search_pending import _AGE_PHRASE
 
@@ -35,6 +35,11 @@ _INTENT_OPEN = re.compile(
     r'^\s*(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|i\s+would\s+like\s+to\s+see|'
     r'do\s+we\s+have|can\s+you\s+pull\s+up|where\s+are(?:\s+those)?)(?a:\b)|'
     r'(?:请)?(?:我想看看|我想看|我想找|想找|想看|有没有|还有没有))\s*', re.I)
+_DESCRIPTIVE_CORRECTIONS = (
+    re.compile(r'^\s*not(?a:\b)\s*(?P<old>.+?)\s*[,，]?\s*but(?a:\b)\s*(?P<new>.+?)\s*$', re.I),
+    re.compile(r'^\s*不是\s*(?P<old>.+?)\s*[，,]?\s*(?:而)?是\s*(?P<new>.+?)\s*$'),
+)
+_CORRECTION_EDGE = ' \t\r\n,，;；、。.!！?？:'
 
 
 def intent_mode(words):
@@ -122,6 +127,148 @@ def _media(surface):
     return tuple(kind for kind, pattern in _MEDIA if pattern.search(d.fold(surface)))
 
 
+def _descriptive_correction_parts(words):
+    """Return exact paired correction surfaces without normalizing NEW."""
+    for pattern in _DESCRIPTIVE_CORRECTIONS:
+        match = pattern.fullmatch(words)
+        if match is None:
+            continue
+        old = match.group('old').strip(_CORRECTION_EDGE)
+        new = match.group('new').strip(_CORRECTION_EDGE)
+        if old and new:
+            return old, new
+    return None
+
+
+def _correction_consumes_label(words, entities):
+    """Keep paired syntax and stripped edge punctuation from shadowing labels."""
+    for pattern in _DESCRIPTIVE_CORRECTIONS:
+        match = pattern.fullmatch(words)
+        if match is None:
+            continue
+        masked = [' '] * len(words)
+        for name in ('old', 'new'):
+            start, end = match.span(name)
+            while start < end and words[start] in _CORRECTION_EDGE:
+                start += 1
+            while end > start and words[end - 1] in _CORRECTION_EDGE:
+                end -= 1
+            masked[start:end] = words[start:end]
+        return _consumed_label(d.fold(words), d.fold(''.join(masked)),
+                               entities.get('labels', []))
+    return False
+
+
+def _compile_plan(words, *, now, entities, previous_search, hard_previous,
+                  refine, kept, planner):
+    """Compile one source query through the closed descriptive-span checks."""
+    grammar_words = _INTENT_OPEN.sub(lambda match: ' ' * len(match.group(0)), words)
+    original = literal_plan(grammar_words, now=now, entities=entities,
+                            previous_filters=hard_previous, refine=refine)
+    quoted = list(_QUOTE.finditer(words))
+    updates = literal_plan(grammar_words, now=now, entities=entities,
+                           previous_filters={} if refine else None, refine=refine)
+    if original.status == 'ready' and ('text' not in updates.filters or quoted):
+        filters = dict(original.filters)
+        if refine and 'descriptive' in kept:
+            filters['descriptive'] = kept['descriptive']
+        return QueryPlan(3, 'ready', filters)
+    if original.status != 'ready' and original.reason not in ('unsupported_condition', 'missing_conditions',
+                                                            'incomplete_people_relation'):
+        return QueryPlan(3, 'clarification', kept, original.reason)
+    if planner is None:
+        return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
+    try:
+        suggestion = validate_proposal(planner.propose(words, now.date().isoformat(), previous_search), words)
+    except IntentUnavailable:
+        return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
+    except ValueError:
+        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
+    if suggestion['status'] != 'ready':
+        return QueryPlan(3, suggestion['status'], kept, 'intent_' + suggestion['question'])
+    masked = list(grammar_words)
+    for concept in suggestion['concepts']:
+        start, stop = concept['start'], concept['end']
+        if any(start < quote.end() and stop > quote.start() for quote in quoted):
+            return QueryPlan(3, 'clarification', kept, 'invalid_intent')
+        masked[start:stop] = ' ' * (stop - start)
+    residue = ''.join(masked)
+    if (_kinship_hits(grammar_words) != _kinship_hits(residue) or
+            _vague_date_hits(grammar_words) != _vague_date_hits(residue)):
+        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
+    original_surface, hard_surface = _hard_surface(words), _hard_surface(residue)
+    labels = entities.get('labels', [])
+    if _consumed_label(d.fold(original_surface), d.fold(hard_surface), labels):
+        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
+    dates, _, date_error = _extract_dates(d.fold(original_surface), now.date())
+    remaining_dates, _, remaining_error = _extract_dates(d.fold(hard_surface), now.date())
+    if ((dates, date_error) != (remaining_dates, remaining_error)
+            or _media(original_surface) != _media(hard_surface)
+            or bool(_NEGATION.search(original_surface)) != bool(_NEGATION.search(hard_surface))):
+        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
+    hard = (literal_plan(residue, now=now, entities=entities,
+                         previous_filters=hard_previous, refine=refine) if residue.strip() else
+            QueryPlan(1, 'ready', dict(hard_previous or {}) if refine else {}))
+    if hard.status != 'ready' and hard.reason != 'missing_conditions':
+        return QueryPlan(3, 'clarification', kept, hard.reason)
+    filters = dict(hard.filters) if hard.status == 'ready' else dict(hard_previous or {}) if refine else {}
+    filters['descriptive'] = {'version': 1, 'concepts': [
+        {'surface': item['surface'], 'alternatives': item['alternatives']}
+        for item in suggestion['concepts']]}
+    return QueryPlan(3, 'ready', filters)
+
+
+def _plan_descriptive_correction(old, new, *, now, entities, previous,
+                                 hard_previous, planner):
+    """Replace one exact saved descriptive surface, preserving all hard slots."""
+    from .search_text import normalize_text
+
+    prior_description = normalize_description(previous['descriptive'])
+    old_key = normalize_text(old)
+    matching = [index for index, concept in enumerate(prior_description['concepts'])
+                if normalize_text(concept['surface']) == old_key]
+    if not matching:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_mismatch')
+    if len(matching) != 1:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_ambiguous')
+    for part in (old, new):
+        folded = d.fold(part)
+        if _consumed_label(folded, ' ' * len(folded), entities.get('labels', [])):
+            return QueryPlan(3, 'clarification', dict(previous), 'ambiguous_entities')
+    if _QUOTE.search(new) or any(mark in new for mark in '“”"'):
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_unsupported')
+    _, _, removed, references = _operations(new)
+    if (_ACTION.match(new.strip()) or _REMOVAL.fullmatch(new.strip()) or removed or references):
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_unsupported')
+
+    # Interpret NEW without inherited slots. Otherwise a phrase such as
+    # "blue coat photos" could silently reassert a prior media filter and
+    # appear descriptor-only merely because its value did not change.
+    compiled = _compile_plan(new, now=now, entities=entities,
+                             previous_search=False, hard_previous=None,
+                             refine=False, kept={}, planner=planner)
+    if compiled.status != 'ready':
+        reason = compiled.reason
+        if reason == 'intent_unavailable':
+            return QueryPlan(3, 'clarification', dict(previous), reason)
+        return QueryPlan(3, 'clarification', dict(previous),
+                         'description_correction_unsupported')
+    if set(compiled.filters) != {'descriptive'}:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_unsupported')
+    replacement = compiled.filters.get('descriptive')
+    if type(replacement) is not dict or len(replacement.get('concepts', ())) != 1:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_unsupported')
+    concepts = [dict(concept) for concept in prior_description['concepts']]
+    concepts[matching[0]] = replacement['concepts'][0]
+    filters = dict(hard_previous or {})
+    filters['descriptive'] = {'version': 1, 'concepts': concepts}
+    try:
+        filters['descriptive'] = normalize_description(filters['descriptive'])
+    except ValueError:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_correction_unsupported')
+    return QueryPlan(3, 'ready', filters)
+
+
 def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     """Plan v3 through current authorized entities and a separately supplied LLM.
 
@@ -169,56 +316,32 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     grammar_words = _INTENT_OPEN.sub(lambda match: ' ' * len(match.group(0)), words)
     if _consumed_label(d.fold(words), d.fold(grammar_words), entities.get('labels', [])):
         return QueryPlan(3, 'clarification', kept, 'ambiguous_entities')
-    original = literal_plan(grammar_words, now=now, entities=entities,
-                            previous_filters=hard_previous, refine=refine)
-    quoted = list(_QUOTE.finditer(words))
-    updates = literal_plan(grammar_words, now=now, entities=entities,
-                           previous_filters={} if refine else None, refine=refine)
-    if original.status == 'ready' and ('text' not in updates.filters or quoted):
-        filters = dict(original.filters)
-        if refine and 'descriptive' in kept:
-            filters['descriptive'] = kept['descriptive']
-        return QueryPlan(3, 'ready', filters)
-    if original.status != 'ready' and original.reason not in ('unsupported_condition', 'missing_conditions',
-                                                            'incomplete_people_relation'):
-        return QueryPlan(3, 'clarification', kept, original.reason)
-    if planner is None:
-        return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
-    try:
-        suggestion = validate_proposal(planner.propose(words, now.date().isoformat(), previous is not None), words)
-    except IntentUnavailable:
-        return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
-    except ValueError:
-        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
-    if suggestion['status'] != 'ready':
-        return QueryPlan(3, suggestion['status'], kept, 'intent_' + suggestion['question'])
-    masked = list(grammar_words)
-    for concept in suggestion['concepts']:
-        start, stop = concept['start'], concept['end']
-        if any(start < quote.end() and stop > quote.start() for quote in quoted):
-            return QueryPlan(3, 'clarification', kept, 'invalid_intent')
-        masked[start:stop] = ' ' * (stop - start)
-    residue = ''.join(masked)
-    if (_kinship_hits(grammar_words) != _kinship_hits(residue) or
-            _vague_date_hits(grammar_words) != _vague_date_hits(residue)):
-        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
-    original_surface, hard_surface = _hard_surface(words), _hard_surface(residue)
-    labels = entities.get('labels', [])
-    if _consumed_label(d.fold(original_surface), d.fold(hard_surface), labels):
-        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
-    dates, _, date_error = _extract_dates(d.fold(original_surface), now.date())
-    remaining_dates, _, remaining_error = _extract_dates(d.fold(hard_surface), now.date())
-    if ((dates, date_error) != (remaining_dates, remaining_error)
-            or _media(original_surface) != _media(hard_surface)
-            or bool(_NEGATION.search(original_surface)) != bool(_NEGATION.search(hard_surface))):
-        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
-    hard = (literal_plan(residue, now=now, entities=entities,
-                         previous_filters=hard_previous, refine=refine) if residue.strip() else
-            QueryPlan(1, 'ready', dict(hard_previous or {}) if refine else {}))
-    if hard.status != 'ready' and hard.reason != 'missing_conditions':
-        return QueryPlan(3, 'clarification', kept, hard.reason)
-    filters = dict(hard.filters) if hard.status == 'ready' else dict(hard_previous or {}) if refine else {}
-    filters['descriptive'] = {'version': 1, 'concepts': [
-        {'surface': item['surface'], 'alternatives': item['alternatives']}
-        for item in suggestion['concepts']]}
-    return QueryPlan(3, 'ready', filters)
+    correction = _descriptive_correction_parts(words)
+    if correction is not None:
+        old, new = correction
+        if _correction_consumes_label(words, entities):
+            return QueryPlan(3, 'clarification', dict(previous or {}), 'ambiguous_entities')
+        # The v2 correction wrapper remains authoritative for media/date slot
+        # updates and for invalid input, resolver, quote, and calendar errors.
+        # Only its closed unsupported-correction result is eligible here.
+        checked = literal_plan(words, now=now, entities=entities,
+                               previous_filters=hard_previous, refine=refine)
+        if checked.status == 'ready':
+            filters = dict(checked.filters)
+            if refine and 'descriptive' in kept:
+                filters['descriptive'] = kept['descriptive']
+            return QueryPlan(3, 'ready', filters)
+        if checked.reason not in {'unsupported_correction', 'unsupported_condition',
+                                  'unsupported_negation'}:
+            return QueryPlan(3, 'clarification', dict(previous or {}), checked.reason)
+        if previous is None or 'descriptive' not in previous:
+            return QueryPlan(3, 'clarification', dict(previous or {}),
+                             'description_correction_target_unavailable')
+        return _plan_descriptive_correction(
+            old, new, now=now, entities=entities, previous=previous,
+            hard_previous=hard_previous, planner=planner)
+
+    return _compile_plan(words, now=now, entities=entities,
+                         previous_search=previous is not None,
+                         hard_previous=hard_previous, refine=refine,
+                         kept=kept, planner=planner)

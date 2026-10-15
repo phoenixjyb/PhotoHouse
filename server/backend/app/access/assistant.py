@@ -762,6 +762,18 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'conflicting_people_reference':
                 reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
                          'Keep the selected people or change the people filter in a separate request.')
+            elif plan.reason == 'description_correction_mismatch':
+                reply = ('要更正的场景线索与当前查找不一致。请使用查找摘要中显示的原线索。' if lang == 'zh' else
+                         'That scene clue does not match the current search. Use the original clue shown in the search summary.')
+            elif plan.reason == 'description_correction_ambiguous':
+                reply = ('有多个相同的场景线索，无法确定要更正哪一个。请重新描述这次查找。' if lang == 'zh' else
+                         'More than one scene clue matches. Describe the full search again so the intended change is clear.')
+            elif plan.reason == 'description_correction_target_unavailable':
+                reply = ('当前查找没有可更正的场景线索。请先查找一个具体场景。' if lang == 'zh' else
+                         'The current search has no scene clue to correct. Search for a specific scene first.')
+            elif plan.reason == 'description_correction_unsupported':
+                reply = ('请一次更正一个场景线索，例如“不是红外套，是蓝外套”。人物和日期请分别调整。' if lang == 'zh' else
+                         'Correct one scene clue at a time, for example “not red coat, but blue coat”. Change people and dates separately.')
             elif plan.reason == 'correction_target_unavailable':
                 reply = ('当前查找还没有这个日期或媒体类型条件。请先明确要查找的日期或类型。' if lang == 'zh' else
                          'The current search has no such date or media filter to correct. Specify that filter first.')
