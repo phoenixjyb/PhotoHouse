@@ -17929,6 +17929,49 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "phone-v63-delivery-record-and-decoded-reader-fixture",
+      "source_commit": "7af906dc0b0129d878f880bf87d10f56def7cd70",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V63_RELEASE_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "da45ab9bfd4a91611881030188a8f7bd72b312975a9026cd34386076b1a11b31"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "037e4d994b84e9abb8328b21cf0f24c956df1ec1f4cd8a2726db1bf154a45d24",
+          "sha256": "7636258c6b878f727d32509d5b04fd1f7b536752b730a99b401f9d6332a3809e"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "595f782563d849b98c5126d8a9dee8ea0b57b03d27f29d2f0bba2d20f22f45ac",
+          "sha256": "59a7a79d63b9ec4ea36163f89ec34f572f79992a69223bc348b399e1142d523f"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "287366986ea549263863567b5297e3f0eeb75add1cc029e1418be7a043f975b1",
+          "sha256": "bf6e978607367c9b755580b3bc246a3190913c2e833b0462074be9c2e07482b9"
+        },
+        {
+          "path": "docs/STORY_DRAFT_RESUME.md",
+          "before_sha256": "707e66848c855b83233231236b4570fe7d85d09bb118b5035c1515a9828081ac",
+          "sha256": "5cd2e697a5f7ae86e13a7d64ddb45c2278759521ceb534c9e7bec7ce11fc67ed"
+        },
+        {
+          "path": "server/tests/security/test_story_reader_frames_browser.cjs",
+          "before_sha256": "9ee1d884a962f8f479ed3c0ccbfdc7db660815e41deecea06a3567814eac8bd4",
+          "sha256": "695665c5f75bc779873970e0246f22a109d2aa3fc612f0dae71354f96459803a"
+        }
+      ],
+      "application_source_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "deployed_source_commit": "975968ed8800493f9c1bd42688f21ca7f7348531",
+      "phone_version": 63,
+      "tv_changed": false,
+      "family_acceptance": false
     }
   ]
 }
