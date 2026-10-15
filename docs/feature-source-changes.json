@@ -19624,6 +19624,41 @@
       "schema_changed": false,
       "production_behavior_changed": false,
       "page_scroll_assertion_preserved": true
+    },
+    {
+      "feature": "descriptive-only-local-prompt-and-synthetic-proposal-diagnostics",
+      "source_commit": "d919a13dace973f70a62aba84cbeb3cbd675032c",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "0b6c27fd4f8781b013c5da8546fe00438a02e150c6730b86e2c14138c9c4dc6b",
+          "sha256": "753e2c11e814c8a80b681cf1a410caeaa652f5679b1ab23229f64658064c82aa"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "e9d20d5c00b422f807ec322ceacb5a6d612e308d1db340a7d11194fd0ac960cc",
+          "sha256": "d46d3375dfbd64016a12a7f4b2b4c0fcad9d6670f4c5df33e46a6a964be6ca95"
+        },
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": "eb96eab7384b8e2132e8ba1ea403dcf410c5dcf8e6dd965a0acc04086599d220",
+          "sha256": "82c71feed7ab058ba789f960e8cc0d64346ad5737513f2eee8431cfcf776711f"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_canary.py",
+          "before_sha256": "3b85bd60463c9434e901feb64192de2488c9b571bb7082800bbfc1893ac8df45",
+          "sha256": "2781d0fc96aea23494e8f1e5b5ef66741d833a21a4ad76bb79cc8fa4d2829098"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "production_response_logging_added": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

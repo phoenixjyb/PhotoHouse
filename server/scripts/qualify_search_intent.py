@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / "server" / "backend"))
 
 from app.access.private_storage import require_private_directory, require_private_file, sync_directory
 from app.access.search_description import match_description
-from app.access.search_intent import IntentUnavailable, POLICY_VERSION, plan_query
+from app.access.search_intent import IntentUnavailable, POLICY_VERSION, plan_query, validate_proposal
 from app.access.search_intent_local import LocalIntentPlanner
 from app.access.search_text import normalize_sources
 from search_intent_cases import CASES, NOW, cases_by_cohort, cases_digest
@@ -106,6 +106,20 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
         # partial expectation pass or expose exception text in the receipt.
         raise RuntimeError("qualification_operation_failed") from None
 
+    # Only the fixed, source-defined fictional cases are measured here. Keep a
+    # validated proposal so a compiler refusal can be diagnosed without another
+    # model request. Invalid/unbounded provider objects never enter the report.
+    observed_proposal = None
+    if provider_error is None:
+        try:
+            validated = validate_proposal(proposal, case["query"])
+            observed_proposal = {"version": validated["version"], "status": validated["status"],
+                "question": validated["question"], "concepts": [
+                    {"start": c["start"], "end": c["end"], "alternatives": list(c["alternatives"])}
+                    for c in validated["concepts"]]}
+        except (ValueError, TypeError, KeyError):
+            pass
+
     actual_question = proposal.get("question") if type(proposal) is dict else None
     actual_proposal_status = proposal.get("status") if type(proposal) is dict else None
     actual_hard = _hard_filters(result.filters)
@@ -134,6 +148,7 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
         "elapsed_ms": elapsed_ms,
         "expected_status": case["expected_status"],
         "actual_proposal_status": actual_proposal_status,
+        "actual_proposal": observed_proposal,
         "expected_question": case["expected_question"],
         "actual_question": actual_question,
         "actual_plan_status": result.status,
