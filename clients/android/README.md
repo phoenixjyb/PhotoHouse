@@ -2,10 +2,13 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The current source reserves phone app version **60** and TV app version **31**.
-The October 15 read-only runtime snapshot still has phone **58** and TV **30**
-on OTA. The frozen unsigned phone v59 is a separately qualified candidate;
-source version numbers do not establish signing or publication.
+The phone release baseline is **v64**; its exact source, signature and OTA checks
+are recorded in the [v64 release record](docs/PHONE_V64_RELEASE_2026-10-15.md).
+Following source includes search improvements and a metadata-only chapter memory
+chooser. These edits are not a new signed APK or OTA release. The current TV
+source reserves v31; the last recorded TV OTA remains v30. Use the dated
+[project status](../../docs/PROJECT_STATUS.md) and recheck the live feed before
+making a delivery claim.
 
 ## Projects
 
@@ -70,13 +73,13 @@ also has a separate, manually started chapter read-aloud control with its own
 pause/resume behavior. Wait for speech to finish before speaking; assistant
 streaming speech and interruption are later stages.
 
-The v59 source candidate adds explicit segmented assistant reading of a saved
+Earlier v59 source added explicit segmented assistant reading of a saved
 story's first chapter or a memoir introduction. Continue requires the preceding
 segment to finish playing and remains a separate tap; it does not advance to
-later chapters or open the microphone. The next v60 source adds temporary prose
+later chapters or open the microphone. Later v60 source added temporary prose
 size choices in the story/memoir readers, retaining the selected chapter and
-unsent contribution text. These additions have local generated checks and their
-own later delivery/device gates.
+unsent contribution text. These earlier checkpoints retain their original checks; later releases have
+separate delivery and device evidence.
 
 See the [v58 Chinese test guide](docs/PHONE_V58_TEST_GUIDE_ZH.md),
 [v58 release record](docs/PHONE_V58_RELEASE_2026-10-14.md),
@@ -85,12 +88,28 @@ See the [v58 Chinese test guide](docs/PHONE_V58_TEST_GUIDE_ZH.md),
 Candidate checks are in the [v59 guide](docs/PHONE_V59_TEST_GUIDE_ZH.md) and
 [v60 reading guide](docs/PHONE_V60_TEST_GUIDE_ZH.md).
 
+## Chapter family memory sources
+
+A saved story's **Manage chapter memories / 管理本章回忆** panel keeps selected
+source links in an unsaved draft. **Add family memory source / 添加家人回忆来源**
+explicitly reads accepted, consented candidates for that chapter. The picker
+shows byline, kind, submission time and optional recording duration; it does not
+use original text as a preview. More pages and a failed-page retry are explicit.
+Closing the picker keeps selections in the draft. Review an original through
+**View family memory / 查看家人回忆**, then choose **Save links / 保存关联**.
+
+Original words, recordings and transcripts remain separate records. No source
+selection starts AI generation. Changes of story/revision/account/library or
+reader lifetime fence delayed responses. Read the [shared chooser contract](../../docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md)
+for authorization, consent and atomic save requirements. Android qualification,
+signing, OTA delivery and family acceptance remain separate gates.
+
 ## Release and acceptance
 
 Source checks, debug APK assembly, a signed release, OTA publication,
-installation, and family/device acceptance are separate evidence. The v58
+installation, and family/device acceptance are separate evidence. The v64
 release record documents a signed phone APK and published phone update; it does
-not establish installation on the physical phone or family listening acceptance.
+not establish family acceptance of later source edits.
 TV OTA remains v30. The physical TV/projector check is pending. Do not treat a
 successful local check or APK assembly as release signing, installation, or
 acceptance.

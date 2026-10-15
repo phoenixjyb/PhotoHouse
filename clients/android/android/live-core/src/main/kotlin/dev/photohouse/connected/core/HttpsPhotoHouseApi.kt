@@ -916,6 +916,23 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         return try { ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, mutation.revision + 1, sourceReview) }
         finally { result.bytes.fill(0); body.fill(0) }
     }
+    override suspend fun savedMemoryStoryContributionCandidates(
+        token: Bearer, library: String, storyId: String, revision: Long, chapterId: String, page: Int,
+    ): MemoryContributionCandidatePage {
+        require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && revision > 0 &&
+            chapterId.matches(Regex("chapter-[1-6]")) && page in 1..100000)
+        val canonicalId = storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
+        val target = origin.url.newBuilder().addPathSegments("memory-community/v1/stories")
+            .addPathSegment(canonicalId).addPathSegment("contribution-candidates")
+            .addQueryParameter("library", library).addQueryParameter("revision", revision.toString())
+            .addQueryParameter("chapter_id", chapterId).addQueryParameter("page", page.toString()).build()
+        val result = packet(target, token, limit = MemoryCommunityResponseLimits.JSON_BYTES, method = "GET")
+        return try {
+            if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json")
+                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            ProtectedMemoryCommunityWire.contributionCandidates(result.bytes, canonicalId, library, revision, chapterId, page)
+        } finally { result.bytes.fill(0) }
+    }
     override suspend fun savedMemoryContributionDetail(
         token: Bearer, library: String, storyId: String, contributionId: String,
     ): MemoryContributionDetail {

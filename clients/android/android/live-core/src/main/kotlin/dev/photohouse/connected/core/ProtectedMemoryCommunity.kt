@@ -27,6 +27,15 @@ data class MemoryContributionPage(
     val storyId: String, val page: Int, val hasMore: Boolean, val canReview: Boolean,
     val canDelete: Boolean, val items: List<MemoryContribution>,
 )
+/** Metadata-only, chapter-scoped candidates. This intentionally has no original or consent fields. */
+data class MemoryContributionCandidate(
+    val id: String, val kind: String, val byline: String, val language: String,
+    val chapterId: String?, val createdAt: Long, val durationMs: Long?,
+)
+data class MemoryContributionCandidatePage(
+    val storyId: String, val libraryId: String, val revision: Long, val chapterId: String,
+    val page: Int, val pageSize: Int, val hasMore: Boolean, val items: List<MemoryContributionCandidate>,
+)
 data class MemoryContributionReceipt(
     val contribution: MemoryContribution, val canReview: Boolean, val canDelete: Boolean,
 )
@@ -222,6 +231,32 @@ internal object ProtectedMemoryCommunityWire {
         val items = arr(r["items"], 16).map { contribution(it).contribution }
         check(items.all { it.storyId == storyId } && items.map { it.id }.distinct().size == items.size)
         MemoryContributionPage(storyId, page, bool(r["has_more"]), bool(r["can_review"]), bool(r["can_delete"]), items)
+    }
+
+    fun contributionCandidates(
+        bytes: ByteArray, storyId: String, libraryId: String, revision: Long, chapterId: String, page: Int,
+    ): MemoryContributionCandidatePage = guarded {
+        check(revision > 0 && chapterId.matches(Regex("chapter-[1-6]")) && page in 1..100000)
+        val r = root(bytes)
+        obj(r, "version", "story_id", "library_id", "revision", "chapter_id", "page", "page_size", "has_more", "items")
+        check(int(r["version"], 1, 1) == 1 && uuid(str(r["story_id"], 36)) == storyId)
+        check(str(r["library_id"], 64) == libraryId && decimal(r["revision"], positive = true) == revision)
+        check(str(r["chapter_id"], 32) == chapterId && int(r["page"], 1, 100000) == page)
+        check(int(r["page_size"], 16, 16) == 16)
+        val items = arr(r["items"], 16).map { value ->
+            val item = obj(value, "id", "kind", "byline", "language", "chapter_id", "created_at", "duration_ms")
+            val id = uuid(str(item["id"], 36))
+            val kind = str(item["kind"], 8).also { check(it in setOf("text", "audio")) }
+            val byline = str(item["byline"], 256, blank = true, newline = true)
+            val language = str(item["language"], 8).also { check(it in languages) }
+            val boundChapter = nullableString(item["chapter_id"], 32)
+            check(boundChapter == null || boundChapter == chapterId)
+            val created = long(item["created_at"], 0, 253402300799)
+            val duration = if (item["duration_ms"] == JsonNull) null else long(item["duration_ms"], 1)
+            MemoryContributionCandidate(id, kind, byline, language, boundChapter, created, duration)
+        }
+        check(items.map { it.id }.distinct().size == items.size)
+        MemoryContributionCandidatePage(storyId, libraryId, revision, chapterId, page, 16, bool(r["has_more"]), items)
     }
 
     fun contributionReceipt(bytes: ByteArray, expectedStory: String): MemoryContributionReceipt = guarded {

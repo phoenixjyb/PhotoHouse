@@ -40,6 +40,22 @@ class MemoryCommunityWireTest {
         assertEquals("修订建议", ProtectedMemoryCommunityWire.contributionDetail(wrapped.toByteArray(), story, contribution).derivation?.polishedText)
     }
 
+    @Test fun contributionCandidateWireIsMetadataOnlyAndBindsEveryRequestDimension() {
+        val candidate = """{"id":"$contribution","kind":"audio","byline":"家人","language":"zh","chapter_id":null,"created_at":1720000000,"duration_ms":4500}"""
+        val wire = """{"version":1,"story_id":"$story","library_id":"family-a","revision":"4","chapter_id":"chapter-1","page":2,"page_size":16,"has_more":false,"items":[$candidate]}"""
+        val parsed = ProtectedMemoryCommunityWire.contributionCandidates(
+            wire.toByteArray(), story, "family-a", 4, "chapter-1", 2,
+        )
+        assertEquals("家人", parsed.items.single().byline)
+        assertEquals(4500L, parsed.items.single().durationMs)
+        assertNull(parsed.items.single().chapterId)
+        reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"library_id\":\"family-a\"", "\"library_id\":\"family-b\"").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+        reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"revision\":\"4\"", "\"revision\":4").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+        reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"chapter_id\":\"chapter-1\"", "\"chapter_id\":\"chapter-2\"", false).toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+        reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"duration_ms\":4500", "\"duration_ms\":0").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+        reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"duration_ms\":4500", "\"duration_ms\":4500,\"text\":\"original\"").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+    }
+
     @Test fun requestSerializationIsClosedBoundedAndRetryStable() {
         val mutation = "55555555-5555-5555-5555-555555555555"
         val request = MemoryContributionRequest("text", "A family's words", "en", "Member", true,

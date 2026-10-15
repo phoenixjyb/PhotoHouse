@@ -16,7 +16,8 @@ The next [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) closes a
 manual collaboration gap: editors can select an existing accepted, consented
 family contribution, review the linked original and explicitly save its chapter
 reference. This uses metadata-only choices and the current save/schema contract.
-Paired Web/API qualification/delivery and Android chooser parity remain distinct.
+Web source is merged through PR #30. Android chooser parity is the current
+following slice; local UI/state qualification and paired delivery remain distinct.
 
 ## Current priority: make natural-language search useful
 
