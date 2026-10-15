@@ -115,7 +115,11 @@ on Web and phone, with encryption, account/library binding, fresh-access checks,
 explicit deletion and exact uncertain-save recovery. The API/Web switch and
 original-certificate phone HTTPS publication are verified. Restart,
 changed/revoked sources, quota/corruption and bilingual large-text fixture checks
-pass; installed v63 owner/member acceptance remains. Then qualify grounded
+pass; installed v63 owner/member acceptance remains. The next source increment adds an explicit
+[chapter-opening title shortcut](CHAPTER_OPENING_TITLE.md) for new Web/phone
+stories, including reviewed dictation and private drafts. It takes literal
+chapter text, preserves manual titles until adoption and requires a future
+served/signed release. Then qualify grounded
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
 

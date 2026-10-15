@@ -59,16 +59,30 @@ class GroupedStoryReviewUiTest {
         val store = StoryWorkspaceStore(StoryWorkspaceRepository(api, { bound }), scope, { bound }, dictationApi = null,
             currentAccount = { "synthetic-member" }, localDraftPersistence = persistence)
         assertTrue(store.selectAsset("1"))
-        rule.setContent { PhotoHouseTheme { GroupedStoryReview(store, true, {}, {}) } }
+        var zh by mutableStateOf(true)
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                PhotoHouseTheme { GroupedStoryReview(store, zh, {}, {}) }
+            }
+        }
         rule.onNodeWithTag("grouped-story-preview").performClick()
         rule.waitUntil(5000) { store.state.value.status == StoryWorkspaceStoreStatus.EDITING }
-        rule.onNodeWithTag("grouped-story-title").performScrollTo().performTextReplacement("Our garden day")
         rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement("We planted basil together.")
+        rule.onNodeWithTag("grouped-story-opening-title").performScrollTo().assertExists()
+        rule.onNodeWithTag("grouped-story-opening-title-preview").assertTextEquals("We planted basil together.")
+        rule.onNodeWithTag("grouped-story-opening-title-use").performScrollTo().assertIsEnabled()
+        capture("chapter-opening-title-zh150.png")
+        rule.runOnIdle { zh = false }
+        rule.onNodeWithText("Title from a chapter opening").performScrollTo().assertExists()
+        rule.onNodeWithTag("grouped-story-opening-title-use").performScrollTo().assertIsEnabled()
+        capture("chapter-opening-title-en150.png")
+        rule.onNodeWithTag("grouped-story-opening-title-use").performClick()
+        rule.onNodeWithTag("grouped-story-title").performScrollTo().assertTextContains("We planted basil together.")
         rule.onNodeWithTag("local-story-draft-save").performScrollTo().assertIsEnabled().performClick()
 
         val saved = requireNotNull(persistence.record)
         assertTrue(saved.titleAuthored)
-        assertEquals("Our garden day", saved.title)
+        assertEquals("We planted basil together.", saved.title)
         assertTrue(saved.chapters.single().narrationAuthored)
         assertEquals("We planted basil together.", saved.chapters.single().narration)
         assertFalse(saved.chapters.single().sourceIds.isNotEmpty())

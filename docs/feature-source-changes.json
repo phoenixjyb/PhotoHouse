@@ -17972,6 +17972,88 @@
       "phone_version": 63,
       "tv_changed": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "web-phone-authored-chapter-opening-title",
+      "source_commit": "5a082fe573b356c96ae1a8d97246112bfd3b54cd",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryReviewUiTest.kt",
+          "before_sha256": "a9ed5cc66982983c6ad0a4505251fcb439488a0cfd6235b2bb67454c878a19ee",
+          "sha256": "7bea4467351824c82e5a4f1b9192df3f88c77767e132cba04a772d6e3009b371"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "315639636410036eabc270c1b399b64eed854b2670ab80540082310cce3ea424",
+          "sha256": "f559a2ce0183c627cafea53d1aae91717c0fd678f34a2e8db44d783af2cd92cc"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "3f9a02f54ed203e9688cab3a1c419b61d0904b96f675c9dcd4dc898ad8a85712",
+          "sha256": "b94712942a698470b6e859fba55f88823b3d59a6fe6161876a6208239b666d52"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "17485fb17750e8c8fc06301c61dc5d564710a3ccda84f269ae0e8316e2498ebb",
+          "sha256": "743dce802f2dec10e27533580cfb5aeb8cbdefadc6681e74084ea2b538fab22c"
+        },
+        {
+          "path": "docs/CHAPTER_OPENING_TITLE.md",
+          "before_sha256": null,
+          "sha256": "31a544ef0979f2438a26c289967f8390c1c4a746a16359b169cb3be39385054f"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7636258c6b878f727d32509d5b04fd1f7b536752b730a99b401f9d6332a3809e",
+          "sha256": "d36e3098a42a924f72827717dc18cfcef217879afc6bd2cd820764a1a5bea1ac"
+        },
+        {
+          "path": "docs/FIRST_STORY_GUIDE_ZH.md",
+          "before_sha256": "f5cc3313901be2b1a4ff5ad6e6f0387c258635ded0c5284acef30969079f1a41",
+          "sha256": "64d2071b7e223a71a44bb97aab8f3e6328e1409351187c5fc50a384123aa5ffb"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e16e93532118cb44f6d408aeeb32dd88567b741371e68fc3945186a64e8ae454",
+          "sha256": "4572b3b6a0fbd5084536a08a26b0e2dfb8d3270dd6202ad8b1e9e4c761624f08"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bf6e978607367c9b755580b3bc246a3190913c2e833b0462074be9c2e07482b9",
+          "sha256": "5a4b7d9ba9ad0fe35a009943f05a0ef1cf2e8ab49bbe36f6912c390b7ece12e8"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "8cad15cdd7887dd1ee5440d100d096372d4cfb333a168b79b3175d6222936f2e",
+          "sha256": "6727b4cfcd60c11ea41f6ff656004cae61f92d64deec4b3fc438648583a9243e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "3703410fdde0d78f9091977fc742e1e917268137d4c84b71c70575178a0477e6",
+          "sha256": "c26f3f194f0815eb431a6ca0ca85ecac0d938298a9888256db1d0daa6f7f77c3"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_resume_browser.cjs",
+          "before_sha256": "50464721f3d60aa31c7d0770dfdbdd4d95277cd3962b791972fe0cfba81d72da",
+          "sha256": "4d780f0ce6285e8edd76cb051563b8797d9974a3aebb31954077dd99d532bbef"
+        },
+        {
+          "path": "server/tests/security/test_story_titles_browser.cjs",
+          "before_sha256": "05e1936c634920d4aed497350fbf2982365d2f7a734cb37543cafbfc750ce7a9",
+          "sha256": "592b9a7ae42310a9ede6ad7a9205fa5e691bb57adb54f7953a94c4ac92e51729"
+        },
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "6d170346916986a634a7083066916f1feb79c3d4453ffbe0b8e709083db30d65",
+          "sha256": "6c6cb2eb4997a1c03e04a5fe8bdccdced0a663a3b03e6ad4ada051a95c613085"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

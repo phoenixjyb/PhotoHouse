@@ -82,6 +82,26 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 store.composition(value.composition != null) }, label = { Text(t("Story title", "故事标题")) },
                 enabled = editable && !dictationUnfinished, isError = state.invalidInput, maxLines = 3,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-title"))
+            val openingTitle = store.chapterOpeningTitleCandidate()
+            if (openingTitle != null) {
+                OutlinedCard(Modifier.fillMaxWidth().testTag("grouped-story-opening-title")) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(t("Title from a chapter opening", "用章节开头做标题"),
+                            style = MaterialTheme.typography.titleSmall)
+                        Text(t("From chapter ${openingTitle.chapterIndex + 1} · editable before saving",
+                            "来自第 ${openingTitle.chapterIndex + 1} 章 · 保存前仍可修改"),
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(openingTitle.text, style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag("grouped-story-opening-title-preview"))
+                        OutlinedButton(onClick = { store.adoptChapterOpeningTitle(openingTitle) },
+                            enabled = editable && !state.composing && !state.invalidInput &&
+                                !state.hasPendingSave && !dictationUnfinished,
+                            modifier = Modifier.fillMaxWidth().testTag("grouped-story-opening-title-use")) {
+                            Text(t("Use as title", "用作标题"))
+                        }
+                    }
+                }
+            }
             var assistanceExpanded by remember(store) { mutableStateOf(false) }
             if (guided) TextButton(onClick = { assistanceExpanded = !assistanceExpanded }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text(if (assistanceExpanded) t("Hide title and source options", "收起标题与来源选项") else t("Title and source options", "标题与来源选项"))

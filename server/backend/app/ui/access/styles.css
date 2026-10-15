@@ -390,6 +390,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-questions h3{font-size:.95rem;margin:0 0 .5rem}
 .story-title-assistance{padding:1rem 1.25rem;border:1px solid var(--line);border-radius:14px;margin:1rem 0;background:#fffdf9}
 .story-title-choices{display:grid;gap:.6rem}
+.story-opening-title{padding:1rem 1.25rem;border:1px solid var(--line);border-radius:14px;margin:1rem 0;background:#fffdf9;min-width:0}
+.story-opening-title h3{font-size:1rem;margin:0 0 .5rem}
+.story-opening-title-text{font-family:var(--serif,serif);overflow-wrap:anywhere;white-space:pre-wrap}
+.story-opening-title-use{min-height:48px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .story-title-choice{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:start}
 .story-title-choices p{margin:.3rem 0;overflow-wrap:anywhere}
 .story-questions ul{padding-left:1.25rem;font-size:.85rem;color:var(--muted);line-height:1.8}

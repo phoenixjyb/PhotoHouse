@@ -166,6 +166,150 @@ class StoryWorkspaceStoreTest {
         assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
     }
 
+    @Test fun localOpeningTitleUsesOnlyAuthoredWordsAndDoesNotCallTitleProvider() = runTest {
+        var current = binding()
+        val api = Fake().apply {
+            capabilityBody = """{"version":1,"enabled":false,"max_suggestions":0,"needs_review":true}""".toByteArray()
+            previewReplies += preview(listOf("1")).decodeToString()
+                .replace("\"narration\":\"\"", "\"narration\":\"Shared memory scaffold.\"").toByteArray()
+        }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        readyForEdit(store)
+        assertTrue(store.loadTitleCapabilities()); runCurrent()
+        assertFalse(store.state.value.titleCapabilities!!.enabled)
+        assertNull(store.chapterOpeningTitleCandidate())
+        assertEquals("Draft title", store.state.value.title)
+
+        assertTrue(store.editTitle("My custom title"))
+        assertTrue(store.editChapterNarration(0, "  Morning at the lake! The walk continued.\nLater notes"))
+        val option = requireNotNull(store.chapterOpeningTitleCandidate())
+        assertEquals("Morning at the lake!", option.text)
+        assertEquals("chapter-1", option.chapterId)
+        assertEquals(0, option.chapterIndex)
+        assertEquals("My custom title", store.state.value.title)
+        assertTrue(store.adoptChapterOpeningTitle(option))
+        assertEquals("Morning at the lake!", store.state.value.title)
+        assertTrue(store.state.value.dirty)
+        assertFalse(store.state.value.reviewed)
+        assertTrue(api.saveBodies.isEmpty())
+    }
+
+    @Test fun localOpeningTitleParsingHandlesLinesDecimalsPunctuationAndEmoji() = runTest {
+        var current = binding(); val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current })
+        readyForEdit(store)
+        val cases = listOf(
+            "  We saw 2.5 birds. More later" to "We saw 2.5 birds.",
+            "First line has no stop\nSecond sentence!" to "First line has no stop",
+            "我们到了。后来又下雨了" to "我们到了。",
+            "Wait?! Really?" to "Wait?",
+            "Family 👨‍👩‍👧‍👦 day. Next" to "Family 👨‍👩‍👧‍👦 day.",
+        )
+        cases.forEach { (narration, expected) ->
+            assertTrue(store.editChapterNarration(0, narration))
+            assertEquals(expected, store.chapterOpeningTitleCandidate()?.text)
+        }
+    }
+
+    @Test fun localOpeningTitleRejectsLongAndUnsafeOpeningLines() = runTest {
+        var current = binding(); val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current })
+        readyForEdit(store)
+        listOf("x".repeat(81), "a\u0085b.", "a\u2028b.", "a\u202eb.", "\uD800 unsafe.").forEach { narration ->
+            assertTrue(store.editChapterNarration(0, narration))
+            assertNull(store.chapterOpeningTitleCandidate())
+        }
+        assertTrue(store.editChapterNarration(0, "\u0009safe-looking after trim."))
+        assertNull(store.chapterOpeningTitleCandidate())
+    }
+
+    @Test fun localOpeningTitleDoesNotSkipAnOverlongFirstAuthoredChapter() = runTest {
+        var current = binding(); val api = Fake()
+        api.idsForPreview = listOf("1", "2")
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        assertTrue(store.selectAsset("1")); assertTrue(store.selectAsset("2")); assertTrue(store.preview()); runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.splitChapter(0, 1, listOf("1", "2")))
+        assertTrue(store.editChapterNarration(0, "x".repeat(81)))
+        assertTrue(store.editChapterNarration(1, "A later valid opening."))
+        assertNull(store.chapterOpeningTitleCandidate())
+    }
+
+    @Test fun localOpeningTitleRejectsStaleTitleNarrationSelectionAccountAndLibrarySnapshots() = runTest {
+        var current = binding(); var account: String? = "member-a"
+        val api = Fake()
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = null,
+            currentAccount = { account })
+        readyForEdit(store)
+        assertTrue(store.editChapterNarration(0, "A clear opening."))
+
+        var stale = requireNotNull(store.chapterOpeningTitleCandidate())
+        assertTrue(store.editTitle("A different title"))
+        assertFalse(store.adoptChapterOpeningTitle(stale))
+
+        stale = requireNotNull(store.chapterOpeningTitleCandidate())
+        assertTrue(store.editChapterNarration(0, "A changed opening."))
+        assertFalse(store.adoptChapterOpeningTitle(stale))
+
+        stale = requireNotNull(store.chapterOpeningTitleCandidate())
+        account = "member-b"
+        assertFalse(store.adoptChapterOpeningTitle(stale))
+        account = "member-a"
+
+        stale = requireNotNull(store.chapterOpeningTitleCandidate())
+        val observedBinding = current
+        current = MemoryCommunityBinding(observedBinding.token, "family-b", observedBinding.generation)
+        assertFalse(store.adoptChapterOpeningTitle(stale))
+
+        current = observedBinding
+        val selectionStore = StoryWorkspaceStore(repo(Fake()) { current }, this, { current }, dictationApi = null,
+            currentAccount = { account })
+        readyForEdit(selectionStore)
+        assertTrue(selectionStore.editChapterNarration(0, "Another opening."))
+        stale = requireNotNull(selectionStore.chapterOpeningTitleCandidate())
+        assertTrue(selectionStore.selectAsset("2", discardDraft = true))
+        assertFalse(selectionStore.adoptChapterOpeningTitle(stale))
+    }
+
+    @Test fun localOpeningTitleRefusesImeAndUnfinishedVoiceCapture() = runTest {
+        var current = binding(); val voice = DictationApi()
+        val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current }, dictationApi = voice,
+            currentAccount = { "member-a" })
+        readyForEdit(store)
+        assertTrue(store.editChapterNarration(0, "Our first morning."))
+        var option = requireNotNull(store.chapterOpeningTitleCandidate())
+        store.composition(true)
+        assertFalse(store.adoptChapterOpeningTitle(option))
+        store.composition(false)
+
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val session = requireNotNull(store.chapterDictation.value)
+        assertNotNull(session.beginRecording())
+        option = requireNotNull(store.chapterOpeningTitleCandidate())
+        assertFalse(store.adoptChapterOpeningTitle(option))
+        store.closeChapterDictation()
+    }
+
+    @Test fun localOpeningTitleCanUseReviewedVoiceWordsAndPersistsAsAuthoredTitle() = runTest {
+        var current = binding(); val persistence = DraftPersistenceFake(); val voice = DictationApi()
+        voice.transcriptText = "ASR words."
+        val store = StoryWorkspaceStore(repo(Fake()) { current }, this, { current }, dictationApi = voice,
+            currentAccount = { "member-a" }, localDraftPersistence = persistence)
+        readyForEdit(store)
+        assertTrue(store.openChapterDictation(0)); runCurrent()
+        val session = requireNotNull(store.chapterDictation.value)
+        session.beginRecording(); session.stopRecording(wav(1)); runCurrent()
+        assertTrue(store.insertChapterTranscript(0, composing = false))
+        assertEquals("ASR words.", store.state.value.editableChapters.single().narration)
+        val option = requireNotNull(store.chapterOpeningTitleCandidate())
+        assertEquals("ASR words.", option.text)
+        assertTrue(store.adoptChapterOpeningTitle(option))
+        assertEquals("ASR words.", store.state.value.title)
+        assertTrue(store.saveLocalDraft())
+        assertEquals("ASR words.", persistence.stored?.title)
+        assertTrue(persistence.stored?.titleAuthored == true)
+        assertEquals("ASR words.", persistence.stored?.chapters?.single()?.narration)
+    }
+
     @Test fun durableDraftResumesAfterProcessLossAndRetriesTheExactFrozenBody() = runTest {
         var current = binding()
         val api = Fake()

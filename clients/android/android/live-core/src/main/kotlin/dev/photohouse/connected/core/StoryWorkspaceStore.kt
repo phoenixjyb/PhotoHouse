@@ -25,6 +25,20 @@ enum class StoryWorkspaceStoreStatus {
 enum class StoryGuideStep { FRAMES, WORDS, REVIEW }
 enum class LocalStoryDraftStatus { UNAVAILABLE, UNKNOWN, EMPTY, AVAILABLE, SAVED, ERROR, SAVING, RESUMING }
 
+/** Snapshot-bound local title choice derived only from wording a person authored. */
+data class StoryChapterOpeningTitleCandidate internal constructor(
+    val text: String,
+    val chapterId: String,
+    val chapterIndex: Int,
+    val sourceNarration: String,
+    val selectionRevision: String,
+    val titleRevision: Long,
+    val currentTitle: String,
+    val selectedAssetIds: List<String>,
+    val libraryId: String,
+    val accountId: String?,
+)
+
 data class StoryWorkspaceStoreState(
     val status: StoryWorkspaceStoreStatus = StoryWorkspaceStoreStatus.SELECTION,
     val selectedAssetIds: List<String> = emptyList(),
@@ -1116,6 +1130,49 @@ class StoryWorkspaceStore(
         mutable.value = state.value.copy(title = value, titleCandidates = emptyList(), reviewed = false,
             dirty = true, invalidInput = !valid || state.value.editableChapters.any { !validText(it.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) || !validText(it.narration, 6000, allowNewline = true) })
         return true
+    }
+
+    /** Returns a local, explicit option based on the first authored chapter narration. */
+    fun chapterOpeningTitleCandidate(): StoryChapterOpeningTitleCandidate? {
+        val live = state.value
+        if (!editorReady() || savedEditStory != null || live.invalidInput || live.draft == null) return null
+        val (index, chapter) = live.editableChapters.withIndex().firstOrNull { (_, item) ->
+            item.id in authoredChapterNarrations && item.narration.isNotBlank()
+        } ?: return null
+        val openingLine = chapter.narration.split(Regex("\\r\\n|\\r|\\n")).firstOrNull { it.isNotBlank() }
+            ?: return null
+        if (openingLine.any { char ->
+                char.isISOControl() || char == '\u2028' || char == '\u2029' ||
+                    char in '\u202a'..'\u202e' || char in '\u2066'..'\u2069'
+            }) return null
+        val line = openingLine.trim().takeIf { it.isNotEmpty() } ?: return null
+        val end = line.indices.firstOrNull { offset ->
+            when (line[offset]) {
+                '。', '！', '？', '!', '?' -> true
+                '.' -> offset == line.lastIndex || line[offset + 1].isWhitespace()
+                else -> false
+            }
+        }?.plus(1) ?: line.length
+        val candidateText = line.substring(0, end).trim()
+        if (!validText(candidateText, maxBytes = 640, maxCodePoints = 80,
+                allowNewline = false, allowBlank = false)) return null
+        val draft = live.draft
+        return StoryChapterOpeningTitleCandidate(
+            text = candidateText, chapterId = chapter.id, chapterIndex = index,
+            sourceNarration = chapter.narration, selectionRevision = draft.selectionRevision,
+            titleRevision = titleRevision, currentTitle = live.title,
+            selectedAssetIds = immutable(live.selectedAssetIds), libraryId = draft.libraryId,
+            accountId = currentAccount(),
+        )
+    }
+
+    /** Applies only the exact currently displayed local suggestion, after all editor guards pass. */
+    fun adoptChapterOpeningTitle(candidate: StoryChapterOpeningTitleCandidate): Boolean {
+        if (!ensureCurrent() || !editorReady() || savedEditStory != null || state.value.savedStory != null ||
+            state.value.composing || state.value.invalidInput || state.value.hasPendingSave || pending != null ||
+            hasUnfinishedChapterDictation) return false
+        if (chapterOpeningTitleCandidate() != candidate) return false
+        return editTitle(candidate.text)
     }
 
     fun editChapterTitle(index: Int, value: String): Boolean {
