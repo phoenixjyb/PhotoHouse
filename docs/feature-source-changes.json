@@ -20017,6 +20017,21 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "relevance-report-privacy-checks-distinguish-numeric-timing-from-content",
+      "source_commit": "ac21bddaa1573e41759fd27c4cf8e303c4121861",
+      "files": [
+        {
+          "path": "server/tests/security/test_search_evaluation.py",
+          "before_sha256": "bd321458419fdfc55f77fca301b5ac0820a8e86e105b2b37b1ce0582b8a5c9c0",
+          "sha256": "e84b1fb7fc97266200169d1db33245f38d4b0d81f879829afc9b03da07f5ed0c"
+        }
+      ],
+      "production_source_changed": false,
+      "privacy_string_checks_preserved": true,
+      "schema_changed": false,
+      "household_data_included": false
     }
   ]
 }
