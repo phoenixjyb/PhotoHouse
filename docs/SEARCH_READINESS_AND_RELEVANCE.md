@@ -23,6 +23,78 @@ recorded but not searchable. A disabled date/people field is not counted as
 searchable. Unknown capture dates remain unknown. Issue codes identify missing
 coverage; readiness itself always says `relevance_measured: false`.
 
+The aggregate `people_readiness.status` distinguishes `disabled`, `empty_roster`,
+`zero_assigned`, `partial_coverage` and `available`. Counts describe the reviewed
+index and its indexed assets; they do not claim that every face or every person
+in the library has been reviewed. An unassigned roster entry is permitted only
+when its reviewed person record explicitly has `allow_zero`; the report counts
+these entries separately. `kinship_bindings` reports aggregate `unique`,
+`missing`, `ambiguous` and `stale` joins for the supplied private graph. It emits
+no names, identifiers, aliases, graph facts or account scope. `unique_allow_zero`
+counts current catalog joins intentionally approved without a face assignment.
+An unresolved graph binding does not create an identity or change search access.
+
+## Reviewed people and index preparation
+
+Reuse `server/scripts/prepare_access_discovery_index.py` for the reviewed index;
+do not make a second roster or index generator. First run it against the
+data-owning host's existing database without `--review`. Keep the output and
+receipt in private owner-only storage. The receipt supplies the current source
+digest and the artifact fixes the visible asset scope. The tool reads the
+database read-only and refuses an empty library or an aliased output path.
+
+For example, with placeholders replaced by native absolute paths and the
+operator-selected library/revision:
+
+```text
+python server/scripts/prepare_access_discovery_index.py \
+  --database /private/operator/library.sqlite \
+  --library LIBRARY_ID \
+  --revision 1 \
+  --out /private/operator/review-base.json
+```
+
+The operator then prepares the existing review envelope privately, using only
+confirmed catalog labels/aliases and manually approved face assignments. It
+must repeat the current library ID, `source_digest` and exact `indexed_ids` from
+the first artifact; face assignment rows must match current face detections.
+Never infer a name, relationship, account ID or face identity from a model label
+or a similar display name. Keep `allow_zero` explicit for a catalog person who
+has no approved face assignment. The second producer invocation with `--review`
+re-reads the source and refuses a stale digest, moved scope or mismatched face
+row. It writes a new artifact once; it does not approve the review or activate
+an application runtime.
+
+The second invocation uses the same producer with `--review` and a new output
+path:
+
+```text
+python server/scripts/prepare_access_discovery_index.py \
+  --database /private/operator/library.sqlite \
+  --library LIBRARY_ID \
+  --revision 2 \
+  --review /private/operator/review.json \
+  --out /private/operator/reviewed-index.json
+```
+
+For kinship, bind each intended logical person with the exact reviewed catalog
+`person_id` and current expected `label`, or rely on a unique explicit proper
+name/alias match. A binding does not come from `account_id`, relationship words,
+face clusters or a model prediction. Missing, duplicate or stale matches stay
+unresolved until a person reviews the private roster and graph. Rerun the
+readiness check after correcting the private inputs; never put those values in
+the source review examples or report.
+
+Run `check_private_search.py` against that artifact with `--kinship` only when
+an existing private graph is intended for this library/account scope. The
+readiness report separates reviewed people from the graph's catalog bindings;
+resolve missing, ambiguous or stale entries through operator review and rerun
+from current source. Cases, graph, token, database, index and report remain
+outside Git and source packages. Use fictional records for source tests; real
+family names, account bindings and relevance cases stay in private artifacts.
+Readiness is an operator aid, not permission to enable production search or
+evidence of household relevance.
+
 The production factory and operator CLI explicitly allow up to 64 MiB of
 serialized search-v2 source, while legacy discovery retains its 16 MiB limit.
 Both use the same admission semaphore and retain the 100,000-row, index,
