@@ -25,6 +25,24 @@ v59 remains an unused earlier frozen proposal; it was not published.
 
 ## Current search issue and local fix
 
+The next local source increment adds an explicitly negotiated search-v2 API
+slice joining eligible current captions, saved photo memories and reviewed
+people with existing date/media/place constraints. It uses a request-time
+protected projection, separate source-bound contexts, authored-evidence-first
+ordering and provenance reasons. Default v1 clients retain their wire contract.
+See [the v2 contract and gates](ASSISTANT_JOINT_SEARCH_V2.md). Work is isolated on
+`codex/search-redesign-20261015`; the concurrent story branch is separate.
+This is not deployed or enabled in Web/phone/private-workspace clients. Real
+index readiness, video date bases, local semantic understanding and relevance
+qualification remain ahead.
+
+The focused generated-data joint-search suite passes 18 tests, including short
+Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
+ranking/paging, current-result opening/refinement and version isolation. Existing
+discovery/index suites and the shared assistant/workspace checks also passed at
+their checked source state. Final committed API-profile evidence is recorded
+separately; none of these checks used household data, GPU or a live service.
+
 A later read-only owner-requested investigation confirmed ASR/turn intake but
 weak deterministic query parsing and missing searchable fields in the inspected
 library index. Its active fields are date, reviewed locations and media; stored

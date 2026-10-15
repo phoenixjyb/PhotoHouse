@@ -16570,6 +16570,77 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "negotiated-protected-text-reviewed-person-search-v2",
+      "source_commit": "c4cac82d13f6324da9a31023e9eb62d7dcb71997",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": null,
+          "sha256": "6f4e9bb3b6fc10075fa7dd0613cae69c6e022489de0285c20d607ef3718691ac"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "c3cc599e4b4296300d1378c8ce617b85e08ff9873d37db525d66fd26925a57a5",
+          "sha256": "8faa64910b60b2c1f99f23b592c6d58a6b9e50946c98e4d8e7e25f3dedd1ab29"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b60c906fb05b5d63f2fe110433e595a5604b94ce2dc080dba03b8821038c01fd",
+          "sha256": "3155e8820b2d6fe7f78f330f82e53c0ab146a70d830d5a9948feea69468cf070"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "9f2eec28bf9f14a7ef9011f18777a0aa51380887432add5eead5eeebca2300a6",
+          "sha256": "a1ec4fce9ca5aa8ff9d5a2a7f58f69f01baffe715bb4abddb9a95cff1dd31e57"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "df4ad52655dd175bfe91aaa1fdfac5e95e852f360b92979bf1688b9c2a4b2d5b",
+          "sha256": "cfb211b28d505fe7acb7be64f986d6d354feadf009e21f6a660e409e507d2ac5"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": null,
+          "sha256": "6d5073120f292bfd2322678ecc6560ad60b22d4404d672b946804287a8940d97"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "d6ad21e9978e540c4ac65181e1135ca367fb74de7e6f92d723e3aff92e1e4401",
+          "sha256": "1269bdee0818cc435412838df58cc53464b3188e5528d80b764203cb09359f93"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "405a41f8e0a6de35224afb7952164c686facb6c0da202f0f1f15ade689dc9c60",
+          "sha256": "2bf3b7507d80607b6f93eb3ce519f607057adfe75023740e3e5f5cf26f50e0b2"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f2c09b9844374065ccd164f6fdd3ad79f3118c74e73b2bdc47a1473d57fbfeb7",
+          "sha256": "ac980b4929e22f177dd525c79f854b561ee04415ba0f5c1b715f0cc120064842"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": null,
+          "sha256": "f90fe412c821e3a815b61096784a183d25db56a85b7cc79eadfc594366be8b92"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "5e022abd9f74b288f9c1b5aa1f08a6dc41dd20fa688692d9f91902296f11dbcc",
+          "sha256": "33f3b58803d3cf4391ef01877af006567066cccd213e18928dcfdbb462be4d78"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3b6ae61fd50c8166dc8357387cc9a2e39099f6f0b0808c3fcdd91321e9b5c62e",
+          "sha256": "77e1c77507f4b7db7be1a0accfc7ce4a739eb8054424d1586aa49e5f1f13eb55"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }

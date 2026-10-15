@@ -57,6 +57,8 @@ class WorkspaceRoute(APIRoute):
         async def guarded(request):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
+                if _single(request, 'x-photohouse-search-version') not in (None, '1'):
+                    raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
                 code = ('access_denied' if exc.status in (401, 403) else
