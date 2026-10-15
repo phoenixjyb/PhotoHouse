@@ -20370,6 +20370,32 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "chapter-candidate-recording-duration-bound",
+      "source_commit": "388633dd95fd24236c810aef598a636c78a8c895",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "db6684c95d79f5f7e27c28bc5f4b467925693160db24ed293eaa193a56f36959",
+          "sha256": "86159bdd2a832fcec4fe62f33e507945f746f021b3587ccdc5c3d4fe6a611301"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ProtectedMemoryCommunity.kt",
+          "before_sha256": "edeff6708d4209c7414434051304ed000eb8f6ceafc2b3535838fe58c2376d81",
+          "sha256": "911913d926ce245af3f50b1419577276b8f8d33202fa910c3be5f00c3bbe43d7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/MemoryCommunityWireTest.kt",
+          "before_sha256": "fb60303282392b4de88e0cd61f8316d6a0db40e71c895b475e5f79f67886e0db",
+          "sha256": "25d0aef0e5d8fc6c78ccfde6bf6df26b697704714b56f3efdd816f06c3d0aa5f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "max_recording_duration_ms": 30000,
+      "models_activated": false,
+      "apk_published": false
     }
   ]
 }
