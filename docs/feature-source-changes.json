@@ -17418,6 +17418,21 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "qualify-windows-worker-command-path-values-portably",
+      "source_commit": "ca999d04f1dc2a22c68188820b5139603316c60c",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_group_workers_qualification.py",
+          "before_sha256": "bd67eb20d4e897dd8fa14a8a7d041dcb26c9f844a8d252d5350087831a17fe67",
+          "sha256": "6cc63562d2f615ba239e60565eb85ab5cd391c1d655761c8d72911d8de7a4056"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }
