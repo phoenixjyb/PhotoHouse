@@ -188,6 +188,8 @@ class AssistantConversationalSearchTests(unittest.TestCase):
         for words in (
             'find photos containing birthday cake; open all photos',
             '找照片包含切蛋糕；打开第一张',
+            '找照片包含切蛋糕然后帮我打开第一张',
+            'find photos containing birthday cake then could you please open the first photo',
         ):
             with self.subTest(followup=words):
                 response = client.post('/assistant/v1/turns',

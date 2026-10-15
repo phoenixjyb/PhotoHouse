@@ -54,12 +54,12 @@ _CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或�
 _CONTENT_INTRO = re.compile(
     r'包含|含有|關於|关于|内容|內容|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', re.I)
 _CONTENT_ACTION = re.compile(
-    r'^\s*(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
-    r'(?a:\b)(?:and|then|also)\s+(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
-    r'(?:^|[\s\r\n,，;；。.!！?？])(?:please\s+)?(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
-    r'(?:然后|接着|并且|并|再)\s*(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)|'
-    r'^\s*(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)|'
-    r'(?:^|[\s\r\n,，;；。.!！?？])(?:请)?(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)', re.I)
+    r'(?:^|[\s,，;；。.!！?？]|(?a:\b)(?:and|then|also)\s+)'
+    r'(?:(?:please|kindly|(?:can|could|would)\s+you)\s+){0,2}'
+    r'(?:open|show|share|delete|remove|play|edit|save|send|find|search)(?a:\b)|'
+    r'(?:^|[\s,，;；。.!！?？]|(?:然后|接着|并且|并|再)\s*)'
+    r'(?:(?:请|麻烦你?|帮我|替我|给我|能不能|能否|可以|帮忙)\s*){0,2}'
+    r'(?:打开|展示|分享|删除|移除|播放|编辑|保存|发送|查找|搜索)', re.I)
 
 _CONTENT_MEDIA_TAIL = re.compile(
     r'(?:(?:\s+of)?\s+|\s*的\s*)(?P<media>videos?|movies?|photos?|photographs?|pictures?|images?|影片|视频|照片|图片|相片)\s*$', re.I)
