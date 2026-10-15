@@ -1,27 +1,29 @@
 # Current project status
 
-Reviewed **2026-10-15 after the v62 search delivery**. GitHub PR #17 and
-the later search-planning PR #19 are merged; the inspected `main` is
-`75125a93a5d7376d5877a639e9a28f99bc7eb288`. PR #19 source is integrated into
-the private-draft branch; its merge alone does not establish live delivery.
-API/Web source `c1ca91e58589196c147ce0b97a8205ec3370f978` is deployed;
-phone OTA is **v62 / 0.62-private-search** and TV remains v30. The guarded API
-operation completed stopped-writer backup, HTTPS readback and upload-worker
-restoration. Schema `a0c9d2e4f817` and configuration are unchanged. No model,
+Reviewed **2026-10-15 after the v63 private-draft delivery**. Search PR #19 and
+draft PR #20 are merged; the release merge is
+`6b1a08a61f8a33cf81a4bdc06ff397db61c2b213`. API/Web source
+`975968ed8800493f9c1bd42688f21ca7f7348531` is deployed and phone HTTPS OTA serves
+**v63 / 0.63-private-story-drafts**. TV remains v30. The update used the newer
+live search backend (`1913152`) as its incumbent, preserving those improvements.
+
+The 209-file API candidate passed native synthetic qualification. The guarded
+cutover completed a verified four-store stopped-writer backup, served-file and
+anonymous-denial checks, and restoration of five upload workers. Independent
+postflight verified all 66 task enabled states, only the API action changed,
+startup/settings preserved and ASR/OCR/TTS processes unchanged. Schema
+`a0c9d2e4f817` and configuration are unchanged. No model, generation, grouping,
 kinship binding or historical date backfill was activated.
 
-The v61 guided-story flow remains in v62. Search v2 Web/phone integration shows
-interpreted conditions and match evidence while preserving negotiated search
-version through recovery. The exact 205-file API candidate passed Windows
-qualification; phone signing and complete HTTPS APK readback passed. Physical
-phone v62 installation is confirmed; authenticated family search/story acceptance
-remains open.
-
-The following local increment implements [private device drafts](STORY_DRAFT_RESUME.md)
-for new stories. It is **source work, not part of the served v62 artifacts**.
-Encrypted drafts and an exact uncertain-save journal are separate from shared
-stories; resume requires current access and fresh selection evidence. No schema
-migration, model invocation or live operation is included.
+The release adds [private device drafts](STORY_DRAFT_RESUME.md) for new stories
+on Web and phone: explicitly save encrypted wording and grouping, resume with
+fresh access/evidence, delete locally, and recover the exact uncertain save.
+These drafts remain separate from shared stories and do not sync across devices.
+Guided stories and negotiated search v2 remain available. Phone v63 build/lint,
+embedded-profile and original-icon checks, original-certificate signing and
+Windows and independent Mac trusted HTTPS full APK readback passed. Installation and family
+search/story/voice acceptance of v63 remain open; v62 was the last confirmed
+installed phone version. See [the v63 release record](../clients/android/docs/PHONE_V63_RELEASE_2026-10-15.md).
 
 Local qualification passes: full API profile **1,607 tests / 1,074 subchecks**
 after integrating PR #19; Web storage and draft-resume suites each cover seven
@@ -35,13 +37,13 @@ cohorts overlap and are not summed. See [the draft evidence](STORY_DRAFT_RESUME.
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `c1ca91e`, 205-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
+| API/Web | Source `975968e`, 209-file archive; native qualification, guarded backup/cutover, served-asset and anonymous-denial checks passed | Real owner/member voice and UX acceptance |
 | Primary database | `a0c9d2e4f817`; four-store stopped-writer backup and integrity checks passed; no migration | Later feature/schema activation and paired recovery qualification |
-| Phone | v62 signed with original certificate/artwork, published, completely read back over trusted HTTPS and installed | Physical reading/listening and search/story trial |
+| Phone | v63 signed with original certificate/artwork, published and completely read back over trusted HTTPS on Windows | Update from installed v62; physical draft, reading/listening and search/story trial |
 | TV | v30 / `0.30-library-recovery` feed verified unchanged | Projector/library/playback check; Home TV task needs interactive desktop session |
 | Introduction website | Private preview deployed, then public audience verified; cartoons/fictional examples only | Broader family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
-| Public source | Monorepo is the development home; PR #19 merged; exact package provenance and ordered source overlays retained | Private-draft branch review/CI; separate runtime delivery |
-| Following UX | Three-step guided stories delivered in v61 and retained in v62 | Family trial; private draft increment delivery |
+| Public source | PR #20 merged; release head passed all five GitHub jobs; exact package provenance and ordered source overlays retained; reader fixture timing correction passes locally | Follow-up hosted CI and delivery record synchronization |
+| Following UX | Three-step guide retained; private draft save/resume delivered in v63 | Family trial; grounded title/narrative provider qualification |
 
 The [v61 story release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
 binds that guided-story delivery. The later v62 search release supersedes its
