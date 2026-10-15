@@ -328,7 +328,8 @@ class SearchRefinementTests(unittest.TestCase):
         singular['people'] = {'ids': ['301'], 'match': 'any'}
         plural_markers = ('same people', 'these people', 'those people', 'them', 'they', 'their',
                           '同一批人', '他们', '她们', '这些人', '那些人')
-        singular_markers = ('same person', 'him', 'her', 'his', '他', '她', '这个人', '那个人')
+        singular_markers = ('same person', 'he', 'she', 'him', 'her', 'his',
+                            '他', '她', '这个人', '那个人')
 
         for marker in plural_markers:
             with self.subTest(marker=marker):
@@ -399,11 +400,12 @@ class SearchRefinementTests(unittest.TestCase):
         self.assertEqual(removed.filters, {key: value for key, value in PREVIOUS.items() if key != 'date'})
 
     def test_people_reference_context_and_cardinality_fail_closed(self):
-        for words in ('same people', 'them', '他们'):
+        for words in ('same people', 'them', '他们', 'he', 'she', '他', '她'):
             with self.subTest(words=words):
                 missing_context = plan(words, previous=None)
                 self.assertEqual(missing_context.status, 'clarification')
                 self.assertEqual(missing_context.reason, 'refine_without_context')
+                self.assertNotIn('people', missing_context.filters)
                 without_people = {key: value for key, value in PREVIOUS.items() if key != 'people'}
                 missing_people = plan(words, previous=without_people)
                 self.assertEqual(missing_people.status, 'clarification')
@@ -427,6 +429,14 @@ class SearchRefinementTests(unittest.TestCase):
                 self.assertEqual(result.reason, 'ambiguous_people_reference')
                 self.assertEqual(result.filters, PREVIOUS)
 
+        plural = {'people': {'ids': ['301', '302'], 'match': 'all'}}
+        for words in ('he', 'she'):
+            with self.subTest(words=words):
+                result = plan(words, previous=plural)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'ambiguous_people_reference')
+                self.assertEqual(result.filters, plural)
+
     def test_people_reference_collisions_and_explicit_people_edits_clarify(self):
         entities = resolved_entities('same people Sample Child')
         result = plan_query('same people Sample Child', now=NOW, entities=entities,
@@ -440,6 +450,16 @@ class SearchRefinementTests(unittest.TestCase):
                             previous_filters=PREVIOUS, refine=True)
         self.assertEqual(result.status, 'clarification')
         self.assertEqual(result.reason, 'ambiguous_entities')
+
+        for marker in ('he', 'she', '他', '她'):
+            with self.subTest(marker=marker):
+                entities = resolved_entities(marker)
+                entities['labels'] = [marker]
+                result = plan_query(marker, now=NOW, entities=entities,
+                                    previous_filters=PREVIOUS, refine=True)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'ambiguous_entities')
+                self.assertEqual(result.filters, PREVIOUS)
 
         entities = resolved_entities('')
         entities['groups']['people'] = ['301']
@@ -463,9 +483,28 @@ class SearchRefinementTests(unittest.TestCase):
         self.assertIsNone(query_mode('Herbert'))
         self.assertIsNone(query_mode('other people'))
         self.assertIsNone(query_mode('containing "they"'))
-        for marker in ('them', 'same people', '他们'):
+        for marker in ('them', 'same people', '他们', 'he', 'she', '他', '她'):
             words = f'only photos containing "{marker}"'
             with self.subTest(marker=marker):
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters['text'], marker)
+                self.assertEqual(result.filters['people'], PREVIOUS['people'])
+
+    def test_guitar_compounds_are_not_person_references(self):
+        for words in ('吉他', '吉他手', '其他', '其他人', '他人', '利他', '排他'):
+            with self.subTest(words=words):
+                self.assertNotEqual(query_mode(words), 'refine')
+                result = plan(words)
+                self.assertNotEqual(result.reason, 'people_reference_unavailable', result)
+                self.assertEqual(result.reason, 'unsupported_condition', result)
+        for words in ('find photos of 吉他', 'find photos of 吉他手'):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'search')
+
+        for marker in ('吉他', '吉他手'):
+            words = f'only photos containing "{marker}"'
+            with self.subTest(quoted=words):
                 result = plan(words)
                 self.assertEqual(result.status, 'ready', result)
                 self.assertEqual(result.filters['text'], marker)

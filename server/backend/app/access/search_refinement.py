@@ -36,7 +36,10 @@ _SEPARATORS = re.compile(r'^[\s,，;；、。.!！?？]+|[\s,，;；、。.!！?
 _REFERENCE_FORMS = {
     'group': (r'same\s+people', r'同一批人'),
     'plural': (r'these\s+people|those\s+people|them|they|their', r'他们|她们|这些人|那些人'),
-    'singular': (r'same\s+person|him|her|his', r'这个人|那个人|他|她'),
+    # Chinese exclusions are lexical compounds, not a semantic guess about
+    # the surrounding sentence. Keep a standalone 他 available as a reference.
+    'singular': (r'he|she|same\s+person|him|her|his',
+                 r'这个人|那个人|(?<![吉其利排])他(?!人)|她'),
 }
 _PEOPLE_REFERENCES = re.compile('|'.join(
     rf'(?P<{kind}>(?<![a-z0-9_])(?:{english})(?![a-z0-9_])|{chinese})'

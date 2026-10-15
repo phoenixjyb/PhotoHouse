@@ -1,13 +1,14 @@
 """Build an offset-preserving, redacted view for descriptive intent extraction.
 
-Only deterministic hard-condition text is hidden from an optional provider.
+Deterministic hard conditions and recognized command prefixes are hidden from an optional provider.
 The returned string has exactly the same Python code-point offsets as the
 source query; callers continue compiling filters from the untouched query.
 """
 from datetime import date
 
 from . import discovery as d
-from .assistant_query_plan import _MEDIA, _QUOTE, _extract_dates, _remove_occurrences
+from .assistant_query_plan import (_MEDIA, _QUOTE, _REFINE_OPEN, _SEARCH_OPEN,
+                                   _extract_dates, _remove_occurrences)
 
 
 _ERROR = 'Invalid scene view'
@@ -48,7 +49,7 @@ def _changed_runs(before: str, after: str) -> list[tuple[int, int]]:
 
 
 def scene_view(words: str, today: date, labels) -> str:
-    """Mask quoted literals, resolved labels, dates and media terms with spaces.
+    """Mask hard conditions and a recognized leading command with spaces.
 
     ``labels`` must be the request's already-resolved public label strings; it
     is used locally and is never included in the returned view. Any date parse
@@ -80,6 +81,16 @@ def scene_view(words: str, today: date, labels) -> str:
         masked = _remove_occurrences(date_residue, labels)
         for _kind, pattern in _MEDIA:
             masked = pattern.sub(lambda match: ' ' * len(match.group(0)), masked)
+
+        # Reuse the literal parser's command grammar, anchored to the original
+        # unquoted query. Do not reinterpret a later scene word as a command
+        # just because earlier hard conditions have already been hidden.
+        command_start = len(folded) - len(folded.lstrip())
+        command_words = folded[command_start:]
+        command = _SEARCH_OPEN.match(command_words) or _REFINE_OPEN.match(command_words)
+        if command is not None:
+            start, end = command_start + command.start(), command_start + command.end()
+            masked = masked[:start] + ' ' * (end - start) + masked[end:]
         if len(masked) != len(folded):
             raise ValueError
 

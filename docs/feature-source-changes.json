@@ -20032,6 +20032,57 @@
       "privacy_string_checks_preserved": true,
       "schema_changed": false,
       "household_data_included": false
+    },
+    {
+      "feature": "bilingual-person-reference-compounds-and-command-free-scene-view",
+      "source_commit": "95c5357e139c95a97e71b8dfaae07e35e8fdb8c9",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "631eec8ec9ee187942ba6e6809fe991bb20418d16ae318d6e4005f63f01556ce",
+          "sha256": "beb67761bdf636c36e1b7c1e6751a594fed7a5c4056f28f2631f065d708a4e3b"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "41f3e7a7e9c8098060ee666c90943d608a091a2bcbcf3d6ab5d431e66345cded",
+          "sha256": "c1de3a24dcfb609d998aaa2fb9b3089c919233a8ea833ea936bd6476be9cb997"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_view.py",
+          "before_sha256": "78fbc86f56a6b088de4a01f3c6640b677e619ba871ab4c4d7d919a49b3530bec",
+          "sha256": "fe154ee3c9f17d358ecf6a1ac2ae18ec56f7ce7e81ba107c0880df84c553c2fe"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "789f8c26a71653746c2f45e12118f322a67c76171f0e723426e340ee0d042591",
+          "sha256": "da57682a1de6287b55390f79a9d5f1fc529c7a10a7549baeecab230276c55db2"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_view.py",
+          "before_sha256": "cb4f73c7fd0f93211d8ac559033f47fc0b5c82717ba65dd428b6997848844f69",
+          "sha256": "70b0c7f9d3f174a87fef747b9d6c8f304170e59b4e4821d29447e9c61bdcf8d8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent.py",
+          "before_sha256": "386a86259114405c0fa23b5a8fb329ce4c134ab28b28c41441c09e91cbd21f3c",
+          "sha256": "fbf1a211cb32acdfa1e6ea1767d102fe8a854c07ec1ed602b5669777032aa483"
+        },
+        {
+          "path": "server/tests/security/test_assistant_bilingual_references.py",
+          "before_sha256": null,
+          "sha256": "d09bf80925383aa94b1d959022dce3fd379f68b7b58dfa29bc171525f12cd185"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "original_offsets_preserved": true,
+      "existing_people_filter_required_for_pronouns": true,
+      "gender_inference_added": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
