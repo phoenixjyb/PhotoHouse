@@ -272,6 +272,19 @@ async function openPrivateWorkspace(){
   await page.locator('#assistant-search-summary').screenshot({path:path.join(artifacts,'intent-v3-remove-clue-phone-summary-390-font150.png')});
   await page.screenshot({path:path.join(artifacts,'intent-v3-remove-clue-recovered-phone-390-font150.png'),fullPage:false});
 
+  const beforeWhyCalls=await plannerCalls();
+  const whyEntry=await send('为什么是第一项',{keyboard:true}),explained=whyEntry.response.result;
+  assert.equal(explained.kind,'results');assert.equal(explained.effect,null);
+  for(const key of ['context','filters','items','total','has_more'])assert.deepEqual(explained[key],removed[key],`why-result preserves ${key}`);
+  assert.equal(await plannerCalls(),beforeWhyCalls,'why-result explanations do not invoke the model');
+  const whyReply=await page.locator('#assistant-reply').innerText();
+  assert.match(whyReply,/Match explanation for result 1|第1项的匹配说明/);
+  assert.match(whyReply,/edited caption|编辑说明/);
+  assert.doesNotMatch(whyReply,/A child playing in snow wearing|在雪地玩/,'raw caption text and model alternatives stay out of the explanation');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'intent-v3-why-result-phone-390-font150.png'),fullPage:false});
+
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
@@ -283,7 +296,8 @@ async function openPrivateWorkspace(){
     'lost paired correction recovers the corrected blue-coat plan without resubmission or replanning',
     'v3 client hydrates an older saved v2 result with a version-bound history read',
     'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history',
-    'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call'],
+    'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call',
+    'a Chinese why-result question explains current filters and edited-caption evidence while preserving result order and invoking no model or open action'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2));
   for(const checkpoint of evidence.checkpoints)console.log('PASS '+checkpoint);

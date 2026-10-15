@@ -203,12 +203,14 @@ def _render(filters, interpretation, *, zh, label_budget=96, text_budget=128):
     return ('当前筛选条件：' if zh else 'Active search filters: ') + '; '.join(clauses)
 
 
-def explain_filters(filters, interpretation, language) -> str:
+def explain_filters(filters, interpretation, language, *, max_bytes=_MAX_BYTES) -> str:
     """Explain active filter slots using only the supplied current snapshot.
 
     The formatter does not change either input, infer identities, or inspect
     results. Its fixed clauses survive even when previews need truncation.
     """
+    if type(max_bytes) is not int or not 300 <= max_bytes <= _MAX_BYTES:
+        raise ValueError('Invalid explanation budget')
     filters = filters if type(filters) is dict else {}
     interpretation = interpretation if type(interpretation) is dict else {}
     zh = language == 'zh'
@@ -219,7 +221,7 @@ def explain_filters(filters, interpretation, language) -> str:
             (96, 128), (72, 96), (48, 64), (32, 48), (22, 32), (12, 16), (8, 8)):
         result = _render(filters, interpretation, zh=zh,
                          label_budget=label_budget, text_budget=text_budget)
-        if len(result.encode('utf-8')) <= _MAX_BYTES:
+        if len(result.encode('utf-8')) <= max_bytes:
             return result
 
     # For malformed oversized fixed fields, discard values rather than shorten

@@ -19818,6 +19818,64 @@
       "production_response_logging_added": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "read-only-current-result-match-explanations-with-scoped-evidence",
+      "source_commit": "0845daae019a39710034d90ae46a38d8559f62d5",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "d8f4c9b758f888ec60810e798a5250afc347d05c4f16167fe3a020214e44207a",
+          "sha256": "f383ed9691b1713ca56af4d18e40343083c419feb01f750c86800c58fadaae38"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "1acccba0e0d2c890faa8319de9fdaac13b929b44d5fc9b2bc9eb900a4c997174",
+          "sha256": "e6e1aa41d241ed95da3e00b121a88c86215b9d11aa5a8fdd7fece3d3604633c2"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "73c95a4ae632ebf41a0ee10909405843ea7c8bed532e30be02f30e5f5575020d",
+          "sha256": "b6a3ad50d5f2b3ea99f1a52894401140e1649292446ef5a9e6225b116291e7c8"
+        },
+        {
+          "path": "server/backend/app/access/result_explanation.py",
+          "before_sha256": null,
+          "sha256": "cbe25cf01561b322e4464075b711cd2714a04916b5d3de40a01d4cbb61a9a8db"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "acced9fbfd311769435fec7cd35035607f53538a14090e2033f31d759b2bd55d",
+          "sha256": "d63b058da48bb41aa7c1e6ca8c8d9127763a8d22dbcf8d1229fc109e6d9f33e0"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "4abf0a1b233970665a6f0c80eaad9db73ac09d5f387081201e5bf38b71792da6",
+          "sha256": "5f5678260d8229398b56a6749219dfb45372eb994e0d8d416d96ebf7a51d1b00"
+        },
+        {
+          "path": "server/tests/security/test_result_explanation.py",
+          "before_sha256": null,
+          "sha256": "5327c386c332f5633c49a0e13c402cf1b51477995d65a08daf86a8fef1964349"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_explanation.py",
+          "before_sha256": null,
+          "sha256": "05c75129006fda8096c72446ce97fc11e162c82e9562122a2f7cfd9d5f3dfac9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "model_calls_for_result_explanations": 0,
+      "source_and_membership_revalidated": true,
+      "implicit_media_open": false,
+      "ranking_confidence_claimed": false,
+      "raw_source_prose_exposed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

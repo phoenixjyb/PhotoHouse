@@ -604,6 +604,29 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             return {'version': 1, 'kind': 'results', 'reply': reply,
                     'context': previous, 'filters': previous['filters'], 'items': existing['items'],
                     'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
+    from .result_explanation import parse_why_result_query, explain_result
+    why_result = parse_why_result_query(words)
+    if why_result is not None:
+        selected = why_result['ordinal']
+        if selected is None and existing is not None and existing['total'] == 1 and len(existing['items']) == 1:
+            selected = 1
+        target = (existing['items'][selected - 1]
+                  if existing is not None and selected is not None and 1 <= selected <= len(existing['items'])
+                  else None)
+        if target is None or (why_result['kind'] is not None and target.get('kind') != why_result['kind']):
+            reply = ('请先查找，再指定当前列表中的第几项；“这张照片”或“这个视频”需要唯一且类型相符的结果。'
+                     if lang == 'zh' else
+                     'Search first, then specify a result number in the current list. “This photo” or “this video” needs one result of that type.')
+            kind = 'clarification'
+        else:
+            reply = explain_result(target, selected, previous['filters'],
+                                   existing.get('interpretation', {}), lang)
+            kind = 'results'
+        return {'version': 1, 'kind': kind, 'reply': reply, 'context': previous,
+                'filters': previous['filters'] if previous else None,
+                'items': existing['items'] if existing else [],
+                'total': existing['total'] if existing else 0,
+                'has_more': existing['has_more'] if existing else False, 'effect': None}
     if _describe_results(words):
         if existing is None:
             return {'version': 1, 'kind': 'clarification',

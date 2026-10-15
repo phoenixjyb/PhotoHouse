@@ -36,6 +36,7 @@ FILES = (
     'backend/app/access/search_intent.py',
     'backend/app/access/search_intent_local.py',
     'backend/app/access/search_intent_view.py',
+    'backend/app/access/result_explanation.py',
     'backend/app/access/search_pending.py',
     'backend/app/access/semantic_encoder.py',
     'backend/app/access/semantic_search.py',
