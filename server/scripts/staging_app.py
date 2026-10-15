@@ -254,12 +254,15 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if self.assistant_intent_url is not None:
                 import unicodedata
-                if type(self.assistant_intent_url) is not str or not self.assistant_enabled:
+                if (type(self.assistant_intent_url) is not str or not self.assistant_enabled
+                        or '?' in self.assistant_intent_url or '#' in self.assistant_intent_url
+                        or any(ord(ch) <= 32 or ord(ch) == 127 for ch in self.assistant_intent_url)):
                     raise InvalidConfiguration()
                 intent = urlsplit(self.assistant_intent_url)
                 if (intent.scheme != 'http' or intent.hostname not in {'127.0.0.1', 'localhost'}
-                        or not intent.port or intent.username or intent.password or intent.query or intent.fragment
-                        or intent.path.rstrip('/') not in {'', '/api/generate'}
+                        or not intent.port or intent.username is not None or intent.password is not None
+                        or intent.query or intent.fragment
+                        or intent.path.rstrip('/') not in {'', '/api/generate', '/api/chat'}
                         or type(self.assistant_intent_model) is not str or not self.assistant_intent_model
                         or self.assistant_intent_model != self.assistant_intent_model.strip()
                         or len(self.assistant_intent_model.encode('utf-8', errors='strict')) > 120

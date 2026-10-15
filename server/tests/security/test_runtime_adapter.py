@@ -108,10 +108,15 @@ class RuntimeAdapterTests(unittest.TestCase):
                 assistant_intent_url='http://localhost:19002', assistant_intent_model='synthetic-intent',
                 assistant_intent_timeout_seconds=12).build_app(clock=lambda: NOW)
             adapter.assert_called_once_with(url='http://localhost:19002', model='synthetic-intent', timeout=12)
+            chat = replace(self.settings, assistant_enabled=True,
+                assistant_intent_url='http://localhost:19002/api/chat',
+                assistant_intent_model='synthetic-intent').build_app(clock=lambda: NOW)
         self.assertIsInstance(enabled.state.assistant_intent_planner, LocalIntentPlanner)
         self.assertEqual('synthetic-intent', enabled.state.assistant_intent_planner.model)
         self.assertEqual(12, enabled.state.assistant_intent_planner.timeout)
         self.assertFalse(enabled.state.memory_generation_enabled)
+        self.assertEqual('http://localhost:19002/api/chat', chat.state.assistant_intent_planner.url)
+        self.assertFalse(chat.state.memory_generation_enabled)
 
     def test_assistant_intent_runtime_rejects_partial_disabled_and_invalid_provider_settings(self):
         from dataclasses import replace

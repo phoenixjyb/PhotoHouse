@@ -202,6 +202,14 @@ class StagingConfigurationTests(unittest.TestCase):
         self.assertEqual('synthetic-intent', forwarded['assistant_intent_model'])
         self.assertEqual(12, forwarded['assistant_intent_timeout_seconds'])
 
+        chat = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_intent_url='http://localhost:19002/api/chat',
+            assistant_intent_model='synthetic-intent'))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            chat.build_app()
+        self.assertEqual('http://localhost:19002/api/chat',
+                         runtime.call_args.kwargs['assistant_intent_url'])
+
         invalid = (
             {'assistant_intent_url': 'http://localhost:19002'},
             {'assistant_intent_model': 'synthetic-intent'},
@@ -216,6 +224,14 @@ class StagingConfigurationTests(unittest.TestCase):
             {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002?token=secret',
              'assistant_intent_model': 'synthetic-intent'},
             {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002/other',
+             'assistant_intent_model': 'synthetic-intent'},
+            *({'assistant_enabled': True, 'assistant_intent_url': url,
+               'assistant_intent_model': 'synthetic-intent'} for url in (
+                'http://localhost:19002/api/chat?', 'http://localhost:19002/api/chat#',
+                'http://@localhost:19002/api/chat', 'http://localhost:19002/api/chat\n')),
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002/api/chat?token=secret',
+             'assistant_intent_model': 'synthetic-intent'},
+            {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002/api/chat#fragment',
              'assistant_intent_model': 'synthetic-intent'},
             {'assistant_enabled': True, 'assistant_intent_url': 'http://localhost:19002',
              'assistant_intent_model': ' '},

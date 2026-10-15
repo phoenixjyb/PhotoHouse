@@ -199,6 +199,15 @@ has stopped. The provider is optional, configured as an explicit loopback URL
 and installed model pair, and disabled by default. Importing or building the
 application starts no provider and downloads no weights.
 
+An explicit `/api/chat` URL selects the chat protocol; a base URL or
+`/api/generate` selects generation. Both send a closed JSON schema, disable
+thinking and streaming, and request a 4096-token context with at most 1024
+output tokens. Chat uses a separate system instruction and user query object.
+Only a completed assistant content response without tool calls can become a
+proposal. Endpoint errors and invalid responses get no retry or protocol
+fallback. These bounds and protocol checks do not establish model latency or
+semantic accuracy; the installed provider must be measured separately.
+
 Web and Android negotiate v3 only through the existing protected routes. An
 explicit unsupported-version response permits fallback to v2, then v1; generic
 errors, timeouts and authentication failures do not. Saved v1/v2 history retains
