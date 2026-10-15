@@ -24,6 +24,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
 | First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
 | Guided Web story creation | [Source flow and recovery contract](STORY_FIRST_GUIDE.md) |
+| Companion answer grounding | [Cited answers and clarification](STORY_COMPANION_GROUNDING.md) |
 | Review wording changes in story suggestions | [Review summary and local focus](STORY_PROPOSAL_WORDING_REVIEW.md) |
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
@@ -34,7 +35,9 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
+Latest delivery: [phone v64 and API/Web story review](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
+
+Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
 [v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).
 These are source/package records, not publication notices.
 

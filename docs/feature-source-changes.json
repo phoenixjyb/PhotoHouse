@@ -18363,6 +18363,43 @@
       "deployed": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "story-companion-cited-answer-contract",
+      "source_commit": "489c64bb40454f416b964d220ce523aab0982fc4",
+      "files": [
+        {
+          "path": "docs/STORY_COMPANION_GROUNDING.md",
+          "before_sha256": null,
+          "sha256": "a2faefa19a12ccd2929e34355cac31dddc7e10253e0d46c9d3c18cd48f5d3963"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "a8c58a935e9a84e6a11c8341975ebd29001bacde3d59de16e16308b7ed345c72",
+          "sha256": "a63014e8bf6ad431ea2a64edebf7d5ff07c5dd85c5b4e529320cb7e40297a89d"
+        },
+        {
+          "path": "server/tests/security/test_memory_editorial_context.py",
+          "before_sha256": "e825633ca8e7e0ba85fa051031f870e4b1a00c753556196bcaaa41276a11b66b",
+          "sha256": "96c5a036b88c75a92e5efda55bd8eb30ad03164a571fe113bab07ddcaaebb304"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "e66df76158b92f8c9fce7c8314d262db34b65be7b0db488d98bfac894376df7d",
+          "sha256": "5a7747f7ee9f9a5b58465f6b87efce97a54482259627001e72995afe3b113423"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "fb4a2d4dffabe2f0bf8a1313b5e165b75262d8d4473eaa88db07b34f626c52ee",
+          "sha256": "fcb9779c8a986cde05f234de9ee7a55343d4c76200b6de7475d0952fdf67e818"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
