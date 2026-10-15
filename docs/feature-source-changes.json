@@ -19609,6 +19609,21 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "turn-trail-resize-stability-before-page-scroll-assertion",
+      "source_commit": "13cc6c264f63e07ab8d8f17782b334ffe15df197",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "a367aaf0e3ad557971646bc122f1b98a93f8234c27e67d1440b9f52c4a0ed44e",
+          "sha256": "d19a499c5b721105c5f2fa1169bcc82814e3f1122c245522a688ac325ef4a2db"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_behavior_changed": false,
+      "page_scroll_assertion_preserved": true
     }
   ]
 }
