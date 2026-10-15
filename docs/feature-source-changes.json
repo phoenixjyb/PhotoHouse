@@ -19475,6 +19475,50 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "bounded-local-search-intent-chat-and-structured-format",
+      "source_commit": "62655049c83a697b067f3429383373561a963c17",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "df0207c5c963a718b3db577732b311483265dd135602cb777ed1c9f65727b714",
+          "sha256": "52d0a36fb6460647392a456f937ba70ad694a5ebd79b1c4bd301033c093bfbc1"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "e8ce6212d5d10395640b10ffaa678ef1a2a64fcba58837ed32c20098c32a3752",
+          "sha256": "e9d20d5c00b422f807ec322ceacb5a6d612e308d1db340a7d11194fd0ac960cc"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "00f36fd8d29712278c87431a253788cf11ad4d7d7f82c4f65f006984454be40a",
+          "sha256": "0aaaba2f766752baef39ca701325eb19648f328600bf0c17a7a2c5ab1a484ab8"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "before_sha256": "c16e6585ec6a8b58053b5d92a4177f097eededc05eda48a769cdc345205b0ff6",
+          "sha256": "ad941eb0552f383e71cc09046c59b3a03635dec5742f2f156df7293f60b57218"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "e74afd51685ea7d65334aff7f5db67cef6072b18c325f78b3d9c7d84b9a0093a",
+          "sha256": "9ddcb8dd38c683851a73fd2b0dca089ae8804384a7ba99da0004f976a73c290f"
+        },
+        {
+          "path": "server/tests/security/test_staging_config.py",
+          "before_sha256": "1cb0a090e652c924c1ccd1a15d2bcc129f30a85ab1fd364321d52fa522d54a4d",
+          "sha256": "a03cc34f91866640131a1ff271084a7316628c1dbbb9d9eb8d543590b944cf45"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
