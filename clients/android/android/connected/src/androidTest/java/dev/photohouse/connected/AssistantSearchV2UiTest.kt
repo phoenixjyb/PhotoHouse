@@ -5,10 +5,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -71,7 +73,7 @@ class AssistantSearchV2UiTest {
         }
         rule.onNodeWithTag("assistant-search-perspective").assertIsDisplayed()
         rule.onNodeWithText(if (zh) "搜索按拍摄日期进行" else "Search uses capture dates", substring = false).assertIsDisplayed()
-        rule.onNodeWithText(if (zh) "视角：妈妈" else "Perspective: 妈妈", substring = false).assertIsDisplayed()
+        rule.onAllNodesWithText(if (zh) "视角：妈妈" else "Perspective: 妈妈", substring = false).assertCountEquals(2)
         val interpretationTag = "assistant-search-interpretation-synthetic-search-v2"
         rule.onNodeWithTag("assistant-turns").performScrollToNode(
             androidx.compose.ui.test.hasTestTag(interpretationTag))

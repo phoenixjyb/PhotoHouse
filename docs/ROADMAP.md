@@ -29,10 +29,11 @@ access until those bindings are confirmed.
 
 The next acceptance set should cover a named person and the equivalent relative
 chain, two people together with a scene, a follow-up year/media restriction,
-opening the second current result, unknown dates, no matches and an account
-without kinship permission. Keep household queries and relevance judgments in
-the private operator record. Record expected people and hard filters, top-result
-relevance, missing-source explanations and observed latency separately; improve
+opening the second current result, short names overlapping place words, unknown
+dates, no matches and an account without kinship permission. Keep household
+queries and relevance judgments in the private operator record. Record expected
+people and hard filters, top-result relevance, missing-source explanations and
+observed latency separately; improve
 ranking only after incorrect identity/date/filter behavior is resolved.
 
 ## 1. Accept the delivered experience

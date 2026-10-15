@@ -44,6 +44,18 @@ headless browser needed bounded teardown after all assertions completed); the
 legacy voice journey passes with an explicit unsupported-version capability
 fixture and no search-v2 header on its v1 private turn.
 
+Phone main and Android-test source compilation pass. Debug lint passes with no
+errors at the pre-copy cohort `e55b954`; the later `acfc55c` changes only two
+media-neutral UI labels and the synthetic screenshot helper. Full Android,
+native Windows and physical family/device qualification remain separate gates.
+The additional caller/voice JVM cohort passes 38 tests (5 workspace callers and
+33 voice cases). Both English/Chinese emulator cases pass at 150% text, and four
+retained renders were inspected. The final test-only assertion recognizes the
+perspective in both the pre-submit banner and the interpreted result. An
+isolated, unconfigured debug package preserved the existing higher-version
+emulator installation; only the temporary test packages were removed afterward.
+These fixture results do not establish a signed phone release or family relevance.
+
 The complete API invocation at `f0c5176` is **incomplete**, stopped after 185
 passes, 96 subchecks and two library-transfer failures. Both failed cases pass
 alone with the same profile flags. Their relevant source and fixture blobs are
