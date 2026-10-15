@@ -762,6 +762,18 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'conflicting_people_reference':
                 reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
                          'Keep the selected people or change the people filter in a separate request.')
+            elif plan.reason == 'description_removal_mismatch':
+                reply = ('要移除的线索与当前查找不一致。请使用检索条件中显示的原线索。' if lang == 'zh' else
+                         'That clue does not match the current search. Use the original clue shown in the search conditions.')
+            elif plan.reason == 'description_removal_ambiguous':
+                reply = ('有多个线索与要移除的内容一致。请重新描述这次查找。' if lang == 'zh' else
+                         'More than one clue matches the requested removal. Describe the full search again.')
+            elif plan.reason == 'description_removal_target_unavailable':
+                reply = ('当前查找没有可单独移除的描述线索。请先查找一个具体场景。' if lang == 'zh' else
+                         'The current search has no descriptive clue to remove. Search for a specific scene first.')
+            elif plan.reason == 'description_removal_unsupported':
+                reply = ('请一次移除一个原描述线索，例如：去掉“红外套”线索。其他条件请分别调整。' if lang == 'zh' else
+                         'Remove one original descriptive clue at a time, for example: remove the "red coat" clue. Change other conditions separately.')
             elif plan.reason == 'description_correction_mismatch':
                 reply = ('要更正的场景线索与当前查找不一致。请使用查找摘要中显示的原线索。' if lang == 'zh' else
                          'That scene clue does not match the current search. Use the original clue shown in the search summary.')

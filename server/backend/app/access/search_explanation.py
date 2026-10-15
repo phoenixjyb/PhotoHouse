@@ -265,6 +265,10 @@ def no_results_guidance(filters, language) -> str:
         result = '没有找到符合条件的照片或视频。可以问“现在筛选了哪些条件”查看当前筛选条件。'
     else:
         result = 'No matching photos or videos were found. Ask "what filters are active" to review the current filters.'
+    if 'descriptive' in filters:
+        result += (' 可按检索条件中的原文说：去掉“某条线索”线索。其余条件会保留。'
+                   if zh else ' To drop one descriptive clue, use its exact wording from the search conditions: '
+                   'remove the "clue wording" clue. Other conditions stay active.')
     # Fixed strings are already small, but preserve the same hard reply bound
     # if future wording changes exceed the transport limit.
     if len(result.encode('utf-8')) <= _MAX_BYTES:

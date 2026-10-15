@@ -30,7 +30,8 @@ class FixturePlanner:
         for surface, alternatives in (
                 ('playing in snow', ['playing in snow', '在雪地玩']),
                 ('red coat', ['red coat', '红色外套']),
-                ('blue coat', ['blue coat', '蓝外套'])):
+                ('blue coat', ['blue coat', '蓝外套']),
+                ('green coat', ['green coat', '绿外套'])):
             start = query.find(surface)
             if start >= 0:
                 concepts.append({'start': start, 'end': start + len(surface),

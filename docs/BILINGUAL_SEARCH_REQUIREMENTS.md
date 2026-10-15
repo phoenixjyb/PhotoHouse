@@ -253,6 +253,23 @@ is stored as the user's turn; recovery replays its stored result without asking
 the provider again. This flow changes search conditions only, not captions,
 memories or family facts.
 
+## Removing one scene clue
+
+When a v3 search is too narrow, `remove the "red coat" clue`, `drop "red coat" clue`
+or `去掉“红外套”这条线索` removes one exact normalized surface shown in the current
+search conditions. Straight double quotes and matched curly double quotes are
+supported. Alternative phrases do not identify the target. The other descriptive
+clues, people, capture dates, media type, exact quoted text, tags and places remain
+unchanged. Removing the last clue clears only the descriptive filter.
+
+This refinement uses no language-model request. Missing context, unknown targets,
+reviewed-label collisions and extra unsupported instructions ask for clarification
+without changing the current search. Current membership and source bindings still
+apply, and workspace recovery returns the saved result without a duplicate turn.
+The empty-state reply explains this explicit option without claiming to know which
+clue caused the empty result. Removing a clue changes the search only; it edits no
+family record.
+
 ## Answering a missing-date question
 
 In a private v3 workspace conversation, an explicit new search with one supported

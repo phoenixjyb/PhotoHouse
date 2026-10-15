@@ -291,6 +291,83 @@ class AssistantIntentSearchTests(unittest.TestCase):
         self.assertEqual(changed.status_code, 409, changed.text)
         self.assertNotIn('blue coat', changed.text)
 
+    def test_explicit_clue_removal_repairs_empty_results_without_losing_hard_filters(self):
+        self.planner.concepts['green coat'] = ['green coat', '绿外套']
+        for removal in ('remove the "green coat" clue', '去掉“green coat”这条线索'):
+            with self.subTest(removal=removal):
+                initial = self.intent('find photos of Sample Child in September 2032 '
+                                      'playing in snow green coat containing "海边"').json()
+                self.assertEqual(initial['kind'], 'results', initial)
+                self.assertEqual(initial['items'], [])
+                self.assertEqual(initial['total'], 0)
+                calls = len(self.planner.calls)
+                self.planner.failure = True
+                response = self.intent(removal, initial['context'])
+                self.planner.failure = False
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertTrue(result['items'])
+                self.assertEqual({key: value for key, value in result['filters'].items()
+                                  if key != 'descriptive'},
+                                 {key: value for key, value in initial['filters'].items()
+                                  if key != 'descriptive'})
+                self.assertEqual([c['surface'] for c in result['filters']['descriptive']['concepts']],
+                                 ['playing in snow'])
+                self.assertEqual(len(self.planner.calls), calls)
+                self.assertIsNone(result['effect'])
+
+    def test_clue_removal_refuses_unknown_targets_and_rechecks_current_access_and_source(self):
+        initial = self.intent('find photos of Sample Child in September 2032 playing in snow red coat').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        calls = len(self.planner.calls)
+        mismatch = self.intent('remove the "green coat" clue', initial['context']).json()
+        self.assertEqual(mismatch['kind'], 'clarification', mismatch)
+        self.assertEqual(mismatch['context'], initial['context'])
+        self.assertEqual(mismatch['filters'], initial['filters'])
+        self.assertEqual(mismatch['items'], initial['items'])
+        denied = self.intent('remove the "red coat" clue', initial['context'], token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.mutate("UPDATE captions SET text='changed synthetic scene' WHERE id=1")
+        changed = self.intent('remove the "red coat" clue', initial['context'])
+        self.assertEqual(changed.status_code, 409, changed.text)
+        self.assertEqual(len(self.planner.calls), calls)
+
+    def test_saved_clue_removal_replays_without_model_call_or_duplicate_history(self):
+        store = initialize_v2(self.database.parent.resolve() / 'clue-removal-workspace.sqlite', clock=lambda: NOW)
+        self.app.state.assistant_workspace_store = store
+        self.app.state.assistant_workspace_healthy = True
+        headers = {'Authorization': 'Bearer ' + TOKEN, 'X-PhotoHouse-Search-Version': '3'}
+        base = '/assistant/workspace/v1'
+        thread = self.client.post(base + '/threads', json={'library_id': 'family-a'},
+            headers={'Authorization': headers['Authorization']}).json()['thread']['thread_id']
+        def send(words, revision, rid):
+            return self.client.post(f'{base}/threads/{thread}/turns', headers=headers,
+                json={'library_id': 'family-a', 'request_id': rid,
+                      'expected_revision': revision, 'text': words})
+        original_query = 'find photos of Sample Child in September 2032 playing in snow red coat'
+        first = send(original_query, 0, str(uuid.uuid4()))
+        self.assertEqual(first.status_code, 200, first.text)
+        calls = len(self.planner.calls)
+        self.planner.failure = True
+        removal, rid = 'remove the "red coat" clue', str(uuid.uuid4())
+        response = send(removal, 1, rid)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual([c['surface'] for c in result['filters']['descriptive']['concepts']],
+                         ['playing in snow'])
+        recovered = send(removal, 1, rid)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result'], result)
+        self.assertEqual(len(self.planner.calls), calls)
+        history = self.client.get(f'{base}/threads/{thread}?library_id=family-a',
+            headers={'Authorization': headers['Authorization']})
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
+                         [original_query, removal])
+
     def test_saved_scene_correction_replays_without_another_model_call(self):
         self.planner.concepts['blue coat'] = ['blue coat', '蓝外套']
         store = initialize_v2(self.database.parent.resolve() / 'correction-workspace.sqlite', clock=lambda: NOW)
