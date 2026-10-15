@@ -1,7 +1,6 @@
 """Private relevance evaluator: bounded reports and protected local search only."""
 from contextlib import closing, contextmanager
 from pathlib import Path
-import json
 import sqlite3
 import sys
 import tempfile
@@ -20,6 +19,31 @@ from app.access.search_evaluation import evaluate_cases
 from app.access.service import AccessDenied, AccessService
 from app.access.transport import AccessRuntime
 from phone_discovery_fixture import create, reviewed, TOKEN, NOW
+
+
+def _report_strings(value):
+    """Yield report strings without serializing numeric timing metrics."""
+    if type(value) is str:
+        yield value
+    elif type(value) is dict:
+        for key, item in value.items():
+            if type(key) is str:
+                yield key
+            yield from _report_strings(item)
+    elif type(value) in (list, tuple):
+        for item in value:
+            yield from _report_strings(item)
+
+
+def _assert_report_excludes(testcase, report, *private_values):
+    # The evaluator report is content-free; inspect every emitted string value
+    # and key while leaving bounded numeric metrics such as elapsed_ms numeric.
+    packed_strings = tuple(_report_strings(report))
+    for private in private_values:
+        testcase.assertFalse(
+            any(private in value for value in packed_strings),
+            f'private report value leaked: {private!r}',
+        )
 
 
 class FakeEngine:
@@ -80,10 +104,23 @@ class SearchEvaluationTests(unittest.TestCase):
         self.assertIsNone(seen_previous[0])
         self.assertEqual(seen_previous[1], {'opaque': 'context-secret'})
         self.assertEqual([name for name, _ in engine.calls].count('presentation'), 4)
-        packed = json.dumps(report, sort_keys=True)
-        for private in ('private query', 'caption-secret', 'context-secret', 'private label',
-                        'private reply', '103', '101', '999'):
-            self.assertNotIn(private, packed)
+        _assert_report_excludes(
+            self, report, 'private query', 'caption-secret', 'context-secret',
+            'private label', 'private reply', '103', '101', '999',
+        )
+
+    def test_private_report_scan_ignores_numeric_elapsed_but_checks_content_strings(self):
+        report = {
+            'cases': [
+                {'ordinal': 1, 'elapsed_ms': 12.091036000001054,
+                 'diagnostic': {'message': 'content-free'}}
+            ]
+        }
+        _assert_report_excludes(self, report, '103', 'private query')
+
+        report['cases'][0]['diagnostic']['message'] = 'unexpected result id 103'
+        with self.assertRaisesRegex(AssertionError, 'private report value leaked'):
+            _assert_report_excludes(self, report, '103')
 
     def test_validation_rejects_entire_document_before_engine_access(self):
         engine = FakeEngine()
@@ -126,9 +163,7 @@ class SearchEvaluationTests(unittest.TestCase):
         self.assertEqual(report['cases'][1]['result_count'], 0)
         self.assertFalse(report['cases'][1]['hit_at_20'])
         self.assertEqual(report['relevance'], {'evaluated_case_count': 2, 'hit_count': 0, 'mrr_at_20': 0.0})
-        packed = json.dumps(report)
-        self.assertNotIn('private', packed)
-        self.assertNotIn('103', packed)
+        _assert_report_excludes(self, report, 'private', '103')
 
     def test_absent_ids_are_unproven_when_more_results_exist(self):
         engine = FakeEngine()
@@ -237,10 +272,7 @@ class SearchEvaluationTests(unittest.TestCase):
                          (3, 3, 0), report)
         self.assertEqual(report['relevance']['evaluated_case_count'], 2)
         self.assertEqual(report['cases'][2]['checks']['effect'], True)
-        encoded = json.dumps(report)
-        self.assertNotIn('海边', encoded)
-        self.assertNotIn('asset_id', encoded)
-        self.assertNotIn('103', encoded)
+        _assert_report_excludes(self, report, '海边', 'asset_id', '103')
 
 
 if __name__ == '__main__':

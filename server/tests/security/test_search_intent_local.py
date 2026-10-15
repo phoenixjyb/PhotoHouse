@@ -301,7 +301,7 @@ class LocalIntentPlannerTests(unittest.TestCase):
         result = planner.propose(query, '2032-09-14', False)
         self.assertEqual(query[5:13], 'ＲＥＤ cake')
         self.assertEqual({'start': 5, 'end': 13,
-                          'alternatives': ['red cake']}, result['concepts'][0])
+                          'alternatives': ['ＲＥＤ cake']}, result['concepts'][0])
 
     def test_body_cap_status_and_redirect_fail_closed_without_following_redirect(self):
         consumed = []
@@ -331,6 +331,116 @@ class LocalIntentPlannerTests(unittest.TestCase):
         with self.assertRaises(IntentUnavailable):
             self.planner(lambda _: httpx.Response(503)).propose(
                 'find red cake photos', '2032-09-14', False)
+
+    def test_source_surfaces_are_first_bounded_and_model_order_is_preserved(self):
+        query = 'find photos with ＲＥＤ 雨天 near street'
+        model_concepts = [
+            {'surface': 'ＲＥＤ', 'alternatives': ['red', '紅色', 'red dessert', '赤色']},
+            {'surface': '雨天', 'alternatives': ['rainy weather', '下雨天', 'wet weather']},
+            {'surface': 'street', 'alternatives': ['街道', 'road', '道路']},
+        ]
+        expected_surfaces = ['ＲＥＤ', '雨天', 'street']
+        expected_alternatives = [
+            ['ＲＥＤ', '紅色', 'red dessert', '赤色'],
+            ['雨天', 'rainy weather', '下雨天', 'wet weather'],
+            ['street', '街道', 'road', '道路'],
+        ]
+        proposal = {'version': 1, 'status': 'ready', 'question': None,
+                    'concepts': model_concepts}
+        content = json.dumps(proposal, ensure_ascii=False)
+
+        for endpoint in ('/api/chat', '/api/generate'):
+            with self.subTest(endpoint=endpoint):
+                calls = []
+
+                def handler(request):
+                    calls.append(request)
+                    if endpoint == '/api/chat':
+                        body = json.loads(request.content)
+                        prompt = body['messages'][0]['content']
+                        self.assertEqual(query, json.loads(body['messages'][1]['content'])['query'])
+                    else:
+                        body = json.loads(request.content)
+                        prompt = body['prompt']
+                        self.assertIn(json.dumps({'query': query, 'today': '2032-09-14',
+                                                  'has_previous_search': False}, ensure_ascii=False), prompt)
+                    self.assertIn('do not repeat a requirement or use overlapping concept surfaces',
+                                  prompt.casefold())
+                    self.assertIn('put the exact original surface first', prompt.casefold())
+                    envelope = {'model': 'intent-local', 'done': True}
+                    if endpoint == '/api/chat':
+                        envelope['message'] = {'role': 'assistant', 'content': content}
+                    else:
+                        envelope['response'] = content
+                    return httpx.Response(200, json=envelope)
+
+                result = self.planner(handler, url='http://127.0.0.1:11434' + endpoint).propose(
+                    query, '2032-09-14', False)
+                self.assertEqual(1, len(calls))
+                self.assertEqual([endpoint], [request.url.path for request in calls])
+                self.assertEqual(expected_surfaces,
+                                 [query[concept['start']:concept['end']] for concept in result['concepts']])
+                self.assertEqual(expected_alternatives,
+                                 [concept['alternatives'] for concept in result['concepts']])
+                self.assertEqual([{'start', 'end', 'alternatives'}] * 3,
+                                 [set(concept) for concept in result['concepts']])
+
+    def test_literal_retention_cannot_exceed_the_canonical_description_byte_budget(self):
+        from app.access.search_description import normalize_description
+        surfaces = ['雪' * 42 + 'x' + str(index) for index in range(6)]
+        concepts = [{'surface': surface,
+                     'alternatives': [str(index) + str(alt) + 'a' * 126 for alt in range(3)] + [str(index)]}
+                    for index, surface in enumerate(surfaces)]
+        # Original model proposal is valid; adding every long source surface
+        # would exceed the existing 4-KiB total budget and must refuse.
+        normalize_description({'version': 1, 'concepts': concepts})
+        query = ' '.join(surfaces)
+        content = json.dumps({'version': 1, 'status': 'ready', 'question': None,
+                              'concepts': concepts}, ensure_ascii=False)
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json={'model': 'intent-local', 'done': True,
+                'message': {'role': 'assistant', 'content': content}})
+        with self.assertRaises(IntentUnavailable):
+            self.planner(handler, url='http://127.0.0.1:11434/api/chat').propose(
+                query, '2032-09-14', False)
+        self.assertEqual(len(calls), 1)
+
+    def test_invalid_duplicate_alternatives_and_overlapping_surfaces_still_refuse(self):
+        cases = (
+            ('find red cake photos', [
+                {'surface': 'red cake', 'alternatives': ['red cake', 'ＲＥＤ cake']},
+            ]),
+            ('find rainy day photos', [
+                {'surface': 'rainy day', 'alternatives': ['rainy day']},
+                {'surface': 'day', 'alternatives': ['day']},
+            ]),
+        )
+        for endpoint in ('/api/chat', '/api/generate'):
+            for query, concepts in cases:
+                with self.subTest(endpoint=endpoint, query=query):
+                    proposal = {'version': 1, 'status': 'ready', 'question': None,
+                                'concepts': concepts}
+                    content = json.dumps(proposal, ensure_ascii=False)
+                    calls = []
+
+                    def handler(request):
+                        calls.append(request)
+                        if endpoint == '/api/chat':
+                            envelope = {'model': 'intent-local', 'done': True,
+                                'message': {'role': 'assistant', 'content': content}}
+                        else:
+                            envelope = {'model': 'intent-local', 'done': True,
+                                        'response': content}
+                        return httpx.Response(200, json=envelope)
+
+                    planner = self.planner(handler,
+                        url='http://127.0.0.1:11434' + endpoint)
+                    with self.assertRaises(IntentUnavailable):
+                        planner.propose(query, '2032-09-14', False)
+                    self.assertEqual(1, len(calls))
+                    self.assertEqual([endpoint], [request.url.path for request in calls])
 
     def test_deadline_is_enforced_after_transport_returns(self):
         ticks = iter([1.0, 1.0, 1.0, 1.0, 46.0])
