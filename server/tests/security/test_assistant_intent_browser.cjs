@@ -246,6 +246,32 @@ async function openPrivateWorkspace(){
   await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'intent-v3-pending-date-answer-phone-390-font150.png'),fullPage:false});
 
+  const emptyEntry=await send('find photos of Sample Child in September 2032 playing in snow green coat containing "secret memory phrase"');
+  const empty=emptyEntry.response.result;
+  assert.equal(empty.kind,'results');assert.equal(empty.total,0);assert.deepEqual(empty.items,[]);
+  assert.deepEqual(empty.filters.descriptive.concepts.map(item=>item.surface),['playing in snow','green coat']);
+  assert.ok((await page.locator('#assistant-search-summary').innerText()).includes('green coat'));
+  assert.match(await page.locator('#assistant-reply').innerText(),/remove the "clue wording" clue|去掉“某条线索”线索/);
+  const beforeRemovalCalls=await plannerCalls(),beforeRemovalTurns=turnEntries().length;
+  await send('去掉“green coat”这条线索',{lose:true});
+  assert.equal(await plannerCalls(),beforeRemovalCalls,'explicit single-clue removal does not call the model');
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-recover').waitFor({state:'visible'});
+  await page.locator('#assistant-private-recover').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-result').length===2&&!document.querySelector('#assistant-private-new').disabled);
+  const removed=turnEntries().at(-1).response.result;
+  assert.deepEqual(removed.items.map(item=>item.id),['101','103']);
+  assert.deepEqual(removed.filters.descriptive.concepts.map(item=>item.surface),['playing in snow']);
+  for(const key of ['people','media','date','text'])assert.deepEqual(removed.filters[key],empty.filters[key],`removal retains ${key}`);
+  assert.equal(turnEntries().length,beforeRemovalTurns+1,'lost removal recovers the saved result without another turn');
+  assert.equal(await plannerCalls(),beforeRemovalCalls,'removal recovery does not plan again');
+  const removedSummary=await page.locator('#assistant-search-summary').innerText();
+  for(const value of ['playing in snow','Sample Child','2032-09','secret memory phrase'])assert.ok(removedSummary.includes(value));
+  assert.doesNotMatch(removedSummary,/green coat/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.locator('#assistant-search-summary').screenshot({path:path.join(artifacts,'intent-v3-remove-clue-phone-summary-390-font150.png')});
+  await page.screenshot({path:path.join(artifacts,'intent-v3-remove-clue-recovered-phone-390-font150.png'),fullPage:false});
+
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
@@ -256,7 +282,8 @@ async function openPrivateWorkspace(){
     'lost v3 turn recovers with a versioned GET and no second planning call',
     'lost paired correction recovers the corrected blue-coat plan without resubmission or replanning',
     'v3 client hydrates an older saved v2 result with a version-bound history read',
-    'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history'],
+    'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history',
+    'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2));
   for(const checkpoint of evidence.checkpoints)console.log('PASS '+checkpoint);

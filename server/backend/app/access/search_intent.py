@@ -10,8 +10,9 @@ from datetime import datetime
 import re
 
 from . import discovery as d
-from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _extract_dates,
-                                   _consumed_label, _valid_previous, _strip_prefix)
+from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _entity_filters,
+                                   _extract_dates, _consumed_label, _valid_previous,
+                                   _strip_prefix)
 from .kinship import SELECTORS
 from .search_refinement import _operations, plan_query as literal_plan, query_mode
 from .search_description import normalize_description
@@ -27,6 +28,13 @@ class IntentUnavailable(RuntimeError):
 
 
 _REMOVAL = re.compile(r'^(?:any description|clear (?:the )?description filter|不限描述|不限场景)[。.!！?？]*$', re.I)
+_QUOTED_TARGET = r'(?:"(?P<target_ascii>[^"\r\n]+)"|“(?P<target_curly>[^“”\r\n]+)”)'
+_DESCRIPTIVE_REMOVALS = (
+    re.compile(rf'^\s*(?:remove|drop)[ \t]+(?:the[ \t]+)?{_QUOTED_TARGET}[ \t]+clue[ \t]*[。.!！?？]*\s*$', re.I),
+    re.compile(rf'^\s*(?:移除|去掉)[ \t]*{_QUOTED_TARGET}[ \t]*(?:这条|这个)?线索[ \t]*[。.!！?？]*\s*$'),
+)
+_MALFORMED_DESCRIPTIVE_REMOVAL = re.compile(
+    r'^(?:(?:remove|drop)(?a:\b).*(?a:\b)clues?(?a:\b).*|(?:移除|去掉).+线索.*)$', re.I | re.S)
 _ACTION = re.compile(r'^(?:delete|remove all|share|send|upload|rename|move|record|take a photo|'
                      r'删除|分享|发送|上传|重命名|移动|录音|拍照|照一下)(?a:\b)|^(?:删除|分享|发送|上传|重命名|移动|录音|拍照|照一下)', re.I)
 _GRAMMAR = re.compile(r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|please|me|for|and|or|both|together|with)(?a:\b)|'
@@ -138,6 +146,50 @@ def _descriptive_correction_parts(words):
         if old and new:
             return old, new
     return None
+
+
+def _descriptive_removal_parts(words):
+    """Return only the exact quoted target from a closed removal command."""
+    for pattern in _DESCRIPTIVE_REMOVALS:
+        match = pattern.fullmatch(words)
+        if match is not None:
+            target = match.group('target_ascii') or match.group('target_curly')
+            span = (match.span('target_ascii') if match.group('target_ascii') is not None
+                    else match.span('target_curly'))
+            return target, span
+    return None
+
+
+def _removal_consumes_label(words, target_span, target, entities):
+    """Do not let either command syntax or its quoted target shadow a label."""
+    start, end = target_span
+    target_only = (' ' * start) + words[start:end] + (' ' * (len(words) - end))
+    labels = entities.get('labels', [])
+    return (_consumed_label(d.fold(words), d.fold(target_only), labels) or
+            _consumed_label(d.fold(target), ' ' * len(d.fold(target)), labels))
+
+
+def _plan_descriptive_removal(target, *, previous, hard_previous):
+    """Remove one uniquely named stored surface while retaining every other slot."""
+    if previous is None or 'descriptive' not in previous:
+        return QueryPlan(3, 'clarification', dict(previous or {}),
+                         'description_removal_target_unavailable')
+    from .search_text import normalize_text
+
+    description = normalize_description(previous['descriptive'])
+    key = normalize_text(target)
+    matches = [index for index, concept in enumerate(description['concepts'])
+               if normalize_text(concept['surface']) == key]
+    if not matches:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_removal_mismatch')
+    if len(matches) != 1:
+        return QueryPlan(3, 'clarification', dict(previous), 'description_removal_ambiguous')
+    concepts = [dict(concept) for index, concept in enumerate(description['concepts'])
+                if index != matches[0]]
+    filters = dict(hard_previous or {})
+    if concepts:
+        filters['descriptive'] = normalize_description({'version': 1, 'concepts': concepts})
+    return QueryPlan(3, 'ready', filters)
 
 
 def _correction_consumes_label(words, entities):
@@ -300,17 +352,28 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     else:
         hard_previous = None
     mode = intent_mode(words)
-    if mode == 'refine' and previous is None:
-        return QueryPlan(3, 'clarification', {}, 'refine_without_context')
     refine = previous is not None and mode != 'search'
     kept = dict(previous or {}) if refine else {}
     if _REMOVAL.fullmatch(words.strip()):
         if previous is None:
             return QueryPlan(3, 'clarification', {}, 'refine_without_context')
         return QueryPlan(3, 'ready', {key: value for key, value in previous.items() if key != 'descriptive'})
+    descriptive_removal = _descriptive_removal_parts(words)
+    if descriptive_removal is not None:
+        target, target_span = descriptive_removal
+        _, entity_error = _entity_filters(entities)
+        if entity_error:
+            return QueryPlan(3, 'clarification', dict(previous or {}), entity_error)
+        if _removal_consumes_label(words, target_span, target, entities):
+            return QueryPlan(3, 'clarification', dict(previous or {}), 'ambiguous_entities')
+        return _plan_descriptive_removal(target, previous=previous, hard_previous=hard_previous)
+    if mode == 'refine' and previous is None:
+        return QueryPlan(3, 'clarification', {}, 'refine_without_context')
     # Preserve the explicit capture/search uncertainty boundary.
     if _ACTION.match(words.strip()):
         return QueryPlan(3, 'unsupported', kept, 'unsupported_action')
+    if _MALFORMED_DESCRIPTIVE_REMOVAL.fullmatch(words.strip()):
+        return QueryPlan(3, 'clarification', dict(previous or {}), 'description_removal_unsupported')
     # Read-only conversational openings are grammar in v3 only. Keep their
     # offsets fixed for proposals, and refuse collisions with reviewed labels.
     grammar_words = _INTENT_OPEN.sub(lambda match: ' ' * len(match.group(0)), words)

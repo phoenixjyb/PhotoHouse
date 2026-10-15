@@ -85,6 +85,25 @@ def test_empty_result_question_recognition_is_closed_and_normalized():
     assert all(not describe_empty_query(value) for value in rejected)
 
 
+def test_empty_result_descriptive_relaxation_is_explicit_bounded_and_available_with_hard_filters():
+    description = {'version': 1, 'concepts': [
+        {'surface': 'PRIVATE SURFACE', 'alternatives': ['PRIVATE ALTERNATIVE']},
+    ]}
+    for hard in ({}, {'date': {'from': '2032-01-01', 'to': '2032-12-31'}},
+                 {'text': 'PRIVATE LITERAL'}):
+        filters = dict(hard, descriptive=description)
+        before = copy.deepcopy(filters)
+        english = no_results_guidance(filters, 'en')
+        chinese = no_results_guidance(filters, 'zh')
+        assert 'remove the "clue wording" clue' in english
+        assert 'Other conditions stay active' in english
+        assert '去掉“某条线索”线索' in chinese and '其余条件会保留' in chinese
+        for reply in (english, chinese):
+            assert 'PRIVATE' not in reply
+            assert len(reply.encode('utf-8')) <= 600
+        assert filters == before
+
+
 def test_empty_result_guidance_uses_date_policy_before_text_and_keeps_other_filters():
     filters = {'date': {'from': '2025-01-01', 'to': '2025-01-31'},
                'text': 'private phrase', 'people': {'ids': ['private-person'], 'match': 'all'}}

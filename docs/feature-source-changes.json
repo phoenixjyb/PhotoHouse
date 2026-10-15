@@ -19659,6 +19659,67 @@
       "production_response_logging_added": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "explicit-single-descriptive-clue-removal-preserving-hard-conditions",
+      "source_commit": "bf81c3b7274af18621c13452c1e5044111d29ca0",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "753e2c11e814c8a80b681cf1a410caeaa652f5679b1ab23229f64658064c82aa",
+          "sha256": "1379dd416823e216ec570ed4db3cfa7dddd692089cdb8935945c7eaeed1a93ba"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "99f53486794a7d7130b996999613e8203b80ada9e85b645e049b9418b57163a9",
+          "sha256": "1acccba0e0d2c890faa8319de9fdaac13b929b44d5fc9b2bc9eb900a4c997174"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "946f2c9e476682641a35d717642dd08d46669e6a618cfdb53df27fa5337c09e8",
+          "sha256": "73c95a4ae632ebf41a0ee10909405843ea7c8bed532e30be02f30e5f5575020d"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "6dd81c5536242c79a4854ffefb838aba6e4e4eb211188357663e6e264c5be30a",
+          "sha256": "17d89472d587688defe34017a356a85e6ea14e3313bc08b77254245d4396d6cb"
+        },
+        {
+          "path": "server/tests/security/assistant_intent_browser_fixture.py",
+          "before_sha256": "f6e969dbe98a64d66dd06524aefc7607ccb7121c4aea33649b9b2acb60411025",
+          "sha256": "22e23d3c67731d742b26b80598eca2710b4561221a0fbe78a86ece610ef9383f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "72aa337c486578861606069822f3cdf498cc9bf41cf104110be57fb166607653",
+          "sha256": "4abf0a1b233970665a6f0c80eaad9db73ac09d5f387081201e5bf38b71792da6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "d2ec57671be78d9bda6e70e5e7b5db2cdf5eceb3e6b081801dc3830ebf180ae3",
+          "sha256": "85c0d38510604d34e712d5a8b9babbf96ca7bf08299ddb11be34b2a5d79b0df1"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": "2f1c701ae910564292b53f50f74cb7ed5381830f074f85ae6128e34a4f36617a",
+          "sha256": "5a5854fbe9f94130f245882209813b26818b8cda80363e42c13cc955a2eb5d73"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_clue_removal.py",
+          "before_sha256": null,
+          "sha256": "8d6ff485511da72665d03a92974db61cc26be164c03cebe439b9797206136112"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "implicit_filter_relaxation": false,
+      "model_calls_for_exact_removal": 0,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
