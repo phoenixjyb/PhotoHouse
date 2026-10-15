@@ -42,11 +42,17 @@ _MEDIA = (
 )
 _NEGATION = re.compile(r'不要|没有|排除|除外|删除|不包括|(?a:\b)(?:not|without|except|excluding|exclude|remove|delete)(?a:\b)', re.I)
 _SEARCH_OPEN = re.compile(
-    r'^(?:(?:(?:请|麻烦)(?:你)?\s*)?'
+    r'^(?:'
+    r'(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|'
+    r'i\s+would\s+like\s+to\s+see|do\s+we\s+have|can\s+you\s+pull\s+up|'
+    r'look\s+for)(?a:\b))|'
+    r'(?:(?:(?:请|麻烦)(?:你)?\s*)?'
     r'(?:(?:帮我|替我|我想|帮忙|帮我忙|能不能|可以)(?:你)?\s*)?'
     r'(?:(?:找一找|搜一搜|查找|搜索|找|查|搜|看看|看)|给我(?:看看|看)|显示)(?:一下)?|'
     r'(?:(?:please|can you|could you|would you)\s+)?(?:find|search|show)(?a:\b)'
-    r'(?:\s+(?:me|for)(?a:\b))?)', re.I)
+    r'(?:\s+(?:me|for)(?a:\b))?)|'
+    r'(?:(?:请)?(?:我想看看|我想看|我想找|想找|想看|还有没有|有没有))'
+    r')', re.I)
 _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b))', re.I)
@@ -365,9 +371,14 @@ def _previous_month(day):
 
 
 def _strip_prefix(text):
-    value = text.strip()
-    value = _SEARCH_OPEN.sub(' ', value, count=1)
-    value = _REFINE_OPEN.sub(' ', value, count=1)
+    # Keep offsets aligned for the reviewed-label collision check.
+    value = re.sub(r'^\s+', lambda match: ' ' * len(match.group(0)), text)
+    leading = len(value) - len(value.lstrip())
+    prefix = value[:leading]
+    value = value[leading:]
+    value = _SEARCH_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
+    value = _REFINE_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
+    value = prefix + value
     return value
 
 
@@ -547,7 +558,10 @@ def plan_query(words, *, now: datetime, entities: dict,
                 for label in labels if label.strip()))):
         return _clarify('ambiguous_entities', previous_filters if refine else None)
     outside = _CONTENT_INTRO.sub(lambda match: ' ' * len(match.group(0)), outside)
+    prefixed = outside
     outside = _strip_prefix(outside)
+    if _consumed_label(prefixed, outside, labels):
+        return _clarify('ambiguous_entities', previous_filters if refine else None)
 
     today = now.date()
     date_surface = outside

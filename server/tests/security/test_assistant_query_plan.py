@@ -153,6 +153,51 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_ready('find videos of Sample Child',
                           {'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'}})
 
+    def test_natural_read_only_openings_share_the_bounded_search_grammar(self):
+        expected = {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'}}
+        for words in (
+            "I'm looking for photos of Sample Child",
+            'I am looking for photos of Sample Child',
+            'I would like to see photos of Sample Child',
+            'do we have photos of Sample Child?',
+            'can you pull up photos of Sample Child',
+            'look for photos of Sample Child',
+            'please look for photos of Sample Child',
+            '我想看看示例儿童的照片', '我想看示例儿童的照片', '我想找示例儿童的照片',
+            '想找示例儿童的照片', '想看示例儿童的照片', '有没有示例儿童的照片',
+            '还有没有示例儿童的照片',
+            "I'm looking for示例儿童的photos",
+            'can you pull up示例儿童的照片',
+        ):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'search')
+                self.assert_ready(words, expected)
+
+        self.assert_ready("I'm looking for Sample Child photos from September 2032 containing birthday cake", {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': 'birthday cake'})
+        self.assert_ready('还有没有示例儿童2032年9月照片包含切蛋糕', {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'text': '切蛋糕'})
+
+        for words in ('look forward to photos', 'look for photoshoot',
+                      'look for Sample Child photosunknown', 'find photos of Sample Child extra'):
+            with self.subTest(words=words):
+                self.assert_clarifies(words, 'unsupported_condition')
+        self.assertIsNone(query_mode('lookforward photos'))
+        self.assertIsNone(query_mode('looking for photos'))
+        self.assert_ready('I am looking for photos containing "open the first result"',
+                          {'media': ['image'], 'text': 'open the first result'})
+        self.assert_ready('find photos containing "do we have"',
+                          {'media': ['image'], 'text': 'do we have'})
+
+    def test_read_only_openings_cannot_consume_reviewed_labels(self):
+        for label in ('look for', 'do we have', '有没有', 'find'):
+            with self.subTest(label=label):
+                entities = {**ENTITIES, 'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                            'labels': [label]}
+                self.assert_clarifies(label + ' photos', 'ambiguous_entities', entities=entities)
+
     def test_mixed_scripts_do_not_require_spaces_at_language_boundaries(self):
         cases = {
             'find示例儿童昨天的photos': {

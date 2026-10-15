@@ -18,6 +18,15 @@ previous people, date and text filters. English tokens still need boundaries
 inside Latin words: `findphotos` is not a search opening. The legacy v1 parser
 is unchanged; clients must negotiate v2 for this behavior.
 
+The same model-free v2 path accepts anchored read-only openings such as `look
+for`, `I'm looking for`, `I am looking for`, `I would like to see`, `do we have`,
+`can you pull up`, `有没有` and `还有没有`, including Chinese/English mixtures.
+They introduce the existing search grammar; they do not make unsupported scene
+conditions disappear. Every remaining condition still has to compile. Quoted
+openings stay literal, reviewed-label collisions ask for clarification, and
+Latin word boundaries prevent a prefix such as `look forward` from becoming a
+search command. These forms add no model request, account access or ASR claim.
+
 This remains a bounded deterministic parser. It does not understand arbitrary
 Chinese, English or dialect sentences. Unmatched conditions and ambiguous
 people require clarification; they cannot be silently dropped to produce more
