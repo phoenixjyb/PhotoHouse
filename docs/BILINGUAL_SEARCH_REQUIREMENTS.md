@@ -103,6 +103,41 @@ result IDs and request recovery. These source changes add no provider, private
 alias, database migration or new client response fields. The legacy v1 parser
 and the unverified Shanxi/Jin speech boundary remain unchanged.
 
+## Asking what the current search means
+
+After a v2 search, users can ask `what are we looking for?`,
+`what filters are active?`, `explain the current search`, `现在在找什么？`,
+`现在筛选了哪些条件？`, or mixed forms such as `当前search条件是什么`.
+These are complete read-only requests; adding an action or another condition
+does not authorize the assistant to discard that extra text.
+
+The answer describes the revalidated current filters: media kinds, inclusive
+capture-date bounds, selected people and tags with their any/all operators,
+locations, and the text phrase. It uses current reviewed labels for selected
+IDs, including when no results match. It does not infer identities from cards,
+quote captions or family notes, reveal unselected roster entries or kinship
+perspective, or explain a similarity score as a probability. A singleton asset
+lookup has no search filters; the answer says so without replacing that item
+with a catalogue search. Without context, the assistant asks the user to search
+first.
+
+Replies stay within the existing 600 UTF-8-byte limit. Ordinary bilingual names
+remain intact when space permits. At most two names per facet are previewed,
+with an explicit count for the remaining selections. Shortened names use an
+ellipsis, and shortened text is marked as an excerpt. All active filter clauses
+remain visible; the underlying filters and original text are unchanged. Quoted
+values and escaped controls are data. The text phrase still follows the existing
+normalized lexical matching contract; this is not a new case-sensitive or
+cross-language semantic matcher.
+
+The explanation preserves current result order, context and any subsequent
+refinement or correction. Saved conversations and request recovery keep the
+same reply, subject to current source and membership checks. Existing opt-in
+reply speech reads the bounded saved explanation and withholds audio if the
+source changes during synthesis. Generated tests cover that transport behavior;
+real TTS listening, installed service and device acceptance remain separate.
+The legacy v1 parser and all model/runtime settings are unchanged.
+
 ## Speech and uncertainty
 
 The ASR adapter preserves the returned text after trimming outer whitespace,

@@ -270,6 +270,42 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertEqual(isolated.json()['result']['kind'], 'clarification')
         self.assertIsNone(isolated.json()['result']['context'])
 
+    def test_filter_explanation_uses_owned_context_and_recovers_without_changes(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        found = self.turn(tid, text='find Sample Child photos in 2026', headers=headers)
+        self.assertEqual(found.status_code, 200, found.text)
+        initial = found.json()['result']
+        explained_id = new_id()
+        explained = self.turn(tid, explained_id, revision=1,
+                              text='现在筛选了哪些条件？', headers=headers)
+        self.assertEqual(explained.status_code, 200, explained.text)
+        result = explained.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        for key in ('context', 'filters', 'items', 'total', 'interpretation'):
+            self.assertEqual(result[key], initial[key])
+        self.assertIn('Sample Child', result['reply'])
+        self.assertIn('2026-01-01', result['reply'])
+        self.assertIsNone(result['effect'])
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{explained_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertEqual(recovered.json()['result']['reply'], result['reply'])
+        self.assertEqual(recovered.json()['result']['filters'], initial['filters'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        corrected = self.turn(tid, revision=2, text='I meant videos', headers=headers)
+        self.assertEqual(corrected.status_code, 200, corrected.text)
+        self.assertEqual(corrected.json()['result']['filters'], {
+            **initial['filters'], 'media': ['video']})
+        other = self.turn(self.thread()['thread_id'], text='what filters are active', headers=headers)
+        self.assertEqual(other.status_code, 200, other.text)
+        self.assertEqual(other.json()['result']['kind'], 'clarification')
+        self.assertIsNone(other.json()['result']['context'])
+        self.update("UPDATE captions SET text='Changed source' WHERE id=1")
+        stale = self.request('GET',
+            f'/threads/{tid}/requests/{explained_id}?library_id=family-a', headers=headers)
+        self.assertEqual(stale.status_code, 409, stale.text)
+
     def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']

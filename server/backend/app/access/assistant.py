@@ -554,6 +554,19 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         previous = _context(previous, library)
         existing = _context_result(engine, token, library, previous)
         source.update(existing)
+    if search_v2:
+        from .search_explanation import describe_filter_query, explain_filters
+        if describe_filter_query(words):
+            if existing is None:
+                return {'version': 1, 'kind': 'clarification',
+                        'reply': ('请先查找照片或视频，再询问当前筛选条件。' if lang == 'zh' else
+                                  'Search for photos or videos first, then ask about the current filters.'),
+                        'context': None, 'filters': None, 'items': [], 'total': 0,
+                        'has_more': False, 'effect': None}
+            return {'version': 1, 'kind': 'results',
+                    'reply': explain_filters(previous['filters'], existing.get('interpretation', {}), lang),
+                    'context': previous, 'filters': previous['filters'], 'items': existing['items'],
+                    'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
     if _describe_results(words):
         if existing is None:
             return {'version': 1, 'kind': 'clarification',

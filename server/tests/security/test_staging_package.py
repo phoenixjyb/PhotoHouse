@@ -19,6 +19,7 @@ class StagingPackageTests(unittest.TestCase):
         required = {
             'backend/app/access/assistant_search.py',
             'backend/app/access/assistant_query_plan.py',
+            'backend/app/access/search_explanation.py',
             'backend/app/access/search_readiness.py',
             'backend/app/access/search_text.py',
             'backend/app/access/search_evaluation.py',

@@ -188,6 +188,67 @@ class AssistantJointSearchTests(unittest.TestCase):
                     self.assertIsNone(body['context'])
                 self.assertIsNone(body['effect'])
 
+    def test_filter_explanations_keep_authorized_scope_and_use_current_labels(self):
+        first = self.turn('find photos of Sample Child and Sample Adult in September 2032 containing "海边"').json()
+        self.assertEqual(first['kind'], 'results', first)
+        self.assertEqual([item['id'] for item in first['items']], ['103'])
+        for words in ('what are we looking for?', '现在筛选了哪些条件？',
+                      '当前search条件是什么', 'please explain the current search'):
+            with self.subTest(words=words):
+                response = self.turn(words, context=first['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['version'], 2)
+                self.assertEqual(result['kind'], 'results', result)
+                for key in ('context', 'filters', 'items', 'total', 'has_more', 'interpretation'):
+                    self.assertEqual(result[key], first[key])
+                self.assertIsNone(result['effect'])
+                self.assertIn('Sample Child', result['reply'])
+                self.assertIn('2032-09-01', result['reply'])
+                self.assertIn('2032-09-30', result['reply'])
+                self.assertIn('海边', result['reply'])
+                self.assertLessEqual(len(result['reply'].encode('utf-8')), 600)
+                for hidden in ('secret memory phrase', 'children picnic', 'at sunset'):
+                    self.assertNotIn(hidden, result['reply'])
+
+    def test_filter_explanations_cover_empty_results_singletons_and_missing_context(self):
+        missing = self.turn('what filters are active').json()
+        self.assertEqual(missing['kind'], 'clarification', missing)
+        self.assertIsNone(missing['context'])
+        self.assertEqual(missing['items'], [])
+        empty = self.turn('find photos in 2099').json()
+        explained = self.turn('what filters are active', context=empty['context']).json()
+        self.assertEqual(explained['kind'], 'results', explained)
+        self.assertEqual(explained['filters'], empty['filters'])
+        self.assertEqual(explained['items'], [])
+        self.assertIn('2099-01-01', explained['reply'])
+        self.assertIn('2099-12-31', explained['reply'])
+        exact = self.turn('find asset id 102').json()
+        self.assertEqual(exact['kind'], 'results', exact)
+        singleton = self.turn('what are we looking for', context=exact['context']).json()
+        self.assertEqual(singleton['context'], exact['context'])
+        self.assertEqual([item['id'] for item in singleton['items']], ['102'])
+        self.assertEqual(singleton['reply'], 'No search filters are active.')
+        self.assertIsNone(singleton['effect'])
+
+    def test_filter_explanations_reject_compound_actions_and_changed_or_foreign_context(self):
+        first = self.turn('find photos of Sample Child').json()
+        for words in ('what filters are active and delete them', '现在筛选了哪些条件然后分享',
+                      'find photos containing "what filters are active"'):
+            with self.subTest(words=words):
+                result = self.turn(words, context=first['context']).json()
+                self.assertIsNone(result['effect'])
+                if not words.startswith('find'):
+                    self.assertNotEqual(result['kind'], 'results', result)
+                    self.assertEqual(result['context'], first['context'])
+                else:
+                    self.assertEqual(result['filters'], {'media': ['image'], 'text': 'what filters are active'})
+        denied = self.turn('what filters are active', context=first['context'], token=OTHER)
+        self.assertNotEqual(denied.status_code, 200)
+        self.mutate("UPDATE captions SET text='changed source' WHERE id=1")
+        stale = self.turn('what filters are active', context=first['context'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+
     def test_text_union_dedup_reasons_and_authored_first_order(self):
         response = self.turn('帮我找包含“海边”的照片')
         self.assertEqual(response.status_code, 200, response.text)

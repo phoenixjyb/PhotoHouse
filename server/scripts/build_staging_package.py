@@ -31,6 +31,7 @@ FILES = (
     'backend/app/access/assistant_query_plan.py',
     'backend/app/access/search_readiness.py',
     'backend/app/access/search_refinement.py',
+    'backend/app/access/search_explanation.py',
     'backend/app/access/semantic_encoder.py',
     'backend/app/access/semantic_search.py',
     'backend/app/access/semantic_search_transport.py',
