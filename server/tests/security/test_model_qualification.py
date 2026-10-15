@@ -101,6 +101,62 @@ class ModelQualificationTests(unittest.TestCase):
             (callback or self.validate)()
         self.assertEqual(str(caught.exception), reason)
 
+    def assert_public_report_has_no_private_details(self, report):
+        self.assertEqual(set(report), {
+            'status', 'selection_sha256', 'selection', 'case_plan_sha256',
+            'audio_plan_sha256', 'scope_roles', 'other_declared_roles',
+            'execution_platform', 'host_platforms', 'records',
+            'complete_deployment_qualification', 'files_verified',
+            'provider_probed', 'device_verified', 'runtime_environment_verified',
+            'quality_independently_verified', 'resources_enforced',
+            'shared_memory_item_budget_verified', 'activation_performed',
+        })
+        for role_report in report['records'].values():
+            self.assertEqual(set(role_report), {
+                'gaps', 'recorded_identity_matches',
+                'recorded_resources_within_budget', 'recorded_quality_review_passed',
+            })
+
+        sensitive_fields = {
+            'endpoint', 'url', 'port', 'port_number', 'port_string', 'model',
+            'model_id', 'reviewed_by', 'reviewed_at', 'file', 'files', 'path',
+        }
+
+        def check_field_names(value):
+            if type(value) is dict:
+                for key, nested in value.items():
+                    self.assertNotIn(key.casefold(), sensitive_fields)
+                    check_field_names(nested)
+            elif type(value) is list:
+                for nested in value:
+                    check_field_names(nested)
+
+        check_field_names(report)
+        encoded = json.dumps(report, sort_keys=True) + repr(report)
+        private_markers = {
+            'private-reviewer', 'synthetic-asr', 'example.invalid', str(self.private),
+        }
+        private_markers.update(
+            provider[key]
+            for provider in self.manifest['providers']
+            for key in ('endpoint', 'model', 'model_id')
+            if type(provider.get(key)) is str and provider[key]
+        )
+        private_markers.update(
+            path
+            for record in self.doc['records']
+            for path in record['files'].values()
+            if type(path) is str and path
+        )
+        private_markers.update(
+            result['reviewed_by']
+            for record in self.doc['records']
+            for result in record['quality']
+            if type(result.get('reviewed_by')) is str and result['reviewed_by']
+        )
+        for marker in private_markers:
+            self.assertNotIn(marker, encoded)
+
     def test_consistent_record_is_private_immutable_and_not_activation_or_quality_proof(self):
         value = self.validate()
         report = value.report()
@@ -110,14 +166,27 @@ class ModelQualificationTests(unittest.TestCase):
                      'quality_independently_verified', 'resources_enforced', 'activation_performed',
                      'shared_memory_item_budget_verified', 'complete_deployment_qualification'):
             self.assertIs(report[flag], False)
-        encoded = json.dumps(report) + repr(value)
-        for private in ('private-reviewer', str(self.private), 'synthetic-asr', '19001', 'example.invalid', 'b' * 64):
-            self.assertNotIn(private, encoded)
+        self.assert_public_report_has_no_private_details(report)
+        self.assertNotIn('b' * 64, json.dumps(report) + repr(value))
         self.doc['records'][0]['quality'].clear()
         report['records'].clear()
         self.assertEqual(value.report()['status'], 'scoped_evidence_consistent')
         with self.assertRaises(TypeError):
             qualification.QualificationEvidence()
+
+    def test_opaque_digest_may_contain_port_digits_but_raw_endpoint_leak_is_rejected(self):
+        report = self.validate().report()
+        report['audio_plan_sha256'] = ('a' * 20) + '19001' + ('b' * 39)
+        self.assertEqual(64, len(report['audio_plan_sha256']))
+        self.assertIn('19001', report['audio_plan_sha256'])
+        self.assert_public_report_has_no_private_details(report)
+
+        leaked = copy.deepcopy(report)
+        endpoint = next(provider['endpoint'] for provider in self.manifest['providers']
+                        if type(provider.get('endpoint')) is str)
+        leaked['other_declared_roles'].append(endpoint)
+        with self.assertRaises(AssertionError):
+            self.assert_public_report_has_no_private_details(leaked)
 
     def test_declared_and_observed_device_and_lock_are_independent(self):
         observed = self.doc['records'][0]['observed_identity']

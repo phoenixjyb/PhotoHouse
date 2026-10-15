@@ -19970,6 +19970,21 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "qualification-privacy-regression-distinguishes-opaque-digests-from-endpoints",
+      "source_commit": "e801a95776d0deb43aabb9b0416a9515eea54674",
+      "files": [
+        {
+          "path": "server/tests/security/test_model_qualification.py",
+          "before_sha256": "4f2255b67871aa0094af456a13cf3956924e9c7f27abc95cecbb8cadd41b3cda",
+          "sha256": "e5afbbcf19c49123818e203866480db55297b6bf88efcf2ce77697bc08819e1c"
+        }
+      ],
+      "production_source_changed": false,
+      "privacy_checks_preserved": true,
+      "schema_changed": false,
+      "household_data_included": false
     }
   ]
 }
