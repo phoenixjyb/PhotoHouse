@@ -19058,6 +19058,32 @@
       "generation_enabled": false,
       "deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "compact-story-editor-keeps-page-heading-and-unobscured-source-choice",
+      "source_commit": "95a762433f3dca7966d0ba84662ea999341aaec1",
+      "files": [
+        {
+          "path": "docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md",
+          "before_sha256": "ca73d9a075505546e7ead98ccdaf9a336e196718cbbddc5823f7d9d314280d26",
+          "sha256": "ae4cc24546edf75b2f2abcc853dd178db237301c54a628c21449aa166bc55fab"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "aa5ae6968da5d52f461b76ddff873f47297849f221b13605cf432d2eff036d47",
+          "sha256": "9cdafe229b1f8e8c45fab356cef05893de7d240be6ae896c60feb66627c745af"
+        },
+        {
+          "path": "server/tests/security/test_story_contribution_refs_browser.cjs",
+          "before_sha256": "fbb1f39bba9ec764abfafbe58f5bcbc1ea31259167a4f825f46daf27d6c3e51e",
+          "sha256": "0ee28385508f0f42e41318c8a4359d6b7b7068b0a65b339e4e102ebc6360d42a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false
     }
   ]
 }
