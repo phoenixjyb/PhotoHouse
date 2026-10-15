@@ -138,6 +138,20 @@ source changes during synthesis. Generated tests cover that transport behavior;
 real TTS listening, installed service and device acceptance remain separate.
 The legacy v1 parser and all model/runtime settings are unchanged.
 
+## Recovering from zero results
+
+Users can ask `why no results?`, `为什么没有结果？`, or `为什么没有results`.
+The assistant revalidates the current search and explains only known policy.
+It does not guess that a person, event or model caused a miss. A date-filtered
+search explains that items without recorded capture dates are excluded, then
+offers `any date` / `不限日期` to remove only that filter. Without a date filter,
+a text-filtered search offers `any text` / `不限内容`. Other searches offer a
+review of the active filters. The suggestions themselves never change filters;
+a separate explicit turn is needed, and all omitted constraints stay intact.
+If the current search has results, the assistant reports its actual count
+instead of inventing an empty-result explanation. Missing context asks for a
+search first. Compound actions and quoted question text are not commands.
+
 ## Speech and uncertainty
 
 The ASR adapter preserves the returned text after trimming outer whitespace,

@@ -555,16 +555,25 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         existing = _context_result(engine, token, library, previous)
         source.update(existing)
     if search_v2:
-        from .search_explanation import describe_filter_query, explain_filters
-        if describe_filter_query(words):
+        from .search_explanation import (describe_filter_query, explain_filters,
+                                         describe_empty_query, no_results_guidance)
+        explain_request = describe_filter_query(words)
+        empty_request = describe_empty_query(words)
+        if explain_request or empty_request:
             if existing is None:
                 return {'version': 1, 'kind': 'clarification',
                         'reply': ('请先查找照片或视频，再询问当前筛选条件。' if lang == 'zh' else
                                   'Search for photos or videos first, then ask about the current filters.'),
                         'context': None, 'filters': None, 'items': [], 'total': 0,
                         'has_more': False, 'effect': None}
-            return {'version': 1, 'kind': 'results',
-                    'reply': explain_filters(previous['filters'], existing.get('interpretation', {}), lang),
+            if explain_request:
+                reply = explain_filters(previous['filters'], existing.get('interpretation', {}), lang)
+            elif existing['total'] == 0:
+                reply = no_results_guidance(previous['filters'], lang)
+            else:
+                reply = (f'当前查找有 {existing["total"]} 项结果。可以问“现在筛选了哪些条件”。' if lang == 'zh' else
+                         f'The current search has {existing["total"]} results. Ask "what filters are active" to review the conditions.')
+            return {'version': 1, 'kind': 'results', 'reply': reply,
                     'context': previous, 'filters': previous['filters'], 'items': existing['items'],
                     'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
     if _describe_results(words):
@@ -786,7 +795,11 @@ def _search_reply(engine, token, library, binding, filters, source, lang):
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}
     reply = _result_overview(result, lang)
-    if result['total'] == 0 and 'date' in filters:
+    from .assistant_search import SearchRuntime
+    if result['total'] == 0 and isinstance(engine, SearchRuntime):
+        from .search_explanation import no_results_guidance
+        reply = no_results_guidance(filters, lang)
+    elif result['total'] == 0 and 'date' in filters:
         reply = ('没有找到符合条件且已记录拍摄日期的照片或视频。未记录拍摄日期的素材'
                  '不包含在日期搜索中；可以先只按照片或视频查找。' if lang == 'zh' else
                  'No matching photos or videos with a recorded capture date were found. '

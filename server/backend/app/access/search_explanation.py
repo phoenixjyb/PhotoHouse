@@ -18,6 +18,15 @@ _FILTER_QUERY_PHRASES = frozenset((
     '当前search条件是什么',
     'what are the 当前筛选条件',
 ))
+_EMPTY_QUERY_PHRASES = frozenset((
+    'why no results',
+    'why did you find nothing',
+    'why are there no results',
+    '为什么没找到',
+    '怎么没有结果',
+    '为什么没有结果',
+    '为什么没有results',
+))
 _TERMINAL_PUNCTUATION = frozenset('?!。？！.,;:，；：、')
 _MAX_BYTES = 600
 
@@ -43,6 +52,23 @@ def describe_filter_query(words) -> bool:
         if normalized.endswith(' ' + token):
             normalized = normalized[:-len(token)].strip()
     return normalized in _FILTER_QUERY_PHRASES
+
+
+def describe_empty_query(words) -> bool:
+    """Recognize only a complete, closed question about an empty result set."""
+    if type(words) is not str:
+        return False
+    normalized = _normalize_query(words)
+    for token in ('please', '请'):
+        if normalized.startswith(token + ' '):
+            normalized = normalized[len(token):].strip()
+        elif token == '请' and normalized.startswith(token):
+            normalized = normalized[len(token):].strip()
+        if normalized.endswith(' ' + token):
+            normalized = normalized[:-len(token)].strip()
+        elif token == '请' and normalized.endswith(token):
+            normalized = normalized[:-len(token)].strip()
+    return normalized in _EMPTY_QUERY_PHRASES
 
 
 def _safe_text(value) -> str:
@@ -201,3 +227,34 @@ def explain_filters(filters, interpretation, language) -> str:
         clauses = [f'{labels[key]}: active' for key in fields if key in filters]
         result = 'Active search filters: ' + '; '.join(clauses)
     return result
+
+
+def no_results_guidance(filters, language) -> str:
+    """Give bounded, non-speculative guidance for the current empty search."""
+    filters = filters if type(filters) is dict else {}
+    zh = language == 'zh'
+    if 'date' in filters:
+        if zh:
+            result = ('没有找到符合条件且已记录拍摄日期的照片或视频。日期搜索会排除未记录拍摄日期的项目。'
+                      '说“不限日期”可仅移除日期筛选并保留其他条件。')
+        else:
+            result = ('No matching photos or videos with a recorded capture date were found. '
+                      'Items without a capture date are excluded from date searches. '
+                      'Say "any date" to remove only the date filter and keep the other conditions.')
+    elif 'text' in filters:
+        if zh:
+            result = ('没有找到符合条件的照片或视频。'
+                      '说“不限内容”可仅移除内容筛选并保留其他条件。')
+        else:
+            result = ('No matching photos or videos were found. '
+                      'Say "any text" to remove only the text filter and keep the other conditions.')
+    elif zh:
+        result = '没有找到符合条件的照片或视频。可以问“现在筛选了哪些条件”查看当前筛选条件。'
+    else:
+        result = 'No matching photos or videos were found. Ask "what filters are active" to review the current filters.'
+    # Fixed strings are already small, but preserve the same hard reply bound
+    # if future wording changes exceed the transport limit.
+    if len(result.encode('utf-8')) <= _MAX_BYTES:
+        return result
+    return ('没有找到符合条件的照片或视频。' if zh else
+            'No matching photos or videos were found.')

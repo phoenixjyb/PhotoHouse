@@ -7,7 +7,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
 
-from app.access.search_explanation import describe_filter_query, explain_filters
+from app.access.search_explanation import (
+    describe_empty_query, describe_filter_query, explain_filters, no_results_guidance,
+)
 
 
 def test_filter_query_recognition_is_closed_and_normalized():
@@ -38,6 +40,80 @@ def test_filter_query_recognition_is_closed_and_normalized():
         '', None, 42,
     )
     assert all(not describe_filter_query(value) for value in rejected)
+
+
+def test_empty_result_question_recognition_is_closed_and_normalized():
+    accepted = (
+        'why no results',
+        'WHY DID YOU FIND NOTHING?!',
+        'why are there no results?',
+        '为什么没找到',
+        '怎么没有结果？',
+        '为什么没有结果！',
+        '为什么没有results？',
+        '  PLEASE   why no results?! ',
+        'please why did you find nothing please',
+        '请 为什么没有结果？',
+        '请为什么没找到请',
+        '  为什么没有results！  ',
+    )
+    assert all(describe_empty_query(value) for value in accepted)
+    rejected = (
+        'why no results in the park',
+        'why no results and open the first one',
+        'tell me why no results',
+        '"why no results"',
+        'please explain why no results',
+        '为什么没有结果并打开第一张',
+        '为什么没有',
+        '', None, 42,
+    )
+    assert all(not describe_empty_query(value) for value in rejected)
+
+
+def test_empty_result_guidance_uses_date_policy_before_text_and_keeps_other_filters():
+    filters = {'date': {'from': '2025-01-01', 'to': '2025-01-31'},
+               'text': 'private phrase', 'people': {'ids': ['private-person'], 'match': 'all'}}
+    before = copy.deepcopy(filters)
+    english = no_results_guidance(filters, 'en')
+    chinese = no_results_guidance(filters, 'zh')
+    assert 'recorded capture date' in english
+    assert 'excluded from date searches' in english
+    assert '"any date"' in english and 'only the date filter' in english
+    assert 'any text' not in english
+    assert '不限日期' in chinese and '仅移除日期筛选并保留其他条件' in chinese
+    assert '不限内容' not in chinese
+    assert 'private phrase' not in english and 'private-person' not in english
+    assert 'private phrase' not in chinese and 'private-person' not in chinese
+    assert filters == before
+
+
+def test_empty_result_guidance_text_and_generic_branches_are_bounded_bilingual_and_non_speculative():
+    filters = {'text': 'private phrase', 'people': {'ids': ['private-person'], 'match': 'any'}}
+    before = copy.deepcopy(filters)
+    english = no_results_guidance(filters, 'en')
+    chinese = no_results_guidance(filters, 'zh')
+    assert 'No matching photos or videos were found.' in english
+    assert '"any text"' in english and 'only the text filter' in english
+    assert '不限内容' in chinese and '仅移除内容筛选并保留其他条件' in chinese
+    assert 'private phrase' not in english + chinese
+    assert 'private-person' not in english + chinese
+    assert filters == before
+
+    generic_en = no_results_guidance({'people': {'ids': ['x'], 'match': 'any'}}, 'en')
+    generic_zh = no_results_guidance({'people': {'ids': ['x'], 'match': 'any'}}, 'zh')
+    assert 'what filters are active' in generic_en
+    assert '现在筛选了哪些条件' in generic_zh
+    assert 'any date' not in generic_en and 'any text' not in generic_en
+    assert '不限日期' not in generic_zh and '不限内容' not in generic_zh
+
+    for result in (english, chinese, generic_en, generic_zh,
+                   no_results_guidance({'date': object(), 'text': object()}, 'en'),
+                   no_results_guidance({'date': object(), 'text': object()}, 'zh')):
+        assert len(result.encode('utf-8')) <= 600
+        lowered = result.casefold()
+        assert not any(term in lowered for term in ('event', 'person', 'people', 'no one', 'your fault'))
+        assert '人物' not in result and '家人' not in result
 
 
 def test_empty_filters_have_explicit_bilingual_response():

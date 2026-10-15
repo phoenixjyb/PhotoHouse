@@ -249,6 +249,47 @@ class AssistantJointSearchTests(unittest.TestCase):
         stale = self.turn('what filters are active', context=first['context'])
         self.assertEqual(stale.status_code, 409, stale.text)
 
+    def test_zero_result_guidance_relaxes_only_an_explicitly_chosen_filter(self):
+        initial = self.turn('find Sample Child and Sample Adult photos in 2099 containing "海边"').json()
+        self.assertEqual(initial['total'], 0)
+        self.assertIn('any date', initial['reply'])
+        for words in ('why no results?', '为什么没有结果？', '为什么没有results'):
+            with self.subTest(words=words):
+                response = self.turn(words, context=initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['context'], initial['context'])
+                self.assertEqual(result['filters'], initial['filters'])
+                self.assertEqual(result['items'], [])
+                self.assertIsNone(result['effect'])
+        # The suggestion itself does not widen anything. An explicit new turn
+        # removes date only and retains the exact joint people/text constraints.
+        relaxed = self.turn('any date', context=initial['context']).json()
+        self.assertEqual(relaxed['filters'], {key:value for key,value in initial['filters'].items() if key != 'date'})
+        self.assertEqual([item['id'] for item in relaxed['items']], ['103'])
+        text_only = self.turn('find Sample Child photos containing "unmatched synthetic phrase"').json()
+        self.assertEqual(text_only['total'], 0)
+        self.assertIn('any text', text_only['reply'])
+        removed = self.turn('any text', context=text_only['context']).json()
+        self.assertEqual(removed['filters'], {key:value for key,value in text_only['filters'].items() if key != 'text'})
+        self.assertEqual([item['id'] for item in removed['items']], ['103','101'])
+
+    def test_zero_result_questions_need_context_and_do_not_claim_a_cause(self):
+        missing = self.turn('why no results').json()
+        self.assertEqual(missing['kind'], 'clarification')
+        self.assertIsNone(missing['context'])
+        first = self.turn('find photos').json()
+        answered = self.turn('why no results', context=first['context']).json()
+        self.assertEqual(answered['context'], first['context'])
+        self.assertEqual(answered['items'], first['items'])
+        self.assertIn(str(first['total']), answered['reply'])
+        self.assertNotIn('No matching', answered['reply'])
+        self.assertIsNone(answered['effect'])
+        compound = self.turn('why no results and delete them', context=first['context']).json()
+        self.assertNotEqual(compound['kind'], 'results')
+        self.assertIsNone(compound['effect'])
+
     def test_text_union_dedup_reasons_and_authored_first_order(self):
         response = self.turn('帮我找包含“海边”的照片')
         self.assertEqual(response.status_code, 200, response.text)
