@@ -27,6 +27,8 @@ class SearchPendingDateTests(unittest.TestCase):
             ("Find photos about childhood", "childhood"),
             ("Find photos from when younger", "when younger"),
             ("Find photos from a long time ago", "a long time ago"),
+            ("Find photos from long ago", "long ago"),
+            ("Find photos long ago", "long ago"),
             ("找小时候的照片", "小时候"),
             ("找儿时的照片", "儿时"),
             ("找小的时候的照片", "小的时候"),
@@ -123,13 +125,13 @@ class SearchPendingDateTests(unittest.TestCase):
     def test_private_object_is_strict_and_storage_validation_can_ignore_expiry(self):
         query = "Find photos from childhood"
         value = pending_for(query)
-        self.assertEqual(value['version'], 2)
+        self.assertEqual(value['version'], 3)
         self.assertEqual(value, validate_pending(value))
         self.assertEqual(value, current_pending(value, 500 + PENDING_TTL_SECONDS))
 
         malformed = (
             {**value, "version": True},
-            {**value, "version": 3},
+            {**value, "version": 4},
             {**value, "question": "person"},
             {**value, "start": True},
             {**value, "end": len(query) + 1},
@@ -164,6 +166,30 @@ class SearchPendingDateTests(unittest.TestCase):
         self.assertEqual(legacy, current_pending(legacy, 500))
         self.assertIsNone(find_date_slot(
             query, {'labels': [], 'enabled': ['date']}, TODAY_DATETIME))
+
+    def test_version_two_keeps_its_frozen_policy_when_new_long_ago_phrase_is_ambiguous(self):
+        query = 'Find photos from childhood and long ago'
+        start = query.index('from childhood')
+        legacy = {
+            'version': 2, 'question': 'date', 'query': query,
+            'start': start, 'end': start + len('from childhood'),
+            'binding': BINDING, 'created_at': 500,
+        }
+        self.assertEqual(legacy, validate_pending(legacy))
+        self.assertEqual(legacy, current_pending(legacy, 500))
+        self.assertIsNone(find_date_slot(
+            query, {'labels': [], 'enabled': ['date']}, TODAY_DATETIME))
+
+    def test_long_ago_is_not_a_slot_when_label_quote_explicit_date_or_other_age_competes(self):
+        for query, labels in (
+                ('Find photos from long ago', ['long ago']),
+                ('Find photos from "long ago"', []),
+                ('Find photos from long ago in 2020', []),
+                ('Find photos from childhood and long ago', []),
+                ('Find photos from a long time ago and long ago', [])):
+            with self.subTest(query=query):
+                self.assertIsNone(find_date_slot(
+                    query, {'labels': labels, 'enabled': ['date']}, TODAY_DATETIME))
 
     def test_date_answer_becomes_separate_hard_filter_and_masks_only_slot(self):
         original = "Find Sample Child from childhood"

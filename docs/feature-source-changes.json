@@ -19735,6 +19735,89 @@
       "schema_changed": false,
       "production_behavior_changed": false,
       "package_engine_assertion_preserved": true
+    },
+    {
+      "feature": "offset-preserving-hard-condition-masking-and-production-path-intent-measurement",
+      "source_commit": "2cddec6e79498876f9bd7ab4cae8f9e4fabc09cb",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1379dd416823e216ec570ed4db3cfa7dddd692089cdb8935945c7eaeed1a93ba",
+          "sha256": "d8f4c9b758f888ec60810e798a5250afc347d05c4f16167fe3a020214e44207a"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "17d89472d587688defe34017a356a85e6ea14e3313bc08b77254245d4396d6cb",
+          "sha256": "b5edd4a3830c409e6696d40d47fcab8ab6522bcf1b0289107c9f894c2d7479c2"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "d46d3375dfbd64016a12a7f4b2b4c0fcad9d6670f4c5df33e46a6a964be6ca95",
+          "sha256": "71cd927fdc4c6563c3b1658c73d4410232d41709132ce9852e8b3d7b76f6ba42"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_view.py",
+          "before_sha256": null,
+          "sha256": "78fbc86f56a6b088de4a01f3c6640b677e619ba871ab4c4d7d919a49b3530bec"
+        },
+        {
+          "path": "server/backend/app/access/search_pending.py",
+          "before_sha256": "0f22d2a7760a4c5ff8e1c6e55d820dd1a6b24d69b86973195800a461118f3323",
+          "sha256": "c1bc3cdbe5139531844a5b248cb5a60c0d4635137a14e5c2148977e726b0314a"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "4b2f19910a015515cf1056eb8e6b4c9342042a6f5b5095580d4901752dcc8456",
+          "sha256": "acced9fbfd311769435fec7cd35035607f53538a14090e2033f31d759b2bd55d"
+        },
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": "82c71feed7ab058ba789f960e8cc0d64346ad5737513f2eee8431cfcf776711f",
+          "sha256": "c6fbca8149de6a2be15bf4d22dec9369960337ec90e7552eb77fcea2ae668a11"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent.py",
+          "before_sha256": "e3e2dc3e6f4c00670890e42ff7b23211056cb984462b76915189b749784bc72e",
+          "sha256": "386a86259114405c0fa23b5a8fb329ce4c134ab28b28c41441c09e91cbd21f3c"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "888de50e47d6b6c16df452e3cffaa1aaaf46f699ab30abc6b5b97e2ed7c8d87a",
+          "sha256": "be68a759a365b9b4894017cac37c88eb449a38f166c7d1875b090a54935e8025"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_canary.py",
+          "before_sha256": "2781d0fc96aea23494e8f1e5b5ef66741d833a21a4ad76bb79cc8fa4d2829098",
+          "sha256": "f02a0f25f69ca48656a78fdb3b5e69d069221357d1aa3137f4d2f84c16b1dc83"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "9ddcb8dd38c683851a73fd2b0dca089ae8804384a7ba99da0004f976a73c290f",
+          "sha256": "14780eba25ae837a7f369c55a2bd05d617adaa455762c5ec0305065820baaf41"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_view.py",
+          "before_sha256": null,
+          "sha256": "cb4f73c7fd0f93211d8ac559033f47fc0b5c82717ba65dd428b6997848844f69"
+        },
+        {
+          "path": "server/tests/security/test_search_pending.py",
+          "before_sha256": "cfd28685b04ee2ba9d42d2ada5f180f566f443f6b316cd285f3179127015ed18",
+          "sha256": "1a755b1f8a38b30fbf8d0aa4b13c63be24831ac211e29eb46eef0a582338f739"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "pending_policy_version": 3,
+      "qualification_policy_version": 2,
+      "older_pending_policies_preserved": true,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "production_response_logging_added": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

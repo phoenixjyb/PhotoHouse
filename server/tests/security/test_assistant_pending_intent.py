@@ -88,12 +88,19 @@ class AssistantPendingIntentTests(unittest.TestCase):
             ('找示例儿童大概两年前玩雪红外套的照片', '大概两年前', ['玩雪', '红外套']),
             ('find示例儿童可能是两年前playing in snow red coat的photos',
              '可能是两年前', ['playing in snow', 'red coat']),
+            ('find photos of Sample Child from long ago playing in snow red coat',
+             'long ago', ['playing in snow', 'red coat']),
         )
         for query, phrase, surfaces in cases:
             with self.subTest(query=query):
                 self.thread = self.new_thread()
                 self.planner.calls.clear()
                 asked = self.ask(query)
+                if phrase == 'long ago':
+                    pending = self.store.get_turn('one', 'family-a', self.thread,
+                        asked['request_id'])['result_summary']['pending_intent']
+                    self.assertEqual(pending['version'], 3)
+                    self.assertEqual('long ago', pending['query'][pending['start']:pending['end']])
                 clarification = asked['result']
                 self.assertTrue(
                     'year' in clarification['reply'].lower() or
@@ -116,6 +123,8 @@ class AssistantPendingIntentTests(unittest.TestCase):
                                   result['filters']['descriptive']['concepts']],
                                  surfaces)
                 expected = query.replace(phrase, ' ' * len(phrase), 1)
+                for protected in ('Sample Child', '示例儿童', 'photos', '照片'):
+                    expected = expected.replace(protected, ' ' * len(protected))
                 self.assertEqual(len(self.planner.calls), 1)
                 self.assertEqual(self.planner.calls[0][0], expected)
                 self.assertFalse(self.planner.calls[0][2])
@@ -127,17 +136,17 @@ class AssistantPendingIntentTests(unittest.TestCase):
                 self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
                                  [query, 'September 2032'])
 
-    def test_legacy_v1_pending_readback_survives_but_ambiguous_continuation_is_rejected(self):
+    def test_legacy_v2_pending_readback_survives_but_new_ambiguity_blocks_continuation(self):
         asked = self.ask()
         request_id = asked['request_id']
-        original = 'Find photos from childhood about two years ago'
+        original = 'Find photos from childhood and long ago'
         start = original.index('from childhood')
         with self.store.connection() as db:
             row = db.execute('''SELECT input_text,result_summary FROM turn_requests
                 WHERE request_id=?''', (request_id,)).fetchone()
             summary = json.loads(row['result_summary'])
             summary['pending_intent'].update({
-                'version': 1, 'query': original, 'start': start,
+                'version': 2, 'query': original, 'start': start,
                 'end': start + len('from childhood'),
             })
             db.execute('''UPDATE turn_requests SET input_text=?,result_summary=?
@@ -145,7 +154,7 @@ class AssistantPendingIntentTests(unittest.TestCase):
                 (original, json.dumps(summary, ensure_ascii=False), request_id))
 
         saved = self.store.get_turn('one', 'family-a', self.thread, request_id)
-        self.assertEqual(saved['result_summary']['pending_intent']['version'], 1)
+        self.assertEqual(saved['result_summary']['pending_intent']['version'], 2)
         self.assertEqual(saved['result_summary']['pending_intent']['query'], original)
         self.planner.calls.clear()
         readback = self.client.get(

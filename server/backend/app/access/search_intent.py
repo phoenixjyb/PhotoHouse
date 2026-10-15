@@ -12,11 +12,12 @@ import re
 from . import discovery as d
 from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _entity_filters,
                                    _extract_dates, _consumed_label, _valid_previous,
-                                   _strip_prefix)
+                                   _strip_prefix, _remove_occurrences)
 from .kinship import SELECTORS
 from .search_refinement import _operations, plan_query as literal_plan, query_mode
 from .search_description import normalize_description
 from .search_pending import _AGE_PHRASE
+from .search_intent_view import scene_view
 
 POLICY_VERSION = 1
 QUESTIONS = frozenset(('date', 'person', 'description', 'scope', 'unsupported_action'))
@@ -228,10 +229,18 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
     if original.status != 'ready' and original.reason not in ('unsupported_condition', 'missing_conditions',
                                                             'incomplete_people_relation'):
         return QueryPlan(3, 'clarification', kept, original.reason)
+    # Age-relative time belongs to deterministic clarification, never to scene
+    # extraction. Reviewed names and exact quoted words remain opaque here.
+    age_surface = _remove_occurrences(d.fold(_hard_surface(grammar_words)),
+                                      entities.get('labels', []))
+    if _vague_date_hits(age_surface):
+        return QueryPlan(3, 'clarification', kept, 'intent_date')
     if planner is None:
         return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
     try:
-        suggestion = validate_proposal(planner.propose(words, now.date().isoformat(), previous_search), words)
+        provider_words = scene_view(grammar_words, now.date(), entities.get('labels', []))
+        suggestion = validate_proposal(
+            planner.propose(provider_words, now.date().isoformat(), previous_search), provider_words)
     except IntentUnavailable:
         return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
     except ValueError:
@@ -241,6 +250,8 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
     masked = list(grammar_words)
     for concept in suggestion['concepts']:
         start, stop = concept['start'], concept['end']
+        if provider_words[start:stop] != words[start:stop]:
+            return QueryPlan(3, 'clarification', kept, 'invalid_intent')
         if any(start < quote.end() and stop > quote.start() for quote in quoted):
             return QueryPlan(3, 'clarification', kept, 'invalid_intent')
         masked[start:stop] = ' ' * (stop - start)

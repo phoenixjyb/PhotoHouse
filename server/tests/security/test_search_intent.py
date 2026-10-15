@@ -67,7 +67,15 @@ class SearchIntentTests(unittest.TestCase):
                 {'surface': 'holding a cake', 'alternatives': ['holding a cake', '拿着蛋糕']},
             ]},
         }, result.filters)
-        self.assertEqual([(query, '2032-09-14', False)], planner.calls)
+        self.assertEqual(1, len(planner.calls))
+        visible, today, previous = planner.calls[0]
+        self.assertEqual(('2032-09-14', False), (today, previous))
+        self.assertEqual(len(query), len(visible))
+        for hidden in ('Sample Child', 'Home', 'yesterday', 'videos', 'family day'):
+            self.assertNotIn(hidden, visible)
+        for clue in ('wearing red', 'holding a cake'):
+            start = query.index(clue)
+            self.assertEqual(clue, visible[start:start + len(clue)])
 
     def test_model_cannot_consume_reviewed_people_tags_locations_dates_media_or_quotes(self):
         cases = [
@@ -96,6 +104,28 @@ class SearchIntentTests(unittest.TestCase):
         result = plan_query(query, now=NOW, entities=entities(), previous_filters=None, planner=planner)
         self.assertEqual('clarification', result.status)
         self.assertIn(result.reason, ('unsupported_condition', 'invalid_intent'))
+
+    def test_provider_spans_cannot_bridge_redacted_words_or_a_conversational_opening(self):
+        for query, surface, resolved in (
+                ('find red Mira coat photos', 'red Mira coat',
+                 entities(labels=('Mira',), people=('301',))),
+                ('I am looking for red coat photos', 'I am looking for red coat', entities())):
+            with self.subTest(query=query):
+                planner = Proposal(ready(query, [(surface, ['red coat'])]))
+                result = plan_query(query, now=NOW, entities=resolved,
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'invalid_intent', {}),
+                                 (result.status, result.reason, result.filters))
+
+    def test_reviewed_age_like_name_is_hidden_from_scenes_without_a_date_question(self):
+        query = 'find photos of Childhood wearing red'
+        planner = Proposal(ready(query, [('wearing red', ['wearing red'])]))
+        result = plan_query(query, now=NOW,
+                            entities=entities(labels=('Childhood',), people=('301',)),
+                            previous_filters=None, planner=planner)
+        self.assertEqual('ready', result.status, result)
+        self.assertEqual({'ids': ['301'], 'match': 'any'}, result.filters['people'])
+        self.assertNotIn('Childhood', planner.calls[0][0])
 
     def test_unresolved_public_kinship_selectors_cannot_become_descriptive_concepts(self):
         cases = (
@@ -160,8 +190,9 @@ class SearchIntentTests(unittest.TestCase):
                 planner = Proposal(ready(query, [(surface, [surface])]))
                 result = plan_query(query, now=NOW, entities=entities(),
                                     previous_filters=None, planner=planner)
-                self.assertEqual(('clarification', 'invalid_intent', {}),
+                self.assertEqual(('clarification', 'intent_date', {}),
                                  (result.status, result.reason, result.filters))
+                self.assertEqual([], planner.calls)
 
         clarification = Proposal({'version': 1, 'status': 'clarification',
                                   'concepts': [], 'question': 'date'})

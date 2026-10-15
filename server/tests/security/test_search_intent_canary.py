@@ -1,6 +1,6 @@
 """Offline contract tests for the synthetic intent qualification runner."""
 from contextlib import redirect_stdout
-from datetime import datetime
+from datetime import date, datetime
 import io
 import json
 from pathlib import Path
@@ -13,7 +13,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from app.access.search_intent import IntentUnavailable
+from app.access import discovery as d
+from app.access.assistant_query_plan import _MEDIA
+from app.access.search_intent import IntentUnavailable, _INTENT_OPEN, plan_query
+from app.access.search_intent_view import scene_view
 import qualify_search_intent as qualify
 from search_intent_cases import CASES, NOW, cases_by_cohort, cases_digest
 
@@ -65,11 +68,20 @@ def proposal_for(case):
     return {"version": 1, "status": "ready", "concepts": spans, "question": None}
 
 
+def provider_view(case):
+    query = case["query"]
+    grammar_query = _INTENT_OPEN.sub(lambda match: " " * len(match.group(0)), query)
+    return scene_view(grammar_query, date.fromisoformat(NOW), case["entities"]["labels"])
+
+
 class FakePlanner:
     def __init__(self, *, failed_case=None):
         self.calls = []
         self.failed_case = failed_case
-        self.by_query = {case["query"]: case for case in CASES}
+        self.by_query = {
+            provider_view(case): case
+            for case in CASES
+        }
 
     def propose(self, query, today, has_previous_search):
         self.calls.append((query, today, has_previous_search))
@@ -98,6 +110,27 @@ class SearchIntentQualificationTests(unittest.TestCase):
                 self.assertEqual(0, qualify.main([]))
         self.assertEqual("plan_only", json.loads(output.getvalue())["status"])
 
+    def test_literal_hard_date_path_does_not_invoke_provider(self):
+        class CountingPlanner:
+            def __init__(self):
+                self.calls = []
+
+            def propose(self, *args):
+                self.calls.append(args)
+                raise AssertionError("literal hard filters must bypass intent planning")
+
+        planner = CountingPlanner()
+        resolved = {**CASES[0]["entities"],
+                    "groups": {"people": [], "tags": [], "locations": []},
+                    "labels": []}
+        result = plan_query("Find photos on September 14, 2032", now=NOW_VALUE,
+                            entities=resolved, previous_filters=None, planner=planner)
+        self.assertEqual("ready", result.status)
+        self.assertEqual({"media": ["image"],
+                          "date": {"from": "2032-09-14", "to": "2032-09-14"}},
+                         result.filters)
+        self.assertEqual([], planner.calls)
+
     def test_cases_are_fixed_date_fictional_reviewed_entities_and_expected_hard_filters(self):
         self.assertEqual(NOW, "2032-09-14")
         self.assertEqual({"en": 4, "zh": 4, "mixed": 4},
@@ -114,28 +147,48 @@ class SearchIntentQualificationTests(unittest.TestCase):
                 self.assertNotIn("database", case)
                 self.assertNotIn("captions", case)
 
-    def test_one_proposal_per_case_compiles_hard_filters_and_checks_and_matches(self):
+    def test_real_planner_skips_date_clarifications_and_validates_masked_views(self):
         planner = FakePlanner()
         report = qualify.run_qualification(planner, now=NOW_VALUE, clock=lambda: 100.0)
-        self.assertEqual(12, len(planner.calls))
+        self.assertEqual(9, len(planner.calls))
         self.assertTrue(all(today == NOW and previous is False
                             for _query, today, previous in planner.calls))
-        self.assertEqual(12, report["provider_call_count"])
-        self.assertEqual(12, report["provider_response_count"])
+        self.assertEqual(9, report["provider_call_count"])
+        self.assertEqual(9, report["provider_attempt_count"])
+        self.assertEqual(9, report["provider_response_count"])
+        self.assertEqual(3, report["provider_not_needed_count"])
         self.assertEqual(0, report["retry_count"])
         self.assertEqual(0, report["warmup_call_count"])
+        self.assertEqual(2, report["policy_version"])
         self.assertFalse(report["quality_evaluated"])
         self.assertTrue(report["synthetic_expectations_evaluated"])
         self.assertFalse(report["family_quality_evaluated"])
         self.assertFalse(report["activation_performed"])
-        self.assertTrue(all(row["provider_call_count"] == 1 for row in report["cases"]))
+        self.assertEqual(3, sum(row["provider_outcome"] == "not_needed" for row in report["cases"]))
+        self.assertTrue(all(row["provider_invoked_at_most_once"] for row in report["cases"]))
         self.assertTrue(all(row["expectations_met"] for row in report["cases"]))
         self.assertTrue(all(row["actual_plan_status"] == row["expected_status"]
                             for row in report["cases"]))
         self.assertTrue(all(row["hard_filters_preserved"] for row in report["cases"]))
-        self.assertTrue(all(row["compiler_replay_calls"] == 1 for row in report["cases"]))
+        self.assertTrue(all(row["plan_query_invocations"] == 1 for row in report["cases"]))
         for case, row in zip(CASES, report["cases"]):
-            self.assertEqual(row['actual_proposal'], proposal_for(case))
+            if case["expected_question"] == "date":
+                self.assertEqual("not_needed", row["provider_outcome"])
+                self.assertIsNone(row["actual_proposal"])
+                self.assertIsNone(row["provider_query_view"])
+            else:
+                expected_view = provider_view(case)
+                self.assertEqual(row["provider_query_view"], expected_view)
+                self.assertEqual(len(row["provider_query_view"]), len(case["query"]))
+                self.assertTrue(all(label not in row["provider_query_view"]
+                                    for label in case["entities"]["labels"]))
+                self.assertFalse(any(pattern.search(row["provider_query_view"])
+                                     for _kind, pattern in _MEDIA))
+                folded_view = d.fold(row["provider_query_view"])
+                self.assertNotIn("2032-09-14", folded_view)
+                self.assertNotIn("2032年9月14日", folded_view)
+                self.assertNotIn("school concert", folded_view)
+                self.assertEqual(row['actual_proposal'], proposal_for(case))
         self.assertEqual({"en": "expectations_met", "zh": "expectations_met",
                           "mixed": "expectations_met"},
                          {name: cohort["status"] for name, cohort in report["cohorts"].items()})
@@ -149,7 +202,7 @@ class SearchIntentQualificationTests(unittest.TestCase):
         self.assertTrue(all(len(row["evidence_checks"]) == 4
                             for row in report["cases"] if row["expected_status"] == "ready"))
 
-    def test_valid_proposal_is_retained_when_the_compiler_refuses_a_protected_span(self):
+    def test_proposal_targeting_masked_reviewed_label_is_invalid_and_redacted(self):
         case = CASES[0]
         start = case['query'].index('Sample Child')
         refused = {'version': 1, 'status': 'ready', 'question': None,
@@ -158,16 +211,18 @@ class SearchIntentQualificationTests(unittest.TestCase):
         class ProtectedSpanPlanner(FakePlanner):
             def propose(self, query, today, has_previous_search):
                 value = super().propose(query, today, has_previous_search)
-                return refused if query == case['query'] else value
+                masked = provider_view(case)
+                return refused if query == masked else value
         planner = ProtectedSpanPlanner()
         report = qualify.run_qualification(planner, now=NOW_VALUE)
         first = report['cases'][0]
-        self.assertEqual(first['actual_proposal'], refused)
+        self.assertIsNone(first['actual_proposal'])
         self.assertEqual((first['actual_plan_status'], first['plan_reason']),
                          ('clarification', 'invalid_intent'))
         self.assertFalse(first['expectations_met'])
-        self.assertEqual(len(planner.calls), 12)
-        self.assertEqual(first['compiler_replay_calls'], 1)
+        self.assertEqual(len(planner.calls), 9)
+        self.assertEqual(first['plan_query_invocations'], 1)
+        self.assertNotIn('Sample Child', json.dumps(report))
 
     def test_invalid_provider_extensions_do_not_enter_proposal_diagnostics(self):
         class InvalidExtensionPlanner(FakePlanner):
@@ -181,8 +236,9 @@ class SearchIntentQualificationTests(unittest.TestCase):
     def test_failed_provider_call_marks_its_cohort_without_hiding_it_in_aggregate(self):
         planner = FakePlanner(failed_case="zh_rain_umbrella_and")
         report = qualify.run_qualification(planner, now=NOW_VALUE, clock=lambda: 100.0)
-        self.assertEqual(12, report["provider_call_count"])
+        self.assertEqual(9, report["provider_call_count"])
         self.assertEqual(1, report["timeouts_or_refusals"])
+        self.assertEqual(1, report["provider_refusal_count"])
         self.assertEqual("expectations_missed", report["cohorts"]["zh"]["status"])
         self.assertEqual("expectations_met", report["cohorts"]["en"]["status"])
         self.assertEqual("expectations_met", report["cohorts"]["mixed"]["status"])
@@ -215,8 +271,12 @@ class SearchIntentQualificationTests(unittest.TestCase):
         report = qualify.run_qualification(ExplodingPlanner(), now=NOW_VALUE,
                                            clock=lambda: 100.0)
         self.assertEqual(12, report["attempted_case_count"])
-        self.assertEqual(12, report["adapter_errors"])
-        self.assertTrue(all(not row["expectations_met"] for row in report["cases"]))
+        self.assertEqual(9, report["adapter_errors"])
+        self.assertEqual(3, report["provider_not_needed_count"])
+        self.assertTrue(all(not row["expectations_met"] for row in report["cases"]
+                            if row["provider_outcome"] == "adapter_error"))
+        self.assertTrue(all(row["expectations_met"] for row in report["cases"]
+                            if row["provider_outcome"] == "not_needed"))
         self.assertTrue(all(cohort["status"] == "expectations_missed"
                             for cohort in report["cohorts"].values()))
         self.assertNotIn("do not expose this", json.dumps(report))
