@@ -42,6 +42,81 @@ class GroupedStoryCreationUiTest {
 
     @Test fun englishAlbumToStoryReplacementAndPagingAt150Percent() = albumJourney(zh = false)
 
+    @Test fun chineseFirstStoryGuideKeepsWordsAndSavesOnlyAfterReviewAt150Percent() = guidedJourney(true)
+    @Test fun englishFirstStoryGuideKeepsWordsAndSavesOnlyAfterReviewAt150Percent() = guidedJourney(false)
+
+    private fun guidedJourney(zh: Boolean) {
+        val api = SyntheticGroupedStoryApi().also { it.expectedSimpleIds = listOf("102", "101") }
+        val store = ConnectedStore(api, scope)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = if (zh) "zh" else "en")
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { store.state.value.library == SyntheticGroupedStoryApi.LIBRARY }
+        rule.onNodeWithTag("open-story-first-guide").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.let { it.gallery != null && !it.pageBusy } == true }
+        rule.onNodeWithTag("grouped-story-select-102").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102") }
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToNode(hasTestTag("grouped-story-select-101"))
+        rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102", "101") }
+        rule.onNodeWithTag("grouped-story-selection-preview").assertIsEnabled().assertIsDisplayed().performClick()
+        try {
+            rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.editor?.state?.value?.guideStep == StoryGuideStep.WORDS }
+        } catch (failure: Exception) {
+            capture("grouped-story-creation", if (zh) "first-story-initial-failure-zh.png" else "first-story-initial-failure-en.png")
+            val value = store.state.value.groupedStoryCreation?.editor?.state?.value
+            throw AssertionError("Guide preview calls=${api.storyPreviewRequests}, status=${value?.status}, step=${value?.guideStep}, selected=${value?.selectedAssetIds}, failure=${value?.failureStatus}", failure)
+        }
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        rule.runOnIdle {
+            assertTrue(editor.state.value.editableChapters.all { it.narration.isEmpty() })
+            assertEquals(0, api.saveRequests)
+        }
+        rule.onNodeWithTag("story-guide-next").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("grouped-story-save").assertDoesNotExist()
+        val title = if (zh) "一起种花的那一天" else "The day we planted flowers"
+        val words = if (zh) "奶奶教我们种花。<故事>与原话都要保留。" else "Grandma taught us to plant flowers. Keep <our words> & memories."
+        rule.onNodeWithTag("grouped-story-title").performScrollTo().performTextReplacement(title)
+        rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement(words)
+        capture("grouped-story-review", if (zh) "first-story-words-zh150.png" else "first-story-words-en150.png")
+        rule.onNodeWithTag("story-guide-back").performScrollTo().performClick()
+        rule.waitUntil(5000) { editor.state.value.guideStep == StoryGuideStep.FRAMES }
+        rule.onNodeWithTag("story-guide-change-moments").performClick()
+        rule.onNodeWithTag("story-guide-rebuild-cancel").performClick()
+        rule.runOnIdle { assertEquals(words, editor.state.value.editableChapters.first().narration) }
+        capture("grouped-story-creation", if (zh) "first-story-frames-zh150.png" else "first-story-frames-en150.png")
+        rule.onNodeWithTag("grouped-story-selection-preview").performClick()
+        rule.waitUntil(5000) { editor.state.value.guideStep == StoryGuideStep.WORDS }
+        rule.runOnIdle {
+            assertEquals(1, api.storyPreviewRequests)
+            assertEquals(title, editor.state.value.title)
+            assertEquals(words, editor.state.value.editableChapters.first().narration)
+        }
+        rule.onNodeWithTag("story-guide-next").performScrollTo().performClick()
+        rule.waitUntil(5000) { editor.state.value.guideStep == StoryGuideStep.REVIEW }
+        rule.onNodeWithTag("story-guide-preview-words-chapter-1").performScrollTo().assertTextEquals(words)
+        rule.onNodeWithTag("grouped-story-chapter-words").assertDoesNotExist()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.reviewPreviews?.keys == setOf("102", "101") }
+        capture("grouped-story-review", if (zh) "first-story-review-zh150.png" else "first-story-review-en150.png")
+        rule.runOnIdle { assertEquals(0, api.saveRequests) }
+        rule.onNodeWithTag("grouped-story-reviewed").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-save").performScrollTo().assertIsEnabled()
+        capture("grouped-story-review", if (zh) "first-story-save-zh150.png" else "first-story-save-en150.png")
+        rule.onNodeWithTag("grouped-story-save").performClick()
+        rule.waitUntil(5000) { editor.state.value.status == StoryWorkspaceStoreStatus.SAVED }
+        rule.runOnIdle {
+            assertEquals(1, api.saveRequests)
+            assertEquals(words, api.savedStory!!.chapters.first().narration)
+        }
+        rule.onNodeWithTag("grouped-story-read").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.savedMemoryStories?.detail?.id == SyntheticGroupedStoryApi.STORY_ID }
+        rule.runOnIdle { assertEquals(words, store.state.value.savedMemoryStories!!.detail!!.chapters.first().narration) }
+    }
+
     private fun albumJourney(zh: Boolean) {
         val api = SyntheticGroupedStoryApi()
         val store = ConnectedStore(api, scope)
@@ -60,6 +135,7 @@ class GroupedStoryCreationUiTest {
         rule.runOnIdle { assertEquals("album metadata stays unopened until an explicit action", 0, api.albumReads) }
 
         // Begin with an explicitly selected library item so replacement requires confirmation.
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToNode(hasTestTag("grouped-story-select-101"))
         rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
         rule.waitUntil(5000) {
             store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("101")
@@ -200,6 +276,7 @@ class GroupedStoryCreationUiTest {
         rule.waitUntil(5000) {
             store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102")
         }
+        rule.onNodeWithTag("grouped-story-selection-list").performScrollToNode(hasTestTag("grouped-story-select-101"))
         rule.onNodeWithTag("grouped-story-select-101").performScrollTo().performClick()
         rule.waitUntil(5000) {
             store.state.value.groupedStoryCreation?.editor?.state?.value?.selectedAssetIds == listOf("102", "101")
@@ -295,6 +372,7 @@ class GroupedStoryCreationUiTest {
     }
 
     private class SyntheticGroupedStoryApi : PhotoHouseApi, StoryWorkspaceApi {
+        var expectedSimpleIds = listOf("102", "101", "103")
         override val protectedNativeV2Enabled = true
         var saveRequests = 0
         var storyPreviewRequests = 0
@@ -383,7 +461,7 @@ class GroupedStoryCreationUiTest {
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("asset_ids").jsonPrimitive.content.split(',')
             lastPreviewRequest = request
-            check(ids == listOf("102", "101", "103") ||
+            check(ids == expectedSimpleIds ||
                 ids == ALBUM_ASSET_IDS.drop(1).take(23) + ALBUM_ASSET_IDS.last()) {
                 "preview preserves the selected mixed-media or album-adjusted order"
             }
@@ -454,7 +532,7 @@ class GroupedStoryCreationUiTest {
             saveRequests++
             val request = Json.parseToJsonElement(json).jsonObject
             val ids = request.getValue("asset_ids").jsonPrimitive.content.split(',')
-            check(ids == listOf("102", "101", "103"))
+            check(ids == expectedSimpleIds)
             val chapters = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content).jsonArray
             val previewValue = checkNotNull(preview)
             val title = request.getValue("title").jsonPrimitive.content

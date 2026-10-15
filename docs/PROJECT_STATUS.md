@@ -7,6 +7,16 @@ The API switch completed at 07:48 Beijing; independent task/backup verification
 and Mac HTTPS checks passed at 07:50. TV OTA remains v30. Physical phone
 installation and real-family acceptance are separate next steps.
 
+## Subsequent source candidates
+
+Guided first-story creation is progressing separately from the active search
+redesign. Web source `259c178` and subsequent native phone parity provide
+selection → wording/dictation → literal review → explicit save, with retained
+Back navigation and the existing immutable uncertain-save retry. The
+[phone guide](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) describes the
+flow and the remaining durable-draft boundary. This is source work; the v60
+release snapshot above is not changed by it.
+
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |

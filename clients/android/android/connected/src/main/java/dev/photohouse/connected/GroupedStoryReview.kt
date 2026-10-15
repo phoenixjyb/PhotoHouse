@@ -22,7 +22,7 @@ import dev.photohouse.connected.core.*
 internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose: () -> Unit,
     onReadSaved: (SavedMemoryStory) -> Unit, isSavedEdit: Boolean = store.isSavedStoryEdit,
     savedEditReloading: Boolean = false, savedEditReloadFailed: Boolean = false,
-    onReloadSavedEdit: (() -> Unit)? = null) {
+    onReloadSavedEdit: (() -> Unit)? = null, previewBytes: Map<String, ByteArray> = emptyMap()) {
     val state by store.state.collectAsState()
     val dictationStore by store.chapterDictation.collectAsState()
     val dictationUnfinished by store.dictationUnfinished.collectAsState()
@@ -36,13 +36,19 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     var chapterIndex by remember(store, store.savedEditStoryId, store.savedEditStoryRevision,
         state.draft?.selectionRevision) { mutableIntStateOf(0) }
     val reviewScrollState = rememberScrollState()
+    val guided = state.guideStep != null && !isSavedEdit
+    val guideReview = guided && state.guideStep == StoryGuideStep.REVIEW
+    LaunchedEffect(state.guideStep) { reviewScrollState.scrollTo(0) }
     val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave && !savedEditReloading
     Column(Modifier.fillMaxSize().verticalScroll(reviewScrollState).padding(20.dp)
         .testTag("grouped-story-review"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(if (isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
+        if (guided) StoryGuideProgress(requireNotNull(state.guideStep), zh)
+        Text(if (guided && state.guideStep == StoryGuideStep.FRAMES) t("Preparing your moments", "正在整理所选画面") else if (guideReview) t("Review and save", "检查与保存") else if (guided) t("Tell your memory", "讲述回忆") else if (isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
             fontFamily = FontFamily.Serif)
         Text(t("${state.selectedAssetIds.size} selected · photos and videos in your chosen order",
             "${state.selectedAssetIds.size} 个瞬间 · 照片与视频按所选顺序排列"), style = MaterialTheme.typography.bodyMedium)
+        if (guided) Text(if (state.guideStep == StoryGuideStep.FRAMES) t("Preparing an editable outline. This does not save a story.", "正在准备可编辑的提纲，这一步不会保存故事。") else if (guideReview) t("Check the order and words. Nothing is saved until you confirm and tap Save story.", "核对顺序与文字。确认并点击“保存故事”之前，不会保存。")
+            else t("Leave one sentence you remember, or record, review and add a transcript. A shared memory can stay in the opening; other chapters can wait.", "先留下一句你记得的事，也可以录音、检查转写后加入。共同回忆写在开篇即可，其他篇章可以稍后补充。"))
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (state.status == StoryWorkspaceStoreStatus.SELECTION) {
             Text(t("Choose the moments for one event, then create an editable outline.",
@@ -53,7 +59,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
         }
         val draft = state.draft
-        if (draft != null && state.savedStory == null) {
+        if (draft != null && state.savedStory == null && !guideReview) {
             if (state.sourcesReloaded && state.status == StoryWorkspaceStoreStatus.EDITING) {
                 Text(t("Current sources were loaded. Your title and chapter text were kept; review the sources again before saving.",
                     "已加载当前来源。故事标题与篇章文字已保留；保存前请重新核对来源。"),
@@ -72,6 +78,11 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 store.composition(value.composition != null) }, label = { Text(t("Story title", "故事标题")) },
                 enabled = editable && !dictationUnfinished, isError = state.invalidInput, maxLines = 3,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-title"))
+            var assistanceExpanded by remember(store) { mutableStateOf(false) }
+            if (guided) TextButton(onClick = { assistanceExpanded = !assistanceExpanded }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text(if (assistanceExpanded) t("Hide title and source options", "收起标题与来源选项") else t("Title and source options", "标题与来源选项"))
+            }
+            if (!guided || assistanceExpanded) {
             OutlinedButton(onClick = { finishTyping(); store.loadTitleCapabilities() }, enabled = editable && !state.composing && !dictationUnfinished,
                 modifier = Modifier.fillMaxWidth().testTag("grouped-story-title-check")) {
                 Text(t("Title suggestions", "查看标题建议"))
@@ -108,6 +119,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     if (!words.isNullOrBlank()) Text(label + words,
                         style = MaterialTheme.typography.bodySmall)
                 }
+            }
             }
             val index = chapterIndex.coerceIn(state.editableChapters.indices)
             val chapter = state.editableChapters[index]
@@ -256,17 +268,36 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                     modifier = Modifier.testTag("grouped-story-next-chapter")) {
                     Text(t("Next", "下一篇")) }
             }
-            draft.questions.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+            if (!guided) draft.questions.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
             if (state.invalidInput) Text(t("Check the title and shorten any oversized text before saving.",
                 "请核对标题并缩短超长文字，再保存。"), color = MaterialTheme.colorScheme.error)
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(state.reviewed,
-                enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
-                onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(state.reviewed, onCheckedChange = null)
-                Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
+            if (!guided) StorySaveConfirmation(store, state, zh, editable, dictationUnfinished, ::finishTyping)
+        }
+        if (guideReview && draft != null && state.savedStory == null) {
+            StoryGuideDraftReview(state, zh, previewBytes)
+            StorySaveConfirmation(store, state, zh, editable, dictationUnfinished, ::finishTyping)
+        }
+        if (guided && state.status == StoryWorkspaceStoreStatus.EDITING) {
+            if (state.guideStep == StoryGuideStep.WORDS) {
+                val hasWords = state.editableChapters.any { it.narration.isNotBlank() }
+                if (!hasWords) Text(t("Add one remembered sentence before reviewing.", "先加入一句回忆，再检查故事。"),
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("story-guide-needs-words"))
+                Button(onClick = { finishTyping(); store.continueGuide() },
+                    enabled = editable && !state.composing && !dictationUnfinished && !state.invalidInput && hasWords,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("story-guide-next")) {
+                    Text(t("Next: review the story", "下一步：检查故事"))
+                }
             }
-            Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished,
-                modifier = Modifier.fillMaxWidth().testTag("grouped-story-save")) { Text(t("Save story", "保存故事")) }
+            OutlinedButton(onClick = { finishTyping(); store.backGuide() },
+                enabled = editable && !state.composing && !dictationUnfinished,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("story-guide-back")) {
+                Text(if (guideReview) t("Back to your words", "返回讲述") else t("Back to moments", "返回挑选画面"))
+            }
+            TextButton(onClick = { finishTyping(); store.exitGuide() },
+                enabled = editable && !state.composing && !dictationUnfinished,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("story-guide-full-editor")) {
+                Text(t("Use the full editor", "使用完整编排界面"))
+            }
         }
         if (state.status == StoryWorkspaceStoreStatus.SAVE_UNCERTAIN) {
             Text(t("The story may already be saved. Check again using the same request to avoid a duplicate.",
@@ -347,4 +378,20 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         }, modifier = Modifier.testTag("grouped-story-saved-edit-reload-confirm")) {
             Text(t("Discard and reload", "丢弃并重新加载")) } },
         dismissButton = { TextButton(onClick = { confirmSavedEditReload = false }) { Text(t("Keep editing", "继续编辑")) } })
+}
+
+
+@Composable
+private fun StorySaveConfirmation(store: StoryWorkspaceStore, state: StoryWorkspaceStoreState,
+    zh: Boolean, editable: Boolean, dictationUnfinished: Boolean, finishTyping: () -> Unit) {
+    fun t(en: String, cn: String) = if (zh) cn else en
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(state.reviewed,
+        enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
+        onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(state.reviewed, onCheckedChange = null)
+        Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
+    }
+    Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished,
+        modifier = Modifier.fillMaxWidth().testTag("grouped-story-save")) { Text(t("Save story", "保存故事")) }
+
 }

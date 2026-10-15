@@ -1,9 +1,10 @@
 # Guided first-story creation
 
-This source change adds an optional Web flow in the existing story workspace:
-**Choose moments → Tell your memory → Review and save**. It does not add an
-Android screen, API route, schema migration or model invocation. This document
-records source behavior; deployment and family/device acceptance are separate.
+The initial Web increment adds an optional flow in the existing story workspace:
+**Choose moments → Tell your memory → Review and save**. Native phone parity is
+described below. Neither increment adds an API route, schema migration or model
+invocation. This document records source behavior; deployment and family/device
+acceptance are separate.
 
 ## Entry and permissions
 
@@ -75,6 +76,14 @@ also passed. The source verifier accepted 1,295 files, and the local Markdown
 link check found no errors (882 links, including 34 fragments).
 No microphone, transcription provider, Windows service, Android build or physical
 family/device test is implied by this synthetic Web checkpoint.
+
+## Phone parity
+
+A subsequent source slice adds an optional native phone guide using the same
+selection, dictation and immutable-save boundaries. See the
+[phone guide and test tutorial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md).
+Its inline draft preview is read-only; native draft persistence remains a future
+contract. The earlier Web-only checkpoint above describes its original scope.
 
 ## Integrating alongside search work
 

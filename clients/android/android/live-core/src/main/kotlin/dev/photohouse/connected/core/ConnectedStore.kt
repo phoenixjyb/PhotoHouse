@@ -312,7 +312,7 @@ data class AssistantMemorySegmentProgress(
     val completedSegmentIndex: Int? = null,
 )
 data class GroupedStoryCreationState(
-    val checking: Boolean = false, val canCreate: Boolean? = null,
+    val checking: Boolean = false, val canCreate: Boolean? = null, val guided: Boolean = false,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
     val albumsPage: ProtectedLibraryAlbumPage? = null, val albumsPageBusy: Boolean = false,
@@ -321,6 +321,7 @@ data class GroupedStoryCreationState(
     val albumPreviews: Map<String, ByteArray> = emptyMap(), val albumBusy: Boolean = false,
     val albumUnsupportedCount: Int = 0, val albumChoiceFailure: Boolean = false,
     val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
+    val reviewPreviews: Map<String, ByteArray> = emptyMap(), val reviewPreviewsBusy: Boolean = false,
     val isSavedEdit: Boolean = false, val savedEditStoryId: String? = null, val savedEditRequestId: Long = 0,
     val problem: LiveProblem? = null,
 )
@@ -483,6 +484,7 @@ class ConnectedStore(
     private var groupedStoryAlbumPageRequest = 0L
     private var groupedStoryAlbumChoiceRequest = 0L
     private var groupedStoryRelatedPreviewRequest = 0L
+    private var groupedStoryReviewPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
     private var savedMemoryDetailRequest = 0L
     private var savedMemoryReaderEpoch = 0L
@@ -737,6 +739,8 @@ class ConnectedStore(
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
         previous.groupedStoryCreation?.albumPreviews?.values?.forEach { it.fill(0) }
         previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.reviewPreviews?.values?.forEach { it.fill(0) }
+        groupedStoryReviewPreviewRequest++
         groupedStoryRelatedPreviewRequest++
         previous.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
         previous.savedMemoryStories?.hero?.fill(0)
@@ -896,7 +900,7 @@ class ConnectedStore(
     }
 
     /** Explicit creation entry. Actual protected can_create, not a UI role label, grants this editor. */
-    fun beginGroupedStoryCreation(): Boolean {
+    fun beginGroupedStoryCreation(guided: Boolean = false): Boolean {
         val workspace = api as? StoryWorkspaceApi ?: return false
         if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
             state.value.detail != null || state.value.savedMemoryStories != null || state.value.memoryBooks != null ||
@@ -906,14 +910,14 @@ class ConnectedStore(
         val credential = token ?: return false
         val accountId = identity?.account_id ?: return false
         val request = ++groupedStoryRequest
-        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(checking = true))
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(checking = true, guided = guided))
         launch { generation ->
             try {
                 val capability = api.savedMemoryStories(credential, library, 1)
                 if (!active(generation) || token !== credential || state.value.library != library || request != groupedStoryRequest) return@launch
                 validResponse(capability.libraryId == library && capability.page == 1 && capability.pageSize == 8 && capability.items.size <= 8)
                 if (!capability.canCreate) {
-                    mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = false))
+                    mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = false, guided = guided))
                     return@launch
                 }
                 val binding = {
@@ -950,14 +954,15 @@ class ConnectedStore(
                         updateGroupedStoryRelatedPreviews(created, candidates)
                     }
                 }
-                mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor))
+                if (guided) editor.startGuide()
+                mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor, guided = guided))
                 loadGroupedStorySelectionPage(1)
             } catch (failure: CancellationException) { throw failure }
             catch (failure: Exception) {
                 if (!active(generation) || token !== credential || state.value.library != library || request != groupedStoryRequest) return@launch
                 if (failure is ApiFailure && failure.status in setOf(401, 403))
-                    readFailure(failure, generation, credential) { beginGroupedStoryCreation() }
-                else mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(problem = problem(failure)))
+                    readFailure(failure, generation, credential) { beginGroupedStoryCreation(guided) }
+                else mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(problem = problem(failure), guided = guided))
             }
         }
         return true
@@ -1509,6 +1514,59 @@ class ConnectedStore(
         }
     }
 
+    /** Read-only thumbnails for all explicitly selected draft frames, independent of picker paging. */
+    fun loadGroupedStoryReviewPreviews(editor: StoryWorkspaceStore): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        val draft = editor.state.value.draft ?: return false
+        if (!allowed() || creation.editor !== editor || editor.state.value.guideStep != StoryGuideStep.REVIEW ||
+            draft.items.size !in 1..24 || creation.reviewPreviewsBusy) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        if (draft.libraryId != library) return false
+        val generation = state.value.generation
+        val request = ++groupedStoryReviewPreviewRequest
+        creation.reviewPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(reviewPreviews = emptyMap(), reviewPreviewsBusy = true))
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryReviewPreviewRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.guideStep == StoryGuideStep.REVIEW && editor.state.value.draft === draft
+            var total = 0
+            try {
+                for (item in draft.items) {
+                    if (!valid()) return@launch
+                    val bytes = try { api.thumbnail(credential, library, item.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || total + bytes.size > CACHE_LIMIT) {
+                        bytes.fill(0); continue
+                    }
+                    total += bytes.size
+                    val live = state.value.groupedStoryCreation ?: run { bytes.fill(0); return@launch }
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviews = live.reviewPreviews + (item.asset.id to bytes)))
+                }
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: ApiFailure) {
+                if (valid() && failure.status in setOf(401, 403)) readFailure(failure, generation, credential) { foreground() }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryReviewPreviewRequest && live?.editor === editor)
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviewsBusy = false))
+            }
+        }
+        return true
+    }
+
+    fun clearGroupedStoryReviewPreviews(editor: StoryWorkspaceStore) {
+        val live = state.value.groupedStoryCreation ?: return
+        if (live.editor !== editor) return
+        groupedStoryReviewPreviewRequest++
+        live.reviewPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviews = emptyMap(), reviewPreviewsBusy = false))
+    }
+
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
@@ -1518,6 +1576,8 @@ class ConnectedStore(
         current.previews.values.forEach { it.fill(0) }
         current.albumPreviews.values.forEach { it.fill(0) }
         current.relatedPreviews.values.forEach { it.fill(0) }
+        current.reviewPreviews.values.forEach { it.fill(0) }
+        groupedStoryReviewPreviewRequest++
         groupedStoryRelatedPreviewRequest++
         mutable.value = state.value.copy(groupedStoryCreation = null)
         return true
