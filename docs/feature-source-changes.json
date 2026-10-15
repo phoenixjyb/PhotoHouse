@@ -19084,6 +19084,27 @@
       "generation_enabled": false,
       "deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "chapter-source-chooser-invalidates-on-reference-panel-redraw",
+      "source_commit": "3d0d99ff5c5aadb0bf177842ba720e172594e3ed",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "26d0439c3a03c88493cbe14316201b097bf67088c8f787c43030ee68809c3c89",
+          "sha256": "c3be318c655a0a526986d726fa9732147c26196c79421e088c59bab85121472e"
+        },
+        {
+          "path": "server/tests/security/test_story_contribution_refs_browser.cjs",
+          "before_sha256": "0ee28385508f0f42e41318c8a4359d6b7b7068b0a65b339e4e102ebc6360d42a",
+          "sha256": "fecabeb50a3f12f0286b3c15d02b64a92860148ccb12d665526670bb386899fd"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false
     }
   ]
 }
