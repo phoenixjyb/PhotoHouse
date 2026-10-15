@@ -6,12 +6,17 @@ live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
 
 October 16 [native storytelling findings](STORY_MODEL_TRIAL_2026-10-16.md) now
-include one valid synthetic 9B capture. Its failed natural helper drain and
-85.875-second cold request keep runtime/interactive acceptance open. Following
-source changes reduce unnecessary questions and repetitive attribution and add
-an explicit owned-job teardown policy for temporary providers. Next qualify
-those changes with a newly authorized pinned model trial and human source review;
-do not enable generation based on the single capture.
+include an initial valid synthetic 9B capture with failed natural helper drain,
+then a separately authorized revised capture passing declared owned-job teardown.
+The revised output has zero follow-up questions; human quality and remaining
+cases are unreviewed. Cold canary duration is still 80.422 seconds. Next qualify
+broader source fidelity and latency; do not enable generation from these samples.
+
+The next [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) closes a
+manual collaboration gap: editors can select an existing accepted, consented
+family contribution, review the linked original and explicitly save its chapter
+reference. This uses metadata-only choices and the current save/schema contract.
+Paired Web/API qualification/delivery and Android chooser parity remain distinct.
 
 ## Current priority: make natural-language search useful
 

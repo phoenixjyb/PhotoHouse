@@ -183,6 +183,18 @@ try:
                         (contribution_id,revision,state,transcript,polished_text,tags,provider,model,error_code,
                          created_at,updated_at) VALUES(?,1,'ready',?,NULL,'[]','synthetic-local','fixture',NULL,?,?)''',
                         (audio_ident,transcript,fixture.now,fixture.now))
+                    for index in range(1,16):
+                        extra_id=f'b0000000-0000-4000-8000-{index:012d}'
+                        extra_text=f'合成分页测试回忆 {index:02d}'
+                        created=fixture.now-index
+                        db.execute('''INSERT INTO access_memory_contributions
+                            (id,story_id,library_id,author_id,kind,original_text,original_audio,language,byline,
+                             sha256,duration_ms,local_processing_consent,chapter_id,base_story_revision,state,
+                             mutation_id,request_digest,created_at,reviewed_by_id,reviewed_at)
+                            VALUES(?,?,'family-a',?,'text',?,NULL,'zh',?, ?,NULL,1,NULL,?,'accepted',?,?,?, ?,?)''',
+                            (extra_id,story_id,actor,extra_text,f'分页测试家人 {index:02d}',
+                             hashlib.sha256(extra_text.encode('utf-8')).hexdigest(),story[1],str(uuid.uuid4()),
+                             hashlib.sha256((story_id+extra_id).encode()).hexdigest(),created,actor,fixture.now))
                     db.commit()
                 print(json.dumps({'id':message['id'],'ok':True,'contribution_id':ident,'audio_contribution_id':audio_ident}),flush=True);continue
             if scenario=='library-organization':
