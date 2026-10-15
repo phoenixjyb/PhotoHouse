@@ -685,6 +685,10 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         else:
             residual = _unmatched(words, labels)
             scene = re.fullmatch(r'在([^不要没有排除删除]{1,40}?)(?:游玩|玩)(?:的)?', residual)
+            if scene is None:
+                # Noun-only scenes stay deliberately bounded. Unrecognized
+                # people, actions, dates and exclusions remain unmatched.
+                scene = re.fullmatch(r'在(海边|海滩|沙滩|河边|湖边|公园|草地|山上)(?:的)?', residual)
             if scene:
                 candidate = scene.group(1)
                 labels.append(residual)

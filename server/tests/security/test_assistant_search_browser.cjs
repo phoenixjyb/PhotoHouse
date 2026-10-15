@@ -68,7 +68,7 @@ async function installSyntheticTransport(targetContext){
   await page.waitForFunction(()=>document.querySelector('#assistant-private-select')?.value&&!document.querySelector('#assistant-private-new').disabled);
   const turns=()=>browserRequests.filter(x=>x.method==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(x.path,'https://photohouse.test').pathname));
   const send=async text=>{const n=turns().length;await page.locator('#assistant-text').fill(text);const response=page.waitForResponse(r=>r.request().method()==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(r.url()).pathname));response.catch(()=>{});await page.locator('#assistant-send').click();await response;await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);assert.equal(turns().length,n+1);const entry=turns().at(-1);assert.equal(entry.status,200,JSON.stringify(entry.response));assert.equal(entry.headers['x-photohouse-search-version'],'2');return entry.response;};
-  const result=await send('找示例儿童和妈妈在海边玩的照片');
+  const result=await send('找示例儿童和妈妈在海边的照片');
   assert.equal(result.result.version,2);assert.deepEqual(result.result.filters.people,{ids:['301','302'],match:'all'});
   assert.deepEqual(result.result.items.map(x=>x.id),['101','102']);
   await page.locator('#assistant-search-summary').waitFor({state:'visible'});
@@ -90,7 +90,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#viewer').waitFor({state:'visible'});await page.locator('#close-viewer').click();
   checkpoint('Open second uses the current ordered list, including the authored-evidence ranking');
   loseNextTurn=true;const before=turns().length;const lostFailed=page.waitForEvent('requestfailed',{predicate:r=>r.method()==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(r.url()).pathname)});
-  await page.locator('#assistant-text').fill('找示例儿童和妈妈在海边玩的照片');await page.locator('#assistant-send').click();await lostFailed;
+  await page.locator('#assistant-text').fill('找示例儿童和妈妈在海边的照片');await page.locator('#assistant-send').click();await lostFailed;
   if(!await page.locator('#assistant-private-management').evaluate(el=>el.open))await page.locator('#assistant-private-management-toggle').click();
   await page.locator('#assistant-private-recover').waitFor({state:'visible'});
   assert.equal(turns().length,before+1);const lost=turns().at(-1);assert.equal(lost.response.result.version,2);

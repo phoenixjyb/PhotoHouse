@@ -32,7 +32,8 @@ Examples using fictional reviewed names:
 
 Quoted text is content, not an identity hint. Two-character Chinese and NFKC /
 case-folded mixed-language matching work without an FTS tokenizer. Unquoted
-scene parsing currently supports only the bounded `在…玩/游玩` form. Arbitrary
+scene parsing supports `在…玩/游玩` and a short explicit noun-scene list,
+including `在海边的照片`; the scene remains a literal text condition. Arbitrary
 unmatched details, unknown/ambiguous names, unconfigured personal kinship mappings and
 unsupported negation require clarification; there is no model or cloud fallback.
 This is a lexical baseline, not general semantic understanding.

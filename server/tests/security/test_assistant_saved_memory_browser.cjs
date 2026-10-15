@@ -673,6 +673,11 @@ async function reloadAndLogin(){
   // Draft chips stay local until Send. The overview, outline and preview each
   // advance the revision while retaining the exact visible source cohort.
   const beforeAllStories=turns().length,allStories=await submit('搜索故事 双故事');
+  await page.waitForFunction(expected=>{
+    const turn=document.querySelector('#assistant-results')?.__assistantRenderedTurn;
+    return !document.querySelector('#assistant-private-new')?.disabled&&
+      JSON.stringify(turn?.memory_cards?.map(card=>card.id))===JSON.stringify(expected);
+  },allStories.response.result.memory_cards.map(card=>card.id),{timeout:10000});
   assert.equal(cards().count?await cards().count():0,allStories.response.result.memory_cards.length);
   assert(allStories.response.result.memory_cards.length>=2,`unfiltered story search exposes the second saved memory: ${JSON.stringify(allStories.response.result)}`);
   const displayedIds=allStories.response.result.memory_cards.map(card=>card.id),allStoriesParent=JSON.parse(allStories.body);

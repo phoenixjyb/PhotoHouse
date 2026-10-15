@@ -16935,6 +16935,41 @@
       "persisted_json_extended": true,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "accept-bounded-noun-scenes-and-bind-memory-browser-to-rendered-cohort",
+      "source_commit": "2e5a54503dc8f56ca4a299f98b6e858dbb1d8fc5",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "93ace8ac43d41a9957fbf9d5e380c1aa472e16032fdf2d08ad27dea12de83508",
+          "sha256": "b172b01cf2b6ce8ec1169638c46083cf132910765ccfa3b3aad028e136bbb0ec"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "03232c88ca66d3684710ce73ab5e990bd3dd669395ac99df3e9ac750dc816825",
+          "sha256": "031e936620a0124b33c252fadbbb017be3dd7fe29563ae6c285e3a9f58fa15d7"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "b0422235cfb95f37f02586a85f88e7524652db400e937f1cd1e1474260a2ba20",
+          "sha256": "dd598f41ed2308f8b64bd49991a95e5c9bad7e1c6e9e62b8007bec5e8ea71642"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "a35f797f6d96c15bf8c418014da6546200312d2e159dfa8380be24a6e21dd19e",
+          "sha256": "301cd8640672af4988f370b2836aa9d8527def39a20cf5d93367383123ec9ed4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "2b43f380c20314d11503961217880ecc55b0c5fe3074343d2292544cb20b5969",
+          "sha256": "185804a1c532d815399c073d05e603f4659fd2cdd57cf436d196cf7836d96d74"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }
