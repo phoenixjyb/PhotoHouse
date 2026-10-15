@@ -19035,6 +19035,29 @@
       "generation_enabled": false,
       "deployed": false,
       "apk_published": false
+    },
+    {
+      "feature": "integrate-chapter-source-chooser-with-bilingual-search-main",
+      "source_commit": "232ab6deaf242382f1434986e0796ee14538fc76",
+      "integration_base_commit": "312f3a23bb7b4ee935a09fe075633aa6415ebacc",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "65ef71b910c351fe910fb1a55b77d5926cb9b5105df9df692a1e367a02e474f2",
+          "sha256": "e31ea5b4837bff7d0eaf986b4fddc9d8791dc812663cde0054cc127d3003e5a0"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "76be36dd593c8f6d7827ce50463180dd76518e5812daf7ea39f9ada74e084fd0",
+          "sha256": "5c0b670db1226c42828fbafb1465134c0747febaadfecd3f68ba2f69df4a1b8e"
+        }
+      ],
+      "branch_tooling_records_retained": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false
     }
   ]
 }
