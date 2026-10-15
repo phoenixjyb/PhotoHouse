@@ -17914,6 +17914,21 @@
       "apk_published": false,
       "family_acceptance": false,
       "integrated_main_commit": "75125a93a5d7376d5877a639e9a28f99bc7eb288"
+    },
+    {
+      "feature": "phone-v63-private-story-drafts-release-version",
+      "source_commit": "6fc56125d0fb18eca113e92c3899fef70d5a2995",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "4a201ea66816a2915b693a65fe08fd4380225393c0d3bbd0aa406ed4b98b9dc9",
+          "sha256": "681a1c5044a52ff20355ce42fe2f76394d5b796e0a4182643ba8cc5a18d8e564"
+        }
+      ],
+      "schema_changed": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }
