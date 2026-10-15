@@ -18284,6 +18284,70 @@
         }
       ],
       "notes": "Imported search overlays follow the current main ledger; their before hashes reflect that replay order. This final overlay records the combined source bytes. Provider activation requires separate runtime qualification."
+    },
+    {
+      "feature": "web-phone-story-proposal-wording-review",
+      "source_commit": "1f62d7f7a16c396c4055a96064d7c5d83b2e463f",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/StoryProposalWordingReviewUiTest.kt",
+          "before_sha256": null,
+          "sha256": "41fec07a879d31f1c9ef9d6e82445b86701c85d12eab6f3e30c32ff688f33259"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "b4d9e1e5a1f06769730e0d57995514268412ec41e01d2b51809b33311125137e",
+          "sha256": "03fc89798a3b0846e671c9d0b2c2bf5882b60a701086ce95959a4c43d34e1797"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "d36e3098a42a924f72827717dc18cfcef217879afc6bd2cd820764a1a5bea1ac",
+          "sha256": "361991687a8c51a097a14a240f970cb7c9e330698e07a530891e60441ae8e30e"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "4572b3b6a0fbd5084536a08a26b0e2dfb8d3270dd6202ad8b1e9e4c761624f08",
+          "sha256": "3ff8ec42291ea401ebf95f3bbf0e1dcda9dd0148af692c6766e2174e70a32602"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "5a4b7d9ba9ad0fe35a009943f05a0ef1cf2e8ab49bbe36f6912c390b7ece12e8",
+          "sha256": "860c8e8a18f48b36b0eb98c57a3b771a06c6840ec031ac9cea0d5e4cb161b39f"
+        },
+        {
+          "path": "docs/STORY_PROPOSAL_WORDING_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "2a789d0aa7088d32c5fe46550e4714a3b22fecb6d4c9516dacfdbb5e0c60800c"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "c84429d1b9dd235a3a984a78317a8e89ff8d6aaef82f170f2991065f2497a7a7",
+          "sha256": "c06ed9cf23b4d58841946380d618c9d6b39080b86a2fa84447a620984266e75e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c26f3f194f0815eb431a6ca0ca85ecac0d938298a9888256db1d0daa6f7f77c3",
+          "sha256": "78026c28d0e649d84bd195446552df3b946435682f9a7906c6b6a51b999d0785"
+        },
+        {
+          "path": "server/tests/security/test_story_proposal_wording_browser.cjs",
+          "before_sha256": null,
+          "sha256": "74e2ba9ac3abb224738109c6ae00c0c7c3e986de41cad7080c4340abd5d0d55d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e20f74dee1db39b309663dc76d5ca2a7657b41f286e8d39c70d58f410ec9a581",
+          "sha256": "b92b1b2df163b86d157aba8131c16e8a13769a53cc471c9c764ef29c06a78db8"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed": false,
+      "apk_published": false,
+      "family_acceptance": false,
+      "original_source_commit": "e5629aad5bc009a1e1341f18fc0989505f492499",
+      "integration_base_commit": "938d0be676d74f9c4d986dd0b98078e781122fc3"
     }
   ]
 }
