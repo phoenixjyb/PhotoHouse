@@ -20319,6 +20319,21 @@
       "models_activated": false,
       "household_data_included": false,
       "apk_published": false
+    },
+    {
+      "feature": "run-description-clarification-regressions-in-api-profile",
+      "source_commit": "5f1c10c867254d9a0a36766dd63d4bf038dfb0be",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f28be9951a02d7e77ef2d47f175d52ea5188d235bee4bc490c485746631741aa",
+          "sha256": "b07264805e167d6cd2e34899a4a4e9d57245263bb0e9060b519a0f1840ba9dcd"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }
