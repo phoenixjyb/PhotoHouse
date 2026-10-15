@@ -10,6 +10,9 @@
 指定账号/相册 allowlist、当前已审核人物绑定、关系/撤权变更失效。真实家庭
 图谱、中文姓名和待注册账号预批准均在 Git 外；不要复制到测试、文档或源码。
 本地 draft 不代表账号创建、生产权限开通或 Windows 部署。
+实现 `01cf409` 的完整本地 API profile 通过 1,552 tests / 988 subchecks
+及生成数据演示；回执的起止 commit、源码输入哈希一致。29 项聚焦亲属/
+权限测试通过。后续按私有批准计划绑定已注册账号，不凭显示姓名自动开通。
 
 检索开发已隔离在 `codex/search-redesign-20261015` worktree，避免与并行的
 `codex/story-first-guide-20261015` 会话互相写入。主 checkout 保留原状态。

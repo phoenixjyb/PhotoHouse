@@ -104,6 +104,14 @@ checks, the source verifier and the API profile. The fixed runtime source
 allowlist includes `kinship.py`. Real private graph checks belong in private
 artifacts and are separate from synthetic source checks.
 
+Implementation `01cf409` passes 29 focused graph/provider/HTTP tests and the
+complete local API profile: 1,552 tests / 988 subchecks plus the generated
+no-listener demo and isolated package import checks. The invocation receipt
+records unchanged start/end commit and source input hash. Staging configuration,
+runtime forwarding, source-verifier and existing joint/conversational checks also
+pass. No native Windows file/ACL, installed client, live activation or real-family
+search relevance is qualified by this source cohort.
+
 Library/account/person bindings, native file permissions, real relevance,
 client perspective display and live activation are separate gates. Editing a
 local private draft does not deploy the API or activate a running installation.

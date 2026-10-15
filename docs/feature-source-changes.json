@@ -16804,6 +16804,31 @@
       "live_schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "record-private-kinship-source-qualification",
+      "source_commit": "01cf409f44c9be06d7a1180be824bc216a77dbd2",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "9f3fdf3684c2be8b2ef2309bc784ddbcf9235ef0e8b38985b1f05aee59f6f8be",
+          "sha256": "85e51f6d26557938783970e72a566a6f97138dd4d1fcf6b239402d6f84b8150d"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "b8b65e75f1f66f3dedad40b041a92be530e156cdcf8cb91d3922cbb717f9d8c0",
+          "sha256": "d9345f401b1c0fe58ccc070164ce4093e1c5fef39bbdef41c57854a43752e2ba"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "79b70673f45c381de31effb24af396d539ffc2f34231de0b2953298d3f034de5",
+          "sha256": "3eb94756591be96abcf2be6c08bc7791abf477c6babfb746575c5defe43c3226"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

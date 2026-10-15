@@ -30,8 +30,12 @@ for search v2. It binds an explicit library/account allowlist and chosen
 perspective, resolves bilingual relative chains only to current reviewed
 identities, and invalidates contexts on graph/perspective/access changes.
 Household data and pending account approvals remain outside Git. The focused
-generated graph/provider/HTTP suite passes 29 tests; staging/runtime forwarding
-and existing joint/conversational tests also pass. Live activation still needs
+generated graph/provider/HTTP suite passes 29 tests. The complete API profile at
+`01cf409` passed **1,552 tests / 988 subchecks** plus the generated no-listener
+demo, with unchanged start/end commit and source input hash. Staging/runtime
+forwarding, existing joint/conversational and source-verifier checks also pass.
+This source cohort uses fictional fixtures; private graph validation and the
+bounded operator inventory remain separate private records. Live activation still needs
 confirmed account/library/person bindings, client perspective display and the
 separate server delivery gate. No account creation or live permission change is
 implied by source checks or a private draft.
