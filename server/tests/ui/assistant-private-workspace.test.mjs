@@ -220,14 +220,14 @@ test('search v2 is probed explicitly, sent once, and retained on GET recovery',a
   const calls=[];let capReads=0,turnPosts=0;
   const h=harness(async(path,options)=>{
     calls.push({path,...options});
-    if(path.includes('/capabilities?')){capReads++;return workspaceCaps({search:{version:2,date_basis:'capture',perspective:{label:'示例家庭视角'}}});}
+    if(path.includes('/capabilities?')){capReads++;if(options.extraHeaders?.['X-PhotoHouse-Search-Version']==='3')throw Object.assign(new Error('unsupported'),{status:400,code:'search_version_unsupported'});return workspaceCaps({search:{version:2,date_basis:'capture',perspective:{label:'示例家庭视角'}}});}
     if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread()};
     if(path.endsWith('/turns')){turnPosts++;throw Error('connection lost after submit');}
     if(path.includes('/requests/'))return {...envelope('completed',true,1),result:searchResult()};
     throw Error(`unexpected ${path}`);
   },{ids:[threadId,requestId]});
   const caps=await h.controller.capabilities();assert.equal(caps.search.version,2);assert.equal(caps.search.perspective.label,'示例家庭视角');
-  assert.equal(calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'2','capability probe negotiates explicitly');
+  assert.deepEqual(calls.slice(0,2).map(call=>call.extraHeaders['X-PhotoHouse-Search-Version']),['3','2'],'a v2 server is discovered by explicit 3→2 negotiation');
   await h.controller.create();h.controller.setDraft('find a beach photo');
   await assert.rejects(h.controller.send(),e=>e.code==='request_failed');
   assert.equal(turnPosts,1,'a lost v2 turn is never silently retried');
@@ -238,7 +238,7 @@ test('search v2 is probed explicitly, sent once, and retained on GET recovery',a
   assert.equal(read.extraHeaders['X-PhotoHouse-Search-Version'],'2');
   assert.equal(recovered.result.version,2);assert.equal(recovered.recovered,true);
   assert.equal(h.controller.state().speechReady,false,'recovery does not seed reply speech');
-  assert.equal(capReads,1);
+  assert.equal(capReads,2,'v3 unsupported is followed by one v2 capability read');
 });
 
 test('fresh v2 reply speech keeps its negotiated header on the speech route',async()=>{
@@ -256,16 +256,18 @@ test('fresh v2 reply speech keeps its negotiated header on the speech route',asy
   assert.equal(speech.extraHeaders['X-PhotoHouse-Parent-Request-Id'],requestId);
 });
 
-test('only an unsupported v2 capability response falls back to the legacy contract',async()=>{
-  const calls=[];const h=harness(async(path,options)=>{calls.push({path,...options});if(path.includes('/capabilities?')){if(options.extraHeaders?.['X-PhotoHouse-Search-Version']==='2')throw Object.assign(new Error('unsupported'),{status:400,code:'search_version_unsupported'});return workspaceCaps();}throw Error('unexpected');});
-  const caps=await h.controller.capabilities();assert.equal(caps.search,null);assert.equal(calls.length,2);
-  assert.equal(calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'2');assert.equal(calls[1].extraHeaders,undefined);
+test('only explicit unsupported capability responses fall back through v3, v2, then legacy',async()=>{
+  const calls=[];const h=harness(async(path,options)=>{calls.push({path,...options});if(path.includes('/capabilities?')){if(options.extraHeaders?.['X-PhotoHouse-Search-Version'])throw Object.assign(new Error('unsupported'),{status:400,code:'search_version_unsupported'});return workspaceCaps();}throw Error('unexpected');});
+  const caps=await h.controller.capabilities();assert.equal(caps.search,null);assert.equal(calls.length,3);
+  assert.deepEqual(calls.map(call=>call.extraHeaders?.['X-PhotoHouse-Search-Version']??null),['3','2',null]);
   const generic400=harness(async(path,options)=>{if(path.includes('/capabilities?'))throw Object.assign(new Error('bad request'),{status:400});});
   await assert.rejects(generic400.controller.capabilities(),e=>e.status===400&&e.code==='request_failed');
-  assert.equal(generic400.calls.length,1,'generic 400 responses do not trigger a legacy downgrade');
+  assert.equal(generic400.calls.length,1,'generic 400 responses do not trigger a version downgrade');
+  assert.equal(generic400.calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'3');
   const denied=harness(async(path,options)=>{if(path.includes('/capabilities?'))throw Object.assign(new Error('denied'),{status:403});});
   await assert.rejects(denied.controller.capabilities(),e=>e.status===403);
-  assert.equal(denied.calls.length,1,'authorization failures do not trigger legacy retry');
+  assert.equal(denied.calls.length,1,'authorization failures do not trigger version retry');
+  assert.equal(denied.calls[0].extraHeaders['X-PhotoHouse-Search-Version'],'3');
 });
 
 test('an older capability probe cannot overwrite a newer negotiated search version',async()=>{

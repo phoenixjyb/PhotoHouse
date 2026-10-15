@@ -152,6 +152,52 @@ async function openPrivateWorkspace(){
   assert.deepEqual(recovered.filters.people,first.filters.people);assert.equal(recovered.filters.text,first.filters.text);
   await page.screenshot({path:path.join(artifacts,'intent-v3-phone-recovered-390-font150.png'),fullPage:false});
 
+  const priorThread=await page.locator('#assistant-private-select').inputValue();
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-new').click();
+  await page.waitForFunction(previous=>document.querySelector('#assistant-private-select')?.value&&document.querySelector('#assistant-private-select').value!==previous,
+    priorThread);
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  const pendingQuery='find photos of Sample Child from childhood playing in snow red coat containing "secret memory phrase"';
+  const plannerBeforePending=await plannerCalls();
+  const pendingAsk=await send(pendingQuery),pendingResult=pendingAsk.response.result;
+  assert.equal(pendingAsk.status,200);assert.equal(pendingAsk.headers['x-photohouse-search-version'],'3');
+  assert.equal(pendingResult.version,3);assert.equal(pendingResult.kind,'clarification');assert.equal(pendingResult.context,null);
+  assert.deepEqual(pendingResult.items,[]);assert.equal(await plannerCalls(),plannerBeforePending,
+    'the date-pending clarification does not invoke the descriptive planner');
+  assert.equal(JSON.stringify(pendingAsk.response).includes('pending_intent'),false,
+    'private pending state is never returned in the turn response');
+  const pendingThread=await page.locator('#assistant-private-select').inputValue();
+  const answer=await send('September 2032'),answered=answer.response.result;
+  assert.equal(answer.status,200);assert.equal(answer.headers['x-photohouse-search-version'],'3');
+  assert.equal(answered.kind,'results');assert.equal(answered.context.search_version,3);
+  assert.deepEqual(answered.filters.people,{ids:['301'],match:'any'});
+  assert.deepEqual(answered.filters.date,{from:'2032-09-01',to:'2032-09-30'});
+  assert.deepEqual(answered.filters.media,['image']);assert.equal(answered.filters.text,'secret memory phrase');
+  assert.deepEqual(answered.filters.descriptive.concepts.map(item=>item.surface),['playing in snow','red coat']);
+  assert.deepEqual(answered.items.map(item=>item.id),['101']);
+  assert.equal(await plannerCalls(),plannerBeforePending+1,'answer planning sees the original request once, excluding the date answer');
+  assert.equal(JSON.stringify(answer.response).includes('pending_intent'),false,
+    'resolved turn response contains only public search data');
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-refresh').click();
+  const option=page.locator('#assistant-private-select');await option.selectOption('');
+  const pendingHistoryResponse=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`/assistant/workspace/v1/threads/${pendingThread}?`));
+  await option.selectOption(pendingThread);await pendingHistoryResponse;
+  const pendingHistory=browserRequests.find(entry=>entry.method==='GET'&&entry.path.includes(`/assistant/workspace/v1/threads/${pendingThread}?`)&&entry.status===200)?.response;
+  assert.ok(pendingHistory,'resolved conversation history is read back from the workspace API');
+  assert.deepEqual(pendingHistory.exchanges.map(exchange=>exchange.input_text),[pendingQuery,'September 2032'],
+    'the original search and its short date answer remain separate history inputs');
+  assert.equal(JSON.stringify(pendingHistory).includes('pending_intent'),false,
+    'thread history never exposes private pending state');
+  const trailInputs=await page.locator('#assistant-turn-trail-list .assistant-turn-trail-entry').evaluateAll(entries=>entries.map(entry=>entry.querySelector('.assistant-turn-trail-text')?.textContent));
+  assert.deepEqual(trailInputs,[pendingQuery,'September 2032'],'visible history retains both user inputs independently');
+  await page.locator('#assistant-search-summary').waitFor({state:'visible'});
+  const pendingSummary=await page.locator('#assistant-search-summary').innerText();
+  for(const value of ['Sample Child','2032-09','playing in snow','red coat','secret memory phrase'])assert.ok(pendingSummary.includes(value),`resolved pending summary lacks ${value}: ${pendingSummary}`);
+  await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'intent-v3-pending-date-answer-phone-390-font150.png'),fullPage:false});
+
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
@@ -159,7 +205,8 @@ async function openPrivateWorkspace(){
     'date refinement preserves descriptive filters without replanning',
     '390px at 150% font and keyboard submission complete without horizontal overflow',
     'lost v3 turn recovers with a versioned GET and no second planning call',
-    'v3 client hydrates an older saved v2 result with a version-bound history read'],
+    'v3 client hydrates an older saved v2 result with a version-bound history read',
+    'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2));
   for(const checkpoint of evidence.checkpoints)console.log('PASS '+checkpoint);

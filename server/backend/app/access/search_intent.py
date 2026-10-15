@@ -12,8 +12,10 @@ import re
 from . import discovery as d
 from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _extract_dates,
                                    _consumed_label, _valid_previous, _strip_prefix)
+from .kinship import SELECTORS
 from .search_refinement import plan_query as literal_plan, query_mode
 from .search_description import normalize_description
+from .search_pending import _AGE_PHRASE
 
 POLICY_VERSION = 1
 QUESTIONS = frozenset(('date', 'person', 'description', 'scope', 'unsupported_action'))
@@ -81,6 +83,39 @@ def validate_proposal(value, query):
 
 def _hard_surface(query):
     return _QUOTE.sub(lambda match: ' ' * len(match.group(0)), query)
+
+
+_GENERIC_CHILD_SELECTORS = frozenset(('children', '孩子们'))
+
+
+def _kinship_hits(surface):
+    """Find public selector words, without reading any private kinship graph."""
+    unquoted = _hard_surface(surface)
+    hits = []
+    for alias in SELECTORS:
+        pattern_text = re.escape(alias).replace(r'\ ', r'[ \t]+')
+        if alias.isascii():
+            pattern_text = r'(?<![a-z0-9_])' + pattern_text + r'(?![a-z0-9_])'
+        pattern = re.compile(pattern_text, re.I | (re.A if alias.isascii() else 0))
+        for match in pattern.finditer(unquoted):
+            if alias in _GENERIC_CHILD_SELECTORS:
+                before = unquoted[:match.start()]
+                after = unquoted[match.end():]
+                english_possessive = re.search(r'(?<![a-z0-9_])(?:my|our)[ \t]+$', before,
+                                               re.I | re.A)
+                chinese_possessive = re.search(r'(?:我的|我们的)[ \t]*$', before)
+                possessive_suffix = re.match(r"[ \t]+of[ \t]+(?:mine|ours)(?![a-z0-9_])",
+                                             after, re.I | re.A)
+                if not (english_possessive or chinese_possessive or possessive_suffix):
+                    continue
+            hits.append((match.start(), match.end(), alias))
+    return tuple(sorted(hits))
+
+
+def _vague_date_hits(surface):
+    unquoted = _hard_surface(surface)
+    return tuple((match.start(), match.end(), match.group(0))
+                 for match in _AGE_PHRASE.finditer(unquoted))
 
 
 def _media(surface):
@@ -164,6 +199,9 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
             return QueryPlan(3, 'clarification', kept, 'invalid_intent')
         masked[start:stop] = ' ' * (stop - start)
     residue = ''.join(masked)
+    if (_kinship_hits(grammar_words) != _kinship_hits(residue) or
+            _vague_date_hits(grammar_words) != _vague_date_hits(residue)):
+        return QueryPlan(3, 'clarification', kept, 'invalid_intent')
     original_surface, hard_surface = _hard_surface(words), _hard_surface(residue)
     labels = entities.get('labels', [])
     if _consumed_label(d.fold(original_surface), d.fold(hard_surface), labels):

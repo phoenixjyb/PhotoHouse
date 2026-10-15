@@ -19375,6 +19375,106 @@
       "routes_added": false,
       "schema_changed": false,
       "deployed": false
+    },
+    {
+      "feature": "v3-date-clarification-continuation-and-unresolved-relationship-guards",
+      "source_commit": "1a82f3645498c4414ee135ff7d4aafcebacfd546",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "7c369c447ad1f0a4dfc14eb4db1843fbd92c712c2c5d2d8eac1ce3e59f7ef0ae",
+          "sha256": "df0207c5c963a718b3db577732b311483265dd135602cb777ed1c9f65727b714"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "8e6209731351b418e82a0ad5b0df96374910f2cdf365e652713618ce059da146",
+          "sha256": "ef721b6a2771fd701a22f919a6c30ff5334c1da68f94663c9c2b34458c77d1f2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "52db50f672ef64bbdce31234643be3df35b8f1e2f7467b13ad3d52a3baab28fd",
+          "sha256": "1621f4f3d4cadf75463892356b2a9cf0eb8572f903428facb63b50c47bd1654d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "f8594fa97c6fb61812969655087bb240a35300655a67878375b4f9fc7d4c295b",
+          "sha256": "1e5108b1fe298baafcebcd8d695f1f595bd56041a24384931c21d5a76a6edaef"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "603d1ab18452e275f2254c4f7f350a87b71dcac5eb3f461edf692469a9370739",
+          "sha256": "85d545985bc6c2eccb0bd4ed490bbb7530c364c0182274be65d04ba568279dca"
+        },
+        {
+          "path": "server/backend/app/access/search_pending.py",
+          "before_sha256": null,
+          "sha256": "825bf6d31a6bc2eed6caa2db43ea09fdff41c1ac5589b124bbfc03ce318d094b"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "1e3ff3d214ba581f4ae46112815bef1e6a52148040fd12eddcfd0bafb0c8cba2",
+          "sha256": "8f6fe01dee68b6b4d6a206ba7e4e21bbc9f8e7127cfa5f05f075426d5fb843ad"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "b6cb21c897f0e6c31c9c1b88d65d88854244ecb747ca98dfcc0ae623c3260cd5",
+          "sha256": "4b2f19910a015515cf1056eb8e6b4c9342042a6f5b5095580d4901752dcc8456"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "b56feb3bfa3375c79af7069e0c0afa4c2ca6343d9706f8e1cc1c54803449ec53",
+          "sha256": "fd3b6e0a707b55efb84be856a4452d0e620633eedf25ff00b28cea011f884a0b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent.py",
+          "before_sha256": null,
+          "sha256": "637463bec3f674838e6a4983da1378e027663df4e35692cc889f4ed84aac60b5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent_store.py",
+          "before_sha256": null,
+          "sha256": "04b3e138b3976e5f21d7a7f24e8f759401da06612cb81d8d99b913a693641df6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "a5f0f539ce07b3588111de4aff126ef330b113cea6f0b19efb7f2398876419f5",
+          "sha256": "c24ba52c751951805add84b5f844f9d75c38695bf9cdb7458e100d962f34dc8f"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "19656cfc23e7ba63c7cc1957057481eeb240eadaafad616b307aa0cac5eafc22",
+          "sha256": "d1c6969ddc8093243816f168efd24c23afc0f940b5cfe569f2bc3a305f95e028"
+        },
+        {
+          "path": "server/tests/security/test_search_pending.py",
+          "before_sha256": null,
+          "sha256": "4116d41b9761b06ed56cf377b22bbea617b9260d4540231a9b73a48d622cf0c0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "4f7135791d749c169f59420f236b70471c155461d2efa033038933b781e8adfb",
+          "sha256": "5fb62948ab11c5080ba26e8fcca56c6338c37ec1b9bf97b2a09e4ba51884928b"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "before_sha256": "8a97597334237fa9ac5604ba628a3610d6f13c95ec529a01424662ae097b9b2d",
+          "sha256": "d429fa0e2449108c5f5f080c946677e04a754a708f2060884f873e355ccfd183"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a248269c325049a9cef62b28ba6e82a7e4ed6880ef8e6a7f9b46e31d5c8d8c97",
+          "sha256": "f28be9951a02d7e77ef2d47f175d52ea5188d235bee4bc490c485746631741aa"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "private_pending_metadata_exposed": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

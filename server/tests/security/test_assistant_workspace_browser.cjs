@@ -73,6 +73,9 @@ async function installSyntheticTransport(targetContext){
   const management=page.locator('#assistant-private-management'),managementToggle=page.locator('#assistant-private-management-toggle');
   const openManagement=async()=>{if(!await management.evaluate(el=>el.open))await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),true,'private conversation controls are expanded for an explicit management action');};
   await workspacePanel.waitFor({state:'visible',timeout:10000});
+  const negotiatedWorkspaceProbes=requests('GET',workspace+'/capabilities?').filter(item=>['2','3'].includes(item.headers['x-photohouse-search-version']));
+  assert.deepEqual(negotiatedWorkspaceProbes.map(item=>item.headers['x-photohouse-search-version']),['3','2'],
+    'the real unconfigured server rejects v3 explicitly, then admits its supported v2 contract');
   assert.match(await page.locator('#assistant-private-new').innerText(),/新对话|新建|创建|开始/,'Chinese is the default private pane language');
   assert.equal(await management.evaluate(el=>el.open),true,'management is available while no conversation is selected');
   await page.locator('#assistant-private-status').waitFor();
@@ -560,7 +563,7 @@ async function installSyntheticTransport(targetContext){
     newDisabled:document.getElementById('assistant-private-new')?.disabled,scopeStatusLength:document.getElementById('assistant-status')?.textContent.length,
     authenticated:!document.getElementById('auth')?.checkVisibility()}));}catch{}
   console.error('BROWSER_DIAGNOSTICS '+JSON.stringify({requests:browserRequests.map(x=>({method:x.method,path:x.path,status:x.status,
-    server_owned_turns:x.response?.server_owned_turns})),uiState,pageErrors}));
+    error:x.response?.error,detail:x.response?.detail,server_owned_turns:x.response?.server_owned_turns})),uiState,pageErrors}));
   console.error(error.stack||error);process.exitCode=1;
 }).finally(async()=>{
   try{releaseHeldTurn?.();}catch(_){}

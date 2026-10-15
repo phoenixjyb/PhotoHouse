@@ -25,6 +25,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_description.py',
             'backend/app/access/search_intent.py',
             'backend/app/access/search_intent_local.py',
+            'backend/app/access/search_pending.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/assistant_journal.py',

@@ -97,6 +97,77 @@ class SearchIntentTests(unittest.TestCase):
         self.assertEqual('clarification', result.status)
         self.assertIn(result.reason, ('unsupported_condition', 'invalid_intent'))
 
+    def test_unresolved_public_kinship_selectors_cannot_become_descriptive_concepts(self):
+        cases = (
+            ('find grandma playing in snow photos', 'grandma playing in snow'),
+            ('find mom playing in snow photos', 'mom playing in snow'),
+            ('find 姥姥在雪地里玩耍的照片', '姥姥在雪地里玩耍'),
+            ('find my children playing in snow photos', 'my children playing in snow'),
+            ('找我的孩子们在雪地里玩耍的照片', '我的孩子们在雪地里玩耍'),
+        )
+        for query, surface in cases:
+            with self.subTest(query=query):
+                planner = Proposal(ready(query, [(surface, [surface])]))
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'invalid_intent', {}),
+                                 (result.status, result.reason, result.filters))
+
+    def test_generic_children_and_quoted_kinship_literals_remain_searchable(self):
+        for query, surface in (
+                ('find children playing in snow photos', 'children playing in snow'),
+                ('找孩子们在雪地里玩耍的照片', '孩子们在雪地里玩耍')):
+            with self.subTest(query=query):
+                planner = Proposal(ready(query, [(surface, [surface])]))
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('ready', result.status)
+                self.assertIn('descriptive', result.filters)
+
+        query = 'find photos containing "grandma"'
+        planner = Proposal(None)
+        result = plan_query(query, now=NOW, entities=entities(),
+                            previous_filters=None, planner=planner)
+        self.assertEqual('grandma', result.filters['text'])
+        self.assertEqual([], planner.calls)
+
+        # A reviewed label and its already-resolved person filter retain the
+        # ordinary deterministic path before the language planner is consulted.
+        planner = Proposal(None)
+        result = plan_query('find Grandma photos', now=NOW,
+                            entities=entities(labels=('Grandma',), people=('301',)),
+                            previous_filters=None, planner=planner)
+        self.assertEqual({'ids': ['301'], 'match': 'any'}, result.filters['people'])
+        self.assertEqual([], planner.calls)
+
+    def test_selector_boundaries_and_vague_date_slots_cannot_be_masked(self):
+        query = 'find a motherboard and a grandmaster figurine photos'
+        planner = Proposal(ready(query, [
+            ('a motherboard and a grandmaster figurine',
+             ['a motherboard and a grandmaster figurine']),
+        ]))
+        result = plan_query(query, now=NOW, entities=entities(),
+                            previous_filters=None, planner=planner)
+        self.assertEqual('ready', result.status)
+
+        for query, surface in (
+                ('find photos from childhood', 'childhood'),
+                ('find photos from a long time ago', 'a long time ago'),
+                ('找小时候的照片', '小时候')):
+            with self.subTest(query=query):
+                planner = Proposal(ready(query, [(surface, [surface])]))
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'invalid_intent', {}),
+                                 (result.status, result.reason, result.filters))
+
+        clarification = Proposal({'version': 1, 'status': 'clarification',
+                                  'concepts': [], 'question': 'date'})
+        result = plan_query('find photos from childhood', now=NOW, entities=entities(),
+                            previous_filters=None, planner=clarification)
+        self.assertEqual(('clarification', 'intent_date', {}),
+                         (result.status, result.reason, result.filters))
+
     def test_proposal_closed_shape_and_span_bounds_are_enforced(self):
         query = 'find red cake photos'
         good = ready(query, [('red cake', ['red cake'])])

@@ -513,15 +513,17 @@ def _context_result(engine, token, library, context):
     return result
 
 
-def _turn(engine, token, library, words, previous, clock, *, language=None):
+def _turn(engine, token, library, words, previous, clock, *, language=None, continuation=None):
     from .assistant_search import SearchRuntime
     if isinstance(engine, SearchRuntime):
         with engine.turn_scope():
-            return _turn_scoped(engine, token, library, words, previous, clock, language=language)
-    return _turn_scoped(engine, token, library, words, previous, clock, language=language)
+            return _turn_scoped(engine, token, library, words, previous, clock, language=language,
+                                continuation=continuation)
+    return _turn_scoped(engine, token, library, words, previous, clock, language=language,
+                        continuation=continuation)
 
 
-def _turn_scoped(engine, token, library, words, previous, clock, *, language=None):
+def _turn_scoped(engine, token, library, words, previous, clock, *, language=None, continuation=None):
     from .assistant_search import SearchRuntime
     v2 = isinstance(engine, SearchRuntime)
     if previous is not None:
@@ -543,7 +545,8 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
             and new_search):
         previous = None
     source = {}
-    result = _turn_impl(engine, token, library, words, previous, clock, language=language, source=source)
+    result = _turn_impl(engine, token, library, words, previous, clock, language=language,
+                        source=source, continuation=continuation)
     if v2:
         result['version'] = engine.search_version
         interpretation = source.get('interpretation')
@@ -558,10 +561,19 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
     return result
 
 
-def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None):
+def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None,
+               continuation=None):
     from .assistant_search import SearchRuntime
     search_v2 = isinstance(engine, SearchRuntime)
     search_v3 = search_v2 and engine.search_version == 3
+    if continuation is not None:
+        from .assistant_query_plan import _valid_previous
+        if (not search_v3 or previous is not None or type(continuation) is not dict
+                or set(continuation) != {'binding', 'date'}
+                or type(continuation['binding']) is not str
+                or re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None
+                or not _valid_previous({'date': continuation['date']})):
+            raise AssistantChanged()
     source = {} if source is None else source
     lang = language if language in ('zh', 'en') else _language(words)
     now = datetime.fromtimestamp(clock())
@@ -705,6 +717,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     if existing is None:
         source.update(first)
     binding, enabled = first['binding'], set(first['enabled'])
+    if continuation is not None and binding != continuation['binding']:
+        raise AssistantChanged()
     if search_v2:
         from .search_refinement import plan_query
         if search_v3:
@@ -715,6 +729,11 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             # Inference can outlive source or membership changes. Withhold
             # even a clarification until the same authorized snapshot replays.
             engine.call('presentation', token, library, lambda: False, {'binding': binding})
+            if continuation is not None and plan.status == 'ready':
+                from .assistant_query_plan import QueryPlan
+                if plan.filters.get('date') not in (None, continuation['date']):
+                    raise AssistantChanged()
+                plan = QueryPlan(3, 'ready', dict(plan.filters, date=continuation['date']))
         else:
             plan = (people_answer if people_answer is not None else
                     plan_query(words, now=now, entities=first,

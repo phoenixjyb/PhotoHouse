@@ -179,8 +179,12 @@ Ordinary quoted text remains a separate literal condition. Source reasons name
 the contributing current records; they do not turn generated interpretations
 into family facts.
 
-The compiler refuses spans that hide reviewed labels, quoted text, recognized
-dates, media types or negation, and refuses unparsed extra conditions. Person,
+The compiler refuses spans that hide reviewed labels, known kinship terms,
+supported unresolved vague-time phrases, quoted text, recognized dates, media
+types or negation, and refuses unparsed extra conditions. Kinship words cannot
+become descriptive guesses when the account lacks an authorized graph. Generic
+`children` / `孩子们` can describe a scene without a possessive cue; reviewed
+relationship labels remain protected. Person,
 date, media and exact-text filters remain independent requirements. Refinements
 retain descriptive concepts unless an explicit new search replaces the search,
 or `any description` / `不限描述` removes that filter. A new explicit search can
@@ -209,8 +213,41 @@ planner. The separate twelve-case synthetic qualification runner measures the
 installed model in English, Chinese and mixed cohorts with no family records,
 retries or hidden warm-up. A passing generated test does not establish native
 latency, family relevance, speech accuracy or device usability. Missing-date
-questions such as “childhood” must not invent dates; retaining the unresolved
-request across the user's answer remains a separate conversation feature.
+questions such as “childhood” must not invent dates. The bounded date-answer
+continuation below is separate from free-form model-generated questions.
+
+## Answering a missing-date question
+
+In a private v3 workspace conversation, an explicit new search with one supported
+vague-time phrase can ask for a year or date range and retain the original
+request. Supported phrases include `from childhood`, `childhood`, `when younger`,
+`a long time ago`, `小时候`, `儿时`, `小的时候`, `很久以前` and `好久以前`.
+For example, `找示例儿童小时候玩雪红外套的照片` followed by `2032年9月`
+keeps the reviewed person, image type, snow and red-coat requirements and adds
+the supplied capture-date bounds. It does not infer the person's age in 2032.
+
+The pending slot identifies an exact original span; a date-only answer resolves
+through the normal deterministic date parser and fresh reviewed-entity checks.
+The provider sees the original query with only that span blanked, while the
+resolved date is added as a separate hard filter before retrieval. Neither the
+original request nor the answer is overwritten or concatenated into generated
+prose. Unknown extra conditions still require clarification. Quoted time phrases,
+reviewed names that collide with a date, multiple vague-time phrases and existing
+explicit dates do not create this slot.
+
+Pending state is private server metadata in the existing turn record, excluded
+from client results and conversation-history payloads. It is usable only from
+the immediately preceding completed clarification in the same owned thread and
+revision, with the same current session/library/source binding. It expires after
+15 minutes; invalid answers cannot extend that time. Expiry asks for the full
+request again, and a new explicit search replaces pending state. Source or access
+changes withhold continuation. A failed local proposal can be retried with the
+same date answer within the original expiry. Saved request recovery replays the
+stored outcome without another model call.
+
+This is a bounded date-answer flow. Other model questions, pronouns without a
+reviewed person, and arbitrary conversational rewrites do not acquire pending
+state. Existing v1/v2 behavior and database schema remain unchanged.
 
 ## Speech and uncertainty
 
