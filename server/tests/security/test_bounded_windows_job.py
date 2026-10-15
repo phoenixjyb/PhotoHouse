@@ -16,6 +16,7 @@ class FakeAPI:
         self.wait = 'exited'
         self.code = 0
         self.descendants = 0
+        self.kill_descendants = True
         self.job = 'job'
         self.process = 'process'
         self.thread = 'thread'
@@ -38,7 +39,9 @@ class FakeAPI:
     def terminate_process(self, process):
         self.events.append('kill-process'); return self.termination
     def terminate_job(self, job):
-        self.events.append('kill-job'); self.descendants = 0; return self.termination
+        self.events.append('kill-job')
+        if self.kill_descendants: self.descendants = 0
+        return self.termination
     def active_processes(self, job):
         self.events.append(('active', self.descendants)); return self.descendants
     def close(self, handle): self.events.append(('close', handle))
@@ -126,6 +129,59 @@ class WindowsJobControllerTests(unittest.TestCase):
         self.assertAlmostEqual(now[0], 8, delta=0.05)
         self.assertNotIn('kill-job', api.events)
         self.assertLess(api.events.index(('active', 0)), api.events.index(('close', 'job')))
+
+    def test_opt_in_terminates_live_descendants_and_returns_parent_exit_code(self):
+        api = FakeAPI(descendants=2, code=7)
+        self.assertEqual(self.launch(api, terminate_descendants_after_exit=True), 7)
+        self.assertEqual(api.events.count('kill-job'), 1)
+        killed = api.events.index('kill-job')
+        drained = api.events.index(('active', 0), killed)
+        self.assertLess(killed, drained)
+        self.assertLess(drained, api.events.index(('close', 'job')))
+
+    def test_opt_in_with_empty_job_skips_termination_and_preserves_nonzero_code(self):
+        api = FakeAPI(descendants=0, code=9)
+        self.assertEqual(self.launch(api, terminate_descendants_after_exit=True), 9)
+        self.assertNotIn('kill-job', api.events)
+        self.assertEqual(api.events.count(('active', 0)), 1)
+
+    def test_invalid_descendant_exit_policy_refuses_before_launch(self):
+        for value in (None, 0, 1, 'true'):
+            with self.subTest(value=value):
+                api = FakeAPI()
+                with self.assertRaisesRegex(CheckRefused, 'invalid_descendant_exit_policy'):
+                    self.launch(api, terminate_descendants_after_exit=value)
+                self.assertEqual(api.events, [])
+
+    def test_opt_in_termination_failure_is_refused_even_if_cleanup_reclaims_job(self):
+        class DeclineOnceAPI(FakeAPI):
+            def __init__(self):
+                super().__init__(descendants=1)
+                self.termination_attempts = 0
+            def terminate_job(self, job):
+                self.events.append('kill-job')
+                self.termination_attempts += 1
+                if self.termination_attempts == 1:
+                    return False
+                self.descendants = 0
+                return True
+
+        api = DeclineOnceAPI()
+        with self.assertRaisesRegex(CheckRefused, 'job_termination_failed'):
+            self.launch(api, terminate_descendants_after_exit=True)
+        self.assertEqual(api.termination_attempts, 2)
+        self.assertLess(api.events.index(('active', 0)), api.events.index(('close', 'job')))
+
+    def test_opt_in_undrained_descendants_fail_closed(self):
+        api = FakeAPI(descendants=1, kill_descendants=False)
+        now = [0.0]
+        def sleep(seconds): now[0] += seconds
+        with self.assertRaisesRegex(CheckRefused, 'job_cleanup_failed'):
+            self.launch(api, terminate_descendants_after_exit=True,
+                        monotonic=lambda: now[0], sleep=sleep)
+        self.assertGreaterEqual(api.events.count('kill-job'), 2)
+        self.assertEqual(api.events.count(('active', 0)), 0)
+        self.assertIn(('close', 'job'), api.events)
 
     def test_selected_grace_is_capped_by_overall_deadline(self):
         api = FakeAPI(descendants=1)
