@@ -38,10 +38,16 @@ qualification remain ahead.
 
 The focused generated-data joint-search suite passes 19 tests, including short
 Chinese/quoted text, current source invalidation, any/all, a roster beyond 500,
-ranking/paging, current-result opening/refinement and version isolation. Existing
-discovery/index suites and the shared assistant/workspace checks also passed at
-their checked source state. Final committed API-profile evidence is recorded
-separately; none of these checks used household data, GPU or a live service.
+ranking/paging, current-result opening/refinement, personal-kinship alias refusal
+and version isolation. The complete API profile at implementation commit
+`b7d605b` passed **1,519 tests / 939 subchecks** plus the generated no-listener
+demo. Its private invocation receipt records identical start/end commit and
+source input hash, with exit code 0. Earlier interrupted runs are incomplete
+records, not passes. Affected discovery/index suites and the check-driver/source
+verifier checks also passed. No household data, GPU or live service was used.
+Android/Web profiles, native Windows and real-library relevance were not run
+for this API-only increment. Later documentation commits do not rebind this
+profile evidence to a different source revision.
 
 A later read-only owner-requested investigation confirmed ASR/turn intake but
 weak deterministic query parsing and missing searchable fields in the inspected

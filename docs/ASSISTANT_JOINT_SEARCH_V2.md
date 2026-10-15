@@ -80,7 +80,8 @@ caption sorts before generated-caption-only matches, then descending asset ID
 provides deterministic ties. This is an explicit policy baseline without semantic
 or visual ranking claims. All hard filters remain conjunctive.
 
-Version-2 cards add `match_reasons`: text reasons identify `photo_memory`,
+Version-2 cards with text/person/date evidence add `match_reasons`; media-only
+cards may omit it. Text reasons identify `photo_memory`,
 `edited_caption` or `generated_caption`, `source_id` and current `revision`;
 reviewed-person reasons identify the confirmed person ID, and capture-date reasons
 identify the recorded day. No original prose is copied into context or the reply.
@@ -101,6 +102,14 @@ suites, source-ledger verification and the API profile. The new runtime module
 is in the fixed API source allowlist. Record final observed results in the
 [project status](PROJECT_STATUS.md); source checks do not qualify native Windows,
 models, hosted CI, installed clients or family relevance.
+
+Implementation `b7d605b` passes the 19-test focused suite and the complete local
+API profile: 1,519 tests / 939 subchecks, including isolated source-package
+imports, plus the generated no-listener demo. The private receipt binds the
+same start/end commit and source input hash. Two earlier intentionally stopped
+profiles remain incomplete records. Source-ledger verification, 119 local
+documentation link targets and the affected discovery/index suites also passed.
+No Web/Android profile or native/model/runtime/real-family acceptance is claimed.
 
 Next bounded slice: negotiate and render the shared contract in Web/phone/private
 workspace with recovery and large-text checks, then qualify an explicit video

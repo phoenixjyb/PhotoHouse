@@ -16684,6 +16684,30 @@
       "routes_added": false,
       "schema_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "record-joint-search-api-source-qualification",
+      "source_commit": "b7d605ba402df9672ddcd4780f82b8eb62eff1df",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "2c40e4217bd4198475eb0e02f778418ae77362665df22ffdcf944ed30f0058e1",
+          "sha256": "e0156b8978ffca6ed32022c40c6e1145cb27bb475118efae0c76761af9dce01e"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "6f4e9bb3b6fc10075fa7dd0613cae69c6e022489de0285c20d607ef3718691ac",
+          "sha256": "15995ead00c238ff3de4107a780e37af37e44dae89683e153c16485cc2fc2db3"
+        },
+        {
+          "path": "docs/NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md",
+          "before_sha256": "8faa64910b60b2c1f99f23b592c6d58a6b9e50946c98e4d8e7e25f3dedd1ab29",
+          "sha256": "f9f560e99a37bb9b456869aae39382b02f4c074e5341ef9a6c945894aee57d4b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
     }
   ]
 }
