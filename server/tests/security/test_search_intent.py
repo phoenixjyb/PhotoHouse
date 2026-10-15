@@ -143,6 +143,43 @@ class SearchIntentTests(unittest.TestCase):
         self.assertEqual('clarification', result.status)
         self.assertIn(result.reason, ('unsupported_condition', 'invalid_intent'))
 
+    def test_missing_tool_result_or_spatial_relation_remains_unsupported_residue(self):
+        cases = (
+            (
+                'Show FictionalAdult-943 stirring purple soup with a wooden spoon '
+                'beside a striped tent on 2031-08-15 photos.',
+                entities(labels=('FictionalAdult-943',), people=('943',)),
+                [('stirring purple soup', ['stirring purple soup']),
+                 ('beside a striped tent', ['beside a striped tent'])],
+                'missing tool phrase',
+            ),
+            (
+                '找虚构来客-944把青色面团卷成新月的2031年8月视频。',
+                entities(labels=('虚构来客-944',), people=('944',)),
+                [('青色面团', ['青色面团']), ('卷', ['卷'])],
+                'missing result phrase',
+            ),
+            (
+                'Find FictionalPerson-945 mixing green noodles with a bamboo whisk '
+                '在 blue gazebo 旁 on 2029-10-03 photos.',
+                entities(labels=('FictionalPerson-945',), people=('945',)),
+                [('mixing green noodles with a bamboo whisk',
+                  ['mixing green noodles with a bamboo whisk'])],
+                'missing spatial relation',
+            ),
+        )
+        for query, resolved, spans, missing in cases:
+            with self.subTest(missing=missing):
+                planner = Proposal(ready(query, spans))
+                result = plan_query(query, now=NOW, entities=resolved,
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('clarification', result.status, result)
+                self.assertEqual({}, result.filters)
+                self.assertIn(result.reason,
+                              ('unsupported_condition', 'incomplete_people_relation',
+                               'invalid_intent'))
+                self.assertEqual(1, len(planner.calls))
+
     def test_provider_spans_cannot_bridge_redacted_words_or_a_conversational_opening(self):
         for query, surface, resolved in (
                 ('find red Mira coat photos', 'red Mira coat',

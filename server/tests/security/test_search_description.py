@@ -73,6 +73,47 @@ class SearchDescriptionTests(unittest.TestCase):
             (self.source("edited_caption", "cap-1", "having fun at the park"),), plan),
             (False, [], (0, 0, 0)))
 
+    def test_complete_event_and_spatial_clues_require_their_arguments(self):
+        plan = self.description(
+            ('stirring purple soup with a wooden spoon',
+             ('stirring purple soup with a wooden spoon', '用木勺搅拌紫色汤')),
+            ('beside a striped tent', ('beside a striped tent', '条纹帐篷旁')),
+        )
+        for event, place in (
+                ('Stirring purple soup with a wooden spoon.', 'Beside a striped tent.'),
+                ('用木勺搅拌紫色汤。', '条纹帐篷旁。'),
+                ('Stirring purple soup with a wooden spoon.', '条纹帐篷旁。')):
+            with self.subTest(event=event, place=place):
+                sources = (self.source('generated_caption', 'event', event),
+                           self.source('photo_memory', 'place', place, revision=2))
+                matched, reasons, _ = match_description(sources, plan)
+                self.assertTrue(matched)
+                self.assertEqual({'event', 'place'}, {item['source_id'] for item in reasons})
+
+        for event, place in (
+                ('Stirring purple soup. A wooden spoon is on a shelf.', 'Beside a striped tent.'),
+                ('Stirring purple soup with a metal spoon.', 'Beside a striped tent.'),
+                ('Stirring purple paint with a wooden spoon.', 'Beside a striped tent.'),
+                ('Stirring purple soup with a wooden spoon.', 'Inside a striped tent.'),
+                ('用金属勺搅拌紫色汤。木勺在架子上。', '条纹帐篷旁。'),
+                ('用木勺搅拌紫色汤。', '条纹帐篷里面。'),
+                ('Not stirring purple soup with a wooden spoon.', 'Beside a striped tent.')):
+            with self.subTest(event=event, place=place):
+                self.assertEqual((False, [], (0, 0, 0)), match_description(
+                    (self.source('generated_caption', 'event', event),
+                     self.source('photo_memory', 'place', place)), plan))
+
+    def test_relation_phrase_does_not_match_reversed_participants(self):
+        plan = self.description(('dog following a child',
+                                 ('dog following a child', '狗跟着孩子')))
+        for text in ('A dog following a child.', '狗跟着孩子。'):
+            self.assertTrue(match_description(
+                (self.source('generated_caption', '1', text),), plan)[0])
+        for text in ('A child following a dog.', '孩子跟着狗。',
+                     'A dog is playing. A child is following a cat.'):
+            self.assertFalse(match_description(
+                (self.source('generated_caption', '1', text),), plan)[0])
+
     def test_surface_is_not_implicitly_added_as_an_alternative(self):
         plan = self.description(("海边", ("by the sea",)))
 
