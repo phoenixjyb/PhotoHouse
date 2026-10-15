@@ -4,6 +4,10 @@ This increment adds explicit **Save draft / Resume / Delete draft** for a new
 story on Web and phone. It is device-local, not cross-device synchronization or
 publication. It needs no server schema migration or model activation.
 
+**Delivered October 15:** API/Web source `975968e` and phone v63
+(`0.63-private-story-drafts`). See [the release record](../clients/android/docs/PHONE_V63_RELEASE_2026-10-15.md)
+for artifact identity, native qualification and remaining family acceptance.
+
 ## Ownership and storage
 
 - One bounded draft per configured origin, account and library; no other scope
@@ -103,7 +107,8 @@ These checks establish source and generated-fixture behavior, not a release:
   fails on crashes or zero executed tests. No Gradle connected-task discovery
   is needed.
 
-The new draft feature has no signed APK, Windows qualification, live API switch
-or family acceptance yet. The last verified served release remains v62. AI
-story proposals, adjustable grouping and long oral-history delivery keep their
-separate roadmap and activation gates.
+The later v63 delivery completed native Windows qualification, the guarded
+API/Web switch, signed phone publication and Windows trusted HTTPS full APK
+readback. Installed v63 and family acceptance remain open. AI story proposals,
+adjustable grouping and long oral-history delivery keep their separate roadmap
+and activation gates.

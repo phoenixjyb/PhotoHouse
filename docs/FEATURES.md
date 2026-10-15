@@ -17,7 +17,7 @@ installation, and family acceptance requires physical use.
 | Upload/folder annotation intake and automatic polish/tags | Source adapters/contracts present | Separate annotation intake off; provider/queue activation and source-quality review |
 | Story/memoir composition, reviewed chapter sources, albums and reading continuity | Source supports protected composition/readers; separate manual chapter narration exists | Larger real-family story/album reading and contribution acceptance |
 | Guided first-story creation | Delivered on Web and phone v61, retained in v62: select moments, type/review dictation, literal preview, explicit save | Physical family trial |
-| Private story drafts | Qualified Web/phone source: explicitly save encrypted device-local wording, resume with fresh access/evidence, delete, and recover an exact uncertain save; bilingual 150% QA-emulator/browser journeys pass | Source review/CI and separate API/APK delivery; no cross-device sync |
+| Private story drafts | Delivered Web/phone v63: explicitly save encrypted device-local wording, resume with fresh access/evidence, delete, and recover an exact uncertain save; bilingual 150% QA-emulator/browser journeys pass | Installed v63 family trial; no cross-device sync or saved-story-edit persistence |
 | Automatic story/title proposals, memoir editorial and reviewed editions | Source and generated qualification; source/derivation/consent and CAS guards | Generation/title/editorial/edition flags off; schema, model quality, paired backup and native delivery |
 | Adjustable activity/shared-memory grouping | Manual group and time/similarity candidate contracts; source/version revalidation | Groups off; compatible schema/vector identity, withdrawal replay, native recovery and family adjustment trial |
 | Private assistant threads/history and reply-language preference | Separate owned schema-v2 store, 30-day retention, idempotent requests and GET recovery; configured in the current installation | Family/private account continuation checks; response length and voice pace are not applied |
@@ -35,7 +35,7 @@ installation, and family acceptance requires physical use.
 | Story/memoir preview recovery | Delivered phone v60 / Web: explicit protected-preview retry, corrupt-cache recovery, visible loading and stale-scope fences; focused bilingual emulator/browser checks pass | Signed/served delivery verified; real-device recovery trial remains |
 | Explicit TV preview retry | TV v31 reserved in October 15 source: visible current-page failures, explicit missing-preview retry and persistent focused recovery action; three emulator cases | Signed TV delivery and physical remote/projector trial |
 | Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | v60 native qualification and live delivery passed; future candidates retain their own gates |
-| OTA and recovery | Phone v60, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
+| OTA and recovery | Phone v63, TV v30; original signature/icon preserved; API startup trigger and five-worker restore verified | Installed-device acceptance; portable public operator controllers and paired recovery rehearsal |
 
 See the [v60 delivery record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
 for exact artifacts, backup, worker restoration and complete HTTPS APK readback.

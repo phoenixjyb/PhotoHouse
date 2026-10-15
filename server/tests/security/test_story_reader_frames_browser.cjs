@@ -141,9 +141,11 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   await buildAndRead(ids.slice(0,2));
   assert.equal(await page.locator('#story-reader-font-presets [data-reader-font-scale="1"]').getAttribute('aria-pressed'),'true','a replacement story opens at Default');
   // Settle lazy thumbnails in the newly mounted editor and reader before
-  // attributing later media requests to a retained detached control.
+  // attributing later media requests to a retained detached control. A failed
+  // preview also sets `complete`; require decoded dimensions so its error
+  // handler has either completed the fallback request or replaced the image.
   await page.locator('#story-workspace img,#story-reader img').evaluateAll(images=>images.forEach(image=>{image.loading='eager';}));
-  await page.waitForFunction(()=>Array.from(document.querySelectorAll('#story-workspace img,#story-reader img')).every(image=>image.complete),null,{timeout:10000});
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('#story-workspace img,#story-reader img')).every(image=>image.complete&&image.naturalWidth>0),null,{timeout:10000});
   const mediaRequestList=()=>requests.filter(request=>/^\/assets\/\d+\/(?:thumbnail|display|playback|media)(?:\?|$)/.test(request.path)).map(request=>`${request.method} ${request.path}`);
   const stateBeforeStaleClick=await page.evaluate(()=>({title:document.querySelector('#story-reader-title').textContent,frame:document.querySelector('#story-reader-frames [aria-pressed=true]')?.dataset.assetId,chapter:document.querySelector('#story-reader-chapters [aria-current=step]')?.textContent,frameCount:document.querySelectorAll('#story-reader-frames button').length}));
   const mediaBeforeStaleClick=mediaRequestList();

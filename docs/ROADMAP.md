@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 15 v62 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 15 v63 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
 live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated history is preserved below.
@@ -110,12 +110,12 @@ This guide is now delivered in Web and phone v61, with full Web and seven
 final-source emulator journeys verified. Family/device acceptance remains open.
 Search v2 client integration subsequently shipped in v62.
 
-The current source increment adds [explicit private device drafts](STORY_DRAFT_RESUME.md)
+The v63 release delivers [explicit private device drafts](STORY_DRAFT_RESUME.md)
 on Web and phone, with encryption, account/library binding, fresh-access checks,
-explicit deletion and exact uncertain-save recovery. This increment is not yet
-in a deployed API or published APK. Restart, changed/revoked sources,
-quota/corruption and bilingual large-text fixture checks pass; source review/CI,
-native release qualification and owner/member acceptance remain. Then qualify grounded
+explicit deletion and exact uncertain-save recovery. The API/Web switch and
+original-certificate phone HTTPS publication are verified. Restart,
+changed/revoked sources, quota/corruption and bilingual large-text fixture checks
+pass; installed v63 owner/member acceptance remains. Then qualify grounded
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
 
