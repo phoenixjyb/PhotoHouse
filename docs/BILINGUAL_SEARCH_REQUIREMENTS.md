@@ -410,3 +410,14 @@ When description clarification cannot preserve all unresolved conditions, the
 assistant requests a complete search again, including the scene and any person
 or date. It does not promise that a short answer will carry the original query
 forward. Date-only pending questions retain their separate supported flow.
+
+## Retaining original scene wording
+
+After validating a local provider's complete proposal, the adapter keeps each
+exact original surface as its first match alternative, then up to three distinct
+model interpretations in provider order. This prevents a translated phrase from
+losing the user's literal wording, such as `雨天`. Normalization-equivalent
+variants use the exact original spelling. All canonical byte/count limits are
+checked again after this step; malformed, duplicated or overlapping provider
+proposals remain refused before any retention. There is one provider attempt,
+with no retry, new translation call or change to hard conditions.
