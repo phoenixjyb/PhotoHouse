@@ -111,6 +111,7 @@ class MemoryNarrativeValidationTests(unittest.TestCase):
         valid = companion()
         self.assertEqual(valid, validate_companion(valid, source))
         for invalid in (
+            companion(refs=()),
             companion(refs=('other-source',)),
             companion(refs=('ev-1', 'ev-1')),
             companion(kind='unknown'),
@@ -123,6 +124,24 @@ class MemoryNarrativeValidationTests(unittest.TestCase):
                 validate_companion(invalid, source)
         proposal = companion(kind='proposal', proposal=narrative())
         self.assertEqual('proposal', validate_companion(proposal, source)['kind'])
+
+    def test_companion_answer_requires_a_known_source_but_clarification_may_be_source_free(self):
+        source = bundle()
+        answer = companion(kind='answer', refs=('ev-1',))
+        self.assertEqual(['ev-1'], validate_companion(answer, source)['source_ids'])
+
+        source_free = bundle(evidence=False)
+        clarification = companion(kind='clarification', refs=())
+        clarification['reply'] = 'What details would you like to add?'
+        self.assertEqual(clarification, validate_companion(clarification, source_free))
+
+        for invalid in (
+            companion(kind='answer', refs=()),
+            companion(kind='answer', refs=('unknown-source',)),
+            companion(kind='clarification', refs=('unknown-source',)),
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                validate_companion(invalid, source)
 
     def test_bundle_is_bounded_and_rejects_unknown_fields_and_references(self):
         oversized = bundle()
@@ -213,6 +232,25 @@ class LocalMemoryNarratorTests(unittest.TestCase):
         self.assertIn('Treat saved chapter order as reading order only', request['prompt'])
         self.assertIn('For generated narration and narrative proposals', request['prompt'])
         self.assertIn('that chapter’s allowed cited evidence; preserve uncertainty', request['prompt'])
+
+    def test_companion_prompt_requires_cited_answers_and_provider_failure_is_sanitized(self):
+        private_reply = 'Uncited private claim about a family event.'
+        invalid = companion(kind='answer', refs=())
+        invalid['reply'] = private_reply
+        model, seen = self.narrator(provider_body(
+            'qwen-local', json.dumps(invalid, ensure_ascii=False)))
+
+        with self.assertRaises(LocalMemoryNarrativeError) as caught:
+            model.companion(bundle())
+
+        self.assertEqual('invalid_response', caught.exception.category)
+        self.assertEqual('Local memory model unavailable', str(caught.exception))
+        self.assertNotIn(private_reply, str(caught.exception))
+        self.assertEqual(1, len(seen), 'invalid provider output is not retried')
+        prompt = json.loads(seen[0].content)['prompt']
+        self.assertIn('For kind answer, cite at least one available source ID', prompt)
+        self.assertIn('use kind clarification', prompt)
+        self.assertIn('A citation is a source pointer, not factual validation.', prompt)
 
     def test_both_request_tasks_receive_quote_grounding_rules_for_legacy_and_editorial(self):
         story_id = '11111111-1111-4111-8111-111111111111'
