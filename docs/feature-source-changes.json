@@ -19519,6 +19519,55 @@
       "household_data_included": false,
       "apk_published": false,
       "family_acceptance": false
+    },
+    {
+      "feature": "paired-single-scene-correction-with-retained-search-conditions",
+      "source_commit": "dac66db599d6f638776a3615175b11001a33bc70",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "52d0a36fb6460647392a456f937ba70ad694a5ebd79b1c4bd301033c093bfbc1",
+          "sha256": "ffd7f08eda3360d0ad53c581051f7c22ffc8da9097c35ec5a082ec95d8ac5e52"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "ef721b6a2771fd701a22f919a6c30ff5334c1da68f94663c9c2b34458c77d1f2",
+          "sha256": "99f53486794a7d7130b996999613e8203b80ada9e85b645e049b9418b57163a9"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "85d545985bc6c2eccb0bd4ed490bbb7530c364c0182274be65d04ba568279dca",
+          "sha256": "6dd81c5536242c79a4854ffefb838aba6e4e4eb211188357663e6e264c5be30a"
+        },
+        {
+          "path": "server/tests/security/assistant_intent_browser_fixture.py",
+          "before_sha256": "1d104f51734707c1f20c3b6d90a61e578ee58316eb461c2b96245f7e11e42c0d",
+          "sha256": "f6e969dbe98a64d66dd06524aefc7607ccb7121c4aea33649b9b2acb60411025"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "fd3b6e0a707b55efb84be856a4452d0e620633eedf25ff00b28cea011f884a0b",
+          "sha256": "72aa337c486578861606069822f3cdf498cc9bf41cf104110be57fb166607653"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "0f29f2fe2e287af44982daf4e7228a885ada270daee5499cfce8d148bae72315",
+          "sha256": "d2ec57671be78d9bda6e70e5e7b5db2cdf5eceb3e6b081801dc3830ebf180ae3"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "d1c6969ddc8093243816f168efd24c23afc0f940b5cfe569f2bc3a305f95e028",
+          "sha256": "d72f932662441626a5f454a23d46819cce21e9ec294b62334c1d540140f406f0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "provider_default_enabled": false,
+      "models_activated": false,
+      "native_intent_qualified": false,
+      "household_data_included": false,
+      "apk_published": false,
+      "family_acceptance": false
     }
   ]
 }

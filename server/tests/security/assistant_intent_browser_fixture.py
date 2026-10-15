@@ -29,7 +29,8 @@ class FixturePlanner:
         concepts = []
         for surface, alternatives in (
                 ('playing in snow', ['playing in snow', '在雪地玩']),
-                ('red coat', ['red coat', '红色外套'])):
+                ('red coat', ['red coat', '红色外套']),
+                ('blue coat', ['blue coat', '蓝外套'])):
             start = query.find(surface)
             if start >= 0:
                 concepts.append({'start': start, 'end': start + len(surface),
@@ -56,14 +57,16 @@ derived.mkdir()
 with closing(sqlite3.connect(fixture.path)) as db, db:
     db.execute("UPDATE assets SET status='active',mime='image/jpeg',taken_at='2032-09-02' WHERE id=101")
     db.execute("UPDATE assets SET status='active',mime='video/mp4',taken_at='2032-09-02' WHERE id=102")
+    db.execute("UPDATE assets SET status='active',mime='image/jpeg',taken_at='2032-09-02' WHERE id=103")
     db.execute("UPDATE captions SET text='A child playing in snow wearing a red coat with secret memory phrase',user_edited=1 WHERE id=101")
     db.execute("UPDATE captions SET text='A child playing in snow wearing a red coat with secret memory phrase',user_edited=1 WHERE id=102")
+    db.execute("UPDATE captions SET text='A child playing in snow wearing a blue coat with secret memory phrase',user_edited=1 WHERE id=103")
     db.executemany('INSERT INTO persons(id,display_name,face_count) VALUES(?,?,2)',
                    [(301, 'Sample Child / 示例儿童'),
                     (302, 'Sample Adult / 示例成人')])
     db.executemany('''INSERT INTO face_detections
         (id,asset_id,person_id,bbox_x,bbox_y,bbox_w,bbox_h,label_source)
-        VALUES(?,?,?,0,0,1,1,'manual')''', [(1, 101, 301), (2, 101, 302)])
+        VALUES(?,?,?,0,0,1,1,'manual')''', [(1, 101, 301), (2, 101, 302), (3, 103, 301)])
 
 import prepare_access_discovery_index as producer
 with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) as db:
@@ -78,7 +81,8 @@ with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) 
                 ReviewedPerson('family-a', '302', 'Sample Adult / 示例成人',
                                ('示例成人', 'Sample Adult'))),
         assignments=(ReviewedFace('1', '101', '301'),
-                     ReviewedFace('2', '101', '302')))
+                     ReviewedFace('2', '101', '302'),
+                     ReviewedFace('3', '103', '301')))
 index_path = root / 'discovery-index.json'
 producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True,
     ensure_ascii=True, separators=(',', ':')).encode())

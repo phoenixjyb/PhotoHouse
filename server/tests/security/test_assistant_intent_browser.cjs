@@ -85,7 +85,7 @@ async function openPrivateWorkspace(){
   await page.locator(`#assistant-private-select option[value="${legacy.thread_id}"]`).waitFor({state:'attached'});
   const detail=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`/assistant/workspace/v1/threads/${legacy.thread_id}?`));
   await page.locator('#assistant-private-select').selectOption(legacy.thread_id);await detail;
-  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-result').length===1);
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-result').length===2);
   const legacyRead=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes(`/requests/${legacy.request_id}`));
   assert.ok(legacyRead.some(entry=>entry.headers['x-photohouse-search-version']==='3'),
     'a v3 client hydrates saved v2 request results with the negotiated v3 readback header');
@@ -118,18 +118,37 @@ async function openPrivateWorkspace(){
   assert.doesNotMatch(summary,/在雪地玩|红色外套/,'alternatives stay out of the visible summary');
   await page.screenshot({path:path.join(artifacts,'intent-v3-desktop-1280.png'),fullPage:false});
 
+  const correction=await send('不是red coat，是blue coat'),paired=correction.response.result;
+  assert.equal(correction.status,200,JSON.stringify(correction.response));assert.equal(paired.version,3);
+  assert.deepEqual(paired.filters.people,first.filters.people);assert.deepEqual(paired.filters.date,first.filters.date);
+  assert.deepEqual(paired.filters.media,first.filters.media);assert.equal(paired.filters.text,first.filters.text);
+  assert.deepEqual(paired.filters.descriptive.concepts.map(item=>item.surface),['playing in snow','blue coat']);
+  assert.deepEqual(paired.items.map(item=>item.id),['103'],'paired correction replaces red coat with the matching synthetic blue-coat item');
+  assert.equal(await plannerCalls(),2,'paired description correction invokes the planner once');
+  await page.locator('#assistant-search-summary').waitFor({state:'visible'});
+  const pairedSummary=await page.locator('#assistant-search-summary').innerText();
+  for(const visible of ['playing in snow','blue coat','Sample Child','2032-09','secret memory phrase'])assert.ok(pairedSummary.includes(visible),`corrected summary lacks ${visible}: ${pairedSummary}`);
+  assert.doesNotMatch(pairedSummary,/在雪地玩|红色外套|蓝外套/,'the visible correction summary uses concept surfaces, not alternatives');
+  await page.screenshot({path:path.join(artifacts,'intent-v3-correction-desktop-1280.png'),fullPage:false});
+
   const refined=await send('只看2032年9月2日'),second=refined.response.result;
   assert.equal(refined.headers['x-photohouse-search-version'],'3');assert.equal(second.version,3);
   assert.deepEqual(second.filters.date,{from:'2032-09-02',to:'2032-09-02'});
   assert.deepEqual(second.filters.people,first.filters.people);assert.equal(second.filters.text,first.filters.text);
-  assert.deepEqual(second.filters.descriptive,first.filters.descriptive);
-  assert.deepEqual(second.items.map(item=>item.id),['101']);assert.equal(await plannerCalls(),1,'deterministic date follow-up does not replan');
+  assert.deepEqual(second.filters.descriptive,paired.filters.descriptive);
+  assert.deepEqual(second.items.map(item=>item.id),['103']);assert.equal(await plannerCalls(),2,'deterministic date follow-up does not replan');
 
   await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
+  const phoneSummary=await page.locator('#assistant-search-summary').innerText();
+  for(const visible of ['Sample Child','secret memory phrase','playing in snow','blue coat','2032-09-02','媒体类型'])assert.ok(phoneSummary.includes(visible),`phone conditions omit ${visible}: ${phoneSummary}`);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.locator('#assistant-search-summary').screenshot({path:path.join(artifacts,'intent-v3-correction-phone-summary-390-font150.png')});
+  await page.screenshot({path:path.join(artifacts,'intent-v3-correction-phone-390-font150.png'),fullPage:false});
   const keyboard=await send('只看2032年9月2日',{keyboard:true});
   assert.equal(keyboard.headers['x-photohouse-search-version'],'3');
-  assert.deepEqual(keyboard.response.result.filters.descriptive,first.filters.descriptive);
-  assert.equal(await plannerCalls(),1,'keyboard date follow-up preserves the planned description');
+  assert.deepEqual(keyboard.response.result.filters.descriptive,paired.filters.descriptive);
+  assert.equal(await plannerCalls(),2,'keyboard date follow-up preserves the planned description');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'intent-v3-phone-390-font150.png'),fullPage:false});
@@ -144,13 +163,42 @@ async function openPrivateWorkspace(){
   const lost=turnEntries().at(-1);assert.equal(lost.response.result.version,3);
   const recoveredReads=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes('/requests/'+lost.response.request_id));
   assert.ok(recoveredReads.length>0);assert.ok(recoveredReads.every(entry=>entry.headers['x-photohouse-search-version']==='3'));
-  assert.equal(turnEntries().length,4,'recovery reads the original request instead of resubmitting it');
+  assert.equal(turnEntries().length,5,'recovery reads the original request instead of resubmitting it');
   assert.equal(await plannerCalls(),callsBeforeRecovery+1,'recovery returns the stored plan without calling the planner again');
   assert.deepEqual((await page.evaluate(()=>window.__phSpeechCalls)),0);
   const recovered=lost.response.result;
   assert.equal(recovered.context.search_version,3);assert.deepEqual(recovered.filters.descriptive,first.filters.descriptive);
   assert.deepEqual(recovered.filters.people,first.filters.people);assert.equal(recovered.filters.text,first.filters.text);
   await page.screenshot({path:path.join(artifacts,'intent-v3-phone-recovered-390-font150.png'),fullPage:false});
+
+  const priorRecoveryThread=await page.locator('#assistant-private-select').inputValue();
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-new').click();
+  await page.waitForFunction(previous=>document.querySelector('#assistant-private-select')?.value&&document.querySelector('#assistant-private-select').value!==previous,
+    priorRecoveryThread);
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  const callsBeforeCorrectionRecovery=await plannerCalls();
+  await send(phrase);
+  assert.equal(await plannerCalls(),callsBeforeCorrectionRecovery+1);
+  const correctionTurnCount=turnEntries().length;
+  await send('不是red coat，是blue coat',{lose:true});
+  assert.equal(await plannerCalls(),callsBeforeCorrectionRecovery+2,'the interrupted paired correction is planned once');
+  const callsAfterCorrection=await plannerCalls();
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-recover').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-result').length===1&&!document.querySelector('#assistant-private-new').disabled);
+  assert.equal(turnEntries().length,correctionTurnCount+1,'correction recovery performs a readback instead of submitting a duplicate turn');
+  assert.equal(await plannerCalls(),callsAfterCorrection,'correction recovery does not invoke the planner again');
+  const recoveredCorrection=turnEntries().at(-1).response.result;
+  assert.deepEqual(recoveredCorrection.filters.descriptive.concepts.map(item=>item.surface),['playing in snow','blue coat']);
+  assert.deepEqual(recoveredCorrection.filters.people,first.filters.people);
+  assert.deepEqual(recoveredCorrection.filters.date,first.filters.date);
+  assert.deepEqual(recoveredCorrection.filters.media,first.filters.media);
+  assert.equal(recoveredCorrection.filters.text,first.filters.text);
+  assert.deepEqual(recoveredCorrection.items.map(item=>item.id),['103']);
+  const recoveredCorrectionSummary=await page.locator('#assistant-search-summary').innerText();
+  assert.ok(recoveredCorrectionSummary.includes('blue coat'));
+  await page.screenshot({path:path.join(artifacts,'intent-v3-correction-recovered-phone-390-font150.png'),fullPage:false});
 
   const priorThread=await page.locator('#assistant-private-select').inputValue();
   if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
@@ -202,9 +250,11 @@ async function openPrivateWorkspace(){
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
     'summary shows concept surfaces and withholds alternatives',
+    'paired Chinese correction replaces only red coat, preserves snow and hard filters, and shows matching blue-coat result',
     'date refinement preserves descriptive filters without replanning',
     '390px at 150% font and keyboard submission complete without horizontal overflow',
     'lost v3 turn recovers with a versioned GET and no second planning call',
+    'lost paired correction recovers the corrected blue-coat plan without resubmission or replanning',
     'v3 client hydrates an older saved v2 result with a version-bound history read',
     'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
