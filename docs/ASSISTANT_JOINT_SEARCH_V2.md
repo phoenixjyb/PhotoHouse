@@ -113,6 +113,10 @@ Quoted content remains opaque; unknown modifiers, unsupported negation and
 conflicting dates/media require clarification. Today/yesterday, Monday-based
 weeks, calendar months/years and explicit Chinese/English dates use the supplied
 server civil date. No user-time-zone inference is introduced by this increment.
+Resolved names that overlap a date or media keyword (for example, `May`) also
+require clarification instead of silently adding that condition. Quoted text
+must fit the existing 512-byte text filter limit; a longer literal asks for a
+shorter phrase without sending an invalid plan to retrieval.
 
 Within a synchronous v2 turn, `SearchRuntime.turn_scope` reuses derived facts and
 lazy text normalization only for an identical current binding. Every operation

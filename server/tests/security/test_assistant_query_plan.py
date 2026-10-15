@@ -46,6 +46,21 @@ def plan(words, *, entities=None, previous=None, refine=False):
 
 
 class AssistantQueryPlanTests(unittest.TestCase):
+    def test_reviewed_labels_cannot_silently_become_date_or_media_conditions(self):
+        for label in ('May', 'September', '今天', 'videos'):
+            with self.subTest(label=label):
+                entities = {**ENTITIES, 'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                            'labels': [label]}
+                self.assert_clarifies('find photos about ' + label, entities=entities)
+
+    def test_quoted_content_fits_existing_discovery_text_byte_limit(self):
+        for literal in ('x' * 513, '海' * 171):
+            with self.subTest(length=len(literal)):
+                self.assert_clarifies('find photos containing "' + literal + '"', 'text_too_long')
+        literal = 'x' * 512
+        self.assert_ready('find photos containing "' + literal + '"',
+                          {'media': ['image'], 'text': literal})
+
     def assert_ready(self, words, expected, **kwargs):
         result = plan(words, **kwargs)
         self.assertIsInstance(result, QueryPlan)

@@ -11,6 +11,8 @@ import test_assistant_joint_search as fixtures
 from app.access import discovery as d
 from app.access.assistant_search import AssistantSearchReads, SearchRuntime, _TURN_FACTS
 from app.access.service import AccessDenied
+from dataclasses import replace
+from app.access.discovery_provider import ReviewedPerson
 from phone_discovery_fixture import TOKEN
 
 
@@ -20,6 +22,17 @@ class SearchTurnProjectionTests(unittest.TestCase):
             'test_text_union_dedup_reasons_and_authored_first_order')
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
+
+    def test_month_name_identity_collision_and_oversized_text_clarify_over_http(self):
+        self.fixture.install(replace(self.fixture.index, people=(
+            ReviewedPerson('family-a', '301', 'May'), self.fixture.index.people[1])))
+        for words in ('find photos about May', 'find photos containing "' + 'x' * 513 + '"'):
+            with self.subTest(kind='long literal' if len(words)>500 else words):
+                response = self.fixture.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()['kind'], 'clarification')
+                self.assertIsNone(response.json()['context'])
+                self.assertEqual(response.json()['items'], [])
 
     def test_http_turn_builds_facts_once_and_next_turn_rebuilds(self):
         calls = []

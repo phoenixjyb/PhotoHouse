@@ -288,8 +288,15 @@ def _remove_occurrences(text, labels):
         pattern = re.escape(folded_label)
         if re.fullmatch(r'[a-z0-9_ .-]+', folded_label):
             pattern = r'(?<![a-z0-9_])' + pattern + r'(?![a-z0-9_])'
-        result = re.sub(pattern, ' ', result, flags=re.I)
+        result = re.sub(pattern, lambda match: ' ' * len(match.group(0)), result, flags=re.I)
     return result
+
+
+def _consumed_label(text, residue, labels):
+    """A date/media keyword cannot silently double as a reviewed identity."""
+    masked = _remove_occurrences(text, labels)
+    return any(original != label_mask and original != condition_mask
+               for original, label_mask, condition_mask in zip(text, masked, residue))
 
 
 def _entity_filters(entities):
@@ -417,6 +424,8 @@ def plan_query(words, *, now: datetime, entities: dict,
     literal = quoted[0].group(1) if quoted else None
     if literal is not None and not literal.strip():
         return _clarify('empty_literal', previous_filters if refine else None)
+    if literal is not None and len(literal.encode('utf-8')) > 512:
+        return _clarify('text_too_long', previous_filters if refine else None)
 
     # Normalize once before any span-based parsing so all later offsets refer
     # to this same string. The quoted literal remains byte-for-byte as entered.
@@ -426,9 +435,12 @@ def plan_query(words, *, now: datetime, entities: dict,
     outside = _strip_prefix(outside)
 
     today = now.date()
-    dates, outside, date_error = _extract_dates(outside, today)
+    date_surface = outside
+    dates, outside, date_error = _extract_dates(date_surface, today)
     if date_error:
         return _clarify(date_error, previous_filters if refine else None)
+    if dates and _consumed_label(date_surface, outside, labels):
+        return _clarify('ambiguous_date_entity', previous_filters if refine else None)
     if dates and 'date' not in enabled:
         return _clarify('date_unavailable', previous_filters if refine else None)
 
@@ -436,7 +448,10 @@ def plan_query(words, *, now: datetime, entities: dict,
     for kind, pattern in _MEDIA:
         if pattern.search(outside):
             media_hits.append(kind)
-            outside = pattern.sub(' ', outside)
+            residue = pattern.sub(lambda match: ' ' * len(match.group(0)), outside)
+            if _consumed_label(outside, residue, labels):
+                return _clarify('ambiguous_media_entity', previous_filters if refine else None)
+            outside = residue
     if len(set(media_hits)) > 1:
         return _clarify('conflicting_media', previous_filters if refine else None)
 

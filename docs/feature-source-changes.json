@@ -17650,6 +17650,41 @@
       "schema_changed": false,
       "providers_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "clarify-search-keyword-identity-collisions-and-bound-quoted-content",
+      "source_commit": "9f2094a200b52061715d3194535c78cab19dda79",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "9d53773c79f4024bf43e4da29ff086b28fad099ab3eea852bacfd65e6c41c7d2",
+          "sha256": "87abcf03a7f3e97c0957a85a30eec18457b56d5955d80f9caa621fd83045c79d"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "a2ae2fcd4949d0fdae12e066062a10a6a4d6156b5d9ed7b4c7ecf430aad37c5e",
+          "sha256": "391e1e9f8e9403015bd95b59a2d90e170f8e5bc120e7c8c1f34029dbac43ee8e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "11be70026f9318524ccaa576a1bf77c6e1dfed34cc8e4a890a4af4305b9877f8",
+          "sha256": "615ce1c52648903a6764ebe4120c2ba5655e1c61e2d7e312d158a3455bb0019b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "ae8fec39ee7036a12523117da0da6984ddaa53b355778258e024063444bd47e2",
+          "sha256": "7d3590ccfed803f2f554372040b566d6e5c3bf7bea40c697928e6fa34e15d9f0"
+        },
+        {
+          "path": "server/tests/security/test_search_turn_projection.py",
+          "before_sha256": "943ad95e24f1557924a3129d028c58ee6a501716eb541cec92170ad5b9f20b6f",
+          "sha256": "ebc3e4c9b0436f8ffa6a50d494f1c2b63879490c153102cbcdc19c8e0206fa92"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

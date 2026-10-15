@@ -651,7 +651,11 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
                      if lang == 'zh' else
                      'Some details could not be matched. Use a reviewed person, label, place, or an explicit capture date.')
-            if plan.reason in ('ambiguous_entities', 'ambiguous_people', 'ambiguous'):
+            if plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
+                reply = ('有个词既可能是已登记的名称，也可能是日期或媒体类型。请补充完整名称，或明确日期和类型。'
+                         if lang == 'zh' else
+                         'A word could mean a reviewed name or a date/media type. Use the full name or specify the date and type.')
+            elif plan.reason in ('ambiguous_entities', 'ambiguous_people', 'ambiguous'):
                 reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
                          if lang == 'zh' else
                          'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
@@ -661,6 +665,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'date_unavailable':
                 reply = ('这个相册库暂时没有可用的日期索引。' if lang == 'zh' else
                          'Date search is not available in this library yet.')
+            elif plan.reason == 'text_too_long':
+                reply = ('要匹配的文字太长，请缩短引号内的内容后再查找。' if lang == 'zh' else
+                         'The quoted text is too long. Shorten it and search again.')
             elif 'people' not in enabled:
                 reply += (' 当前相册库尚未启用人物检索；未识别的条件不会被忽略。' if lang == 'zh' else
                           ' People search is not enabled in this library. Unmatched details were not ignored.')
