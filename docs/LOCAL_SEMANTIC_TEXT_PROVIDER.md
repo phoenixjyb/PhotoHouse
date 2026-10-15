@@ -128,3 +128,7 @@ Native checkpoint/package compatibility, memory and latency bounds, compatible
 image artifacts, Chinese/English relevance, runtime configuration and
 assistant/client integration are still required before enabling family semantic
 search. No source or synthetic pass establishes those results.
+
+The separate [generated pair measurement](SEMANTIC_PAIR_QUALIFICATION.md)
+reuses one full checkpoint to measure simple image/text retrieval in English
+and Chinese. Its results do not approve a binding or qualify legacy vectors.

@@ -18,6 +18,7 @@ API_TESTS = (
     "test_assistant_query_plan.py", "test_search_text.py", "test_search_turn_projection.py", "test_search_refinement.py",
     "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_provider_transport.py",
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
+    "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",

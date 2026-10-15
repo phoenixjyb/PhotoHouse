@@ -232,6 +232,9 @@ FILES = (
     'scripts/serve_windows_tts.py',
     'scripts/image_embedding_receipts.py',
     'scripts/semantic_openclip.py',
+    'scripts/image_preprocessing_receipts.py',
+    'scripts/semantic_pair_cases.py',
+    'scripts/qualify_semantic_pair.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
 )
