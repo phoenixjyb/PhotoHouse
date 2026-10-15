@@ -76,3 +76,34 @@ Android JVM/store checks are in `StoryDraftRecordCodecTest` and
 `KeystoreStoryDraftPersistenceTest`. Use the explicit QA emulator runner described
 in [development](DEVELOPMENT.md#explicit-emulator-instrumentation), never a broad
 connected task when a real family phone is attached.
+
+### Qualification checkpoint
+
+The October 15 local source checkpoint includes search PR #19 (`75125a9`).
+These checks establish source and generated-fixture behavior, not a release:
+
+- Full API profile: 1,607 tests and 1,074 subchecks pass, including package and
+  closed-route checks; its generated demo loads no production data or models.
+- Real IndexedDB storage: seven groups pass, including isolation, authenticated
+  encryption, corruption, quota and compare-and-swap ownership.
+- Web draft journeys: seven groups pass, including page recreation, changed
+  access/evidence, exact uncertain-save retry, deletion and Chinese/English
+  narrow layouts at 150% text. The existing guide (six checkpoints) and editor
+  (thirty checkpoints) also pass. These counts are separate, overlapping suites.
+- Nine explicit QA-emulator instrumentation cases pass: six Keystore/storage
+  cases, the visible save action, and recreated Chinese/English editors at 150%
+  text. Both restored-editor renders were inspected. Generated origins, accounts
+  and prose are used throughout.
+- Android full core suite passed earlier in this increment (999 tests). Focused
+  store/codec checks then passed for fresh permissions and stale deletion; the
+  final 33-test editor suite and QA APK build pass after fixing immediate local
+  saving of reviewed dictation. QA lint passed before that final core fix.
+- The emulator runner's six unit tests pass. It requires an explicit emulator
+  serial, verifies the QA app/test IDs and emulator identity before writes, and
+  fails on crashes or zero executed tests. No Gradle connected-task discovery
+  is needed.
+
+The new draft feature has no signed APK, Windows qualification, live API switch
+or family acceptance yet. The last verified served release remains v62. AI
+story proposals, adjustable grouping and long oral-history delivery keep their
+separate roadmap and activation gates.

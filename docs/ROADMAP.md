@@ -110,11 +110,12 @@ This guide is now delivered in Web and phone v61, with full Web and seven
 final-source emulator journeys verified. Family/device acceptance remains open.
 Search v2 client integration subsequently shipped in v62.
 
-The next source increment adds [explicit private device drafts](STORY_DRAFT_RESUME.md)
+The current source increment adds [explicit private device drafts](STORY_DRAFT_RESUME.md)
 on Web and phone, with encryption, account/library binding, fresh-access checks,
 explicit deletion and exact uncertain-save recovery. This increment is not yet
-in a deployed API or published APK. Qualify restart, changed/revoked sources,
-quota/corruption and owner/member UX before delivery. Then qualify grounded
+in a deployed API or published APK. Restart, changed/revoked sources,
+quota/corruption and bilingual large-text fixture checks pass; source review/CI,
+native release qualification and owner/member acceptance remain. Then qualify grounded
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
 
