@@ -123,6 +123,8 @@ class AssistantPendingIntentTests(unittest.TestCase):
                                   result['filters']['descriptive']['concepts']],
                                  surfaces)
                 expected = query.replace(phrase, ' ' * len(phrase), 1)
+                command = 'find' if expected.startswith('find') else '找'
+                expected = ' ' * len(command) + expected[len(command):]
                 for protected in ('Sample Child', '示例儿童', 'photos', '照片'):
                     expected = expected.replace(protected, ' ' * len(protected))
                 self.assertEqual(len(self.planner.calls), 1)

@@ -32,6 +32,25 @@ class SearchIntentViewTests(unittest.TestCase):
         self.assertNotIn('photos', view)
         self.assertNotIn('secret phrase', view)
 
+    def test_masks_only_a_recognized_leading_command_and_keeps_scene_offsets(self):
+        for command in ('Find', 'find', 'Please show me', '找', '请帮我查找一下', 'only', '只看', 'Ｆｉｎｄ', 'ﬁnd'):
+            query = '  ' + command + ' photos carrying a yellow suitcase'
+            with self.subTest(command=command):
+                view = scene_view(query, TODAY, [])
+                self.assert_same_offsets(query, view)
+                self.assertEqual(' ' * len(command), view[2:2 + len(command)])
+                start = query.index('carrying')
+                self.assertEqual(query[start:], view[start:])
+        for query in ('2032 photos find shells', 'photos show animals',
+                      'searchlight beside a bench', 'finder carrying a bag'):
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, [])
+                self.assert_same_offsets(query, view)
+                for phrase in ('find shells', 'show animals', 'searchlight', 'finder'):
+                    if phrase in query:
+                        start = query.index(phrase)
+                        self.assertEqual(phrase, view[start:start + len(phrase)])
+
     def test_masks_fullwidth_dates_and_labels_while_preserving_mixed_han_offsets(self):
         query = '找全角１２号人２０３２年９月玩雪的照片'
         view = scene_view(query, TODAY, ['全角１２号人'])

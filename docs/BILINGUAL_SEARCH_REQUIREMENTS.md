@@ -421,3 +421,19 @@ variants use the exact original spelling. All canonical byte/count limits are
 checked again after this step; malformed, duplicated or overlapping provider
 proposals remain refused before any retention. There is one provider attempt,
 with no retry, new translation call or change to hard conditions.
+
+## Bilingual person references and scene grammar
+
+English `he` and `she` follow the existing `him`/`her` rule: a singular reference
+can retain exactly one person already selected in the current revalidated search.
+It does not infer gender or choose a person from faces or the family roster. A
+new search without context or a current multi-person selection asks for clarity.
+Chinese lexical compounds such as `吉他`/`吉他手`, `其他`, `他人`, `利他` and `排他`
+do not count as the pronoun `他`; quoted text remains literal. Thus a guitar clue
+can reach scene extraction without being misread as another person reference.
+
+The provider view also hides the literal parser's recognized leading search or
+refinement command, such as `Find`, `找` or `only`. Recognition is anchored to the
+original unquoted query, before earlier hard conditions can leave gaps. Later
+scene words are not promoted to commands. Original code-point offsets and hard
+conditions remain authoritative, including normalization-expanding characters.
