@@ -603,9 +603,12 @@ def _turn(engine, token, library, words, previous, clock, *, language=None):
                         _matches(words, _facets(engine, token, library, 'people', binding)))
         labels.extend(hits)
         if people:
-            together = bool(re.search(r'一起|同时|\bboth\b|\btogether\b', condition_lower))
-            conjunction = bool(re.search(r'和|与|及|\band\b', condition_lower))
-            mode = 'all' if together or (search_v2 and conjunction) else 'any'
+            connective_words = d.fold(condition_words)
+            for label in hits:
+                connective_words = connective_words.replace(d.fold(label), ' ')
+            together = bool(re.search(r'一起|同时|\bboth\b|\btogether\b', connective_words))
+            conjunction = bool(re.search(r'和|与|及|\band\b', connective_words))
+            mode = 'all' if together or conjunction else 'any'
             filters['people'] = {'ids': people, 'match': mode}
             if len(people) >= 2:
                 labels.extend(['同时出现', '一起出现', '一起', '同时', '和', '与', '及', '或者', '或',

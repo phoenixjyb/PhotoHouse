@@ -207,6 +207,13 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(any_body['filters']['people'], {'ids': ['301', '302'], 'match': 'any'})
         self.assertEqual([item['id'] for item in any_body['items']], ['103', '101'])
 
+        # Existing v60 clients must also keep a conjunction as all, rather
+        # than newly accepting Chinese 和 and executing a broader any query.
+        legacy = self.turn('找示例儿童和示例成人的照片', v2=False)
+        self.assertEqual(legacy.status_code, 200, legacy.text)
+        self.assertEqual(legacy.json()['filters']['people'], {'ids': ['301', '302'], 'match': 'all'})
+        self.assertEqual([item['id'] for item in legacy.json()['items']], ['103'])
+
     def test_ambiguous_unknown_and_negated_constraints_clarify_without_results(self):
         shared = ReviewedPerson('family-a', '303', 'Other Person', ('示例儿童',), True)
         self.install(replace(self.index, people=self.index.people + (shared,)))

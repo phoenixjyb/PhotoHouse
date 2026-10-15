@@ -16641,6 +16641,25 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "preserve-reviewed-person-conjunction-across-search-versions",
+      "source_commit": "92dfef6afbbb984f5c4b667746231fdfacbf51a8",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "cfb211b28d505fe7acb7be64f986d6d354feadf009e21f6a660e409e507d2ac5",
+          "sha256": "2c0a3947b1d3657cf00476b388459397f90e6d3ba7500306ae1fbcc7f6198053"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "f90fe412c821e3a815b61096784a183d25db56a85b7cc79eadfc594366be8b92",
+          "sha256": "4b769c744518f000c29d2e9537b139bd98b10160bf89440f2f44bb64379a6fd3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false
     }
   ]
 }
