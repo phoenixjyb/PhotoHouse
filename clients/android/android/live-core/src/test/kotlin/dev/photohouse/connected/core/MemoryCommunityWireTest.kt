@@ -49,6 +49,12 @@ class MemoryCommunityWireTest {
         assertEquals("家人", parsed.items.single().byline)
         assertEquals(4500L, parsed.items.single().durationMs)
         assertNull(parsed.items.single().chapterId)
+        assertEquals(30000L, ProtectedMemoryCommunityWire.contributionCandidates(
+            wire.replace("\"duration_ms\":4500", "\"duration_ms\":30000").toByteArray(), story, "family-a", 4, "chapter-1", 2,
+        ).items.single().durationMs)
+        listOf("30001", Long.MAX_VALUE.toString()).forEach { duration ->
+            reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"duration_ms\":4500", "\"duration_ms\":$duration").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
+        }
         reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"library_id\":\"family-a\"", "\"library_id\":\"family-b\"").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
         reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"revision\":\"4\"", "\"revision\":4").toByteArray(), story, "family-a", 4, "chapter-1", 2) }
         reject { ProtectedMemoryCommunityWire.contributionCandidates(wire.replace("\"chapter_id\":\"chapter-1\"", "\"chapter_id\":\"chapter-2\"", false).toByteArray(), story, "family-a", 4, "chapter-1", 2) }

@@ -252,7 +252,7 @@ internal object ProtectedMemoryCommunityWire {
             val boundChapter = nullableString(item["chapter_id"], 32)
             check(boundChapter == null || boundChapter == chapterId)
             val created = long(item["created_at"], 0, 253402300799)
-            val duration = if (item["duration_ms"] == JsonNull) null else long(item["duration_ms"], 1)
+            val duration = if (item["duration_ms"] == JsonNull) null else long(item["duration_ms"], 1, 30000)
             MemoryContributionCandidate(id, kind, byline, language, boundChapter, created, duration)
         }
         check(items.map { it.id }.distinct().size == items.size)

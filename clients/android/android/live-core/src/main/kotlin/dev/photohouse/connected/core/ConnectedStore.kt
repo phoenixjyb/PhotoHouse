@@ -1987,7 +1987,7 @@ class ConnectedStore(
                     result.items.map { it.id }.distinct().size == result.items.size && result.items.all {
                         it.kind in setOf("text", "audio") && it.language in setOf("zh", "en", "mixed", "und") &&
                             (it.chapterId == null || it.chapterId == chooser.chapterId) && it.createdAt in 0..253402300799 &&
-                            (it.durationMs == null || it.durationMs > 0)
+                            (it.durationMs == null || it.durationMs in 1..30000)
                     })
                 val appended = if (page == 1) result.items else previousCandidates + result.items.filter { next -> previousCandidates.none { it.id == next.id } }
                 val latest = state.value.savedMemoryStories ?: return@launch
