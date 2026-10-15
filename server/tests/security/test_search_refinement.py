@@ -26,6 +26,166 @@ def plan(words, previous=PREVIOUS, **kwargs):
 
 
 class SearchRefinementTests(unittest.TestCase):
+    def test_correction_surface_whitespace_mixed_scripts_and_quoted_literals(self):
+        cases = {
+            '  no, I meant videos  ': {**PREVIOUS, 'media': ['video']},
+            '不是photos，是videos': {**PREVIOUS, 'media': ['video']},
+            'I meant视频': {**PREVIOUS, 'media': ['video']},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', (words, result))
+                self.assertEqual(result.filters, expected)
+
+        words = 'find photos containing "no, I meant videos"'
+        self.assertEqual(query_mode(words), 'search')
+        result = plan_query(words, now=NOW, entities=resolved_entities(words),
+                            previous_filters=PREVIOUS, refine=False)
+        self.assertEqual(result.status, 'ready', result)
+        self.assertEqual(result.filters, {'media': ['image'], 'text': 'no, I meant videos'})
+
+    def test_correction_keeps_original_validation_and_requires_refinement_context(self):
+        for words in ('actually, February 31, 2032',
+                      'not February 31, 2032 but August 2032',
+                      'not September 2032 but February 31, 2032'):
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'invalid_date')
+                self.assertEqual(result.filters, PREVIOUS)
+
+        # A correction cannot turn a new search into a refinement or reset.
+        result = plan_query('no, I meant videos', now=NOW,
+                            entities=resolved_entities('no, I meant videos'),
+                            previous_filters=PREVIOUS, refine=False)
+        self.assertEqual(result.status, 'clarification')
+        self.assertEqual(result.reason, 'refine_without_context')
+
+        invalid_previous = {'media': ['photos']}
+        result = plan('no, I meant videos', previous=invalid_previous)
+        self.assertEqual(result.status, 'clarification')
+        self.assertEqual(result.reason, 'invalid_previous_filters')
+
+    def test_correction_rejects_colliding_resolved_labels_and_extra_body_operations(self):
+        for words, label, reason in (('I meant videos', 'videos', 'ambiguous_media_entity'),
+                                     ('actually, September 2032', 'September', 'ambiguous_date_entity')):
+            entities = resolved_entities('')
+            entities['groups']['people'] = ['301']
+            entities['labels'] = [label]
+            with self.subTest(words=words, label=label):
+                result = plan_query(words, now=NOW, entities=entities,
+                                    previous_filters=PREVIOUS, refine=True)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, reason)
+                self.assertEqual(result.filters, PREVIOUS)
+
+        for words in ('actually, videos and any date',
+                      'actually, videos and same person',
+                      'not photos but videos and remove the date filter'):
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'unsupported_correction')
+                self.assertEqual(result.filters, PREVIOUS)
+
+    def test_bilingual_media_and_date_corrections_replace_exactly_one_slot(self):
+        cases = {
+            # Intro forms state one positive replacement and inherit every
+            # other reviewed constraint from the prior result.
+            'no, I meant videos': {**PREVIOUS, 'media': ['video']},
+            'I meant photos': PREVIOUS,
+            'actually, August 2032': {
+                **PREVIOUS, 'date': {'from': '2032-08-01', 'to': '2032-08-31'}},
+            '不对，我说的是视频': {**PREVIOUS, 'media': ['video']},
+            '我说的是2032年8月': {
+                **PREVIOUS, 'date': {'from': '2032-08-01', 'to': '2032-08-31'}},
+            'actually，我说的是2032年8月': {
+                **PREVIOUS, 'date': {'from': '2032-08-01', 'to': '2032-08-31'}},
+            # Paired forms must agree with the old value in PREVIOUS and
+            # resolve both sides to the same single slot.
+            'not photos but videos': {**PREVIOUS, 'media': ['video']},
+            'not photos, but videos': {**PREVIOUS, 'media': ['video']},
+            '不是照片，是视频': {**PREVIOUS, 'media': ['video']},
+            '不是2032年9月，而是2032年8月': {
+                **PREVIOUS, 'date': {'from': '2032-08-01', 'to': '2032-08-31'}},
+            'not September 2032 but August 2032': {
+                **PREVIOUS, 'date': {'from': '2032-08-01', 'to': '2032-08-31'}},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', (words, result))
+                self.assertEqual(result.filters, expected)
+
+    def test_correction_requires_a_prior_result_and_an_existing_target_slot(self):
+        for words in ('no, I meant videos', '不对，我说的是视频',
+                      'not photos but videos', '不是照片，是视频'):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words, previous=None)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'refine_without_context')
+
+        for words, slot in (('actually, videos', 'media'),
+                            ('我说的是2032年8月', 'date')):
+            previous = {key: value for key, value in PREVIOUS.items() if key != slot}
+            with self.subTest(words=words):
+                result = plan(words, previous=previous)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, 'correction_target_unavailable')
+                self.assertEqual(result.filters, previous)
+
+    def test_paired_corrections_fail_closed_on_mismatch_cross_slot_and_extra_operations(self):
+        cases = {
+            'not videos but photos': 'correction_mismatch',
+            '不是视频，是照片': 'correction_mismatch',
+            'not August 2032 but July 2032': 'correction_mismatch',
+            'not photos but August 2032': 'unsupported_correction',
+            'not photos but videos in August 2032': 'unsupported_correction',
+            'not Sample Child but Sample Adult': 'unsupported_correction',
+            'no, I meant videos and any date': 'unsupported_correction',
+            'actually, videos, same person': 'unsupported_correction',
+            'no, I meant videos on Mars': 'unsupported_condition',
+            'no, I meant videos, not Sample Child': 'unsupported_negation',
+        }
+        for words, reason in cases.items():
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, reason)
+                self.assertEqual(result.filters, PREVIOUS)
+
+    def test_correction_validates_original_syntax_limits_and_entity_collisions(self):
+        for words, expected_reason in (
+                ('actually, videos containing "unfinished', 'ambiguous_quote'),
+                ('no, I meant videos ' + ('x' * 1024), 'invalid_query'),
+                ('我说的是视频' + ('中' * 600), 'invalid_query'),
+                ('I meant videos \ud800', 'invalid_query')):
+            with self.subTest(length=len(words)):
+                result = plan(words)
+                self.assertEqual(result.status, 'clarification')
+                self.assertEqual(result.reason, expected_reason)
+
+        words = 'no, I meant Sample Child videos'
+        result = plan(words)
+        self.assertEqual(result.status, 'clarification')
+        self.assertEqual(result.reason, 'unsupported_correction')
+        self.assertEqual(result.filters, PREVIOUS)
+
+        # Even an entity label inside the correction introducer is ambiguous;
+        # it cannot be consumed as harmless framing.
+        entities = resolved_entities('')
+        entities['groups']['people'] = ['301']
+        entities['labels'] = ['I meant']
+        result = plan_query('I meant videos', now=NOW, entities=entities,
+                            previous_filters=PREVIOUS, refine=True)
+        self.assertEqual(result.status, 'clarification')
+        self.assertEqual(result.reason, 'ambiguous_entities')
+        self.assertEqual(result.filters, PREVIOUS)
+
     def test_each_removal_changes_only_the_requested_slot(self):
         cases = {
             'date': ('any date', 'all time', 'remove the date filter', '不限日期', '取消时间筛选'),
@@ -279,6 +439,47 @@ class SearchRefinementHttpTests(unittest.TestCase):
         self.assertEqual([item['id'] for item in result['items']], ['103'])
         self.assertNotEqual(result['context']['fingerprint'], initial['context']['fingerprint'])
 
+    def test_corrections_replay_exact_filters_and_return_exact_synthetic_results(self):
+        initial = self.fixture.turn(
+            'find Sample Child and Sample Adult photos in September 2032 containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+
+        # One-slot date correction keeps the media, people and literal text
+        # filters. The synthetic fixture has no matching August asset.
+        corrected_date = self.fixture.turn(
+            'not September 2032 but August 2032', context=initial['context']).json()
+        self.assertEqual(corrected_date['kind'], 'results', corrected_date)
+        self.assertEqual(corrected_date['filters'], {
+            **initial['filters'], 'date': {'from': '2032-08-01', 'to': '2032-08-31'}})
+        self.assertEqual(corrected_date['items'], [])
+        self.assertEqual(corrected_date['total'], 0)
+
+        # A media correction also changes only its slot. There are no videos
+        # with the inherited September date and people assignment.
+        corrected_media = self.fixture.turn(
+            'not photos but videos', context=initial['context']).json()
+        self.assertEqual(corrected_media['kind'], 'results', corrected_media)
+        self.assertEqual(corrected_media['filters'], {
+            **initial['filters'], 'media': ['video']})
+        self.assertEqual(corrected_media['items'], [])
+        self.assertEqual(corrected_media['total'], 0)
+
+    def test_correction_mismatch_and_missing_context_preserve_response_state(self):
+        initial = self.fixture.turn('find photos containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        mismatch = self.fixture.turn(
+            'not videos but photos', context=initial['context']).json()
+        self.assertEqual(mismatch['kind'], 'clarification', mismatch)
+        self.assertEqual(mismatch['filters'], initial['filters'])
+        self.assertEqual(mismatch['context'], initial['context'])
+        self.assertEqual(mismatch['items'], initial['items'])
+
+        no_context = self.fixture.turn('no, I meant videos').json()
+        self.assertEqual(no_context['kind'], 'clarification', no_context)
+        self.assertIsNone(no_context['context'])
+        self.assertEqual(no_context['items'], [])
+
     def test_bad_removal_keeps_result_and_unprivileged_user_cannot_reuse_context(self):
         initial = self.fixture.turn('find photos containing "海边"').json()
         for words in ('any text containing "海边"', 'any date mystery'):
@@ -368,6 +569,27 @@ class SearchRefinementHttpTests(unittest.TestCase):
 
         self.fixture.mutate("UPDATE assets SET status='hidden' WHERE id=103")
         stale = self.fixture.turn('same person', context=context)
+        self.assertEqual(stale.status_code, 409, stale.text)
+
+    def test_corrections_reject_denied_tampered_and_stale_context(self):
+        response = self.fixture.turn(
+            'find Sample Child and Sample Adult photos in September 2032')
+        self.assertEqual(response.status_code, 200, response.text)
+        initial = response.json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertTrue(initial['items'])
+        context = initial['context']
+
+        denied = self.fixture.turn('not photos but videos', context=context, token=OTHER)
+        self.assertNotEqual(denied.status_code, 200)
+
+        tampered_context = deepcopy(context)
+        tampered_context['filters']['media'] = ['video']
+        tampered = self.fixture.turn('not photos but videos', context=tampered_context)
+        self.assertNotEqual(tampered.status_code, 200)
+
+        self.fixture.mutate("UPDATE assets SET status='hidden' WHERE id=103")
+        stale = self.fixture.turn('not photos but videos', context=context)
         self.assertEqual(stale.status_code, 409, stale.text)
 
 

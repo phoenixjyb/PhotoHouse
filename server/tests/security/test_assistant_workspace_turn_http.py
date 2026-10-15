@@ -223,6 +223,53 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertEqual(unrelated.json()['result']['kind'], 'clarification')
         self.assertIsNone(unrelated.json()['result']['context'])
 
+    def test_bilingual_corrections_keep_owned_scope_and_recover_exact_request(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        first = self.turn(tid, text='find Sample Child photos in 2025', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+
+        correction_id = new_id()
+        corrected = self.turn(tid, correction_id, revision=1,
+                              text='不是2025年，是2026年', headers=headers)
+        self.assertEqual(corrected.status_code, 200, corrected.text)
+        result = corrected.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters'], {**initial['filters'],
+            'date': {'from': '2026-01-01', 'to': '2026-12-31'}})
+        self.assertEqual([item['id'] for item in result['items']], ['101'])
+        self.assertIsNone(result['effect'])
+
+        mismatch = self.turn(tid, revision=2,
+                             text='not 2025 but 2024', headers=headers)
+        self.assertEqual(mismatch.status_code, 200, mismatch.text)
+        unclear = mismatch.json()['result']
+        self.assertEqual(unclear['kind'], 'clarification', unclear)
+        self.assertEqual(unclear['context'], result['context'])
+        self.assertEqual(unclear['items'], result['items'])
+        self.assertIn('current search', unclear['reply'])
+
+        changed = self.turn(tid, revision=3, text='no, I meant videos', headers=headers)
+        self.assertEqual(changed.status_code, 200, changed.text)
+        self.assertEqual(changed.json()['result']['filters'], {
+            **result['filters'], 'media': ['video']})
+        self.assertEqual(changed.json()['result']['items'], [])
+        self.assertIsNone(changed.json()['result']['effect'])
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{correction_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result']['filters'], result['filters'])
+        self.assertEqual(recovered.json()['result']['items'], result['items'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        isolated = self.turn(self.thread()['thread_id'], text='I meant photos', headers=headers)
+        self.assertEqual(isolated.status_code, 200, isolated.text)
+        self.assertEqual(isolated.json()['result']['kind'], 'clarification')
+        self.assertIsNone(isolated.json()['result']['context'])
+
     def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']

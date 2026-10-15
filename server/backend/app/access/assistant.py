@@ -668,6 +668,15 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'conflicting_people_reference':
                 reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
                          'Keep the selected people or change the people filter in a separate request.')
+            elif plan.reason == 'correction_target_unavailable':
+                reply = ('当前查找还没有这个日期或媒体类型条件。请先明确要查找的日期或类型。' if lang == 'zh' else
+                         'The current search has no such date or media filter to correct. Specify that filter first.')
+            elif plan.reason == 'correction_mismatch':
+                reply = ('要更正的原条件与当前查找不一致。请确认当前日期或媒体类型，再更正。' if lang == 'zh' else
+                         'The old value does not match the current search. Check the date or media filter before correcting it.')
+            elif plan.reason == 'unsupported_correction':
+                reply = ('一次只能更正一个日期或媒体类型条件，例如“不是照片，是视频”。其他条件请分别调整。' if lang == 'zh' else
+                         'Correct one date or media filter at a time, for example “not photos, but videos”. Change other filters separately.')
             elif plan.reason == 'conflicting_refinement':
                 reply = ('同一个条件不能同时取消和重新指定。请分别操作，或保留一个条件。' if lang == 'zh' else
                          'A filter cannot be removed and replaced in the same request. Choose one change or send them separately.')

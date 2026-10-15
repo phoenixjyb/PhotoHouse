@@ -43,6 +43,79 @@ _PEOPLE_REFERENCES = re.compile('|'.join(
     for kind, (english, chinese) in _REFERENCE_FORMS.items()), re.I)
 _JOIN = r'(?:and(?![a-z0-9_])|和)'
 
+_CORRECTION_INTRO = re.compile(
+    r'^(?:(?:no(?:\s*[,，:：]\s*|\s+))?i\s+meant(?a:\b)|'
+    r'actually(?a:\b)\s*[,，:：]?(?:\s*我说的是)?|(?:不对\s*[,，:：]?\s*)?我说的是)\s*', re.I)
+_CORRECTION_PAIRS = (
+    re.compile(r'^not(?a:\b)\s*(?P<old>.*?)\s*[,，]?\s*(?a:\b)but(?a:\b)\s*(?P<new>.*)$', re.I),
+    re.compile(r'^不是\s*(?P<old>.*?)\s*(?:[,，]\s*(?:而)?是|而是|是)\s*(?P<new>.*)$'),
+)
+
+
+def _correction_parts(words):
+    """Recognize only anchored correction forms; conditions remain untrusted."""
+    surface = d.fold(words.strip())
+    intro = _CORRECTION_INTRO.match(surface)
+    if intro:
+        spans = [None, (intro.end(), len(surface))]
+    else:
+        pair = next((match for pattern in _CORRECTION_PAIRS
+                     if (match := pattern.fullmatch(surface)) is not None), None)
+        if pair is None:
+            return None
+        spans = [pair.span('old'), pair.span('new')]
+    masked = list(' ' * len(surface))
+    for span in spans:
+        if span is not None:
+            start, end = span
+            masked[start:end] = surface[start:end]
+    parts = [None if span is None else _SEPARATORS.sub('', surface[span[0]:span[1]])
+             for span in spans]
+    return surface, ''.join(masked), *parts
+
+
+def _plan_correction(words, parts, *, now, entities, previous_filters, refine):
+    if not refine or previous_filters is None:
+        return QueryPlan(1, 'clarification', {}, 'refine_without_context')
+    original = _plan_query(words, now=now, entities=entities,
+                           previous_filters=previous_filters, refine=True)
+    # Paired corrections intentionally mention two values and a negation.
+    # Input/quote/entity/context/calendar failures must remain authoritative.
+    syntax_errors = {'unsupported_condition', 'unsupported_negation',
+                     'incomplete_people_relation', 'conflicting_media', 'conflicting_dates'}
+    if original.status != 'ready' and original.reason not in syntax_errors:
+        return original
+
+    def clarify(reason):
+        return QueryPlan(1, 'clarification', dict(previous_filters), reason)
+
+    surface, masked, old, new = parts
+    if _consumed_label(surface, masked, entities.get('labels', [])):
+        return clarify('ambiguous_entities')
+    replacements = []
+    for condition in (new,) if old is None else (old, new):
+        operations = _operations(condition)
+        if operations[2] or operations[3]:
+            return clarify('unsupported_correction')
+        planned = _plan_query(condition, now=now, entities=entities,
+                              previous_filters={}, refine=True)
+        if planned.status != 'ready':
+            return clarify(planned.reason)
+        # This is a single media/date replacement, not an exclusion, person
+        # change, removal, scene rewrite or a multi-slot conversation reset.
+        if len(planned.filters) != 1 or not set(planned.filters) <= {'media', 'date'}:
+            return clarify('unsupported_correction')
+        replacements.append(planned.filters)
+    update = replacements[-1]
+    slot = next(iter(update))
+    if old is not None and set(replacements[0]) != {slot}:
+        return clarify('unsupported_correction')
+    if slot not in previous_filters:
+        return clarify('correction_target_unavailable')
+    if old is not None and replacements[0][slot] != previous_filters[slot]:
+        return clarify('correction_mismatch')
+    return QueryPlan(1, 'ready', {**previous_filters, **update})
+
 
 def _operations(words):
     # Replace quotes with equal-length blanks so all masks share offsets.
@@ -75,6 +148,8 @@ def _operations(words):
 def query_mode(words):
     if type(words) is not str:
         return _query_mode(words)
+    if _correction_parts(words) is not None:
+        return 'refine'
     operations = _operations(words)
     if operations[3]:
         return 'refine'
@@ -90,6 +165,10 @@ def plan_query(words, *, now, entities, previous_filters, refine):
     if type(words) is not str or len(words) > 1024:
         return _plan_query(words, now=now, entities=entities,
                            previous_filters=previous_filters, refine=refine)
+    correction = _correction_parts(words)
+    if correction is not None:
+        return _plan_correction(words, correction, now=now, entities=entities,
+                                previous_filters=previous_filters, refine=refine)
     surface, residue, removed, references = _operations(words)
     if not removed and not references:
         return _plan_query(words, now=now, entities=entities,

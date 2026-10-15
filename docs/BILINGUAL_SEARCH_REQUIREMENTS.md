@@ -71,6 +71,38 @@ retaining the prior scope, source/membership replay, request recovery and isolat
 thread context. No real recognition, device or installed-service acceptance is
 inferred from those generated conversations.
 
+## Correcting a search in conversation
+
+Negotiated v2 supports a bounded one-filter correction after a search. Intro
+forms such as `no, I meant videos`, `I meant August 2032`,
+`actually, videos`, `不对，我说的是视频`, and `我说的是2032年8月` replace one
+existing media or date filter. Mixed forms such as `I meant视频` and
+`actually，我说的是2032年8月` follow the same rule. Other filters, including
+reviewed people IDs and their any/all operator, stay unchanged. The original
+message and transcript are not rewritten.
+
+Paired forms such as `not photos, but videos`, `不是照片，是视频`, and
+`不是2032年9月，而是2032年8月` also require the stated old value to exactly match
+the current filter. Both sides must resolve to one media/date filter of the same
+kind. A stale or mistaken old value asks for clarification and preserves the
+existing search. Date interpretation uses the same supplied civil date and
+inclusive capture-date ranges as ordinary search.
+
+Corrections need a validated prior search and an existing target filter. They
+cannot exclude a person, replace an identity, clear filters, combine multiple
+filter changes or execute an action. Explicit filter-removal commands and
+ordinary refinements remain separate. Unknown wording, extra negation, invalid
+dates and conflicting constraints still require clarification. A reviewed label
+colliding with a correction introducer cannot be silently consumed as grammar.
+Quoted text stays literal; `find photos containing "no, I meant videos"` is a
+text search, not a correction.
+
+Generated direct-search and saved-conversation checks cover the replacement,
+old-value check, missing context/filter, denied/tampered/stale source, exact
+result IDs and request recovery. These source changes add no provider, private
+alias, database migration or new client response fields. The legacy v1 parser
+and the unverified Shanxi/Jin speech boundary remain unchanged.
+
 ## Speech and uncertainty
 
 The ASR adapter preserves the returned text after trimming outer whitespace,
