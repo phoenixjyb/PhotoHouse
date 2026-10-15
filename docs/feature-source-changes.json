@@ -20285,6 +20285,40 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "actionable-bilingual-search-clarification-guidance",
+      "source_commit": "799a51e7bb23a28319bb010734441976b86a2ab2",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "0963f36a9405778360cd55a362c5d1cc72caecae1c6c4cf89d2141e72ffb4236",
+          "sha256": "1c1b46bc28470d732658bd8bab7a6cb16135522feeb7c504dd274966bae43831"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "0e41d493ff08378bf01dff3e33c5a63af17030c1c99338989dbe6c0a2c7c4c86",
+          "sha256": "4ffdf1bee78e15a3fcb30cc6e2a588c581a9ed268ac2cccbfbdce49a061a03d1"
+        },
+        {
+          "path": "server/tests/security/test_assistant_description_clarification.py",
+          "before_sha256": "118272e7f46c48af630ff1fbd28d96567f5b0a70841a06440568f57460069aee",
+          "sha256": "a750b4d9143998150ee2950f2cbfa5be739f1a574f71ef089bb113e5ee3a0f2d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "99ab60cba8d8a1bb3581c1a689bcd3dad541506b4a3c1fcd7d36e2531c5cdfaa",
+          "sha256": "5ea2a7a175a5585cb908be058e6b8c99308a02ea9c4e181d12f4ebb8c7d55e62"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "v1_unchanged": true,
+      "provider_required": false,
+      "context_and_pending_contracts_preserved": true,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false
     }
   ]
 }

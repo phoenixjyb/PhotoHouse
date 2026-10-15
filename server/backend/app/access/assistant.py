@@ -768,9 +768,12 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(plan.version, 'ready',
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
-            reply = ('有些条件还无法准确匹配。请使用相册库中已有的人名、标签、地点，或明确拍摄日期。'
+            reply = ('有些细节还无法匹配。请发送完整查找句，例如：找包含“红风筝”的照片。'
+                     '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明；未匹配的条件不会被忽略。'
                      if lang == 'zh' else
-                     'Some details could not be matched. Use a reviewed person, label, place, or an explicit capture date.')
+                     'Some details could not be matched. Send the complete query, for example: find photos '
+                     'containing "red kite". Add any reviewed person, capture date, tag, or place you need; '
+                     'unmatched conditions are not dropped.')
             if plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
                 reply = ('有个词既可能是已登记的名称，也可能是日期或媒体类型。请补充完整名称，或明确日期和类型。'
                          if lang == 'zh' else
@@ -842,15 +845,16 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                     'About which year or months? Add that time to this search.'),
                     'intent_person': ('你指的是谁？请提供相册库中已登记的姓名。',
                                       'Who do you mean? Use a reviewed name from this library.'),
-                    'intent_description': ('请重新说完整的查找条件，包括想找的场景、活动或物品；如果需要，也请写明人物和拍摄日期。',
-                                           'Please restate the complete search, including the scene, activity or object; include any person and capture date you want.'),
+                    'intent_description': ('当时在做什么？有什么醒目的物品或地点？请再发送完整查找句，并写明需要的人物姓名和拍摄日期（如适用）。',
+                                           'What was happening, and what distinctive object or place should I look for? Then send the complete search, including any reviewed person and capture date you want.'),
                     'intent_scope': ('这次要继续缩小当前结果，还是开始一次新的查找？',
                                      'Would you like to refine these results or start a new search?'),
                 }
                 reply = replies[plan.reason][0 if lang == 'zh' else 1]
             elif plan.reason == 'intent_unavailable':
-                reply = ('本地语言理解服务暂不可用。可以先按已登记姓名、日期或带引号的文字查找。' if lang == 'zh' else
-                         'Local language understanding is temporarily unavailable. Try a reviewed name, date or quoted text.')
+                reply = ('可以按相册库已登记姓名、拍摄日期或带引号的照片说明原文查找，例如：找包含“红风筝”的照片。' if lang == 'zh' else
+                         'Try searching by a reviewed person, capture date, or quoted caption text, for example: '
+                         'find photos containing "red kite".')
             elif plan.reason in ('unsupported_action', 'intent_unsupported_action'):
                 reply = ('这里可以查找已有照片和视频。请把修改、分享或拍摄请求分开处理。' if lang == 'zh' else
                          'This search finds existing photos and videos. Handle changes, sharing or capture separately.')
