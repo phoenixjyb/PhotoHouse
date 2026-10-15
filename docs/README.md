@@ -23,6 +23,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Reader progress and source status | [Reader UX](READER_PROGRESS_AND_SOURCES.md) |
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
 | First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
+| Guided Web story creation | [Source flow and recovery contract](STORY_FIRST_GUIDE.md) |
+| Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
 | Natural-language search diagnosis and next work | [Search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [new-session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |

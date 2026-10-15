@@ -1386,6 +1386,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     } }
                                     if (store.groupedStoryCreationAvailable) item {
+                                        Button(onClick = { store.beginGroupedStoryCreation(guided = true) }, enabled = !state.busy,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open-story-first-guide")) {
+                                            Text(t("Tell a story", "讲一个故事"))
+                                        }
                                         OutlinedButton(onClick = { store.beginGroupedStoryCreation() }, enabled = !state.busy,
                                             modifier = Modifier.fillMaxWidth().testTag("open-grouped-story-creation")) {
                                             Text(t("Create a story from these moments", "用照片和视频创建故事"))
@@ -1528,7 +1532,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     }
 }
 
-@Composable internal fun Preview(asset: Asset, bytes: ByteArray?, words: Words, detail: Boolean = false, modifier: Modifier = Modifier) {
+@Composable internal fun Preview(asset: Asset, bytes: ByteArray?, words: Words, detail: Boolean = false, modifier: Modifier = Modifier,
+    kindBadge: Boolean = true) {
     val image = remember(bytes) {
         bytes?.let {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -1543,7 +1548,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         else Image(image, contentDescription = if (detail) words.t("Photo ${asset.id}", "照片 ${asset.id}") else null,
             contentScale = if (detail) ContentScale.Fit else ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        if (asset.kind == "video") Surface(Modifier.align(Alignment.TopStart).padding(12.dp),
+        if (asset.kind == "video" && kindBadge) Surface(Modifier.align(Alignment.TopStart).padding(12.dp),
             shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
             Text(words.t("Video", "视频"), Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
         }

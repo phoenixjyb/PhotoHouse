@@ -17271,6 +17271,153 @@
       "providers_activated": false,
       "household_data_included": false,
       "production_backfill_performed": false
+    },
+    {
+      "feature": "preserve-deployed-guided-story-release-with-search-v2-and-phone-v62",
+      "source_commit": "c38b5903daf22c6dabcf2f65d367bcc98ed0aa35",
+      "integrated_source_commit": "8f4690506106cb156f1bf4cc346c82b1da70357b",
+      "integrated_source_ledger_sha256": "91b0dbafd94af40710a9588ec74958f5c04f6106c05638a0ab2b7db8bc80c113",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "916c9c78867e4cfcb42a7ec13b8fccc2842cedd84625b41a34219c50bab0d43e",
+          "sha256": "4a201ea66816a2915b693a65fe08fd4380225393c0d3bbd0aa406ed4b98b9dc9"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "afc4ee0b8736fe40195ea21fdc457bcb461c8e6e59cfde039b16a54996249a77",
+          "sha256": "745aa81817e9ef90e5dd30f60a53a91e83daadf3b8670e0becfcd7236a9ce3a9"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "bc82f01e0ceb669e585c281fea2e22d82d8cb3fcbb67ef06f514f453baf1d261",
+          "sha256": "c1bd02b2b72a5bb9151fa97c1cf826dca95c69aa9782fd18bb0dba0607634acb"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "30ded374f0c366c166707e3fc05d57ed87eb2c5376187c89e9031ce87d867ad8",
+          "sha256": "95fd2466cdbaa387ad87c0d657712fc55c336a6e208c9fab1f06b4e809e81fa8"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "04c1e3e68fbf5beabce275cfe208bb98b9953c3932155b09ea1fbb908dbe7703",
+          "sha256": "d8452e69c36212b3c615b4bb7fa2062aae016e7bf84292e86846eb081dc2fd89"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/StoryFirstGuide.kt",
+          "before_sha256": null,
+          "sha256": "3d8c876e67f571e16cf66d854083d70b9959ba64ada0bc75744d9cf049890350"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "7af0556d2a1d417a2bbfc231022d37c4394a94c32f2e9bfcf25dd6809eedf4eb",
+          "sha256": "083cab94a32ce002a23da3a8c4d98e5328cefb907ca37cf8331763d4e8dcdc71"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "b94cec0d73ac74ce8c588b6ab68ab435a1d23633243398a7d02349cae8ca4fbf",
+          "sha256": "b88c95a12122fcfc19dd45793a3b9f2e74d3e7cf18c5abe66fbdb0602f426c5f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryCreationStoreTest.kt",
+          "before_sha256": "8fe4d22d7758be1cd0d308d574357a1c73eae1c354c299d60c40857df1a3006c",
+          "sha256": "54dfb46adb0e87990ab765c4ad78c49f8928529d2c1d383dbdf017af1dbadd39"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryFirstGuideStoreTest.kt",
+          "before_sha256": null,
+          "sha256": "fda30c40dc0262d9fd774628be08261df9c50d15574313835ed3abd301880ef9"
+        },
+        {
+          "path": "clients/android/docs/PHONE_FIRST_STORY_GUIDE.md",
+          "before_sha256": null,
+          "sha256": "5939d1d9e36e0915c930ba2b298f4563b43ada640089d77728abb5a03347b0d0"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "6e7fbf1737d1cb377922c82416f6aa241badc0ddc8d66895dfeefe4f391d0b20",
+          "sha256": "7162b06023dbbbd60a35e460199ea688e2148894f06027d01d66eb4d36dc1e61"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "20b06bc3329364005f03f37e2ec367a6ed6b13b21319ba5a9b101e8949476c2f",
+          "sha256": "61a059249cc783bf95ad5a96b774cd69354ce0ca68484302ee1c541024207151"
+        },
+        {
+          "path": "docs/FIRST_STORY_GUIDE_ZH.md",
+          "before_sha256": "85ff52d26dad4c424463c372736f8b99fbc6db6e1b01f517af4619c1d47d452d",
+          "sha256": "e508a84299e809d718f9a293887581a9ed21f7840501ba34294f5efd624fcbf1"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "6c3efa7c485d1c829588e6963a4e5069b62f02d1390050c399e78474ca5338da",
+          "sha256": "d9309e033f674f969a065a7d3a934fefd6a14f29d2a1436ab3195e706a1e3e61"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "775df7565f9f69e968c550304b310c2b2649f0e37787f3e7ea922c5dd63ad88b",
+          "sha256": "84f85b607b119de8942379fc5f65981cc025eb4fcfc6c0cb065ab1365021c436"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "279d5815b30239ab3f276b190def49d63a5e6dfb9ed889fa4a651846734f02ed",
+          "sha256": "3af79d10386710a61a62974dc6be68259f74ccf7fb624850b25c7db27b743cc0"
+        },
+        {
+          "path": "docs/STORY_FIRST_GUIDE.md",
+          "before_sha256": null,
+          "sha256": "334c3054fb61a797e27c9aedceaf1a493364c6bfba626f1baf9416335c6fb328"
+        },
+        {
+          "path": "docs/STORY_SEARCH_INTEGRATION_2026-10-15.md",
+          "before_sha256": null,
+          "sha256": "10003bbd3daa7980338daac64e23c4f09575b8036f962fda7886202f8c8cd785"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "a7d4bec8d8b29eeff94ae1f2d28513604d4a288d297184874afe99ca35351fa1",
+          "sha256": "7cd55a12c3d8962654158a45404d2b3e280b0c03acfe7ead5d90e0cd6344031b"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "01cc522f1d38990b4900399be26af40ca78f0281104641232f514555c64961e3",
+          "sha256": "903d81d92b262d65c26cfe77f5d03c23fadb39a2b215f5717a0dc9f15289cd78"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "97f8dd996bbe1564a06f6b5229d2498260d95d7131468896c50311aa321a9039",
+          "sha256": "1d1ccca36299d5063776433114c07e542ec1058723498dcb04990a689b62c1cd"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "8218ef3ef63741c14e946b607a0be440051098925f5d6a609667266731e28092",
+          "sha256": "fb32ca6128e6c2c1fe7d93a2c160112a9235bbd0ba13e8c86222e06e0fcead0b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "4abdeb1da778e4c6b8995602f4d563bde90e417376e9d71b7a44cb58967aa068",
+          "sha256": "946ef9c3c723855b11312859301850d69296df7babb34b95ded348f2537ea8f2"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "0fb9ca283019b1565a0dc183de25b342fab50d8f827725e74f3bf6559e1470e3",
+          "sha256": "d64093f6e8e0bee5a2c43dd7c5266627e53f09b192e639ca007cc44f66f6c39c"
+        },
+        {
+          "path": "server/tests/security/test_story_first_guide_browser.cjs",
+          "before_sha256": null,
+          "sha256": "93df2e6b6a36eceaa85465ffc105c37b6721ecd0084c2ef2d75bf95290e47a02"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0826ef96e70fee3bfb95379e102e9a4a4ab2bd7fcefe5f01c3de7aa2026825a9",
+          "sha256": "a470f1b6c76514702c481afb9fad9cf9d8f6e931a8764bceabd6a41887d7cdc0"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false
     }
   ]
 }

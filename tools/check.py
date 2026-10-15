@@ -113,6 +113,7 @@ WEB_TESTS = (
     "server/tests/security/test_story_reader_frames_browser.cjs",
     "server/tests/security/test_upload_history_browser.cjs",
     "server/tests/security/test_story_workspace_browser.cjs",
+    "server/tests/security/test_story_first_guide_browser.cjs",
 )
 
 

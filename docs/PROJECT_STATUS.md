@@ -1,11 +1,29 @@
 # Current project status
 
+Fresh read-only release inventory on **2026-10-15** observes API/Web source
+`8f4690506106cb156f1bf4cc346c82b1da70357b` (203 packaged source files), phone OTA
+**v61 / 0.61-guided-stories** and TV v30. The search release branch now preserves
+that delivered guide/action-row source while adding the later search-client,
+readiness and video-date increment. Phone **v62 / 0.62-private-search** is being
+prepared; this paragraph does not record its publication or a new API cutover.
+The earlier v60 delivery record and evidence below remain historical.
+
 Reviewed **2026-10-15 after the v60 release**. API/Web source
 `53e3954725197906771b6dd6ca470a0d1d58da9d` is deployed, and phone
 **v60 / 0.60-reading-comfort** is signed and published on Windows HTTPS OTA.
 The API switch completed at 07:48 Beijing; independent task/backup verification
 and Mac HTTPS checks passed at 07:50. TV OTA remains v30. Physical phone
 installation and real-family acceptance are separate next steps.
+
+## Subsequent source candidates
+
+Guided first-story creation is progressing separately from the active search
+redesign. Web source `259c178` and subsequent native phone parity provide
+selection → wording/dictation → literal review → explicit save, with retained
+Back navigation and the existing immutable uncertain-save retry. The
+[phone guide](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) describes the
+flow and the remaining durable-draft boundary. This is source work; the v60
+release snapshot above is not changed by it.
 
 ## Delivery and acceptance
 

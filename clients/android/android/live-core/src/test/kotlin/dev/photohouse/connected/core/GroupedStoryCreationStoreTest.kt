@@ -281,6 +281,52 @@ class GroupedStoryCreationStoreTest {
         return editor
     }
 
+    @Test fun guidedEntryStillRequiresServerCanCreate() = runTest {
+        val api = FakeApi(role = "owner", canCreate = false)
+        val store = newStore(api)
+        signIn(store)
+        assertTrue(store.beginGroupedStoryCreation(guided = true))
+        runCurrent()
+        assertTrue(store.state.value.groupedStoryCreation!!.guided)
+        assertEquals(false, store.state.value.groupedStoryCreation!!.canCreate)
+        assertNull(store.state.value.groupedStoryCreation!!.editor)
+    }
+
+    @Test fun guidedReviewLoadsEverySelectedPageAndClearsLateThumbnails() = runTest {
+        val api = FakeApi()
+        val store = newStore(api)
+        signIn(store)
+        assertTrue(store.beginGroupedStoryCreation(guided = true))
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertEquals(StoryGuideStep.FRAMES, editor.state.value.guideStep)
+        assertTrue(editor.selectAsset("102"))
+        assertTrue(store.loadGroupedStorySelectionPage(2))
+        runCurrent()
+        assertTrue(editor.selectAsset("101"))
+        assertTrue(editor.setTheme("trip"))
+        assertTrue(editor.continueGuide())
+        runCurrent()
+        assertTrue(editor.editChapterNarration(0, "A shared family memory."))
+        assertTrue(editor.continueGuide())
+        assertTrue(store.loadGroupedStoryReviewPreviews(editor))
+        runCurrent()
+        assertEquals(setOf("102", "101"), store.state.value.groupedStoryCreation!!.reviewPreviews.keys)
+        val reviewBuffers = store.state.value.groupedStoryCreation!!.reviewPreviews.values.toList()
+        assertTrue(editor.backGuide())
+        store.clearGroupedStoryReviewPreviews(editor)
+        assertTrue(reviewBuffers.all { bytes -> bytes.all { it == 0.toByte() } })
+        assertTrue(editor.continueGuide())
+        api.thumbnailGate = CompletableDeferred()
+        assertTrue(store.loadGroupedStoryReviewPreviews(editor))
+        runCurrent()
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        api.thumbnailGate!!.complete(Unit)
+        runCurrent()
+        assertNull(store.state.value.groupedStoryCreation)
+        assertTrue(api.lateThumbnail!!.all { it == 0.toByte() })
+    }
+
     @Test fun serverCanCreateDeniesOwnersAndContributorsWhenCapabilityIsFalse() = runTest {
         for (role in listOf("owner", "contributor")) {
             val api = FakeApi(role = role, canCreate = false)

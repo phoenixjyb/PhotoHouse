@@ -147,6 +147,15 @@ media browsing, while an outline uses only the user's reviewed selection.
 Albums do not supply copied source choices, descriptions or prose. The preview
 and final story save reauthorize their own actual media and evidence snapshots.
 
+[Guided phone story creation](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md)
+adds transient FRAMES/WORDS/REVIEW state to `StoryWorkspaceStore`, above the
+existing outline and immutable mutation contracts. The connected owner checks
+server `can_create` and owns bounded protected thumbnails for the whole selected
+draft; request/editor/draft identity and account/library generation fence late
+reads. Leaving review or protected scope zeroes those thumbnail buffers. Back
+keeps process-memory prose, while a confirmed rebuild discards it. Durable draft
+persistence remains a separate contract; no token or prose is added to settings.
+
 Web shelf actions also bind their rendered card/list/book identity. That guard
 is passed through protected detail reads, including authorization-failure
 cleanup, so a same-library refresh cannot let an obsolete response erase the

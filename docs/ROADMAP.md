@@ -7,7 +7,8 @@ records maintainability findings. Dated history is preserved below.
 
 ## Current priority: make natural-language search useful
 
-The owner's October 15 feedback pauses new story-creation UX. First fix ordinary
+The owner's October 15 feedback makes retrieval a priority. Search redesign and
+guided story creation now proceed in separate source worktrees. Fix ordinary
 query forms, connect existing text/confirmed people to scoped retrieval, restore
 useful video-date evidence and then qualify typed local language understanding
 and relevance ranking. See the [search diagnosis and implementation plan](ASSISTANT_SEARCH_REVIEW_2026-10-15.md).
@@ -96,14 +97,21 @@ delivered in v60; TV preview retry remains an unpublished v31 source candidate. 
 
 ## 3. Improve grounded family storytelling
 
-After the current search work, resume the guided first saved story: choose a few related frames,
-keep one shared narrator statement, review an editable title/attribution and
-preview before explicit save. It should reuse the existing authorized picker,
-draft and save/retry contracts. It must not copy that statement silently into
-every asset or turn a photo note into a published story. A private fictional
-three-step prototype was checked separately from v60; it is not an implemented
-application workflow. See the [first-story guide](FIRST_STORY_GUIDE_ZH.md) for
-the current manual path.
+The guided first-story Web flow is implemented in source commit `259c178`.
+Native phone parity adds staged selection, wording/dictation and a literal draft
+review, while keeping the full editor available. Both reuse protected outline,
+source and immutable-save/retry contracts. They retain one shared narrator
+statement without copying it into every photo's original memory.
+See the [Web contract](STORY_FIRST_GUIDE.md) and
+[phone tutorial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md).
+Source/emulator qualification does not imply a deployed Web release or published
+phone APK. Integrate independently developed search changes before release.
+
+Next add explicit private draft saving/resume across process loss, then qualify
+source-grounded title/narrative suggestions. Current Back navigation preserves
+process-memory wording only. Durable draft storage needs account/library binding,
+fresh-access checks, deletion and uncertain-save recovery; it must not silently
+publish unfinished words or persist credentials.
 
 The synthetic corpus now has eight cases, including cross-event visual
 similarity and separate subject/speaker/uploader attribution. Its planner and

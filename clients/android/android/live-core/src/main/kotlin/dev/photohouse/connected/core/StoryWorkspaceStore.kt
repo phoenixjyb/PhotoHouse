@@ -18,6 +18,8 @@ enum class StoryWorkspaceStoreStatus {
     SELECTION, PREVIEWING, EDITING, SAVING, SAVE_UNCERTAIN, CONFLICT, SAVED, UNAVAILABLE,
 }
 
+enum class StoryGuideStep { FRAMES, WORDS, REVIEW }
+
 data class StoryWorkspaceStoreState(
     val status: StoryWorkspaceStoreStatus = StoryWorkspaceStoreStatus.SELECTION,
     val selectedAssetIds: List<String> = emptyList(),
@@ -45,6 +47,7 @@ data class StoryWorkspaceStoreState(
     val hasPendingSave: Boolean = false,
     val savedStoryIsNewerThanEditBase: Boolean = false,
     val failureStatus: Int? = null,
+    val guideStep: StoryGuideStep? = null,
 ) {
     val hasUnfinishedWork: Boolean get() = dirty || composing || invalidInput || busy || hasPendingSave ||
         (draft != null && status != StoryWorkspaceStoreStatus.SAVED)
@@ -100,6 +103,104 @@ class StoryWorkspaceStore(
     val isSavedStoryEdit: Boolean get() = savedEditStory != null
     val savedEditStoryId: String? get() = savedEditStory?.id
     val savedEditStoryRevision: Long? get() = savedEditStory?.revision
+
+    /** Starts the optional first-story path for a fresh, currently bound selection. */
+    fun startGuide(): Boolean {
+        if (!ensureCurrent() || isSavedStoryEdit || state.value.status != StoryWorkspaceStoreStatus.SELECTION ||
+            state.value.draft != null || state.value.busy || state.value.hasPendingSave || pending != null || state.value.composing ||
+            hasUnfinishedChapterDictation || state.value.guideStep != null) return false
+        val expected = snapshotBinding() ?: return false
+        bound = expected
+        mutable.value = state.value.copy(guideStep = StoryGuideStep.FRAMES)
+        return true
+    }
+
+    /** Advances one guide step, requesting the existing outline preview only when needed. */
+    fun continueGuide(): Boolean {
+        if (!guideActionReady()) return false
+        val live = state.value
+        when (live.guideStep) {
+            StoryGuideStep.FRAMES -> {
+                if (live.status != StoryWorkspaceStoreStatus.SELECTION || live.selectedAssetIds.isEmpty() ||
+                    live.selectedAssetIds.size > MAX_ASSETS) return false
+                val draft = live.draft
+                val matchingDraft = draft != null && draft.libraryId == snapshotBinding()?.libraryId &&
+                    draft.items.map { it.asset.id } == live.selectedAssetIds && draft.theme == live.theme &&
+                    draft.language == live.language && live.editableChapters.map { it.id to it.assetIds } ==
+                    draft.chapters.map { it.id to it.assetIds }
+                if (matchingDraft) {
+                    mutable.value = live.copy(status = StoryWorkspaceStoreStatus.EDITING,
+                        guideStep = StoryGuideStep.WORDS, reviewed = false, busy = false)
+                    return true
+                }
+                return preview()
+            }
+            StoryGuideStep.WORDS -> {
+                if (live.status != StoryWorkspaceStoreStatus.EDITING || live.draft == null ||
+                    !guideWordsAreValid(live) || live.editableChapters.none { it.narration.isNotBlank() }) return false
+                mutable.value = live.copy(guideStep = StoryGuideStep.REVIEW, reviewed = false)
+                return true
+            }
+            else -> return false
+        }
+    }
+
+    /** Moves back without dropping selected moments, outline data or edited wording. */
+    fun backGuide(): Boolean {
+        if (!guideActionReady()) return false
+        val live = state.value
+        when (live.guideStep) {
+            StoryGuideStep.REVIEW -> {
+                if (live.status != StoryWorkspaceStoreStatus.EDITING || live.draft == null) return false
+                mutable.value = live.copy(guideStep = StoryGuideStep.WORDS, reviewed = false)
+                return true
+            }
+            StoryGuideStep.WORDS -> {
+                if (live.status != StoryWorkspaceStoreStatus.EDITING || live.draft == null) return false
+                mutable.value = live.copy(status = StoryWorkspaceStoreStatus.SELECTION,
+                    guideStep = StoryGuideStep.FRAMES, reviewed = false)
+                return true
+            }
+            else -> return false
+        }
+    }
+
+    /** Drops retained guide wording only after the caller's explicit change-moments confirmation. */
+    fun discardGuideDraft(): Boolean {
+        if (!guideActionReady()) return false
+        val live = state.value
+        if (isSavedStoryEdit || live.guideStep != StoryGuideStep.FRAMES ||
+            live.status != StoryWorkspaceStoreStatus.SELECTION || live.draft == null) return false
+        invalidatePreview()
+        mutable.value = state.value.copy(status = StoryWorkspaceStoreStatus.SELECTION,
+            draft = null, editableChapters = emptyList(), title = "", titleCandidates = emptyList(),
+            reviewed = false, sourcesReloaded = false, composing = false, invalidInput = false,
+            dirty = state.value.selectedAssetIds.isNotEmpty(), failureStatus = null,
+            sourceCapabilities = null, sourceCapabilitiesChecked = false, sourceReviewEnabled = false,
+            guideStep = StoryGuideStep.FRAMES)
+        return true
+    }
+
+    /** Leaves the staged guide while preserving all current editor content. */
+    fun exitGuide(): Boolean {
+        if (!guideActionReady()) return false
+        val live = state.value
+        val nextStatus = if (live.status == StoryWorkspaceStoreStatus.SELECTION && live.draft != null)
+            StoryWorkspaceStoreStatus.EDITING else live.status
+        mutable.value = live.copy(status = nextStatus, guideStep = null)
+        return true
+    }
+
+    private fun guideActionReady(): Boolean = ensureCurrent() && state.value.guideStep != null &&
+        !state.value.busy && !state.value.hasPendingSave && pending == null && !state.value.composing &&
+        !hasUnfinishedChapterDictation
+
+    private fun guideWordsAreValid(value: StoryWorkspaceStoreState): Boolean =
+        !value.invalidInput && validText(value.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) &&
+            value.editableChapters.all { chapter ->
+                validText(chapter.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) &&
+                    validText(chapter.narration, 6000, allowNewline = true)
+            }
 
     /** Explicitly opens voice input for one editable, currently bound chapter. */
     fun openChapterDictation(index: Int): Boolean {
@@ -480,13 +581,17 @@ class StoryWorkspaceStore(
                         val carried = detached.copy(title = previous.title, chapters = immutable(carriedChapters))
                         mutable.value = previous.copy(status = StoryWorkspaceStoreStatus.EDITING, busy = false,
                             draft = carried, editableChapters = immutable(carried.chapters.map(::detachChapter)),
+                            guideStep = if (previous.guideStep != null) StoryGuideStep.WORDS else null,
                             reviewed = false, sourcesReloaded = true, titleCandidates = emptyList(), failureStatus = null)
                     } else {
+                        val guideDraft = if (previous.guideStep == StoryGuideStep.FRAMES) detached.copy(
+                            chapters = immutable(detached.chapters.map { it.copy(narration = "") })) else detached
                         mutable.value = state.value.copy(status = StoryWorkspaceStoreStatus.EDITING, busy = false,
-                            draft = detached, editableChapters = immutable(detached.chapters.map(::detachChapter)), title = detached.title,
+                            guideStep = if (previous.guideStep == StoryGuideStep.FRAMES) StoryGuideStep.WORDS else previous.guideStep,
+                            draft = guideDraft, editableChapters = immutable(guideDraft.chapters.map(::detachChapter)), title = guideDraft.title,
                             reviewed = false, dirty = false,
-                            invalidInput = !validText(detached.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) ||
-                                detached.chapters.any { !validText(it.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) ||
+                            invalidInput = !validText(guideDraft.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) ||
+                                guideDraft.chapters.any { !validText(it.title, 640, maxCodePoints = 160, allowNewline = false, allowBlank = false) ||
                                     !validText(it.narration, 6000, allowNewline = true) }, failureStatus = null)
                     }
                 }
@@ -756,12 +861,15 @@ class StoryWorkspaceStore(
 
     fun confirmReviewed(value: Boolean): Boolean {
         if (!editorReady() || state.value.composing || state.value.invalidInput || hasUnfinishedChapterDictation) return false
+        if (state.value.guideStep != null && state.value.guideStep != StoryGuideStep.REVIEW) return false
         mutable.value = state.value.copy(reviewed = value)
         return true
     }
 
     fun save(): Boolean {
         if (!editorReady() || state.value.composing || state.value.invalidInput || !state.value.reviewed || hasUnfinishedChapterDictation) return false
+        if (state.value.guideStep != null && (state.value.guideStep != StoryGuideStep.REVIEW ||
+                !guideWordsAreValid(state.value) || state.value.editableChapters.none { it.narration.isNotBlank() })) return false
         closeChapterDictation()
         val expected = bound ?: return false
         val draft = state.value.draft ?: return false
