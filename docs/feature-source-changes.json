@@ -18455,6 +18455,42 @@
       "providers_activated": false,
       "dialect_relevance_measured": false,
       "household_data_included": false
+    },
+    {
+      "feature": "grounded-bilingual-people-followups-in-protected-search-conversations",
+      "source_commit": "36cd8234fa4bd3f2885dbaa8e5b3aec807a1e8da",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "c6f4e6a8b347fd7fa4a8f7bb6b3c0c003a6333f065d50ac3e90a7bc5d49bb324",
+          "sha256": "368a1e4bc5bfea96c176a88eb2b0b6cd4a28cc7e0935dd900b3fb0b5d2f64634"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "1b2606b125ab50bc7b693940a409c2804f103d286cd28577c6bf1b1310504d5e",
+          "sha256": "cb007a7002a993cd5baafa5de81ca1af70764cf83c6501af895272147664f1be"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "7db1971ac83c3ee4cfa9ab34cd9878187930567434d904436b761c91f94367fe",
+          "sha256": "c4384a2a80f5f13c3c1610a80421b9b5ade74d6a07c6b2a8b1ec66d61c5650f5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "22c30e87c3215937d14cf90002e040a3a33057935276a4eeb12c3ba6ac1fa3d7",
+          "sha256": "521e49ac00308b04fdbed2ce712da6db62ebb567d1e40d1cd3fbdb4ee3d0a21c"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "f681722bc03c25baf83889349a49ba75b475dfc30b8f46014aa1644b5cc04643",
+          "sha256": "5f126a1df08e92a67a539283cfe517cea6d4b3d32969cc6c11e6121dfcbf876e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "providers_activated": false,
+      "household_data_included": false,
+      "dialect_relevance_measured": false
     }
   ]
 }

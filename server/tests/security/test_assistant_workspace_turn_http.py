@@ -175,6 +175,54 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertNotIn('interpretation', row['result_summary'])
         self.assertNotIn('items', row['result_summary'])
 
+    def test_people_followups_use_owned_context_and_survive_clarification_and_recovery(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        first = self.turn(tid, text='找示例儿童和示例成人一起的照片', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['filters'], {
+            'media': ['image'], 'people': {'ids': ['301', '302'], 'match': 'all'}})
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+
+        changed_id = new_id()
+        changed = self.turn(tid, changed_id, revision=1,
+                            text='他们2026年的photos', headers=headers)
+        self.assertEqual(changed.status_code, 200, changed.text)
+        result = changed.json()['result']
+        self.assertEqual(result['version'], 2)
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters'], {**initial['filters'],
+            'date': {'from': '2026-01-01', 'to': '2026-12-31'}})
+        self.assertEqual(result['items'], [])
+        self.assertIsNone(result['effect'])
+
+        # The wrong singular reference preserves the server-owned search scope.
+        unclear = self.turn(tid, revision=2, text='her videos', headers=headers)
+        self.assertEqual(unclear.status_code, 200, unclear.text)
+        clarification = unclear.json()['result']
+        self.assertEqual(clarification['kind'], 'clarification', clarification)
+        self.assertEqual(clarification['context'], result['context'])
+        self.assertEqual(clarification['filters'], result['filters'])
+        self.assertIsNone(clarification['effect'])
+        resumed = self.turn(tid, revision=3, text='same people, any date', headers=headers)
+        self.assertEqual(resumed.status_code, 200, resumed.text)
+        self.assertEqual(resumed.json()['result']['filters'], initial['filters'])
+        self.assertEqual([item['id'] for item in resumed.json()['result']['items']], ['103'])
+
+        recovered = self.request('GET',
+            f'/threads/{tid}/requests/{changed_id}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertTrue(recovered.json()['recovered'])
+        self.assertEqual(recovered.json()['result']['filters'], result['filters'])
+        self.assertIsNone(recovered.json()['result']['effect'])
+        # A different thread has no selected people to borrow from this one.
+        other_tid = self.thread()['thread_id']
+        unrelated = self.turn(other_tid, text='same people', headers=headers)
+        self.assertEqual(unrelated.status_code, 200, unrelated.text)
+        self.assertEqual(unrelated.json()['result']['kind'], 'clarification')
+        self.assertIsNone(unrelated.json()['result']['context'])
+
     def test_search_readiness_failure_preserves_owned_history_and_preferences(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']

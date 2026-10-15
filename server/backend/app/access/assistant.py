@@ -659,6 +659,15 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 reply = ('有些姓名或条件有歧义。请补充完整姓名，并明确哪些人需要同时出现。'
                          if lang == 'zh' else
                          'Some names or conditions are ambiguous. Use full reviewed names and specify who must appear together.')
+            elif plan.reason == 'people_reference_unavailable':
+                reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
+                         'The current search has no selected people to refer to. Use a reviewed name first.')
+            elif plan.reason == 'ambiguous_people_reference':
+                reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
+                         'That reference does not match the number of selected people. Use full names or clarify who you mean.')
+            elif plan.reason == 'conflicting_people_reference':
+                reply = ('不能在同一句中既沿用原来的人物，又指定或取消人物。请分别操作。' if lang == 'zh' else
+                         'Keep the selected people or change the people filter in a separate request.')
             elif plan.reason == 'conflicting_refinement':
                 reply = ('同一个条件不能同时取消和重新指定。请分别操作，或保留一个条件。' if lang == 'zh' else
                          'A filter cannot be removed and replaced in the same request. Choose one change or send them separately.')

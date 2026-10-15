@@ -32,6 +32,45 @@ and reviewed identity bindings. Do not infer a person's identity, Chinese name,
 relationship, or sharing permission from pronunciation or a model suggestion.
 No private household roster or recordings belong in source fixtures.
 
+## Grounded conversational follow-ups
+
+Search v2 also accepts explicit references to the people selected in the current
+search. The server replays the prior search against current library membership
+and source bindings before reusing it. It does not infer people from result
+cards, recency of mention, gender, faces, private kinship, or another thread.
+No new context fields, stored aliases, model calls or client protocol changes
+are needed.
+
+| Follow-up | Meaning |
+| --- | --- |
+| `same people, last month` | Keep the selected people and other filters; replace the date with last month |
+| `他们上个月的视频` | With multiple selected people, replace date and media; retain the exact people IDs and any/all operator |
+| `their videos` / `show videos of them` | With multiple selected people, replace media only |
+| `her photos` / `他的照片` | With exactly one selected person, retain that person and request photos |
+| `same people, any date` / `同一批人，不限日期` | Remove date explicitly and retain the other filters |
+
+The closed generic group forms are `same people` and `同一批人`; they reuse any
+nonempty people filter. The plural forms `these people`, `those people`, `them`,
+`they`, `their`, `他们`, `她们`, `这些人`, and `那些人` require at least two selected
+people. The singular forms `same person`, `him`, `her`, `his`, `他`, `她`, `这个人`,
+and `那个人` require exactly one. Singular/plural checks are conservative; the
+system asks rather than interpreting singular English “they” or guessing which
+member of a group “her” means. Gendered words do not establish anyone's gender.
+A reference alone repeats the current search without widening its filters.
+
+Multiple references, conflicting current-turn names or a simultaneous people
+removal require clarification. A reference that collides with a reviewed label
+also requires clarification. Unknown conditions, negation, malformed dates,
+stale context and denied membership retain their existing refusal boundaries.
+Quoted references remain literal text, for example `containing "他们"` does not
+select people. These rules apply to typed text and submitted transcripts equally;
+they do not establish dialect recognition or general conversation understanding.
+
+The protected HTTP fixtures cover exact filters/results, failed clarification
+retaining the prior scope, source/membership replay, request recovery and isolated
+thread context. No real recognition, device or installed-service acceptance is
+inferred from those generated conversations.
+
 ## Speech and uncertainty
 
 The ASR adapter preserves the returned text after trimming outer whitespace,
