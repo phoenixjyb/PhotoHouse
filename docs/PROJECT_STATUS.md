@@ -18,7 +18,7 @@ TV remains v30. Physical installation and family acceptance remain open.
 | TV | v30 feed unchanged | Projector/library/playback check; Home TV requires desktop session |
 | Introduction website | Cartoon/fictional public introduction delivered previously | Family/design feedback; [record](../website/RELEASE_2026-10-14.md) |
 | Search v2 | Completed negotiated backend included | Web/phone/private-conversation clients, real relevance and private graph activation |
-| Public source | Monorepo remains development home; source provenance retained | Remote refs and hosted CI not refreshed here |
+| Public source | Committed app work is on GitHub; [sync review](REPOSITORY_SYNC_2026-10-15.md) separates stable PR #18 and search PR #17 | Exact-head CI/review and merge state remain distinct from this runtime snapshot |
 
 The [v61 release and trial](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
 binds exact archive/APK hashes, qualification reuse and delivery. The
