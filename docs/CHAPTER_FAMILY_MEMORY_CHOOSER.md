@@ -70,7 +70,8 @@ SQLite data, including cancel/late-response fencing, exact failed-page retry,
 explicit save/reopen and original disclosure. Starting Save closes an in-flight
 chooser; failed-save recovery cannot strand it in a loading state. Chinese and English compact views
 were rendered at an effective 260 CSS pixels (390 pixels enlarged to 150%).
-At compact widths, editor header/actions scroll with the content so they do not
-cover the bounded source list; choices retain 44-pixel touch targets. Keyboard
+At compact widths, editor actions scroll with the content so they do not cover
+the bounded source list; the page heading stays visible. Choices retain
+44-pixel touch targets. Keyboard
 selection and focus return after Cancel were checked. These renders were
 inspected; they use synthetic people and memories only.
