@@ -810,3 +810,36 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-private :focus-visible { outline:3px solid var(--accent,#ad583b); outline-offset:3px; }
 .assistant-private button { min-height:44px; overflow-wrap:anywhere; }
 @media(max-width:600px) { .assistant-private { padding:.6rem; } .assistant-private-current { grid-template-columns:minmax(0,1fr) auto; gap:.45rem; } .assistant-private-current p { font-size:.82rem; } .assistant-private-management>summary { max-width:8rem; padding:.5rem .6rem; } .assistant-private-heading { flex-wrap:wrap; } .assistant-private-toolbar label { flex-basis:100%; } .assistant-private-preferences button { display:block; margin-top:.6rem; } }
+
+/* Keep the language control on screen with enlarged text at narrow widths. */
+.masthead{flex-wrap:wrap;gap:.75rem}
+
+/* Guided story creation reuses the ordinary picker, editor and save controls. */
+.story-workspace[data-guide-step] .story-workspace-heading{position:static;padding:0;justify-content:flex-end}
+.story-workspace[data-guide-step] .story-workspace-heading>div{display:none}
+.story-workspace[data-guide-step] #story-draft-actions{position:static}
+.story-workspace[data-guide-step] #story-draft-actions>button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
+.story-workspace[data-guide-step] .story-questions summary{cursor:pointer;min-height:44px;font-weight:600}
+.story-guide-progress ol{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;padding:0;margin:.75rem 0 1.25rem}
+.story-guide-progress li{display:flex;align-items:center;gap:.5rem;min-width:0;padding:.65rem 0;border-bottom:2px solid var(--line);color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
+.story-guide-progress li[aria-current=step]{border-color:var(--accent);color:var(--ink);font-weight:600}
+.story-guide-step-number{width:1.7rem;display:grid;place-items:center;flex:0 0 1.7rem;min-height:1.7rem;border:1px solid currentColor;border-radius:50%;font-size:.8em}
+.story-guide-intro h3{scroll-margin-top:7rem;font:400 1.65rem Georgia,"Songti SC",serif;margin:.5rem 0}
+.story-guide-intro p{line-height:1.8;max-width:70ch;overflow-wrap:anywhere}
+.story-guide-intro #story-guide-status:empty{display:none}
+.story-guide-actions{display:flex;flex-wrap:wrap;gap:.65rem;padding:1rem 0 .25rem;margin-top:1rem;border-top:1px solid var(--line)}
+.story-guide-actions button,.story-first-guide-empty button,#memory-guide{min-height:48px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.story-guide-actions #story-guide-advanced{margin-inline-start:auto}
+.story-guide-review-chapter{min-width:0;padding:1.2rem;border:1px solid var(--line);border-radius:16px;margin:1rem 0;background:#fffdfa}
+.story-guide-review-chapter h4{margin:.2rem 0;font:400 1.2rem Georgia,"Songti SC",serif;overflow-wrap:anywhere}
+.story-guide-review-words{white-space:pre-wrap;line-height:1.85;overflow-wrap:anywhere}
+.story-guide-source-note{padding:1rem;background:#edf0e7;border-radius:12px;line-height:1.8}
+.story-first-guide-empty{grid-column:1/-1;padding:1.5rem;border:1px solid var(--line);border-radius:16px;background:#f6f1e8;max-width:48rem}
+.story-first-guide-empty h4{font:400 1.55rem Georgia,"Songti SC",serif;margin:0 0 .6rem}
+.story-first-guide-empty p{line-height:1.8;max-width:60ch}
+.story-workspace[data-guide-step] .story-workspace-help,.story-workspace[data-guide-step] #story-build,.story-workspace[data-guide-step] #story-workspace-status{display:none}
+.story-workspace[data-guide-step] .story-workspace-layout{grid-template-columns:minmax(0,1fr);margin-top:1rem}
+.story-workspace[data-guide-step=frames] .story-writing-panel,.story-workspace[data-guide-step=frames] #story-draft-actions,.story-workspace[data-guide-step=words] .story-selection-panel,.story-workspace[data-guide-step=review] #story-workspace-form{display:none}
+.story-workspace[data-guide-step=words] #story-draft-actions>button{display:none}
+.story-workspace[data-guide-step=frames] .story-selection{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:600px){.story-guide-progress ol{gap:.4rem}.story-guide-progress li{align-items:flex-start;flex-direction:column;gap:.4rem;font-size:.85rem}.story-workspace[data-guide-step=frames] .story-selection{grid-template-columns:repeat(2,minmax(0,1fr))}.story-guide-actions button{flex:1 1 9rem}.story-guide-actions #story-guide-advanced{flex-basis:100%;margin-inline-start:0}.story-guide-review-chapter{padding:.9rem}.story-guide-review-chapter .story-chapter-strip img{width:60px;height:60px}}

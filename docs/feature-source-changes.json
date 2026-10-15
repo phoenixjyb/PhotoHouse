@@ -16570,6 +16570,57 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "web-guided-first-story-picker-wording-review-save",
+      "source_commit": "c4cac82d13f6324da9a31023e9eb62d7dcb71997",
+      "files": [
+        {
+          "path": "docs/FIRST_STORY_GUIDE_ZH.md",
+          "before_sha256": "85ff52d26dad4c424463c372736f8b99fbc6db6e1b01f517af4619c1d47d452d",
+          "sha256": "e508a84299e809d718f9a293887581a9ed21f7840501ba34294f5efd624fcbf1"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "6590f09a67fcaffb51c04c47cc5ab47568ffd6ae912bcb5c8017a6c68d98529b",
+          "sha256": "edd4bf073b0a3aba8903325f451189a29b4caea2b303c5a346af90a2ca393881"
+        },
+        {
+          "path": "docs/STORY_FIRST_GUIDE.md",
+          "before_sha256": null,
+          "sha256": "f7d808aa346d79ea1365fd5a553587fb84fc9875c21bf442171d7780c4641323"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "8225d0975350b6253a48bb8f394530db7f73d3c6d3718b794f73b150e79c2c63",
+          "sha256": "ec07d5560a63f4e5fb5d24456fb0f9a3c90c869d08ac73a37046fd7e1e165e74"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "97f8dd996bbe1564a06f6b5229d2498260d95d7131468896c50311aa321a9039",
+          "sha256": "1d1ccca36299d5063776433114c07e542ec1058723498dcb04990a689b62c1cd"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7538351b0408c9f6a3359acc08a7e4c6ca90d7876764a9a1d06bb01f0aaec8a3",
+          "sha256": "a6ff792c97c4aa8649303d3a4956c742e7ded4379d7156a04d803fdbb2b842ec"
+        },
+        {
+          "path": "server/tests/security/test_story_first_guide_browser.cjs",
+          "before_sha256": null,
+          "sha256": "93df2e6b6a36eceaa85465ffc105c37b6721ecd0084c2ef2d75bf95290e47a02"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3b6ae61fd50c8166dc8357387cc9a2e39099f6f0b0808c3fcdd91321e9b5c62e",
+          "sha256": "a9dc7f34262afad31a3624fe3364c9f7f9349160f7f5d1b7d47ac75667529083"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
