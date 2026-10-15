@@ -6,6 +6,8 @@ import android.media.MediaRecorder
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import dev.photohouse.connected.core.VoiceEndpointDetector
+import dev.photohouse.connected.core.VoiceEndpointResult
 
 /** Fixed capacity avoids leaving earlier PCM copies behind when an accumulator grows. */
 private class RecordingPcmBuffer(capacity: Int) : ByteArrayOutputStream(capacity) {
@@ -16,16 +18,17 @@ private class RecordingPcmBuffer(capacity: Int) : ByteArrayOutputStream(capacity
 internal class AnnotationAudioRecorder {
     private var active: Capture? = null
 
-    @Synchronized fun beginCapture(maxSeconds: Int = 60): Capture {
+    @Synchronized fun beginCapture(maxSeconds: Int = 60, endpointSpeech: Boolean = false): Capture {
         check(active == null) { "A microphone capture is already active" }
         require(maxSeconds in 1..60)
-        return Capture(maxSeconds) { completed -> synchronized(this) { if (active === completed) active = null } }
+        require(!endpointSpeech || maxSeconds <= 30)
+        return Capture(maxSeconds, endpointSpeech) { completed -> synchronized(this) { if (active === completed) active = null } }
             .also { active = it }
     }
 
     @Synchronized fun stop() { active?.discard() }
 
-    internal class Capture(private val maxSeconds: Int, private val onFinished: (Capture) -> Unit) {
+    internal class Capture(private val maxSeconds: Int, private val endpointSpeech: Boolean, private val onFinished: (Capture) -> Unit) {
         private val lifecycle = RecordingLifecycle()
         @Volatile private var recorder: AudioRecord? = null
         @Volatile var recordedMillis: Int = 0
@@ -42,12 +45,13 @@ internal class AnnotationAudioRecorder {
         val wasDiscarded get() = lifecycle.wasDiscarded
         fun consumeForUpload(): Boolean = lifecycle.consumeForUpload()
 
-        fun record(): ByteArray? {
+        fun record(onStarted: () -> Unit = {}): ByteArray? {
             if (!lifecycle.claim()) return null
             val rate = 16_000
             val maxPcmBytes = rate * 2 * maxSeconds
             val pcm = RecordingPcmBuffer(maxPcmBytes)
             val buffer = ByteArray(4096)
+            val endpoint = if (endpointSpeech) VoiceEndpointDetector(maxDurationSeconds = maxSeconds) else null
             var audio: AudioRecord? = null
             try {
                 try {
@@ -59,6 +63,7 @@ internal class AnnotationAudioRecorder {
                     recorder = created
                     require(created.state == AudioRecord.STATE_INITIALIZED) { "Microphone recording is unavailable" }
                     if (!lifecycle.start { created.startRecording() }) return null
+                    onStarted()
                     while (lifecycle.isRunning && pcm.size() < maxPcmBytes) {
                         val count = created.read(buffer, 0, minOf(buffer.size, maxPcmBytes - pcm.size()))
                         if (count < 0) {
@@ -68,6 +73,11 @@ internal class AnnotationAudioRecorder {
                         if (count > 0) {
                             pcm.write(buffer, 0, count)
                             recordedMillis = pcm.size() * 1000 / (rate * 2)
+                            when (endpoint?.accept(buffer, length = count)) {
+                                VoiceEndpointResult.UTTERANCE_FINISHED -> stop()
+                                VoiceEndpointResult.NO_SPEECH -> { discard(); return null }
+                                else -> Unit
+                            }
                         }
                     }
                 } catch (_: SecurityException) {

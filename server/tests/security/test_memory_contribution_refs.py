@@ -104,6 +104,37 @@ class MemoryContributionRefTests(unittest.TestCase):
         self.assertEqual(self.save(clear,self.story,opt_in=True).status_code, 200)
         self.assertEqual(self.read_refs(5).json()['chapters'][0]['contribution_ids'],[])
 
+    def test_reviewed_prose_update_preserves_explicit_family_links_with_no_item_sources(self):
+        from app.access.memory_stories import SOURCE_POLICY
+        linked = self.contribution()
+        chapters = json.loads(self.story_body['chapters'])
+        chapters[0]['narration'] = '编辑后的章节，仍然保留家人的原始讲述链接。'
+        chapters[0]['evidence_ids'] = []
+        body = self.story_body | {
+            'revision': '1', 'mutation_id': str(uuid.uuid4()),
+            'chapters': json.dumps(chapters), 'source_policy': SOURCE_POLICY,
+            'contribution_refs': json.dumps([{
+                'chapter_id': 'chapter-1', 'contribution_ids': [linked]}]),
+        }
+        path = f'/memory-stories/{self.story}?library=family-a&contribution_refs=1&source_review=1'
+        response = self.f.client.put(path, headers=self.headers, json=body)
+        self.assertEqual(response.status_code, 200, response.text)
+        saved = response.json()
+        self.assertEqual(saved['source_policy'], SOURCE_POLICY)
+        self.assertEqual(saved['revision'], '2')
+        self.assertEqual(saved['chapters'][0]['evidence_ids'], [])
+        self.assertEqual(self.read_refs(2).json()['chapters'][0]['contribution_ids'], [linked])
+        bundle, _, _ = self.bundle()
+        self.assertIn('contribution-' + linked, bundle['chapters'][0]['evidence_ids'])
+        self.assertTrue(all(source['kind'] in ('editorial', 'family') for source in bundle['sources']))
+        self.assertEqual([source['text'] for source in bundle['sources'] if source['kind'] == 'family'],
+                         ['那天大家都笑了。'])
+        # The exact update retry must keep both source profiles and the same revision.
+        retry = self.f.client.put(path, headers=self.headers, json=body)
+        self.assertEqual(retry.status_code, 200, retry.text)
+        self.assertEqual(retry.json(), saved)
+        self.assertEqual(self.read_refs(2).json()['chapters'][0]['contribution_ids'], [linked])
+
     def test_invalid_pending_unconsented_wrong_parent_and_duplicate_refs_rejected(self):
         pending = None
         with self.f.connection() as db:

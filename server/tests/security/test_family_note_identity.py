@@ -2,6 +2,7 @@
 from contextlib import closing
 from dataclasses import replace
 import json
+import importlib.util
 import sqlite3
 import unittest
 import uuid
@@ -264,7 +265,10 @@ class FamilyNoteEditionTests(unittest.TestCase):
             self.assertNotIn(private, json.dumps(receipt))
 
     def test_memory_worker_admits_full_identity_schema_and_refuses_missing_lineage_guard(self):
-        import run_memory_worker
+        spec = importlib.util.spec_from_file_location(
+            'photohouse_identity_worker_check', library_fixture.ROOT / 'scripts' / 'run_memory_worker.py')
+        run_memory_worker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(run_memory_worker)
         with self.f.connection() as db:
             self.assertTrue(run_memory_worker._check_schema(db, editorial_enabled=True))
             self.assertFalse(db.in_transaction)

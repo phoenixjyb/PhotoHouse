@@ -76,6 +76,25 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
             'expected_gpu_uuid': None,
             'execute': True, 'once': True})()
 
+    def identity_receipt(self, device='cpu'):
+        recipe = {'schema': 'photohouse.image_preprocessing_recipe.v1',
+                  'source_digests': worker._receipt_sources(),
+                  'input_profile': 'bounded_rgb_jpeg', 'output_profile': 'float32_unit_l2',
+                  'package_versions': {'open_clip_torch': 'synthetic', 'torch': 'synthetic',
+                      'torchvision': 'synthetic', 'Pillow': 'synthetic', 'numpy': 'synthetic'},
+                  'transforms': [
+                      {'type': 'Resize', 'size': [224], 'max_size': None,
+                       'interpolation': {'name': 'BICUBIC', 'value': 'bicubic'}, 'antialias': True},
+                      {'type': 'CenterCrop', 'size': [224, 224]},
+                      {'type': '_convert_to_rgb'}, {'type': 'ToTensor'},
+                      {'type': 'Normalize', 'mean': [0.48, 0.46, 0.41],
+                       'std': [0.27, 0.26, 0.28], 'inplace': False}]}
+        return {'identity_receipt_version': 1, 'checkpoint_sha256': self.checksum,
+                'preprocessing_recipe': recipe, 'preprocessing_sha256': worker.recipe_sha256(recipe),
+                'image_model': self.args().image_model, 'provider': 'open_clip',
+                'effective_provider': 'open_clip', 'effective_device': device, 'dimension': 512,
+                'selected_physical_device': device, 'selected_gpu_uuid': None}
+
     def test_preflight_is_read_only_and_requires_exact_approved_image_payload(self):
         self.task('thumb')
         self.task('embed', {'asset_id': 1, 'modality': 'legacy'})
@@ -83,7 +102,8 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         before = self.db.execute('SELECT id,state FROM tasks ORDER BY id').fetchall()
         with patch.object(worker, '_probe_provider', return_value={
                 'effective_provider': 'open_clip', 'effective_device': 'cpu',
-                'selected_physical_device': 'cpu', 'selected_gpu_uuid': None}):
+                'selected_physical_device': 'cpu', 'selected_gpu_uuid': None,
+                'preprocessing_sha256': 'a' * 64, 'dimension': 512}):
             args = self.args(); args.execute = False
             result = worker.run(args)
         self.assertEqual(result['approved_claimable'], 1)
@@ -94,7 +114,7 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
     def test_preflight_reports_actual_current_or_legacy_revision(self):
         args = self.args()
         self.assertEqual(worker.REVISIONS,
-                         {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'})
+                         {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304'})
         for revision in ('c3f7a91d5e20', 'a8d4c2e6f901', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'):
             with self.subTest(revision=revision):
                 self.db.execute('UPDATE alembic_version SET version_num=?', (revision,)); self.db.commit()
@@ -151,6 +171,63 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         self.assertTrue(stored.is_file())
         np.testing.assert_array_equal(np.load(stored, allow_pickle=False), [0.25, 0.5, 0.75])
 
+    def test_claim_pins_reject_task_mutation_before_publication(self):
+        def fake_decode(source, stage, derived, deadline, stop_file):
+            target = stage / '1024.jpg'
+            Image.new('RGB', (32, 32), (100, 20, 30)).save(target)
+            return target
+
+        def fake_embed(image, stage, args, checkpoint, deadline):
+            vector = np.array([0.25, 0.5, 0.75], dtype=np.float32)
+            target = stage / 'vector.npy'
+            with target.open('wb') as stream:
+                np.save(stream, vector, allow_pickle=False)
+            meta = {'provider': 'open_clip', 'effective_device': 'cpu', 'dimension': 3,
+                    'model_version': args.model_version}
+            return vector, meta, hashlib.sha256(target.read_bytes()).hexdigest()
+
+        args = self.args()
+        mutations = {
+            'payload_json': json.dumps({'modality': 'image', 'asset_id': 1}),
+            'retry_count': 8,
+            'started_at': '2001-02-03 04:05:06',
+            'cancel_requested': 1,
+        }
+        with patch.object(worker, '_run_bounded_decoder', side_effect=fake_decode), \
+             patch.object(worker, '_run_embed_child', side_effect=fake_embed):
+            for field, changed_value in mutations.items():
+                with self.subTest(field=field):
+                    task_id = self.task()
+                    candidate = worker._claim_one(self.dbpath)
+                    self.assertEqual(candidate['claimed_payload_json'],
+                                     '{"asset_id": 1, "modality": "image"}')
+                    self.assertEqual(candidate['claim_retry_count'], 0)
+                    self.assertIsNotNone(candidate['claim_started_at'])
+                    self.db.execute(f'UPDATE tasks SET {field}=? WHERE id=?',
+                                    (changed_value, task_id))
+                    self.db.commit()
+
+                    with self.assertRaisesRegex(ValueError, 'task_ownership_lost'):
+                        worker._process_task(candidate, self.dbpath, self.originals,
+                            self.derived, args, self.checkpoint,
+                            worker.identity(self.checkpoint), self.stop)
+
+                    fields = ('state,retry_count,payload_json,started_at,cancel_requested,'
+                              'last_error,finished_at,scheduled_at')
+                    before_failure = self.db.execute(
+                        f'SELECT {fields} FROM tasks WHERE id=?', (task_id,)).fetchone()
+                    self.assertEqual(worker.record_failure(
+                        self.dbpath, candidate, ValueError('task_ownership_lost')), 0)
+                    after_failure = self.db.execute(
+                        f'SELECT {fields} FROM tasks WHERE id=?', (task_id,)).fetchone()
+                    self.assertEqual(after_failure, before_failure)
+                    state = after_failure[0]
+                    self.assertNotEqual(state, 'finished')
+                    self.assertEqual(self.db.execute('SELECT count(*) FROM embeddings').fetchone()[0], 0)
+                    self.assertFalse((self.derived / 'embeddings' / '1.npy').exists())
+                    self.db.execute('DELETE FROM tasks WHERE id=?', (task_id,))
+                    self.db.commit()
+
     def test_changed_source_hash_never_finishes_and_failure_is_sanitized(self):
         task_id = self.task()
         candidate = worker._claim_one(self.dbpath)
@@ -159,7 +236,8 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             worker._process_task(candidate, self.dbpath, self.originals, self.derived,
                                  args, self.checkpoint, worker.identity(self.checkpoint), self.stop)
-        worker.record_failure(self.dbpath, task_id, candidate['retry_count'], ValueError('source_fingerprint_mismatch'))
+        self.assertEqual(worker.record_failure(
+            self.dbpath, candidate, ValueError('source_fingerprint_mismatch')), 1)
         state, retries, error = self.db.execute('SELECT state,retry_count,last_error FROM tasks WHERE id=?',
                                                 (task_id,)).fetchone()
         self.assertEqual((state, retries, error), ('failed', 1, 'source_fingerprint_mismatch'))
@@ -192,7 +270,9 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         self_outer = self
         with patch.object(worker, '_probe_provider', return_value={
                 'effective_provider': 'open_clip', 'effective_device': 'cpu',
-                'selected_physical_device': 'cpu', 'selected_gpu_uuid': None}), \
+                'selected_physical_device': 'cpu', 'selected_gpu_uuid': None,
+                'preprocessing_sha256': 'a' * 64, 'checkpoint_sha256': self.checksum,
+                'dimension': 512}), \
              patch.object(worker, '_claim_one', return_value=None), \
              patch.object(worker.threading, 'Event', StopAfterWait):
             result = worker.run(args)
@@ -231,8 +311,7 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
     def test_physical_second_gpu_is_logical_zero_inside_isolated_child(self):
         args = self.args(); args.device = 'cuda:1'
         args.expected_gpu_uuid = 'GPU-11111111-1111-1111-1111-111111111111'
-        receipt = {'provider': 'open_clip', 'effective_provider': 'open_clip',
-                   'effective_device': 'cuda:0', 'dimension': 512}
+        receipt = self.identity_receipt('cuda:0')
 
         def child(argv, *, env, **_kwargs):
             self.assertEqual(argv[argv.index('--device') + 1], 'cuda:0')
@@ -252,7 +331,7 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
             self.assertEqual(argv[argv.index('--device') + 1], 'cuda:0')
             self.assertEqual(env['CUDA_VISIBLE_DEVICES'], '1')
             with (stage / 'vector.npy').open('wb') as stream:
-                np.save(stream, np.ones(512, dtype=np.float32), allow_pickle=False)
+                np.save(stream, np.ones(512, dtype=np.float32) / np.sqrt(np.float32(512)), allow_pickle=False)
             (stage / 'result.json').write_text(json.dumps({
                 **receipt, 'model_version': args.model_version}))
 
@@ -273,6 +352,69 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         self.assertEqual(receipt['dimension'], 512)
         with self.assertRaisesRegex(RuntimeError, 'device preflight mismatch'):
             worker._verified_runtime(service, 'cpu')
+
+    def test_parent_refuses_missing_wrong_or_changed_checkpoint_recipe_receipts(self):
+        args = self.args()
+        good = self.identity_receipt()
+        worker._validate_identity_receipt(good, args)
+        mutations = (
+            {'checkpoint_sha256': '0' * 64},
+            {'image_model': 'clip-other'},
+            {'preprocessing_sha256': '0' * 64},
+            {'identity_receipt_version': 0},
+            {'identity_receipt_version': True},
+            {'dimension': 512.0},
+            {'preprocessing_recipe': {}},
+        )
+        for changed in mutations:
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                worker._validate_identity_receipt({**good, **changed}, args)
+        with self.assertRaises(ValueError):
+            worker._validate_identity_receipt({'provider': 'open_clip'}, args)
+        args.expected_preprocessing_sha256 = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'changed_since_probe'):
+            worker._validate_identity_receipt(good, args)
+        args.expected_preprocessing_sha256 = good['preprocessing_sha256']
+        args.expected_vector_dimension = 768
+        with self.assertRaisesRegex(ValueError, 'dimension_changed_since_probe'):
+            worker._validate_identity_receipt(good, args)
+
+    def test_child_hashes_checkpoint_around_provider_load_without_optional_models(self):
+        args = self.args()
+        receipt_path = self.derived / 'observed.json'
+        service = SimpleNamespace(_clip_model=SimpleNamespace(
+            parameters=lambda: iter([SimpleNamespace(device='cpu')])), dim=512,
+            describe_runtime=lambda: {'effective_provider': 'open_clip', 'effective_device': 'cpu'})
+        argv = ['_probe', '--checkpoint', str(self.checkpoint),
+                '--checkpoint-sha256', self.checksum, '--image-model', args.image_model,
+                '--device', 'cpu', '--receipt', str(receipt_path)]
+        module = SimpleNamespace(EmbeddingService=Mock(return_value=service))
+        with patch.dict(sys.modules, {'app.vector_index': module}), \
+             patch.dict(worker.os.environ, {'PHOTOHOUSE_IMAGE_EMBEDDING_CHECKPOINT': str(self.checkpoint)}), \
+             patch.object(worker, '_observed_preprocessing',
+                          return_value=self.identity_receipt()['preprocessing_recipe']):
+            self.assertEqual(worker._probe_or_embed_child(argv), 0)
+            observed = json.loads(receipt_path.read_bytes())
+            worker._validate_identity_receipt(observed, args)
+            receipt_path.unlink()
+
+            def replace_checkpoint(*_args, **_kwargs):
+                self.checkpoint.write_bytes(b'changed checkpoint during provider load')
+                return service
+            module.EmbeddingService.side_effect = replace_checkpoint
+            with self.assertRaisesRegex(ValueError, 'checkpoint_changed'):
+                worker._probe_or_embed_child(argv)
+            self.assertFalse(receipt_path.exists())
+
+    def test_child_refuses_checkpoint_environment_mismatch_before_provider_load(self):
+        module = SimpleNamespace(EmbeddingService=Mock())
+        with patch.dict(sys.modules, {'app.vector_index': module}), \
+             patch.dict(worker.os.environ, {'PHOTOHOUSE_IMAGE_EMBEDDING_CHECKPOINT': 'other'}), \
+             self.assertRaisesRegex(worker.Refused, 'checkpoint environment'):
+            worker._probe_or_embed_child(['_probe', '--checkpoint', str(self.checkpoint),
+                '--checkpoint-sha256', self.checksum, '--image-model', self.args().image_model,
+                '--device', 'cpu', '--receipt', str(self.derived / 'absent.json')])
+        module.EmbeddingService.assert_not_called()
 
     def test_windows_supervised_child_gets_hard_job_memory_cap_and_cleanup(self):
         job = Mock()

@@ -20,7 +20,7 @@ python server/scripts/plan_memoir_quality_cases.py
 ```
 
 The helper sends the generated bundles through the existing
-`app.access.memory_narrative._validate_bundle` contract for the three memoir cases. Each memoir bundle
+`app.access.memory_narrative._validate_bundle` contract for the five memoir cases. Each memoir bundle
 targets a `book`, stays within 24 chapters, 96 sources, eight recent turns and
 64 KiB, and uses synthetic identifiers. The full output is limited to 256 KiB.
 Each invocation builds fresh nested objects. Source citations and asset links
@@ -55,6 +55,23 @@ python -m unittest discover -s server/tests/security -p test_memoir_quality_case
    not promoted into a source citation, no omitted source is cited, and the
    response asks for evidence when needed while still answering in a clear,
    coherent conversational voice.
+4. **Similar photos, separate days:** two distinct synthetic photos show a
+   similar yellow coat on April 12 and April 14, in different activities. The
+   first account identifies Mira at a pond with a paper boat; the second account
+   cannot identify the child at school pickup. A reviewer checks that person,
+   event, activity, date and citation evidence do not propagate from one photo
+   to the other. The fixture contains textual descriptions and asset IDs only;
+   it does not test visual identity recognition.
+5. **Reported speakers, uploaders and story subject:** Mira's family note,
+   Aunt Ren's and Uncle Dev's separate tentative audio recollections, and a
+   synthetic upload log keep three roles and uncertain event details distinct.
+   A reviewer checks that Sam and Lee, the uploaders, are not treated as either
+   speaker or story subject; Ren's tentative Mira/late-2020 account and Dev's
+   tentative Jo/2021 account are not silently reconciled; and upload dates do
+   not become event dates. Transcript content is paraphrased with attribution,
+   not presented as a direct quotation. Source `author` remains a free-text
+   label, so this textual case does not validate structured speaker or uploader
+   metadata.
 
 Each case has case-specific human review expectations for grounding, conflicts,
 attribution, chronology, transitions and literary style. Reviewers should favor
@@ -72,8 +89,10 @@ exact sources and the case-specific review expectations above.
 
 The same planner also emits three smaller, separately validated story-title
 bundles through `app.access.story_titles.validate_bundle`. They use `task=suggest`,
-not the memoir narrative or companion contract. The original three memoir case
-IDs, tasks and canonical bundle hashes remain unchanged.
+not the memoir narrative or companion contract. The original three memoir and
+three title case IDs, tasks and canonical bundle hashes remain unchanged by the
+two additive narrative cases. The complete source-plan hash changes, so prior
+qualification evidence remains bound to its original plan.
 
 - `synthetic-title-family`: Chinese family recollection and draft about planting
   sunflowers with grandma, with grounded wording and exact citations.

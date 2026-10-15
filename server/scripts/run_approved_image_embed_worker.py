@@ -28,8 +28,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MEDIA_CHILD = ROOT / 'scripts' / 'home_media_worker.py'
 sys.path.insert(0, str(ROOT / 'scripts'))
 from home_preparation_resources import emit_worker_failure, memory as observe_memory
+from image_embedding_receipts import inspect_checkpoint, verify_checkpoint, recipe_sha256
+from image_preprocessing_receipts import observe_preprocessing
 
-REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'}
+REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304'}
 MAX_INPUT_BYTES = 256 * 1024**2
 MAX_CHECKPOINT_BYTES = 8 * 1024**3
 MAX_SOURCE_PIXELS = 64_000_000
@@ -49,6 +51,10 @@ MODEL_VERSION_MAX = 64
 
 class Refused(ValueError):
     pass
+
+
+class PreparedVectorPublicationPending(RuntimeError):
+    """Leave the task claim and its durable intent intact for exact recovery."""
 
 
 class Parser(argparse.ArgumentParser):
@@ -92,11 +98,15 @@ def sha256_file(path, maximum):
     if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= maximum:
         raise ValueError('file_size_or_type')
     digest = hashlib.sha256()
+    total = 0
     with path.open('rb') as stream:
         opened = os.fstat(stream.fileno())
         if (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns) != pin:
             raise ValueError('file_changed')
         while chunk := stream.read(4 * 1024**2):
+            total += len(chunk)
+            if total > before.st_size:
+                raise ValueError('file_changed')
             digest.update(chunk)
     after = path.stat(follow_symlinks=False)
     if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != pin:
@@ -192,6 +202,7 @@ def matching_candidates_with_skips(db):
             continue
         candidates.append({
             'task_id': task_id, 'retry_count': retry_count, 'priority': priority,
+            'payload_json': raw_payload,
             **asset,
         })
     return candidates, skipped
@@ -222,7 +233,7 @@ def _scope_still_valid(db, candidate):
 
 
 def preflight(database, originals, derived, checkpoint, checkpoint_sha256,
-              image_model, model_version, device, expected_gpu_uuid=None):
+              image_model, model_version, device, expected_gpu_uuid=None, *, allow_running=False):
     database = direct_path(database); originals = direct_path(originals, directory=True)
     derived = direct_path(derived, directory=True); checkpoint = direct_path(checkpoint)
     if (checkpoint.stat().st_size > MAX_CHECKPOINT_BYTES
@@ -247,7 +258,7 @@ def preflight(database, originals, derived, checkpoint, checkpoint_sha256,
     with closing(_sqlite(database)) as db:
         schema_revision = validate_schema(db)
         running = db.execute("SELECT count(*) FROM tasks WHERE type='embed' AND state='running'").fetchone()[0]
-        if running:
+        if running and not allow_running:
             raise Refused('Existing running embed task requires independent inspection')
         tasks, skipped = matching_candidates_with_skips(db)
         pending = db.execute("SELECT count(*) FROM tasks WHERE type='embed' AND state='pending'").fetchone()[0]
@@ -259,6 +270,7 @@ def preflight(database, originals, derived, checkpoint, checkpoint_sha256,
         'requested_device': device, 'checkpoint_sha256': checkpoint_sha256,
         'expected_gpu_uuid': expected_gpu_uuid,
         'checkpoint_verified_local': True, 'execution': 'requires --execute',
+        'running_embed_tasks': running,
     }
 
 
@@ -458,6 +470,7 @@ def _probe_provider(args, checkpoint, *, deadline):
     try:
         argv = [sys.executable, '-I', '-B', str(Path(__file__).resolve()), '_probe',
                 '--checkpoint', str(checkpoint), '--image-model', args.image_model,
+                '--checkpoint-sha256', args.checkpoint_sha256,
                 '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
                 '--receipt', str(receipt)]
         run_supervised(argv, env=_child_environment(args.device, checkpoint),
@@ -466,6 +479,7 @@ def _probe_provider(args, checkpoint, *, deadline):
         if len(raw) > 8192:
             raise Refused('Provider preflight receipt too large')
         result = json.loads(raw)
+        _validate_identity_receipt(result, args)
         if (result.get('provider') != 'open_clip'
                 or result.get('effective_device') != ('cpu' if args.device == 'cpu' else 'cuda:0')
                 or result.get('dimension') not in (512, 768, 1024, 1280, 2560)):
@@ -479,17 +493,43 @@ def _probe_provider(args, checkpoint, *, deadline):
         except OSError: pass
 
 
-def _claim_one(database):
+def _claim_one(database, *, immutable_identity=None):
     with closing(_sqlite(database, writable=True)) as db:
         db.execute('BEGIN IMMEDIATE')
         validate_schema(db)
         if db.execute("SELECT 1 FROM tasks WHERE type='embed' AND state='running' LIMIT 1").fetchone():
             db.rollback(); raise Refused('Existing running embed task requires independent inspection')
         for candidate in matching_candidates(db):
+            if immutable_identity is not None:
+                from app.access.visual_vector_artifacts import identity_sha256
+                if db.execute('SELECT 1 FROM image_vector_publications WHERE asset_id=? '
+                              "AND state='prepared' LIMIT 1", (candidate['asset_id'],)).fetchone():
+                    db.rollback()
+                    raise PreparedVectorPublicationPending('immutable_vector_recovery_required')
+                if db.execute('SELECT 1 FROM image_vector_artifacts WHERE asset_id=? '
+                              'AND source_sha256=? AND identity_sha256=? LIMIT 1',
+                              (candidate['asset_id'], candidate['sha256'],
+                               identity_sha256(immutable_identity))).fetchone():
+                    # Do not re-embed a completed profile. A duplicate task is
+                    # retained for explicit reconciliation, never silently reset.
+                    continue
             changed = db.execute('''UPDATE tasks SET state='running',started_at=CURRENT_TIMESTAMP,
                 last_error=NULL WHERE id=? AND type='embed' AND state='pending'
                   AND cancel_requested=0''', (candidate['task_id'],)).rowcount
             if changed == 1:
+                claim = db.execute('''SELECT payload_json,started_at,retry_count,state,cancel_requested
+                    FROM tasks WHERE id=? AND type='embed' ''', (candidate['task_id'],)).fetchone()
+                if (claim is None or claim[0] != candidate['payload_json']
+                        or claim[2] != candidate['retry_count']
+                        or claim[3:] != ('running', 0)):
+                    db.rollback()
+                    raise Refused('Claimed task changed during acquisition')
+                candidate.update({
+                    'claimed_payload_json': claim[0],
+                    'claim_started_at': claim[1],
+                    'claim_retry_count': claim[2],
+                    'retry_count': claim[2],
+                })
                 db.commit(); return candidate
         db.rollback()
     return None
@@ -530,6 +570,7 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     receipt = stage / 'result.json'
     argv = [sys.executable, '-I', '-B', str(Path(__file__).resolve()), '_embed',
             '--image', str(image), '--stage', str(stage), '--checkpoint', str(checkpoint),
+            '--checkpoint-sha256', args.checkpoint_sha256,
             '--image-model', args.image_model,
             '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
             '--model-version', args.model_version, '--receipt', str(receipt)]
@@ -541,6 +582,7 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     if not receipt.is_file() or receipt.is_symlink() or receipt.stat().st_size > 8192:
         raise ValueError('embedding_receipt_validation')
     metadata = json.loads(receipt.read_bytes())
+    _validate_identity_receipt(metadata, args)
     if (metadata.get('provider') != 'open_clip'
             or metadata.get('effective_device') != ('cpu' if args.device == 'cpu' else 'cuda:0')
             or metadata.get('model_version') != args.model_version):
@@ -549,9 +591,155 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
     vector = np.load(vector_path, allow_pickle=False)
     if (vector.ndim != 1 or vector.dtype != np.float32
             or vector.shape[0] != metadata.get('dimension')
-            or not np.isfinite(vector).all() or float(np.linalg.norm(vector)) == 0.0):
+            or not np.isfinite(vector).all()
+            or abs(float(np.linalg.norm(vector)) - 1.0) > 1e-3):
         raise ValueError('embedding_output_validation')
     return vector, metadata, hashlib.sha256(vector_path.read_bytes()).hexdigest()
+
+
+def _immutable_support():
+    # This optional source path is deliberately absent from the CLI. Runtime
+    # activation needs an additive migration and a separately qualified profile.
+    backend = str(ROOT / 'backend')
+    if backend not in sys.path:
+        sys.path.insert(0, backend)
+    from app.access import visual_vector_worker
+    return visual_vector_worker
+
+
+def _immutable_preflight(database, args):
+    profile = getattr(args, 'immutable_vector_identity', None)
+    if profile is None:
+        return False
+    support = _immutable_support()
+    if (not support.validate_artifact_identity(profile)
+            or profile.artifact_sha256 != args.checkpoint_sha256
+            or profile.model_version != args.model_version
+            or profile.dimension not in (512, 768, 1024, 1280, 2560)):
+        raise Refused('Immutable image profile does not match worker configuration')
+    from app.access.visual_vector_schema import verify_visual_vector_schema
+    from app.access.visual_vector_publication import verify_visual_publication_schema
+    with closing(_sqlite(database)) as db:
+        if not verify_visual_vector_schema(db) or not verify_visual_publication_schema(db):
+            raise Refused('Immutable image publication schema unavailable')
+    args.expected_preprocessing_sha256 = profile.preprocessing_sha256
+    args.expected_vector_dimension = profile.dimension
+    return True
+
+
+def _source_is_current(candidate, source, source_identity, checkpoint,
+                       checkpoint_identity, stop_file, deadline):
+    def check():
+        try:
+            if (time.monotonic() >= deadline or os.path.lexists(stop_file)
+                    or identity(source) != source_identity
+                    or identity(checkpoint) != checkpoint_identity):
+                return False
+            if sha256_file(source, MAX_INPUT_BYTES) != candidate['sha256']:
+                return False
+            return (time.monotonic() < deadline and not os.path.lexists(stop_file)
+                    and identity(source) == source_identity
+                    and identity(checkpoint) == checkpoint_identity)
+        except (OSError, ValueError):
+            return False
+    return check
+
+
+def _publish_immutable_vector(candidate, database, derived, args, runtime,
+                              vector_path, source, source_identity, checkpoint,
+                              checkpoint_identity, stop_file, deadline):
+    support = _immutable_support()
+    profile = args.immutable_vector_identity
+    _validate_identity_receipt(runtime, args)
+    if (runtime['checkpoint_sha256'] != profile.artifact_sha256
+            or runtime['preprocessing_sha256'] != profile.preprocessing_sha256
+            or runtime['dimension'] != profile.dimension
+            or runtime.get('model_version') != profile.model_version):
+        raise ValueError('immutable_image_profile_mismatch')
+    claim = support.ApprovedImageClaim.from_candidate(candidate)
+    digest = support.claim_sha256(claim)
+    if not 0 < vector_path.stat().st_size <= 64 * 1024:
+        raise ValueError('embedding_output_validation')
+    with vector_path.open('rb') as stream:
+        raw = stream.read(64 * 1024 + 1)
+    record = support.build_artifact(claim, profile, args.image_model.lower(), raw)
+    current = _source_is_current(candidate, source, source_identity, checkpoint,
+                                 checkpoint_identity, stop_file, deadline)
+    with closing(_sqlite(database, writable=True)) as db:
+        store = support.approved_vector_store(db, derived, claim, profile,
+                    model_name=args.image_model.lower(), source_is_current=current)
+        prepared = False
+        try:
+            store.prepare(record, digest)
+            prepared = True
+            return store.publish(record.record_id, raw) == 'committed'
+        except Exception as error:
+            # A durable intent must keep the exact running claim. Retrying via
+            # record_failure would erase started_at and invalidate recovery.
+            try:
+                intent = db.execute('SELECT state FROM image_vector_publications '
+                                    'WHERE record_id=? AND claim_sha256=?',
+                                    (record.record_id, digest)).fetchone()
+            except sqlite3.Error:
+                # An unreadable journal cannot prove that prepare did not
+                # commit. Keep the claim for independent reconciliation.
+                raise PreparedVectorPublicationPending('immutable_vector_recovery_required') from error
+            if prepared or intent is not None:
+                raise PreparedVectorPublicationPending('immutable_vector_recovery_required') from error
+            raise
+
+
+def _running_immutable_candidate(database):
+    with closing(_sqlite(database)) as db:
+        rows = db.execute("SELECT id,payload_json,started_at,retry_count,cancel_requested,priority "
+                          "FROM tasks WHERE type='embed' AND state='running' LIMIT 2").fetchall()
+        if not rows:
+            return None
+        if len(rows) != 1 or rows[0][4] != 0:
+            raise PreparedVectorPublicationPending('immutable_vector_recovery_required')
+        task_id, raw, started, retry, _cancel, priority = rows[0]
+        try:
+            if type(raw) is not str or len(raw) > 4096:
+                raise ValueError()
+            payload = json.loads(raw)
+            if (type(payload) is not dict or set(payload) != {'asset_id', 'modality'}
+                    or type(payload['asset_id']) is not int or payload['modality'] != 'image'):
+                raise ValueError()
+            asset = _upload_asset(db, payload['asset_id'])
+            if asset is None:
+                raise ValueError()
+            candidate = {**asset, 'task_id': task_id, 'payload_json': raw,
+                         'claimed_payload_json': raw, 'claim_started_at': started,
+                         'claim_retry_count': retry, 'retry_count': retry, 'priority': priority}
+            _immutable_support().ApprovedImageClaim.from_candidate(candidate)
+            return candidate
+        except (TypeError, ValueError):
+            raise PreparedVectorPublicationPending('immutable_vector_recovery_required') from None
+
+
+def _recover_immutable_startup(database, originals, derived, args, checkpoint,
+                               checkpoint_identity, stop_file):
+    candidate = _running_immutable_candidate(database)
+    if candidate is None:
+        with closing(_sqlite(database)) as db:
+            if db.execute("SELECT 1 FROM image_vector_publications WHERE state='prepared' LIMIT 1").fetchone():
+                raise PreparedVectorPublicationPending('immutable_vector_recovery_required')
+        return 0
+    support = _immutable_support()
+    claim = support.ApprovedImageClaim.from_candidate(candidate)
+    profile = args.immutable_vector_identity
+    record_id = support.publication_record_id(claim, profile)
+    try:
+        source, source_identity = validate_source(candidate, originals)
+        current = _source_is_current(candidate, source, source_identity, checkpoint,
+                    checkpoint_identity, stop_file, time.monotonic() + MAX_TASK_SECONDS)
+        with closing(_sqlite(database, writable=True)) as db:
+            store = support.approved_vector_store(db, derived, claim, profile,
+                        model_name=args.image_model.lower(), source_is_current=current)
+            store.recover_record(record_id)
+    except Exception as error:
+        raise PreparedVectorPublicationPending('immutable_vector_recovery_required') from error
+    return 1
 
 
 def _process_task(candidate, database, originals, derived, args, checkpoint,
@@ -577,6 +765,10 @@ def _process_task(candidate, database, originals, derived, args, checkpoint,
             raise ValueError('source_or_checkpoint_changed')
         if sha256_file(source, MAX_INPUT_BYTES) != candidate['sha256']:
             raise ValueError('source_fingerprint_mismatch')
+        if getattr(args, 'immutable_vector_identity', None) is not None:
+            return _publish_immutable_vector(candidate, database, derived, args, runtime,
+                                             stage / 'vector.npy', source, source_identity,
+                                             checkpoint, checkpoint_identity, stop_file, deadline)
         embedding_dir = _safe_output_dir(derived, 'embeddings')
         final_path = embedding_dir / f"{candidate['asset_id']}.npy"
         if os.path.lexists(final_path):
@@ -584,14 +776,22 @@ def _process_task(candidate, database, originals, derived, args, checkpoint,
         with closing(_sqlite(database, writable=True)) as db:
             db.execute('BEGIN IMMEDIATE')
             validate_schema(db)
+            task = db.execute('''SELECT type,state,cancel_requested,payload_json,started_at,retry_count
+                FROM tasks WHERE id=?''', (candidate['task_id'],)).fetchone()
+            expected_task = (
+                'embed', 'running', 0, candidate['claimed_payload_json'],
+                candidate['claim_started_at'], candidate['claim_retry_count'],
+            )
+            if task != expected_task:
+                db.rollback(); raise ValueError('task_ownership_lost')
             if not _scope_still_valid(db, candidate):
-                db.execute("UPDATE tasks SET state='failed',finished_at=CURRENT_TIMESTAMP,last_error='approval_scope_changed' WHERE id=? AND state='running'",
-                           (candidate['task_id'],))
+                db.execute("""UPDATE tasks SET state='failed',finished_at=CURRENT_TIMESTAMP,
+                    last_error='approval_scope_changed' WHERE id=? AND type='embed'
+                    AND state='running' AND cancel_requested=0 AND payload_json=?
+                    AND started_at=? AND retry_count=?""",
+                    (candidate['task_id'], candidate['claimed_payload_json'],
+                     candidate['claim_started_at'], candidate['claim_retry_count']))
                 db.commit(); return False
-            task = db.execute('''SELECT state,cancel_requested FROM tasks WHERE id=? AND type='embed' ''',
-                              (candidate['task_id'],)).fetchone()
-            if task != ('running', 0):
-                db.rollback(); raise ValueError('task_state_changed')
             if db.execute("SELECT 1 FROM embeddings WHERE asset_id=? AND modality='image'",
                           (candidate['asset_id'],)).fetchone():
                 db.rollback(); raise ValueError('embedding_record_already_exists')
@@ -604,8 +804,11 @@ def _process_task(candidate, database, originals, derived, args, checkpoint,
                 VALUES (?,'image',?,?,?,?,?,?)''',
                 (candidate['asset_id'], args.image_model, int(vector.shape[0]), str(final_path),
                  vector_checksum, args.device, args.model_version))
-            done = db.execute("UPDATE tasks SET state='finished',finished_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=? AND state='running' AND cancel_requested=0",
-                              (candidate['task_id'],)).rowcount
+            done = db.execute("""UPDATE tasks SET state='finished',finished_at=CURRENT_TIMESTAMP,
+                last_error=NULL WHERE id=? AND type='embed' AND state='running'
+                AND cancel_requested=0 AND payload_json=? AND started_at=? AND retry_count=?""",
+                (candidate['task_id'], candidate['claimed_payload_json'],
+                 candidate['claim_started_at'], candidate['claim_retry_count'])).rowcount
             if done != 1:
                 db.rollback(); raise ValueError('task_ownership_lost')
             db.commit(); committed = True
@@ -655,19 +858,23 @@ def _failure_code(error):
     return 'worker_error'
 
 
-def record_failure(database, task_id, retry_count, error):
+def record_failure(database, candidate, error):
     code = _failure_code(error)
     permanent = isinstance(error, (ValueError, PermissionError, FileNotFoundError))
-    attempts = retry_count + 1
+    attempts = candidate['claim_retry_count'] + 1
     state = 'failed' if permanent else 'pending' if attempts < MAX_ATTEMPTS else 'dead'
     with closing(_sqlite(database, writable=True)) as db:
         db.execute('BEGIN IMMEDIATE')
-        db.execute('''UPDATE tasks SET state=?,retry_count=?,last_error=?,started_at=NULL,
+        changed = db.execute('''UPDATE tasks SET state=?,retry_count=?,last_error=?,started_at=NULL,
           finished_at=CASE WHEN ? IN ('failed','dead') THEN CURRENT_TIMESTAMP ELSE NULL END,
           scheduled_at=CASE WHEN ?='pending' THEN datetime('now','+60 seconds') ELSE scheduled_at END
-          WHERE id=? AND state='running' AND type='embed' ''',
-          (state, attempts, code, state, state, task_id))
+          WHERE id=? AND type='embed' AND state='running' AND cancel_requested=0
+            AND payload_json=? AND started_at=? AND retry_count=?''',
+          (state, attempts, code, state, state, candidate['task_id'],
+           candidate['claimed_payload_json'], candidate['claim_started_at'],
+           candidate['claim_retry_count'])).rowcount
         db.commit()
+    return changed
 
 
 def _verified_runtime(service, device):
@@ -686,10 +893,54 @@ def _verified_runtime(service, device):
     return runtime
 
 
+def _receipt_sources():
+    sources = {
+        'decoder': MEDIA_CHILD,
+        'embedding_service': ROOT / 'backend' / 'app' / 'vector_index.py',
+        'worker': Path(__file__).resolve(),
+        'checkpoint_receipts': ROOT / 'scripts' / 'image_embedding_receipts.py',
+        'preprocessing_receipts': ROOT / 'scripts' / 'image_preprocessing_receipts.py',
+    }
+    return {name: sha256_file(path, 2 * 1024**2) for name, path in sources.items()}
+
+
+def _observed_preprocessing(service):
+    # Only the isolated provider child reads installed optional package metadata.
+    # Observe realized transforms; a model name or dimension is not a recipe.
+    from importlib.metadata import version
+    packages = {name: version(name) for name in
+                ('open_clip_torch', 'torch', 'torchvision', 'Pillow', 'numpy')}
+    return observe_preprocessing(service._clip_preprocess,
+                                 package_versions=packages,
+                                 source_digests=_receipt_sources())
+
+
+def _validate_identity_receipt(receipt, args):
+    if (type(receipt) is not dict or type(receipt.get('identity_receipt_version')) is not int
+            or receipt.get('identity_receipt_version') != 1
+            or type(receipt.get('dimension')) is not int
+            or receipt.get('dimension') not in (512, 768, 1024, 1280, 2560)
+            or receipt.get('checkpoint_sha256') != args.checkpoint_sha256
+            or receipt.get('image_model') != args.image_model):
+        raise ValueError('embedding_checkpoint_receipt_mismatch')
+    recipe = receipt.get('preprocessing_recipe')
+    if (type(recipe) is not dict or recipe.get('source_digests') != _receipt_sources()
+            or recipe.get('schema') != 'photohouse.image_preprocessing_recipe.v1'
+            or receipt.get('preprocessing_sha256') != recipe_sha256(recipe)):
+        raise ValueError('embedding_preprocessing_receipt_mismatch')
+    expected = getattr(args, 'expected_preprocessing_sha256', None)
+    if expected is not None and receipt['preprocessing_sha256'] != expected:
+        raise ValueError('embedding_preprocessing_changed_since_probe')
+    expected_dimension = getattr(args, 'expected_vector_dimension', None)
+    if expected_dimension is not None and receipt['dimension'] != expected_dimension:
+        raise ValueError('embedding_dimension_changed_since_probe')
+
+
 def _probe_or_embed_child(args):
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('operation', choices=('_probe', '_embed'))
     parser.add_argument('--checkpoint', required=True)
+    parser.add_argument('--checkpoint-sha256', required=True)
     parser.add_argument('--image-model', required=True)
     parser.add_argument('--device', required=True)
     parser.add_argument('--receipt', required=True)
@@ -698,6 +949,11 @@ def _probe_or_embed_child(args):
     parser.add_argument('--model-version')
     values = parser.parse_args(args)
     checkpoint = direct_path(values.checkpoint)
+    if os.environ.get('PHOTOHOUSE_IMAGE_EMBEDDING_CHECKPOINT') != str(checkpoint):
+        raise Refused('Provider checkpoint environment does not match inspected path')
+    if not 0 < checkpoint.stat().st_size <= MAX_CHECKPOINT_BYTES:
+        raise Refused('Checkpoint outside byte budget')
+    checkpoint_pin = inspect_checkpoint(checkpoint, values.checkpoint_sha256)
     if not values.image_model.startswith('clip-') or values.device not in ('cpu', 'cuda:0'):
         raise Refused('Unsupported child model or device')
     if values.operation == '_embed':
@@ -711,7 +967,14 @@ def _probe_or_embed_child(args):
     from app.vector_index import EmbeddingService
     service = EmbeddingService(values.image_model, 'stub-clip', 512,
                                values.device, strict=True)
+    verify_checkpoint(checkpoint_pin)
     runtime = _verified_runtime(service, values.device)
+    recipe = _observed_preprocessing(service)
+    runtime.update({'identity_receipt_version': 1,
+                    'checkpoint_sha256': checkpoint_pin.sha256,
+                    'image_model': values.image_model,
+                    'preprocessing_recipe': recipe,
+                    'preprocessing_sha256': recipe_sha256(recipe)})
     if values.operation == '_probe':
         _write_json_receipt(Path(values.receipt), runtime)
         return 0
@@ -722,8 +985,10 @@ def _probe_or_embed_child(args):
             raise ValueError('bounded_image_validation')
         opened.verify()
     vector = np.asarray(service.embed_image(str(image)), dtype=np.float32)
-    if (vector.ndim != 1 or not np.isfinite(vector).all()
-            or float(np.linalg.norm(vector)) == 0.0):
+    verify_checkpoint(checkpoint_pin)
+    if (vector.ndim != 1 or vector.size != runtime['dimension']
+            or not np.isfinite(vector).all()
+            or abs(float(np.linalg.norm(vector)) - 1.0) > 1e-3):
         raise RuntimeError('Invalid strict image vector')
     vector_path = stage / 'vector.npy'
     with vector_path.open('xb') as stream:
@@ -751,9 +1016,10 @@ def run(args):
         raise Refused('Stop path must be separate')
     checkpoint_identity = identity(checkpoint)
     targets = (identity(database)[:2], identity(originals)[:2], identity(derived)[:2])
+    immutable = _immutable_preflight(database, args)
     result = preflight(database, originals, derived, checkpoint, args.checkpoint_sha256,
                        args.image_model, args.model_version, args.device,
-                       getattr(args, 'expected_gpu_uuid', None))
+                       getattr(args, 'expected_gpu_uuid', None), allow_running=immutable)
     if not args.execute:
         with kernel_lock(database, blocking=True):
             provider = _probe_provider(args, checkpoint,
@@ -761,7 +1027,10 @@ def run(args):
         result.update({'provider': provider['effective_provider'],
                        'effective_device': provider['effective_device'],
                        'selected_physical_device': provider['selected_physical_device'],
-                       'selected_gpu_uuid': provider['selected_gpu_uuid']})
+                       'selected_gpu_uuid': provider['selected_gpu_uuid'],
+                       'preprocessing_sha256': provider['preprocessing_sha256'],
+                       'observed_dimension': provider['dimension'],
+                       'child_checkpoint_and_recipe_verified': True})
         return result
     if os.path.lexists(stop_file):
         raise Refused('Stop request already present')
@@ -771,20 +1040,28 @@ def run(args):
         raise Refused('Stop request arrived before startup')
     # Verify the exact model and actual provider/device before any task claim.
     with kernel_lock(database, blocking=True):
+        recovered = (_recover_immutable_startup(database, originals, derived, args, checkpoint,
+                     checkpoint_identity, stop_file) if immutable else 0)
+        if recovered and args.once:
+            return {'worker': 'stopped', 'recovered': recovered, 'attempted': 0,
+                    'completed': recovered, 'provider_activated': False}
         provider = _probe_provider(args, checkpoint,
                                    deadline=time.monotonic() + MAX_TASK_SECONDS)
+    args.expected_preprocessing_sha256 = provider['preprocessing_sha256']
+    args.expected_vector_dimension = provider['dimension']
     stop = threading.Event()
     previous = {}
     def request_stop(*_): stop.set()
     for sig in (signal.SIGINT, signal.SIGTERM, *([signal.SIGBREAK] if hasattr(signal, 'SIGBREAK') else [])):
         previous[sig] = signal.signal(sig, request_stop)
-    attempted = completed = 0
+    attempted, completed = 0, recovered
     try:
         while not stop.is_set() and not os.path.lexists(stop_file):
             candidate = None
             try:
                 with kernel_lock(database, blocking=True):
-                    candidate = _claim_one(database)
+                    candidate = (_claim_one(database, immutable_identity=args.immutable_vector_identity)
+                                 if immutable else _claim_one(database))
                     if candidate is None:
                         if args.once:
                             break
@@ -793,9 +1070,9 @@ def run(args):
                         completed += int(_process_task(candidate, database, originals, derived,
                                                        args, checkpoint, checkpoint_identity, stop_file))
             except Exception as error:
-                if candidate is None:
+                if candidate is None or isinstance(error, PreparedVectorPublicationPending):
                     raise
-                record_failure(database, candidate['task_id'], candidate['retry_count'], error)
+                record_failure(database, candidate, error)
                 if args.once:
                     break
             if candidate is None:
@@ -808,11 +1085,15 @@ def run(args):
             signal.signal(sig, handler)
     return {
         'worker': 'stopped', 'attempted': attempted, 'completed': completed,
+        'recovered': recovered,
         'stopped_by_operator': stop.is_set() or os.path.lexists(stop_file),
         'provider': provider['effective_provider'],
         'effective_device': provider['effective_device'],
         'selected_physical_device': provider['selected_physical_device'],
         'selected_gpu_uuid': provider['selected_gpu_uuid'],
+        'checkpoint_sha256': provider['checkpoint_sha256'],
+        'preprocessing_sha256': provider['preprocessing_sha256'],
+        'observed_dimension': provider['dimension'],
     }
 
 

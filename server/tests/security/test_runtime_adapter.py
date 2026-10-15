@@ -4,7 +4,9 @@ import importlib
 from pathlib import Path
 import sqlite3
 import socket
+import sys
 import tempfile
+from types import ModuleType
 import unittest
 import uuid
 from unittest.mock import patch
@@ -22,6 +24,9 @@ from app.access.bootstrap import bootstrap_owner
 from app.access.service import AccessService
 from test_orm_migrations import config
 from test_access_foundation import OWNER, MEMBER, PASSWORD, NOW
+
+
+from app.access.memory_group_schema import GROUP_REVISION
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -90,6 +95,46 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(enabled.state.story_title_suggester.model, 'synthetic-titles')
         self.assertFalse(enabled.state.assistant_enabled)
         self.assertFalse(enabled.state.memory_generation_enabled)
+
+    def test_private_kinship_provider_is_explicit_and_not_loaded_during_app_build(self):
+        from dataclasses import replace
+        selected = self.root / 'private' / 'synthetic-kinship.json'
+        calls = []
+
+        class Provider:
+            def __init__(self, path, *, source_root):
+                calls.append((path, source_root))
+
+            def get(self, account_id, library_id):
+                raise AssertionError('Catalog reads belong to an authorized request')
+
+        module = ModuleType('app.access.kinship')
+        module.PrivateKinshipProvider = Provider
+        with patch.dict(sys.modules, {'app.access.kinship': module}):
+            app = replace(self.settings, assistant_enabled=True,
+                          assistant_kinship_path=selected).build_app(clock=lambda: NOW)
+        self.assertEqual(calls, [(selected, Path(__file__).resolve().parents[3])])
+        self.assertIsInstance(app.state.assistant_kinship_provider, Provider)
+        self.assertFalse(selected.exists())
+
+        for settings in (
+                replace(self.settings, assistant_kinship_path=selected),
+                replace(self.settings, assistant_enabled=True, assistant_kinship_path=self.path),
+                replace(self.settings, assistant_enabled=True, assistant_kinship_path=self.derived / 'catalog.json')):
+            with self.subTest(settings=settings), self.assertRaises(ValueError):
+                settings.build_app(clock=lambda: NOW)
+
+    def test_app_rejects_kinship_provider_without_assistant_opt_in_or_get_contract(self):
+        class Provider:
+            def get(self, account_id, library_id):
+                return None
+
+        with self.assertRaises(ValueError):
+            create_app(assistant_kinship_provider=Provider())
+        app = create_app(assistant_enabled=True, assistant_kinship_provider=Provider())
+        self.assertIsInstance(app.state.assistant_kinship_provider, Provider)
+        with self.assertRaises(ValueError):
+            create_app(assistant_enabled=True, assistant_kinship_provider=object())
 
     def test_runtime_title_provider_refuses_invalid_opt_in_and_configuration(self):
         from dataclasses import replace
@@ -239,7 +284,7 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.get('/assets?library=family-a',headers=self.headers()).status_code,200)
 
     def test_adapter_revision_pin_matches_actual_migration_head(self):
-        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[IDENTITY_REVISION])
+        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[GROUP_REVISION])
         for invalid in (Path('relative.sqlite'),':memory:'):
             with self.assertRaises(ValueError):ExistingDatabase(invalid)
         for timeout in (0,-1,11,float('nan'),True):

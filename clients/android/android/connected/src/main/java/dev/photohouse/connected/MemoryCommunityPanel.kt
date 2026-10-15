@@ -59,6 +59,90 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+internal data class StoryChatHistoryPageScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val storyId: String,
+    val storyRevision: Long,
+    val conversationId: String,
+    val displayedPage: Int,
+)
+
+internal data class MemoirChatHistoryPageChild(val storyId: String, val revision: Long)
+
+internal data class MemoirChatHistoryPageScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoirChatHistoryPageChild>,
+    val storyId: String?,
+    val storyRevision: Long?,
+    val conversationId: String,
+    val displayedPage: Int,
+)
+
+private class ChatHistoryActionLifetime(var attached: Boolean = false)
+
+@Composable
+private fun attachedChatHistoryAction(action: () -> Unit, enabled: Boolean = true): () -> Unit {
+    val currentlyEnabled by rememberUpdatedState(enabled)
+    val lifetime = remember(action) { ChatHistoryActionLifetime() }
+    DisposableEffect(lifetime) {
+        lifetime.attached = true
+        onDispose { lifetime.attached = false }
+    }
+    return remember(lifetime, action) { { if (lifetime.attached && currentlyEnabled) action() } }
+}
+
+internal fun storyChatHistoryPageAction(
+    store: ConnectedStore, captured: StoryChatHistoryPageScope, requestedPage: Int,
+): () -> Unit = action@ {
+    val current = store.state.value
+    val reading = current.savedMemoryStories ?: return@action
+    val detail = reading.detail ?: return@action
+    val chat = reading.community ?: return@action
+    val page = chat.turns ?: return@action
+    if (requestedPage !in 1..8 || requestedPage == captured.displayedPage ||
+        (requestedPage > captured.displayedPage && !page.hasMore)) return@action
+    if (current.session?.account_id == captured.accountId &&
+        current.generation == captured.generation && current.library == captured.libraryId &&
+        reading.library == captured.libraryId && detail.id == captured.storyId &&
+        detail.revision == captured.storyRevision && chat.storyId == captured.storyId &&
+        chat.readerScopeId == captured.readerScopeId && chat.conversationId == captured.conversationId &&
+        page.conversationId == captured.conversationId && page.page == captured.displayedPage && !chat.busy) {
+        store.loadMemoryTurnsPage(requestedPage)
+    }
+}
+
+internal fun memoirChatHistoryPageAction(
+    store: ConnectedStore, captured: MemoirChatHistoryPageScope, requestedPage: Int,
+): () -> Unit = action@ {
+    val current = store.state.value
+    val reading = current.memoryBooks ?: return@action
+    val book = reading.selectedBook ?: return@action
+    val chat = reading.companion ?: return@action
+    val page = chat.turns ?: return@action
+    val orderedChildren = book.stories.map { MemoirChatHistoryPageChild(it.id, it.revision) }
+    val story = reading.story
+    if (requestedPage !in 1..8 || requestedPage == captured.displayedPage ||
+        (requestedPage > captured.displayedPage && !page.hasMore)) return@action
+    if (current.session?.account_id == captured.accountId &&
+        current.generation == captured.generation && current.library == captured.libraryId &&
+        reading.library == captured.libraryId && reading.readerScopeId == captured.readerScopeId &&
+        book.id == captured.bookId && book.revision == captured.bookRevision &&
+        orderedChildren == captured.orderedChildren && story?.id == captured.storyId &&
+        story?.revision == captured.storyRevision && chat.bookId == captured.bookId &&
+        chat.bookRevision == captured.bookRevision && chat.conversationId == captured.conversationId &&
+        page.conversationId == captured.conversationId && page.page == captured.displayedPage && !chat.busy) {
+        store.loadMemoryBookTurnsPage(requestedPage)
+    }
+}
+
 internal fun memoryAudioDurationText(durationMs: Long?, zh: Boolean): String? {
     if (durationMs == null || durationMs <= 0) return null
     val number = NumberFormat.getNumberInstance(if (zh) Locale.SIMPLIFIED_CHINESE else Locale.ENGLISH).apply {
@@ -773,14 +857,33 @@ private fun StoryChatPanel(
             }
         }
     }
+    val storyHistoryPageScope = community.turns?.let { page ->
+        StoryChatHistoryPageScope(accountId, generation, library, readerScopeId, community.storyId, revision,
+            community.conversationId ?: return@let null, page.page)
+    }
+    val storyLatestPageAction = remember(store, storyHistoryPageScope) {
+        storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, 1) }
+    }
     community.turns?.let { page ->
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(if (page.page == 1) t("Latest messages", "最新消息") else t("Earlier messages · page ${page.page}", "更早的消息 · 第 ${page.page} 页"),
                 modifier = Modifier.align(Alignment.CenterHorizontally).testTag("memory-chat-page"))
+            if (page.page > 1) storyLatestPageAction?.let { latest ->
+                TextButton(onClick = attachedChatHistoryAction(latest), enabled = !community.busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-chat-latest")) {
+                    Text(t("Jump to latest messages", "跳到最新消息"))
+                }
+            }
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                TextButton(onClick = { store.loadMemoryTurnsPage(page.page - 1) }, enabled = !community.busy && page.page > 1,
+                val newer = remember(store, storyHistoryPageScope) {
+                    storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, page.page - 1) } ?: {}
+                }
+                val older = remember(store, storyHistoryPageScope) {
+                    storyHistoryPageScope?.let { storyChatHistoryPageAction(store, it, page.page + 1) } ?: {}
+                }
+                TextButton(onClick = attachedChatHistoryAction(newer), enabled = !community.busy && page.page > 1,
                     modifier = Modifier.testTag("memory-chat-previous")) { Text(t("Newer messages", "较新的消息")) }
-                TextButton(onClick = { store.loadMemoryTurnsPage(page.page + 1) }, enabled = !community.busy && page.hasMore && page.page < 8,
+                TextButton(onClick = attachedChatHistoryAction(older), enabled = !community.busy && page.hasMore && page.page < 8,
                     modifier = Modifier.testTag("memory-chat-next")) { Text(t("Older messages", "更早的消息")) }
             }
         }
@@ -836,7 +939,7 @@ private fun StoryChatPanel(
         composerValue = value
         draftRejected = !store.updateMemoryChatDraft(value.text)
     },
-        label = { Text(t("Ask about this story", "聊聊这个故事")) }, minLines = 2, maxLines = 5, enabled = !community.busy,
+        label = { Text(t("Ask about this story", "聊聊这个故事")) }, minLines = 2, maxLines = 5, enabled = !community.busy || community.continuation != null && community.pendingConversation != null,
         isError = draftRejected,
         supportingText = if (draftRejected) ({
             Text(t("This message exceeds the draft limit. Shorten it before sending.",
@@ -871,12 +974,35 @@ private fun StoryChatPanel(
     if (transcriptLimit) Text(t("The edited transcript was kept. Shorten it or the draft to fit 4,096 bytes.",
         "已保留编辑后的转写。请缩短转写或草稿，使合计不超过 4,096 字节。"), color = MaterialTheme.colorScheme.error,
         modifier = Modifier.testTag("memory-chat-dictation-limit"))
+    val continuationScope = if (community.failure?.message == Message.MEMORY_CONVERSATION_FULL &&
+        community.pendingTurn != null && community.conversationId != null) MemoryStoryChatContinuationScope(
+        accountId, generation, library, readerScopeId, detail.id, revision, detail.selectionRevision,
+        community.conversationId!!, community.pendingTurn!!) else null
+    val continuation = community.continuation
+    val retryScope = continuation?.storyScope
+    val retryRequest = community.pendingConversation
+    val canContinue = !live.busy && !community.busy && !draftRejected && composerValue.composition == null &&
+        composerValue.text == community.chatDraft && !hasActiveMemoryChatJob(community.job, community.turns) &&
+        !hasUnfinishedMemoryDictation(dictationState)
+    var continuationLimit by remember(continuationScope, community.chatDraft) { mutableStateOf(false) }
+    val continueAction: () -> Unit = remember(store, continuationScope, community.chatDraft) { {
+        if (continuationScope != null) continuationLimit =
+            store.continueMemoryStoryChatInNewConversation(continuationScope) == MemoryConversationContinuationResult.LIMIT
+    } }
+    val retryAction: () -> Unit = remember(store, retryScope, retryRequest) { {
+        if (retryScope != null && retryRequest != null) store.retryMemoryStoryChatContinuation(retryScope, retryRequest)
+    } }
+    if (continuationScope != null || continuation != null) MemoryChatContinuationCard(
+        zh, "memory-chat", community.pendingTurn?.text.orEmpty(), continuation != null, community.busy,
+        continuation != null && community.failure != null, canContinue, continuationLimit,
+        attachedChatHistoryAction(continueAction, canContinue), attachedChatHistoryAction(retryAction, canContinue))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(onClick = store::sendMemoryChat, enabled = !draftRejected && composerValue.text == community.chatDraft &&
             !community.busy && (community.conversationId == null || community.turns != null) && community.pendingTurn == null &&
             !hasActiveMemoryChatJob(community.job, community.turns) && !hasUnfinishedMemoryDictation(dictationState) && community.chatDraft.isNotBlank(),
             modifier = Modifier.testTag("memory-chat-send")) { Text(t("Send", "发送")) }
-        if (community.pendingTurn != null && community.failure != null) OutlinedButton(onClick = store::retryMemoryChatTurn,
+        if (community.pendingTurn != null && community.failure != null && community.continuation == null &&
+            community.failure?.message != Message.MEMORY_CONVERSATION_FULL) OutlinedButton(onClick = store::retryMemoryChatTurn,
             enabled = !community.busy, modifier = Modifier.testTag("memory-chat-retry")) { Text(t("Retry same message", "重试这条消息")) }
     }
 }
@@ -1009,14 +1135,46 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
                     }
                 }
             }
+            val memoirHistoryPageScope = chat.turns?.let { page ->
+                val book = reading.selectedBook ?: return@let null
+                val conversationId = chat.conversationId ?: return@let null
+                MemoirChatHistoryPageScope(
+                    accountId = accountId,
+                    generation = live.generation,
+                    libraryId = reading.library,
+                    readerScopeId = reading.readerScopeId,
+                    bookId = chat.bookId,
+                    bookRevision = chat.bookRevision,
+                    orderedChildren = book.stories.map { MemoirChatHistoryPageChild(it.id, it.revision) },
+                    storyId = reading.story?.id,
+                    storyRevision = reading.story?.revision,
+                    conversationId = conversationId,
+                    displayedPage = page.page,
+                )
+            }
+            val memoirLatestPageAction = remember(store, memoirHistoryPageScope) {
+                memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, 1) }
+            }
             chat.turns?.let { page ->
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(if (page.page == 1) t("Latest messages", "最新消息") else t("Earlier messages · page ${page.page}", "更早的消息 · 第 ${page.page} 页"),
                         modifier = Modifier.align(Alignment.CenterHorizontally).testTag("memory-book-chat-page"))
+                    if (page.page > 1) memoirLatestPageAction?.let { latest ->
+                        TextButton(onClick = attachedChatHistoryAction(latest), enabled = !chat.busy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-chat-latest")) {
+                            Text(t("Jump to latest messages", "跳到最新消息"))
+                        }
+                    }
                     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        TextButton(onClick = { store.loadMemoryBookTurnsPage(page.page - 1) }, enabled = !chat.busy && page.page > 1,
+                        val newer = remember(store, memoirHistoryPageScope) {
+                            memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, page.page - 1) } ?: {}
+                        }
+                        val older = remember(store, memoirHistoryPageScope) {
+                            memoirHistoryPageScope?.let { memoirChatHistoryPageAction(store, it, page.page + 1) } ?: {}
+                        }
+                        TextButton(onClick = attachedChatHistoryAction(newer), enabled = !chat.busy && page.page > 1,
                             modifier = Modifier.testTag("memory-book-chat-previous")) { Text(t("Newer messages", "较新的消息")) }
-                        TextButton(onClick = { store.loadMemoryBookTurnsPage(page.page + 1) }, enabled = !chat.busy && page.hasMore && page.page < 8,
+                        TextButton(onClick = attachedChatHistoryAction(older), enabled = !chat.busy && page.hasMore && page.page < 8,
                             modifier = Modifier.testTag("memory-book-chat-next")) { Text(t("Older messages", "更早的消息")) }
                     }
                 }
@@ -1071,7 +1229,7 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
             OutlinedTextField(value = bookComposerValue, onValueChange = { value ->
                 bookComposerValue = value
                 bookDraftRejected = !store.updateMemoryBookChatDraft(value.text)
-            }, enabled = !chat.busy,
+            }, enabled = !chat.busy || chat.continuation != null && chat.pendingConversation != null,
                 label = { Text(t("Ask about this memoir", "聊聊这本回忆册")) }, minLines = 2,
                 maxLines = if (bookKeyboardVisible) 3 else 5,
                 isError = bookDraftRejected,
@@ -1137,14 +1295,76 @@ internal fun MemoryBookCompanionPanel(store: ConnectedStore, reading: MemoryBook
             if (transcriptLimit) Text(t("The edited transcript was kept. Shorten it or the draft to fit 4,096 bytes.",
                 "已保留编辑后的转写。请缩短转写或草稿，使合计不超过 4,096 字节。"),
                 color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("memory-book-chat-transcript-limit"))
+            val selectedBook = reading.selectedBook
+            val selectedStory = reading.story
+            val continuationScope = if (chat.failure?.message == Message.MEMORY_CONVERSATION_FULL &&
+                chat.pendingTurn != null && chat.conversationId != null && selectedBook != null && selectedStory != null)
+                MemoryBookChatContinuationScope(accountId, live.generation, reading.library, reading.readerScopeId,
+                    selectedBook.id, selectedBook.revision, selectedBook.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) },
+                    selectedStory.id, selectedStory.revision, selectedStory.selectionRevision, chat.conversationId!!, chat.pendingTurn!!) else null
+            val continuation = chat.continuation
+            val retryScope = continuation?.bookScope
+            val retryRequest = chat.pendingConversation
+            val canContinue = !live.busy && !reading.busy && !reading.readerBusy && !chat.busy && !bookDraftRejected &&
+                bookComposerValue.composition == null && bookComposerValue.text == chat.draft &&
+                !hasActiveMemoryChatJob(chat.job, chat.turns) && !hasUnfinishedMemoryDictation(dictationState)
+            var continuationLimit by remember(continuationScope, chat.draft) { mutableStateOf(false) }
+            val continueAction: () -> Unit = remember(store, continuationScope, chat.draft) { {
+                if (continuationScope != null) continuationLimit =
+                    store.continueMemoryBookChatInNewConversation(continuationScope) == MemoryConversationContinuationResult.LIMIT
+            } }
+            val retryAction: () -> Unit = remember(store, retryScope, retryRequest) { {
+                if (retryScope != null && retryRequest != null) store.retryMemoryBookChatContinuation(retryScope, retryRequest)
+            } }
+            if (continuationScope != null || continuation != null) MemoryChatContinuationCard(
+                zh, "memory-book-chat", chat.pendingTurn?.text.orEmpty(), continuation != null, chat.busy,
+                continuation != null && chat.failure != null, canContinue, continuationLimit,
+                attachedChatHistoryAction(continueAction, canContinue), attachedChatHistoryAction(retryAction, canContinue))
             Row(Modifier.bringIntoViewRequester(bookSendVisibility), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = store::sendMemoryBookChat, enabled = !bookDraftRejected && bookComposerValue.text == chat.draft &&
                     contextChoice in setOf(MemoryBookChatEditorialContext.BASIC, MemoryBookChatEditorialContext.READY) &&
                     !chat.busy && (chat.conversationId == null || chat.turns != null) && chat.pendingTurn == null &&
                     !hasActiveMemoryChatJob(chat.job, chat.turns) && !hasUnfinishedMemoryDictation(dictationState) && chat.draft.isNotBlank(),
                     modifier = Modifier.testTag("memory-book-chat-send")) { Text(t("Send", "发送")) }
-                if (chat.pendingTurn != null && chat.failure != null) OutlinedButton(onClick = store::retryMemoryBookChatTurn,
+                if (chat.pendingTurn != null && chat.failure != null && chat.continuation == null &&
+                    chat.failure?.message != Message.MEMORY_CONVERSATION_FULL) OutlinedButton(onClick = store::retryMemoryBookChatTurn,
                     enabled = !chat.busy, modifier = Modifier.testTag("memory-book-chat-retry")) { Text(t("Retry same message", "重试这条消息")) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoryChatContinuationCard(
+    zh: Boolean, tag: String, rejectedText: String, creating: Boolean, busy: Boolean,
+    retry: Boolean, enabled: Boolean, limit: Boolean, onContinue: () -> Unit, onRetry: () -> Unit,
+) {
+    var expanded by remember(tag, rejectedText) { mutableStateOf(false) }
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().testTag("$tag-continuation")) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(if (zh) "这段对话已满" else "This conversation is full", style = MaterialTheme.typography.titleMedium)
+            Text(if (zh) "原对话会保留。创建新对话后，请核对问题，再点发送。" else
+                "Your old conversation stays available. Create a new chat, review your question, then tap Send.",
+                style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag("$tag-continuation-review")) {
+                Text(if (zh) (if (expanded) "收起已保留的问题" else "核对已保留的问题") else
+                    (if (expanded) "Hide kept question" else "Review kept question"))
+            }
+            if (expanded) Text(rejectedText, modifier = Modifier.testTag("$tag-continuation-kept"))
+            if (limit) Text(if (zh) "问题和补充草稿都已保留。请缩短补充草稿，使合计不超过 4,096 字节，再继续。" else
+                "Your question and extra draft are kept. Shorten the extra draft to fit 4,096 bytes before continuing.",
+                color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("$tag-continuation-limit"))
+            if (busy && creating) Text(if (zh) "正在创建新对话…" else "Creating a new conversation…",
+                modifier = Modifier.testTag("$tag-continuation-progress").semantics { liveRegion = LiveRegionMode.Polite })
+            if (!creating) Button(onClick = onContinue, enabled = enabled,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("$tag-continue")) {
+                Text(if (zh) "在新对话中继续" else "Continue in new conversation")
+            }
+            if (retry) OutlinedButton(onClick = onRetry, enabled = enabled,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("$tag-continue-retry")) {
+                Text(if (zh) "重试创建这段新对话" else "Retry same new chat")
             }
         }
     }
@@ -1326,6 +1546,7 @@ private fun StoryProposalReview(
 private fun communityMessage(problem: LiveProblem, zh: Boolean): String = when (problem.message) {
     Message.NETWORK_UNAVAILABLE -> if (zh) "网络不可用，请检查连接后重试。" else "Network unavailable. Check the connection and retry."
     Message.TLS_ERROR -> if (zh) "安全连接失败，请稍后重试。" else "Secure connection failed. Try again later."
+    Message.MEMORY_CONVERSATION_FULL -> if (zh) "这段对话已满。未发送的问题已保留。" else "This conversation is full. Your unsent question is kept."
     Message.RATE_LIMITED -> if (zh) "请求过多，请稍后重试。" else "Too many requests. Wait before retrying."
     Message.ACCESS_DENIED, Message.CLOSED -> if (zh) "当前账号暂时无法访问这段回忆。" else "This account cannot access this memory right now."
     else -> if (zh) "暂时无法完成，请稍后重试。" else "Could not complete this request. Try again later."

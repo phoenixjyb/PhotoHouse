@@ -28,6 +28,15 @@ class HttpsMemoryCommunityApiTest {
     private val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
     private val story = "11111111-1111-1111-1111-111111111111"
 
+    @Test fun memoryConversationCodeCannotBeAttachedToAnotherFailureKindOrStatus() {
+        for ((kind, status) in listOf(FailureKind.HTTP to 409, FailureKind.OFFLINE to 429)) {
+            try {
+                ApiFailure(kind, status, errorCode = ApiErrorCode.MEMORY_CONVERSATION_FULL)
+                fail("typed memory-conversation code outside HTTP 429")
+            } catch (_: IllegalArgumentException) { }
+        }
+    }
+
     @Test fun configuredOriginAuthenticatedRoutesAndRawAudioHeaders() = runBlocking {
         Fixture().use { f ->
             f.server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
@@ -50,6 +59,40 @@ class HttpsMemoryCommunityApiTest {
             f.server.enqueue(MockResponse().setHeader("Content-Type", "audio/wav").setBody("riff"))
             assertArrayEquals("riff".toByteArray(), f.api.contributionAudio(token, "family-a", story,
                 "22222222-2222-2222-2222-222222222222"))
+        }
+    }
+
+    @Test fun onlySmallExactMemoryConversation429EnvelopeGetsTypedCode() = runBlocking {
+        Fixture().use { f ->
+            val responses = listOf(
+                MockResponse().setResponseCode(429).setHeader("Content-Type", "application/json")
+                    .setHeader("Retry-After", "7").setBody("""{"detail":"conversation limit reached","code":"memory_conversation_full"}"""),
+                MockResponse().setResponseCode(429).setHeader("Content-Type", "application/json")
+                    .setBody("not json"),
+                MockResponse().setResponseCode(429).setHeader("Content-Type", "application/json")
+                    .setBody("""{"detail":"busy","code":"other_code"}"""),
+                MockResponse().setResponseCode(429).setHeader("Content-Type", "application/json")
+                    .setBody("{" + "x".repeat(1024) + "}"),
+                MockResponse().setResponseCode(429).setBody("""{"detail":"conversation limit reached","code":"memory_conversation_full"}"""),
+            )
+            responses.forEachIndexed { index, response ->
+                f.server.enqueue(response)
+                try {
+                    f.api.listContributions(token, "family-a", story, 1)
+                    fail("429 must fail")
+                } catch (e: ApiFailure) {
+                    assertEquals(FailureKind.HTTP, e.kind)
+                    assertEquals(429, e.status)
+                    if (index == 0) {
+                        assertEquals(ApiErrorCode.MEMORY_CONVERSATION_FULL, e.errorCode)
+                        assertEquals(7000, e.retryAfterMillis)
+                    } else {
+                        assertNull(e.errorCode)
+                        assertEquals(0, e.retryAfterMillis)
+                    }
+                }
+                f.server.takeRequest()
+            }
         }
     }
 

@@ -67,6 +67,11 @@ let browser,context,page;
   assert.equal(await page.evaluate(()=>window.__phGetUserMediaStubbed),true,'browser microphone permission path is instrumented');
   await page.locator('#phone').fill('+12025550102');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();
   await page.locator('#grid .asset').first().waitFor();
+  const privateCaps=await page.evaluate(async()=>{
+    const response=await fetch('/assistant/workspace/v1/capabilities?library_id=family-a');
+    return response.json();
+  });
+  assert.equal(privateCaps.server_owned_turns,false,'legacy recovery fixture must not admit the separate private-turn route');
   await page.locator('#assistant-panel > summary').click();await page.locator('#assistant-form').waitFor({state:'visible'});
   const posts=()=>browserRequests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns');
   const getReceipts=()=>browserRequests.filter(item=>item.method==='GET'&&/^\/assistant\/v1\/receipts\//.test(item.path));

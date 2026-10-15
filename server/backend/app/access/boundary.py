@@ -10,6 +10,7 @@ from .library import router as library_router
 from .members import router as member_router
 from .stories import router as story_router
 from .story_workspace import router as story_workspace_router
+from .memory_group_transport import router as memory_group_router
 from .memory_stories import router as memory_router
 from .memory_transport import router as memory_community_router
 from .memory_book_edition_transport import router as memory_edition_router
@@ -18,6 +19,7 @@ from .tags import router as tag_router
 from .albums import router as album_router
 from .discovery_transport import router as discovery_router
 from .assistant import router as assistant_router
+from .assistant_workspace_transport import router as assistant_workspace_router
 from .upload_transport import router as upload_router
 from .upload_review import router as upload_review_router
 from .annotations import router as annotation_router
@@ -36,10 +38,10 @@ class ClosedBoundary:
         ('GET', '/auth/session'), ('POST', '/auth/logout'),
         ('POST', '/auth/invitations/accept'),
     }
-    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-community.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
+    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/assistant-private-workspace.js', '/ui/voice-turn-timing.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, library_router, member_router, story_router, people_router, tag_router, album_router, story_workspace_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -58,6 +60,10 @@ class ClosedBoundary:
 
     @classmethod
     def allowed(cls, method, path):
+        if method == 'GET' and path == '/memory-groups/capabilities': return True
+        if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals'}: return True
+        if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
+        if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
         prefix = '/memory-community/v1'
         if method == 'GET' and path == prefix+'/capabilities': return True
         if method in {'GET','POST'} and path == prefix+'/books': return True
@@ -141,6 +147,7 @@ class ClosedBoundary:
         if method == 'POST' and path == '/story-workspace/preview': return True
         if method == 'POST' and path == '/story-workspace/related-media': return True
         if method == 'GET' and path == '/story-workspace/title-capabilities': return True
+        if method == 'GET' and path == '/story-workspace/source-capabilities': return True
         if method == 'POST' and path == '/story-workspace/title-suggestions': return True
         if method in {'GET', 'POST'} and path == '/memory-stories': return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}', path): return True
@@ -162,10 +169,44 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/discovery/v1/search', path):
             return True
         if ((method == 'GET' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}', path))
-                or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/outcome', path))):
+                or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/(?:outcome|playback)', path))):
             return True
         if (method, path) in {('GET', '/assistant/v1/capabilities'), ('POST', '/assistant/v1/turns'),
                               ('POST', '/assistant/v1/transcribe'), ('POST', '/assistant/v1/speech')}:
+            return True
+        if (method, path) in {
+                ('GET', '/assistant/workspace/v1/capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-reader-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-speech-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-reading-capabilities'),
+                ('GET', '/assistant/workspace/v1/saved-memory-segment-reading-capabilities'),
+                ('GET', '/assistant/workspace/v1/threads'),
+                ('POST', '/assistant/workspace/v1/threads'),
+                ('GET', '/assistant/workspace/v1/preferences'),
+                ('PUT', '/assistant/workspace/v1/preferences'),
+                ('POST', '/assistant/workspace/v1/preferences/reset')}:
+            return True
+        if re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', path):
+            return method in {'GET', 'DELETE'}
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
+            return True
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
+            return True
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/memory-cards/(?:0|[1-9][0-9]*)/speech', path):
+            return True
+        if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/memory-cards/(?:0|[1-9]|1[01])/segments/(?:0|[1-9][0-9]{0,2})/speech', path):
+            return True
+        if method == 'GET' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+                r'/requests/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+                r'/memory-cards/(?:0|[1-9]|1[01])', path):
+            return True
+        if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/history', path):
+            return True
+        if method == 'GET' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}', path):
             return True
         return method in {'GET', 'HEAD'} and bool(re.fullmatch(
             r'/(?:assets/[0-9]+/(?:media|thumbnail|display|playback)|faces/[0-9]+/crop)', path))

@@ -38,6 +38,39 @@ class MemoryDictationTest {
         assertNull(store.takeTranscript())
     }
 
+    @Test fun staleOwnerCannotBeginCaptureOrSendAndSuppliedAudioIsWiped() = runTest {
+        var current = true
+        var transcriptions = 0
+        val store = MemoryDictationStore(this, { enabled }, { _, _ ->
+            transcriptions++
+            AssistantTranscript("should not be sent", "en")
+        }, isCurrent = { current })
+        store.loadCapabilities(); advanceUntilIdle()
+        assertEquals(enabled, store.state.value.capabilities)
+
+        current = false
+        assertNull(store.beginRecording())
+        val staleAudio = wav(1)
+        store.stopRecording(staleAudio)
+        assertTrue("stale PCM input must be wiped", staleAudio.all { it == 0.toByte() })
+        assertEquals(0, transcriptions)
+        assertEquals(MemoryDictationState(), store.state.value)
+    }
+
+    @Test fun staleOwnerCannotEditOrExtractTranscript() = runTest {
+        var current = true
+        val store = MemoryDictationStore(this, { enabled }, { _, _ -> AssistantTranscript("private words", "en") },
+            isCurrent = { current })
+        store.loadCapabilities(); advanceUntilIdle()
+        store.beginRecording(); store.stopRecording(wav(1)); advanceUntilIdle()
+        assertEquals("private words", store.state.value.transcript)
+
+        current = false
+        store.updateTranscript("stale edit")
+        assertNull(store.takeTranscript())
+        assertEquals(MemoryDictationState(), store.state.value)
+    }
+
     @Test fun cancelDropsTranscriptAndIgnoresNonCancellableLateResponse() = runTest {
         val gate = CompletableDeferred<Unit>()
         val store = MemoryDictationStore(this, { enabled }, { _, _ ->

@@ -1,5 +1,10 @@
 # Family-note original identities · version 1
 
+This retained identity increment precedes the
+[version 2 erasure contract](FAMILY_NOTE_ERASURE_V2.md). Statements about its
+missing eraser below describe this increment alone. Current activation remains
+separate; see [Project Status](../../../docs/PROJECT_STATUS.md).
+
 ## Source scope and activation
 
 The additive Alembic revision `d1f6a8c3e920` follows `c2e6b8a1d490`. It adds
@@ -100,5 +105,5 @@ and explicit operation authority. Earlier C2 packages or API switches do not
 qualify this revision. Generic legacy caption/face launchers keep their existing
 revision gates; the matched approved-upload lanes have separate source evidence.
 
-See the [lifecycle plan](../MEMOIR_SOURCE_LIFECYCLE_PLAN_2026-10-07.md) and
-[architecture](../architecture/PHOTOHOUSE_ARCHITECTURE_2026-10-07.md).
+See the [current lifecycle/activation roadmap](../../../docs/ROADMAP.md) and
+[architecture](../../../docs/ARCHITECTURE.md).

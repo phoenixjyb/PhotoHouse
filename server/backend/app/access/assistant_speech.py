@@ -14,21 +14,46 @@ class AssistantSpeechUnavailable(RuntimeError):
     pass
 
 
+class AssistantAsrFailure(AssistantSpeechUnavailable):
+    """A safe, bounded ASR failure category for the assistant API."""
+
+    def __init__(self, code='speech_unavailable', status=503):
+        allowed = {'speech_no_input': 422, 'speech_busy': 503, 'speech_timeout': 504,
+                   'speech_invalid_response': 502, 'speech_unavailable': 503}
+        if type(code) is not str or type(status) is not int or allowed.get(code) != status:
+            raise ValueError('Invalid ASR category')
+        self.code = code
+        self.status = status
+        super().__init__(code)
+
+
 MAX_AUDIO_SECONDS = 30
 MAX_WAV_BYTES = 2 * 1024 * 1024
 
 
-def _provider_reply(client, url, *, max_bytes, **kwargs):
+def _provider_reply(client, url, *, max_bytes, failure_factory=None, **kwargs):
     with client.stream('POST', url, **kwargs) as response:
         if response.status_code != 200:
+            if failure_factory is not None:
+                raise failure_factory('status', response.status_code)
             raise AssistantSpeechUnavailable()
         media_type = response.headers.get('content-type', '').split(';')[0].strip().lower()
         payload = bytearray()
         for chunk in response.iter_bytes():
             if len(payload) + len(chunk) > max_bytes:
+                if failure_factory is not None:
+                    raise failure_factory('invalid_response', response.status_code)
                 raise AssistantSpeechUnavailable()
             payload.extend(chunk)
     return media_type, bytes(payload)
+
+
+def _asr_provider_failure(kind, status=None):
+    if kind == 'status' and status == 429:
+        return AssistantAsrFailure('speech_busy', 503)
+    if kind == 'invalid_response':
+        return AssistantAsrFailure('speech_invalid_response', 502)
+    return AssistantAsrFailure()
 
 
 def valid_wav(payload):
@@ -67,21 +92,37 @@ class LocalAssistantAsr:
         try:
             with httpx.Client(timeout=self.timeout, trust_env=False, transport=self.transport,
                               follow_redirects=False) as client:
-                _, reply = _provider_reply(client, self.url, max_bytes=8192, headers=headers,
-                    content=payload)
-            result = json.loads(reply)
+                media_type, reply = _provider_reply(client, self.url, max_bytes=8192,
+                    failure_factory=_asr_provider_failure, headers=headers, content=payload)
+            if media_type != 'application/json':
+                raise AssistantAsrFailure('speech_invalid_response', 502)
+            try:
+                result = json.loads(reply)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                raise AssistantAsrFailure('speech_invalid_response', 502) from None
             if (type(result) is not dict or result.get('success') is False
                     or type(result.get('text')) is not str):
-                raise AssistantSpeechUnavailable()
+                raise AssistantAsrFailure('speech_invalid_response', 502)
             words = result['text'].strip()
-            if not words or len(words.encode('utf-8')) > 1024:
-                raise AssistantSpeechUnavailable()
+            if not words:
+                raise AssistantAsrFailure('speech_no_input', 422)
+            try:
+                word_bytes = len(words.encode('utf-8'))
+            except UnicodeError:
+                raise AssistantAsrFailure('speech_invalid_response', 502) from None
+            if word_bytes > 1024:
+                raise AssistantAsrFailure('speech_invalid_response', 502)
             chinese = any('\u3400' <= c <= '\u9fff' for c in words)
             latin = any('a' <= c.casefold() <= 'z' for c in words)
             language = 'mixed' if chinese and latin else 'zh' if chinese else 'en' if latin else 'unknown'
             return {'version': 1, 'text': words, 'language': language}
-        except (httpx.HTTPError, ValueError, TypeError) as error:
-            raise AssistantSpeechUnavailable() from error
+        except AssistantAsrFailure:
+            raise
+        except httpx.TimeoutException:
+            raise AssistantAsrFailure('speech_timeout', 504) from None
+        except Exception:
+            # Provider exceptions can contain private URLs, request data or bodies.
+            raise AssistantAsrFailure() from None
 
 
 def valid_reply_wav(payload):

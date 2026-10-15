@@ -13,6 +13,7 @@ from .access.library import router as library_router
 from .access.members import router as member_router
 from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
+from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
 from .access.memory_stories import router as memory_router
 from .access.memory_transport import router as memory_community_router
 from .access.memory_book_edition_transport import router as memory_edition_router
@@ -22,6 +23,7 @@ from .access.albums import router as album_router
 from .access.boundary import ClosedBoundary
 from .access.discovery_transport import router as discovery_router
 from .access.assistant import router as assistant_router
+from .access.assistant_workspace_transport import router as assistant_workspace_router
 from .access.upload_transport import router as upload_router
 from .access.upload_review import router as upload_review_router
 from .access.annotations import router as annotation_router
@@ -38,14 +40,43 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
-               assistant_asr=None, assistant_tts=None, assistant_journal=None, update_root=None,
-               story_title_suggester=None):
+               assistant_asr=None, assistant_tts=None, assistant_journal=None,
+               assistant_workspace_store=None, assistant_kinship_provider=None, update_root=None,
+               story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
+               assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
+    if type(memory_groups_enabled) is not bool:
+        raise ValueError('Explicit memory group opt-in required')
+    if memory_group_vectors is not None and (not memory_groups_enabled or
+            type(memory_group_vectors) is not GroupVectorConfiguration):
+        raise ValueError('Explicit enabled memory group vector configuration required')
     if story_title_suggester is not None and not callable(getattr(story_title_suggester, 'suggest', None)):
         raise ValueError('Explicit story title adapter required')
     if type(annotation_intake_enabled) is not bool:
         raise ValueError('Explicit annotation intake opt-in required')
     if type(assistant_enabled) is not bool:
         raise ValueError('Explicit assistant opt-in required')
+    if type(assistant_reply_speech_enabled) is not bool:
+        raise ValueError('Explicit private reply speech opt-in required')
+    if type(assistant_saved_memory_cards_enabled) is not bool:
+        raise ValueError('Explicit saved-memory cards opt-in required')
+    from .access.assistant_workspace_store import AssistantWorkspaceStore
+    if assistant_workspace_store is not None and (
+            not assistant_enabled or type(assistant_workspace_store) is not AssistantWorkspaceStore):
+        raise ValueError('Explicit enabled assistant workspace store required')
+    if assistant_kinship_provider is not None and (
+            not assistant_enabled or not callable(getattr(assistant_kinship_provider, 'get', None))):
+        raise ValueError('Explicit enabled assistant kinship provider required')
+    if assistant_saved_memory_cards_enabled and (not assistant_enabled or
+            not memory_collaboration_enabled or
+            type(assistant_workspace_store) is not AssistantWorkspaceStore):
+        raise ValueError('Saved-memory cards require assistant, workspace and collaboration')
+    if assistant_reply_speech_enabled:
+        from .access.assistant_journal import Journal
+        from .access.assistant_speech import LocalAssistantTts
+        if (not assistant_enabled or not isinstance(assistant_tts, LocalAssistantTts)
+                or type(assistant_journal) is not Journal
+                or type(assistant_workspace_store) is not AssistantWorkspaceStore):
+            raise ValueError('Private reply speech requires assistant TTS, journal and workspace')
     if type(family_note_erasure_enabled) is not bool:
         raise ValueError('Explicit family note erasure opt-in required')
     if any(type(flag) is not bool for flag in (memory_collaboration_enabled,
@@ -59,7 +90,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     async def lifespan(app):
         maintenance = None
         memory_maintenance = None
+        workspace_maintenance = None
         journal = app.state.assistant_journal
+        workspace = app.state.assistant_workspace_store
         if app.state.memory_collaboration_enabled:
             from .access.memory_jobs import maintenance as prune_memories
             await run_in_threadpool(prune_memories, app.state.access_runtime)
@@ -76,6 +109,21 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                         # until a later successful purge restores retention.
                         app.state.assistant_journal_healthy = False
             maintenance = asyncio.create_task(prune())
+        if workspace is not None:
+            try:
+                await run_in_threadpool(workspace.prune)
+                app.state.assistant_workspace_healthy = True
+            except Exception:
+                app.state.assistant_workspace_healthy = False
+            async def prune_workspace():
+                while True:
+                    await asyncio.sleep(3600)
+                    try:
+                        await run_in_threadpool(workspace.prune)
+                        app.state.assistant_workspace_healthy = True
+                    except Exception:
+                        app.state.assistant_workspace_healthy = False
+            workspace_maintenance = asyncio.create_task(prune_workspace())
         if app.state.memory_collaboration_enabled:
             async def prune_memory_history():
                 while True:
@@ -97,6 +145,10 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                 memory_maintenance.cancel()
                 with suppress(asyncio.CancelledError):
                     await memory_maintenance
+            if workspace_maintenance is not None:
+                workspace_maintenance.cancel()
+                with suppress(asyncio.CancelledError):
+                    await workspace_maintenance
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None,
                   redirect_slashes=False, lifespan=lifespan)
     app.state.access_runtime = access_runtime
@@ -108,6 +160,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.media_runtime = media_runtime
     app.state.discovery_runtime = discovery_runtime
     app.state.assistant_enabled = assistant_enabled
+    app.state.memory_groups_enabled = memory_groups_enabled
+    app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
     app.state.memory_generation_enabled = memory_generation_enabled
@@ -118,7 +172,12 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_asr = assistant_asr
     app.state.assistant_tts = assistant_tts
     app.state.assistant_journal = assistant_journal
+    app.state.assistant_reply_speech_enabled = assistant_reply_speech_enabled
+    app.state.assistant_saved_memory_cards_enabled = assistant_saved_memory_cards_enabled
     app.state.assistant_journal_healthy = True
+    app.state.assistant_workspace_store = assistant_workspace_store
+    app.state.assistant_kinship_provider = assistant_kinship_provider
+    app.state.assistant_workspace_healthy = assistant_workspace_store is not None
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime
     app.state.annotation_intake_enabled = annotation_intake_enabled
@@ -129,6 +188,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(member_router)
     app.include_router(story_router)
     app.include_router(story_workspace_router)
+    app.include_router(memory_group_router)
     app.include_router(memory_router)
     app.include_router(memory_edition_router)
     app.include_router(memory_community_router)
@@ -138,6 +198,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(ui_router)
     app.include_router(discovery_router)
     app.include_router(assistant_router)
+    app.include_router(assistant_workspace_router)
     app.include_router(upload_router)
     app.include_router(upload_review_router)
     app.include_router(annotation_router)

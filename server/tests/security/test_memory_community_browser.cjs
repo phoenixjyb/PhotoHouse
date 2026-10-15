@@ -24,7 +24,10 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Community bridge failed 
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const countTurnPosts=()=>requests.filter(item=>item.method==='POST'&&/\/conversations\/[^/]+\/turns/.test(item.path)).length;
 const countAudioRequests=()=>requests.filter(item=>item.path.includes('/audio?')||item.path.includes('/contributions/audio')).length;
-let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,pendingTurnFixture=false,malformedPreviewOnce=false;
+const countBookDetailReads=()=>requests.filter(item=>item.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(item.path)).length;
+let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,bookDetailGate=null,pendingTurnFixture=false,malformedPreviewOnce=false;
+const gateBookDetail=(status=200)=>{let arrivedResolve,releaseResolve;const arrived=new Promise(resolve=>{arrivedResolve=resolve;}),releasePromise=new Promise(resolve=>{releaseResolve=resolve;});bookDetailGate={status,arrivedResolve,releasePromise};return {arrived,release:releaseResolve};};
+const awaitGate=(gate,label)=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error(`${label} did not reach protected detail request`)),8000);gate.arrived.then(()=>{clearTimeout(timeout);resolve();},reject);});
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(44+data.length);out.write('RIFF',0);out.writeUInt32LE(out.length-8,4);out.write('WAVE',8);out.write('fmt ',12);out.writeUInt32LE(16,16);out.writeUInt16LE(1,20);out.writeUInt16LE(1,22);out.writeUInt32LE(16000,24);out.writeUInt32LE(32000,28);out.writeUInt16LE(2,32);out.writeUInt16LE(16,34);out.write('data',36);out.writeUInt32LE(data.length,40);data.copy(out,44);return out;};
 
@@ -35,19 +38,24 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND',
       '--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+fakeAudio]});
   context=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block',permissions:['microphone']});
-  await context.addInitScript(()=>{const utterances=[];class MockUtterance{constructor(text){this.text=text;}}const voices=[{lang:'zh-CN',localService:true},{lang:'en-US',localService:true}];const synth={speaking:false,pending:false,paused:false,cancelCount:0,resumeCount:0,getVoices:()=>voices,speak(value){utterances.push(value);this.speaking=true;},pause(){this.paused=true;},resume(){this.resumeCount++;this.paused=false;},cancel(){this.cancelCount++;this.speaking=false;this.pending=false;}};Object.defineProperty(window,'speechSynthesis',{configurable:true,value:synth});window.SpeechSynthesisUtterance=MockUtterance;window.__mockNarration={utterances,synth};let Wrapped;Object.defineProperty(window,'PhotoHouseMemoryCommunity',{configurable:true,get:()=>Wrapped,set:value=>{Wrapped=config=>{if(typeof config.mountReplySpeech==='function'&&!window.__mountMemorySpeechForTest)window.__mountMemorySpeechForTest=config.mountReplySpeech;let language=null;const originalScope=config.scope,originalRequest=config.request;const instance=value({...config,scope:()=>({...((typeof originalScope==='function'?originalScope():originalScope)||{}),...(language?{language}:{})}),request:(path,options)=>{const gate=window.__memoryPreviewStaleGate;if(gate&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewStaleHit=true;return gate.promise;}if(window.__memoryPreviewRejectOnce&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewRejectOnce=false;window.__memoryPreviewRejectCount=(window.__memoryPreviewRejectCount||0)+1;const error=new Error('Synthetic old-server query rejection');error.status=400;return Promise.reject(error);}return originalRequest(path,options);}});window.__translateCommunityForTest=next=>{language=next;return instance.translate();};return instance;};}});});
+  await context.addInitScript(()=>{const utterances=[];class MockUtterance{constructor(text){this.text=text;}}const voices=[{lang:'zh-CN',localService:true},{lang:'en-US',localService:true}];const synth={speaking:false,pending:false,paused:false,cancelCount:0,resumeCount:0,getVoices:()=>voices,speak(value){utterances.push(value);this.speaking=true;},pause(){this.paused=true;},resume(){this.resumeCount++;this.paused=false;},cancel(){this.cancelCount++;this.speaking=false;this.pending=false;}};Object.defineProperty(window,'speechSynthesis',{configurable:true,value:synth});window.SpeechSynthesisUtterance=MockUtterance;window.__mockNarration={utterances,synth};let Wrapped;Object.defineProperty(window,'PhotoHouseMemoryCommunity',{configurable:true,get:()=>Wrapped,set:value=>{Wrapped=config=>{if(typeof config.mountReplySpeech==='function'&&!window.__mountMemorySpeechForTest)window.__mountMemorySpeechForTest=config.mountReplySpeech;let language=null;const originalScope=config.scope,originalRequest=config.request;const instance=value({...config,scope:()=>({...((typeof originalScope==='function'?originalScope():originalScope)||{}),...(language?{language}:{})}),request:(path,options)=>{const gate=window.__memoryPreviewStaleGate;if(gate&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewStaleHit=true;return gate.promise;}if(window.__memoryPreviewRejectOnce&&path.startsWith('/memory-community/v1/conversations?')&&path.includes('preview=1')){window.__memoryPreviewRejectOnce=false;window.__memoryPreviewRejectCount=(window.__memoryPreviewRejectCount||0)+1;const error=new Error('Synthetic old-server query rejection');error.status=400;return Promise.reject(error);}return originalRequest(path,options);}});window.__memoryCommunityForTest=instance;if(!window.__memoryCommunityRawRequestForTest)window.__memoryCommunityRawRequestForTest=originalRequest;window.__translateCommunityForTest=next=>{language=next;return instance.translate();};return instance;};}});});
+  await context.addInitScript(()=>{const nativeFetch=window.fetch.bind(window);window.fetch=(input,init)=>{let url;try{url=new URL(input instanceof Request?input.url:input,location.href);}catch(_){return nativeFetch(input,init);}if(url.pathname==='/memory-community/v1/__test429/stale'){const body=new ReadableStream({start(controller){window.__stale429Controller=controller;window.__stale429ReadStarted=true;}});return Promise.resolve(new Response(body,{status:429,headers:{'Content-Type':'application/json'}}));}return nativeFetch(input,init);};});
   await context.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
+    if(url.pathname.startsWith('/memory-community/v1/__test429/')){const mode=url.pathname.split('/').at(-1),body=mode==='exact'||mode==='non-json'?JSON.stringify({detail:'synthetic private error detail',code:'memory_conversation_full'}):mode==='extra-key'?JSON.stringify({detail:'synthetic private error detail',code:'memory_conversation_full',request_id:'private'}):mode==='blank-detail'?JSON.stringify({detail:'  ',code:'memory_conversation_full'}):mode==='unrelated'?JSON.stringify({detail:'synthetic rate limit',code:'provider_rate_limited'}):mode==='malformed'?'{' : JSON.stringify({detail:'synthetic oversized error',code:'memory_conversation_full',padding:'x'.repeat(5000)});await route.fulfill({status:429,contentType:mode==='non-json'?'text/plain':'application/json',body});return;}
     const headers=await request.allHeaders();delete headers['content-length'];
     if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
     const entry={method:request.method(),path:url.pathname+url.search};requests.push(entry);
+    let gatedBookDetailStatus=null;
+    if(bookDetailGate&&entry.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(entry.path)){const gate=bookDetailGate;bookDetailGate=null;gate.arrivedResolve();await gate.releasePromise;gatedBookDetailStatus=gate.status;}
     let bridgePath=entry.path;const selectedEditorialPlan=entry.method==='GET'&&url.pathname.endsWith('/plan')&&url.searchParams.get('editorial_context')==='1';
     const selectedEditorialPost=entry.method==='POST'&&url.searchParams.get('editorial_context')==='1';
     if(selectedEditorialPlan)bridgePath=`${url.pathname}?library=${encodeURIComponent(url.searchParams.get('library')||'')}`;
     else if(selectedEditorialPost)bridgePath=url.pathname;
-    const result=await rpc({method:entry.method,path:bridgePath,headers,
+    let result=await rpc({method:entry.method,path:bridgePath,headers,
       body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
+    if(gatedBookDetailStatus!==null)result={...result,status:gatedBookDetailStatus,body:Buffer.from(JSON.stringify({detail:'Synthetic stale memoir shelf denial'})).toString('base64')};
     entry.status=result.status;
     if(result.worker_job)entry.worker_job=result.worker_job;
     if(result.worker_contribution)entry.worker_contribution=result.worker_contribution;
@@ -68,9 +76,10 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
       if(index>=0){
         // Controlled response adapter adds an ephemeral family-source example
         // to exercise source-label rendering; nothing is written to SQLite.
-        const section=payload.chapters[0],source={id:`memoir-ui-source-${index+1}`,source:index===0?'family':'ai',title:index===0?'合成家人回忆':'',text:index===0?'<strong>家人原话</strong> · 仅作界面测试':`第 ${index+1} 篇的合成 AI 参考`};
+        if(index===1){if(payload.chapters.length!==1)throw new Error('Narration continuation fixture expects one original chapter');const section=payload.chapters[0];section.id='chapter-1';section.asset_ids=[payload.items[0].id];payload.chapters.push({...section,id:'chapter-2',title:'第二章合成故事',asset_ids:[payload.items[1].id],evidence_ids:[],narration:'第二章合成故事，沿着小路继续前行。'});}
+        const section=payload.chapters[0],source=index===0?{id:'family-00000000-0000-4000-8000-000000000001',source:'family',title:'合成家人回忆',text:'<strong>家人原话</strong> · 仅作界面测试',origin_asset_id:'101',byline:'合成家庭成员',revision:1}:{id:`memoir-ui-source-${index+1}`,source:'ai',title:'',text:`第 ${index+1} 篇的合成 AI 参考`};
         if(!section||payload.items.length!==2)throw new Error('Memoir reader fixture lacks two chapter assets');
-        for(const item of payload.items)item.evidence.push(source);
+        for(const item of (index===0?payload.items:payload.items.slice(0,1)))item.evidence.push(source);
         section.evidence_ids=[source.id];memoirEvidence.set(payload.id,source);responseBody=Buffer.from(JSON.stringify(payload));
       }
     }
@@ -100,6 +109,38 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     }
   };
   const tab=async text=>page.getByRole('tab',{name:text}).click();
+  const inspectMemoirMediaOrientation=async(language,suffix)=>{
+    const reader=page.locator('#memory-book-reader'),oldScroll=await reader.evaluate(node=>node.scrollTop),frames=page.locator('#memory-book-reader .memory-book-reading-frames');await frames.waitFor();
+    await frames.scrollIntoViewIfNeeded();
+    const rows=await frames.locator('figure').evaluateAll(figures=>figures.map(figure=>{
+      const button=figure.querySelector('button'),image=button?.querySelector('img'),caption=figure.querySelector('figcaption');
+      return {alt:image?.alt||'',label:button?.getAttribute('aria-label')||'',caption:caption?.textContent||'',captionSize:parseFloat(getComputedStyle(caption).fontSize),captionWidth:caption?.clientWidth||0,captionScroll:caption?.scrollWidth||0};
+    }));
+    assert(rows.length>0,'current memoir chapter exposes its ordered media');
+    for(const [index,row] of rows.entries()){
+      const ordinal=language==='en'?new RegExp(`^(Photo|Video) ${index+1} of ${rows.length}$`):new RegExp(`^(照片|视频) ${index+1} / ${rows.length}$`);
+      assert.match(row.alt,ordinal,`media ${index+1} has a localized chapter ordinal in its image alternative`);
+      assert.equal(row.label,language==='en'?`Open ${row.alt.toLowerCase()}`:`打开${row.alt}`,'protected media action names the same localized media and ordinal');
+      assert(row.caption.startsWith(row.alt+' · '),'visible caption repeats the ordinal before its date');
+      assert(row.captionSize>=14,`date and orientation caption is at least 14px before enlargement (got ${row.captionSize}px)`);
+      assert(row.captionScroll<=row.captionWidth+1,'date and orientation caption wraps without horizontal overflow');
+    }
+    if(rows.length===2){
+      const twoLayout=await frames.evaluate(root=>{const figures=[...root.querySelectorAll('figure')],secondImage=figures[1]?.querySelector('img'),rects=figures.map(node=>node.getBoundingClientRect()),host=root.getBoundingClientRect();return {tracks:getComputedStyle(root).gridTemplateColumns.split(' ').length,hostWidth:host.width,firstWidth:rects[0]?.width,secondWidth:rects[1]?.width,secondImageHeight:secondImage?.getBoundingClientRect().height};});
+      assert.equal(twoLayout.tracks,2,'two-photo chapter uses a two-column mobile grid');assert(twoLayout.firstWidth>=twoLayout.hostWidth*.98&&twoLayout.secondWidth>=twoLayout.hostWidth*.98,'two-photo chapter gives each image and caption a full-width row');assert.equal(twoLayout.secondImageHeight,160,'secondary image in a two-frame mobile chapter has a readable 160px height');
+      const threeLayout=await frames.evaluate(root=>{const probe=document.createElement('div');probe.className='memory-book-reading-frames';probe.dataset.memoirGridProbe='three';for(let index=0;index<3;index++){const figure=document.createElement('figure'),image=document.createElement('img'),caption=document.createElement('figcaption');image.alt=`Photo ${index+1} of 3`;caption.textContent=`Photo ${index+1} of 3 · Recorded capture date · 2026-01-01`;caption.style.fontSize=`${parseFloat(getComputedStyle(root.querySelector('figcaption')).fontSize)*1.5}px`;figure.append(image,caption);probe.append(figure);}root.after(probe);const figures=[...probe.querySelectorAll('figure')],rects=figures.map(node=>node.getBoundingClientRect()),captions=[...probe.querySelectorAll('figcaption')],layout={tracks:getComputedStyle(probe).gridTemplateColumns.split(' ').length,hostWidth:probe.getBoundingClientRect().width,firstWidth:rects[0].width,secondWidth:rects[1].width,thirdWidth:rects[2].width,secondTop:rects[1].top,thirdTop:rects[2].top,secondLeft:rects[1].left,thirdLeft:rects[2].left,captionFits:captions.every(node=>node.scrollWidth<=node.clientWidth+1)};probe.remove();return layout;});
+      assert.equal(threeLayout.tracks,2,'three-frame mobile chapter uses two grid columns');assert(threeLayout.firstWidth>=threeLayout.hostWidth*.98,'three-frame mobile chapter keeps its opening image full width');assert(Math.abs(threeLayout.secondTop-threeLayout.thirdTop)<1&&threeLayout.thirdLeft>threeLayout.secondLeft,'secondary frames in a three-frame chapter share a two-column row');assert(threeLayout.secondWidth>threeLayout.hostWidth*.4&&threeLayout.thirdWidth>threeLayout.hostWidth*.4&&threeLayout.captionFits,'enlarged captions fit beneath both secondary three-frame images');
+    }
+    const prior=await frames.evaluate(root=>[...root.querySelectorAll('figcaption')].map((node,index)=>({index,size:node.style.fontSize,line:node.style.lineHeight,computed:parseFloat(getComputedStyle(node).fontSize),computedLine:parseFloat(getComputedStyle(node).lineHeight)})));
+    await frames.evaluate((root,styles)=>styles.forEach(row=>{const node=root.querySelectorAll('figcaption')[row.index];node.style.fontSize=`${row.computed*1.5}px`;if(Number.isFinite(row.computedLine))node.style.lineHeight=`${row.computedLine*1.5}px`;}),prior);
+    assert.equal(await frames.evaluate(node=>node.scrollWidth<=node.clientWidth+1),true,'media captions remain within the 390px memoir column at 150% text');
+    assert.equal(await frames.locator('figcaption').evaluateAll(nodes=>nodes.every(node=>node.scrollWidth<=node.clientWidth+1)),true,'each enlarged date caption wraps inside its figure');
+    await reader.evaluate(node=>node.scrollTop+=90);
+    await page.screenshot({path:path.join(artifacts,`memoir-media-${suffix}-390px-150.png`)});
+    await frames.evaluate((root,styles)=>styles.forEach(row=>{const node=root.querySelectorAll('figcaption')[row.index];node.style.fontSize=row.size;node.style.lineHeight=row.line;}),prior);
+    await reader.evaluate((node,scroll)=>{node.scrollTop=scroll;},oldScroll);
+    pass(`${language.toUpperCase()} memoir media ordinals and captions fit at 390px/150%`);
+  };
 
   await login('+12025550100'); // family-a owner
   await page.locator('.saved-memory-card').first().waitFor();
@@ -135,6 +176,32 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.screenshot({path:path.join(artifacts,'memory-collection-shelf-desktop.png'),fullPage:true});
     assert(requests.some(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/books?')),
       `book card must follow a successful create request: ${JSON.stringify(requests.filter(item=>item.path.includes('/memory-community/v1/books')))}`);
+    const originalCard=await card.elementHandle(),staleStory=await card.locator('.memory-book-story').first().elementHandle(),staleRead=await card.locator('.memory-book-read').elementHandle(),staleEdit=await card.locator('.memory-book-edit').elementHandle();
+    const shelfReadsBeforeStale=requests.filter(item=>item.method==='GET'&&(item.path.startsWith('/memory-stories/')||item.path.startsWith('/memory-community/v1/books/'))).length;
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();
+    await staleStory.evaluate(node=>node.click());await staleRead.evaluate(node=>node.click());await staleEdit.evaluate(node=>node.click());await page.waitForTimeout(50);
+    assert.equal(requests.filter(item=>item.method==='GET'&&(item.path.startsWith('/memory-stories/')||item.path.startsWith('/memory-community/v1/books/'))).length,shelfReadsBeforeStale,'detached same-scope child, read and edit controls start no protected reads');
+    assert.equal(await page.locator('#memory-book-reader').count(),0,'detached shelf controls cannot create the memoir reader');
+    assert.equal(await bookShelf.locator('.memory-community-book-editor').isVisible(),false,'detached shelf controls cannot open the replacement editor');
+    assert.equal(await originalCard.evaluate(node=>node.isConnected),false,'same-scope shelf refresh detaches the captured card');
+
+    const readGate=gateBookDetail(),pendingReadCount=countBookDetailReads();
+    await bookShelf.locator('.memory-book-read').click();await awaitGate(readGate,'Current read');
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();readGate.release();await page.waitForTimeout(50);
+    assert.equal(countBookDetailReads(),pendingReadCount+1,'pending stale read performs only its already-authorized request');
+    assert.equal(await page.locator('#memory-book-reader').count(),0,'a read response for a detached card cannot create its memoir reader');
+
+    const editGate=gateBookDetail(),pendingEditCount=countBookDetailReads();
+    await bookShelf.locator('.memory-book-edit').click();await awaitGate(editGate,'Current edit');
+    await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));
+    await bookShelf.locator('.memory-book-card').filter({hasText:'我们的家庭回忆集'}).waitFor();editGate.release();await page.waitForTimeout(50);
+    assert.equal(countBookDetailReads(),pendingEditCount+1,'pending stale edit performs only its already-authorized request');
+    assert.equal(await bookShelf.locator('.memory-community-book-form').isVisible(),false,'an edit response for a detached card cannot open the replacement editor');
+    assert.equal(await bookShelf.locator('.memory-book-card').count(),1,'same-scope stale completions leave the replacement shelf intact');
+    pass('Detached and pending memoir shelf controls cannot act on a same-scope replacement shelf');
+
     await card.getByRole('button',{name:'继续阅读这本回忆集'}).click();
     await page.locator('#memory-book-reader').waitFor({state:'visible'});
     assert.equal(requests.filter(item=>item.path.includes('/plan')).length,0,'opening a memoir does not fetch its plan automatically');
@@ -157,6 +224,38 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await planPanel.locator('.memory-book-plan-open-story').first().click();
     await page.locator('#memory-book-reader .memory-book-reading-prose').filter({hasText:'家人一起沿着湖边散步'}).waitFor();
     assert.equal(await planIdeaText.inputValue(),'请保留各自的说法，并标出还要向家人确认的日期。','opening a plan story keeps the mounted memoir instructions');assert.equal(await planIdeaForm.inputValue(),'chronicle','opening a plan story keeps the selected memoir form');
+    await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    const memoirReader=page.locator('#memory-book-reader');
+    const memoirFontGroup=memoirReader.getByRole('group',{name:'阅读字号'});
+    const memoirFontLarger=memoirFontGroup.getByRole('button',{name:'较大'});
+    const memoirFontDefault=memoirFontGroup.getByRole('button',{name:'标准'});
+    const memoirIntroduction=memoirReader.locator('.memory-book-introduction');
+    const memoirReadingProse=memoirReader.locator('.memory-book-reading-prose');
+    const memoirIntroductionBase=parseFloat(await memoirIntroduction.evaluate(node=>getComputedStyle(node).fontSize));
+    const memoirReadingBase=parseFloat(await memoirReadingProse.evaluate(node=>getComputedStyle(node).fontSize));
+    const memoirFontRequestsBefore=requests.length;
+    const memoirFontWritesBefore=requests.filter(item=>['POST','PUT','PATCH','DELETE'].includes(item.method)).length;
+    const memoirDraftBefore=await planIdeaText.inputValue();
+    assert(await memoirFontGroup.isVisible(),'memoir text-size group is available beside the open child story');
+    assert(await memoirFontGroup.locator('button').evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().width>=48&&node.getBoundingClientRect().height>=48)),'memoir text-size buttons meet the48px target at390px/150%');
+    await memoirFontLarger.focus();
+    const memoirScrollBeforePreset=await memoirReader.evaluate(node=>node.scrollTop);
+    await memoirFontLarger.click();
+    assert.equal(await memoirFontLarger.getAttribute('aria-pressed'),'true','larger memoir preset is selected');
+    assert.equal(await memoirFontDefault.getAttribute('aria-pressed'),'false');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#memory-book-reader .memory-book-font-presets button[aria-pressed="true"]')).backgroundColor==='rgb(203, 182, 149)','selected preset fill finishes its CSS transition');
+    assert(Math.abs(parseFloat(await memoirIntroduction.evaluate(node=>getComputedStyle(node).fontSize))/memoirIntroductionBase-1.25)<.01,'larger preset scales the memoir introduction');
+    assert(Math.abs(parseFloat(await memoirReadingProse.evaluate(node=>getComputedStyle(node).fontSize))/memoirReadingBase-1.25)<.01,'larger preset scales the open child story prose');
+    assert.equal(await planIdeaText.inputValue(),memoirDraftBefore,'larger preset keeps the unsent memoir instruction draft');
+    assert.equal(await planIdeaForm.inputValue(),'chronicle','larger preset keeps the selected memoir form');
+    assert.equal(await memoirReader.evaluate(node=>node.scrollTop),memoirScrollBeforePreset,'larger preset does not move memoir reader scroll');
+    assert.equal(requests.length,memoirFontRequestsBefore,'larger preset makes no request');
+    assert.equal(requests.filter(item=>['POST','PUT','PATCH','DELETE'].includes(item.method)).length,memoirFontWritesBefore,'larger preset saves no memoir or story draft');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'large Chinese reader controls and prose fit390px at150%');
+    await page.screenshot({path:path.join(artifacts,'memory-book-reader-font-presets-zh-390-150.png')});
+    await memoirFontDefault.click();
+    assert.equal(await memoirFontDefault.getAttribute('aria-pressed'),'true','Default restores the memoir reader preset');
+    await page.evaluate(()=>{document.documentElement.style.fontSize='';});
     if(!(await page.locator('#memory-book-reader .memory-memoir-form-choice').evaluate(node=>node.open)))await page.locator('#memory-book-reader .memory-memoir-form-choice summary').click();await planIdeaText.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'memory-book-plan-story-preserved-companion-mobile.png')});
     const preservedCompanionFonts=await page.locator('#memory-book-reader .memory-community-form').evaluate(root=>{const nodes=[...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===3&&child.textContent.trim()));const rows=nodes.map((node,index)=>({index,size:parseFloat(getComputedStyle(node).fontSize),line:parseFloat(getComputedStyle(node).lineHeight),oldSize:node.style.fontSize,oldLine:node.style.lineHeight}));rows.forEach(row=>{const node=nodes[row.index];node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.line))node.style.lineHeight=`${row.line*1.5}px`;});return rows;});
     assert.equal(await page.locator('#memory-book-reader .memory-community-form').evaluate(node=>node.scrollWidth<=node.clientWidth),true,'preserved companion draft remains within 390px at 150% text');await planIdeaText.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'memory-book-plan-story-preserved-companion-mobile-text150.png')});await page.locator('#memory-book-reader .memory-community-form').evaluate((root,rows)=>{const nodes=[...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===3&&child.textContent.trim()));rows.forEach(row=>{const node=nodes[row.index];if(node){node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldLine;}});},preservedCompanionFonts);
@@ -187,6 +286,7 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.locator('#memory-book-reader .memory-book-toc button').first().click();
     await page.locator('#memory-book-reader .memory-book-reading-prose').waitFor();
     assert.match(await page.locator('.memory-book-reading-prose').textContent(),/家人一起沿着湖边散步/);
+    await page.setViewportSize({width:390,height:844});await inspectMemoirMediaOrientation('zh','zh');await page.setViewportSize({width:1280,height:960});
     assert.equal(bookStoryIds.length,2,'memoir reader is bound to its two saved child stories');
     const firstMemoirSource=memoirEvidence.get(bookStoryIds[0]);assert(firstMemoirSource,'first essay response retains its synthetic authorized source fixture');
     const firstSources=page.locator('#memory-book-reader .memory-book-reading .story-reader-sources');assert.equal(await firstSources.count(),1);
@@ -197,7 +297,7 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     assert.equal(await firstSources.locator(`[data-evidence-id="${firstMemoirSource.id}"]`).count(),1,'a source shared by both chapter assets is displayed once');
     assert.match(await firstSources.textContent(),/不代表已核实事实/);
     assert.match(await firstSources.textContent(),firstMemoirSource.source==='ai'?/AI 观察 · 需核对/:/家人提供的文字/);
-    if(firstMemoirSource.source==='family'){assert.equal(await firstSources.locator('[data-evidence-id] p strong').count(),0,'family-source text remains literal');assert.equal(await firstSources.locator('[data-evidence-id] p').textContent(),'<strong>家人原话</strong> · 仅作界面测试');}
+    if(firstMemoirSource.source==='family'){assert.equal(await firstSources.locator('[data-evidence-id] p strong').count(),0,'family-source text remains literal');assert.equal(await firstSources.locator('[data-evidence-id] > p').first().textContent(),'<strong>家人原话</strong> · 仅作界面测试');assert.match(await firstSources.textContent(),/原记录署名: 合成家庭成员/,'canonical family fixture retains its required attribution');}
     await page.getByRole('tab',{name:'一起聊回忆',exact:true}).click();
     await page.locator('#memory-book-reader').getByRole('button',{name:'新建讨论',exact:true}).click();
     const memoirMessage=page.locator('#memory-book-reader textarea[name=message]');await memoirMessage.waitFor();
@@ -205,9 +305,9 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await chapterPrompt.click();assert((await memoirMessage.inputValue()).includes(chapterAtPrompt));assert((await memoirMessage.inputValue()).includes(storyAtPrompt));assert.match(await memoirMessage.inputValue(),/不要补造经历/);assert.equal(countTurnPosts(),promptTurnPosts);assert.equal(countAudioRequests(),promptAudioRequests);
     await memoirMessage.fill('保留的阅读问题');await chapterPrompt.click();assert.equal(await memoirMessage.inputValue(),'保留的阅读问题');await memoirMessage.fill('');
     const originalGetter=await page.evaluate(()=>{const reader=document.querySelector('#memory-book-reader');window.__readingGetterForTest=reader.__photoHouseReadingContext;reader.__photoHouseReadingContext=()=>null;return true;});assert.equal(originalGetter,true);await chapterPrompt.click();assert.equal(await memoirMessage.inputValue(),'');assert.match(await page.locator('.memory-chat-reading-status').innerText(),/请先打开/);await page.evaluate(()=>{document.querySelector('#memory-book-reader').__photoHouseReadingContext=window.__readingGetterForTest;});
-    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'下一章',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();
+    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'下一则故事',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();
     const nextChapterTitle=await page.locator('#memory-book-reader .memory-book-reading h4').innerText();await chapterPrompt.click();assert((await memoirMessage.inputValue()).includes(nextChapterTitle),'the question uses the chapter currently being read rather than the one at chat render');assert.equal(await page.locator('#memory-book-reader .memory-chat-conversation-select').inputValue(),memoirConversationBefore,'chapter navigation retains the whole-memoir conversation');await memoirMessage.fill('');
-    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'上一章',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),chapterAtPrompt);
+    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'上一则故事',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),chapterAtPrompt);
     await page.evaluate(()=>window.__translateCommunityForTest('en'));await page.locator('#memory-book-reader .memory-chat-reading-prompt').click();assert.match(await memoirMessage.inputValue(),/I am reading/);assert((await memoirMessage.inputValue()).includes(chapterAtPrompt));assert.equal(countTurnPosts(),promptTurnPosts);assert.equal(countAudioRequests(),promptAudioRequests);await page.setViewportSize({width:390,height:844});
     const readingPromptSection=page.locator('#memory-book-reader .memory-chat-reading-context');const promptFonts=await readingPromptSection.evaluate(root=>{const rows=[...root.querySelectorAll('*')].map((node,index)=>({index,size:parseFloat(getComputedStyle(node).fontSize),line:parseFloat(getComputedStyle(node).lineHeight),oldSize:node.style.fontSize,oldLine:node.style.lineHeight}));rows.forEach(row=>{const node=root.querySelectorAll('*')[row.index];node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.line))node.style.lineHeight=`${row.line*1.5}px`;});return rows;});assert.equal(await readingPromptSection.evaluate(root=>root.scrollWidth>root.clientWidth+1),false);await readingPromptSection.screenshot({path:path.join(artifacts,'memory-book-chapter-discussion-en-mobile-text150.png')});await readingPromptSection.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelectorAll('*')[row.index];node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldLine;}),promptFonts);
     await memoirMessage.fill('');await page.evaluate(()=>window.__translateCommunityForTest(null));await memoirMessage.fill('还想确认那天下午从哪里开始散步。');
@@ -255,8 +355,18 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     assert.equal(await page.locator('#story-reader').evaluate(node=>node.open),false,
       'collection contents read inside the collection, preserving its conversation');
     assert(requests.some(item=>item.method==='GET'&&item.path.startsWith('/memory-community/v1/books/')));
-    await page.locator('.memory-book-reading-controls').getByRole('button',{name:'下一章',exact:true}).click();
+    const firstStoryControls=page.locator('.memory-book-reading-controls'),staleFirstStoryPrevious=await firstStoryControls.getByRole('button',{name:'上一章',exact:true}).elementHandle(),staleFirstStoryNext=await firstStoryControls.getByRole('button',{name:'下一则故事',exact:true}).elementHandle(),staleFirstStoryBack=await firstStoryControls.getByRole('button',{name:'返回目录',exact:true}).elementHandle(),staleFirstStoryMedia=await page.locator('#memory-book-reader .memory-book-media').first().elementHandle(),staleFirstStoryImage=await staleFirstStoryMedia.$('img');assert(staleFirstStoryNext,'the final chapter of a story labels the cross-story action explicitly');
+    await page.setViewportSize({width:390,height:844});await staleFirstStoryNext.scrollIntoViewIfNeeded();const zhStoryBoundaryStyle=await staleFirstStoryNext.evaluate(node=>({fontSize:node.style.fontSize,lineHeight:node.style.lineHeight}));await staleFirstStoryNext.evaluate(node=>{node.style.fontSize=`${parseFloat(getComputedStyle(node).fontSize)*1.5}px`;node.style.lineHeight=`${parseFloat(getComputedStyle(node).lineHeight)*1.5}px`;});assert.equal(await staleFirstStoryNext.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'Chinese cross-story label wraps at 390px and 150% text');await page.screenshot({path:path.join(artifacts,'memory-book-next-story-zh-mobile-text150.png')});await staleFirstStoryNext.evaluate((node,style)=>{node.style.fontSize=style.fontSize;node.style.lineHeight=style.lineHeight;},zhStoryBoundaryStyle);await page.setViewportSize({width:1280,height:960});
+    const replacementRefsResponse=page.waitForResponse(response=>{const url=new URL(response.url());return response.request().method()==='GET'&&url.pathname===`/memory-stories/${bookStoryIds[1]}/contribution-refs`&&url.searchParams.get('library')==='family-a'&&url.searchParams.has('revision');});
+    const crossStoryStart=requests.length;await staleFirstStoryNext.click();
     await page.locator('.memory-book-reading-prose').filter({hasText:'第二段合成故事'}).waitFor();
+    assert.equal(await page.locator('.memory-book-reading-controls').getByRole('button',{name:'上一则故事',exact:true}).count(),1,'the first chapter of a later story labels its backward boundary explicitly');
+    assert.equal(await page.locator('.memory-book-reading h4').evaluate(node=>document.activeElement===node),true,'cross-story navigation focuses the newly loaded heading');
+    const crossStoryReads=requests.slice(crossStoryStart).filter(item=>item.method==='GET'),parentReadIndex=crossStoryReads.findIndex(item=>item.path.startsWith(`/memory-community/v1/books/${memoirBookId}`)),childReadIndex=crossStoryReads.findIndex(item=>item.path.startsWith(`/memory-stories/${bookStoryIds[1]}`));assert(parentReadIndex>=0&&childReadIndex>parentReadIndex,`cross-story navigation freshly reauthorizes the ordered parent before its child: ${JSON.stringify(crossStoryReads)}`);
+    await replacementRefsResponse;
+    const activeNextStoryProse=await page.locator('.memory-book-reading-prose').innerText();await page.locator('.story-narration-controls').getByRole('button',{name:'朗读本章',exact:true}).click();const utterancesDuringNextStory=await page.evaluate(()=>window.__mockNarration.utterances.length),cancelCountDuringNextStory=await page.evaluate(()=>window.__mockNarration.synth.cancelCount),requestsDuringNextStory=requests.length;assert.equal(await page.evaluate(()=>window.__mockNarration.synth.speaking),true,'replacement-story narration is active before stale-control checks');
+    for(const stale of [staleFirstStoryPrevious,staleFirstStoryNext,staleFirstStoryBack])await stale.evaluate(node=>node.dispatchEvent(new MouseEvent('click',{bubbles:true})));assert.equal(await page.locator('.memory-book-reading-prose').innerText(),activeNextStoryProse,'detached previous, next and contents controls cannot replace the current story');assert.equal(await page.evaluate(()=>window.__mockNarration.synth.speaking),true,'detached navigation cannot stop replacement-story narration');assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),utterancesDuringNextStory,'detached controls cannot start another utterance');assert.equal(await page.evaluate(()=>window.__mockNarration.synth.cancelCount),cancelCountDuringNextStory,'stale navigation does not cancel current speech');
+    const staleImageSource=await staleFirstStoryImage.evaluate(image=>image.getAttribute('src'));await staleFirstStoryImage.evaluate(image=>image.dispatchEvent(new Event('error')));await staleFirstStoryMedia.evaluate(node=>node.dispatchEvent(new MouseEvent('click',{bubbles:true})));assert.equal(await staleFirstStoryImage.evaluate(image=>image.getAttribute('src')),staleImageSource,'a detached preview error cannot start a fallback thumbnail request');assert.equal(await page.locator('#viewer').isVisible(),false,'a detached media action cannot open the old asset');assert.equal(await page.locator('.memory-book-reading-prose').innerText(),activeNextStoryProse,'detached media callbacks preserve the current story');assert.equal(await page.evaluate(()=>window.__mockNarration.synth.speaking),true,'detached media callbacks cannot stop replacement-story narration');assert.equal(await page.evaluate(()=>window.__mockNarration.synth.cancelCount),cancelCountDuringNextStory,'stale media callbacks do not cancel current speech');assert.equal(requests.length,requestsDuringNextStory,'stale media callbacks perform no media, authorization or content request');pass('Detached memoir media clicks and preview errors are inert after navigation');await page.locator('.story-narration-controls').getByRole('button',{name:'停止朗读',exact:true}).click();
     const secondMemoirSource=memoirEvidence.get(bookStoryIds[1]);assert(secondMemoirSource,'second essay response retains its synthetic authorized source fixture');
     const secondSources=page.locator('#memory-book-reader .memory-book-reading .story-reader-sources');
     assert.deepEqual(await secondSources.locator('[data-evidence-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.evidenceId)),[secondMemoirSource.id],'next essay shows only its own cited detail');
@@ -265,10 +375,8 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     assert.equal(await page.evaluate(()=>window.__mockNarration.synth.speaking),false,'essay navigation stops the active utterance');
     const countAtNavigation=await page.evaluate(()=>window.__mockNarration.utterances.length);await page.evaluate(()=>window.__mockNarration.utterances[0].onend?.());
     assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),countAtNavigation,'late callback after essay navigation cannot advance narration');
-    assert.equal(await page.locator('.memory-book-reading h4').evaluate(node=>document.activeElement===node),true,
-      'chapter navigation focuses the newly loaded heading instead of a removed button');
     assert.match(await page.locator('.memory-book-reading .eyebrow').textContent(),/故事 2 \/ 2/);
-    await page.locator('.memory-book-reading-controls').getByRole('button',{name:'上一章',exact:true}).click();
+    await page.locator('.memory-book-reading-controls').getByRole('button',{name:'上一则故事',exact:true}).click();
     await page.locator('.memory-book-reading-prose').filter({hasText:'家人一起沿着湖边散步'}).waitFor();
     assert.deepEqual(await page.locator('#memory-book-reader .memory-book-reading .story-reader-sources [data-evidence-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.evidenceId)),[firstMemoirSource.id],'previous essay restores only its own cited detail');
     await page.setViewportSize({width:390,height:844});
@@ -297,7 +405,33 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.locator('.memory-book-toc').waitFor();await page.setViewportSize({width:1280,height:960});
     await page.locator('#memory-book-reader .memory-book-toc button').nth(1).click();
     await page.locator('.memory-book-reading-prose').filter({hasText:'第二段合成故事'}).waitFor();
-    await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();
+    const continueMemoirNarration=page.locator('#memory-book-reader .memory-book-continue-narration');assert.equal(await continueMemoirNarration.count(),1,'an authorized chapter with a following chapter gets one explicit continuation control');assert.equal(await continueMemoirNarration.isVisible(),false,'continuation is hidden before successful narration completion');
+    const beforeContinuationRead=await page.evaluate(()=>window.__mockNarration.utterances.length);await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();assert(await page.evaluate(count=>window.__mockNarration.utterances.length>count,beforeContinuationRead),'the first chapter starts only after its own explicit Read action');assert.equal(await continueMemoirNarration.isVisible(),false,'an in-progress utterance cannot expose continuation');
+    let completionUtteranceCount=null;
+    for(let step=0;step<64&&!await continueMemoirNarration.isVisible();step++){
+      const beforeEnd=await page.evaluate(()=>window.__mockNarration.utterances.length);
+      await page.evaluate(()=>window.__mockNarration.utterances.at(-1)?.onend?.());
+      if(await continueMemoirNarration.isVisible())completionUtteranceCount=await page.evaluate(()=>window.__mockNarration.utterances.length);
+      else await page.waitForFunction(count=>window.__mockNarration.utterances.length>count,beforeEnd,{timeout:3000});
+    }
+    assert.equal(await continueMemoirNarration.isVisible(),true,'successful final utterance reveals the explicit next-chapter action');assert.equal(completionUtteranceCount,await page.evaluate(()=>window.__mockNarration.utterances.length),'chapter completion does not autoplay the next chapter');
+    const captureBlockedUtterances=await page.evaluate(()=>window.__mockNarration.utterances.length),chapterTitleBeforeCapture=await page.locator('#memory-book-reader .memory-book-reading h4').innerText();await page.evaluate(()=>{const community=window.__memoryCommunityForTest;window.__originalCommunityCaptureProbe=community.isCapturing;community.isCapturing=()=>true;});await continueMemoirNarration.click();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),chapterTitleBeforeCapture,'active community capture keeps the current chapter open');assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),captureBlockedUtterances,'active capture prevents continuation from starting speech');assert.match(await page.locator('#memory-book-reader .story-narration-status').innerText(),/请先结束录音/,'capture refusal explains the existing audio guard');await page.evaluate(()=>{const community=window.__memoryCommunityForTest;community.isCapturing=window.__originalCommunityCaptureProbe;delete window.__originalCommunityCaptureProbe;});
+    await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();assert.equal(await continueMemoirNarration.isVisible(),false,'replaying a completed chapter hides its old continuation');await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'停止朗读'}).click();assert.equal(await continueMemoirNarration.isVisible(),false,'stopping narration hides continuation');await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();
+    for(let step=0;step<64&&!await continueMemoirNarration.isVisible();step++){const beforeEnd=await page.evaluate(()=>window.__mockNarration.utterances.length);await page.evaluate(()=>window.__mockNarration.utterances.at(-1)?.onend?.());if(!await continueMemoirNarration.isVisible())await page.waitForFunction(count=>window.__mockNarration.utterances.length>count,beforeEnd,{timeout:3000});}
+    assert.equal(await continueMemoirNarration.isVisible(),true,'a clean replay can expose continuation after completion');completionUtteranceCount=await page.evaluate(()=>window.__mockNarration.utterances.length);
+    assert.equal(await continueMemoirNarration.evaluate(node=>node.getBoundingClientRect().height>=44),true,'continuation remains a touch-sized native button');
+    await page.setViewportSize({width:390,height:844});await continueMemoirNarration.scrollIntoViewIfNeeded();assert.equal(await continueMemoirNarration.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'Chinese continuation wraps within the mobile reader');
+    const continuationStyle=await continueMemoirNarration.evaluate(node=>({size:node.style.fontSize,line:node.style.lineHeight}));await continueMemoirNarration.evaluate(node=>{node.style.fontSize=`${parseFloat(getComputedStyle(node).fontSize)*1.5}px`;node.style.lineHeight=`${parseFloat(getComputedStyle(node).lineHeight)*1.5}px`;});assert.equal(await continueMemoirNarration.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'Chinese continuation fits at 150% text size');await page.screenshot({path:path.join(artifacts,'memory-book-continue-narration-zh-mobile-text150.png')});await continueMemoirNarration.evaluate((node,style)=>{node.style.fontSize=style.size;node.style.lineHeight=style.line;},continuationStyle);
+    await page.setViewportSize({width:1280,height:960});const retainedContinuation=await continueMemoirNarration.elementHandle(),postsBeforeContinue=requests.filter(item=>item.method==='POST').length,audioBeforeContinue=countAudioRequests(),completedUtterances=await page.evaluate(()=>window.__mockNarration.utterances.length);
+    await continueMemoirNarration.click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),'第二章合成故事','explicit continuation advances to the next chapter within the same authorized story');assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),completedUtterances+1,'one explicit continuation starts exactly one next-chapter utterance');assert.equal(await page.locator('#memory-book-reader .memory-book-continue-narration').count(),0,'the final chapter has no next-chapter continuation control');
+    const afterExplicitContinue=await page.evaluate(()=>window.__mockNarration.utterances.length);await retainedContinuation.evaluate(node=>node.click());await page.evaluate(()=>window.__mockNarration.utterances.at(-2)?.onend?.());assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),afterExplicitContinue,'a detached continuation control and stale completed onend cannot start or advance speech');assert.equal(requests.filter(item=>item.method==='POST').length,postsBeforeContinue,'local narration continuation sends no POST');assert.equal(countAudioRequests(),audioBeforeContinue,'local narration continuation fetches no source audio');
+    await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('#memory-book-reader').evaluate(node=>node.scrollWidth<=node.clientWidth),true,'next-chapter reading remains within the mobile viewport');await page.screenshot({path:path.join(artifacts,'memory-book-continue-narration-next-mobile.png')});await page.setViewportSize({width:1280,height:960});
+    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'上一章',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),chapterTitleBeforeCapture,'manual navigation returns to the first chapter');
+    const replayCTA=page.locator('#memory-book-reader .memory-book-continue-narration');await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();
+    for(let step=0;step<64&&!await replayCTA.isVisible();step++){const beforeEnd=await page.evaluate(()=>window.__mockNarration.utterances.length);await page.evaluate(()=>window.__mockNarration.utterances.at(-1)?.onend?.());if(!await replayCTA.isVisible())await page.waitForFunction(count=>window.__mockNarration.utterances.length>count,beforeEnd,{timeout:3000});}
+    assert.equal(await replayCTA.isVisible(),true,'replaying the chapter can reach its completion action again');const staleManualCTA=await replayCTA.elementHandle(),utterancesBeforeManualNav=await page.evaluate(()=>window.__mockNarration.utterances.length);
+    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'下一章',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-continue-narration').count(),0,'manual navigation removes the prior chapter continuation');await staleManualCTA.evaluate(node=>node.click());assert.equal(await page.evaluate(()=>window.__mockNarration.utterances.length),utterancesBeforeManualNav,'a detached completion action cannot continue after manual navigation');
+    await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'上一章',exact:true}).click();await page.locator('#memory-book-reader .memory-book-reading h4').waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading h4').innerText(),chapterTitleBeforeCapture);await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'朗读本章'}).click();
     const beforeEscapeCancel=await page.evaluate(()=>window.__mockNarration.synth.cancelCount);
     await page.keyboard.press('Escape');await page.locator('#memory-book-reader').waitFor({state:'hidden'});
     assert(await page.evaluate(count=>window.__mockNarration.synth.cancelCount>count,beforeEscapeCancel),'Escape cancels memoir narration');
@@ -315,6 +449,11 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.screenshot({path:path.join(artifacts,'memory-book-resume-mobile.png')});
     await page.setViewportSize({width:1280,height:960});
     await page.keyboard.press('Escape');await page.locator('#memory-book-reader').waitFor({state:'hidden'});
+    await page.getByRole('button',{name:'English',exact:true}).click();await page.getByRole('button',{name:'中文',exact:true}).waitFor();await card.getByRole('button',{name:'Continue reading this collection',exact:true}).click();await page.locator('#memory-book-reader .memory-book-toc button').first().click();await page.locator('#memory-book-reader .memory-book-reading-prose').filter({hasText:'家人一起沿着湖边散步'}).waitFor();const englishStoryBoundary=page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'Next story',exact:true});assert.equal(await englishStoryBoundary.count(),1,'English reader labels the actual cross-story boundary');await page.setViewportSize({width:390,height:844});await englishStoryBoundary.scrollIntoViewIfNeeded();const englishBoundaryStyle=await englishStoryBoundary.evaluate(node=>({fontSize:node.style.fontSize,lineHeight:node.style.lineHeight}));await englishStoryBoundary.evaluate(node=>{node.style.fontSize=`${parseFloat(getComputedStyle(node).fontSize)*1.5}px`;node.style.lineHeight=`${parseFloat(getComputedStyle(node).lineHeight)*1.5}px`;});assert.equal(await englishStoryBoundary.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'English cross-story label wraps at 390px and 150% text');await page.screenshot({path:path.join(artifacts,'memory-book-next-story-en-mobile-text150.png')});await englishStoryBoundary.evaluate((node,style)=>{node.style.fontSize=style.fontSize;node.style.lineHeight=style.lineHeight;},englishBoundaryStyle);await page.setViewportSize({width:1280,height:960});const englishCrossingStart=requests.length;await englishStoryBoundary.click();await page.locator('#memory-book-reader .memory-book-reading-prose').filter({hasText:'第二段合成故事'}).waitFor();assert.equal(await page.locator('#memory-book-reader .memory-book-reading-controls').getByRole('button',{name:'Previous story',exact:true}).count(),1,'English previous-story action is localized at the matching boundary');const englishCrossingReads=requests.slice(englishCrossingStart).filter(item=>item.method==='GET'),englishParentIndex=englishCrossingReads.findIndex(item=>item.path.startsWith(`/memory-community/v1/books/${memoirBookId}`)),englishChildIndex=englishCrossingReads.findIndex(item=>item.path.startsWith(`/memory-stories/${bookStoryIds[1]}`));assert(englishParentIndex>=0&&englishChildIndex>englishParentIndex,'English cross-story navigation reauthorizes parent and child');
+    await page.setViewportSize({width:390,height:844});await inspectMemoirMediaOrientation('en','en');await page.setViewportSize({width:1280,height:960});
+    const englishContinue=page.locator('#memory-book-reader .memory-book-continue-narration');assert.equal(await englishContinue.textContent(),'Read next chapter aloud','memoir continuation uses its English localized action');await page.locator('#memory-book-reader .story-narration-controls').getByRole('button',{name:'Read this chapter aloud',exact:true}).click();
+    for(let step=0;step<64&&!await englishContinue.isVisible();step++){const beforeEnd=await page.evaluate(()=>window.__mockNarration.utterances.length);await page.evaluate(()=>window.__mockNarration.utterances.at(-1)?.onend?.());if(!await englishContinue.isVisible())await page.waitForFunction(count=>window.__mockNarration.utterances.length>count,beforeEnd,{timeout:3000});}
+    assert.equal(await englishContinue.isVisible(),true,'English completion exposes the explicit action');await page.setViewportSize({width:390,height:844});await englishContinue.scrollIntoViewIfNeeded();assert.equal(await englishContinue.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'English continuation wraps within the mobile reader');const englishContinuationStyle=await englishContinue.evaluate(node=>({size:node.style.fontSize,line:node.style.lineHeight}));await englishContinue.evaluate(node=>{node.style.fontSize=`${parseFloat(getComputedStyle(node).fontSize)*1.5}px`;node.style.lineHeight=`${parseFloat(getComputedStyle(node).lineHeight)*1.5}px`;});assert.equal(await englishContinue.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'English continuation fits at 150% text size');await page.screenshot({path:path.join(artifacts,'memory-book-continue-narration-en-mobile-text150.png')});await englishContinue.evaluate((node,style)=>{node.style.fontSize=style.size;node.style.lineHeight=style.line;},englishContinuationStyle);await page.setViewportSize({width:1280,height:960});await page.keyboard.press('Escape');await page.locator('#memory-book-reader').waitFor({state:'hidden'});await page.getByRole('button',{name:'中文',exact:true}).click();await page.getByRole('button',{name:'English',exact:true}).waitFor();
     await card.getByRole('button',{name:'继续阅读这本回忆集'}).click();
     await page.locator('#memory-book-reader .memory-book-toc button').first().click();
     await page.locator('.memory-book-story-details').waitFor();
@@ -758,6 +897,18 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
   await page.setViewportSize({width:390,height:844});assert.equal(await memoirReply.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'memoir reply sources and questions fit 390px');await page.screenshot({path:path.join(artifacts,'memory-memoir-chat-followups-mobile.png')});const memoirReplyFonts=await memoirReply.evaluate(root=>[...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===3&&child.textContent.trim())).map((node,index)=>{const style=getComputedStyle(node),item={index,size:parseFloat(style.fontSize),height:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldHeight:node.style.lineHeight};node.dataset.followupFont=String(index);node.style.fontSize=`${item.size*1.5}px`;if(Number.isFinite(item.height))node.style.lineHeight=`${item.height*1.5}px`;return item;}));assert.equal(await memoirReply.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'memoir reply follow-ups fit at 150% text in a 390px viewport');await page.screenshot({path:path.join(artifacts,'memory-memoir-chat-followups-mobile-text150.png')});await memoirReply.evaluate((root,rows)=>rows.forEach(item=>{const node=root.querySelector(`[data-followup-font="${item.index}"]`);if(node){node.style.fontSize=item.oldSize;node.style.lineHeight=item.oldHeight;delete node.dataset.followupFont;}}),memoirReplyFonts);await page.setViewportSize({width:1440,height:1000});await memoirQuestionInput.fill('');
   assert(requests.some(item=>item.method==='GET'&&item.path.includes('/turns?')&&item.path.includes('page=')&&item.path.includes('&order=recent&reply_context=1')),'memoir history requests recent pages with the same additive metadata');assert.equal(requests.some(item=>item.path==='/assistant/v1/speech'),false,'suggested follow-ups do not invoke server speech');
   pass('Memoir companion reply questions and mixed source labels remain draft-only and fit mobile at 150%');
+  const retainedMemoirConversationId=await memoirConversationSelect.inputValue();
+  await page.getByRole('button',{name:'新建讨论',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#memory-book-reader .memory-chat-conversation-select option').length===2);
+  const newerMemoirConversationId=await memoirConversationSelect.inputValue();assert.notEqual(newerMemoirConversationId,retainedMemoirConversationId,'fixture has two memoir conversations so restoration preference is observable');
+  const newerMemoirDraft=page.locator('#memory-book-reader .memory-chat-history').locator('..').locator('textarea[name="message"]');await newerMemoirDraft.fill('新的合成回忆录讨论');await page.locator('#memory-book-reader').getByRole('button',{name:'发送这条消息',exact:true}).click();await page.locator('#memory-book-reader .memory-chat-turn').filter({hasText:'新的合成回忆录讨论'}).waitFor({timeout:10000});
+  await memoirConversationSelect.selectOption(retainedMemoirConversationId);await page.waitForFunction(id=>document.querySelector('#memory-book-reader .memory-chat-conversation-select')?.value===id&&[...document.querySelectorAll('#memory-book-reader .memory-chat-turn-user')].some(node=>node.textContent.includes('还可以继续追问哪些家人记得的细节？')),retainedMemoirConversationId);
+  await page.keyboard.press('Escape');await page.locator('#memory-book-reader').waitFor({state:'hidden'});
+  const denialGate=gateBookDetail(403);await bookShelf.locator('.memory-book-read').click();await awaitGate(denialGate,'Stale denial');
+  await page.evaluate(()=>window.__memoryCommunityForTest.books(document.querySelector('#memory-books')));await bookShelf.locator('.memory-book-card').first().waitFor();denialGate.release();await page.waitForTimeout(80);
+  assert.equal(await page.locator('#auth').isVisible(),false,'a stale shelf 403 does not clear the authenticated session');assert.equal(await page.locator('#library-select').inputValue(),'family-a','a stale shelf denial preserves the active library');
+  await bookShelf.locator('.memory-book-read').click();await page.locator('#memory-book-reader').waitFor({state:'visible'});await page.getByRole('tab',{name:'一起聊回忆',exact:true}).click();
+  await page.waitForFunction(id=>document.querySelector('#memory-book-reader .memory-chat-conversation-select')?.value===id,retainedMemoirConversationId);assert.equal(await memoirConversationSelect.inputValue(),retainedMemoirConversationId,'a stale same-scope 403 preserves the prior conversation restoration hint');
+  pass('A stale same-scope memoir shelf 403 leaves private conversation restoration hints intact');
   assert.equal(await page.locator('#memory-book-reader').getByRole('tab',{name:'整理建议',exact:true}).count(),0,
     'a viewer can chat about a memoir but has no editor-only narrative action');
   await page.locator('#memory-book-reader .memory-book-toc button').first().click();
@@ -852,6 +1003,222 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     await page.evaluate(type=>{const item=window.__clarificationHarnesses[type];item.ui.clear();item.host.remove();delete window.__clarificationHarnesses[type];},targetType);
   }
   pass('Story and memoir clarification cues are metadata-gated, localized, draft-only, explicitly sent, and readable at 390px/150%');
+
+  // Earlier journeys leave the story-workspace dialog open. The standalone
+  // synthetic community fixtures below share this document, so dismiss modal
+  // overlays before exercising their rendered controls.
+  await page.evaluate(()=>{for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();});
+  const latestContinuationHarness=async(type,language)=>{
+    const key=`${type}-${language}`;
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(async({type,language,key})=>{
+      const storyId=`aaaaaaaa-aaaa-4aaa-8aaa-${(type==='story'?'aaaaaaaaaaa': 'bbbbbbbbbbb')}${language==='en'?'1':'2'}`;
+      const bookId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+      const conversationId=`cccccccc-cccc-4ccc-8ccc-${language==='en'?'ccccccccccc1':'ccccccccccc2'}`;
+      const target=type==='story'?{type:'story',id:storyId,revision:'1',selection_revision:'a'.repeat(64),title:'Synthetic story',language:'zh',can_edit:false,chapters:[{id:'chapter-1',title:'Memory',asset_ids:['101'],evidence_ids:[]}]}:{type:'memoir',id:bookId,revision:'1',title:'Synthetic memoir',language:'zh',can_edit:false,stories:[{id:storyId,revision:'1',title:'Synthetic story',chapters:[{id:`${storyId}-chapter-1`,title:'Memory',asset_ids:['101'],evidence_ids:[]}]}]};
+      const replacement=type==='story'?{...target,id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa9',revision:'2'}:{...target,id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb9',revision:'2'};
+      const scope={account:`synthetic-latest-${key}`,library:`synthetic-latest-library-${key}`,language,locked:false};
+      const calls=[],threads=[{id:conversationId,created_at:1780000000,expires_at:2000000000}],turnHistory=new Map(),h={type,language,target,replacement,scope,calls,mode:'full',failCreateOnce:false,failHistoryOnce:false,turnPosts:0,createPosts:0,historyReads:0,recordings:0,transcriptions:0};
+      const failure=(status,code)=>{const error=new Error('Synthetic request failure');error.status=status;if(code)error.code=code;return error;};
+      const request=async(path,options={})=>{
+        calls.push({path,method:options.method||'GET',body:options.body});
+        if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:true,conversation_retention_days:30};
+        if(path.includes('/conversations?'))return {version:1,items:threads.map(item=>({...item}))};
+        if(path.includes('/turns?page=')){const id=path.match(/\/conversations\/([^/]+)\/turns/)?.[1];h.historyReads++;if(h.failHistoryOnce){h.failHistoryOnce=false;throw failure(503,null);}return {version:1,id,expires_at:2000000000,page:1,has_more:false,items:turnHistory.get(id)||[]};}
+        if(path.endsWith('/turns')&&options.method==='POST'){
+          h.turnPosts++;
+          if(h.mode==='full')throw failure(429,'memory_conversation_full');
+          if(h.mode==='malformed')throw failure(429,null);
+          if(h.mode==='unrelated')throw failure(429,'provider_rate_limited');
+          return {version:1,id:'dddddddd-dddd-4ddd-8ddd-ddddddddddd1',kind:'chat',state:'ready',result:{kind:'answer',reply:'Synthetic reply',questions:[],source_ids:[]}};
+        }
+        if(path.endsWith('/conversations')&&options.method==='POST'){
+          h.createPosts++;let item=threads.find(thread=>thread.id===options.body.id);if(!item){item={id:options.body.id,created_at:1780000001,expires_at:2000000000};threads.unshift(item);turnHistory.set(item.id,[{id:`${item.id}-turn-1`,sequence:1,input_text:'Recovered history for this conversation',reply_text:'Existing reply from the earlier create',state:'ready'}]);}
+          if(h.failCreateOnce){h.failCreateOnce=false;throw failure(503,null);}
+          return {version:1,...item,target_type:options.body.target_type,target_id:options.body.target_id};
+        }
+        throw new Error(`Unexpected continuation fixture request: ${path}`);
+      };
+      const host=document.createElement('div');host.id=`latest-continuation-${key}`;host.className='memory-community';document.body.append(host);
+      const ui=window.PhotoHouseMemoryCommunity({scope,request,voiceCapabilities:()=>({transcribe:false})});h.host=host;h.ui=ui;h.initialConversation=conversationId;
+      window.__latestContinuationHarnesses??={};window.__latestContinuationHarnesses[key]=h;await ui.attach(host,target);
+    },{type,language,key});
+    const host=page.locator(`#latest-continuation-${key}`);
+    await host.getByRole('tab',{name:language==='zh'?'一起聊回忆':'Talk about memories',exact:true}).click();
+    const composer=host.locator('textarea[name="message"]'),draft=language==='zh'?'把这条消息留在新对话':'Keep this draft in the new conversation';
+    await composer.fill(draft);await host.getByRole('button',{name:language==='zh'?'发送这条消息':'Send this message',exact:true}).click();
+    const continueLabel=language==='zh'?'在新对话中继续':'Continue in a new conversation',fullNotice=language==='zh'?'这段对话已满。原消息仍保留，可以在新对话中继续。':'This conversation is full. Your message is kept; you can continue in a new conversation.';
+    await host.getByRole('button',{name:continueLabel,exact:true}).waitFor();assert.equal(await host.locator('.memory-chat-conversation-full').innerText(),fullNotice,`${key} exact full-thread response has localized copy`);
+    const conversationControlsText=await host.locator('.memory-chat-conversations').innerText();assert.equal(conversationControlsText.includes(language==='zh'?'待重试消息':'retry message'),false,`${key} ready continuation does not show the generic retry-blocked notice`);
+    assert.equal(await composer.inputValue(),draft,`${key} retains the rejected wording in the current editor`);
+    const editedDraft=`${draft} — edited before continuing`;await composer.fill(editedDraft);await host.getByRole('button',{name:continueLabel,exact:true}).waitFor();
+    const repaintDetached=await host.locator('.memory-chat-continue-new').elementHandle();await page.evaluate(async key=>window.__latestContinuationHarnesses[key].ui.translate(),key);await repaintDetached.evaluate(node=>node.click());assert.equal(await page.evaluate(key=>window.__latestContinuationHarnesses[key].createPosts,key),0,`${key} detached same-scope continuation control cannot post after panel repaint`);await host.locator('.memory-chat-continue-new').waitFor();
+    const oldConversation=await host.locator('.memory-chat-conversation-select').inputValue();
+    await host.locator('.memory-chat-conversations').evaluate(root=>{for(const node of root.querySelectorAll('*'))if([...node.childNodes].some(child=>child.nodeType===Node.TEXT_NODE&&child.textContent.trim())){const style=getComputedStyle(node);node.style.fontSize=`${parseFloat(style.fontSize)*1.5}px`;if(Number.isFinite(parseFloat(style.lineHeight)))node.style.lineHeight=`${parseFloat(style.lineHeight)*1.5}px`;}});
+    await host.locator('.memory-chat-conversations').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,`memory-chat-continuation-${key}-390px-text150.png`)});
+
+    await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];h.failCreateOnce=true;h.failHistoryOnce=true;},key);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    const failedText=language==='zh'?'新对话尚未创建，原消息仍保留；可以重试。':'The new conversation was not created. Your message is still here; you can retry.';
+    await host.getByText(failedText,{exact:true}).waitFor();assert.equal(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} failed creation keeps the old thread selected`);assert.equal(await composer.inputValue(),editedDraft,`${key} failed creation keeps the latest composer edit`);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    await page.waitForFunction(key=>{const h=window.__latestContinuationHarnesses[key],button=document.querySelector(`#latest-continuation-${key} .memory-chat-continue-new`);return h.createPosts===2&&h.historyReads===2&&button&&!button.disabled;},key);
+    assert.equal(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} failed history readback keeps the old thread selected`);assert.equal(await composer.inputValue(),editedDraft,`${key} failed history readback keeps the latest composer edit`);
+    await host.getByRole('button',{name:continueLabel,exact:true}).click();
+    await page.waitForFunction(key=>{const h=window.__latestContinuationHarnesses[key];return h.createPosts===3&&h.historyReads===3&&document.querySelector(`#latest-continuation-${key} .memory-chat-conversation-select option:nth-child(2)`);},key);
+    assert.notEqual(await host.locator('.memory-chat-conversation-select').inputValue(),oldConversation,`${key} explicit success selects a new conversation`);assert.equal(await host.locator('.memory-chat-conversation-select option').count(),2,`${key} keeps the old conversation in the list`);assert.equal(await composer.inputValue(),editedDraft,`${key} transfers the latest composer edit only after the confirmed create`);assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} does not offer continuation after success`);assert.equal(await host.locator('.memory-chat-history').innerText().then(text=>text.includes('Recovered history for this conversation')&&text.includes('Existing reply from the earlier create')),true,`${key} loads the idempotently reused conversation history before replacing the old thread`);
+    const createIds=await page.evaluate(key=>window.__latestContinuationHarnesses[key].calls.filter(call=>call.method==='POST'&&call.path.endsWith('/conversations')).map(call=>call.body.id),key);assert.equal(createIds.length,3,`${key} retries one ambiguous conversation create and one failed readback`);assert.equal(new Set(createIds).size,1,`${key} every ambiguous create retry reuses one conversation id`);
+    let counts=await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];return {turns:h.turnPosts,creates:h.createPosts,historyReads:h.historyReads,transcriptions:h.transcriptions,recordings:h.recordings};},key);assert.deepEqual(counts,{turns:1,creates:3,historyReads:3,transcriptions:0,recordings:0},`${key} continuation verifies history but never sends, records, or transcribes`);
+
+    await host.getByRole('button',{name:language==='zh'?'新建讨论':'New conversation',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].createPosts===4&&document.querySelector(`#latest-continuation-${key} .memory-chat-conversation-select option:nth-child(3)`),key);
+    assert.equal(await composer.inputValue(),'',`${key} ordinary new conversation starts with an empty composer`);
+    await host.locator('.memory-chat-conversation-select').selectOption(createIds[0]);await page.waitForFunction(key=>document.querySelector(`#latest-continuation-${key} .memory-chat-history`)?.innerText.includes('Recovered history for this conversation'),key);assert.equal(await composer.inputValue(),editedDraft,`${key} ordinary new conversation keeps the prior thread's draft partitioned`);
+
+    await page.evaluate(({key,mode})=>{window.__latestContinuationHarnesses[key].mode=mode;}, {key,mode:'unrelated'});
+    await host.getByRole('button',{name:language==='zh'?'发送这条消息':'Send this message',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].turnPosts===2,key);
+    assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} unrelated 429 does not offer continuation`);
+    await page.evaluate(key=>{window.__latestContinuationHarnesses[key].mode='malformed';},key);
+    await host.getByRole('button',{name:language==='zh'?'重试同一条消息':'Retry the same message',exact:true}).click();
+    await page.waitForFunction(key=>window.__latestContinuationHarnesses[key].turnPosts===3,key);
+    assert.equal(await host.locator('.memory-chat-continue-new').count(),0,`${key} malformed 429 does not offer continuation`);
+    await page.evaluate(key=>{window.__latestContinuationHarnesses[key].mode='full';},key);
+    await host.getByRole('button',{name:language==='zh'?'重试同一条消息':'Retry the same message',exact:true}).click();await host.locator('.memory-chat-continue-new').waitFor();
+    const detached=await host.locator('.memory-chat-continue-new').elementHandle();
+    await page.evaluate(async key=>{const h=window.__latestContinuationHarnesses[key];await h.ui.attach(h.host,h.replacement);},key);
+    await detached.evaluate(node=>node.click());
+    counts=await page.evaluate(key=>({turns:window.__latestContinuationHarnesses[key].turnPosts,creates:window.__latestContinuationHarnesses[key].createPosts}),key);
+    assert.deepEqual(counts,{turns:4,creates:4},`${key} detached continuation action cannot create a thread for the replacement reader`);
+    await page.evaluate(key=>{const h=window.__latestContinuationHarnesses[key];h.ui.clear();h.host.remove();delete window.__latestContinuationHarnesses[key];},key);
+  };
+  for(const type of ['story','memoir'])for(const language of ['zh','en'])await latestContinuationHarness(type,language);
+  pass('Story and memoir conversation-cap recovery preserves rejected drafts, creates only on explicit choice, refuses unrelated 429s, and fences detached actions in Chinese and English at 150%');
+
+  const raw429=page.evaluate(async()=>{
+    const modes=['exact','extra-key','blank-detail','non-json','unrelated','malformed','oversized'],results=[];
+    for(const mode of modes){try{await window.__memoryCommunityRawRequestForTest(`/memory-community/v1/__test429/${mode}`);results.push({mode,unexpected:true});}catch(error){results.push({mode,status:error.status,code:error.code,hasDetail:Object.hasOwn(error,'detail'),message:error.message});}}
+    return results;
+  });
+  const raw429Results=await raw429;
+  assert.deepEqual(raw429Results.map(({mode,status,code,hasDetail})=>({mode,status,code,hasDetail})),[
+    {mode:'exact',status:429,code:'memory_conversation_full',hasDetail:false},
+    {mode:'extra-key',status:429,code:undefined,hasDetail:false},
+    {mode:'blank-detail',status:429,code:undefined,hasDetail:false},
+    {mode:'non-json',status:429,code:undefined,hasDetail:false},
+    {mode:'unrelated',status:429,code:undefined,hasDetail:false},
+    {mode:'malformed',status:429,code:undefined,hasDetail:false},
+    {mode:'oversized',status:429,code:undefined,hasDetail:false},
+  ],'the app request helper extracts only the exact allowlisted code from bounded JSON error bodies');
+  pass('429 transport parser retains only the allowlisted recovery code and rejects malformed, oversized and unrelated bodies');
+
+  await page.evaluate(()=>{window.__memoryCommunityRaw429StaleOutcome=window.__memoryCommunityRawRequestForTest('/memory-community/v1/__test429/stale').then(()=>({ok:true}),error=>({name:error.name,code:error.code}));});
+  await page.waitForFunction(()=>window.__stale429ReadStarted===true);
+  await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});
+  await page.evaluate(()=>{window.__stale429Controller.enqueue(new TextEncoder().encode('{"code":"memory_conversation_full"}'));window.__stale429Controller.close();});
+  await page.waitForFunction(()=>window.__memoryCommunityRaw429StaleOutcome!==undefined);
+  const stale429Outcome=await page.evaluate(()=>window.__memoryCommunityRaw429StaleOutcome);assert.equal(stale429Outcome.name,'AbortError','stale body reads abort');assert.notEqual(stale429Outcome.code,'memory_conversation_full','a stale epoch after the deferred body read never exposes the allowlisted recovery discriminator');
+  pass('Stale epoch after deferred 429 body read discards the allowlisted code');
+
+  const runMemoirIntroductionVoiceJourney=async language=>{
+    await page.setViewportSize({width:390,height:844});
+    const audioBase64=wav().toString('base64');
+    await page.evaluate(async({language,audioBase64})=>{
+      const bookId='a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1',storyId='b2b2b2b2-b2b2-42b2-82b2-b2b2b2b2b2b2',library=`intro-voice-${language}`;
+      const story={id:storyId,revision:'2',title:'Saved family story',item_count:1,chapter_count:1,cover_asset_id:null};
+      const detail={version:1,type:'memoir',id:bookId,revision:'4',title:'Synthetic family memoir',introduction:'',language:'zh',can_edit:true,stories:[story]};
+      const summary={id:bookId,title:detail.title,introduction:detail.introduction,can_edit:true,stories:[story]};
+      const host=document.createElement('main');host.id=`memoir-introduction-voice-${language}`;host.className='memory-community';document.body.append(host);
+      const state={language,library,bookId,storyId,host,detail,calls:[],voiceCapabilityCalls:0,captureCalls:0,captureStops:[],transcriptionCalls:0,writes:[],resolveTranscription:null};
+      const request=async(path,options={})=>{
+        const savedOptions={...options,body:options.body?structuredClone(options.body):options.body};state.calls.push({path,options:savedOptions});
+        if(path.endsWith('/capabilities'))return {version:1,enabled:true,contributions_enabled:false,generation_enabled:false};
+        if(path===`/memory-community/v1/books?page=1`)return {version:1,library_id:library,page:1,page_size:8,has_more:false,can_create:true,items:[summary]};
+        if(path===`/memory-community/v1/books/${bookId}`&&(!options.method||options.method==='GET'))return structuredClone(detail);
+        if(path===`/memory-community/v1/books/${bookId}/editorial`)return {version:1,id:bookId,revision:detail.revision,state:'empty',children:[{story_id:storyId,revision:'2'}],introduction_source_refs:[],transitions:[]};
+        if(path===`/memory-stories/${storyId}/contribution-refs?revision=2`)return {version:1,id:storyId,revision:'2',chapters:[{id:'chapter-1',contribution_ids:[]}]};
+        if(path==='/memory-stories?page=1')return {version:1,library_id:library,page:1,page_size:8,has_more:false,items:[{id:storyId,title:story.title,theme:'everyday',language:'zh',revision:'2',cover_asset_id:null,item_count:1,chapter_count:1}]};
+        if(path===`/memory-community/v1/books/${bookId}`&&options.method==='PUT'){
+          state.writes.push({path,body:structuredClone(options.body)});detail.revision='5';detail.introduction=options.body.introduction;summary.introduction=options.body.introduction;
+          return {version:1,id:bookId,revision:'5'};
+        }
+        throw new Error(`Unexpected generated memoir voice request: ${path}`);
+      };
+      const audioBytes=Uint8Array.from(atob(audioBase64),char=>char.charCodeAt(0));
+      const generatedWav=new File([audioBytes],'synthetic-generated.wav',{type:'audio/wav'});
+      const ui=window.PhotoHouseMemoryCommunity({scope:{account:`synthetic-owner-${language}`,library,language,locked:false},request,
+        voiceCapabilities:async()=>{state.voiceCapabilityCalls++;return {transcribe:true,max_audio_seconds:10};},
+        capture:async()=>{state.captureCalls++;return {stop:async keep=>{state.captureStops.push(Boolean(keep));return keep?generatedWav:null;}};},
+        transcribe:async file=>{state.transcriptionCalls++;state.audioSize=file.size;return new Promise(resolve=>{state.resolveTranscription=resolve;});},
+      });
+      state.ui=ui;window.__memoirIntroductionVoiceJourneys??={};window.__memoirIntroductionVoiceJourneys[language]=state;
+      await ui.books(host);await host.querySelector('.memory-book-edit').click();
+    },{language,audioBase64});
+
+    const host=page.locator(`#memoir-introduction-voice-${language}`),form=host.locator('.memory-community-book-form');
+    await form.waitFor();
+    assert.equal(await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return [h.voiceCapabilityCalls,h.captureCalls,h.transcriptionCalls,h.writes.length];},language).then(values=>values.every(value=>value===0)),true,`${language} opening the editor starts no voice capability, capture, transcription, or write`);
+    const toggle=host.locator('.memory-book-introduction-voice-toggle');await toggle.waitFor();
+    assert.equal(await toggle.innerText(),language==='zh'?'口述开篇':'Dictate introduction',`${language} exposes the localized explicit dictation action`);
+    await toggle.click();await host.locator('.memory-book-introduction-record').waitFor();
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].voiceCapabilityCalls,language),1,'voice capability is requested only after explicit dictation');
+    await host.locator('.memory-book-introduction-record').click();await host.locator('.memory-book-introduction-stop').waitFor();
+    await host.locator('.memory-book-introduction-stop').click();
+    await page.waitForFunction(language=>window.__memoirIntroductionVoiceJourneys[language].transcriptionCalls===1,language);
+    const intro=host.locator('textarea[name="introduction"]');await intro.fill(language==='zh'?'转写期间继续输入的开篇':'Latest typed while transcription was pending');
+    const state=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.resolveTranscription({version:1,text:language==='zh'?'合成口述原文':'Synthetic spoken words'});return {captureCalls:h.captureCalls,transcriptionCalls:h.transcriptionCalls,audioSize:h.audioSize};},language);
+    assert.equal(state.captureCalls,1,'one explicit record action captures the generated WAV');assert.equal(state.transcriptionCalls,1,'one explicit stop starts the synthetic transcription');assert(state.audioSize>44,'browser voice fixture transcribes generated WAV bytes');
+    const transcript=host.locator('.memory-book-introduction-transcript');await transcript.waitFor();
+    const enlarged=await host.evaluate(root=>{
+      const editor=root.querySelector('.memory-community-book-editor');
+      const nodes=[...editor.querySelectorAll('*')].filter(node=>node.getClientRects().length);
+      // Snapshot inherited sizes before changing any ancestor: otherwise a 150%
+      // fixture compounds the scale at every nested element.
+      const rows=nodes.map((node,index)=>{const style=getComputedStyle(node);return {index,size:parseFloat(style.fontSize),line:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldLine:node.style.lineHeight};});
+      rows.forEach(row=>{const node=nodes[row.index];node.dataset.introVoiceFont=String(row.index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.line))node.style.lineHeight=`${row.line*1.5}px`;});
+      return rows;
+    });
+    assert.equal(await host.locator('button[type="submit"]').isDisabled(),true,'save remains blocked while transcript review is pending');
+    assert.deepEqual(await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return [h.voiceCapabilityCalls,h.captureCalls,h.transcriptionCalls,h.writes.length];},language),[1,1,1,0],'opening and transcribing do not save');
+    const rootOverflow=await form.evaluate(node=>[node,...node.querySelectorAll('section,fieldset,label,button')].filter(child=>child.scrollWidth>child.clientWidth+1).map(child=>({tag:child.tagName,className:String(child.className),scroll:child.scrollWidth,client:child.clientWidth})).slice(0,12));
+    assert.deepEqual(rootOverflow,[],`${language} introduction controls wrap without horizontal overflow at 390px and 150% text`);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=390),true,`${language} page stays within 390px at 150% text`);
+    const unclipped=await host.evaluate(root=>[...root.querySelectorAll('button,label,textarea,input')].filter(node=>node.getClientRects().length).every(node=>{const rect=node.getBoundingClientRect();return rect.left>=-1&&rect.right<=innerWidth+1&&rect.width>0&&rect.height>0;}));
+    assert.equal(unclipped,true,`${language} voice controls and form fields are visible and not clipped`);
+    await page.screenshot({path:path.join(artifacts,`memoir-introduction-voice-${language}-390px-150.png`),fullPage:true});
+    await host.evaluate((root,rows)=>rows.forEach(row=>{const editor=root.querySelector('.memory-community-book-editor'),node=editor?.querySelector(`[data-intro-voice-font="${row.index}"]`);if(node){node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldLine;delete node.dataset.introVoiceFont;}}),enlarged);
+
+    const longTyped='界'.repeat(2000);await intro.fill(longTyped);
+    const spoken=language==='zh'?'合成口述':'synthetic words';await transcript.fill(spoken);
+    await host.locator('.memory-book-introduction-insert').click();
+    assert.equal(await intro.inputValue(),longTyped,`${language} UTF-8 overflow retains all typed introduction text`);
+    assert.equal(await transcript.inputValue(),spoken,`${language} UTF-8 overflow retains the editable transcript`);
+    assert.notEqual(await host.locator('.memory-book-introduction-status').innerText(),'','UTF-8 overflow is explained inline');
+
+    const latest=language==='zh'?'最新补充的开篇':'A later typed opening';await intro.fill(latest);const corrected=language==='zh'?'核对后的口述文字':'Reviewed spoken words';await transcript.fill(corrected);
+    const staleInsert=await host.locator('.memory-book-introduction-insert').elementHandle();assert(staleInsert);
+    await host.locator('.memory-book-introduction-insert').click();
+    const combined=`${latest}\n${corrected}`;assert.equal(await intro.inputValue(),combined,`${language} Add appends the reviewed words to the latest typed introduction using one newline`);
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length,language),0,'adding transcript never writes the memoir');
+    await host.locator('.memory-book-compose-cta').click();assert.equal(await form.isVisible(),false,'editor can be collapsed after insertion');
+    await host.locator('.memory-book-compose-cta').click();await form.waitFor();
+    assert.equal(await form.locator('textarea[name="introduction"]').inputValue(),combined,'reopening the editor preserves its current introduction draft');
+    await staleInsert.evaluate(node=>node.click());
+    assert.equal(await form.locator('textarea[name="introduction"]').inputValue(),combined,'a detached Insert control cannot change the replacement editor draft');
+    assert.equal(await page.evaluate(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length,language),0,'the detached action cannot write');
+    await form.locator('button[type="submit"]').click();
+    await page.waitForFunction(language=>window.__memoirIntroductionVoiceJourneys[language].writes.length===1,language);
+    const saved=await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];return {write:h.writes[0],stopCalls:h.captureStops,requests:h.calls.map(call=>`${call.options.method||'GET'} ${call.path}`)};},language);
+    assert.equal(saved.write.body.introduction,combined,`${language} only explicit Save persists the exact reviewed introduction`);
+    assert.deepEqual(saved.stopCalls,[true],'recorded fixture audio is explicitly stopped for transcription once');
+    assert(saved.requests.some(request=>request.startsWith('PUT /memory-community/v1/books/')),'explicit Save is the only memoir write request');
+    assert.equal(saved.requests.filter(request=>/\b(POST|PUT|DELETE)\b/.test(request)).length,1,'no automatic write occurs during capture, ASR, review, or Add');
+    await page.evaluate(language=>{const h=window.__memoirIntroductionVoiceJourneys[language];h.ui.clear();h.host.remove();delete window.__memoirIntroductionVoiceJourneys[language];},language);
+    pass(`${language.toUpperCase()} memoir introduction dictation is explicit, reviewable, retained, and readable at 390px/150%`);
+  };
+  await runMemoirIntroductionVoiceJourney('en');
+  await runMemoirIntroductionVoiceJourney('zh');
+
   assert.deepEqual(external,[]);
   assert.deepEqual(pageErrors,[],`browser uncaught errors; failing requests=${JSON.stringify(requests.filter(item=>item.status>=400))}`);
   const finalState=await rpc({command:'state'});

@@ -17,7 +17,21 @@ import build_staging_package as package
 class StagingPackageTests(unittest.TestCase):
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
+            'backend/app/access/assistant_search.py',
+            'backend/app/access/kinship.py',
             'backend/app/access/assistant_journal.py',
+            'backend/app/access/assistant_workspace_store.py',
+            'backend/app/access/assistant_workspace_transport.py',
+            'backend/app/access/assistant_reading_segments.py',
+            'backend/app/access/assistant_memory_discovery.py',
+            'backend/app/access/assistant_memory_intent.py',
+            'backend/app/access/assistant_saved_memory_tool.py',
+            'backend/app/access/assistant_memory_followup.py',
+            'backend/app/ui/access/assistant-private-workspace.js',
+            'backend/app/ui/access/voice-turn-timing.js',
+            'scripts/prepare_assistant_workspace.py',
+            'scripts/qualify_private_assistant.py',
+            'scripts/qualify_oral_history.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -43,6 +57,9 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/memory_stories.py',
             'backend/app/access/memory_transport.py',
             'backend/app/access/original_deletions.py',
+            'backend/app/access/oral_history_schema.py',
+            'backend/app/access/oral_history_intake.py',
+            'backend/app/access/oral_history_withdrawal.py',
             'backend/app/access/prepared_video.py',
             'backend/app/access/private_storage.py',
             'backend/app/access/model_deployment.py',
@@ -56,10 +73,26 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/upload.py',
             'backend/app/access/upload_schema.py',
             'backend/app/access/upload_transport.py',
+            'backend/app/access/visual_candidates.py',
+            'backend/app/access/visual_vector_artifacts.py',
+            'backend/app/access/visual_vector_cleanup.py',
+            'backend/app/access/visual_vector_erasure.py',
+            'backend/app/access/visual_vector_erasure_catalog.py',
+            'backend/app/access/asset_tombstones.py',
+            'backend/app/access/visual_vector_loader.py',
+            'backend/app/access/visual_vector_publication.py',
+            'backend/app/access/visual_vector_worker.py',
+            'backend/app/access/visual_vector_schema.py',
             'backend/app/access/windows_tts.py',
             'backend/app/home_catalog.py',
             'backend/app/ui/access/memory-community.js',
             'backend/app/ui/access/story-workspace.js',
+            'backend/app/ui/access/memory-groups.js',
+            'backend/app/access/memory_groups.py',
+            'backend/app/access/memory_group_transport.py',
+            'backend/app/access/memory_grouping.py',
+            'backend/app/access/memory_group_schema.py',
+            'backend/migrations/versions/e7c1a9d5b304_memory_groups.py',
             'backend/migrations/versions/a0c9d2e4f817_saved_story_contribution_refs.py',
             'backend/migrations/versions/b1d7e4a9c230_memory_book_editorial.py',
             'backend/migrations/versions/c2e6b8a1d490_reviewed_memoir_editions.py',
@@ -78,6 +111,13 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/apply_memory_editorial_schema.py',
             'scripts/apply_memory_sources_schema.py',
             'scripts/home_memory_envelope.py',
+            'scripts/bounded_windows_job.py',
+            'scripts/qualify_vector_erasure.py',
+            'scripts/qualify_memory_groups.py',
+            'scripts/qualify_memory_group_workers.py',
+            'scripts/apply_memory_group_schema.py',
+            'scripts/run_approved_cpu_worker.py',
+            'scripts/run_approved_video_worker.py',
             'scripts/initialize_original_deletions.py',
             'scripts/prepare_access_discovery_index.py',
             'scripts/replay_original_deletions.py',
@@ -115,9 +155,22 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
+                'from app.access.visual_vector_loader import VisualVectorReads\n'
+                'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
+                'from app.access.visual_vector_schema import sqlite_visual_vector_contract\n'
+                'from app.access.visual_vector_publication import VectorPublicationStore, verify_visual_publication_schema\n'
+                'from app.access.visual_vector_worker import ApprovedImageClaim, approved_vector_store\n'
+                'from app.access.visual_vector_cleanup import plan_asset_vector_cleanup\n'
+                'from app.access.visual_vector_erasure import VectorErasureStore, verify_visual_erasure_schema\n'
+                'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
+                'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
+                'import qualify_oral_history\n'
+                'from app.access.oral_history_intake import OralHistoryIntake\n'
+                'from app.access.oral_history_withdrawal import verify_recording_record\n'
+                'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name=='staging_app':\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
@@ -160,7 +213,7 @@ class StagingPackageTests(unittest.TestCase):
             for name in package.FILES:
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),manifest['files'][name])
             self.assertIn('backend/app/ui/photohouse-icon.svg',archive.namelist())
-            self.assertEqual(manifest['migration_revision'], 'd1f6a8c3e920')
+            self.assertEqual(manifest['migration_revision'], 'a0c9d2e4f817')
             self.assertIn('backend/migrations/versions/c3f7a91d5e20_upload_auto_approval_policy.py',
                           archive.namelist())
             for name in ('backend/app/tasks.py', 'backend/app/gps_utils.py',

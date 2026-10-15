@@ -86,7 +86,7 @@ operator procedure; the checker does not prove when the inventory was created.
 
 The separate [`run_memoir_quality_canary.py`](../server/scripts/run_memoir_quality_canary.py)
 can submit one pinned generated bundle without a family database, API, or worker.
-Its default command validates three memoir cases and three independent title cases and prints a redacted plan:
+Its default command validates five memoir cases and three independent title cases and prints a redacted plan:
 
 ```sh
 python3 server/scripts/run_memoir_quality_canary.py
@@ -116,15 +116,25 @@ python3 server/scripts/run_memoir_quality_canary.py --run \
   --output-directory /absolute/private/new-coherence-run
 ```
 
-The coherence and conflict cases use the narrative contract; the provenance
-case uses the companion contract and can return an answer, clarification, or
-proposal. Title cases use the separate title suggester and its `suggest` contract:
+The coherence, conflict, similar-photo, and speaker/uploader/subject cases use
+the narrative contract; the provenance case uses the companion contract and can
+return an answer, clarification, or proposal. Title cases use the separate title
+suggester and its `suggest` contract:
 
 | Case | Input | Review focus |
 |---|---|---|
 | `synthetic-title-family` | Chinese family recollection and draft | Natural Chinese titles, supported wording and exact source citations |
 | `synthetic-title-uncertainty` | English family recollection, uncertain AI estimate and conflicting draft | Preserve uncertainty; do not present an estimated year as confirmed |
 | `synthetic-title-abstention` | Empty source list | No invented title; the real adapter returns an empty proposal without an HTTP request |
+
+The additive `synthetic-similar-photos` case checks that different dates,
+activities, identities and citations stay tied to separate similar-looking
+photo descriptions. It is a text-only narrative case, not a visual recognition
+test. `synthetic-speaker-uploader-subject` checks that a story subject, two
+reported speakers and two uploaders remain distinct while conflicting,
+uncertain transcript recollections and upload dates are handled cautiously.
+The source schema has only a free-text `author` label; the case does not qualify
+structured speaker/uploader metadata.
 
 Select a title case with the same explicit `--run` procedure. Nonempty cases
 make one request without retries or a narrative fallback. Each output must pass
@@ -133,10 +143,11 @@ The runner refuses substituted tasks, bundles, hashes and review criteria before
 creating an output directory or constructing a provider. Human criteria stay
 unreviewed: a structurally valid title does not establish grounded wording.
 
-The original three memoir bundle hashes and tasks remain unchanged. Adding the
-title suite changes the overall case-plan hash; existing evidence must match
-its exact source plan and cannot be relabeled as title qualification. Current and
-rollback title bindings require their own observations and review.
+The original three memoir and three title bundle hashes and tasks remain
+unchanged. The two added narrative bundles change the overall case-plan hash;
+existing evidence must match its exact source plan and cannot be relabeled for
+the expanded inventory. Current and rollback title bindings require their own
+observations and review.
 
 Client
 timeouts are at most 30 seconds by default; the adapter also checks an elapsed deadline.

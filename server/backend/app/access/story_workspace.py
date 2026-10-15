@@ -15,7 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from .library import LibraryRoute, HINT_FIELDS, SOURCE, _asset, _integer, _query
 from .service import AccessDenied, AccessService
 from .story_outline import build_outline
-from .transport import TransportError, _body, _runtime, credentials_from_request
+from .transport import TransportError, _body, _memory_runtime, credentials_from_request
 
 router = APIRouter(route_class=LibraryRoute)
 FIELDS = {'asset_ids', 'theme', 'language', 'title'}
@@ -165,7 +165,35 @@ def related_media(runtime, token, library, body):
             return result
 
 
-def collect_items(db, library, ids):
+def selection_revision(library, items, group_dependencies=None):
+    values = [library, items]
+    if group_dependencies is not None:
+        values.append(group_dependencies)
+    return hashlib.sha256(json.dumps(values, sort_keys=True, ensure_ascii=True,
+                                     allow_nan=False).encode()).hexdigest()
+
+
+def collect_items(db, library, ids, *, memory_groups_enabled=False, group_dependencies=None):
+    if type(memory_groups_enabled) is not bool:
+        raise TransportError(503, 'Shared memory evidence unavailable')
+    shared = {}
+    if memory_groups_enabled:
+        from .memory_group_schema import GROUP_REVISION, verify_memory_group_schema
+        if ([tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
+                != [(GROUP_REVISION,)] or not verify_memory_group_schema(db)):
+            raise TransportError(503, 'Shared memory evidence unavailable')
+        from .shared_memory_evidence import shared_notes
+        shared = shared_notes(db, library, ids, dependencies=group_dependencies)
+
+    def family_evidence(note):
+        value = {'id': 'family-' + note[0], 'source': 'family',
+                 'title': _text(note[1], 512), 'text': _text(note[2]),
+                 'revision': note[3]}
+        if memory_groups_enabled:
+            from .memory_jobs import text
+            value.update(origin_asset_id=str(note[4]), byline=text(note[5], 256, blank=True))
+        return value
+
     items = []
     for ident in ids:
         row = db.execute('SELECT ' + HINT_FIELDS + SOURCE + ' AND a.id=?',
@@ -178,12 +206,16 @@ def collect_items(db, library, ids):
         evidence = []
         # Children and parents share the same authorization snapshot. Each
         # source is bounded and current; revisions/history never enter drafts.
-        for story in db.execute('''SELECT id,substr(title,1,160),substr(text,1,1800),revision
+        for story in db.execute('''SELECT id,substr(title,1,160),substr(text,1,1800),revision,asset_id,byline
                 FROM access_stories WHERE library_id=? AND asset_id=? AND deleted=0
                 ORDER BY updated_at DESC,id LIMIT 2''', (library, ident)):
-            evidence.append({'id': 'family-' + story[0], 'source': 'family',
-                             'title': _text(story[1], 512), 'text': _text(story[2]),
-                             'revision': story[3]})
+            evidence.append(family_evidence(story))
+        known = {entry['id'] for entry in evidence}
+        for note in shared.get(ident, {}).values():
+            value = family_evidence(note)
+            if value['id'] not in known:
+                evidence.append(value)
+                known.add(value['id'])
         for caption in db.execute('''SELECT id,substr(text,1,1800),user_edited
                 FROM captions WHERE asset_id=? AND superseded=0
                 ORDER BY user_edited DESC,id DESC LIMIT 1''', (ident,)):
@@ -191,6 +223,8 @@ def collect_items(db, library, ids):
                              'source': 'family' if caption[2] else 'ai',
                              'title': '', 'text': _text(caption[1])})
         item['evidence'] = evidence
+        if len(evidence) > 12:
+            raise TransportError(422, 'Choose a smaller set of shared memories')
         items.append(item)
     return items
 
@@ -201,14 +235,19 @@ def preview(runtime, token, library, body):
         access = AccessService(db, clock=runtime.clock)
         with access._transaction():
             access._require(token, library, 'library.read')
-            items = collect_items(db, library, ids)
+            groups = [] if runtime.memory_groups_enabled else None
+            items = collect_items(db, library, ids,
+                                  memory_groups_enabled=runtime.memory_groups_enabled,
+                                  group_dependencies=groups)
             outline_items = [{key: item[key] for key in ('id', 'kind', 'taken_at', 'date_hint')} |
                 {'evidence': [{key: e[key] for key in ('id', 'source', 'text')}
                               for e in item['evidence']]} for item in items]
-            outline = build_outline(outline_items, theme=body['theme'], language=body['language'],
-                                    title=body['title'])
-            revision = hashlib.sha256(json.dumps([library, items], sort_keys=True,
-                ensure_ascii=True, allow_nan=False).encode()).hexdigest()
+            try:
+                outline = build_outline(outline_items, theme=body['theme'], language=body['language'],
+                                        title=body['title'])
+            except ValueError:
+                raise TransportError(422, 'Choose a smaller story context') from None
+            revision = selection_revision(library, items, groups)
             result = {'version': 1, 'library_id': library, 'selection_revision': revision,
                       'state': 'draft', 'saved': False, 'items': items, **outline}
             response = JSONResponse(result)
@@ -222,7 +261,7 @@ async def story_preview(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
     body = await _body(request, FIELDS, max_body=4096)
-    result = await run_in_threadpool(preview, _runtime(request, allow_query=True),
+    result = await run_in_threadpool(preview, _memory_runtime(request, allow_query=True),
                                      token, query['library'], body)
     return JSONResponse(result)
 
@@ -232,7 +271,7 @@ async def story_related_media(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
     body = await _body(request, {'asset_ids', 'before_id'}, max_body=4096)
-    result = await run_in_threadpool(related_media, _runtime(request, allow_query=True),
+    result = await run_in_threadpool(related_media, _memory_runtime(request, allow_query=True),
                                      token, query['library'], body)
     return JSONResponse(result)
 
@@ -246,7 +285,12 @@ def title_capabilities(runtime, token, library, enabled):
             'needs_review': True}
 
 
-def title_suggestions(runtime, token, library, body, adapter, lock):
+def title_suggestions(runtime, token, library, body, adapter, lock, source_review=False):
+    from .memory_stories import SOURCE_POLICY
+    if type(source_review) is not bool or ('source_policy' in body) != source_review:
+        raise TransportError(400, 'Invalid title source choice')
+    if source_review and body['source_policy'] != SOURCE_POLICY:
+        raise TransportError(400, 'Invalid title source choice')
     # Authorize every selected frame before passing any context to inference.
     outline_body = {key: body[key] for key in ('asset_ids', 'theme', 'language')} | {'title': ''}
     snapshot = preview(runtime, token, library, outline_body)
@@ -255,21 +299,46 @@ def title_suggestions(runtime, token, library, body, adapter, lock):
     try:
         from .memory_narrative import _strict_loads, LocalMemoryNarrativeError
         chapters = _strict_loads(body['chapters'].encode('utf-8'))
-        if type(chapters) is not list or len(chapters) != len(snapshot['chapters']):
+        if type(chapters) is not list or not 1 <= len(chapters) <= 6:
             raise ValueError()
-        for expected, chapter in zip(snapshot['chapters'], chapters):
-            if (type(chapter) is not dict or set(chapter) != {'id', 'narration'} or
-                    chapter['id'] != expected['id'] or type(chapter['narration']) is not str or
+        explicit_layout = source_review and any(type(chapter) is dict and 'asset_ids' in chapter for chapter in chapters)
+        if not explicit_layout and len(chapters) != len(snapshot['chapters']):
+            raise ValueError()
+        if explicit_layout:
+            layout = []
+            for chapter in chapters:
+                if type(chapter) is not dict or type(chapter.get('asset_ids')) is not list or not 1 <= len(chapter['asset_ids']) <= 4:
+                    raise ValueError()
+                layout.extend(chapter['asset_ids'])
+            # A title request may preserve manually arranged chapters, but cannot
+            # duplicate, omit, reorder or add to the authorized media selection.
+            if layout != [item['id'] for item in snapshot['items']]:
+                raise ValueError()
+        for index, chapter in enumerate(chapters):
+            fields = {'id', 'narration'} | ({'evidence_ids'} if source_review else set()) | ({'asset_ids'} if explicit_layout else set())
+            if (type(chapter) is not dict or set(chapter) != fields or
+                    chapter['id'] != f'chapter-{index+1}' or type(chapter['narration']) is not str or
                     len(chapter['narration'].encode('utf-8')) > 6000 or
                     any((ord(c) < 32 or 0x7f <= ord(c) <= 0x9f) and c not in '\n\t' for c in chapter['narration'])):
                 raise ValueError()
+            if source_review:
+                refs = chapter['evidence_ids']
+                chapter_assets = chapter['asset_ids'] if explicit_layout else snapshot['chapters'][index]['asset_ids']
+                available = {e['id'] for item in snapshot['items']
+                             if item['id'] in chapter_assets for e in item['evidence']}
+                if (type(refs) is not list or len(refs) > 12 or
+                        any(type(value) is not str or value not in available for value in refs)
+                        or len(set(refs)) != len(refs)):
+                    raise ValueError()
     except (ValueError, TypeError, UnicodeError, RecursionError):
         raise TransportError(400, 'Invalid title context') from None
     if adapter is None:
         raise TransportError(503, 'Title suggestions unavailable')
     from .story_titles import validate_bundle, validate_suggestions
-    sources = [{'id': e['id'], 'source': e['source'], 'text': e['text']}
-               for item in snapshot['items'] for e in item['evidence'] if e['text'].strip()]
+    chosen = {ref for chapter in chapters for ref in chapter.get('evidence_ids', [])}
+    sources = list({e['id']: {'id': e['id'], 'source': e['source'], 'text': e['text']}
+                    for item in snapshot['items'] for e in item['evidence']
+                    if e['text'].strip() and (not source_review or e['id'] in chosen)}.values())
     sources.extend({'id': 'draft-' + chapter['id'], 'source': 'draft',
                     'text': _text(chapter['narration'], 1800)}
                    for chapter in chapters if chapter['narration'].strip())
@@ -300,15 +369,36 @@ async def story_title_capabilities(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
     return JSONResponse(await run_in_threadpool(title_capabilities,
-        _runtime(request, allow_query=True), token, query['library'],
+        _memory_runtime(request, allow_query=True), token, query['library'],
         request.app.state.story_title_suggester is not None))
+
+
+def source_capabilities(runtime, token, library):
+    from .memory_stories import SOURCE_POLICY
+    with runtime.connection_factory() as db:
+        access = AccessService(db, clock=runtime.clock)
+        with access._transaction():
+            access._require(token, library, 'library.read')
+    return {'version': 1, 'source_policy': SOURCE_POLICY,
+            'max_sources_per_chapter': 12, 'needs_review': True}
+
+
+@router.get('/story-workspace/source-capabilities')
+async def story_source_capabilities(request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library'})
+    return JSONResponse(await run_in_threadpool(source_capabilities,
+        _memory_runtime(request, allow_query=True), token, query['library']))
 
 
 @router.post('/story-workspace/title-suggestions')
 async def story_title_suggestions(request: Request):
+    from .memory_stories import _source_review
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library'})
-    body = await _body(request, {'asset_ids', 'theme', 'language', 'selection_revision', 'chapters'}, max_body=65536)
+    query = _query(request, {'library', 'source_review'})
+    review = _source_review(query)
+    fields = {'asset_ids', 'theme', 'language', 'selection_revision', 'chapters'} | ({'source_policy'} if review else set())
+    body = await _body(request, fields, max_body=65536)
     return JSONResponse(await run_in_threadpool(title_suggestions,
-        _runtime(request, allow_query=True), token, query['library'], body,
-        request.app.state.story_title_suggester, request.app.state.story_title_lock))
+        _memory_runtime(request, allow_query=True), token, query['library'], body,
+        request.app.state.story_title_suggester, request.app.state.story_title_lock, review))

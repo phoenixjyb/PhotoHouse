@@ -11,25 +11,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.photohouse.connected.core.MemoryStoryEvidence
+import dev.photohouse.connected.core.MemoryStoryAsset
 import dev.photohouse.connected.core.SavedMemoryStory
 import dev.photohouse.connected.core.SavedMemoryStoryChapter
 
+internal data class ChapterEvidenceReference(
+    val evidence: MemoryStoryEvidence,
+    val originOutsideChapter: Boolean,
+)
+
 /** Select only evidence cited by this chapter and attached to one of its own assets. */
-internal fun chapterSourceReferences(chapter: SavedMemoryStoryChapter, story: SavedMemoryStory): List<MemoryStoryEvidence> {
-    val chapterAssets = chapter.assetIds.toSet()
-    val citedIds = chapter.evidenceIds.toSet()
-    val byId = LinkedHashMap<String, MemoryStoryEvidence>()
-    story.items.asSequence().filter { it.asset.id in chapterAssets }.forEach { item ->
+internal fun chapterSourceReferences(chapter: SavedMemoryStoryChapter, story: SavedMemoryStory): List<ChapterEvidenceReference> =
+    chapterSourceReferences(chapter.assetIds, chapter.evidenceIds, story.items)
+
+internal fun chapterSourceReferences(
+    assetIds: List<String>, evidenceIds: List<String>, items: List<MemoryStoryAsset>,
+): List<ChapterEvidenceReference> {
+    val chapterAssets = assetIds.toSet()
+    val citedIds = evidenceIds.toSet()
+    val byId = LinkedHashMap<String, ChapterEvidenceReference>()
+    items.asSequence().filter { it.asset.id in chapterAssets }.forEach { item ->
         item.evidence.forEach { evidence ->
-            if (evidence.id in citedIds && evidence.id !in byId) byId[evidence.id] = evidence
+            if (evidence.id in citedIds && evidence.id !in byId) {
+                byId[evidence.id] = ChapterEvidenceReference(
+                    evidence = evidence,
+                    originOutsideChapter = evidence.originAssetId != null && evidence.originAssetId !in chapterAssets,
+                )
+            }
         }
     }
-    return chapter.evidenceIds.mapNotNull(byId::get).distinctBy { it.id }
+    return evidenceIds.mapNotNull(byId::get).distinctBy { it.evidence.id }
 }
 
 @Composable
 internal fun ChapterSourceReferences(
-    references: List<MemoryStoryEvidence>,
+    references: List<ChapterEvidenceReference>,
     zh: Boolean,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -47,7 +63,8 @@ internal fun ChapterSourceReferences(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp).testTag("$tag-disclaimer"),
             )
-            references.forEachIndexed { index, evidence ->
+            references.forEachIndexed { index, reference ->
+                val evidence = reference.evidence
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp).testTag("$tag-reference-$index")) {
                     Text(
                         when (evidence.source) {
@@ -59,8 +76,22 @@ internal fun ChapterSourceReferences(
                     )
                     if (evidence.title.isNotBlank()) Text(evidence.title, style = MaterialTheme.typography.labelLarge)
                     Text(evidence.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("$tag-text-${evidence.id}"))
+                    ChapterSourceAttribution(evidence, reference.originOutsideChapter, zh, tag)
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ChapterSourceAttribution(evidence: MemoryStoryEvidence, originOutsideChapter: Boolean, zh: Boolean, tag: String) {
+    fun t(en: String, cn: String) = if (zh) cn else en
+    if (originOutsideChapter && evidence.originAssetId != null) {
+        Text(t("Source item ${evidence.originAssetId}", "来源素材 ${evidence.originAssetId}"),
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("$tag-origin-${evidence.id}"))
+    }
+    evidence.byline?.takeIf { it.isNotBlank() }?.let { byline ->
+        Text(t("Original byline: $byline", "原记录署名：$byline"),
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("$tag-byline-${evidence.id}"))
     }
 }

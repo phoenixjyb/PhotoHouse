@@ -7,6 +7,7 @@ class ProtectedMemoryStoriesTest {
     private val id = "11111111-1111-1111-1111-111111111111"
     private val familyEvidence = """{"id":"family-22222222-2222-2222-2222-222222222222","source":"family","title":"Grandma","text":"line 1\r\nline 2","revision":2}"""
     private val captionEvidence = """{"id":"caption-42","source":"family","title":"","text":""}"""
+    private val sharedEvidence = """{"id":"family-33333333-3333-4333-8333-333333333333","source":"family","title":"Grandma's note","text":"We shared this memory.","revision":4,"origin_asset_id":"99","byline":"Grandma & family"}"""
     private fun item(id: String, library: String = "family", evidence: String = "[]") =
         """{"id":"$id","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":"2024-05-01","thumbnail_url":"/assets/$id/thumbnail?library=$library","date_hint":null,"evidence":$evidence}"""
     private fun summary(id: String = this.id) =
@@ -44,6 +45,50 @@ class ProtectedMemoryStoriesTest {
         val parsed = ProtectedMemoryStoriesWire.detail(raw.replace("\"revision\":\"3\"", "\"revision\":\"4\"", false).toByteArray(), "family", id, 3)
         assertEquals(4, parsed.revision)
         assertEquals(1800, parsed.items.first().evidence.single().text.length)
+    }
+
+    @Test fun acceptsConsistentSharedEvidenceAndRejectsConflictsOrPartialAttribution() {
+        val shared = detail(items = item("1", evidence = "[$sharedEvidence]") + "," + item("2", evidence = "[$sharedEvidence]"),
+            chapters = chapter(evidenceIds = "\"family-33333333-3333-4333-8333-333333333333\""))
+        val parsed = ProtectedMemoryStoriesWire.detail(shared.toByteArray(), "family", id, 3)
+        assertEquals("99", parsed.items.first().evidence.single().originAssetId)
+        assertEquals("Grandma & family", parsed.items.first().evidence.single().byline)
+        assertEquals(parsed.items.first().evidence.single(), parsed.items.last().evidence.single())
+
+        val conflict = sharedEvidence.replace("We shared this memory.", "Different payload")
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$sharedEvidence]") + "," + item("2", evidence = "[$conflict]")).toByteArray(),
+            "family", id, 3) }
+        val repeatedCaption = """{"id":"caption-101","source":"ai","title":"","text":"Same caption"}"""
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$repeatedCaption]") + "," + item("2", evidence = "[$repeatedCaption]")).toByteArray(),
+            "family", id, 3) }
+        val legacyFamily = sharedEvidence.substringBefore(",\"origin_asset_id\"") + "}"
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$legacyFamily]") + "," + item("2", evidence = "[$legacyFamily]")).toByteArray(),
+            "family", id, 3) }
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$sharedEvidence,$sharedEvidence]") + "," + item("2")).toByteArray(),
+            "family", id, 3) }
+        val partial = sharedEvidence.replace(",\"byline\":\"Grandma & family\"", "")
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$partial]") + "," + item("2")).toByteArray(),
+            "family", id, 3) }
+        val invalidOrigin = sharedEvidence.replace("\"origin_asset_id\":\"99\"", "\"origin_asset_id\":\"01\"")
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$invalidOrigin]") + "," + item("2")).toByteArray(),
+            "family", id, 3) }
+        val longByline = sharedEvidence.replace("Grandma & family", "你".repeat(86))
+        invalid { ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$longByline]") + "," + item("2")).toByteArray(),
+            "family", id, 3) }
+        val twelve = (1..12).joinToString(",") { index ->
+            """{"id":"caption-$index","source":"ai","title":"","text":"Observation $index"}"""
+        }
+        val bounded = ProtectedMemoryStoriesWire.detail(
+            detail(items = item("1", evidence = "[$twelve]") + "," + item("2"),
+                chapters = chapter(evidenceIds = "")).toByteArray(), "family", id, 3)
+        assertEquals(12, bounded.items.first().evidence.size)
     }
 
     @Test fun rejectsCrossLibraryReferencesUnknownKeysWrongOrderingAndMismatchedRevision() {

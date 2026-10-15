@@ -55,7 +55,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       conversationHelp:'对话会在 30 天后清除。每条消息都由你明确发送；助手不会替你修改故事。', conversationContextHelp:'回复会结合当前材料、当前问题和最多 7 轮之前的对话。更早的消息仍可查看，但不会自动带入这次回复；重要背景可以补充在新问题中。', returnToChapter:'回到正在阅读的章节',
       chatRecovering:'正在核对这段对话中尚未完成的回复…',chatRecoveryFailed:'暂时无法确认这条待处理回复。对话记录已保留；请重试检查后再发送或取消。',chatRecoveryRetry:'重试检查待处理回复',chatPendingSendBlocked:'这段对话已有一条待处理回复。请刷新状态或取消该任务后再发送。',
       chatFollowups:'继续聊聊',chatFollowupHelp:'选择一个问题填入空白消息草稿。检查后，再决定是否发送。',chatFollowupReview:'问题已填入消息草稿。请检查内容，再由你选择发送。',chatFollowupDraftBlocked:'请先发送或清空现有消息草稿，再使用这个问题。',chatFollowupDictationBlocked:'请先结束录音，并加入或丢弃待处理的识别结果。',chatFollowupSendBlocked:'请先完成或重试当前发送。',chatFollowupJobBlocked:'请等待或取消当前回复任务。',chatFollowupImeBlocked:'请先完成正在输入的文字。',chatFollowupSourcesNote:'这些来源说明回复引用了哪些材料，并不能证明其中内容属实。',chatClarificationCue:'AI 想再了解一点',chatClarificationHelp:'可以用自己的话补充；如有建议问题，它只会填入草稿。',chatLatest:'查看最新消息',chatWriteNext:'写下一条',sourceViewTranscript:'查看转写原话',sourceHideTranscript:'收起转写原话',sourceTranscriptAI:'AI 转写 · ',sourceTranscriptPending:'这段录音的转写尚未准备好。',sourceTranscriptMissing:'这段录音目前没有可用转写。',sourceTranscriptRetry:'转写暂时无法载入，请重试。',
-      startChat:'新建讨论', closeChat:'结束并删除这段对话', confirmClose:'删除这段对话和其中的问答？', message:'想和家人一起回想什么？', send:'发送这条消息', retrySend:'重试同一条消息',
+      startChat:'新建讨论', chatFull:'这段对话已满。原消息仍保留，可以在新对话中继续。',chatContinueNew:'在新对话中继续',chatContinueFailed:'新对话尚未创建，原消息仍保留；可以重试。', closeChat:'结束并删除这段对话', confirmClose:'删除这段对话和其中的问答？', message:'想和家人一起回想什么？', send:'发送这条消息', retrySend:'重试同一条消息',
       conversationSelect:'选择一段对话',conversationNumber:n=>`第 ${n} 段对话`,conversationCreated:'刚创建',conversationRestored:'已回到上次选择的对话。',conversationListHelp:'显示最近 8 段对话。',threadBusy:'当前对话仍有任务处理中，完成或取消后再切换或新建。',threadDraftBlocked:'请先结束录音、核对并加入或丢弃识别结果，或处理待重试消息，再切换对话。',threadLoading:'正在载入这段对话…',
       chatStarters:'可以从这里聊起', chatStarterHelp:'选择后可继续修改，确认后再发送。', starterDetails:'补全回忆', starterDetailsText:'这段回忆有哪些细节还需要问问家人？请先说说已有资料，再提出一个值得追问的问题。', starterSequence:'梳理时间线', starterSequenceText:'请梳理这段回忆的已知顺序，标出日期或先后关系还不确定的地方。', starterChapters:'连接章节', starterChaptersText:'请参考家人的原话，建议如何连接已有章节。保留不同人的说法，不要补造经历。',
       memoirStarterDetails:'找出共同线索', memoirStarterDetailsText:'这些已保存的故事有哪些共同线索？请根据现有资料概括，并提出一个值得问问家人的问题。', memoirStarterSequence:'梳理故事顺序', memoirStarterSequenceText:'请梳理这些故事中已知的先后顺序，并明确标出不确定的日期或顺序。', memoirStarterChapters:'连接不同故事', memoirStarterChaptersText:'请建议如何连接这些已保存的故事，保留不同家人的说法，不要补造经历或事实。',
@@ -105,7 +105,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       conversationHelp:'Conversations are removed after 30 days. You send each message yourself; the assistant never changes the story for you.', conversationContextHelp:'Replies use current material, your current question and up to 7 preceding exchanges. Earlier messages remain readable but are not automatically included in this reply; add important context to your new question.', returnToChapter:'Return to current chapter',
       chatRecovering:'Checking the unfinished reply in this conversation…',chatRecoveryFailed:'This pending reply could not be confirmed. Conversation history is preserved; retry the check before sending or cancelling.',chatRecoveryRetry:'Retry checking pending reply',chatPendingSendBlocked:'This conversation already has a pending reply. Refresh its status or cancel the task before sending.',
       chatFollowups:'Keep chatting',chatFollowupHelp:'Choose a question to place it in an empty message draft. Review it before deciding whether to send.',chatFollowupReview:'The question is in your message draft. Review it, then choose Send if you want.',chatFollowupDraftBlocked:'Send or clear your existing message draft before using this question.',chatFollowupDictationBlocked:'Finish recording and add or discard the pending transcript first.',chatFollowupSendBlocked:'Finish or retry the current send first.',chatFollowupJobBlocked:'Wait for or cancel the current reply task first.',chatFollowupImeBlocked:'Finish composing your message first.',chatFollowupSourcesNote:'These references show which material informed the reply; they do not verify that it is true.',chatClarificationCue:'AI would like to know more',chatClarificationHelp:'Add detail in your own words; any suggested question goes into a draft only.',chatLatest:'Latest message',chatWriteNext:'Write next message',sourceViewTranscript:'View transcript',sourceHideTranscript:'Hide transcript',sourceTranscriptAI:'AI transcript · ',sourceTranscriptPending:'The transcript is not ready yet.',sourceTranscriptMissing:'No transcript is available for this recording.',sourceTranscriptRetry:'Transcript could not be loaded. Try again.',
-      startChat:'New conversation', closeChat:'End and delete this conversation', confirmClose:'Delete this conversation and its messages?', message:'What would you like to remember together?', send:'Send this message', retrySend:'Retry the same message',
+      startChat:'New conversation', chatFull:'This conversation is full. Your message is kept; you can continue in a new conversation.',chatContinueNew:'Continue in a new conversation',chatContinueFailed:'The new conversation was not created. Your message is still here; you can retry.', closeChat:'End and delete this conversation', confirmClose:'Delete this conversation and its messages?', message:'What would you like to remember together?', send:'Send this message', retrySend:'Retry the same message',
       conversationSelect:'Choose a conversation',conversationNumber:n=>`Conversation ${n}`,conversationCreated:'Just created',conversationRestored:'Returned to the conversation you last selected.',conversationListHelp:'Showing the 8 most recent conversations.',threadBusy:'This conversation still has a task in progress. Finish or cancel it before switching or starting another.',threadDraftBlocked:'Finish recording, review and add or discard the transcript, or resolve the retry message before switching conversations.',threadLoading:'Loading this conversation…',
       chatStarters:'A place to begin', chatStarterHelp:'Choose a prompt, edit it, then send when ready.', starterDetails:'Fill in a memory', starterDetailsText:'Which details in this memory could we ask the family about? Summarize what the sources say, then suggest one useful follow-up question.', starterSequence:'Arrange the timeline', starterSequenceText:'Arrange the known sequence of this memory and point out any uncertain dates or ordering.', starterChapters:'Connect the chapters', starterChaptersText:'Suggest connections between the existing chapters using family words. Keep different perspectives and do not invent experiences.',
       memoirStarterDetails:'Find shared threads', memoirStarterDetailsText:'What threads connect these saved stories? Summarize only what the sources say, then suggest one useful question for the family.', memoirStarterSequence:'Arrange the stories', memoirStarterSequenceText:'Arrange the known order across these stories and clearly mark any dates or ordering that remain uncertain.', memoirStarterChapters:'Connect the stories', memoirStarterChaptersText:'Suggest a transition between these saved stories. Preserve different family accounts and do not invent experiences or facts.',
@@ -139,13 +139,15 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   };
   let epoch=0, panelRenderEpoch=0, chatAnnouncementKey='', chatComposition=null, chatRenderDeferred=null, bookEpoch=0, currentScope=null, target=null, targetFingerprint='', activeTab='voice';
   let caps=null, capsIdentity='', contributionList=[], contributionDetails=new Map(), canReview=false, canDelete=false, contributionPage=1, contributionsHasMore=false, contributionsBusy=false;
-  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, chatTextDraft='', activeJob=null, pendingJob=null;
+  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, conversationFullRetry=null, chatTextDraft='', activeJob=null, pendingJob=null;
   const conversationHints=new Map(),conversationHintLimit=16;
   let editorialContextChoice=null,editorialContextPreflight=null,editorialContextGeneration=0,editorialContextNeedsDecisionKey='',editorialContextBasicConfirmedKey='',editorialContextDecisionStatusKey='';
   let chatRecoveryGeneration=0,pendingChatRecovery=null,activeChatJobFence=null,jobVisibilityEpoch=0;
   let pendingContribution=null, recording=null, captureHandle=null, captureTimer=null,captureStarting=false,captureGeneration=0,captureForm=null,captureController=null;
   let voiceCapabilitiesOwner='',voiceCapabilitiesValue=null,voiceCapabilitiesPending=null;
   let chatCaptureHandle=null,chatCaptureTimer=null,chatCaptureReady=null,chatRecordingBusy=false,chatCaptureStarting=false,chatTranscribing=false,chatTranscript='',chatVoiceError='',chatVoiceEpoch=0,chatCaptureVoiceTicket=0,chatCaptureController=null;
+  let bookIntroductionVoice=null;
+  const bookStoryPageLoads=new WeakMap();
   let ideaCaptureHandle=null,ideaCaptureTimer=null,ideaCaptureReady=null,ideaCaptureStarting=false,ideaTranscribing=false,ideaTranscript='',ideaVoiceError='',ideaVoiceEpoch=0,ideaVoiceTicket=0,ideaCaptureController=null;
   let ideaComposition=null,ideaRenderDeferred=false,ideaRecordButton=null;
   let contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false},ideaDraft='',memoirFormChoice='existing',bookTitleDraft='',bookIntroDraft='',pendingBook=null,bookSubmittingOwner='', selectedBook=null, bookEditorOpen=false, booksList=[], storyOptions=[], storyPage=0, storyOptionsHasMore=false,bookStorySelection=new Set(),bookPage=1;
@@ -194,7 +196,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(session.controls?.parentNode){session.controls.replaceChildren(session.startButton);}
   }
   const ideaVoicePending=()=>Boolean(ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||ideaTranscript);
-  const isCapturing=()=>Boolean(captureStarting||captureHandle||chatRecordingBusy||chatCaptureHandle||ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing);
+  const isCapturing=()=>Boolean(captureStarting||captureHandle||chatRecordingBusy||chatCaptureHandle||ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||bookIntroductionVoice&&['starting','recording','transcribing'].includes(bookIntroductionVoice.phase));
   function stopPlayback(){stopFamilyListening();forgetUrls();}
   function notifyAudioStart(){if(typeof window.dispatchEvent==='function'&&typeof window.CustomEvent==='function')window.dispatchEvent(new window.CustomEvent('photohouse-memory-audio-start'));}
   const stopPoll=(reset=true)=>{if(pollTimer)clearTimeout(pollTimer);pollTimer=null;if(reset)pollCount=0;};
@@ -216,24 +218,26 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   const clearIdeaVoice=async(clearTranscript=true)=>{ideaVoiceEpoch++;ideaVoiceTicket=0;ideaCaptureController?.abort();ideaCaptureController=null;if(ideaCaptureTimer)clearTimeout(ideaCaptureTimer);ideaCaptureTimer=null;const handle=ideaCaptureHandle;ideaCaptureHandle=null;ideaCaptureReady=null;ideaCaptureStarting=false;ideaTranscribing=false;if(clearTranscript)ideaTranscript='';ideaVoiceError='';if(handle)await handle.stop(false);};
   const stopRequests=(includeBooks=false)=>{for(const controller of controllers)controller.abort();controllers.clear();if(includeBooks){for(const controller of bookControllers)controller.abort();bookControllers.clear();}};
   const withLibrary=path=>path;
-  async function api(path,options={},bookRequest=false) {
+  async function api(path,options={},bookRequest=false,currentRequest=()=>true) {
     const snapshot=scopeNow(),owner=JSON.stringify([snapshot?.account,snapshot?.library]),revision=membershipRevision(snapshot),attachedRevision=bookRequest?null:membershipRevision(currentScope),ticket=bookRequest?bookEpoch:epoch;
+    const activeRequest=()=>Boolean(currentRequest())&&(bookRequest?bookCurrent(ticket,owner):current(ticket,owner));
     if(!snapshot?.account||!snapshot?.library||snapshot?.locked)throw new DOMException('Memory scope closed','AbortError');
+    if(!activeRequest())throw new DOMException('Stale memory request','AbortError');
     if(!bookRequest&&currentScope&&revision!==attachedRevision)throw new DOMException('Stale memory scope','AbortError');
     const controller=new AbortController(),bucket=bookRequest?bookControllers:controllers;bucket.add(controller);
     const externalSignal=options.signal,abortExternal=()=>controller.abort();
     if(externalSignal?.aborted)controller.abort();else externalSignal?.addEventListener('abort',abortExternal,{once:true});
     try {
       const result=await request(withLibrary(path),{...options,signal:controller.signal});
-      if(!(bookRequest?bookCurrent(ticket,owner):current(ticket,owner))||membershipRevision(scopeNow())!==revision||!bookRequest&&currentScope&&membershipRevision(currentScope)!==attachedRevision)throw new DOMException('Stale memory response','AbortError');
+      if(!activeRequest()||membershipRevision(scopeNow())!==revision||!bookRequest&&currentScope&&membershipRevision(currentScope)!==attachedRevision)throw new DOMException('Stale memory response','AbortError');
       return result;
     } catch(error) {
-      const active=bookRequest?bookCurrent(ticket,owner):current(ticket,owner);
+      const active=activeRequest();
       if((error?.status===401||error?.status===403)&&active&&membershipRevision(scopeNow())===revision&&(bookRequest||!currentScope||membershipRevision(currentScope)===attachedRevision))forgetConversationScope(snapshot.account,snapshot.library,revision);
       throw error;
     } finally {externalSignal?.removeEventListener('abort',abortExternal);bucket.delete(controller);}
   }
-  const bookApi=(path,options={})=>api(path,options,true);
+  const bookApi=(path,options={},currentRequest=()=>true)=>api(path,options,true,currentRequest);
   const showStatus=(text,kind='')=>{if(text!==t('conversationRestored'))conversationRestorationNotice=false;if(statusNode){statusNode.textContent=text||'';statusNode.dataset.state=kind;}};
   const notifyError=error=>{if(error?.name==='AbortError')return;if(!error?.status||error.status===401||error.status===403||error.status>=500)onError(error);};
   const report=(error,owner,ticket)=>{if(error?.name==='AbortError')return;if(current(ticket,owner)){showStatus(error?.status===409?t('conflict'):error?.status===422?t('tooLarge'):t('error'),'error');notifyError(error);}};
@@ -316,7 +320,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     clearReplySpeech();clearChatComposition();clearIdeaComposition();epoch++;stopFamilyListening();stopRequests();stopPoll();void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';conversationRestorationNotice=false;forgetUrls();
     targetFingerprint=fingerprint;currentScope={account:s.account,library:s.library,membership_revision:membershipRevision(s)};target={...nextTarget};conversationRestorationNotice=false;memoirFormChoice='existing';
     planData=null;planPanelNode=null;planButton=null;
-    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
+    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
     renderShell(container);
     if(priorJob&&['queued','running'].includes(priorJobState)&&priorScope&&accountKey(s)===JSON.stringify([priorScope.account,priorScope.library]))void request(`${API}/jobs/${priorJob}`,{method:'DELETE'}).catch(()=>{});
     const ticket=epoch,owner=accountKey(s);
@@ -339,7 +343,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     visibilityHandler=()=>{
       jobVisibilityEpoch++;
       if(document.hidden){
-        clearReplySpeech();clearChatComposition();clearIdeaComposition();stopFamilyListening();
+        clearReplySpeech();clearChatComposition();clearIdeaComposition();clearBookIntroductionVoice();stopFamilyListening();
         if(savedEditionState){const state=savedEditionState;clearSavedEditionSource(state,{resetList:true,status:'idle'});renderSavedEditionShelf(state,epoch,accountKey(scopeNow()));}
         forgetUrls();stopPoll();stopRequests(true);void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';
         // Leaving the foreground ends local audio and checks, not submitted work.
@@ -845,7 +849,9 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     const writeNext=btn(t('chatWriteNext'),()=>{if(!editorCurrent(writeNext))return;navigateTo(input,writeNext);},'memory-community-button memory-chat-navigation-compose');navigation.append(writeNext);
     input.addEventListener('input',()=>{
       if(!editorCurrent(input))return;
-      chatTextDraft=input.value;if(conversation)conversationDrafts.set(conversation.id,chatTextDraft);const state=chatComposition;if(state?.input===input&&state.endSeen){state.finalInput=true;if(state.timer)clearTimeout(state.timer);state.timer=setTimeout(()=>flushDeferredChatRender(state),0);}
+      chatTextDraft=input.value;if(conversation)conversationDrafts.set(conversation.id,chatTextDraft);
+      const fullRetry=conversationFullRetry;if(fullRetry?.continueButton?.isConnected)fullRetry.continueButton.disabled=!safeText(input.value,4096)||conversationCreating||Boolean(assistantInflightToken);
+      const state=chatComposition;if(state?.input===input&&state.endSeen){state.finalInput=true;if(state.timer)clearTimeout(state.timer);state.timer=setTimeout(()=>flushDeferredChatRender(state),0);}
     });
     input.addEventListener('compositionstart',()=>{
       if(!editorCurrent(input))return;
@@ -933,6 +939,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(chatRecordingBusy||chatCaptureHandle||chatTranscript||messageDraft)return t('threadDraftBlocked');
     return '';
   }
+  function continuationScopeMatches(fullRetry,ticket=fullRetry?.ticket,owner=fullRetry?.owner){
+    return Boolean(fullRetry&&conversationFullRetry===fullRetry&&current(ticket,owner)&&activeTab==='chat'&&target===fullRetry.target&&targetFingerprint===fullRetry.fingerprint&&conversation===fullRetry.conversation&&conversationSelectionEpoch===fullRetry.selection&&messageDraft===fullRetry.draft&&messageDraft?.id===fullRetry.mutationId&&messageDraft?.text===fullRetry.text);
+  }
+  function continuationReady(fullRetry,ticket=fullRetry?.ticket,owner=fullRetry?.owner){
+    if(!continuationScopeMatches(fullRetry,ticket,owner)||!safeText(chatTextDraft,4096)||editorialContextPreflight||assistantInflightToken||conversationLoading||conversationCreating||conversationDeleting||activeJob?.id&&['queued','running'].includes(activeJob.state)||pendingChatTurns().length||chatRecordingBusy||chatCaptureStarting||chatCaptureHandle||chatTranscribing||chatTranscript||chatComposition?.composing)return false;
+    return true;
+  }
   function renderConversationControls(root,ticket,owner){
     const controls=el('div','','memory-chat-conversations');
     const label=el('label',t('conversationSelect'),'memory-chat-conversation-label');
@@ -944,9 +957,15 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     select.disabled=!canSwitch||conversationList.length<2;
     select.addEventListener('change',()=>{if(!current(ticket,owner))return;void switchConversation(select.value,ticket,owner);});label.append(select);controls.append(label);
     const start=btn(t('startChat'),()=>void startChat(ticket,owner),'memory-community-primary');start.disabled=!canSwitch;controls.append(start);
+    const fullRetry=conversationFullRetry,canContinue=Boolean(fullRetry&&continuationReady(fullRetry,ticket,owner));
+    if(canContinue){
+      const notice=el('p',t(fullRetry.createError?'chatContinueFailed':'chatFull'),'memory-chat-conversation-full');notice.setAttribute('role','status');controls.append(notice);
+      const continueButton=btn(t('chatContinueNew'),()=>{const input=panelNode?.querySelector('.memory-community-form textarea[name="message"]');if(fullRetry.continueButton!==continueButton||!continueButton.isConnected||!panelNode?.contains(continueButton)||!root.contains(continueButton)||!continuationReady(fullRetry,ticket,owner)||!input||!input.isConnected||!safeText(input.value,4096)||input.value!==chatTextDraft)return;void startChat(ticket,owner,fullRetry,input.value);},'memory-community-primary memory-chat-continue-new');
+      continueButton.disabled=conversationCreating||assistantInflightToken!==null;fullRetry.continueButton=continueButton;controls.append(continueButton);
+    }else if(fullRetry)fullRetry.continueButton=null;
     controls.append(el('p',t('conversationListHelp'),'memory-community-help'));
     if(conversationLoading)controls.append(el('p',t('threadLoading'),'memory-community-help'));
-    const blocked=conversationBusyReason();if(blocked){const note=el('p',blocked,'memory-community-help');note.setAttribute('role','status');controls.append(note);}
+    const blocked=conversationBusyReason();if(blocked&&!(canContinue&&blocked===t('threadDraftBlocked'))){const note=el('p',blocked,'memory-community-help');note.setAttribute('role','status');controls.append(note);}
     root.append(controls);
   }
   function conversationPreview(value){
@@ -978,25 +997,41 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       chatTranscript=result.text;chatVoiceError='';showStatus('');await renderPanel();
     }catch(error){if(current(ticket,owner)&&voiceTicket===chatVoiceEpoch){const wasTranscribing=chatTranscribing;chatRecordingBusy=false;chatCaptureStarting=false;chatTranscribing=false;chatVoiceError=error?.name==='AbortError'?'':wasTranscribing?'voiceAsrFailed':'voiceCaptureFailed';if(error?.name!=='AbortError')notifyError(error);await renderPanel();}}
   }
-  async function startChat(ticket,owner){
-    if(!current(ticket,owner)||conversationBusyReason())return;
+  async function startChat(ticket,owner,fullRetry=null,initialContinuationText=null){
+    if(!current(ticket,owner)||(fullRetry?!continuationReady(fullRetry,ticket,owner):conversationBusyReason()))return;
+    if(fullRetry){const input=panelNode?.querySelector('.memory-community-form textarea[name="message"]');if(!input||!safeText(input.value,4096)||input.value!==chatTextDraft)return;initialContinuationText=input.value;}
     if(chatComposition?.composing)return;
-    const id=uuid(),selectedTarget={...target},selectedType=target?.type==='memoir'?'book':'story',selectedFingerprint=targetFingerprint,selection=++conversationSelectionEpoch,operation={ticket,owner,selection};if(!id){showStatus(t('error'),'error');return;}
+    const previousConversation=conversation;
+    const id=fullRetry?(fullRetry.createId||(fullRetry.createId=uuid())):uuid(),selectedTarget={...target},selectedType=target?.type==='memoir'?'book':'story',selectedFingerprint=targetFingerprint,selection=fullRetry?conversationSelectionEpoch:conversationSelectionEpoch+1;
+    if(!fullRetry)conversationSelectionEpoch=selection;
+    const operation={ticket,owner,selection,fullRetry};if(!id){showStatus(t('error'),'error');return;}
     conversationCreating=true;conversationCreateToken=operation;await renderPanel();
     try{
-      if(!current(ticket,owner)||conversationSelectionEpoch!==selection||targetFingerprint!==selectedFingerprint)return;
+      const stillCurrent=()=>current(ticket,owner)&&conversationSelectionEpoch===selection&&targetFingerprint===selectedFingerprint&&(!fullRetry||target===fullRetry.target);
+      const stillContinuation=()=>!fullRetry||conversationFullRetry===fullRetry&&conversation===fullRetry.conversation&&messageDraft===fullRetry.draft&&messageDraft?.id===fullRetry.mutationId&&messageDraft?.text===fullRetry.text;
+      if(!stillCurrent()||!stillContinuation())return;
       const result=await api(`${API}/conversations`,{method:'POST',body:{id,target_type:selectedType,target_id:selectedTarget.id}});
-      if(!current(ticket,owner)||conversationSelectionEpoch!==selection||targetFingerprint!==selectedFingerprint)return;
+      if(!stillCurrent()||!stillContinuation())return;
       if(!result||result.version!==1||result.id!==id||!Number.isInteger(result.expires_at)||(result.target_type!==undefined&&result.target_type!==selectedType)||(result.target_id!==undefined&&result.target_id!==selectedTarget.id))throw new Error('Invalid conversation response');
       const createdAt=Number.isInteger(result.created_at)?result.created_at:null;
       const item={id,created_at:createdAt,expires_at:result.expires_at,target_type:selectedType,target_id:selectedTarget.id};
+      let verifiedHistory=null;
+      if(fullRetry){
+        const history=await api(`${API}/conversations/${id}/turns?page=1&order=recent&reply_context=1`);
+        if(!stillCurrent()||!stillContinuation())return;
+        if(!history||history.version!==1||history.id!==id||history.page!==1||!Array.isArray(history.items)||history.items.length>16||typeof history.has_more!=='boolean'||!validTurnPage(history.items))throw new Error('Invalid continued conversation history');
+        verifiedHistory=history;
+      }
       resetEditorialContextChoice();
       const nextList=[item,...conversationList.filter(entry=>entry.id!==id)].slice(0,8),kept=new Set(nextList.map(entry=>entry.id));for(const previous of conversationList)if(!kept.has(previous.id))conversationDrafts.delete(previous.id);conversationList=nextList;
-      stopPoll();invalidateChatRecovery();conversation=item;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;messageDraft=null;chatTextDraft='';chatTranscript='';chatVoiceError='';activeJob=null;pollCount=0;
-      conversationDrafts.set(id,'');conversationCreating=false;conversationSelectionEpoch++;
+      const liveComposer=panelNode?.querySelector('.memory-community-form textarea[name="message"]');const carriedText=fullRetry?(liveComposer?.isConnected&&safeText(liveComposer.value,4096)?liveComposer.value:safeText(chatTextDraft,4096)?chatTextDraft:initialContinuationText||''):previousConversation?'':safeText(chatTextDraft,4096)?chatTextDraft:'';
+      if(fullRetry)conversationDrafts.set(previousConversation.id,'');
+      stopPoll();invalidateChatRecovery();clearChatComposition();conversation=item;turns=verifiedHistory?.items||[];turnPage=1;turnsHasMore=verifiedHistory?.has_more||false;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft=carriedText;chatTranscript='';chatVoiceError='';activeJob=null;pollCount=0;
+      conversationDrafts.set(id,carriedText);conversationCreating=false;conversationSelectionEpoch++;
       rememberConversation(id);
-      renderTabs();await renderPanel();
-    }catch(error){if(conversationSelectionEpoch===selection)report(error,owner,ticket);}
+      const createdSelection=conversationSelectionEpoch;renderTabs();await renderPanel();
+      if(fullRetry&&current(ticket,owner)&&conversation===item&&conversationSelectionEpoch===createdSelection){await recoverPendingChatJob(ticket,owner,item,createdSelection);if(current(ticket,owner)&&conversation===item&&conversationSelectionEpoch===createdSelection)await renderPanel();}
+    }catch(error){if(conversationSelectionEpoch===selection&&current(ticket,owner)){if(fullRetry&&conversationFullRetry===fullRetry)fullRetry.createError=true;report(error,owner,ticket);await renderPanel();}}
     finally{if(conversationCreateToken===operation){conversationCreateToken=null;conversationCreating=false;if(current(ticket,owner))await renderPanel();}}
   }
   async function resumeConversation(ticket,owner){
@@ -1047,7 +1082,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       if(!current(ticket,owner)||conversationSelectionEpoch!==selection||conversation!==prior||target!==selectedTarget||targetFingerprint!==selectedFingerprint)return;
       const result=await api(`${API}/conversations/${prior.id}`,{method:'DELETE'});if(!current(ticket,owner)||conversationSelectionEpoch!==selection||conversation!==prior||target!==selectedTarget||targetFingerprint!==selectedFingerprint)return;
       if(!result||result.version!==1||result.deleted!==true)throw new Error('Invalid conversation delete response');
-      resetEditorialContextChoice();stopPoll();invalidateChatRecovery();conversationDeleting=false;conversationDeleteToken=null;conversationList=conversationList.filter(item=>item.id!==prior.id);conversationDrafts.delete(prior.id);forgetConversation(prior.id);conversation=null;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;activeJob=null;messageDraft=null;chatTextDraft='';
+      resetEditorialContextChoice();stopPoll();invalidateChatRecovery();conversationDeleting=false;conversationDeleteToken=null;conversationList=conversationList.filter(item=>item.id!==prior.id);conversationDrafts.delete(prior.id);forgetConversation(prior.id);conversation=null;turns=[];turnPage=1;turnsHasMore=false;recentTurn=null;activeJob=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';
       const next=conversationList[0];if(next){conversation=next;chatTextDraft=conversationDrafts.get(next.id)||'';const nextSelection=++conversationSelectionEpoch,nextOperation={ticket,owner,selection:nextSelection};conversationLoading=true;conversationLoadToken=nextOperation;turns=[];turnPage=1;turnsHasMore=false;await renderPanel();
         try{const history=await loadTurns(ticket,owner,next,nextSelection);if(!current(ticket,owner)||conversationSelectionEpoch!==nextSelection||conversation!==next)return;if(history&&Array.isArray(history.items))rememberConversation(next.id);await recoverPendingChatJob(ticket,owner,next,nextSelection);}
         catch(error){if(error?.name!=='AbortError'&&current(ticket,owner)&&conversationSelectionEpoch===nextSelection&&conversation===next)report(error,owner,ticket);}
@@ -1118,10 +1153,10 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(editorialContextNeedsDecision()){showStatus(t('editorialContextChoose'),'pending');return;}
     if(!messageDraft&&hasPendingChatWork()){showStatus(t('chatPendingSendBlocked'),'pending');await renderPanel();return;}
     if(!messageDraft){const text=input.value;if(!safeText(text,4096)){showStatus(t('textRequired'),'error');return;}messageDraft={id:uuid(),text,editorialContext:editorialContextSelected()};if(!messageDraft.id)return;}
-    const selected=conversation,selection=conversationSelectionEpoch,draft=messageDraft,form=input.parentNode?.parentNode,submit=form?.querySelector('button[type="submit"]'),inflightToken={ticket,owner};assistantInflightToken=inflightToken;if(submit)submit.disabled=true;const contextToggle=form?.querySelector('.memory-editorial-context-toggle');if(contextToggle)contextToggle.disabled=true;
+    const selected=conversation,selectedTarget=target,selectedFingerprint=targetFingerprint,selection=conversationSelectionEpoch,draft=messageDraft,form=input.parentNode?.parentNode,submit=form?.querySelector('button[type="submit"]'),inflightToken={ticket,owner};conversationFullRetry=null;assistantInflightToken=inflightToken;if(submit)submit.disabled=true;const contextToggle=form?.querySelector('.memory-editorial-context-toggle');if(contextToggle)contextToggle.disabled=true;
     try{const job=await api(`${API}/conversations/${selected.id}/turns${draft.editorialContext?'?editorial_context=1':''}`,{method:'POST',body:{revision:String(target.revision),mutation_id:draft.id,text:draft.text}});if(!current(ticket,owner)||conversation!==selected||conversationSelectionEpoch!==selection)return;
       messageDraft=null;if(chatTextDraft===draft.text){chatTextDraft='';conversationDrafts.set(selected.id,'');}activeJob=job;activeChatJobFence={ticket,owner,target,fingerprint:targetFingerprint,conversation:selected,selection,generation:++chatRecoveryGeneration};recentTurn={job_id:job.id,input_text:draft.text,reply_text:job.result?.reply||null,reply_kind:job.result?.kind||null,state:job.state};pollCount=0;if(assistantInflightToken===inflightToken)assistantInflightToken=null;await loadTurns(ticket,owner,selected,selection);if(!current(ticket,owner)||conversation!==selected||conversationSelectionEpoch!==selection)return;await renderPanel();if(['queued','running'].includes(job.state))schedulePoll(ticket,owner);
-    }catch(error){if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(current(ticket,owner)&&conversation===selected&&conversationSelectionEpoch===selection){if(error?.status===409){messageDraft=null;if(draft.editorialContext){if(!chatTextDraft)chatTextDraft=draft.text;requireEditorialContextDecision('editorialContextChanged');}}await renderPanel();report(error,owner,ticket);}}
+    }catch(error){if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(current(ticket,owner)&&target===selectedTarget&&targetFingerprint===selectedFingerprint&&conversation===selected&&conversationSelectionEpoch===selection){if(error?.status===409){messageDraft=null;if(draft.editorialContext){if(!chatTextDraft)chatTextDraft=draft.text;requireEditorialContextDecision('editorialContextChanged');}}else if(error?.status===429&&error?.code==='memory_conversation_full'){conversationFullRetry={ticket,owner,target:selectedTarget,fingerprint:selectedFingerprint,conversation:selected,selection,draft,mutationId:draft.id,text:draft.text,createError:false,continueButton:null};}await renderPanel();report(error,owner,ticket);}}
     finally{if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(submit)submit.disabled=false;}
   }
   function schedulePoll(ticket,owner){
@@ -1708,7 +1743,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   }
 
   async function books(container){
-    if(!container)return;clearEditorialInspection();listenVisibility();roots.add(container);bookContainers.add(container);container.hidden=true;const s=scopeNow();if(!s?.account||!s?.library||s.locked){container.replaceChildren();return;}
+    if(!container)return;clearBookIntroductionVoice();clearEditorialInspection();listenVisibility();roots.add(container);bookContainers.add(container);container.hidden=true;const s=scopeNow();if(!s?.account||!s?.library||s.locked){container.replaceChildren();return;}
     if(currentScope&&JSON.stringify([currentScope.account,currentScope.library])!==accountKey(s)){bookEpoch++;editorialGeneration++;bookEditSequence++;editorialModel=null;editorialPending=null;editorialBusyOwner='';for(const controller of bookControllers)controller.abort();bookControllers.clear();for(const shelf of bookContainers){shelf.hidden=true;shelf.replaceChildren();}booksList=[];storyOptions=[];storyPage=0;storyOptionsHasMore=false;bookStorySelection=new Set();bookTitleDraft='';bookIntroDraft='';bookEditorOpen=false;bookPage=1;booksHasMore=false;pendingBook=null;bookSubmittingOwner='';selectedBook=null;}
     currentScope={account:s.account,library:s.library,membership_revision:membershipRevision(s)};const ticket=bookEpoch,owner=accountKey(s),lastPage=Math.max(1,bookPage);container.replaceChildren(el('section','','memory-community-books'));const root=container.firstChild;
     try{const capability=await ensureBookCapabilities();if(!bookCurrent(ticket,owner))return;if(!capability.enabled){container.replaceChildren();return;}
@@ -1721,7 +1756,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       const listRegion=el('section','','memory-book-list-region');root.append(listRegion);renderBookList(listRegion,owner,ticket,root);
       if(booksHasMore)listRegion.append(btn(t('moreBooks'),()=>void loadMoreBooks(listRegion,owner,ticket,root),'memory-book-more'));
       if(result.can_create){await loadStoryOptions(ticket,owner);if(!bookCurrent(ticket,owner))return;
-        const toggle=btn('',()=>{bookEditorOpen=!bookEditorOpen;if(!bookEditorOpen)clearEditorialInspection();toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));const editor=root.querySelector('.memory-community-book-editor');if(editor)editor.hidden=!bookEditorOpen;if(bookEditorOpen)renderBookForm(root,selectedBook,ticket,owner);},'memory-book-compose-cta');toggle.setAttribute('aria-controls','memory-community-book-editor');toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));root.append(toggle);
+        const toggle=btn('',()=>{bookEditorOpen=!bookEditorOpen;if(!bookEditorOpen){clearBookIntroductionVoice();clearEditorialInspection();}toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));const editor=root.querySelector('.memory-community-book-editor');if(editor)editor.hidden=!bookEditorOpen;if(bookEditorOpen)renderBookForm(root,selectedBook,ticket,owner);},'memory-book-compose-cta');toggle.setAttribute('aria-controls','memory-community-book-editor');toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));root.append(toggle);
         renderBookForm(root,selectedBook,ticket,owner);
       }
     }catch(error){if(bookCurrent(ticket,owner)){container.hidden=true;root.append(el('p',t('unavailable')));notifyError(error);}}
@@ -1748,14 +1783,16 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       const mediaCount=book.stories.reduce((sum,story)=>sum+(Number.isSafeInteger(story.item_count)&&story.item_count>0?story.item_count:0),0);
       const counts=el('p',`${t('bookStoryCount')(book.stories.length)} · ${t('bookMediaCount')(mediaCount)}`,'memory-book-counts');
       content.append(counts);
-      const opening=String(book.introduction||'').trim().slice(0,240);
+      const opening=Array.from(String(book.introduction||'').trim()).slice(0,240).join('');
       if(opening)content.append(el('p',opening,'memory-book-opening'));
       const actions=el('div','','memory-book-actions');
-      actions.append(btn(t('openBook'),()=>void openBookTarget(book.id,owner,ticket),'memory-community-primary memory-book-read'));
-      if(book.can_edit)actions.append(btn(t('updateBook'),()=>void loadBookForEdit(book.id,host,owner,ticket),'memory-book-edit'));
+      const isCurrentCard=()=>bookCurrent(ticket,owner)&&list.isConnected&&root.querySelector('.memory-book-list')===list&&
+        card.isConnected&&list.contains(card)&&booksList.includes(book);
+      actions.append(btn(t('openBook'),()=>{if(isCurrentCard())void openBookTarget(book.id,owner,ticket,isCurrentCard);},'memory-community-primary memory-book-read'));
+      if(book.can_edit)actions.append(btn(t('updateBook'),()=>{if(isCurrentCard())void loadBookForEdit(book.id,host,owner,ticket,{isCurrent:isCurrentCard});},'memory-book-edit'));
       content.append(actions);
       const stories=el('div','','memory-book-stories');
-      for(const story of book.stories)stories.append(btn(`${t('chooseStory')}: ${story.title}`,()=>onOpenStory(story.id),'memory-book-story'));
+      for(const story of book.stories)stories.append(btn(`${t('chooseStory')}: ${story.title}`,()=>{if(isCurrentCard())onOpenStory(story.id);},'memory-book-story'));
       content.append(stories);card.append(content);list.append(card);
     }
     root.append(list);
@@ -1764,23 +1801,27 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     const lastPage=Math.max(1,storyPage);storyOptions=[];storyPage=0;storyOptionsHasMore=false;
     for(let page=1;page<=lastPage;page++){await loadStoryOptionsPage(ticket,owner,page,page>1);if(!bookCurrent(ticket,owner)||!storyOptionsHasMore)break;}
   }
-  async function loadStoryOptionsPage(ticket,owner,page,append){
-    const result=await bookApi(`/memory-stories?page=${page}`);if(!bookCurrent(ticket,owner))return;
+  async function loadStoryOptionsPage(ticket,owner,page,append,currentRequest=()=>true){
+    if(!bookCurrent(ticket,owner)||!currentRequest())return;
+    const result=await bookApi(`/memory-stories?page=${page}`,{},currentRequest);if(!bookCurrent(ticket,owner)||!currentRequest())return;
     if(result.library_id!==scopeNow().library||result.page!==page||result.page_size!==8||!Array.isArray(result.items)||result.items.length>8||typeof result.has_more!=='boolean')throw new Error('Invalid saved stories');
     if(!append)storyOptions=[];storyOptions.push(...result.items);storyPage=page;storyOptionsHasMore=result.has_more;
   }
-  function renderBookSelectionOrder(orderBox,selected,book,renderOrder){
+  function renderBookSelectionOrder(orderBox,selected,book,renderOrder,canMutate=()=>true){
     orderBox.replaceChildren(el('h4',t('selectedOrder')));const list=el('ol');const knownStories=[...storyOptions,...(book?.stories||[])];const storiesById=new Map(knownStories.map(story=>[story.id,story]));
-    [...selected].forEach((id,index)=>{const story=storiesById.get(id);const row=el('li',story?.title||id);if(index>0)row.append(btn(t('moveUp'),()=>{const ids=[...selected];[ids[index-1],ids[index]]=[ids[index],ids[index-1]];selected.clear();ids.forEach(value=>selected.add(value));renderOrder();},'memory-book-order-up'));if(index<selected.size-1)row.append(btn(t('moveDown'),()=>{const ids=[...selected];[ids[index],ids[index+1]]=[ids[index+1],ids[index]];selected.clear();ids.forEach(value=>selected.add(value));renderOrder();},'memory-book-order-down'));list.append(row);});orderBox.append(list);
+    [...selected].forEach((id,index)=>{const story=storiesById.get(id);const row=el('li',story?.title||id);if(index>0)row.append(btn(t('moveUp'),()=>{if(!canMutate())return;const ids=[...selected];[ids[index-1],ids[index]]=[ids[index],ids[index-1]];selected.clear();ids.forEach(value=>selected.add(value));renderOrder();},'memory-book-order-up'));if(index<selected.size-1)row.append(btn(t('moveDown'),()=>{if(!canMutate())return;const ids=[...selected];[ids[index],ids[index+1]]=[ids[index+1],ids[index]];selected.clear();ids.forEach(value=>selected.add(value));renderOrder();},'memory-book-order-down'));list.append(row);});orderBox.append(list);
   }
-  function appendStoryOptions(fieldset,selected,ticket,owner,items,selectionChanged){
+  function appendStoryOptions(fieldset,selected,ticket,owner,items,selectionChanged,canMutate=()=>true){
     const known=new Set([...fieldset.querySelectorAll('input[name="story_ids"]')].map(input=>input.value));
-    for(const story of items){if(!uuidOK(story.id)||known.has(story.id))continue;const label=el('label');const input=el('input');input.type='checkbox';input.value=story.id;input.checked=selected.has(story.id);input.name='story_ids';input.addEventListener('change',()=>{if(input.checked){if(selected.size>=24){input.checked=false;showStatus(t('error'),'error');return;}selected.add(input.value);}else selected.delete(input.value);selectionChanged();});label.append(input,el('span',story.title));fieldset.append(label);known.add(story.id);}
-    fieldset.querySelector('.memory-more-stories')?.remove();if(storyOptionsHasMore)fieldset.append(btn(t('moreStories'),()=>void loadMoreStoryOptions(fieldset,selected,ticket,owner,selectionChanged),'memory-more-stories'));
+    for(const story of items){if(!uuidOK(story.id)||known.has(story.id))continue;const label=el('label');const input=el('input');input.type='checkbox';input.value=story.id;input.checked=selected.has(story.id);input.name='story_ids';input.addEventListener('change',()=>{if(!canMutate()){input.checked=selected.has(input.value);return;}if(input.checked){if(selected.size>=24){input.checked=false;showStatus(t('error'),'error');return;}selected.add(input.value);}else selected.delete(input.value);selectionChanged();});label.append(input,el('span',story.title));fieldset.append(label);known.add(story.id);}
+    fieldset.querySelector('.memory-more-stories')?.remove();if(storyOptionsHasMore)fieldset.append(btn(t('moreStories'),()=>{if(canMutate())void loadMoreStoryOptions(fieldset,selected,ticket,owner,selectionChanged,canMutate);},'memory-more-stories'));
   }
-  async function loadMoreStoryOptions(fieldset,selected,ticket,owner,selectionChanged){
-    try{if(!storyOptionsHasMore)return;const page=storyPage+1;await loadStoryOptionsPage(ticket,owner,page,true);if(!bookCurrent(ticket,owner))return;appendStoryOptions(fieldset,selected,ticket,owner,storyOptions.slice(-8),selectionChanged);}
-    catch(error){reportBook(error,owner,ticket);}
+  async function loadMoreStoryOptions(fieldset,selected,ticket,owner,selectionChanged,canMutate=()=>true){
+    if(!bookCurrent(ticket,owner)||!canMutate()||!storyOptionsHasMore||bookStoryPageLoads.has(fieldset))return;
+    const load={};bookStoryPageLoads.set(fieldset,load);const button=fieldset.querySelector('.memory-more-stories');if(button)button.disabled=true;
+    try{const page=storyPage+1;await loadStoryOptionsPage(ticket,owner,page,true,canMutate);if(!bookCurrent(ticket,owner)||!canMutate())return;appendStoryOptions(fieldset,selected,ticket,owner,storyOptions.slice(-8),selectionChanged,canMutate);}
+    catch(error){if(bookCurrent(ticket,owner)&&canMutate())reportBook(error,owner,ticket);}
+    finally{if(bookStoryPageLoads.get(fieldset)===load){bookStoryPageLoads.delete(fieldset);if(canMutate()){const current=fieldset.querySelector('.memory-more-stories');if(current)current.disabled=false;}}}
   }
   const editorialSourceKey=ref=>JSON.stringify([ref.story_id,ref.story_revision,ref.chapter_id,ref.contribution_id]);
   const editorialChildren=book=>(book.stories||[]).map(story=>({story_id:story.id,revision:String(story.revision)}));
@@ -1985,6 +2026,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   }
   function saveEditorialPanel(host,book,ticket,owner){
     const model=editorialModel;if(!model||!['current','empty'].includes(model.state)||model.needsReload)return;
+    if(bookIntroductionVoicePending()){bookIntroductionVoiceStatus(bookIntroductionVoice,'review');return;}
     if(pendingBook||bookSubmittingOwner===owner){appendStatus(host,t('editorialWaitBookSave'));return;}
     const makeBody=()=>({version:1,revision:model.revision,mutation_id:uuid(),children:model.children.map(item=>({...item})),introduction_source_refs:model.introductionRefs.map(ref=>({...ref})),transitions:model.transitions.map(item=>({left_story_id:item.left_story_id,right_story_id:item.right_story_id,text:item.text,source_refs:item.source_refs.map(ref=>({...ref}))}))});
     const serialized=JSON.stringify(makeBody()),body=JSON.parse(serialized);if(!body.mutation_id)return;
@@ -2041,7 +2083,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(frozen)for(const field of section.querySelectorAll('textarea,input,select'))field.disabled=true;
     const save=btn(frozen?t('editorialRetry'):t('editorialSave'),()=>{
       if(editorialPending?.bookId===book.id)void submitEditorial(section,book,ticket,owner);else saveEditorialPanel(section,book,ticket,owner);
-    },'memory-community-primary memory-book-editorial-save');save.disabled=model.needsReload||Boolean(pendingBook)||bookSubmittingOwner===owner||editorialBusyOwner===owner;section.append(save);root.append(section);return section;
+    },'memory-community-primary memory-book-editorial-save');save.disabled=model.needsReload||Boolean(pendingBook)||bookSubmittingOwner===owner||editorialBusyOwner===owner||bookIntroductionVoicePending();section.append(save);root.append(section);return section;
   }
   function refreshEditorialPanel(editor,book,ticket,owner,sequence,preserveDisclosure){
     if(!editorialCurrent(ticket,owner,book,editor,sequence))return false;
@@ -2050,50 +2092,189 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(!editorialCurrent(ticket,owner,book,editor,sequence))return false;
     const panel=renderEditorialPanel(editor,book,ticket,owner);if(panel&&wasOpen)panel.open=true;return true;
   }
+  function bookIntroductionVoicePending(){return Boolean(bookIntroductionVoice&&['capabilities','starting','recording','transcribing','review'].includes(bookIntroductionVoice.phase));}
+  function bookIntroductionVoiceCurrent(state){
+    return Boolean(state&&bookIntroductionVoice===state&&bookCurrent(state.ticket,state.owner)&&
+      membershipRevision(scopeNow())===state.membership&&!document.hidden&&bookEditorOpen&&
+      state.root.isConnected!==false&&state.form.isConnected!==false&&state.root.contains(state.form)&&
+      state.root.querySelector('.memory-community-book-form')===state.form&&
+      (state.book?selectedBook===state.book&&String(selectedBook.revision)===state.revision:!selectedBook));
+  }
+  function bookIntroductionVoiceEditable(state){return bookIntroductionVoiceCurrent(state)&&(!state.book||state.book.can_edit===true)&&!pendingBook&&!bookSubmittingOwner&&!editorialPending&&!editorialBusyOwner;}
+  function bookIntroductionVoiceText(key){
+    const values={
+      toggle:['口述开篇','Dictate introduction'],record:['录音讲开篇','Record introduction'],stop:['停止并转写','Stop and transcribe'],
+      transcript:['识别文字（可编辑）','Transcript (editable)'],insert:['加入开篇','Add to introduction'],discard:['丢弃口述','Discard dictation'],
+      help:['录音仅用于这次转写，不会作为家人原声保存。核对文字后加入开篇，最后由你明确保存回忆录。','Audio is used only for this transcription and is not saved as a family recording. Review the words, add them to the introduction, then choose Save.'],
+      loading:['正在检查口述功能…','Checking dictation availability…'],starting:['正在等待麦克风…','Waiting for microphone…'],recording:['正在录音。请明确停止后转写。','Recording. Choose Stop and transcribe when ready.'],
+      transcribing:['正在转写口述…','Transcribing the recording…'],unavailable:['暂时无法口述开篇；仍可直接输入文字。','Introduction dictation is unavailable; you can still type.'],
+      permission:['无法使用麦克风，请检查浏览器权限。已输入的开篇仍在。','Microphone access failed. Check browser permission; your typed introduction is still here.'],
+      capture:['录音没有完成。已输入的开篇仍在，可再试一次。','Recording did not complete. Your typed introduction is still here; record again to retry.'],
+      failed:['没有获得可用的转写文字。已输入的开篇仍在，可重新录音。','No usable transcript was returned. Your typed introduction is still here; record again to retry.'],
+      overflow:['加入后超过开篇字数限制。开篇和识别文字都已保留，请缩短后再试。','The combined introduction is too long. Both texts are retained; shorten them and try again.'],
+      invalid:['文字含有无法保存的字符。原开篇和识别文字均已保留，请修改后再试。','The words contain unsupported characters. Both texts are retained; edit them and try again.'],
+      review:['请先加入或丢弃口述，再保存回忆录。','Add or discard the dictation before saving the memoir.'],
+      inserted:['口述已加入开篇；请核对后明确保存。','Dictation added to the introduction. Review it, then choose Save.'],
+      limit:['录音已达到时限并取消；未发送转写。开篇草稿仍在，可重新录音。','The recording reached its limit and was discarded without transcription. Your typed draft is still here; record again.'],
+    };
+    return values[key]?.[lang()==='zh'?0:1]||'';
+  }
+  function syncBookIntroductionSave(state){
+    if(!state?.form?.isConnected)return;
+    const submit=state.form.querySelector('button[type="submit"]');
+    if(submit)submit.disabled=Boolean(bookSubmittingOwner===state.owner||editorialPending||editorialBusyOwner===state.owner||bookIntroductionVoicePending());
+    const editorialSave=state.form.parentNode?.querySelector('.memory-book-editorial-save');
+    if(editorialSave)editorialSave.disabled=Boolean(editorialModel?.needsReload||pendingBook||bookSubmittingOwner===state.owner||editorialBusyOwner===state.owner||bookIntroductionVoicePending());
+  }
+  function bookIntroductionVoiceStatus(state,key){
+    if(!bookIntroductionVoiceCurrent(state))return;
+    state.error=key;
+    let status=state.slot.querySelector('.memory-book-introduction-status');
+    if(!status){status=el('p','','memory-community-status memory-book-introduction-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');state.slot.append(status);}
+    status.textContent=bookIntroductionVoiceText(key);
+    syncBookIntroductionSave(state);
+  }
+  function clearBookIntroductionVoice(){
+    const state=bookIntroductionVoice;bookIntroductionVoice=null;
+    if(!state)return;
+    state.controller?.abort();state.controller=null;if(state.timer)clearTimeout(state.timer);state.timer=null;
+    const handle=state.handle;state.handle=null;state.ready=null;state.transcript='';state.phase='idle';state.closed=true;
+    if(handle)Promise.resolve().then(()=>handle.stop(false)).catch(()=>{});
+  }
+  function renderBookIntroductionVoice(state){
+    if(!bookIntroductionVoiceCurrent(state))return;
+    state.slot.replaceChildren();
+    const toggle=btn(bookIntroductionVoiceText('toggle'),()=>{if(bookIntroductionVoiceEditable(state)&&state.phase==='idle')void openBookIntroductionVoice(state);},'memory-community-button memory-book-introduction-voice-toggle');
+    toggle.disabled=!bookIntroductionVoiceEditable(state)||state.phase!=='idle';toggle.setAttribute('aria-expanded',String(state.expanded));state.slot.append(toggle);
+    if(state.expanded){
+      state.slot.append(el('p',bookIntroductionVoiceText('help'),'memory-community-help'));
+      if(state.available&&state.phase==='idle'){
+        const record=btn(bookIntroductionVoiceText('record'),()=>{if(bookIntroductionVoiceEditable(state)&&state.phase==='idle')void beginBookIntroductionVoice(state);},'memory-community-button memory-book-introduction-record');
+        record.disabled=!bookIntroductionVoiceEditable(state)||isCapturing();state.slot.append(record);
+      }
+      if(state.phase==='recording')state.slot.append(btn(bookIntroductionVoiceText('stop'),()=>{if(bookIntroductionVoiceCurrent(state)&&state.phase==='recording')void finishBookIntroductionVoice(state);},'memory-community-primary memory-book-introduction-stop'));
+      if(state.phase==='review'){
+        const label=el('label',bookIntroductionVoiceText('transcript')),input=el('textarea');input.rows=3;input.value=state.transcript;input.className='memory-book-introduction-transcript';input.setAttribute('aria-label',bookIntroductionVoiceText('transcript'));
+        input.addEventListener('input',()=>{if(bookIntroductionVoiceCurrent(state)&&state.phase==='review')state.transcript=input.value;});label.append(input);state.slot.append(label);
+        state.slot.append(btn(bookIntroductionVoiceText('insert'),()=>{
+          if(!bookIntroductionVoiceEditable(state)||state.phase!=='review')return;
+          const typed=state.intro.value,spoken=input.value,combined=typed&&spoken?`${typed}\n${spoken}`:typed+spoken;
+          if(!spoken.trim()||!boundedText(combined,6000)){bookIntroductionVoiceStatus(state,!wellFormed(combined)||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(combined)?'invalid':'overflow');return;}
+          state.intro.value=combined;bookIntroDraft=combined;state.transcript='';state.phase='idle';state.error='inserted';renderBookIntroductionVoice(state);
+        },'memory-community-button memory-book-introduction-insert'));
+      }
+      if(['capabilities','starting','recording','transcribing','review'].includes(state.phase))state.slot.append(btn(bookIntroductionVoiceText('discard'),()=>{
+        if(!bookIntroductionVoiceCurrent(state))return;
+        const slot=state.slot,form=state.form,root=state.root,book=state.book,ticket=state.ticket,owner=state.owner,intro=state.intro;
+        clearBookIntroductionVoice();mountBookIntroductionVoice(slot,form,intro,root,book,ticket,owner);
+      },'memory-community-button memory-book-introduction-discard'));
+      const phaseKey={capabilities:'loading',starting:'starting',recording:'recording',transcribing:'transcribing'}[state.phase];
+      if(phaseKey||state.error)bookIntroductionVoiceStatus(state,phaseKey||state.error);
+    }
+    syncBookIntroductionSave(state);
+  }
+  function mountBookIntroductionVoice(slot,form,intro,root,book,ticket,owner){
+    clearBookIntroductionVoice();slot.replaceChildren();
+    if(!capture||!transcribe||book&&book.can_edit!==true)return;
+    const state={slot,form,intro,root,book,ticket,owner,membership:membershipRevision(scopeNow()),revision:String(book?.revision||'0'),phase:'idle',expanded:false,available:false,transcript:'',error:'',controller:null,handle:null,ready:null,timer:null,maxSeconds:30,closed:false};
+    bookIntroductionVoice=state;renderBookIntroductionVoice(state);
+  }
+  async function openBookIntroductionVoice(state){
+    if(!bookIntroductionVoiceEditable(state)||state.phase!=='idle')return;
+    state.expanded=true;state.phase='capabilities';state.error='';renderBookIntroductionVoice(state);
+    try{
+      const capabilities=await voiceCapabilities?.();if(!bookIntroductionVoiceCurrent(state))return;
+      state.available=capabilities?.transcribe===true;const seconds=Number(capabilities?.max_audio_seconds);state.maxSeconds=Number.isFinite(seconds)?Math.min(30,Math.max(1,Math.trunc(seconds))):30;
+      state.phase='idle';state.error=state.available?'':'unavailable';renderBookIntroductionVoice(state);
+    }catch(error){if(bookIntroductionVoiceCurrent(state)){if(error?.status===401||error?.status===403){clearBookIntroductionVoice();notifyError(error);return;}state.phase='idle';state.error='unavailable';renderBookIntroductionVoice(state);}}
+  }
+  async function beginBookIntroductionVoice(state){
+    if(!bookIntroductionVoiceEditable(state)||!state.available||state.phase!=='idle'||isCapturing())return;
+    stopPlayback();notifyAudioStart();state.phase='starting';state.error='';state.controller=new AbortController();const controller=state.controller;
+    let resolveReady;state.ready=new Promise(resolve=>{resolveReady=resolve;});renderBookIntroductionVoice(state);
+    try{
+      const handle=await capture(file=>resolveReady(file),state.maxSeconds,{isCurrent:()=>bookIntroductionVoiceCurrent(state)&&['starting','recording','transcribing'].includes(state.phase)&&!controller.signal.aborted,signal:controller.signal});
+      if(!bookIntroductionVoiceCurrent(state)||controller.signal.aborted||state.phase!=='starting'){await handle?.stop(false);return;}
+      if(!handle||typeof handle.stop!=='function')throw new Error('Capture unavailable');state.handle=handle;state.phase='recording';
+      state.timer=setTimeout(()=>{
+        if(!bookIntroductionVoiceCurrent(state)||state.phase!=='recording')return;
+        const handle=state.handle;state.handle=null;state.ready=null;state.controller?.abort();state.controller=null;state.phase='idle';state.error='limit';state.timer=null;
+        if(handle)Promise.resolve().then(()=>handle.stop(false)).catch(()=>{});renderBookIntroductionVoice(state);
+      },(state.maxSeconds+1)*1000);
+      renderBookIntroductionVoice(state);
+    }catch(error){if(bookIntroductionVoiceCurrent(state)&&state.phase==='starting'){state.handle=null;state.ready=null;state.controller?.abort();state.controller=null;state.phase='idle';state.error=error?.name==='NotAllowedError'||error?.name==='SecurityError'?'permission':'capture';renderBookIntroductionVoice(state);}}
+  }
+  async function finishBookIntroductionVoice(state){
+    if(!bookIntroductionVoiceCurrent(state)||state.phase!=='recording'||!state.handle)return;
+    if(state.timer)clearTimeout(state.timer);state.timer=null;const handle=state.handle,ready=state.ready;state.handle=null;state.ready=null;state.phase='transcribing';renderBookIntroductionVoice(state);
+    try{
+      const stopped=await handle.stop(true);if(!bookIntroductionVoiceCurrent(state)||state.phase!=='transcribing')return;
+      const file=stopped||await ready;if(!bookIntroductionVoiceCurrent(state)||state.phase!=='transcribing')return;
+      if(!file||typeof file.size!=='number'||!Number.isFinite(file.size)||file.size<=0||file.size>2*1024*1024)throw new Error('Captured input unavailable');
+      const result=await transcribe(file,{signal:state.controller?.signal});if(!bookIntroductionVoiceCurrent(state)||state.phase!=='transcribing')return;
+      if(result?.version!==1||typeof result.text!=='string'||!result.text.trim()||!boundedText(result.text,8192))throw new Error('Transcript unavailable');
+      state.transcript=result.text;state.phase='review';state.error='';state.controller=null;renderBookIntroductionVoice(state);
+    }catch(error){if(bookIntroductionVoiceCurrent(state)&&state.phase==='transcribing'){if(error?.status===401||error?.status===403){clearBookIntroductionVoice();notifyError(error);return;}state.phase='idle';state.error='failed';state.controller=null;renderBookIntroductionVoice(state);}}
+  }
+
   function renderBookForm(root,book,ticket,owner){
-    clearEditorialInspection();let editor=root.querySelector('.memory-community-book-editor');if(!editor){editor=el('section','','memory-community-book-editor');editor.id='memory-community-book-editor';root.append(editor);}editor.hidden=!bookEditorOpen;editor.replaceChildren();if(!bookEditorOpen)return editor;
+    clearBookIntroductionVoice();clearEditorialInspection();let editor=root.querySelector('.memory-community-book-editor');if(!editor){editor=el('section','','memory-community-book-editor');editor.id='memory-community-book-editor';root.append(editor);}editor.hidden=!bookEditorOpen;editor.replaceChildren();if(!bookEditorOpen)return editor;
     const form=el('form','','memory-community-book-form');const titleLabel=el('label',t('bookTitle'));const title=el('input');title.name='title';title.maxLength=512;title.value=pendingBook?.body.title??bookTitleDraft??book?.title??'';title.addEventListener('input',()=>bookTitleDraft=title.value);titleLabel.append(title);
     const introLabel=el('label',t('introduction'));const intro=el('textarea');intro.name='introduction';intro.maxLength=6000;intro.value=pendingBook?.body.introduction??bookIntroDraft??book?.introduction??'';intro.addEventListener('input',()=>bookIntroDraft=intro.value);introLabel.append(intro);
-    const choose=el('fieldset','','memory-book-story-options');choose.append(el('legend',t('chooseStories')));const selected=new Set(bookStorySelection);bookStorySelection=selected;const order=el('section','','memory-book-order');const renderOrder=()=>renderBookSelectionOrder(order,selected,book,renderOrder);
-    appendStoryOptions(choose,selected,ticket,owner,storyOptions,renderOrder);renderOrder();
-    const submit=el('button',pendingBook?t('retryBook'):book?t('updateBook'):t('createBook'));submit.type='submit';submit.className='memory-community-primary';submit.disabled=bookSubmittingOwner===owner||Boolean(editorialPending)||editorialBusyOwner===owner;form.append(titleLabel,introLabel,choose,order,submit);
+    const choose=el('fieldset','','memory-book-story-options');choose.append(el('legend',t('chooseStories')));const selected=new Set(bookStorySelection);bookStorySelection=selected;const order=el('section','','memory-book-order');
+    const formMembership=membershipRevision(scopeNow());
+    const isCurrentForm=()=>!document.hidden&&membershipRevision(scopeNow())===formMembership&&bookCurrent(ticket,owner)&&root.isConnected&&!editor.hidden&&bookEditorOpen&&root.querySelector('.memory-community-book-editor')===editor&&editor.querySelector('.memory-community-book-form')===form&&(book?selectedBook===book:selectedBook===null)&&bookStorySelection===selected;
+    const canMutateSelection=()=>isCurrentForm()&&!pendingBook&&!bookSubmittingOwner&&!editorialPending&&!editorialBusyOwner;
+    const renderOrder=()=>renderBookSelectionOrder(order,selected,book,renderOrder,canMutateSelection);
+    appendStoryOptions(choose,selected,ticket,owner,storyOptions,renderOrder,canMutateSelection);renderOrder();
+    const submit=el('button',pendingBook?t('retryBook'):book?t('updateBook'):t('createBook'));submit.type='submit';submit.className='memory-community-primary';submit.disabled=bookSubmittingOwner===owner||Boolean(editorialPending)||editorialBusyOwner===owner;const voiceSlot=el('section','','memory-community-ideas-voice memory-book-introduction-voice');form.append(titleLabel,introLabel,voiceSlot,choose,order,submit);
     if(pendingBook)for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;
-    form.addEventListener('submit',event=>{event.preventDefault();void saveBook(form,book,ticket,owner);});editor.append(form);if(book)renderEditorialPanel(editor,book,ticket,owner);return editor;
+    form.addEventListener('submit',event=>{event.preventDefault();void saveBook(form,book,ticket,owner,isCurrentForm);});editor.append(form);mountBookIntroductionVoice(voiceSlot,form,intro,root,book,ticket,owner);if(book)renderEditorialPanel(editor,book,ticket,owner);return editor;
   }
   function updateBookEditorToggle(root){const toggle=root?.querySelector('.memory-book-compose-cta');if(!toggle)return;toggle.textContent=t(bookEditorOpen?'collapseBookEditor':pendingBook?'continueBook':selectedBook?'continueEditBook':'composeBook');toggle.setAttribute('aria-expanded',String(bookEditorOpen));}
   function bookContainerFor(node){while(node&&!bookContainers.has(node))node=node.parentNode;return node;}
-  async function loadBookForEdit(id,root,owner,ticket,{preserveEditorial=false,preserveBookDraft=false}={}){
+  async function loadBookForEdit(id,root,owner,ticket,{preserveEditorial=false,preserveBookDraft=false,isCurrent=()=>true}={}){
+    if(!bookCurrent(ticket,owner)||!isCurrent())return;
     clearEditorialInspection();const editSequence=++bookEditSequence;editorialGeneration++;
-    try{const book=await bookApi(`${API}/books/${id}`);if(!bookCurrent(ticket,owner)||bookEditSequence!==editSequence)return;
+    try{const book=await bookApi(`${API}/books/${id}`,{},isCurrent);if(!bookCurrent(ticket,owner)||!isCurrent()||bookEditSequence!==editSequence)return;
       selectedBook=book;if(!preserveEditorial){editorialModel=null;editorialPending=null;}if(!preserveBookDraft){bookTitleDraft=book.title;bookIntroDraft=book.introduction;bookStorySelection=new Set(book.stories.map(story=>story.id));}bookEditorOpen=true;updateBookEditorToggle(root);renderBookForm(root,book,ticket,owner);await loadEditorialForEdit(book,root,owner,ticket,{preserveDraft:preserveEditorial});
-    }catch(error){reportBook(error,owner,ticket);}
+    }catch(error){if(bookCurrent(ticket,owner)&&isCurrent())reportBook(error,owner,ticket);}
   }
-  async function openBookTarget(id,owner,ticket){
-    try{const book=await bookApi(`${API}/books/${id}`);if(!bookCurrent(ticket,owner))return;
+  async function openBookTarget(id,owner,ticket,isCurrent=()=>true){
+    if(!bookCurrent(ticket,owner)||!isCurrent())return;
+    try{const book=await bookApi(`${API}/books/${id}`,{},isCurrent);if(!bookCurrent(ticket,owner)||!isCurrent())return;
       if(!validBookTarget(book))throw new Error('Invalid saved collection');onOpenStory(book);
-    }catch(error){reportBook(error,owner,ticket);}
+    }catch(error){if(bookCurrent(ticket,owner)&&isCurrent())reportBook(error,owner,ticket);}
   }
-  async function saveBook(form,book,ticket,owner){
+  async function saveBook(form,book,ticket,owner,isCurrentForm=()=>true){
+    const container=bookContainerFor(form);
+    if(!bookCurrent(ticket,owner)||!isCurrentForm()||!bookEditorOpen||!container?.contains(form)||container.querySelector('.memory-community-book-form')!==form)return;
+    if(bookIntroductionVoicePending()){bookIntroductionVoiceStatus(bookIntroductionVoice,'review');return;}
     if(bookSubmittingOwner===owner||editorialPending||editorialBusyOwner===owner)return;
+    form.querySelector('.memory-book-input-status')?.remove();
+    const inputError=message=>{const status=appendStatus(form,message);status.className+=' memory-book-input-status';};
     if(!pendingBook){const ids=[...bookStorySelection];
-      if(!form.elements.title.value.trim()||ids.length<1||ids.length>24||new Set(ids).size!==ids.length){showStatus(t('error'),'error');return;}
-      pendingBook={path:book?`${API}/books/${book.id}`:`${API}/books`,method:book?'PUT':'POST',body:{title:form.elements.title.value,language:lang(),introduction:form.elements.introduction.value,story_ids:ids.join(','),revision:book?.revision||'0',mutation_id:uuid()}};if(!pendingBook.body.mutation_id)return;}
-    bookSubmittingOwner=owner;const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;
+      if(!safeText(form.elements.title.value,512)){inputError(lang()==='zh'?'请填写回忆集名称，或缩短过长的名称。':'Add a memoir title, or shorten a title that is too long.');return;}
+      if(!boundedText(form.elements.introduction.value,6000)){inputError(lang()==='zh'?'请缩短开篇，或修改不支持的字符。完整草稿仍已保留。':'Shorten the introduction or remove unsupported characters. Your complete draft is retained.');return;}
+      if(ids.length<1||ids.length>24||new Set(ids).size!==ids.length){inputError(lang()==='zh'?'请先选择 1–24 个不同的故事。':'Choose 1–24 distinct saved stories first.');return;}
+      const mutationId=uuid();if(!uuidOK(mutationId)){inputError(lang()==='zh'?'此浏览器暂时无法安全保存。草稿仍可编辑，请刷新后再试。':'This browser cannot safely save right now. Your draft is still editable; refresh and try again.');return;}
+      pendingBook={path:book?`${API}/books/${book.id}`:`${API}/books`,method:book?'PUT':'POST',body:{title:form.elements.title.value,language:book?.language??lang(),introduction:form.elements.introduction.value,story_ids:ids.join(','),revision:book?.revision||'0',mutation_id:mutationId}};}
+    bookSubmittingOwner=owner;if(bookIntroductionVoice)renderBookIntroductionVoice(bookIntroductionVoice);const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;
     try{await bookApi(pendingBook.path,{method:pendingBook.method,body:pendingBook.body});if(!bookCurrent(ticket,owner))return;pendingBook=null;selectedBook=null;bookEditorOpen=false;bookStorySelection=new Set();bookTitleDraft='';bookIntroDraft='';showStatus(t('bookSaved'),'success');await books(bookContainerFor(form));}
     catch(error){if(bookCurrent(ticket,owner)){if(error?.status===409){pendingBook=null;for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=false;if(submit){submit.disabled=false;submit.textContent=book?t('updateBook'):t('createBook');}}else if(submit){submit.textContent=t('retryBook');}updateBookEditorToggle(bookContainerFor(form)?.firstChild);reportBook(error,owner,ticket);}}
-    finally{if(bookSubmittingOwner===owner){bookSubmittingOwner='';if(bookCurrent(ticket,owner)){if(submit)submit.disabled=false;if(pendingBook)for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;}}}
+    finally{if(bookSubmittingOwner===owner){bookSubmittingOwner='';if(bookCurrent(ticket,owner)){if(submit)submit.disabled=false;if(pendingBook)for(const field of form.querySelectorAll('input,textarea,select'))field.disabled=true;if(bookIntroductionVoice)renderBookIntroductionVoice(bookIntroductionVoice);}}}
   }
   function suspend({cancelJobs=true}={}){
     clearEditionReview();clearSavedEditions();
     const oldJob=activeJob?.id,jobState=activeJob?.state;
     const oldScope=currentScope,s=scopeNow(),readerContainer=mount?.parentNode;if(s&&!s.locked)pruneConversationHints(s.account,s.library,membershipRevision(s));
-    resetEditorialContextChoice();clearReplySpeech();clearChatComposition();clearIdeaComposition();epoch++;stopFamilyListening();stopRequests(false);stopPoll();invalidateChatRecovery();void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';forgetUrls();
+    resetEditorialContextChoice();clearReplySpeech();clearChatComposition();clearIdeaComposition();clearBookIntroductionVoice();epoch++;stopFamilyListening();stopRequests(false);stopPoll();invalidateChatRecovery();void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';forgetUrls();
     if(cancelJobs&&oldJob&&['queued','running'].includes(jobState)&&oldScope&&accountKey(s)===JSON.stringify([oldScope.account,oldScope.library])&&!s?.locked)void request(`${API}/jobs/${oldJob}`,{method:'DELETE'}).catch(()=>{});
     if(readerContainer&&!bookContainers.has(readerContainer)){readerContainer.replaceChildren();roots.delete(readerContainer);}conversationRestorationNotice=false;
     if(planPanelNode){planPanelNode.replaceChildren();planPanelNode.hidden=true;}planData=null;planPanelNode=null;planButton=null;
     mount=null;panelNode=null;statusNode=null;target=null;targetFingerprint='';currentScope=oldScope;
     contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;contributionsBusy=false;
-    conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;chatTextDraft='';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
+    conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
     contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeTab='voice';
   }
   function clear({cancelJobs=true}={}){

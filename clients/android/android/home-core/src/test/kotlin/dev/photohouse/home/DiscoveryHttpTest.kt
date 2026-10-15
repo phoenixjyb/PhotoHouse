@@ -8,19 +8,25 @@ import okhttp3.tls.*
 import org.junit.*
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.SocketAddress
+import java.net.URI
 import java.util.concurrent.TimeUnit
 
 class DiscoveryHttpTest {
     private lateinit var server: MockWebServer
     private lateinit var gateway: HttpsDiscoveryGateway
+    private lateinit var fixtureClient: OkHttpClient
     @Before fun setup() {
         val certificate = HeldCertificate.Builder().commonName("home.example").addSubjectAlternativeName("home.example").build()
         val tls = HandshakeCertificates.Builder().heldCertificate(certificate).build()
         val trust = HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
         server = MockWebServer(); server.useHttps(tls.sslSocketFactory(), false); server.start(InetAddress.getLoopbackAddress(), 0)
-        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+        fixtureClient = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
-        gateway = HttpsDiscoveryGateway(HomeOrigin.parse("https://home.example:${server.port}"), client)
+        gateway = HttpsDiscoveryGateway(HomeOrigin.parse("https://home.example:${server.port}"), fixtureClient)
     }
     @After fun close() { server.shutdown() }
     private fun response(value: JsonElement) = MockResponse().setHeader("Content-Type", "application/json")
@@ -116,8 +122,39 @@ class DiscoveryHttpTest {
         assertNotNull(withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) })
         search.cancelAndJoin(); assertTrue(search.isCancelled); assertEquals(2, server.requestCount)
     }
+    @Test fun syntheticClientIgnoresHostileAmbientProxySelector() {
+        val prior = ProxySelector.getDefault()
+        ProxySelector.setDefault(object : ProxySelector() {
+            override fun select(uri: URI): MutableList<Proxy> =
+                mutableListOf(Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", 1)))
+            override fun connectFailed(uri: URI, address: SocketAddress, failure: java.io.IOException) = Unit
+        })
+        try {
+            val fixtureRoutes = mutableListOf<Pair<InetSocketAddress, Proxy>>()
+            val hostileSelectorClient = fixtureClient.newBuilder()
+                .proxySelector(ProxySelector.getDefault()).proxy(Proxy.NO_PROXY)
+                .eventListener(object : EventListener() {
+                    override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) {
+                        fixtureRoutes += inetSocketAddress to proxy
+                    }
+                }).build()
+            server.enqueue(MockResponse().setHeader("Cache-Control", "no-store").setBody("fixture"))
+            val request = Request.Builder().url("https://home.example:${server.port}/proxy-check").build()
+            hostileSelectorClient.newCall(request).execute().use { response ->
+                assertEquals(200, response.code)
+                assertEquals("fixture", response.body!!.string())
+            }
+            assertEquals("/proxy-check", server.takeRequest().path)
+            assertEquals(1, fixtureRoutes.size)
+            assertTrue(fixtureRoutes.single().first.address.isLoopbackAddress)
+            assertEquals(server.port, fixtureRoutes.single().first.port)
+            assertEquals(Proxy.NO_PROXY, fixtureRoutes.single().second)
+        } finally {
+            ProxySelector.setDefault(prior)
+        }
+    }
     @Test fun untrustedTlsCannotReachDiscoveryResponse() = runBlocking {
-        val client = OkHttpClient.Builder().dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         val untrusted = HttpsDiscoveryGateway(HomeOrigin.parse("https://home.example:${server.port}"), client)
         failure(HomeError.TLS) { untrusted.load() }; Unit
     }

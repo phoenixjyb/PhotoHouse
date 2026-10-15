@@ -10,6 +10,7 @@ import okio.Buffer
 import org.junit.*
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.Proxy
 import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -93,7 +94,7 @@ class CatalogHttpTest {
         val tls = HandshakeCertificates.Builder().heldCertificate(cert).build()
         val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
         server = MockWebServer(); server.useHttps(tls.sslSocketFactory(), false); server.start(InetAddress.getLoopbackAddress(), 0)
-        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         api = HttpsCatalogApi(HomeOrigin.parse("https://home.example:${server.port}"), client)
     }
@@ -162,7 +163,7 @@ class CatalogHttpTest {
         } finally { source.close(); worker.shutdownNow() }
     }
     @Test fun untrustedTlsCertificateCannotReachCatalogBytes() = runBlocking {
-        val client = OkHttpClient.Builder().dns(object : Dns {
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).dns(object : Dns {
             override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress())
         }).build()
         val untrusted = HttpsCatalogApi(HomeOrigin.parse("https://home.example:${server.port}"), client)

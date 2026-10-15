@@ -16,14 +16,15 @@ from .memory_jobs import MemoryJobs
 from .memory_stories import _json
 from .service import AccessService
 from .stories import _uuid
-from .transport import TransportError, _body, _runtime, _single, credentials_from_request
+from .transport import TransportError, _body, _memory_runtime, _single, credentials_from_request
 
 router = APIRouter(route_class=LibraryRoute)
 
 
 def call(runtime, store, action, *args, editorial_enabled=False):
     with runtime.connection_factory() as db:
-        access = AccessService(db, clock=runtime.clock)
+        access = AccessService(db, clock=runtime.clock,
+                                memory_groups_enabled=runtime.memory_groups_enabled)
         instance = (store(access, editorial_enabled=editorial_enabled)
                     if store in (MemoryJobs, MemoryBookPlanning) else store(access))
         if action == 'authorize_contribution':
@@ -35,13 +36,14 @@ def call(runtime, store, action, *args, editorial_enabled=False):
 
 def authorize(runtime, token, library):
     with runtime.connection_factory() as db:
-        return AccessService(db, clock=runtime.clock).require(token, library, 'library.read')
+        return AccessService(db, clock=runtime.clock,
+            memory_groups_enabled=runtime.memory_groups_enabled).require(token, library, 'library.read')
 
 
 async def scope(request, *, originals=False, generation=False, allowed=None):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, allowed or {'library', 'page'})
-    runtime = _runtime(request, allow_query=True)
+    runtime = _memory_runtime(request, allow_query=True)
     await run_in_threadpool(authorize, runtime, token, query['library'])
     if not request.app.state.memory_collaboration_enabled:
         raise TransportError(503, 'Memory community unavailable')
@@ -65,7 +67,7 @@ def json_response(value):
 async def capabilities(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library'})
-    await run_in_threadpool(authorize, _runtime(request, allow_query=True), token, query['library'])
+    await run_in_threadpool(authorize, _memory_runtime(request, allow_query=True), token, query['library'])
     state = request.app.state
     return JSONResponse({'version':1, 'enabled':state.memory_collaboration_enabled,
         'contributions_enabled':state.memory_originals_enabled,
@@ -92,7 +94,8 @@ async def book(book_id: str, request: Request):
 
 def call_editorial(runtime, action, *args):
     with runtime.connection_factory() as db:
-        instance = MemoryBookEditorial(AccessService(db, clock=runtime.clock), enabled=True)
+        instance = MemoryBookEditorial(AccessService(db, clock=runtime.clock,
+            memory_groups_enabled=runtime.memory_groups_enabled), enabled=True)
         return getattr(instance, action)(*args)
 
 

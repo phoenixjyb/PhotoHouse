@@ -5,7 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,10 +42,43 @@ internal fun MemoryBooksDialog(
     val editorialCatalog by store.memoryBookEditorialCatalogState.collectAsState()
     val edition by store.memoryBookEditionState.collectAsState()
     val narrative by store.memoryBookNarrativeState.collectAsState()
+    val composition by store.memoryBookCompositionState.collectAsState()
+    val compositionDictationStore by store.memoryBookCompositionDictationState.collectAsState()
+    val shelfCovers by store.memoryBookShelfCoverState.collectAsState()
     val book = reading.selectedBook
     val index = reading.storyIndex
     val story = reading.story
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
+    var readerTextSize by remember(
+        liveState.session?.account_id, liveState.generation, reading.library, book?.id, book?.revision,
+        book?.stories?.map { it.id to it.revision },
+    ) { mutableStateOf(ReaderTextSizePreset.DEFAULT) }
+    // Capture rendered values, not whichever reader happens to be current when a callback runs.
+    val navigation = book?.let { selectedBook ->
+        liveState.session?.account_id?.let { account ->
+            MemoryBookReaderNavigationScope(account, liveState.generation, reading.library,
+                reading.readerScopeId, selectedBook.id, selectedBook.revision,
+                selectedBook.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) },
+                reading.storyIndex, story?.id, story?.revision, story?.let { reading.selectedChapter },
+                chapter?.id, reading.framePage, reading.selectedAssetId)
+        }
+    }
+    val introductionReaderIsCurrent = navigation?.let { rendered ->
+        liveState.session?.account_id == rendered.accountId && liveState.library == reading.library &&
+            store.isCurrentMemoryBookReaderNavigation(rendered)
+    } == true
+    val guardedStory: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onStory(target) }
+    }
+    val guardedChapter: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onChapter(target) }
+    }
+    val guardedFramePage: (Int) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onFramePage(target) }
+    }
+    val guardedFrame: (String) -> Unit = { target ->
+        navigation?.let { if (store.isCurrentMemoryBookReaderNavigation(it)) onFrame(target) }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val readerAudio = remember(liveState.session?.account_id, reading.library, book?.id) { ReaderAudioCoordinator() }
     DisposableEffect(lifecycleOwner, store, reading.library, book?.id) {
@@ -68,7 +101,11 @@ internal fun MemoryBooksDialog(
     var deferredReaderExit by remember(book?.id, book?.revision) { mutableStateOf<(() -> Unit)?>(null) }
     var unresolvedEditionExit by remember(book?.id, book?.revision) { mutableStateOf(false) }
     var unresolvedEditorialExit by remember(book?.id, book?.revision) { mutableStateOf(false) }
+    var unresolvedCompositionExit by remember(reading.shelfScopeId, composition.actionEpoch) { mutableStateOf(false) }
     val emptyDictationState = remember { kotlinx.coroutines.flow.MutableStateFlow(MemoryDictationState()) }
+    val compositionDictation by (compositionDictationStore?.state ?: emptyDictationState).collectAsState()
+    val compositionVoiceUnfinished = compositionDictation.loading || compositionDictation.recording ||
+        compositionDictation.transcribing || compositionDictation.transcript != null
     val dictationFlow = reading.companion?.dictation?.state ?: emptyDictationState
     val dictationState by dictationFlow.collectAsState()
     val narrativeDictationStore by store.memoryBookNarrativeDictationState.collectAsState()
@@ -86,14 +123,25 @@ internal fun MemoryBooksDialog(
         )
     val frozenEditorialSave = editorial.status in setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN)
     val hasUnsentEditorialWork = editorial.dirty || frozenEditorialSave || editorial.status == MemoryBookEditorialStoreStatus.CONFLICT
+    val compositionActive = composition.status != MemoryBookCompositionStatus.CLOSED &&
+        composition.accountId == liveState.session?.account_id && composition.generation == liveState.generation &&
+        composition.library == reading.library && composition.shelfScopeId == reading.shelfScopeId &&
+        (composition.editingBookId == null || composition.editingBookId == book?.id &&
+            composition.editingBookRevision == book?.revision && composition.editingReaderScopeId == reading.readerScopeId)
+    val hasUnsentCompositionWork = compositionActive && composition.status !in setOf(MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED) &&
+        ((if (composition.editingBookId != null) composition.hasChanges else
+            composition.draftRevision > 0 || composition.selectedStories.isNotEmpty()) || compositionVoiceUnfinished)
     fun exitReader(action: () -> Unit) {
-        if (edition.status == MemoryBookEditionStatus.SAVING ||
+        if (compositionActive && (composition.status == MemoryBookCompositionStatus.SAVING || composition.pendingRetry)) {
+            deferredReaderExit = action
+            unresolvedCompositionExit = true
+        } else if (edition.status == MemoryBookEditionStatus.SAVING ||
             (edition.hasPendingSave && edition.status != MemoryBookEditionStatus.CONFLICT)) {
             unresolvedEditionExit = true
         } else if (frozenEditorialSave) {
             deferredReaderExit = action
             unresolvedEditorialExit = true
-        } else if (hasUnsentCompanionWork || ownVoiceUnfinished || hasUnsentEditorialWork || edition.dirty || edition.composing || edition.busy ||
+        } else if (hasUnsentCompositionWork || hasUnsentCompanionWork || ownVoiceUnfinished || hasUnsentEditorialWork || edition.dirty || edition.composing || edition.busy ||
             edition.status == MemoryBookEditionStatus.CONFLICT || narrative.hasUnfinishedInput ||
             narrative.busy || narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running")) {
             deferredReaderExit = action
@@ -104,8 +152,8 @@ internal fun MemoryBooksDialog(
         reading.selectedBook?.id, reading.selectedBook?.revision) { rememberScrollState() }
     val originalStart = remember(liveState.session?.account_id, liveState.generation,
         reading.library, book?.id, book?.revision) { BringIntoViewRequester() }
-    LaunchedEffect(reading.readerScopeId, story?.id, story?.revision) {
-        if (narrativeExpanded && story != null && !reading.readerBusy) {
+    LaunchedEffect(reading.readerScopeId, story?.id, story?.revision, chapter?.id) {
+        if (story != null && chapter != null && !reading.readerBusy) {
             withFrameNanos { }
             originalStart.bringIntoView()
         }
@@ -140,14 +188,65 @@ internal fun MemoryBooksDialog(
                                 Text(t("Books are temporarily unavailable.", "暂时无法读取回忆册。"), color = MaterialTheme.colorScheme.error)
                                 OutlinedButton(onClick = { onPage(reading.page) }, modifier = Modifier.testTag("memory-books-retry")) { Text(t("Retry", "重试")) }
                             }
+                            compositionActive && store.memoryBookCompositionCoordinator != null -> {
+                                Box(Modifier.weight(1f).fillMaxWidth()) {
+                                    MemoryBookComposerPanel(store.memoryBookCompositionCoordinator!!, zh,
+                                        onClose = { exitReader { store.closeMemoryBookComposition(reading.shelfScopeId, composition.actionEpoch) } },
+                                        onOpenSaved = { id -> store.openComposedMemoryBook(liveState.session?.account_id.orEmpty(),
+                                            liveState.generation, reading.library, reading.shelfScopeId, composition.actionEpoch, id) },
+                                        dictationCoordinator = store.memoryBookCompositionDictationCoordinator.takeIf { store.assistantEnabled })
+                                }
+                            }
                             book != null -> {
-                                if (!keyboardVisible) TextButton(onClick = { exitReader(onBack) }, modifier = Modifier.testTag("memory-books-back")) { Text(t("‹ All books", "‹ 所有回忆册")) }
+                                if (!keyboardVisible) TextButton(onClick = attachedMemoirShelfAction { exitReader(onBack) }, modifier = Modifier.testTag("memory-books-back")) { Text(t("‹ All books", "‹ 所有回忆册")) }
                                 Text(book.title, style = if (keyboardVisible) MaterialTheme.typography.titleSmall else MaterialTheme.typography.headlineMedium,
                                     fontFamily = FontFamily.Serif, maxLines = if (keyboardVisible) 1 else 2,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(memoirReaderScroll)
                                     .testTag("memory-book-reader-scroll"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    if (book.introduction.isNotBlank()) Text(book.introduction, style = MaterialTheme.typography.bodyLarge)
+                                    ReaderTextSizeControls(
+                                        selected = readerTextSize,
+                                        zh = zh,
+                                        tagPrefix = "memory-book-reader-size",
+                                        onSelect = { readerTextSize = it },
+                                    )
+                                    if (book.canEdit && navigation != null) {
+                                        OutlinedButton(onClick = attachedMemoirShelfAction { store.startSavedMemoryBookEdit(navigation) },
+                                            enabled = store.canStartSavedMemoryBookEdit(navigation),
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-edit")) {
+                                            Text(t("Edit memoir", "编辑回忆册"))
+                                        }
+                                    }
+                                    if (book.introduction.isNotBlank()) {
+                                        Column(Modifier.fillMaxWidth().testTag("memory-book-introduction-section"),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text(book.introduction, style = readerProseStyle(MaterialTheme.typography.bodyLarge, readerTextSize))
+                                            MemoryBookIntroductionNarration(
+                                                scope = MemoryBookIntroductionNarrationScope(
+                                                    accountId = liveState.session?.account_id.orEmpty(),
+                                                    generation = liveState.generation,
+                                                    libraryId = reading.library,
+                                                    readerScopeId = reading.readerScopeId,
+                                                    bookId = book.id,
+                                                    bookRevision = book.revision,
+                                                    orderedChildren = book.stories.map { it.id to it.revision },
+                                                    storyIndex = index,
+                                                    storyId = story?.id,
+                                                    storyRevision = story?.revision,
+                                                    chapterIndex = story?.let { reading.selectedChapter },
+                                                    chapterId = chapter?.id,
+                                                    framePage = reading.framePage,
+                                                    selectedAssetId = reading.selectedAssetId,
+                                                    introduction = book.introduction,
+                                                    language = book.language,
+                                                ),
+                                                zh = zh,
+                                                enabled = introductionReaderIsCurrent && !reading.readerBusy && !reading.framesBusy && !reading.readerUnavailable &&
+                                                    !ownVoiceUnfinished && !dictationState.loading && !dictationState.recording &&
+                                                    !dictationState.transcribing && dictationState.transcript == null,
+                                            )
+                                        }
+                                    }
                                     MemoryBookEditionShelfPanel(store, reading, zh,
                                         speechEnabled = !ownVoiceUnfinished && !dictationState.loading &&
                                             !dictationState.recording && !dictationState.transcribing)
@@ -177,16 +276,32 @@ internal fun MemoryBooksDialog(
                                         story != null && chapter != null && index != null -> {
                                             Text(story.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, modifier = Modifier.bringIntoViewRequester(originalStart).testTag("memory-book-story-title"))
                                             Text(t("Story ${index + 1} of ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"))
-                                            ChapterReadAloud("${story.title}. ${chapter.title}. ${chapter.narration}", story.language,
-                                                listOf("memoir", liveState.session?.account_id, reading.library, book.id, book.revision, story.id, story.revision, chapter.id), zh,
-                                                enabled = chapter.narration.isNotBlank())
+                                            MemoryBookStoryNavigation(reading, zh, guardedStory)
+                                            navigation?.let { rendered ->
+                                                MemoryBookReaderContents(
+                                                    reading, rendered,
+                                                    isCurrent = { store.isCurrentMemoryBookReaderNavigation(rendered) },
+                                                    enabled = !reading.readerBusy && !reading.framesBusy,
+                                                    zh = zh, onSelectStory = guardedStory, onSelectChapter = guardedChapter,
+                                                )
+                                            }
+                                            MemoryBookChapterNarration(store, zh)
                                             Box(Modifier.fillMaxWidth().aspectRatio(1.6f).testTag("memory-book-hero"), contentAlignment = Alignment.Center) {
                                                 if (heroBitmap != null) Image(heroBitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                                 else if (reading.heroBusy || reading.framesBusy) CircularProgressIndicator()
-                                                else Text(if (reading.heroUnavailable) t("Preview unavailable", "预览不可用") else t("Select a moment", "选择一个片段"))
+                                                else Text(if (activeAsset == null) t("Select a moment", "选择一个片段") else t("Preview unavailable", "预览不可用"))
+                                            }
+                                            if (activeAsset != null && heroBitmap == null && introductionReaderIsCurrent &&
+                                                !reading.readerBusy && !reading.framesBusy && !reading.heroBusy) {
+                                                OutlinedButton(
+                                                    onClick = { navigation?.let(store::retryMemoryBookPreview) },
+                                                    enabled = introductionReaderIsCurrent && !reading.readerBusy && !reading.framesBusy && !reading.heroBusy,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-book-retry-preview"),
+                                                ) { Text(t("Retry preview", "重试预览")) }
                                             }
                                             Text(chapter.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("memory-book-chapter-title"))
-                                            Text(chapter.narration, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("memory-book-story-text"))
+                                            Text(chapter.narration, style = readerProseStyle(MaterialTheme.typography.bodyLarge, readerTextSize),
+                                                modifier = Modifier.testTag("memory-book-story-text"))
                                             ChapterSourceReferences(
                                                 chapterSourceReferences(chapter, story), zh, sourcesExpanded,
                                                 { sourcesExpanded = it }, "memory-book-sources",
@@ -199,26 +314,21 @@ internal fun MemoryBooksDialog(
                                             if (companionExpanded) MemoryBookCompanionPanel(store, reading, zh)
                                             if (chapter.assetIds.isNotEmpty()) {
                                                 Text(t("Moments", "故事片段"), style = MaterialTheme.typography.labelLarge)
-                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("memory-book-frames")) {
+                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup().testTag("memory-book-frames")) {
                                                     val framePageIds = chapter.assetIds.drop(reading.framePage * 8).take(8)
                                                     items(framePageIds, key = { it }) { assetId ->
-                                                        val bytes = reading.frames[assetId]
-                                                        val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
-                                                        Card(Modifier.width(104.dp).clickable(enabled = !reading.framesBusy) { onFrame(assetId) }.testTag("memory-book-frame-$assetId")) {
-                                                            if (bitmap != null) Image(bitmap, null, Modifier.fillMaxWidth().height(68.dp), contentScale = ContentScale.Crop)
-                                                            else Box(Modifier.fillMaxWidth().height(68.dp), contentAlignment = Alignment.Center) {
-                                                                Text(when {
-                                                                    reading.framesBusy -> t("Loading", "加载中")
-                                                                    reading.framesUnavailable || assetId in reading.unavailableFrameIds -> t("Unavailable", "不可用")
-                                                                    else -> t("Not loaded", "尚未加载")
-                                                                })
-                                                            }
-                                                            Text(when (story.items.firstOrNull { it.asset.id == assetId }?.asset?.kind) {
-                                                                "video" -> t("Video", "视频")
-                                                                "image" -> t("Photo", "照片")
-                                                                else -> t("Media", "媒体")
-                                                            }, Modifier.padding(6.dp))
-                                                        }
+                                                        MemoirMomentFrame(
+                                                            position = chapter.assetIds.indexOf(assetId) + 1,
+                                                            count = chapter.assetIds.size,
+                                                            kind = story.items.firstOrNull { it.asset.id == assetId }?.asset?.kind.orEmpty(),
+                                                            bytes = reading.frames[assetId],
+                                                            selected = assetId == reading.selectedAssetId,
+                                                            busy = reading.framesBusy,
+                                                            unavailable = reading.framesUnavailable || assetId in reading.unavailableFrameIds,
+                                                            zh = zh,
+                                                            onSelect = { guardedFrame(assetId) },
+                                                            assetId = assetId,
+                                                        )
                                                     }
                                                 }
                                                 val pageCount = (chapter.assetIds.size + 7) / 8
@@ -227,21 +337,34 @@ internal fun MemoryBooksDialog(
                                                     t("Previous moments", "上一组片段"), t("Next moments", "下一组片段"),
                                                     !reading.framesBusy && reading.framePage > 0,
                                                     !reading.framesBusy && reading.framePage < pageCount - 1,
-                                                    { onFramePage(reading.framePage - 1) }, { onFramePage(reading.framePage + 1) },
+                                                    { guardedFramePage(reading.framePage - 1) }, { guardedFramePage(reading.framePage + 1) },
                                                     "memory-book-previous-frame-page", "memory-book-next-frame-page")
-                                                OutlinedButton(onClick = { exitReader { activeAsset?.id?.let(onOpenAsset) } }, enabled = activeAsset != null,
+                                                OutlinedButton(onClick = {
+                                                    navigation?.let { rendered ->
+                                                        if (store.isCurrentMemoryBookReaderNavigation(rendered)) exitReader {
+                                                            if (store.isCurrentMemoryBookReaderNavigation(rendered)) activeAsset?.id?.let(onOpenAsset)
+                                                        }
+                                                    }
+                                                }, enabled = activeAsset != null,
                                                     modifier = Modifier.fillMaxWidth().testTag("memory-book-open-media")) {
                                                     Text(if (activeAsset?.kind == "video") t("Open video", "打开视频") else t("Open photo", "打开照片"))
                                                 }
                                             }
-                                            if (narrativeExpanded) MemoryBookOriginalNavigation(reading, zh, onChapter, onStory)
+                                            if (narrativeExpanded) MemoryBookChapterNavigation(reading, zh, guardedChapter)
                                         }
                                         else -> {
-                                            if (reading.resumePosition != null) Button(onClick = onResume, modifier = Modifier.fillMaxWidth().testTag("memory-book-resume")) {
-                                                Text(t("Continue last read", "继续上次阅读"))
+                                            reading.resumePosition?.let { position ->
+                                                MemoryBookReadingOffer(store, reading, book, position, zh,
+                                                    enabled = !reading.readerBusy && !hasUnsentCompanionWork &&
+                                                        !ownVoiceUnfinished && !hasUnsentEditorialWork && !edition.dirty &&
+                                                        !edition.composing && !edition.busy && !edition.hasPendingSave &&
+                                                        !narrative.hasUnfinishedInput && !narrative.busy && narrative.pendingRequest == null &&
+                                                        narrative.job?.state !in setOf("queued", "running") &&
+                                                        !reading.sourceInspection.busy && !reading.sourceInspection.audioBusy &&
+                                                        reading.sourceInspection.audio == null)
                                             }
                                             book.stories.forEachIndexed { i, item ->
-                                                Card(onClick = { onStory(i) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-entry-$i")) {
+                                                Card(onClick = { guardedStory(i) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-entry-$i")) {
                                                     Column(Modifier.padding(16.dp)) {
                                                         Text(item.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
                                                         Text(t("${item.itemCount} moments", "${item.itemCount} 个片段"))
@@ -251,27 +374,58 @@ internal fun MemoryBooksDialog(
                                         }
                                     }
                                 }
-                                if (!narrativeExpanded && !keyboardVisible) MemoryBookOriginalNavigation(reading, zh, onChapter, onStory)
+                                if (!narrativeExpanded && !keyboardVisible) MemoryBookChapterNavigation(reading, zh, guardedChapter)
                             }
                             else -> {
-                                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    val books = reading.result?.items.orEmpty()
-                                    if (books.isEmpty()) Text(t("No books on this page.", "此页没有回忆册。"))
-                                    books.forEach { item ->
-                                        Card(onClick = { onBook(item.id) }, modifier = Modifier.fillMaxWidth().testTag("memory-book-${item.id}")) {
-                                            Column(Modifier.padding(16.dp)) {
-                                                Text(item.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
-                                                Text(t("${item.stories.size} stories", "${item.stories.size} 则故事"))
-                                            }
-                                        }
+                                if (reading.result?.canCreate == true && store.memoryBookCompositionCoordinator != null) {
+                                    Button(onClick = attachedMemoirShelfAction { store.startMemoryBookComposition(liveState.session?.account_id.orEmpty(),
+                                        liveState.generation, reading.library, reading.shelfScopeId,
+                                        t("Our family memories", "我们的家庭回忆"), if (zh) "zh" else "en") },
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("memory-books-create")) {
+                                        Text(t("Create a memoir from saved stories", "将已保存的故事汇集成册"))
                                     }
                                 }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    OutlinedButton(onClick = { onPage(reading.page - 1) }, enabled = reading.page > 1,
-                                        modifier = Modifier.testTag("memory-books-previous-page")) { Text(t("Previous", "上一页")) }
+                                val shelfAccount = liveState.session?.account_id.orEmpty()
+                                val shelfGeneration = liveState.generation
+                                val shelfLibrary = reading.library
+                                val shelfScopeId = reading.shelfScopeId
+                                val currentShelf = {
+                                    store.isCurrentMemoryBookShelf(shelfAccount, shelfGeneration, shelfLibrary, shelfScopeId)
+                                }
+                                val coversCurrent = shelfCovers.accountId == shelfAccount && shelfCovers.generation == shelfGeneration &&
+                                    shelfCovers.library == shelfLibrary && shelfCovers.shelfScopeId == shelfScopeId
+                                MemoryBookShelfCards(
+                                    books = reading.result?.items.orEmpty(),
+                                    covers = if (coversCurrent) shelfCovers.images else emptyMap(),
+                                    unavailableBookIds = if (coversCurrent) shelfCovers.unavailableBookIds else emptySet(),
+                                    loadingCovers = coversCurrent && shelfCovers.busy,
+                                    zh = zh,
+                                    onOpen = { item ->
+                                        if (currentShelf() && store.state.value.memoryBooks?.result?.items?.contains(item) == true)
+                                            onBook(item.id)
+                                    },
+                                    onRetryCovers = {
+                                        if (currentShelf()) store.retryMemoryBookShelfCovers(shelfAccount, shelfGeneration, shelfLibrary, shelfScopeId)
+                                    },
+                                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                                )
+                                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(t("Page ${reading.page}", "第 ${reading.page} 页"))
-                                    Button(onClick = { onPage(reading.page + 1) }, enabled = reading.result?.hasMore == true,
-                                        modifier = Modifier.testTag("memory-books-next-page")) { Text(t("Next", "下一页")) }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = attachedMemoirShelfAction {
+                                            if (currentShelf()) onPage(reading.page - 1)
+                                        }, enabled = reading.page > 1,
+                                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-books-previous-page")) {
+                                            Text(t("Previous", "上一页"))
+                                        }
+                                        Button(onClick = attachedMemoirShelfAction {
+                                            if (currentShelf()) onPage(reading.page + 1)
+                                        }, enabled = reading.result?.hasMore == true,
+                                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-books-next-page")) {
+                                            Text(t("Next", "下一页"))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -299,6 +453,28 @@ internal fun MemoryBooksDialog(
         },
         modifier = Modifier.testTag("memory-book-discard-dialog"),
     )
+    if (unresolvedCompositionExit) AlertDialog(
+        onDismissRequest = { unresolvedCompositionExit = false; deferredReaderExit = null },
+        title = { Text(t("Confirm the memoir save", "先确认回忆册保存")) },
+        text = { Text(t("The server may have accepted this save. Retry the exact request, or leave and check the shelf later. Leaving clears this local draft.",
+            "服务端可能已接受此次保存。可以重试同一请求，或先离开稍后核对书架。离开会清除本地草稿。")) },
+        confirmButton = {
+            Column {
+                TextButton(onClick = {
+                    unresolvedCompositionExit = false; deferredReaderExit = null
+                    store.memoryBookCompositionCoordinator?.retry(reading.shelfScopeId, composition.actionEpoch)
+                }, enabled = !composition.busy && composition.pendingRetry,
+                    modifier = Modifier.testTag("memory-book-compose-exit-retry")) { Text(t("Retry same save", "重试同一保存")) }
+                TextButton(onClick = {
+                    val action = deferredReaderExit; unresolvedCompositionExit = false; deferredReaderExit = null; action?.invoke()
+                }, enabled = !composition.busy, modifier = Modifier.testTag("memory-book-compose-exit-later")) {
+                    Text(t("Leave and check later", "先离开，稍后核对"))
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = { unresolvedCompositionExit = false; deferredReaderExit = null },
+            modifier = Modifier.testTag("memory-book-compose-exit-stay")) { Text(t("Stay here", "留在此处")) } },
+        modifier = Modifier.testTag("memory-book-compose-exit-dialog"))
     if (unresolvedEditionExit) AlertDialog(onDismissRequest = { unresolvedEditionExit = false },
         title = { Text(t("Confirm the edition save", "先确认版本保存")) },
         text = { Text(t("Keep this manuscript until the save result is confirmed. Retry sends the same request.",
@@ -689,22 +865,33 @@ private fun MemoirNavigation(
         Text(position, style = MaterialTheme.typography.labelLarge)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onPrevious, enabled = previousEnabled,
-                modifier = Modifier.weight(1f).testTag(previousTag)) { Text(previous) }
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(previousTag)) { Text(previous) }
             Button(onClick = onNext, enabled = nextEnabled,
-                modifier = Modifier.weight(1f).testTag(nextTag)) { Text(next) }
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(nextTag)) { Text(next) }
         }
     }
 }
 
+private class MemoirShelfActionLease(var attached: Boolean = false)
+
+/** A former shelf button cannot reopen a composer after its rendered panel leaves. */
+@Composable
+private fun attachedMemoirShelfAction(action: () -> Unit): () -> Unit {
+    val lease = remember(action) { MemoirShelfActionLease() }
+    DisposableEffect(lease) {
+        lease.attached = true
+        onDispose { lease.attached = false }
+    }
+    return remember(lease, action) { { if (lease.attached) action() } }
+}
+
 /** Keep saved-story controls beside saved prose while the AI review panel is open. */
 @Composable
-private fun MemoryBookOriginalNavigation(
-    reading: MemoryBooksReading, zh: Boolean, onChapter: (Int) -> Unit, onStory: (Int) -> Unit,
+private fun MemoryBookChapterNavigation(
+    reading: MemoryBooksReading, zh: Boolean, onChapter: (Int) -> Unit,
 ) {
-    val book = reading.selectedBook ?: return
     val story = reading.story
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
-    val index = reading.storyIndex
     fun t(en: String, cn: String) = if (zh) cn else en
     if (story != null && chapter != null) MemoirNavigation(
         t("Chapter ${reading.selectedChapter + 1} / ${story.chapters.size}", "第 ${reading.selectedChapter + 1} / ${story.chapters.size} 章"),
@@ -713,10 +900,25 @@ private fun MemoryBookOriginalNavigation(
         !reading.framesBusy && reading.selectedChapter < story.chapters.lastIndex,
         { onChapter(reading.selectedChapter - 1) }, { onChapter(reading.selectedChapter + 1) },
         "memory-book-previous-chapter", "memory-book-next-chapter")
-    if (index != null) MemoirNavigation(
-        t("Story ${index + 1} / ${book.stories.size}", "故事 ${index + 1}/${book.stories.size}"),
-        t("Previous story", "上一则故事"), t("Next story", "下一则故事"),
-        !reading.readerBusy && index > 0, !reading.readerBusy && index < book.stories.lastIndex,
-        { onStory(index - 1) }, { onStory(index + 1) },
-        "memory-book-previous", "memory-book-next")
+}
+
+/** Keep adjacent-story actions with the story title and contents inside the reader scroll. */
+@Composable
+private fun MemoryBookStoryNavigation(
+    reading: MemoryBooksReading, zh: Boolean, onStory: (Int) -> Unit,
+) {
+    val book = reading.selectedBook ?: return
+    val index = reading.storyIndex ?: return
+    if (index !in book.stories.indices) return
+    fun t(en: String, cn: String) = if (zh) cn else en
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedButton(onClick = { onStory(index - 1) }, enabled = !reading.readerBusy && index > 0,
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-book-previous")) {
+            Text(t("Previous story", "上一则故事"))
+        }
+        Button(onClick = { onStory(index + 1) }, enabled = !reading.readerBusy && index < book.stories.lastIndex,
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("memory-book-next")) {
+            Text(t("Next story", "下一则故事"))
+        }
+    }
 }

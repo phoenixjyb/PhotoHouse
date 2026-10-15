@@ -11,6 +11,7 @@ internal val SAVED_MEMORY_STORY_THEMES = setOf("everyday", "trip", "growing_up",
 
 data class MemoryStoryEvidence(
     val id: String, val source: String, val title: String, val text: String, val revision: Int? = null,
+    val originAssetId: String? = null, val byline: String? = null,
 )
 data class MemoryStoryAsset(val asset: Asset, val evidence: List<MemoryStoryEvidence>)
 data class SavedMemoryStorySummary(
@@ -28,6 +29,7 @@ data class SavedMemoryStory(
     val id: String, val libraryId: String, val revision: Long, val createdAt: Long, val updatedAt: Long, val canEdit: Boolean,
     val selectionRevision: String, val title: String, val theme: String, val language: String,
     val items: List<MemoryStoryAsset>, val chapters: List<SavedMemoryStoryChapter>, val questions: List<String>,
+    val sourcePolicy: String? = null,
 )
 data class SavedMemoryChapterContributionReferences(val chapterId: String, val contributionIds: List<String>)
 data class SavedMemoryStoryContributionReferences(
@@ -41,6 +43,7 @@ data class SavedMemoryStoryContributionReferencesMutation(
     val title: String, val theme: String, val language: String,
     val chapters: List<SavedMemoryStoryChapter>, val contributionRefsJson: String,
     val mutationId: String = UUID.randomUUID().toString(),
+    val sourcePolicy: String? = null,
 )
 
 /** Exact, bounded reader contract for saved protected family story drafts. */
@@ -91,11 +94,17 @@ internal object ProtectedMemoryStoriesWire {
         SavedMemoryStoryPage(library, page, 8, bool(root, "has_more"), bool(root, "can_create"), rows)
     }
 
-    fun detail(bytes: ByteArray, library: String, expectedId: String, expectedRevision: Long): SavedMemoryStory = guarded {
+    fun detail(bytes: ByteArray, library: String, expectedId: String, expectedRevision: Long,
+               sourceReview: Boolean = false): SavedMemoryStory = guarded {
         // The full bounded contract tops out below 900 JSON value nodes. DiscoveryJson
         // separately caps the total at 10,000 and this per-array guard at 1,200.
         val root = obj(DiscoveryJson.parse(bytes, HttpsPhotoHouseApi.MEMORY_STORIES_LIMIT, 1200))
-        exact(root, "version", "library_id", "id", "revision", "created_at", "updated_at", "can_edit", "saved", "state", "generator", "needs_review", "selection_revision", "title", "theme", "language", "items", "chapters", "questions")
+        val storyKeys = arrayOf("version", "library_id", "id", "revision", "created_at", "updated_at", "can_edit", "saved", "state", "generator", "needs_review", "selection_revision", "title", "theme", "language", "items", "chapters", "questions")
+        if (sourceReview) exact(root, *storyKeys, "source_policy") else exact(root, *storyKeys)
+        val sourcePolicy = if (sourceReview) (root["source_policy"] ?: bad()).let { value ->
+            if (value == JsonNull) null else field(JsonObject(mapOf("source_policy" to value)), "source_policy", 32)
+        } else null
+        check(sourcePolicy == null || sourcePolicy == ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
         check(integer(root["version"], 1) == 1)
         val actualLibrary = field(root, "library_id", 256); val id = field(root, "id", 36); val revision = decimalString(root["revision"], positive = true)
         check(actualLibrary == library && id == expectedId && revision >= expectedRevision)
@@ -107,7 +116,15 @@ internal object ProtectedMemoryStoriesWire {
         val language = field(root, "language", 2); check(language in setOf("zh", "en"))
         val items = array(root, "items", 24).map { parseItem(obj(it), library) }
         check(items.isNotEmpty() && items.map { it.asset.id }.distinct().size == items.size)
-        check(items.flatMap { it.evidence }.map { it.id }.distinct().size == items.sumOf { it.evidence.size })
+        val canonicalEvidence = mutableMapOf<String, MemoryStoryEvidence>()
+        items.forEach { item ->
+            check(item.evidence.map { it.id }.distinct().size == item.evidence.size)
+            item.evidence.forEach { evidence ->
+                val previous = canonicalEvidence.putIfAbsent(evidence.id, evidence)
+                check(previous == null || previous == evidence && evidence.id.startsWith("family-") &&
+                    evidence.originAssetId != null && evidence.byline != null)
+            }
+        }
         val chapters = array(root, "chapters", 6).mapIndexed { index, value -> parseChapter(obj(value), index + 1) }
         check(chapters.isNotEmpty() && chapters.map { it.id }.distinct().size == chapters.size)
         val ordered = chapters.flatMap { it.assetIds }
@@ -118,11 +135,12 @@ internal object ProtectedMemoryStoriesWire {
         })
         val questions = array(root, "questions", 3).map { str(it, 500, allowNewline = true).also { q -> check(q.isNotBlank()) } }
         SavedMemoryStory(id, actualLibrary, revision, long(root["created_at"]), long(root["updated_at"]), bool(root, "can_edit"), selectionRevision,
-            title, theme, language, items, chapters, questions).also { check(it.createdAt >= 0 && it.updatedAt >= 0) }
+            title, theme, language, items, chapters, questions, sourcePolicy).also { check(it.createdAt >= 0 && it.updatedAt >= 0) }
     }
 
     /** Strict create response entry point; the server may return a later revision after a mutation retry. */
-    fun decode(bytes: ByteArray, library: String, expectedAssetIds: List<String>): SavedMemoryStory = guarded {
+    fun decode(bytes: ByteArray, library: String, expectedAssetIds: List<String>,
+               sourceReview: Boolean = false): SavedMemoryStory = guarded {
         check(bytes.size <= 256 * 1024)
         check(expectedAssetIds.size in 1..24 && expectedAssetIds.distinct().size == expectedAssetIds.size)
         expectedAssetIds.forEach { id ->
@@ -133,7 +151,7 @@ internal object ProtectedMemoryStoriesWire {
         // field, scope, source-reference, and saved-reader validation to the complete response.
         val id = field(root, "id", 36).also(::uuid)
         val revision = decimalString(root["revision"], positive = true)
-        val story = detail(bytes, library, id, 1)
+        val story = detail(bytes, library, id, 1, sourceReview)
         check(story.revision == revision && story.items.map { it.asset.id } == expectedAssetIds)
         story
     }
@@ -175,12 +193,15 @@ internal object ProtectedMemoryStoriesWire {
             "asset_ids" to JsonArray(chapter.assetIds.map(::JsonPrimitive)),
             "evidence_ids" to JsonArray(chapter.evidenceIds.map(::JsonPrimitive)),
         )) })
-        JsonObject(mapOf("title" to JsonPrimitive(m.title), "theme" to JsonPrimitive(m.theme),
+        require(m.sourcePolicy == null || m.sourcePolicy == ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+        JsonObject(linkedMapOf("title" to JsonPrimitive(m.title), "theme" to JsonPrimitive(m.theme),
             "language" to JsonPrimitive(m.language),
             "asset_ids" to JsonPrimitive(m.chapters.flatMap { it.assetIds }.joinToString(",")),
             "chapters" to JsonPrimitive(chapters.toString()), "selection_revision" to JsonPrimitive(m.selectionRevision),
             "revision" to JsonPrimitive(m.revision.toString()), "mutation_id" to JsonPrimitive(m.mutationId),
-            "contribution_refs" to JsonPrimitive(m.contributionRefsJson))).toString().toByteArray(Charsets.UTF_8)
+            "contribution_refs" to JsonPrimitive(m.contributionRefsJson)).apply {
+            m.sourcePolicy?.let { put("source_policy", JsonPrimitive(it)) }
+        }).toString().toByteArray(Charsets.UTF_8)
     } catch (_: Exception) { throw ApiFailure(FailureKind.INVALID_INPUT) }
 
     private fun summary(o: JsonObject): SavedMemoryStorySummary {
@@ -216,7 +237,7 @@ internal object ProtectedMemoryStoriesWire {
             val h = obj(it ?: bad()); exact(h, "value", "source")
             DateHint(field(h, "value", 64), field(h, "source", 16))
         } }
-        val evidence = array(o, "evidence", 3).map { parseEvidence(obj(it)) }
+        val evidence = array(o, "evidence", 12).map { parseEvidence(obj(it)) }
         check(evidence.map { it.id }.distinct().size == evidence.size)
         return MemoryStoryAsset(Asset(id, kind, width, height, duration, taken, thumbnail, hint), evidence)
     }
@@ -226,11 +247,19 @@ internal object ProtectedMemoryStoriesWire {
         val evidenceId = field(o, "id", 64)
         return when {
             evidenceId.startsWith("family-") && source == "family" -> {
-                exact(o, "id", "source", "title", "text", "revision")
+                val hasOrigin = "origin_asset_id" in o
+                val hasByline = "byline" in o
+                check(hasOrigin == hasByline)
+                if (hasOrigin) exact(o, "id", "source", "title", "text", "revision", "origin_asset_id", "byline")
+                else exact(o, "id", "source", "title", "text", "revision")
                 val id = evidenceId; check(id.matches(Regex("family-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
                 val title = rawField(o, "title", 160, 512); val text = rawField(o, "text", 1800, 1800)
                 val revision = integer(o["revision"]); check(revision > 0)
-                MemoryStoryEvidence(id, source, title, text, revision)
+                val originAssetId = if (hasOrigin) field(o, "origin_asset_id", 19).also {
+                    check(it.matches(Regex("[1-9][0-9]{0,18}") ) && it.toLongOrNull()?.toString() == it)
+                } else null
+                val byline = if (hasByline) rawField(o, "byline", 256, 256) else null
+                MemoryStoryEvidence(id, source, title, text, revision, originAssetId, byline)
             }
             evidenceId.startsWith("caption-") && source in setOf("family", "ai") -> {
                 exact(o, "id", "source", "title", "text")

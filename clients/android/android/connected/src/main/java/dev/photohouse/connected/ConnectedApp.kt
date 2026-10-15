@@ -50,6 +50,7 @@ import dev.photohouse.protocol.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 
 internal class Words(val zh: Boolean) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -79,6 +80,7 @@ internal class Words(val zh: Boolean) {
         Message.NETWORK_UNAVAILABLE -> t("Cannot reach PhotoHouse. Check this device’s network and server connection. If registration may have completed, try Sign in.", "无法连接 PhotoHouse，请检查手机网络和服务器连接。如果注册可能已完成，请尝试登录。")
         Message.TLS_ERROR -> t("The server's secure connection could not be verified. Contact your administrator.", "无法验证服务器的安全连接，请联系管理员。")
         Message.CLOSED -> t("This request was blocked. Contact your administrator.", "请求已被阻止，请联系管理员。")
+        Message.MEMORY_CONVERSATION_FULL -> t("This conversation is full. Your unsent question is kept.", "这段对话已满。未发送的问题已保留。")
         Message.RATE_LIMITED -> t("Too many attempts. Wait before trying again.", "尝试过于频繁，请稍后重试。")
         Message.INVALID_INPUT -> t("Check your inputs and the password rules shown. Use an explicit country code. If already registered, sign in.", "请检查输入和显示的密码要求，手机号应包含国家码。已注册请登录。")
         Message.INVALID_RESPONSE -> t("The server response could not be displayed safely.", "无法安全显示服务器响应。")
@@ -90,6 +92,11 @@ internal class Words(val zh: Boolean) {
         Message.VIDEO_BUSY -> t("Video playback is busy. Wait a moment before trying again.", "视频播放繁忙，请稍候重试。")
         Message.PLAYBACK_UNAVAILABLE -> t("Video playback is temporarily unavailable. Your album is still available.", "视频播放暂不可用，仍可继续浏览相册。")
         Message.MEDIA_UNAVAILABLE -> t("This media is unavailable.", "此媒体不可用。")
+        Message.ASSISTANT_ASR_NO_INPUT -> t("No words were recognized. Please speak clearly and try again.", "没有识别到内容，请说清楚后重试。")
+        Message.ASSISTANT_ASR_BUSY -> t("Speech recognition is busy. Please wait a moment and try again.", "语音识别正忙，请稍等片刻后重试。")
+        Message.ASSISTANT_ASR_UNAVAILABLE -> t("Speech recognition is temporarily unavailable. Please try again later.", "语音识别服务暂不可用，请稍后重试。")
+        Message.ASSISTANT_ASR_TIMEOUT -> t("Speech recognition took too long. Please try again.", "语音识别等待超时，请重试。")
+        Message.ASSISTANT_ASR_INVALID -> t("Speech recognition returned an invalid response. Please try again later.", "语音识别响应无效，请稍后重试。")
     }
     fun membership(m: Membership) = when {
         m.available -> t("Available", "可访问")
@@ -111,6 +118,7 @@ private data class PendingAnnotationCapture(
 )
 private data class AssistantCaptureSelection(val account: String, val library: String, val generation: Long, val maxSeconds: Int)
 private data class PendingAssistantCapture(val selection: AssistantCaptureSelection, val capture: AnnotationAudioRecorder.Capture)
+private data class PendingPrivateVoiceStart(val threadId: String, val revision: Long, val nonce: Long)
 
 private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val limit = 2 * 1024 * 1024
@@ -137,7 +145,44 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val t = words::t
     val state = store?.state?.collectAsState()?.value ?: LiveState()
     var assistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
-    var handledAssistantExchange by remember(state.session?.account_id, state.library) { mutableIntStateOf(0) }
+    var privateAssistantOpen by remember(state.generation, state.library) { mutableStateOf(false) }
+    val assistantDraft = remember(state.session?.account_id, state.library, state.generation, state.covered, assistantOpen,
+        state.assistant?.privateThreadId) { mutableStateOf("") }
+    val closePrivateAssistantPanel: () -> Unit = {
+        store?.clearAssistantMemoryOpeningSpeech()
+        privateAssistantOpen = false
+    }
+    var pendingPrivateVoiceStart by remember(state.generation, state.library) { mutableStateOf<PendingPrivateVoiceStart?>(null) }
+    var privateVoiceStartNonce by remember(state.generation, state.library) { mutableLongStateOf(0L) }
+    val privateAssistant = store?.assistantWorkspaceCoordinator
+    val privateAssistantState = store?.assistantWorkspaceState?.collectAsState()?.value ?: AssistantWorkspaceState()
+    LaunchedEffect(assistantOpen, state.generation, state.library) {
+        if (assistantOpen && !state.covered && state.session != null && privateAssistant != null) {
+            if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReadingCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySegmentReadingCapabilities()) privateAssistant.state.first { !it.busy }
+        }
+    }
+    LaunchedEffect(privateAssistantOpen) {
+        if (!privateAssistantOpen) store?.clearAssistantMemoryOpeningSpeech()
+        if (privateAssistantOpen && privateAssistant != null) {
+            if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySpeechCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemoryReadingCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSavedMemorySegmentReadingCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshThreads()) {
+                privateAssistant.state.first { !it.busy }
+                privateAssistant.refreshPreferences()
+            }
+        }
+    }
+    var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -155,11 +200,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (store?.assistantEnabled == true && state.library != null && state.session != null && !state.covered)
             store.loadAssistantCapabilities()
     }
-    val assistantExchangeCount = state.assistant?.turns?.size ?: 0
+    val assistantLatestExchangeId = state.assistant?.turns?.lastOrNull()?.localRequestId
     val assistantEffect = state.assistant?.turns?.lastOrNull()?.turn?.effect
-    LaunchedEffect(assistantOpen, assistantExchangeCount, assistantEffect) {
-        if (assistantOpen && assistantExchangeCount > handledAssistantExchange && assistantEffect?.type == "open_asset") {
-            handledAssistantExchange = assistantExchangeCount
+    LaunchedEffect(state.assistant, state.problem?.message) {
+        if (state.assistant == null && state.problem?.message == Message.ACCESS_DENIED) assistantOpen = false
+    }
+    LaunchedEffect(assistantOpen, assistantLatestExchangeId, assistantEffect) {
+        if (assistantOpen && assistantLatestExchangeId != null && assistantLatestExchangeId != handledAssistantExchangeId && assistantEffect?.type == "open_asset") {
+            handledAssistantExchangeId = assistantLatestExchangeId
             assistantOpen = false
             store?.openAssetById(assistantEffect.assetId)
         }
@@ -195,6 +243,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var assistantRecordError by remember(state.generation, state.library) { mutableStateOf(false) }
     var assistantCaptureRecorder = remember(state.generation, state.library) { AnnotationAudioRecorder() }
     DisposableEffect(assistantCaptureRecorder) { onDispose { assistantCaptureRecorder.stop() } }
+    LaunchedEffect(assistantOpen, state.covered) {
+        if (!assistantOpen || state.covered) {
+            assistantPermissionContext = null
+            assistantPendingCapture?.capture?.discard()
+            assistantPendingCapture = null
+            assistantRecording = false
+            assistantCaptureRecorder.stop()
+        }
+    }
     var activeRecording by remember(annotationTarget, state.generation) { mutableStateOf(false) }
     var recordingError by remember(annotationTarget, state.generation) { mutableStateOf(false) }
     var microphonePermissionDenied by remember(annotationTarget, state.generation) { mutableStateOf(false) }
@@ -368,6 +425,9 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (!state.covered && store != null) state.storyEditor?.let { editor ->
             ProtectedStoryEditorDialog(editor, onDismiss = store::closeStoryEditor, zh = words.zh)
         }
+        if (!state.covered && store != null) state.memoryGroups?.let { groups ->
+            MemoryGroupsDialog(groups, words.zh, onClose = store::closeMemoryGroups)
+        }
         if (!state.covered && store != null && state.session != null && state.library != null && store.protectedNativeV2Enabled) {
             state.savedMemoryStories?.let { reading -> SavedMemoryStoriesDialog(
                 store = store,
@@ -379,7 +439,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 onRetryDetail = store::retrySavedMemoryStory,
                 onCloseDetail = store::closeSavedMemoryStoryDetail,
                 onChapter = store::loadSavedMemoryChapter,
-                onSelectFrame = store::loadSavedMemoryHero,
+                onSelectFrame = store::selectSavedMemoryFrame,
                 onOpenAsset = { id -> store.closeSavedMemoryStories(); store.openAssetById(id) },
             ) }
         }
@@ -491,7 +551,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         )
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             BackHandler(store != null && state.library != null && !state.covered) {
-                if (assistantOpen) assistantOpen = false
+                if (privateAssistantOpen) closePrivateAssistantPanel()
+                else if (assistantOpen) assistantOpen = false
                 else if (state.video != null) store?.closeVideo()
                 else if (state.viewingOriginal) store?.closeOriginalPhoto()
                 else if (state.detail != null || state.photoNavigation != null) store?.backToPhotos()
@@ -538,17 +599,319 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 return@Surface
             }
             if (assistantOpen && state.library != null && !state.covered && store != null) {
-                AssistantScreen(state.assistant, words.zh, previews = state.previews, onBack = { store.clearAssistantSpeech(); assistantOpen = false },
-                    onRetryCapabilities = { store.loadAssistantCapabilities() },
-                    onSend = store::sendAssistantText, onClear = store::clearAssistant,
-                    onOpen = { id, requestId -> store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id) },
+                val voice = rememberAssistantVoiceControls(store, state, words.zh) { id, requestId ->
+                    if (assistantOpen && requestId != handledAssistantExchangeId) {
+                        handledAssistantExchangeId = requestId
+                        store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id)
+                    }
+                }
+                LaunchedEffect(privateAssistantState.memoryReaderHandoff, state.generation, state.library,
+                    state.session?.account_id, voice?.session) {
+                    val handoff = privateAssistantState.memoryReaderHandoff ?: return@LaunchedEffect
+                    // A memory action can publish its reader payload while the voice operation is
+                    // unwinding. Keep the handoff staged until the user opted-in session has ended.
+                    if (voice?.session != null) return@LaunchedEffect
+                    val live = store.state.value
+                    val inForeground = (privateAssistantOpen || assistantOpen) && !live.covered &&
+                        live.generation == state.generation && live.library == state.library &&
+                        live.session?.account_id == state.session?.account_id
+                    if (inForeground && store.openAssistantMemoryReader(handoff, state.session?.account_id.orEmpty(),
+                            state.library.orEmpty(), state.generation)) {
+                        closePrivateAssistantPanel()
+                        assistantOpen = false
+                    }
+                }
+                val stopVoiceAndDiscardCaptureBeforeMemorySpeech: () -> Unit = {
+                    voice?.end?.invoke()
+                    assistantPermissionContext = null
+                    assistantPendingCapture?.capture?.discard()
+                    assistantPendingCapture = null
+                    assistantRecording = false
+                }
+                if (privateAssistantOpen && privateAssistant != null) {
+                    val current: () -> Boolean = { val live=store.state.value
+                        assistantOpen && privateAssistantOpen && !live.covered && live.generation == state.generation &&
+                            live.library == state.library && live.session?.account_id == state.session?.account_id }
+                    val renderedAndLiveThreadCurrent: (String, Long) -> Boolean = { threadId, revision ->
+                        val rendered = privateAssistantState.detail?.thread
+                        val liveWorkspace = privateAssistant.state.value
+                        val live = liveWorkspace.detail?.thread
+                        current() && rendered?.threadId == threadId && rendered.revision == revision &&
+                            live?.threadId == threadId && live.revision == revision &&
+                            privateAssistantState.accountId == state.session?.account_id &&
+                            privateAssistantState.libraryId == state.library && privateAssistantState.generation == state.generation &&
+                            liveWorkspace.accountId == privateAssistantState.accountId &&
+                            liveWorkspace.libraryId == privateAssistantState.libraryId &&
+                            liveWorkspace.generation == privateAssistantState.generation
+                    }
+                    PrivateAssistantPanel(privateAssistantState, words.zh,
+                        onNew = { if(current()) privateAssistant.createThread() },
+                        onRefresh = { if(current()) { if(privateAssistantState.capabilities?.let { it.available && it.threads } == true)
+                            privateAssistant.refreshThreads() else privateAssistant.refreshCapabilities() } },
+                        onOpenThread = { threadId, revision ->
+                            val rendered = privateAssistantState.threads?.threads?.firstOrNull { it.threadId == threadId }
+                            val live = privateAssistant.state.value.threads?.threads?.firstOrNull { it.threadId == threadId }
+                            if (current() && rendered?.revision == revision && live?.revision == revision &&
+                                !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
+                                !privateAssistant.state.value.busy && privateAssistant.state.value.pendingTurn == null)
+                                privateAssistant.openThread(threadId)
+                        },
+                        onDraft = { text ->
+                            val rendered = privateAssistantState.detail?.thread
+                            val liveThread = privateAssistant.state.value.detail?.thread
+                            if (current() && rendered?.threadId == liveThread?.threadId && rendered?.revision == liveThread?.revision)
+                                runCatching { privateAssistant.setDraft(text) }
+                        },
+                        onSend = { privateAssistantState.detail?.thread?.let { thread ->
+                            if (renderedAndLiveThreadCurrent(thread.threadId, thread.revision)) privateAssistant.sendTurn()
+                        } },
+                        onRecover = { val rendered = privateAssistantState.pendingTurn
+                            if (current() && rendered != null && privateAssistant.state.value.pendingTurn == rendered)
+                                privateAssistant.recoverPendingTurn()
+                        },
+                        onReconcileCreation = { val rendered = privateAssistantState.pendingCreationId
+                            if (current() && rendered != null && privateAssistant.state.value.pendingCreationId == rendered)
+                                privateAssistant.reconcileCreation()
+                        },
+                        onAbandonPending = { threadId, requestId, revision ->
+                            val renderedPending = privateAssistantState.pendingTurn
+                            val livePending = privateAssistant.state.value.pendingTurn
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                renderedPending?.threadId == threadId && renderedPending.requestId == requestId &&
+                                livePending?.threadId == threadId && livePending.requestId == requestId &&
+                                privateAssistant.abandonPendingTurn(true)) {
+                                privateAssistant.createThread()
+                            }
+                        },
+                        onDelete = { threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null) {
+                                privateAssistant.deleteCurrentThread()
+                            }
+                        },
+                        onSetLocale = { if(current()) privateAssistant.updatePreferences(mapOf(AssistantWorkspacePreference.LOCALE to it)) },
+                        onContinueVoice = if (privateAssistantState.capabilities?.let {
+                                it.available && it.threads && it.serverOwnedTurns
+                            } == true) ({ threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null &&
+                                store.activatePrivateAssistantConversation(threadId, revision)) {
+                                privateVoiceStartNonce += 1
+                                pendingPrivateVoiceStart = PendingPrivateVoiceStart(threadId, revision, privateVoiceStartNonce)
+                                assistantOpen = true
+                                closePrivateAssistantPanel()
+                            }
+                        }) else null,
+                        onContinueText = if (privateAssistantState.capabilities?.let {
+                                it.available && it.threads && it.serverOwnedTurns
+                            } == true) ({ threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.pendingTurn == null && privateAssistant.state.value.pendingTurn == null &&
+                                store.activatePrivateAssistantConversation(threadId, revision)) {
+                                assistantOpen = true
+                                closePrivateAssistantPanel()
+                            }
+                        }) else null,
+                        onLoadOlder = { threadId, revision, before ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision) &&
+                                privateAssistantState.detail?.exchanges?.firstOrNull()?.revision == before &&
+                                privateAssistant.state.value.detail?.exchanges?.firstOrNull()?.revision == before)
+                                privateAssistant.loadOlderHistory()
+                        },
+                        onReloadHistory = { threadId, revision ->
+                            if (renderedAndLiveThreadCurrent(threadId, revision)) privateAssistant.openThread(threadId)
+                        },
+                        onDismiss = { privateAssistant.invalidateSavedMemoryReader(); closePrivateAssistantPanel() },
+                        assistant = state.assistant,
+                        onStopMemoryOpening = { store.clearAssistantSpeech() },
+                        onMemoryOpeningPlaybackOutcome = { audio, outcome -> store.reportAssistantPlaybackOutcome(audio, outcome) },
+                        onReadSavedMemoryOpening = { ordinal ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            val liveWorkspace = privateAssistant.state.value
+                            if (current() && privateAssistantState.savedMemoryReadingAvailable &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    liveWorkspace.currentTurn, liveWorkspace.detail) &&
+                                store.canReadAssistantMemoryOpening(ordinal)) {
+                                stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                                val afterVoiceEnd = privateAssistant.state.value
+                                if (current() && afterVoiceEnd.savedMemoryReadingAvailable &&
+                                    isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                        afterVoiceEnd.currentTurn, afterVoiceEnd.detail)) {
+                                    store.loadAssistantMemoryOpening(ordinal, renderedTurn?.requestId, renderedTurn?.revision)
+                                }
+                            }
+                        },
+                        onReadSavedMemorySegment = { ordinal, segment ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            val liveWorkspace = privateAssistant.state.value
+                            if (current() && privateAssistantState.savedMemorySegmentReadingAvailable &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    liveWorkspace.currentTurn, liveWorkspace.detail) &&
+                                store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                                val afterVoiceEnd = privateAssistant.state.value
+                                if (current() && afterVoiceEnd.savedMemorySegmentReadingAvailable &&
+                                    isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                        afterVoiceEnd.currentTurn, afterVoiceEnd.detail) &&
+                                    store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                    store.loadAssistantMemorySegment(ordinal, segment, renderedTurn?.requestId, renderedTurn?.revision)
+                                }
+                            }
+                        },
+                        onOpenSavedMemoryCard = { ordinal ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            if (current() && renderedCard != null && renderedTurn.status == AssistantWorkspaceRequestStatus.COMPLETED &&
+                                !renderedTurn.recovered && renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                                renderedTurn.revision == privateAssistantState.detail?.thread?.revision &&
+                                privateAssistant.state.value.currentTurn == renderedTurn) {
+                                voice?.end?.invoke()
+                                privateAssistant.openSavedMemoryCard(ordinal)
+                            }
+                        },
+                        onSavedMemoryFollowupDraft = { text ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val liveWorkspace = privateAssistant.state.value
+                            if (current() && privateAssistantState.savedMemoryFollowupAvailable &&
+                                renderedTurn?.status == AssistantWorkspaceRequestStatus.COMPLETED && !renderedTurn.recovered &&
+                                renderedTurn.result?.let { it.kind == "memory_cards" && it.memoryCards.isNotEmpty() &&
+                                    it.savedMemoryContext?.libraryId == privateAssistantState.libraryId } == true &&
+                                renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                                renderedTurn.revision == privateAssistantState.detail?.thread?.revision &&
+                                liveWorkspace.currentTurn == renderedTurn && liveWorkspace.detail?.thread == privateAssistantState.detail?.thread &&
+                                liveWorkspace.savedMemoryFollowupAvailable) {
+                                voice?.end?.invoke()
+                                privateAssistant.setSavedMemoryFollowupDraft(text)
+                            } else false
+                        },
+                        onOpenAsset = { id -> if(current() && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
+                            privateAssistantState.currentTurn?.result?.items?.any { it.id == id } == true) {
+                            closePrivateAssistantPanel();assistantOpen=false;store.openAssetById(id)
+                        } })
+                    return@Surface
+                }
+                val assistantScopeCurrent: () -> Boolean = {
+                    val live = store.state.value
+                    assistantOpen && !live.covered && live.generation == state.generation &&
+                        live.library == state.library && live.session?.account_id == state.session?.account_id
+                }
+                LaunchedEffect(pendingPrivateVoiceStart?.nonce, privateAssistantOpen) {
+                    val requested = pendingPrivateVoiceStart ?: return@LaunchedEffect
+                    if (privateAssistantOpen) return@LaunchedEffect
+                    pendingPrivateVoiceStart = null
+                    val liveDetail = privateAssistant?.state?.value?.detail?.thread
+                    if (assistantScopeCurrent() && store.privateAssistantConversationAvailable() &&
+                        liveDetail?.threadId == requested.threadId && liveDetail.revision == requested.revision &&
+                        !assistantRecording && assistantPendingCapture == null && assistantPermissionContext == null) {
+                        voice?.start?.invoke()
+                    }
+                }
+                val manualAssistantAction: () -> Boolean = {
+                    assistantScopeCurrent() && voice?.canUseManualControls?.invoke() != false
+                }
+                AssistantScreen(state.assistant, words.zh, previews = state.previews,
+                    privateReplySpeechEnabled = store.privateReplySpeechEnabled(),
+                    privateReplySpeechAvailable = store.privateReplySpeechEnabled() &&
+                        state.assistant?.speechMemoryOpeningOrdinal == null &&
+                        (state.assistant?.speechBusy == true || state.assistant?.speechAudio != null || store.canReadAssistantReply()),
+                    savedMemoryWorkspace = privateAssistantState,
+                    onOpenSavedMemoryCard = { ordinal ->
+                        val fresh = privateAssistant?.state?.value
+                        val turn = fresh?.currentTurn
+                        val card = turn?.result?.memoryCards?.getOrNull(ordinal)
+                        if (assistantScopeCurrent() && fresh?.savedMemoryCardsAvailable == true && card != null &&
+                            turn.status == AssistantWorkspaceRequestStatus.COMPLETED && !turn.recovered &&
+                            fresh.detail?.thread?.let { it.threadId == turn.threadId && it.revision == turn.revision } == true) {
+                            voice?.end?.invoke()
+                            assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false
+                            privateAssistant?.openSavedMemoryCard(ordinal)
+                        }
+                    },
+                    onReadSavedMemoryOpening = { ordinal ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                        val fresh = privateAssistant?.state?.value
+                        if (assistantScopeCurrent() && privateAssistantState.savedMemoryReadingAvailable &&
+                            isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                fresh?.currentTurn, fresh?.detail) && store.canReadAssistantMemoryOpening(ordinal)) {
+                            stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                            val afterVoiceEnd = privateAssistant?.state?.value
+                            if (assistantScopeCurrent() && afterVoiceEnd?.savedMemoryReadingAvailable == true &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    afterVoiceEnd.currentTurn, afterVoiceEnd.detail)) {
+                                store.loadAssistantMemoryOpening(ordinal, renderedTurn?.requestId, renderedTurn?.revision)
+                            }
+                        }
+                    },
+                    onReadSavedMemorySegment = { ordinal, segment ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                        val fresh = privateAssistant?.state?.value
+                        if (assistantScopeCurrent() && privateAssistantState.savedMemorySegmentReadingAvailable &&
+                            isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                fresh?.currentTurn, fresh?.detail) && store.canReadAssistantMemorySegment(ordinal, segment)) {
+                            stopVoiceAndDiscardCaptureBeforeMemorySpeech()
+                            val afterVoiceEnd = privateAssistant?.state?.value
+                            if (assistantScopeCurrent() && afterVoiceEnd?.savedMemorySegmentReadingAvailable == true &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    afterVoiceEnd.currentTurn, afterVoiceEnd.detail) &&
+                                store.canReadAssistantMemorySegment(ordinal, segment)) {
+                                store.loadAssistantMemorySegment(ordinal, segment, renderedTurn?.requestId, renderedTurn?.revision)
+                            }
+                        }
+                    },
+                    showMemoryOpeningPlayback = !privateAssistantOpen,
+                    onSavedMemoryFollowupDraft = { text ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val rendered = privateAssistantState.savedMemoryCardsAvailable &&
+                            privateAssistantState.savedMemoryFollowupAvailable &&
+                            renderedTurn?.status == AssistantWorkspaceRequestStatus.COMPLETED && !renderedTurn.recovered &&
+                            renderedTurn.result?.let { it.kind == "memory_cards" && it.memoryCards.isNotEmpty() &&
+                                it.savedMemoryContext?.libraryId == privateAssistantState.libraryId } == true &&
+                            renderedTurn.threadId == privateAssistantState.detail?.thread?.threadId &&
+                            renderedTurn.revision == privateAssistantState.detail?.thread?.revision
+                        val liveWorkspace = privateAssistant?.state?.value
+                        if (assistantScopeCurrent() && rendered && liveWorkspace?.currentTurn == renderedTurn &&
+                            liveWorkspace?.detail?.thread == privateAssistantState.detail?.thread &&
+                            liveWorkspace?.savedMemoryFollowupAvailable == true) {
+                            voice?.end?.invoke()
+                            privateAssistant?.setSavedMemoryFollowupDraft(text) == true
+                        } else false
+                    },
+                    onPrivateConversations = if(privateAssistantState.capabilities?.let { it.available && it.threads } == true) ({
+                        if(assistantScopeCurrent()) { voice?.end?.invoke();store.clearAssistantSpeech();
+                            assistantPermissionContext=null;assistantPendingCapture?.capture?.discard();assistantPendingCapture=null;
+                            assistantRecording=false;privateAssistantOpen=true }
+                    }) else null,
+                    libraryLabel = LibraryNames.display(state.library!!, words.zh),
+                    accountLabel = t("Current account", "当前账号"),
+                    voiceSessionState = voice?.session,
+                    onStartVoiceSession = voice?.start?.let { start -> ({
+                        if (!assistantRecording && assistantPendingCapture == null && assistantPermissionContext == null) start()
+                    }) },
+                    onPauseVoiceSession = voice?.pause, onResumeVoiceSession = voice?.resume,
+                    onEndVoiceSession = voice?.end, onFinishVoiceTurn = voice?.finishTurn,
+                    onBack = { voice?.end?.invoke(); privateAssistant?.invalidateSavedMemoryReader(); store.clearAssistantSpeech(); assistantOpen = false },
+                    onRetryCapabilities = { if (manualAssistantAction()) store.loadAssistantCapabilities() },
+                    onSend = { text -> manualAssistantAction() && store.sendAssistantText(text) }, onClear = { if (assistantScopeCurrent()) {
+                        voice?.end?.invoke()
+                        if (state.assistant?.privateThreadId != null) {
+                            store.clearAssistantSpeech()
+                            privateAssistantOpen = true
+                        } else store.clearAssistant()
+                    } },
+                    onOpen = { id, requestId -> voice?.end?.invoke(); store.reportAssistantOpenRequested(requestId); assistantOpen = false; store.openAssetById(id) },
                     onCheckReceipt = store::checkAssistantReceipt,
                     onRecord = {
-                        val capability = state.assistant?.capabilities
-                        val account = state.session?.account_id
+                        if (!manualAssistantAction()) return@AssistantScreen
+                        val capability = store.state.value.assistant?.capabilities
+                        val account = store.state.value.session?.account_id
                         if (account != null && !state.covered && capability?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true) {
                             val library = state.library ?: return@AssistantScreen
                             val selection = AssistantCaptureSelection(account, library, state.generation, capability.maxAudioSeconds)
+                            store.clearAssistantMemoryOpeningSpeech()
                             val start = {
                                 runCatching { assistantCaptureRecorder.beginCapture(selection.maxSeconds) }.onSuccess { capture ->
                                     assistantPendingCapture = PendingAssistantCapture(selection, capture); assistantRecordingSerial++
@@ -560,11 +923,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                     },
                     onStopRecording = { assistantPendingCapture?.capture?.stop() },
                     onCancelRecording = { assistantPendingCapture?.capture?.discard(); assistantPendingCapture = null; assistantRecording = false },
-                    recording = assistantRecording, recordError = assistantRecordError,
+                    recording = assistantRecording || assistantPendingCapture != null || assistantPermissionContext != null, recordError = assistantRecordError || voice?.permissionDenied == true,
                     onClearTranscript = store::clearAssistantTranscript,
                     onUseTranscript = store::takeAssistantTranscriptForDraft,
-                    onPlaySpeech = { store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
-                    onStopSpeech = store::clearAssistantSpeech)
+                    onPlaySpeech = { if (manualAssistantAction()) store.loadAssistantSpeech(if (words.zh) "zh" else "en") },
+                    onStopSpeech = store::clearAssistantSpeech,
+                    onPlaybackOutcome = store::reportAssistantPlaybackOutcome,
+                    draftState = assistantDraft)
                 return@Surface
             }
             LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("connected-screen"), state = scroll,
@@ -960,8 +1325,12 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         Button(onClick = store::openDisplayPhoto, enabled = !state.busy) { Text(t("View photo", "查看照片")) }
                                     }
                                     if (detail.asset.kind == "image" && store.protectedNativeV2Enabled && !store.photoDeliveryEnabled) item {
+                                        val previewFailed = state.problem?.message == Message.MEDIA_UNAVAILABLE &&
+                                            state.previews[detail.asset.id]?.isEmpty() != false
                                         Button(onClick = store::openPreviewPhoto, enabled = !state.busy,
-                                            modifier = Modifier.testTag("view-protected-preview")) { Text(t("View preview", "查看预览")) }
+                                            modifier = Modifier.testTag("view-protected-preview")) {
+                                            Text(if (previewFailed) t("Retry preview", "重试预览") else t("View preview", "查看预览"))
+                                        }
                                         Text(t("Preview quality. Full screen and zoom do not download the original.",
                                             "预览画质。全屏与缩放不会下载原始文件。"), style = MaterialTheme.typography.bodySmall)
                                     }
@@ -987,6 +1356,12 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         ProtectedStoriesPanel(state.stories, state.busy, words,
                                             load = store::loadStories, edit = store::editStory)
                                     }
+                                    if (store.memoryGroupsAvailable) item {
+                                        OutlinedButton(onClick = { store.openMemoryGroups() }, enabled = !state.busy,
+                                            modifier = Modifier.fillMaxWidth().testTag("open-memory-groups")) {
+                                            Text(t("Share memories across related moments", "把回忆分享给相关照片"))
+                                        }
+                                    }
                                     item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         HorizontalDivider(Modifier.padding(vertical = 12.dp))
                                         Text(t("Captions · AI unless marked edited", "描述 · 未标注编辑时为 AI 内容"), style = MaterialTheme.typography.titleMedium)
@@ -1011,6 +1386,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     } }
                                     if (store.groupedStoryCreationAvailable) item {
+                                        Button(onClick = { store.beginGroupedStoryCreation(guided = true) }, enabled = !state.busy,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open-story-first-guide")) {
+                                            Text(t("Tell a story", "讲一个故事"))
+                                        }
                                         OutlinedButton(onClick = { store.beginGroupedStoryCreation() }, enabled = !state.busy,
                                             modifier = Modifier.fillMaxWidth().testTag("open-grouped-story-creation")) {
                                             Text(t("Create a story from these moments", "用照片和视频创建故事"))
@@ -1048,7 +1427,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     if (store.assistantEnabled) item {
                                         OutlinedButton(onClick = { assistantOpen = true }, enabled = !state.busy,
                                             modifier = Modifier.fillMaxWidth().testTag("open-assistant")) {
-                                            Text(t("Ask the PhotoHouse assistant", "询问拾光相册助手"))
+                                            Text(t("PhotoHouse assistant", "拾光助手"))
                                         }
                                     }
                                     state.gallery?.let { gallery ->
@@ -1153,7 +1532,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     }
 }
 
-@Composable internal fun Preview(asset: Asset, bytes: ByteArray?, words: Words, detail: Boolean = false, modifier: Modifier = Modifier) {
+@Composable internal fun Preview(asset: Asset, bytes: ByteArray?, words: Words, detail: Boolean = false, modifier: Modifier = Modifier,
+    kindBadge: Boolean = true) {
     val image = remember(bytes) {
         bytes?.let {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -1168,7 +1548,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         else Image(image, contentDescription = if (detail) words.t("Photo ${asset.id}", "照片 ${asset.id}") else null,
             contentScale = if (detail) ContentScale.Fit else ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        if (asset.kind == "video") Surface(Modifier.align(Alignment.TopStart).padding(12.dp),
+        if (asset.kind == "video" && kindBadge) Surface(Modifier.align(Alignment.TopStart).padding(12.dp),
             shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
             Text(words.t("Video", "视频"), Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
         }

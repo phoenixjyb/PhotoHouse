@@ -20,7 +20,25 @@ class Bearer private constructor(private val value: String) {
 }
 
 enum class FailureKind { HTTP, OFFLINE, TLS, INVALID_RESPONSE, INVALID_INPUT, TOO_LARGE }
-class ApiFailure(val kind: FailureKind, val status: Int? = null, val retryAfterMillis: Long = 0) : Exception("PhotoHouse request failed")
+enum class ApiErrorCode(val wireValue: String) { MEMORY_CONVERSATION_FULL("memory_conversation_full") }
+class ApiFailure(
+    val kind: FailureKind,
+    val status: Int? = null,
+    val retryAfterMillis: Long = 0,
+    val errorCode: ApiErrorCode? = null,
+    val assistantErrorCode: String? = null,
+) : Exception("PhotoHouse request failed") {
+    init {
+        require(errorCode == null || kind == FailureKind.HTTP && status == 429)
+        require(assistantErrorCode == null || kind == FailureKind.HTTP && when (assistantErrorCode) {
+            "speech_no_input" -> status == 422
+            "speech_busy", "speech_unavailable" -> status == 503
+            "speech_timeout" -> status == 504
+            "speech_invalid_response" -> status == 502
+            else -> false
+        })
+    }
+}
 
 interface PhotoHouseApi {
     /** Protected family stories are opt-in until the integration owner enables the route. */
@@ -71,6 +89,7 @@ interface PhotoHouseApi {
     suspend fun assistantSpeech(token: Bearer, library: String, context: kotlinx.serialization.json.JsonObject?, language: String, requestId: String, parentRequestId: String?): AssistantSpeechResult = AssistantSpeechResult(assistantSpeech(token, library, context, language), AssistantRequestReceipt(requestId, "unknown", null))
     suspend fun assistantReceipt(token: Bearer, library: String, requestId: String): AssistantReceipt = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun assistantOutcome(token: Bearer, library: String, requestId: String, outcome: String): Unit = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun assistantPlaybackOutcome(token: Bearer, library: String, requestId: String, outcome: String): Unit = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun facets(token: Bearer, library: String, facet: PhoneFacet, page: Int = 1, binding: String? = null): PhoneFacetPage = throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Location-only facet query; legacy adapters may serve no-query pages but must reject unsupported queries. */
     suspend fun placeFacets(token: Bearer, library: String, page: Int = 1, query: String = "", binding: String? = null): PhoneFacetPage {
@@ -81,6 +100,9 @@ interface PhotoHouseApi {
     /** Separate protected, family-authored note tag catalog and asset lookup. */
     suspend fun familyTags(token: Bearer, library: String, page: Int = 1, query: String = ""): FamilyTagsPage = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun familyTagAssets(token: Bearer, library: String, tag: String, page: Int = 1): Gallery = throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Optional protected album picker; legacy adapters keep manual gallery selection available. */
+    suspend fun libraryAlbums(token: Bearer, library: String, page: Int): ProtectedLibraryAlbumPage =
+        throw ApiFailure(FailureKind.HTTP, 404)
     suspend fun login(phone: String, password: String): SessionToken
     suspend fun register(phone: String, password: String, code: String): SessionToken
     suspend fun registerNamed(phone: String, password: String, code: String, name: String): SessionToken = throw ApiFailure(FailureKind.INVALID_INPUT)
@@ -110,6 +132,9 @@ interface PhotoHouseApi {
         throw ApiFailure(FailureKind.INVALID_INPUT)
     }
     suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun sourceCapabilities(token: Bearer, library: String): ByteArray = throw ApiFailure(FailureKind.HTTP, 404)
+    suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long, sourceReview: Boolean): SavedMemoryStory =
+        if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403) else savedMemoryStory(token, library, storyId, revision)
     /** Additive, read-only chapter source links; unsupported adapters keep saved-story v1 intact. */
     suspend fun savedMemoryStoryContributionReferences(
         token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
@@ -117,6 +142,10 @@ interface PhotoHouseApi {
     suspend fun saveMemoryStoryContributionReferences(
         token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation,
     ): SavedMemoryStory = throw ApiFailure(FailureKind.INVALID_INPUT)
+    suspend fun saveMemoryStoryContributionReferences(
+        token: Bearer, library: String, mutation: SavedMemoryStoryContributionReferencesMutation, sourceReview: Boolean,
+    ): SavedMemoryStory = if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403)
+        else saveMemoryStoryContributionReferences(token, library, mutation)
     /** Explicit source review uses the protected contribution detail route; audio has a separate operation. */
     suspend fun savedMemoryContributionDetail(
         token: Bearer, library: String, storyId: String, contributionId: String,

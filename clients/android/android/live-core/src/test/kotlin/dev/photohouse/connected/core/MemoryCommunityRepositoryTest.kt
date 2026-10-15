@@ -14,8 +14,10 @@ import java.nio.ByteOrder
 
 class MemoryCommunityRepositoryTest {
     private val story = "11111111-1111-1111-1111-111111111111"
+    private val bookId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     private val contribution = "33333333-3333-3333-3333-333333333333"
     private val account = "22222222-2222-2222-2222-222222222222"
+    private val conversationId = "44444444-4444-4444-8444-444444444444"
     private val receipt = """{"version":1,"id":"$contribution","story_id":"$story","author_id":"$account","kind":"text","language":"en","byline":"Member","sha256":"${"a".repeat(64)}","duration_ms":null,"chapter_id":null,"base_story_revision":"1","state":"pending","created_at":1720000000,"text":"Original wording","processing_consent":false,"can_review":false,"can_delete":false}"""
     private val capabilities = """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":true,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}"""
     private val jobJson = """{"version":1,"id":"55555555-5555-5555-5555-555555555555","kind":"chat","state":"queued","created_at":1720000000,"updated_at":1720000000,"expires_at":1721000000,"error_code":null,"result":null,"needs_review":true,"base_revision":"1"}"""
@@ -28,7 +30,38 @@ class MemoryCommunityRepositoryTest {
         var audioBytes: ByteArray? = null
         var lastResponse: ByteArray? = null
         var textReceipt = receipt
-        override suspend fun capabilities(token: Bearer, library: String) = caps.toByteArray().also { lastResponse = it }
+        var bookSaveCalls = 0
+        var bookSaveFailure: ApiFailure? = null
+        var bookSaveResponse = """{"version":1,"type":"memoir","id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","revision":"1","can_edit":true,"title":"Family memories","introduction":"A short note.","language":"en","stories":[{"id":"$story","title":"Garden","revision":"1","item_count":1,"cover_asset_id":"1"}]}""".toByteArray()
+        var afterBookSave: (() -> Unit)? = null
+        var bookReadCalls = 0
+        var bookReadFailure: ApiFailure? = null
+        var afterBookRead: (() -> Unit)? = null
+        var bookReadResponse = bookSaveResponse
+        var capabilitiesCalls = 0
+        var capabilitiesFailure: ApiFailure? = null
+        var afterCapabilities: (() -> Unit)? = null
+        var listBooksCalls = 0
+        var listBooksFailure: ApiFailure? = null
+        var afterListBooks: (() -> Unit)? = null
+        var startConversationCalls = mutableListOf<String>()
+        var startConversationFailure: ApiFailure? = null
+        var afterStartConversation: (() -> Unit)? = null
+        var startConversationResponse = """{"version":1,"id":"$conversationId","target_type":"book","target_id":"$bookId","expires_at":1721000000}""".toByteArray()
+        override suspend fun capabilities(token: Bearer, library: String): ByteArray {
+            capabilitiesCalls++
+            capabilitiesFailure?.let { throw it }
+            val result = caps.toByteArray().also { lastResponse = it }
+            afterCapabilities?.invoke()
+            return result
+        }
+        override suspend fun listBooks(token: Bearer, library: String, page: Int): ByteArray {
+            listBooksCalls++
+            listBooksFailure?.let { throw it }
+            val result = """{"version":1,"library_id":"$library","page":$page,"page_size":8,"has_more":false,"can_create":true,"items":[]}""".toByteArray()
+            afterListBooks?.invoke()
+            return result
+        }
         override suspend fun createTextContribution(token: Bearer, library: String, storyId: String, json: String): ByteArray {
             createCalls += json
             textFailure?.let { textFailure = null; throw it }
@@ -41,6 +74,24 @@ class MemoryCommunityRepositoryTest {
             val digest = java.security.MessageDigest.getInstance("SHA-256").digest(wav).joinToString("") { "%02x".format(it) }
             return audioReceipt.replace("${"a".repeat(64)}", digest).toByteArray().also { lastResponse = it }
         }
+        override suspend fun saveBook(token: Bearer, library: String, bookId: String?, json: String): ByteArray {
+            bookSaveCalls++
+            bookSaveFailure?.let { throw it }
+            afterBookSave?.invoke()
+            return bookSaveResponse.also { lastResponse = it }
+        }
+        override suspend fun getBook(token: Bearer, library: String, bookId: String): ByteArray {
+            bookReadCalls++
+            afterBookRead?.invoke()
+            bookReadFailure?.let { throw it }
+            return bookReadResponse.copyOf().also { lastResponse = it }
+        }
+        override suspend fun startConversation(token: Bearer, library: String, json: String): ByteArray {
+            startConversationCalls += json
+            afterStartConversation?.invoke()
+            startConversationFailure?.let { throw it }
+            return startConversationResponse.copyOf().also { lastResponse = it }
+        }
     }
 
     private val receiptJson get() = receipt
@@ -50,6 +101,11 @@ class MemoryCommunityRepositoryTest {
         .replace("\"text\":\"Original wording\"", "\"text\":null")
 
     private fun token() = Bearer.from(SessionToken(86400, "a".repeat(43), "Bearer"))
+    private fun bookMutation() = MemoryBookMutation("Family memories", "en", "A short note.",
+        listOf(story), 0, "aaaaaaaa-bbbb-4aaa-8aaa-aaaaaaaaaaaa")
+    private fun bookConversationRequest() = MemoryConversationRequest(
+        id = conversationId, targetType = "book", targetId = bookId,
+    )
     private fun wav(): ByteArray {
         val data = 8000 * 2
         val bytes = ByteArray(44 + data)
@@ -89,6 +145,106 @@ class MemoryCommunityRepositoryTest {
             fail("disabled contribution unexpectedly submitted")
         } catch (e: ApiFailure) { assertEquals(503, e.status) }
         assertTrue(api.createCalls.isEmpty())
+    }
+
+    @Test fun guardedInitialReadsFenceStaleDenialsAndNeverCacheStaleCapabilities() = runBlocking {
+        val api = FakeApi()
+        val binding = MemoryCommunityBinding(token(), "family-a", 41)
+        var allowed = true
+        var denied = 0
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+
+        allowed = false
+        try { store.loadCapabilities { allowed }; fail("closed read unexpectedly called API") }
+        catch (_: CancellationException) { }
+        assertEquals(0, api.capabilitiesCalls)
+
+        allowed = true
+        api.afterCapabilities = { allowed = false }
+        try { store.loadCapabilities { allowed }; fail("stale response unexpectedly accepted") }
+        catch (_: CancellationException) { }
+        assertTrue("stale capability response must still be wiped", api.lastResponse!!.all { it == 0.toByte() })
+        allowed = true
+        try { store.books(1) { allowed }; fail("stale capability response was cached") }
+        catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
+        assertEquals(0, api.listBooksCalls)
+
+        api.afterCapabilities = null
+        var guardChecks = 0
+        try {
+            store.loadCapabilities {
+                guardChecks++
+                guardChecks < 5 // invalidates at the post-cache-write check
+            }
+            fail("request changed during cache publication")
+        } catch (_: CancellationException) { }
+        assertEquals(5, guardChecks)
+        try { store.books(1); fail("stale cache publication was not rolled back") }
+        catch (e: ApiFailure) { assertEquals(FailureKind.INVALID_INPUT, e.kind) }
+
+        api.capabilitiesFailure = ApiFailure(FailureKind.HTTP, 403)
+        try { store.loadCapabilities { allowed }; fail("expected current denial") }
+        catch (e: ApiFailure) { assertEquals(403, e.status) }
+        assertEquals("guarded caller owns denial routing", 0, denied)
+    }
+
+    @Test fun guardedBookPageChecksRequestBeforeAndAfterNetwork() = runBlocking {
+        val api = FakeApi()
+        val binding = MemoryCommunityBinding(token(), "family-a", 42)
+        var allowed = false
+        var denied = 0
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+        store.loadCapabilities()
+        try { store.books(1) { allowed }; fail("closed page read unexpectedly called API") }
+        catch (_: CancellationException) { }
+        assertEquals(0, api.listBooksCalls)
+
+        allowed = true
+        api.listBooksFailure = ApiFailure(FailureKind.HTTP, 403)
+        try { store.books(1) { allowed }; fail("expected scoped denial") }
+        catch (e: ApiFailure) { assertEquals(403, e.status) }
+        assertEquals(0, denied)
+
+        api.listBooksFailure = null
+        api.afterListBooks = { allowed = false }
+        try { store.books(1) { allowed }; fail("request changed before page request") }
+        catch (_: CancellationException) { }
+        assertEquals(2, api.listBooksCalls)
+    }
+
+    @Test fun guardedBookReadFencesStaleDenialAndWipesLatePayload() = runBlocking {
+        val api = FakeApi()
+        val binding = MemoryCommunityBinding(token(), "family-a", 43)
+        var allowed = true
+        var denied = 0
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+        store.loadCapabilities()
+
+        api.bookReadFailure = ApiFailure(FailureKind.HTTP, 403)
+        api.afterBookRead = { allowed = false }
+        try {
+            store.book(bookId, expectedRevision = 1) { allowed }
+            fail("stale denial escaped request fence")
+        } catch (_: CancellationException) { }
+        assertEquals("the stale request must reach its endpoint once", 1, api.bookReadCalls)
+        assertEquals("stale denial must not invalidate the current account", 0, denied)
+
+        allowed = true
+        api.afterBookRead = null
+        try {
+            store.book(bookId, expectedRevision = 1) { allowed }
+            fail("expected current reader denial")
+        } catch (e: ApiFailure) { assertEquals(403, e.status) }
+        assertEquals("the current reader routes its own denial", 0, denied)
+
+        api.bookReadFailure = null
+        api.afterBookRead = { allowed = false }
+        try {
+            store.book(bookId, expectedRevision = 1) { allowed }
+            fail("late book payload escaped request fence")
+        } catch (_: CancellationException) { }
+        assertTrue("a stale parsed response must be wiped", api.lastResponse!!.all { it == 0.toByte() })
+        assertEquals(3, api.bookReadCalls)
     }
 
     @Test fun scopeChangeDropsLateResponseAndDenialCallsOnlyCurrentSession() = runBlocking {
@@ -437,5 +593,135 @@ class MemoryCommunityRepositoryTest {
         assertEquals(1, requests)
         assertTrue(editorial)
         assertTrue("plan response bytes must be wiped", response!!.all { it == 0.toByte() })
+    }
+
+    @Test fun saveBookCurrentRequestIsCheckedBeforeCapabilityAndBeforePost() = runBlocking {
+        var binding = MemoryCommunityBinding(token(), "family-a", 41)
+        val api = FakeApi()
+        val store = MemoryCommunityRepository(api, { binding })
+        store.loadCapabilities()
+        var checks = 0
+        try {
+            store.saveBook(null, bookMutation()) {
+                checks++
+                checks != 2
+            }
+            fail("scope changed after local capability check")
+        } catch (_: CancellationException) { }
+        assertEquals(2, checks)
+        assertEquals(0, api.bookSaveCalls)
+
+        checks = 0
+        try {
+            store.saveBook(null, bookMutation()) {
+                checks++
+                checks != 3
+            }
+            fail("scope changed immediately before POST")
+        } catch (_: CancellationException) { }
+        assertEquals(3, checks)
+        assertEquals(0, api.bookSaveCalls)
+        binding = binding.copy(generation = 42)
+    }
+
+    @Test fun saveBookDropsLateResponseAndWipesResponseBytes() = runBlocking {
+        var binding = MemoryCommunityBinding(token(), "family-a", 51)
+        val api = FakeApi()
+        val store = MemoryCommunityRepository(api, { binding })
+        store.loadCapabilities()
+        var current = true
+        api.afterBookSave = { current = false }
+        try {
+            store.saveBook(null, bookMutation()) { current }
+            fail("late save response escaped request scope")
+        } catch (_: CancellationException) { }
+        assertEquals(1, api.bookSaveCalls)
+        assertTrue(api.lastResponse!!.all { it == 0.toByte() })
+    }
+
+    @Test fun saveBookRoutesOnlyCurrentDenialAndKeepsLegacyDenialCallback() = runBlocking {
+        val api = FakeApi().apply { bookSaveFailure = ApiFailure(FailureKind.HTTP, 403) }
+        var binding = MemoryCommunityBinding(token(), "family-a", 61)
+        var denied = 0
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+        store.loadCapabilities()
+        try {
+            store.saveBook(null, bookMutation()) { true }
+            fail("expected current denial")
+        } catch (e: ApiFailure) { assertEquals(403, e.status) }
+        assertEquals("guarded caller owns its denial handling", 0, denied)
+
+        var checks = 0
+        try {
+            store.saveBook(null, bookMutation()) {
+                checks++
+                checks < 4
+            }
+            fail("stale denial should be inert")
+        } catch (_: CancellationException) { }
+        assertEquals(0, denied)
+
+        val legacy = MemoryCommunityRepository(api, { binding }, { denied++ })
+        legacy.loadCapabilities()
+        try {
+            legacy.saveBook(null, bookMutation())
+            fail("expected legacy denial")
+        } catch (e: ApiFailure) { assertEquals(403, e.status) }
+        assertEquals(1, denied)
+    }
+
+    @Test fun startConversationChecksScopeBeforePostAndWipesStaleSuccess() = runBlocking {
+        val api = FakeApi()
+        val binding = MemoryCommunityBinding(token(), "family-a", 71)
+        val store = MemoryCommunityRepository(api, { binding })
+        store.loadCapabilities()
+
+        var requestCurrent = false
+        try {
+            store.startConversation(bookConversationRequest()) { requestCurrent }
+            fail("stale request must not post")
+        } catch (_: CancellationException) { }
+        assertTrue(api.startConversationCalls.isEmpty())
+
+        requestCurrent = true
+        api.afterStartConversation = { requestCurrent = false }
+        try {
+            store.startConversation(bookConversationRequest()) { requestCurrent }
+            fail("late successful response must be discarded")
+        } catch (_: CancellationException) { }
+        assertEquals(1, api.startConversationCalls.size)
+        assertTrue("late protected response bytes must be wiped", api.lastResponse!!.all { it == 0.toByte() })
+    }
+
+    @Test fun startConversationRoutesOnlyCurrentDenialAndPreservesLegacyBehavior() = runBlocking {
+        val api = FakeApi().apply { startConversationFailure = ApiFailure(FailureKind.HTTP, 403) }
+        val binding = MemoryCommunityBinding(token(), "family-a", 72)
+        var denied = 0
+        val store = MemoryCommunityRepository(api, { binding }, { denied++ })
+        store.loadCapabilities()
+
+        var requestCurrent = true
+        api.afterStartConversation = { requestCurrent = false }
+        try {
+            store.startConversation(bookConversationRequest()) { requestCurrent }
+            fail("stale 403 must become cancellation")
+        } catch (_: CancellationException) { }
+        assertEquals("a delayed old-reader denial must not globally close its replacement", 0, denied)
+
+        requestCurrent = true
+        api.afterStartConversation = null
+        try {
+            store.startConversation(bookConversationRequest()) { requestCurrent }
+            fail("current denial must reach the owning reader")
+        } catch (failure: ApiFailure) { assertEquals(403, failure.status) }
+        assertEquals("guarded caller owns current denial handling", 0, denied)
+
+        val legacy = MemoryCommunityRepository(api, { binding }, { denied++ })
+        legacy.loadCapabilities()
+        try {
+            legacy.startConversation(bookConversationRequest())
+            fail("legacy overload should retain global denial behavior")
+        } catch (failure: ApiFailure) { assertEquals(403, failure.status) }
+        assertEquals(1, denied)
     }
 }

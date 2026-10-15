@@ -19,6 +19,7 @@ SYNTHETIC_FILES = {
     'backend/app/ui/access/app.js': b'window.syntheticOverlay = true;\n',
     'backend/app/ui/access/index.html': b'<!doctype html><title>synthetic overlay</title>\n',
     'backend/app/ui/access/memory-community.js': b'window.syntheticCommunity = true;\n',
+    'backend/app/ui/access/memory-groups.js': b'window.syntheticGroups = true;\n',
     'backend/app/ui/access/story-workspace.js': b'window.syntheticStoryWorkspace = true;\n',
     'backend/app/ui/access/styles.css': b'body { color: rgb(1, 2, 3); }\n',
 }
@@ -87,6 +88,7 @@ class OverlayBuilderTests(unittest.TestCase):
                 self.assertEqual(item.date_time, (1980, 1, 1, 0, 0, 0))
                 self.assertEqual(item.external_attr >> 16, 0o100644)
             manifest = json.loads(archive.read(MANIFEST_NAME))
+            self.assertEqual(manifest['format_version'], 2)
             self.assertEqual(manifest['source_commit'], self.source)
             self.assertEqual(set(manifest['files']), set(ASSETS))
             for name in ASSETS:
@@ -193,6 +195,7 @@ class OverlayBindTests(unittest.TestCase):
                 '/ui/app.js': ('backend/app/ui/access/app.js', 'application/javascript'),
                 '/ui/story-workspace.js': ('backend/app/ui/access/story-workspace.js', 'application/javascript'),
                 '/ui/memory-community.js': ('backend/app/ui/access/memory-community.js', 'application/javascript'),
+                '/ui/memory-groups.js': ('backend/app/ui/access/memory-groups.js', 'application/javascript'),
                 '/ui/styles.css': ('backend/app/ui/access/styles.css', 'text/css'),
             }
             for route, (asset, media_type) in routes.items():
@@ -212,6 +215,53 @@ class OverlayBindTests(unittest.TestCase):
             icon_types = {'.png': 'image/png', '.svg': 'image/svg+xml'}
             self.assertIn(self.before['ICON_FILE'].suffix.lower(), icon_types)
             self.assertEqual(icon.headers['content-type'], icon_types[self.before['ICON_FILE'].suffix.lower()])
+
+    def test_current_index_script_routes_are_complete_in_the_bound_package(self):
+        from html.parser import HTMLParser
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        class ScriptSources(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.sources = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == 'script' and dict(attrs).get('src'):
+                    self.sources.append(dict(attrs)['src'])
+
+        files = {name: (ROOT / name).read_bytes() for name in ASSETS}
+        for name, data in files.items():
+            (self.root / name).write_bytes(data)
+        raw = builder.manifest_bytes(self.source, files)
+        (self.root / MANIFEST_NAME).write_bytes(raw)
+        self.bind(digest=hashlib.sha256(raw).hexdigest())
+        parser = ScriptSources()
+        parser.feed(files['backend/app/ui/access/index.html'].decode('utf-8'))
+        self.assertIn('/ui/memory-groups.js', parser.sources)
+        app = FastAPI()
+        app.include_router(self.ui.router)
+        with TestClient(app, base_url='https://photohouse.test') as client:
+            for route in parser.sources:
+                with self.subTest(route=route):
+                    self.assertTrue(route.startswith('/ui/'))
+                    asset = 'backend/app/ui/access/' + route.removeprefix('/ui/')
+                    self.assertIn(asset, files)
+                    response = client.get(route)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.content, files[asset])
+
+    def test_old_five_asset_manifest_is_rejected_before_binding(self):
+        missing = 'backend/app/ui/access/memory-groups.js'
+        (self.root / missing).unlink()
+        old = json.loads(self.manifest)
+        old['format_version'] = 1
+        old['files'].pop(missing)
+        raw = json.dumps(old, sort_keys=True, separators=(',', ':')).encode()
+        (self.root / MANIFEST_NAME).write_bytes(raw)
+        with self.assertRaises(OverlayVerificationError):
+            self.bind(digest=hashlib.sha256(raw).hexdigest())
+        self.assert_globals_unchanged()
 
     def test_expected_source_and_manifest_identity_are_both_required(self):
         with self.assertRaises(OverlayVerificationError):

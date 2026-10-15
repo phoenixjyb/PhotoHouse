@@ -130,6 +130,32 @@
             "coherent_chapters",
             "no_withheld_sources"
           ]
+        },
+        {
+          "id": "synthetic-similar-photos",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "b8778072052c33d6a7b805fb7da384a1d918ed105134ee3220fcfd33ac2fc648",
+          "criteria": [
+            "grounded_facts",
+            "exact_citations",
+            "attribution_uncertainty",
+            "coherent_chapters",
+            "no_withheld_sources"
+          ]
+        },
+        {
+          "id": "synthetic-speaker-uploader-subject",
+          "input_kind": "bundle",
+          "input_text": null,
+          "input_sha256": "723c1f18b6d0b6ccc10f2341c53cac6ddeeec0ab30dd99c7be064f1fface607f",
+          "criteria": [
+            "grounded_facts",
+            "exact_citations",
+            "attribution_uncertainty",
+            "coherent_chapters",
+            "no_withheld_sources"
+          ]
         }
       ]
     },

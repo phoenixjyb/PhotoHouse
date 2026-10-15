@@ -91,7 +91,9 @@ import kotlinx.coroutines.withContext
                     Text(t("This media is not ready yet.", "此媒体尚未就绪。"))
                 }
                 if (asset.video != null) Button(onClick = { playbackFailure = null; store?.openVideo() }, enabled = !state.busy, modifier = Modifier.testTag("home-video-retry")) { Text(t("Open video", "打开视频")) }
-                if (asset.display != null && asset.kind == AssetKind.PHOTO) Button(onClick = { store?.openAsset(asset) }, enabled = !state.busy) { Text(t("Retry photo", "重试照片")) }
+                if (asset.kind == AssetKind.PHOTO && state.mediaProblem != null) Button(onClick = { store?.openAsset(asset) }, enabled = !state.busy,
+                    modifier = Modifier.testTag("home-photo-preview-retry")) { Text(t("Retry preview", "重试预览")) }
+                if (asset.display != null && asset.kind == AssetKind.PHOTO && state.mediaProblem == null) Button(onClick = { store?.openAsset(asset) }, enabled = !state.busy) { Text(t("Retry photo", "重试照片")) }
                 if (asset.original != null) OutlinedButton(onClick = { store?.openOriginal() }, enabled = !state.busy) { Text(t("Original quality", "原图画质")) }
             }
             else -> LazyVerticalGrid(columns = GridCells.Adaptive(if (LocalConfiguration.current.fontScale >= 1.5f) 260.dp else 150.dp), state = grid,

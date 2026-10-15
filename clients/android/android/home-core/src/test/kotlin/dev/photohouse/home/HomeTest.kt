@@ -9,6 +9,7 @@ import okio.Buffer
 import org.junit.*
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.Proxy
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -70,7 +71,7 @@ class HomeHttpTest {
         val tls = HandshakeCertificates.Builder().heldCertificate(cert).build()
         val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
         server = MockWebServer(); server.useHttps(tls.sslSocketFactory(), false); server.start(InetAddress.getLoopbackAddress(), 0)
-        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         api = HttpsHomeApi(HomeOrigin.parse("https://home.example:${server.port}"), client)
     }
@@ -109,7 +110,7 @@ class HomeHttpTest {
         }
     }
     @Test fun platformTrustRejectsSyntheticCertificate() = runBlocking {
-        val normal = OkHttpClient.Builder().dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
+        val normal = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         val untrusted = HttpsHomeApi(HomeOrigin.parse("https://home.example:${server.port}"), normal)
         try { untrusted.feed(1); fail("Untrusted certificate accepted") }
         catch (e: HomeFailure) { assertEquals(HomeError.TLS, e.kind) }

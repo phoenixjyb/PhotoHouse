@@ -150,6 +150,63 @@ class MemoryWorkerLauncherTests(unittest.TestCase):
         with self.assertRaises(worker.WorkerConfigurationError):
             worker.read_config(self.config_path)
 
+    def test_groups_worker_flag_is_optional_strict_and_narrative_only(self):
+        self.assertFalse(worker.read_config(self.config_path).get('memory_groups_enabled', False))
+        self.write_config(self.config | {'memory_groups_enabled': True})
+        self.assertTrue(worker.read_config(self.config_path)['memory_groups_enabled'])
+        for invalid in ('true', 1, None, [], {}):
+            with self.subTest(value=invalid):
+                self.write_config(self.config | {'memory_groups_enabled': invalid})
+                with self.assertRaises(worker.WorkerConfigurationError):
+                    worker.read_config(self.config_path)
+        self.write_config(self.config | {'mode': 'contributions',
+            'asr_url': 'http://localhost:9081/transcribe', 'asr_model': 'fixture-asr',
+            'memory_groups_enabled': True})
+        with self.assertRaises(worker.WorkerConfigurationError):
+            worker.read_config(self.config_path)
+
+    def test_group_worker_schema_requires_exact_group_revision_and_verification(self):
+        class VersionDb:
+            def __init__(self, revision): self.revision = revision
+            def execute(self, sql, *_args):
+                self.sql = sql
+                return self
+            def fetchall(self): return [(self.revision,)]
+
+        self.assertFalse(worker._check_schema(VersionDb('a0c9d2e4f817'), groups_enabled=True))
+        with patch('app.access.family_note_identity.verify_family_note_identity_schema'), \
+                patch('app.access.memory_group_schema.verify_memory_group_schema', return_value=False) as verify:
+            self.assertFalse(worker._check_schema(VersionDb(worker.GROUP_REVISION), groups_enabled=True))
+        verify.assert_called_once()
+        self.assertFalse(worker._check_schema(VersionDb(worker.GROUP_REVISION), groups_enabled=1))
+
+    def test_process_job_passes_explicit_group_flag_to_access_service(self):
+        class FakeAccess:
+            seen = []
+            def __init__(self, _db, **kwargs):
+                self.groups_enabled = kwargs['memory_groups_enabled']
+                self.seen.append(self.groups_enabled)
+            @staticmethod
+            def _transaction(write=False):
+                from contextlib import nullcontext
+                return nullcontext()
+            @staticmethod
+            def _now(): return 1
+            @staticmethod
+            def _one(_sql, _args=()): return None
+
+        class FakeDb:
+            @staticmethod
+            def execute(_sql, _args=()): return None
+
+        with patch('app.access.memory_processing.AccessService', FakeAccess):
+            self.assertIsNone(worker.process_job(FakeDb(), narrator=object(),
+                memory_groups_enabled=True))
+        self.assertEqual(FakeAccess.seen, [True])
+        with patch('app.access.memory_processing.AccessService', FakeAccess):
+            with self.assertRaises(ValueError):
+                worker.process_job(FakeDb(), narrator=object(), memory_groups_enabled=1)
+
     def test_closed_config_duplicate_keys_and_symlink_are_rejected_without_values(self):
         self.write_config(self.config | {'unexpected_secret': 'do-not-print'})
         code, output = self.cli('--preflight')

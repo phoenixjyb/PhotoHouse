@@ -1,53 +1,36 @@
-# Tests Directory
+# Backend and Web tests
 
-This directory contains all test files for the VLM Photo Engine project.
+Use explicit profiles from the **PhotoHouse repository root**, after the
+[development setup](../../docs/DEVELOPMENT.md#cpu-quick-start):
 
-## File Categories:
-
-### Face Processing Tests
-- `test_face_recognition.py` - Face recognition system testing
-- `test_embedding_fix.py` - Face embedding generation testing
-- `test_multiple_faces_database.py` - Multi-face detection testing
-
-### Service Integration Tests  
-- `test_unified_service.py` - SCRFD+LVFace service testing
-- `test_connection_bypass.py` - Network connectivity testing
-- `test_proxy_bypass.py` - Proxy configuration testing
-- `test_interactive_face_commands.py` - Interactive command testing
-
-### Performance Tests
-- `test_gpu_inference.py` - GPU acceleration testing
-- `test_gpu_performance.py` - Performance benchmarking
-- `test_rtx3090_performance.py` - RTX 3090 specific testing
-- `test_live_inference.py` - Real-time inference testing
-
-### Data Processing Tests
-- `test_bbox_formats.py` - Bounding box format validation
-- `test_bbox_permutations.py` - Coordinate system testing
-- `test_sample_images.py` - Image processing validation
-- `test_path_conversion.py` - WSL path conversion testing
-
-### Computer Vision Tests
-- `test_scrfd_direct.py` - SCRFD model testing
-- `test_yolo_face.py` - YOLO face detection testing
-
-## Usage
-
-Run tests from the project root directory:
-
-```bash
-# Run all tests
-python -m pytest tests/
-
-# Run specific test file
-python -m pytest tests/test_face_recognition.py
-
-# Run with coverage
-python -m pytest tests/ --cov=.
+```sh
+.venv/bin/python tools/check.py api
+.venv/bin/python tools/check.py memory
+.venv/bin/python tools/check.py windows-cpu
 ```
 
-## Test Configuration
+The dispatcher selects current generated tests in `server/tests/security/`,
+uses [`config/pytest.ini`](../../config/pytest.ini), sets backend import paths,
+and isolates the run from historical inference fixtures with `--noconftest`.
+The API profile also runs the generated no-listener demo. No family database,
+GPU, model weights or deployed provider is required.
 
-- Uses pytest framework
-- Configuration in `pytest.ini` at project root
-- Coverage reports available via pytest-cov
+## Focused checks
+
+For one known contract, from the repository root:
+
+```sh
+PYTHONPATH=server/backend .venv/bin/python -m pytest --noconftest -c config/pytest.ini server/tests/security/test_assistant_memory_actions.py
+```
+
+`server/tests/ui/` holds pure Node UI/controller tests. Generated browser journeys
+also live under `server/tests/security/` as `.cjs` files; follow
+[Web development](../../docs/WEB_DEVELOPMENT.md) for existing Node/Playwright tools
+and exact profiles. Android checks belong in the [client subtree](../../clients/android/README.md).
+
+Source tests, emulator/browser fixtures, native package qualification, live service
+checks and physical/family acceptance are separate. Provider/GPU experiments need
+explicit installed dependencies, weights, resource budgets and synthetic fixtures;
+do not infer them from a generic test filename or run them as part of CPU setup.
+Dated counts and acceptance receipts remain in [Development](../../docs/DEVELOPMENT.md),
+with current delivery/gates summarized in [Project Status](../../docs/PROJECT_STATUS.md).

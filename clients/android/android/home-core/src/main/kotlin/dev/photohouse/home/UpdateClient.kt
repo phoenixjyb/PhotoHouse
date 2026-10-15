@@ -29,6 +29,8 @@ data class UpdateOffer internal constructor(
     val signingCertSha256: String,
 )
 
+class UpdateNotNewerException(val installedVersionCode: Long, val offeredVersionCode: Long) : Exception("No newer PhotoHouse update is available")
+
 object UpdateWire {
     fun parse(bytes: ByteArray, origin: HomeOrigin, channel: String, packageName: String,
               installedVersionCode: Long, installedSignerSha256: String): UpdateOffer {
@@ -54,7 +56,6 @@ object UpdateWire {
         if (number("schema_version", 1, 1) != 1L) bad()
         if (string("channel", 8) != channel || string("package_name", 160) != packageName) bad()
         val version = number("version_code", 1, Int.MAX_VALUE.toLong())
-        if (version <= installedVersionCode) bad()
         val versionName = string("version_name", 80)
         if (!versionName.matches(Regex("[A-Za-z0-9][A-Za-z0-9._+ -]{0,79}"))) bad()
         val length = number("bytes", 1, UPDATE_APK_MAX_BYTES)
@@ -67,6 +68,7 @@ object UpdateWire {
         if (url.scheme != "https" || url.host != origin.url.host || url.port != origin.url.port ||
             url.encodedPath != expectedPath || url.query != null || url.fragment != null || url.username.isNotEmpty() || url.password.isNotEmpty()) bad()
         if (rawUrl != expectedPath) bad()
+        if (version <= installedVersionCode) throw UpdateNotNewerException(installedVersionCode, version)
         return UpdateOffer(channel, packageName, version, versionName, length, hash, expectedPath, cert)
     }
 
@@ -136,18 +138,21 @@ class HttpsUpdateClient internal constructor(private val origin: HomeOrigin, cli
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) continuation.resumeWithException(e)
+                if (continuation.isActive) continuation.resumeWithException(connectionFailure(e))
             }
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val value = response.use(consume)
                     if (continuation.isActive) continuation.resume(value)
                 } catch (e: Exception) {
-                    if (continuation.isActive) continuation.resumeWithException(e)
+                    if (continuation.isActive) continuation.resumeWithException(if (e is IOException) connectionFailure(e) else e)
                 }
             }
         })
     }
+
+    private fun connectionFailure(error: IOException): HomeFailure =
+        HomeFailure(if (error is javax.net.ssl.SSLException) HomeError.TLS else HomeError.OFFLINE)
 
     suspend fun check(channel: String, packageName: String, installedVersionCode: Long,
                       installedSignerSha256: String): UpdateOffer {

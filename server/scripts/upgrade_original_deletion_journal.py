@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 import initialize_original_deletions as deletion_schema
 import rehearse_fullsize_database as full
 from app.access.family_note_identity_schema import IDENTITY_REVISION
+from app.access.runtime import IDENTITY_REVISIONS
 from app.access.original_deletions import OriginalDeletionJournal
 from app.access.private_storage import require_private_file
 
@@ -157,7 +158,7 @@ def _open_primary(path, budget, *, writable=False):
 def _review_primary(path, journal, budget, expected_head):
     full.small.no_sidecars(path)
     state = _state(path, budget)
-    if state['revision'] != IDENTITY_REVISION:
+    if state['revision'] not in IDENTITY_REVISIONS:
         raise full.small.Refused('D1 family note identity schema required')
     if state['marker_rows'] != 1:
         raise full.small.Refused('Exact primary deletion marker required')
@@ -197,7 +198,7 @@ def qualify(database, backup, journal_path, journal_backup, namespace, expected_
 
     primary_state = _state(database, budget)
     backup_state = _state(backup, budget)
-    if primary_state['revision'] != IDENTITY_REVISION:
+    if primary_state['revision'] not in IDENTITY_REVISIONS:
         raise full.small.Refused('D1 family note identity schema required')
     if (primary_state['tables'] != backup_state['tables'] or
             primary_state['fingerprint'] != backup_state['fingerprint']):
@@ -252,7 +253,7 @@ def qualify(database, backup, journal_path, journal_backup, namespace, expected_
             if _digest_file(journal_path, budget) != journal_hash:
                 raise full.small.Refused('Journal bytes changed after review')
             current = deletion_schema._database_state(primary_db, budget)
-            if (current['revision'] != IDENTITY_REVISION or
+            if (current['revision'] not in IDENTITY_REVISIONS or
                     current['tables'] != primary_state['tables'] or
                     current['fingerprint'] != primary_state['fingerprint'] or
                     current['marker_rows'] != 1):

@@ -1,7 +1,29 @@
 # Activity grouping from family stories and visual similarity
 
-**Status:** design proposal; no visual similarity route or provider activation is
-claimed here.
+**Status:** default-off source implementation and generated qualification;
+installed-vector qualification and live activation remain outstanding. The
+historical design discussion below does not describe a live deployment.
+
+## Implemented shared-memory review slice (October 11)
+
+The [memory-group contract](../server/docs/security/MEMORY_GROUPS_V1.md) now
+implements time-proximate visual suggestions, ID-only saved memberships and
+sticky exclusions, dynamic original-note sharing with preserved authorship,
+and a default-off Web editor. It uses recorded capture time and cosine similarity
+jointly; it does not change the older same-day route. Aware full timestamps may
+match across midnight; date-only metadata uses the written day. Unknown dates
+need manual grouping. Automatic visual proposals remain image-only.
+
+The [shared-source adapter](SHARED_MEMORY_STORY_SOURCES.md) now carries current
+reviewed notes into story and memoir drafts behind the same default-off setting.
+It preserves canonical source origin and byline, deduplicates prompt sources,
+and rechecks group members and note lifecycle in the caller's authorized snapshot.
+No shared text or author label is copied into saved source references.
+
+Schema e7 is prepared and tested locally; immutable vector schema migration,
+Windows vector coverage, exact installed producer qualification and live
+activation remain separate gates. The older design discussion below describes
+these provenance constraints and must not be read as a live acceptance claim.
 
 ## Goal and boundary
 
@@ -138,7 +160,7 @@ SHA-256, preprocessing SHA-256, vector-space ID, model version, dimension and
 dimension-prefixed, big-endian IEEE-754 float32 representation; nonfinite,
 zero, non-unit, wrong-shape and checksum-mismatched vectors refuse the entire
 cohort. This is a canonical component checksum, distinct from the existing
-`.npy` container/file hash: a future loader must qualify the stored file hash
+`.npy` container/file hash: the protected loader qualifies the stored file hash
 before decoding, then separately verify this checksum over the decoded
 float32 components. The accepted unit-norm tolerance is only for validating
 stored values; scoring normalizes the validated canonical components first so
@@ -157,13 +179,11 @@ result, never partial rankings. These source-level semantics neither read
 actual embedding rows nor prove that an installed vector artifact matches the
 expected identity.
 
-The ranker is meaningful because it settles the scoring and refusal semantics
-with testable inputs while leaving the current route untouched. It does **not**
-provide an online feature, show real candidate coverage, validate actual
-artifact provenance, or establish Windows capacity. A later integration slice
-must separately add private identity propagation and library-filtered vector
-loading, then prove no-write and cross-library behavior against synthetic
-SQLite fixtures before any owner considers enabling the feature.
+The ranker settles scoring and refusal semantics with testable inputs while
+leaving the current route untouched. It does **not** provide an online feature,
+show real candidate coverage, or establish Windows capacity. The protected
+reader below supplies the synthetic storage and authorization integration;
+worker identity propagation and native qualification remain separate gates.
 
 Suggested focused tests for that source-only slice:
 
@@ -180,11 +200,116 @@ Suggested focused tests for that source-only slice:
 - a no-write snapshot around an authorized synthetic database query when route
   integration is later proposed.
 
-## Next integration architecture
+## Implemented optional storage and protected reader
+
+[`visual_vector_artifacts.py`](../server/backend/app/access/visual_vector_artifacts.py)
+defines completed immutable records with source, model artifact and preprocessing
+SHA-256, exact vector-space identity, a versioned canonical identity digest,
+private relative path, file checksum and component checksum.
+[`visual_vector_schema.py`](../server/backend/app/access/visual_vector_schema.py)
+describes the optional `image_vector_artifacts` table, uniqueness constraints,
+foreign key and update/delete refusal triggers. Its creation helper is for
+synthetic fixtures only. Verification reads the exact table/index/trigger
+contract and refuses altered or additional indexes/triggers. There is no
+Alembic migration or import-time schema creation; the ordinary schema head and
+existing a0/b1/c2/d1 worker behavior stay as they are.
+
+[`VisualVectorReads`](../server/backend/app/access/visual_vector_loader.py)
+first authorizes the current library through `AccessService`, then checks every
+seed against active mapped images in the same SQLite snapshot. It collects
+only current-library ready records for the exact expected profile. More than
+512 candidates refuses the entire cohort rather than truncating it. A missing
+table, stale source digest, duplicate/missing seed representation or malformed
+record yields the fixed unavailable result before opening vector files.
+Foreign, unmapped, inactive or revoked seed access is denied without probing
+artifact storage.
+
+File decoding is limited to 64 KiB per file, a 4 KiB NPY header and 4,096
+float32 components. It verifies the file digest, exact shape and payload length
+before decoding; object arrays and trailing bytes refuse. Direct files and
+directories are required: symlinks, Windows reparse points and hard-linked
+files refuse. File identity is checked around descriptor reads. Component
+checksum and unit normalization are validated before the existing IDs-only
+ranker runs. Decoding uses the standard library; no model, provider, global index or
+legacy embedding fallback is consulted.
+
+These are protected source contracts exercised with generated SQLite/vector
+fixtures. An optional internal image-worker path now publishes these records;
+no API route or picker UI exposes them. The reader cannot prove that an
+unqualified installed producer actually used the declared checkpoint.
+
+## Remaining integration architecture
+
+### Implemented publication and cleanup contracts
+
+[`VectorPublicationStore`](../server/backend/app/access/visual_vector_publication.py)
+adds an optional primary-database publication journal. A prepared intent binds
+the canonical immutable record to the worker's exact claim digest before any
+file writes. The coordinator requires a dedicated SQLite connection, both exact
+schema contracts, an approval/source/task guard and a task finalizer. The guard
+runs under a writer reservation before filesystem access; the finalizer runs in
+the same transaction as the ready artifact and committed intent. Callback
+transaction control is refused, and guards cannot change rows. These callbacks
+are trusted worker integration points, not a replacement for authorization or
+proof that a model produced the declared vector.
+
+Publication writes a bounded, checksummed stage with exclusive creation and
+file sync, then uses a same-volume no-overwrite hardlink to the immutable path.
+Recovery can settle the exact two links left by process death, or reuse a
+verified final/staged file without producing another vector. Only prepared
+intents are visited, at most 128 per call (32 by default); completed records are
+not reprocessed. A record-ID cursor advances past unavailable intents, so they
+cannot monopolize later batches. Conflicting, malformed or partial files remain unavailable and
+are preserved for inspection. Recovery does not retry a model, reset tasks or
+infer missing provenance. The synthetic suite includes a subprocess exiting
+immediately after the link, then reopening the database and recovering.
+POSIX directory entries are synced; Windows filesystem and power-loss behavior
+still require native qualification. No live worker invokes this coordinator.
+
+[`visual_vector_worker.py`](../server/backend/app/access/visual_vector_worker.py)
+binds that coordinator to an approved image task. Its guard rechecks the exact
+payload, start time and retry count, active source hash/path/size/MIME, assigned
+upload receipt and sole active library mapping before filesystem publication.
+The ready record, task completion and committed intent share one transaction.
+Only bounded float32 unit vectors matching the verified profile are accepted;
+legacy embedding rows are neither replaced nor backfilled.
+
+The approved image worker can use this path only when a trusted internal caller
+supplies the exact profile and both optional schema contracts already exist.
+There is no CLI activation switch, migration or schema creation in the worker.
+Startup recovers the exact running claim before provider activation. A generated
+subprocess-death test exercises this through the actual worker: restart commits
+the verified published file without decoding or model inference. Failures after
+a durable intent preserve the running claim instead of resetting its start time
+through ordinary retry handling. Missing files/intents, changed approval or
+source, and orphaned prepared intents require explicit reconciliation. Completed
+profiles are skipped; duplicate pending tasks remain visible for reconciliation.
+
+[`plan_asset_vector_cleanup`](../server/backend/app/access/visual_vector_cleanup.py)
+is a read-only planner for an already-deleted asset inside a caller-owned
+transaction. It validates every version, capped at 128 rather than truncated,
+and reports safely missing files idempotently. It refuses active or merely
+unassigned assets, drifted schemas and unsafe/corrupt files. Immutable records
+and parent asset tombstones are retained. The planner performs no unlink or
+database mutation. The new [V3 asset-withdrawal contract](ASSET_WITHDRAWAL_LIFECYCLE.md)
+adds content-free exact asset bindings and offline restore replay. Its durable
+planner wrapper independently verifies committed primary status/marker before
+reading any vector. The optional [durable filesystem executor](VECTOR_ERASURE_LIFECYCLE.md)
+now covers known pending/final files using an immutable plan and no-overwrite
+quarantine claims, while retaining task and publication evidence. Native
+qualification and explicit reconciliation remain required. No live journal
+has been upgraded and no media deletion route is activated.
+
+The existing approved image worker separately pins payload bytes, start time
+and retry count at claim, then fences publication, task completion and failure
+updates with those same fields. A changed or cancelled task stays untouched.
+This fixes claim handling on existing revisions. The legacy publication path
+remains the default; the optional internal path uses the journal described above.
 
 Use a new versioned identity table in the primary SQLite database, paired with
 immutable derived vector files. This is a design decision for a later additive
-migration; this document does not create the table or change a worker.
+migration; the optional contract above does not install the table or activate
+an installed worker.
 An external sidecar would need an independent locking, backup and recovery
 protocol, while the worker already commits its task and embedding row in the
 primary database. The current `embeddings` table permits only one representation
@@ -200,32 +325,46 @@ Legacy records with missing provenance remain unavailable for visual lookup;
 never infer preprocessing or artifact identity from a model name/dimension.
 
 Replacement produces a new path and row; it does not overwrite an old vector.
-The approved image worker currently publishes `embeddings/<asset-id>.npy`, then
+The default approved image worker publishes `embeddings/<asset-id>.npy`, then
 inserts its row and completes its task in a transaction. Ordinary failures
 remove the published file, but a hard crash can strand it. The new path therefore
-needs a publication journal and bounded reconciliation before it is exposed.
-Deletion cleanup must enumerate all versioned artifacts rather than only the
-legacy embedding path. Tombstoning and unassignment must exclude media from
+uses the tested publication journal but still needs native qualification before
+it is exposed.
+Deletion execution must use all versioned artifacts from the planner rather
+than only the legacy embedding path. Tombstoning and unassignment must exclude media from
 every protected lookup immediately, independently of physical file cleanup.
 
 Implement and qualify in this order:
 
-1. Add the identity table and immutable record contract after the current schema
-   head. Preserve ordinary worker behavior on a0/b1/c2/d1. Visual lookup remains
-   unavailable when the new table or a qualified profile is absent.
-2. Propagate the verified worker profile, publish versioned files/rows, and prove
-   interruption recovery, reindex immutability and deletion enumeration with
-   generated media. Add no legacy identity backfill.
-3. Build the current-library active-photo cohort before opening any vector file.
-   Recheck original hash, record identity and current membership; reject mixed,
-   partial or oversized cohorts. Do not use the global index or an ID-prefix
-   truncation as a nearest-neighbor claim for a large library.
+1. Register the tested optional identity contract in an additive migration only
+   after publication and deletion lifecycle rules are ready. Preserve ordinary
+   worker behavior on a0/b1/c2/d1. Visual lookup remains unavailable when the
+   new table or a qualified profile is absent.
+2. Verify the checkpoint and realized decoder/OpenCLIP preprocessing in the
+   installed child, then propagate that profile into the tested publisher. The
+   source worker now verifies checkpoint SHA-256 and stable file identity before
+   and after provider loading and after inference. Its receipt snapshots the
+   realized supported evaluation transforms, package versions, current decoder/
+   embedding/worker source digests and dimension; the parent checks the receipt
+   and requires consistency with the startup probe. Unsupported transforms fail
+   preflight before task claims. These are synthetic source checks, not native
+   provider qualification or proof of installed dependency code provenance.
+   The optional internal producer persists the verified checkpoint/preprocessing
+   identity, dimension and source into the immutable record, with exact task
+   guards and completion hooks. Native interruption and asset replay
+   qualification, plus durable filesystem execution, remain
+   open. Asset withdrawal/replay and receipt-bound all-version planning are now
+   synthetic source contracts. Legacy rows
+   remain insufficient for protected similarity lookup; add no legacy backfill.
+3. Wire the protected reader to a verified producer profile. Its current-library
+   cohort and source/identity checks are implemented; qualify actual coverage
+   and lifecycle behavior without a global index or ID-prefix truncation.
 4. Qualify the loader, no-write route and reviewed picker with synthetic SQLite
    fixtures, then separately qualify installed Windows artifacts/resources.
    The user still chooses every candidate and explicitly saves the story.
 
 Until these gates close, the existing same-day picker remains the available
-discovery method and the pure ranker remains offline source only. Video needs
+discovery method and visual ranking remains source only. Video needs
 its own persisted frame-sampling identity before it can join this pathway.
 
 ## Explicitly deferred

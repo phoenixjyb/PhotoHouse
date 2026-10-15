@@ -26,9 +26,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +59,33 @@ internal fun assistantDraftWithTranscript(draft: String, transcript: String): St
     return combined.takeIf(::assistantDraftWithinLimits)
 }
 
+internal fun memoryFollowupPrompt(ordinal: Int, mode: Int, zh: Boolean): String {
+    val n = ordinal + 1
+    if (mode == 2) return if (zh) "介绍这些回忆" else "introduce these memories"
+    if (zh) return when (mode) {
+        0 -> "第${n}段回忆讲了什么"
+        else -> "第${n}段回忆有哪些章节"
+    }
+    val words = listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth")
+    val named = words.getOrNull(ordinal) ?: "$n${ordinalSuffix(n)}"
+    return if (mode == 0) "what is the $named saved memory about" else "what chapters does the $named saved memory have"
+}
+
+internal fun memoryFollowupLabel(mode: Int, zh: Boolean): String = when (mode) {
+    0 -> if (zh) "讲了什么" else "Summary"
+    1 -> if (zh) "章节" else "Chapters"
+    else -> if (zh) "全部回忆" else "All memories"
+}
+
+/** Keep the visible chip name usable by speech navigation, with its full scoped prompt. */
+internal fun memoryFollowupAccessibleLabel(ordinal: Int, mode: Int, zh: Boolean): String =
+    "${memoryFollowupLabel(mode, zh)}. ${memoryFollowupPrompt(ordinal, mode, zh)}"
+
+private fun ordinalSuffix(value: Int): String = when (value % 100) {
+    11, 12, 13 -> "th"
+    else -> when (value % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
+}
+
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun AssistantScreen(
@@ -66,45 +97,134 @@ internal fun AssistantScreen(
     recording: Boolean, recordError: Boolean, onClearTranscript: () -> Unit,
     onUseTranscript: (AssistantTranscript) -> String? = { null },
     onPlaySpeech: () -> Unit, onStopSpeech: () -> Unit,
+    onPlaybackOutcome: (ProtectedAnnotationAudio, String) -> Unit = { _, _ -> },
+    libraryLabel: String? = null, accountLabel: String? = null,
+    voiceSessionState: AssistantVoiceSessionUiState? = null,
+    onStartVoiceSession: (() -> Unit)? = null,
+    onPauseVoiceSession: (() -> Unit)? = null,
+    onResumeVoiceSession: (() -> Unit)? = null,
+    onEndVoiceSession: (() -> Unit)? = null,
+    onFinishVoiceTurn: (() -> Unit)? = null,
+    onPrivateConversations: (() -> Unit)? = null,
+    privateReplySpeechEnabled: Boolean = false,
+    privateReplySpeechAvailable: Boolean = false,
+    savedMemoryWorkspace: AssistantWorkspaceState? = null,
+    onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
+    onReadSavedMemoryOpening: ((Int) -> Unit)? = null,
+    onReadSavedMemorySegment: ((Int, Int) -> Unit)? = null,
+    onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
+    showMemoryOpeningPlayback: Boolean = true,
+    draftState: MutableState<String>? = null,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
-    var draft by remember(state?.generation, state?.library) { mutableStateOf("") }
+    var localDraft by remember(state?.generation, state?.library) { mutableStateOf("") }
+    val draft = draftState?.value ?: localDraft
+    val setDraft: (String) -> Unit = { value ->
+        if (draftState != null) draftState.value = value else localDraft = value
+    }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    var showRetentionDetails by remember(state?.generation, state?.library) { mutableStateOf(false) }
     val submit: () -> Unit = {
         val text = draft.trim()
-        if (text.isNotEmpty() && assistantDraftWithinLimits(draft) && state?.pendingTurn == null && state?.busy != true &&
+        if (text.isNotEmpty() && assistantDraftWithinLimits(draft) && state?.pendingTurn == null && state?.busy != true && voiceSessionState == null &&
             state?.transcribing != true && state?.transcript == null && !recording) {
             keyboard?.hide(); focusManager.clearFocus()
-            if (onSend(text) && draft.trim() == text) draft = ""
+            if (onSend(text) && draft.trim() == text) setDraft("")
         }
     }
     val exchanges = state?.turns.orEmpty()
     val pending = state?.pendingTurn
-    val pendingReceiptStatus = state?.receiptDetail?.status ?: state?.lastRequestReceipt?.status
+    val pendingReceiptStatus = state?.privateRequestStatus ?: state?.receiptDetail?.status ?: state?.lastRequestReceipt?.status
     val pendingFailed = pendingReceiptStatus in setOf("failed", "interrupted")
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
-        val compactIntro = maxHeight < 600.dp
+        val compactIntro = maxHeight < 640.dp || LocalDensity.current.fontScale >= 1.3f || voiceSessionState != null
         Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("assistant-back")) { Text(t("Back to album", "返回相册")) }
-            if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(t("Clear", "清空对话")) }
+            onPrivateConversations?.let { open -> TextButton(onClick = open,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-private-conversations")) {
+                Text(t("My conversations", "我的对话"))
+            } }
+            if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(if (state?.privateThreadId != null) t("Manage conversation", "管理对话") else t("Clear", "清空对话")) }
+            if (compactIntro) TextButton(onClick = {
+                if (recording) onCancelRecording()
+                if (voiceSessionState != null) onPauseVoiceSession?.invoke()
+                showRetentionDetails = true
+            }, modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-retention-details-toggle")) {
+                Text(t("Privacy", "隐私说明"))
+            }
         }
-        Text(t("PhotoHouse assistant", "拾光相册助手"), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif,
-            modifier = Modifier.testTag("assistant-intro-title"))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("✧", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.tertiary)
+            Text(t("PhotoHouse assistant", "拾光助手"), style = if (compactIntro) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                fontFamily = FontFamily.Serif, modifier = Modifier.testTag("assistant-intro-title"))
+        }
+        val visibleLibraryLabel = libraryLabel?.takeIf(::isHumanReadableContextLabel)
+        val visibleAccountLabel = accountLabel?.takeIf(::isHumanReadableContextLabel)
+        if (compactIntro && visibleLibraryLabel != null) {
+            Text(visibleLibraryLabel, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp).testTag("assistant-library-context"), maxLines = 2)
+        } else {
+        if (visibleLibraryLabel != null || visibleAccountLabel != null) {
+            FlowRow(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            visibleLibraryLabel?.let { label ->
+                AssistContextChip(t("Library · $label", "资料库 · $label"), "assistant-library-context")
+            }
+            visibleAccountLabel?.let { label ->
+                AssistContextChip(t("Account · $label", "账号 · $label"), "assistant-account-context")
+            }
+            }
+        }
+        }
+        if (state?.privateThreadId != null) Text(t("Continuing your private conversation", "正在继续你的私人对话"),
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 4.dp).testTag("assistant-private-context"))
         if (!compactIntro) {
-            Text(t("A calm way to find a moment in this library.", "陪你在这座资料库里，慢慢找回一个瞬间。"),
+            Text(t("Find a moment, then keep the conversation going.", "一起找回一个瞬间，再慢慢聊下去。"),
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("assistant-intro-description"))
-            Text(t("Ask about photos and videos, then open a result to view it.", "可以询问照片和视频，再打开结果查看。"),
+            Text(t("Ask about photos and videos. Open a result to see its source. After a search, ask “describe these results” for a brief overview.", "可以询问照片和视频，打开结果查看来源。搜索后，可以问“介绍这些结果”来听简要概览。"),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp).testTag("assistant-usage-description"))
         }
-        Text(t("Recognized text, requests and status are kept for 30 days. Recordings are transient.", "识别文本、提交的指令和处理状态保留 30 天；录音仅临时处理。"),
+        Text(if (compactIntro) t("Text/status: 30 days · Temporary audio", "文本/状态 30 天 · 录音临时") else t("Recognized text, requests and status are kept for 30 days. Audio is temporary.", "识别文本、请求和处理状态保留 30 天；录音仅临时处理。"),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp).testTag("assistant-retention-notice"))
+            modifier = Modifier.padding(top = 4.dp).testTag("assistant-retention-notice"))
+        if (!compactIntro) TextButton(onClick = { if (recording) onCancelRecording(); if (voiceSessionState != null) onPauseVoiceSession?.invoke(); showRetentionDetails = true },
+            modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-retention-details-toggle")) {
+            Text(if (voiceSessionState == null) t("Privacy and retention details", "查看隐私与保留说明") else t("Privacy", "隐私说明"))
+        }
+        if (showRetentionDetails) {
+            AlertDialog(
+                onDismissRequest = { showRetentionDetails = false },
+                title = { Text(t("Privacy and retention", "隐私与保留说明")) },
+                text = {
+                    Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                        Text(t("The current service keeps recognized text, submitted requests and processing status for 30 days. Ordinary voice audio is processed temporarily; review a transcript before adding it to your message.",
+                            "当前服务会保留识别文本、已提交的请求和处理状态 30 天。普通语音仅作临时处理；请先检查转写，再决定是否加入消息。"),
+                            modifier = Modifier.testTag("assistant-retention-details"))
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showRetentionDetails = false }, modifier = Modifier.testTag("assistant-retention-details-close")) {
+                        Text(t("Close", "关闭"))
+                    }
+                },
+                modifier = Modifier.testTag("assistant-retention-dialog"),
+            )
+        }
         val assistant = state
-        assistant?.takeIf { it.pendingTurn == null }?.lastRequestReceipt?.let { receipt ->
+        val voiceEntry = onStartVoiceSession?.takeIf {
+            assistant != null && voiceSessionState == null && assistant.pendingTurn == null &&
+                !assistant.busy && !assistant.transcribing && assistant.transcript == null &&
+                !assistant.speechBusy && assistant.speechAudio == null && !recording
+        }
+        assistant?.takeIf { it.pendingTurn == null && it.privateThreadId == null }?.lastRequestReceipt?.let { receipt ->
             val receiptStatus = assistant.receiptDetail?.status ?: receipt.status ?: receipt.tracking
             val statusLabel = when (receiptStatus) {
                 "succeeded" -> t("Server completed", "服务器已完成")
@@ -116,7 +236,7 @@ internal fun AssistantScreen(
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SelectionContainer(Modifier.weight(1f)) {
-                    Text(t("Request ${receipt.requestId} · ${statusLabel}", "请求 ${receipt.requestId} · ${statusLabel}"), Modifier.testTag("assistant-receipt"), style = MaterialTheme.typography.labelSmall)
+                    Text(if (voiceSessionState == null) t("Request ${receipt.requestId} · ${statusLabel}", "请求 ${receipt.requestId} · ${statusLabel}") else statusLabel, Modifier.testTag("assistant-receipt"), style = MaterialTheme.typography.labelSmall)
                 }
                 TextButton(onClick = onCheckReceipt, enabled = !assistant.receiptChecking && receipt.tracking != "disabled", modifier = Modifier.testTag("assistant-check-receipt")) { Text(if (assistant.receiptChecking) t("Checking…", "查询中…") else t("Check", "查询")) }
             }
@@ -146,7 +266,7 @@ internal fun AssistantScreen(
                     val autoScrolling = remember { mutableStateOf(false) }
                     val handledReplyIds = remember { exchanges.mapTo(linkedSetOf()) { it.localRequestId } }
                     var handledPendingId by remember { mutableStateOf(pending?.requestId) }
-                    val latestTranscript = assistant.transcript?.takeIf { assistant.pendingTurn == null }
+                    val latestTranscript = assistant.transcript?.takeIf { assistant.pendingTurn == null && voiceSessionState == null }
                     var handledTranscriptId by remember {
                         mutableStateOf(latestTranscript?.let { it.localRequestId.ifBlank { it.receipt?.requestId ?: it.hashCode().toString() } })
                     }
@@ -273,24 +393,208 @@ internal fun AssistantScreen(
                                 Text(t("Jump to latest", "跳到最新"), Modifier.testTag("assistant-jump-to-latest-label"))
                             }
                         }
+                    val completeVoiceControls = voiceSessionState != null && onPauseVoiceSession != null &&
+                        onResumeVoiceSession != null && onEndVoiceSession != null
+                    if (completeVoiceControls) {
+                        AssistantVoiceSessionPanel(
+                            state = voiceSessionState!!, zh = zh,
+                            onPause = onPauseVoiceSession!!, onResume = onResumeVoiceSession!!,
+                            onEnd = onEndVoiceSession!!, onFinishTurn = onFinishVoiceTurn,
+                            onCheckReceipt = onCheckReceipt.takeIf { assistant.pendingTurn != null },
+                            checkReceiptEnabled = !assistant.receiptChecking && assistant.lastRequestReceipt?.tracking != "disabled",
+                            receiptChecking = assistant.receiptChecking,
+                        )
+                    }
+                    if (voiceSessionState == null && voiceEntry != null && !assistant.busy &&
+                        assistant.pendingTurn == null && !assistant.transcribing && !recording &&
+                        !assistant.speechBusy && assistant.speechAudio == null) {
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()
+                                .testTag("assistant-voice-ready")) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(t("Ready when you are", "准备好了，等你开始"),
+                                    style = MaterialTheme.typography.titleSmall)
+                                Text(t("Microphone off · Tap voice to begin", "麦克风关闭 · 点击语音按钮开始"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag("assistant-voice-ready-microphone"))
+                            }
+                        }
+                    }
                     LazyColumn(state = listState,
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp)
                             .nestedScroll(userScrollGuard).testTag("assistant-turns"),
                         verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
-                    if (exchanges.isEmpty() && pending == null) item(key = "assistant-intro") {
+                    val freshMemoryTurn = savedMemoryWorkspace?.currentTurn?.takeIf { turn ->
+                        val workspace = savedMemoryWorkspace
+                        workspace.savedMemoryCardsAvailable && turn.status == AssistantWorkspaceRequestStatus.COMPLETED &&
+                            !turn.recovered && turn.result?.kind == "memory_cards" &&
+                            workspace.detail?.thread?.let { it.threadId == turn.threadId && it.revision == turn.revision } == true &&
+                            turn.result?.savedMemoryContext?.libraryId == workspace.libraryId
+                    }
+                    freshMemoryTurn?.result?.memoryCards?.takeIf { it.isNotEmpty() }?.let { cards ->
+                        item(key = "assistant-fresh-saved-memory-cards-${freshMemoryTurn.requestId}") {
+                            Card(Modifier.fillMaxWidth().testTag("assistant-saved-memory-cards"), shape = RoundedCornerShape(18.dp)) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(t("Saved memories", "已保存的回忆"), style = MaterialTheme.typography.titleMedium)
+                                    freshMemoryTurn.result?.memoryAction?.takeIf { savedMemoryWorkspace.savedMemoryActionsAvailable &&
+                                        it.ordinal in cards.indices }?.let { action ->
+                                        val actionCard = cards[action.ordinal]
+                                        OutlinedButton(
+                                            onClick = { if (action.type == "open") onOpenSavedMemoryCard?.invoke(action.ordinal)
+                                                else onReadSavedMemoryOpening?.invoke(action.ordinal) },
+                                            enabled = if (action.type == "open") savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null
+                                                else savedMemoryWorkspace.savedMemoryReadingAvailable && onReadSavedMemoryOpening != null,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                                .testTag("assistant-saved-memory-action"),
+                                        ) {
+                                            Text(if (action.type == "open")
+                                                t("Open suggested memory: ${actionCard.title}", "打开推荐回忆：${actionCard.title}")
+                                            else t("Read suggested opening: ${actionCard.title}", "朗读推荐回忆开篇：${actionCard.title}"))
+                                        }
+                                    }
+                                    if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
+                                        AssistChip(onClick = { val prompt = memoryFollowupPrompt(0, 2, zh)
+                                            if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
+                                            label = { Text(memoryFollowupLabel(2, zh)) },
+                                            modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(0, 2, zh) }
+                                                .testTag("assistant-memory-followup-all"))
+                                    }
+                                    cards.forEachIndexed { ordinal, card ->
+                                        Column(Modifier.fillMaxWidth().testTag("assistant-saved-memory-card-$ordinal"),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text(card.title, style = MaterialTheme.typography.titleSmall)
+                                            Text(if (zh) "${if (card.kind == "story") "已保存故事" else "已保存回忆录"} · 第${ordinal + 1}段"
+                                                else "${if (card.kind == "story") "Saved story" else "Saved memoir"} · Memory ${ordinal + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(card.excerpt, style = MaterialTheme.typography.bodyMedium)
+                                            if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
+                                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    listOf(memoryFollowupPrompt(ordinal, 0, zh), memoryFollowupPrompt(ordinal, 1, zh))
+                                                        .forEachIndexed { promptIndex, prompt ->
+                                                            AssistChip(onClick = { if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
+                                                                label = { Text(memoryFollowupLabel(promptIndex, zh)) },
+                                                                modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(ordinal, promptIndex, zh) }
+                                                                    .testTag("assistant-memory-followup-$ordinal-$promptIndex"))
+                                                        }
+                                                }
+                                            }
+                                            val canReadSavedMemorySegments = savedMemoryWorkspace.savedMemorySegmentReadingAvailable &&
+                                                onReadSavedMemorySegment != null && card.kind in setOf("story", "memoir")
+                                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                if (onOpenSavedMemoryCard != null) {
+                                                    TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
+                                                        enabled = savedMemoryWorkspace.savedMemoryReaderAvailable &&
+                                                            savedMemoryWorkspace.memoryReaderOrdinal != ordinal,
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-open-saved-memory-$ordinal")) {
+                                                        Text(if (savedMemoryWorkspace.memoryReaderOrdinal == ordinal)
+                                                            t("Opening…", "正在打开…") else if (card.kind == "story")
+                                                            t("Open saved story", "打开已保存的故事") else t("Open memoir", "打开回忆录"))
+                                                    }
+                                                }
+                                                if (onReadSavedMemoryOpening != null) {
+                                                    TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
+                                                        enabled = savedMemoryWorkspace.savedMemoryReadingAvailable &&
+                                                            !assistant.speechBusy &&
+                                                            savedMemoryWorkspace.memoryReaderOrdinal != ordinal &&
+                                                            savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy,
+                                                        modifier = Modifier.heightIn(min = 48.dp)
+                                                            .testTag("assistant-read-memory-opening-$ordinal")) {
+                                                        Text(if (assistant.speechBusy && assistant.speechMemoryOpeningOrdinal == ordinal)
+                                                            t("Preparing opening…", "正在准备开篇语音…")
+                                                        else if (assistant.speechAudio != null && assistant.speechMemoryOpeningOrdinal == ordinal)
+                                                            t("Opening ready", "开篇语音已准备好")
+                                                        else t("Read opening", "朗读开篇"))
+                                                    }
+                                                    if (assistant.speechBusy && assistant.speechMemoryOpeningOrdinal == ordinal) TextButton(
+                                                        onClick = onStopSpeech,
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-opening-$ordinal"),
+                                                    ) { Text(t("Stop", "停止")) }
+                                                }
+                                                val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
+                                                    it.ordinal == ordinal && it.threadId == freshMemoryTurn.threadId &&
+                                                        it.turnId == freshMemoryTurn.requestId && it.revision == freshMemoryTurn.revision &&
+                                                        it.sourceKind == card.kind
+                                                }
+                                                if (canReadSavedMemorySegments) {
+                                                    val segmentCount = segmentProgress?.segmentCount
+                                                    val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
+                                                        segmentCount != null && segmentProgress.segmentIndex + 1 <= segmentCount
+                                                    val canRestart = segmentReady && segmentCount != null &&
+                                                        segmentProgress.segmentIndex + 1 >= segmentCount
+                                                    val activeSegment = segmentProgress != null && !segmentReady
+                                                    val sourceName = if (card.kind == "story") t("first chapter", "第一章")
+                                                        else t("memoir introduction", "回忆录引言")
+                                                    val label = when {
+                                                        segmentProgress == null -> t("Read $sourceName", "朗读$sourceName")
+                                                        segmentCount == null -> t("Preparing $sourceName…", "正在准备$sourceName…")
+                                                        segmentReady && segmentProgress.segmentIndex + 1 < segmentCount ->
+                                                            t("Continue · Segment ${segmentProgress.segmentIndex + 2}/$segmentCount",
+                                                                "继续 · 第${segmentProgress.segmentIndex + 2}/${segmentCount}段")
+                                                        canRestart -> t("Read $sourceName again", "重新朗读$sourceName")
+                                                        segmentReady -> t("Finished · Segment $segmentCount/$segmentCount",
+                                                            "已完成 · 第${segmentCount}/${segmentCount}段")
+                                                        else -> t("Segment ${segmentProgress.segmentIndex + 1}/$segmentCount",
+                                                            "第${segmentProgress.segmentIndex + 1}/${segmentCount}段")
+                                                    }
+                                                    TextButton(onClick = {
+                                                        val next = if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1
+                                                        onReadSavedMemorySegment?.invoke(ordinal, next)
+                                                    }, enabled = savedMemoryWorkspace.savedMemorySegmentReadingAvailable && !assistant.let { it?.speechBusy == true || it?.speechAudio != null } &&
+                                                        savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy && !activeSegment &&
+                                                        (segmentProgress == null || canRestart || segmentReady && segmentCount != null && segmentProgress.segmentIndex + 1 < segmentCount),
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-read-memory-segment-$ordinal")) {
+                                                        Text(label)
+                                                    }
+                                                    if (assistant?.speechBusy == true && segmentProgress != null) TextButton(
+                                                        onClick = onStopSpeech,
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
+                                                    ) { Text(t("Stop", "停止")) }
+                                                    else if (assistant?.speechAudio != null && segmentProgress != null) TextButton(
+                                                        onClick = onStopSpeech,
+                                                        modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
+                                                    ) { Text(t("Stop", "停止")) }
+                                                }
+                                            }
+                                            if (canReadSavedMemorySegments) Text(
+                                                t("One segment at a time; continue after it finishes. The microphone stays off.",
+                                                    "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.testTag("assistant-memory-segment-guidance-$ordinal"))
+                                            if (savedMemoryWorkspace.memoryReaderErrorOrdinal == ordinal) {
+                                                Text(t("Could not open this memory.", "无法打开这段回忆。"),
+                                                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                                TextButton(onClick = { onOpenSavedMemoryCard?.invoke(ordinal) },
+                                                    enabled = savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null,
+                                                    modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-retry-saved-memory-$ordinal")) {
+                                                    Text(t("Try again", "重试"))
+                                                }
+                                            }
+                                        }
+                                        if (ordinal != cards.lastIndex) HorizontalDivider()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (freshMemoryTurn == null && exchanges.isEmpty() && pending == null) item(key = "assistant-intro") {
                         Card(Modifier.fillMaxWidth().testTag("assistant-intro"), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(t("Start with a simple request", "从一句简单的话开始"), style = MaterialTheme.typography.titleMedium,
+                                Text(t("What would you like to find?", "今天想找哪段回忆？"), style = MaterialTheme.typography.titleMedium,
                                     fontFamily = FontFamily.Serif, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text(t("Choose a suggestion to edit it before sending.", "选一句示例后，可以先修改，再发送。"),
+                                Text(if (voiceSessionState != null) t("Say what you would like to see, such as videos from last year or item number 123.", "说说想看什么，例如：找去年的视频，或打开编号 123。") else t("Pick a starting point, then edit it before sending.", "选一个开始方向，修改好再发送。"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                listOf(
+                                if (voiceSessionState == null) listOf(
                                     t("Find videos from last year", "找去年的视频"),
                                     t("Find photos from last September", "找去年九月的照片"),
-                                    t("Open the first result", "打开第一个结果"),
+                                    t("Find photos from a spring outing", "找春天出游的照片"),
                                 ).forEachIndexed { index, suggestion ->
-                                    OutlinedButton(onClick = { draft = suggestion }, modifier = Modifier.fillMaxWidth().testTag("assistant-suggestion-$index")) {
-                                        Text(suggestion, modifier = Modifier.fillMaxWidth())
+                                    OutlinedButton(onClick = { setDraft(suggestion) },
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("assistant-suggestion-$index")) {
+                                        Text(suggestion, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
                                     }
                                 }
                             }
@@ -317,7 +621,7 @@ internal fun AssistantScreen(
                                             Preview(asset, previews[asset.id], Words(zh), modifier = Modifier.width(76.dp).height(56.dp))
                                             Column(Modifier.weight(1f)) {
                                                 Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}", "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"), style = MaterialTheme.typography.titleSmall)
-                                                Text(asset.taken_at ?: asset.date_hint?.value ?: t("Date unknown", "日期未知"), style = MaterialTheme.typography.bodySmall)
+                                                Text(Words(zh).date(asset), style = MaterialTheme.typography.bodySmall)
                                             }
                                             TextButton(onClick = { onOpen(asset.id, exchange.turn.receipt?.requestId) }, modifier = Modifier.testTag("assistant-open-${asset.id}")) {
                                                 Text(t("Open", "打开"))
@@ -329,8 +633,8 @@ internal fun AssistantScreen(
                             }
                         } }
                     }
-                    assistant.failure?.let { _ -> item(key = "assistant-turn-error") {
-                        Text(t("This request could not be completed. Try again when the service is available.", "暂时无法完成这次请求，服务恢复后可以重试。"),
+                    assistant.failure?.let { failure -> item(key = "assistant-turn-error") {
+                        Text(Words(zh).message(failure.message),
                             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-turn-error"))
                     } }
                     pending?.let { pendingTurn -> item(key = "assistant-turn-${pendingTurn.requestId}") {
@@ -342,7 +646,10 @@ internal fun AssistantScreen(
                             pendingReceiptStatus == "interrupted" -> t("Server processing was interrupted; its reply is unavailable.", "服务器处理中断，回复不可用。")
                             else -> t("The outcome is unknown. The server may already have processed this request.", "结果尚不确定；服务器可能已经处理了这条请求。")
                         }
-                        val recoveryActionText = if (pendingFailed)
+                        val recoveryActionText = if (assistant.privateThreadId != null)
+                            t("Open My conversations to review the saved question or deliberately start another conversation. Checking this request never resends it; leaving it does not delete its history.",
+                                "前往我的对话，可检查原问题或确认开始另一个对话。查询不会重新提交请求；放下请求不会删除历史。")
+                        else if (pendingFailed)
                             t("Close this conversation to edit the original question, or keep your newer draft. Review it and press Ask to send.",
                                 "关闭后可编辑原问题；若已输入新问题，则保留新草稿。检查后点击发送才会提交。")
                         else
@@ -357,10 +664,11 @@ internal fun AssistantScreen(
                                     Text(if (assistant.receiptChecking) t("Checking receipt…", "正在查询回执…") else t("Check receipt", "查询回执"))
                                 }
                                 TextButton(onClick = {
-                                    if (pendingFailed && draft.isBlank()) draft = pendingTurn.text
+                                    if (assistant.privateThreadId == null && pendingFailed && draft.isBlank()) setDraft(pendingTurn.text)
                                     onClear()
                                 }, modifier = Modifier.testTag("assistant-close-pending")) {
-                                    Text(if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
+                                    Text(if (assistant.privateThreadId != null) t("Manage this request", "管理这次请求")
+                                        else if (pendingFailed) t("Close & restore question", "关闭并恢复问题") else t("Acknowledge & start fresh", "确认并重新开始"))
                                 }
                                 if (assistant.receiptCheckFailed) Text(t("Receipt check unavailable. The previous status is unchanged.", "暂时无法查询回执，上次确认的状态未改变。"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
@@ -374,7 +682,7 @@ internal fun AssistantScreen(
                             }
                         }
                     } }
-                    assistant.transcript?.takeIf { assistant.pendingTurn == null }?.let { transcript ->
+                    assistant.transcript?.takeIf { assistant.pendingTurn == null && voiceSessionState == null }?.let { transcript ->
                         item(key = "assistant-transcript-review-${transcript.localRequestId.ifBlank { transcript.receipt?.requestId ?: transcript.hashCode().toString() }}") {
                             Card(Modifier.fillMaxWidth().testTag("assistant-transcript-review"),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
@@ -392,7 +700,7 @@ internal fun AssistantScreen(
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(onClick = {
                                             val combined = assistantDraftWithTranscript(draft, transcript.text)
-                                            if (combined != null && onUseTranscript(transcript) == transcript.text) draft = combined
+                                            if (combined != null && onUseTranscript(transcript) == transcript.text) setDraft(combined)
                                         }, enabled = canInsert, modifier = Modifier.testTag("assistant-insert-transcript")) {
                                             Text(t("Add to message", "加入消息"))
                                         }
@@ -411,28 +719,55 @@ internal fun AssistantScreen(
                 }
 
                     }
+                if (voiceSessionState == null) {
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val latest = exchanges.lastOrNull()?.turn
-                    if (assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty()) {
+                    if (privateReplySpeechEnabled && latest?.reply?.toByteArray(Charsets.UTF_8)?.size?.let { it > 600 } == true)
+                        Text(t("This reply is long. Read the complete text here.", "这条回复较长，可在这里阅读完整文字。"),
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("assistant-reply-speech-unavailable"))
+                    val openingSpeech = assistant.speechMemoryOpeningOrdinal != null
+                    val segmentSpeech = assistant.speechMemorySegmentProgress != null
+                    val memorySpeech = openingSpeech || segmentSpeech
+                    if (openingSpeech && assistant.speechBusy) Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-memory-opening-loading"))
+                        TextButton(onClick = onStopSpeech, modifier = Modifier.testTag("assistant-stop-memory-opening-playback")) {
+                            Text(t("Stop", "停止"))
+                        }
+                    }
+                    if (!memorySpeech && (privateReplySpeechAvailable ||
+                        !privateReplySpeechEnabled && assistant.capabilities?.speech == true && latest?.kind == "results" && latest.items.isNotEmpty())) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                             if (assistant.speechBusy) LinearProgressIndicator(Modifier.weight(1f).testTag("assistant-speech-loading"))
                             Button(onClick = onPlaySpeech, enabled = !assistant.speechBusy,
-                                modifier = Modifier.testTag("assistant-play-speech")) { Text(t("Play spoken result count", "播放结果数量语音")) }
+                                modifier = Modifier.testTag("assistant-play-speech")) { Text(if (privateReplySpeechEnabled) t("Read assistant reply", "朗读助手回复") else t("Play spoken results", "播报结果")) }
                         }
-                        assistant.speechAudio?.let { AssistantSpeechPlayback(it, zh, onStopSpeech) }
                     }
-                    OutlinedTextField(value = draft, onValueChange = { if (it.codePointCount(0, it.length) <= 512) draft = it },
-                        modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy,
-                        label = { Text(t("Ask about your photos", "询问相册内容")) },
-                        placeholder = { Text(t("For example: find videos from last year", "例如：找去年9月的照片")) },
+                    if (!memorySpeech || showMemoryOpeningPlayback) assistant.speechAudio?.let { audio ->
+                        AssistantSpeechPlayback(audio, zh, openingSpeech, segmentSpeech,
+                            onStopSpeech) { outcome -> onPlaybackOutcome(audio, outcome) }
+                    }
+                    OutlinedTextField(value = draft, onValueChange = { if (voiceSessionState == null && it.codePointCount(0, it.length) <= 512) setDraft(it) },
+                        modifier = Modifier.fillMaxWidth().testTag("assistant-text"), enabled = !assistant.busy && voiceSessionState == null,
+                        label = { Text(t("Message 拾光助手", "给拾光助手发消息")) },
+                        placeholder = { Text(t("Describe a photo or moment you remember", "说说你记得的照片或瞬间")) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(onSend = { submit() }), maxLines = 4)
                     if (draft.isNotBlank() && !assistantDraftWithinLimits(draft))
                         Text(t("This message exceeds the limit. Shorten it before sending.", "这条消息超出长度限制，请缩短后再发送。"),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.testTag("assistant-message-overflow"))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        val canTranscribe = assistant.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val canTranscribe = voiceSessionState == null && assistant.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } == true
+                        voiceEntry?.let { startVoice ->
+                            OutlinedButton(onClick = { keyboard?.hide(); focusManager.clearFocus(); startVoice() },
+                                enabled = assistant.pendingTurn == null && !assistant.busy && !assistant.transcribing && assistant.transcript == null &&
+                                    !assistant.speechBusy && assistant.speechAudio == null && !recording && voiceSessionState == null,
+                                modifier = Modifier.heightIn(min = 52.dp).testTag("assistant-start-voice-session")) {
+                                Text(if (compactIntro) t("Voice", "语音对话") else t("Start voice conversation", "开始语音对话"))
+                            }
+                        }
                         if (canTranscribe) {
                             if (recording) {
                                 Text(t("Listening…", "正在聆听…"), Modifier.align(Alignment.CenterVertically).testTag("assistant-listening"),
@@ -441,21 +776,30 @@ internal fun AssistantScreen(
                                 Button(onClick = onStopRecording, modifier = Modifier.testTag("assistant-stop-recording")) { Text(t("Stop and review", "停止并查看转写")) }
                             } else {
                                 OutlinedButton(onClick = onRecord, enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null,
-                                    modifier = Modifier.testTag("assistant-record")) { Text(t("Record speech", "录音转文字")) }
+                                    modifier = Modifier.heightIn(min = 52.dp).testTag("assistant-record")) { Text(if (compactIntro && voiceEntry != null) t("Dictate", "转写") else t("Record speech", "录音转文字")) }
                             }
                         }
                         Button(onClick = submit,
-                            enabled = !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null && !recording &&
-                                draft.isNotBlank() && assistantDraftWithinLimits(draft), modifier = Modifier.testTag("assistant-send")) {
+                            enabled = voiceSessionState == null && !assistant.busy && assistant.pendingTurn == null && !assistant.transcribing && assistant.transcript == null && !recording &&
+                                draft.isNotBlank() && assistantDraftWithinLimits(draft), modifier = Modifier.heightIn(min = 52.dp).testTag("assistant-send")) {
                             Text(if (assistant.busy) t("Thinking…", "正在整理…") else t("Ask", "发送"))
                         }
                     }
-                    if (assistant.transcribing) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (onStartVoiceSession != null && voiceSessionState == null && assistant.pendingTurn == null &&
+                        !assistant.busy && !assistant.transcribing && assistant.transcript == null && !recording &&
+                        !assistant.speechBusy && assistant.speechAudio == null) {
+                        Text(if (compactIntro) t("Voice searches only · Temporary audio", "语音只读查找；录音临时处理。") else t("Starting allows foreground microphone capture and read-only requests. Audio is temporary.",
+                            "开始后会在前台使用麦克风并发送只读请求；录音仅临时处理。"),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("assistant-voice-session-disclosure"))
+                    }
+                    if (voiceSessionState == null && assistant.transcribing) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         LinearProgressIndicator(Modifier.fillMaxWidth().testTag("assistant-transcribing"))
                         Text(t("Preparing a transcript for your review…", "正在整理转写内容，稍后请先检查…"), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (recordError) Text(t("Microphone recording could not start.", "无法开始录音。"), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-record-error"))
+                    if (voiceSessionState == null && recordError) Text(t("Microphone recording could not start.", "无法开始录音。"), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("assistant-record-error"))
+                }
                 }
             }
         }
@@ -464,18 +808,49 @@ internal fun AssistantScreen(
 }
 
 @Composable
+private fun AssistContextChip(label: String, tag: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.heightIn(min = 36.dp).testTag(tag),
+    ) {
+        Text(label, Modifier.widthIn(max = 240.dp).padding(horizontal = 12.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private val opaqueContextId = Regex("(?i)[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+private val opaqueContextToken = Regex("^[A-Za-z0-9_-]{32,}$")
+
+private fun isHumanReadableContextLabel(value: String): Boolean {
+    val label = value.trim()
+    return label.isNotEmpty() && label.length <= 80 && !opaqueContextId.containsMatchIn(label) && !opaqueContextToken.matches(label)
+}
+
+@Composable
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, onStop: () -> Unit) {
+internal fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean, memoryOpening: Boolean = false,
+                                    memorySegment: Boolean = false,
+                                    onStop: () -> Unit,
+                                    onOutcome: (String) -> Unit) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val context = LocalContext.current
     val player = remember(audio) { ExoPlayer.Builder(context).build() }
     var playing by remember(audio) { mutableStateOf(false) }
     var failed by remember(audio) { mutableStateOf(false) }
+    var reported by remember(audio) { mutableStateOf(false) }
     DisposableEffect(audio, player) {
         var attached = true
         val listener = object : Player.Listener {
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) { if (attached) playing = playWhenReady }
-            override fun onPlayerError(error: PlaybackException) { if (attached) failed = true }
+            override fun onPlayerError(error: PlaybackException) {
+                if (attached) failed = true
+                if (attached && !reported) { reported = true; onOutcome("failed") }
+            }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (attached && playbackState == Player.STATE_ENDED && !reported) { reported = true; onOutcome("completed") }
+            }
         }
         val closeListener: () -> Unit = { Handler(Looper.getMainLooper()).post { if (attached) { runCatching { player.stop() }; playing = false } } }
         player.addListener(listener)
@@ -485,12 +860,18 @@ private fun AssistantSpeechPlayback(audio: ProtectedAnnotationAudio, zh: Boolean
         player.playWhenReady = true
         player.prepare()
         audio.onClose(closeListener)
-        onDispose { attached = false; audio.removeOnClose(closeListener); player.removeListener(listener); player.release() }
+        onDispose {
+            if (!reported) { reported = true; onOutcome("cancelled") }
+            attached = false
+            audio.removeOnClose(closeListener); player.removeListener(listener); player.release()
+        }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.testTag("assistant-speech-playback")) {
-        TextButton(onClick = { player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
-        if (playing) Text(t("Speaking the result count…", "正在播报结果数量…"), style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { if (!reported) { reported = true; onOutcome("cancelled") }; player.stop(); onStop() }, modifier = Modifier.testTag("assistant-stop-speech")) { Text(t("Stop", "停止")) }
+        if (playing) Text(if (memorySegment) t("Reading this saved section…", "正在朗读这段已保存内容…")
+            else if (memoryOpening) t("Reading the saved opening…", "正在朗读保存的开篇…")
+            else t("Speaking the results…", "正在播报结果…"), style = MaterialTheme.typography.bodySmall)
         if (failed) Text(t("Speech could not play.", "语音无法播放。"), color = MaterialTheme.colorScheme.error)
     }
 }

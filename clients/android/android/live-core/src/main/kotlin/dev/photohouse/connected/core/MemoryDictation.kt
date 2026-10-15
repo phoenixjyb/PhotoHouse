@@ -39,6 +39,8 @@ class MemoryDictationStore(
     private val transcribe: suspend (ByteArray, String) -> AssistantTranscript,
     private val onDenied: () -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
+    /** Optional owner fence for session-bound callers; legacy stores remain current by default. */
+    private val isCurrent: () -> Boolean = { true },
 ) {
     private val mutable = MutableStateFlow(MemoryDictationState())
     val state = mutable.asStateFlow()
@@ -52,7 +54,7 @@ class MemoryDictationStore(
 
     @Synchronized
     fun loadCapabilities() {
-        if (closed || mutable.value.loading || mutable.value.recording || mutable.value.transcribing ||
+        if (!ensureCurrentLocked() || mutable.value.loading || mutable.value.recording || mutable.value.transcribing ||
             mutable.value.transcript != null || now() < mutable.value.retryAtMillis) return
         val token = ++capabilitiesGeneration
         mutable.value = mutable.value.copy(loading = true, failure = null)
@@ -61,6 +63,7 @@ class MemoryDictationStore(
                 val result = capabilities()
                 synchronized(this@MemoryDictationStore) {
                     if (closed || token != capabilitiesGeneration) return@synchronized
+                    if (!ensureCurrentLocked()) return@synchronized
                     mutable.value = mutable.value.copy(loading = false, capabilities = result, failure = null,
                         failureCode = null, retryAtMillis = 0)
                 }
@@ -70,6 +73,7 @@ class MemoryDictationStore(
                 val denied = e is ApiFailure && e.status in setOf(401, 403)
                 val current = synchronized(this@MemoryDictationStore) {
                     if (closed || token != capabilitiesGeneration) return@synchronized false
+                    if (!ensureCurrentLocked()) return@synchronized false
                     if (denied) {
                         clearPrivateState(clearCapabilities = true)
                     } else {
@@ -86,6 +90,7 @@ class MemoryDictationStore(
     /** Returns the bounded recording duration in seconds, or null when unavailable. */
     @Synchronized
     fun beginRecording(): Int? {
+        if (!ensureCurrentLocked()) return null
         val current = mutable.value
         val caps = current.capabilities ?: return null
         if (closed || current.loading || now() < current.retryAtMillis || current.recording || current.transcribing || current.transcript != null ||
@@ -99,7 +104,7 @@ class MemoryDictationStore(
     /** Takes ownership via a copy; both caller and owned buffers are wiped on every exit. */
     @Synchronized
     fun stopRecording(wav: ByteArray) {
-        if (closed || !mutable.value.recording) {
+        if (!ensureCurrentLocked() || !mutable.value.recording) {
             wav.fill(0)
             return
         }
@@ -125,6 +130,7 @@ class MemoryDictationStore(
                 val result = transcribe(audio, requestId)
                 synchronized(this@MemoryDictationStore) {
                     if (closed || token != generation) return@synchronized
+                    if (!ensureCurrentLocked()) return@synchronized
                     if (!validTranscript(result.text) || result.receipt?.requestId?.let { it != requestId } == true) {
                         mutable.value = mutable.value.copy(transcribing = false, transcript = null,
                             failure = "Could not use this transcript / 无法使用这段转写",
@@ -141,6 +147,7 @@ class MemoryDictationStore(
                 val denied = e is ApiFailure && e.status in setOf(401, 403)
                 val current = synchronized(this@MemoryDictationStore) {
                     if (closed || token != generation) return@synchronized false
+                    if (!ensureCurrentLocked()) return@synchronized false
                     wipeOwnedAudio()
                     if (denied) clearPrivateState(clearCapabilities = true)
                     else mutable.value = mutable.value.copy(transcribing = false, transcript = null,
@@ -157,7 +164,7 @@ class MemoryDictationStore(
 
     @Synchronized
     fun recordingFailed() {
-        if (closed || !mutable.value.recording) return
+        if (!ensureCurrentLocked() || !mutable.value.recording) return
         generation++
         mutable.value = mutable.value.copy(recording = false, failure = "Recording failed; try again / 录音失败，请重试",
             failureCode = MemoryDictationFailure.RECORDING_FAILED, retryAtMillis = 0)
@@ -165,7 +172,7 @@ class MemoryDictationStore(
 
     @Synchronized
     fun cancel() {
-        if (closed) return
+        if (!ensureCurrentLocked()) return
         generation++
         transcriptionJob?.cancel()
         transcriptionJob = null
@@ -176,21 +183,21 @@ class MemoryDictationStore(
 
     @Synchronized
     fun dismissTranscript() {
-        if (closed || mutable.value.transcript == null) return
+        if (!ensureCurrentLocked() || mutable.value.transcript == null) return
         mutable.value = mutable.value.copy(transcript = null, requestReceipt = null, failure = null,
             failureCode = null, retryAtMillis = 0)
     }
 
     @Synchronized
     fun updateTranscript(value: String) {
-        if (closed || mutable.value.transcript == null || !validEditedTranscript(value)) return
+        if (!ensureCurrentLocked() || mutable.value.transcript == null || !validEditedTranscript(value)) return
         mutable.value = mutable.value.copy(transcript = value)
     }
 
     /** Explicitly extracts text for the caller to insert into its editor. */
     @Synchronized
     fun takeTranscript(): String? {
-        if (closed) return null
+        if (!ensureCurrentLocked()) return null
         val text = mutable.value.transcript ?: return null
         mutable.value = mutable.value.copy(transcript = null, requestReceipt = null, failure = null,
             failureCode = null, retryAtMillis = 0)
@@ -200,6 +207,10 @@ class MemoryDictationStore(
     @Synchronized
     fun close() {
         if (closed) return
+        closeLocked()
+    }
+
+    private fun closeLocked() {
         closed = true
         generation++
         capabilitiesGeneration++
@@ -209,6 +220,14 @@ class MemoryDictationStore(
         transcriptionJob = null
         wipeOwnedAudio()
         mutable.value = MemoryDictationState()
+    }
+
+    /** Called only from synchronized public actions or synchronized async completion blocks. */
+    private fun ensureCurrentLocked(): Boolean {
+        if (closed) return false
+        if (runCatching(isCurrent).getOrDefault(false)) return true
+        closeLocked()
+        return false
     }
 
     private fun clearPrivateState(clearCapabilities: Boolean) {

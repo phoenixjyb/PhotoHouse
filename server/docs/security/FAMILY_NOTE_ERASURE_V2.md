@@ -113,4 +113,4 @@ live Windows acceptance.
 - [HTTP ownership, CAS, retries and CSRF](../../tests/security/test_family_note_erasure_api.py)
 - [Original journal implementation](../../backend/app/access/original_deletions.py)
 - [Immutable identity prerequisite](FAMILY_NOTE_IDENTITIES_V1.md)
-- [Remaining lifecycle work](../MEMOIR_SOURCE_LIFECYCLE_PLAN_2026-10-07.md)
+- [Current lifecycle/activation roadmap](../../../docs/ROADMAP.md)

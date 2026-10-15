@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import dev.photohouse.home.HomeError
+import dev.photohouse.home.HomeFailure
+import dev.photohouse.home.UpdateNotNewerException
 
 /** Shared update/check/install UI so all launch surfaces use the same guarded flow. */
 @Composable
@@ -31,6 +34,7 @@ fun PhotoHouseOtaControl(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val installedVersion = remember(context.packageName) { PhotoHouseOta.installedVersionLabel(context) }
     var busy by remember(channel, origin, lanAddress) { mutableStateOf(false) }
     var status by remember(channel, origin, lanAddress) { mutableStateOf<String?>(null) }
     var prepared by remember(channel, origin, lanAddress) { mutableStateOf<PreparedPhotoHouseUpdate?>(null) }
@@ -42,6 +46,7 @@ fun PhotoHouseOtaControl(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(t("Installed version: $installedVersion", "当前版本：$installedVersion"), style = MaterialTheme.typography.bodySmall)
         action(t(if (busy) "Checking…" else "Check for updates", if (busy) "检查中…" else "检查更新"), "ota-check", !busy) {
             scope.launch {
                 busy = true
@@ -53,8 +58,15 @@ fun PhotoHouseOtaControl(
                     status = t("Version ${update.offer.versionName} is ready.", "版本 ${update.offer.versionName} 已准备就绪。")
                 } catch (e: CancellationException) {
                     throw e
+                } catch (_: UpdateNotNewerException) {
+                    status = t("PhotoHouse is up to date.", "拾光相册已是最新版本。")
+                } catch (e: HomeFailure) {
+                    status = when (e.kind) {
+                        HomeError.OFFLINE, HomeError.TLS -> t("Couldn't connect securely to the update service. Check your connection and try again.", "无法安全连接更新服务，请检查网络后重试。")
+                        else -> t("The update feed could not be validated. No update was installed.", "无法验证更新信息，未安装更新。")
+                    }
                 } catch (_: Exception) {
-                    status = t("No newer update is available, or the update service could not be reached.", "没有可用的新版本，或暂时无法连接更新服务。")
+                    status = t("The update could not be prepared safely. No update was installed.", "无法安全准备更新，未安装更新。")
                 } finally { busy = false }
             }
         }

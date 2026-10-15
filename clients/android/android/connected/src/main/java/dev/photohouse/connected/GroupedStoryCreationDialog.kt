@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -27,12 +29,20 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
     val editor = creation.editor
     val editorState by editor?.state?.collectAsState() ?: remember { mutableStateOf(StoryWorkspaceStoreState()) }
     var requestedPage by remember(editor) { mutableIntStateOf(creation.gallery?.page ?: 1) }
+    LaunchedEffect(editor, editorState.guideStep, editorState.draft?.selectionRevision) {
+        if (editor != null) {
+            if (editorState.guideStep == StoryGuideStep.REVIEW) store.loadGroupedStoryReviewPreviews(editor)
+            else store.clearGroupedStoryReviewPreviews(editor)
+        }
+    }
 
     fun t(en: String, cn: String) = if (zh) cn else en
+    val flowTitle = if (creation.isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Create a family story", "创建家庭故事")
     fun latestSelection(): GroupedStoryCreationState? {
         val live = store.state.value.groupedStoryCreation ?: return null
         if (editor == null || live.editor !== editor || live.canCreate != true) return null
-        if (editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || live.pageBusy) return null
+        if (editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || live.pageBusy ||
+            live.albumBusy || live.albumsPageBusy) return null
         return live
     }
     fun requestClose() {
@@ -57,12 +67,39 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                             zh,
                             onClose = { store.closeGroupedStoryCreation(discard = true) },
                             onReadSaved = { store.readCreatedGroupedStory() },
+                            isSavedEdit = creation.isSavedEdit,
+                            savedEditReloading = creation.isSavedEdit && creation.checking,
+                            savedEditReloadFailed = creation.isSavedEdit && creation.problem != null,
+                            onReloadSavedEdit = { store.reloadSavedGroupedStoryEdit(editor) },
+                            previewBytes = creation.previews + creation.albumPreviews + creation.relatedPreviews + creation.reviewPreviews,
                         )
+                    creation.isSavedEdit && creation.checking -> Column(
+                        Modifier.fillMaxSize().padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text(t("Reading the latest saved chapters and linked family memories…",
+                            "正在读取最新故事篇章和关联的家人回忆…"))
+                    }
+                    creation.isSavedEdit && editor == null -> Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
+                        Text(t("The saved story or its complete chapter memory links could not be verified. Retry before editing.",
+                            "无法核对已保存故事或完整的篇章回忆关联，请重试后再编辑。"), color = MaterialTheme.colorScheme.error)
+                        creation.problem?.let { Text(words.message(it.message), color = MaterialTheme.colorScheme.error) }
+                        Button(onClick = store::retrySavedGroupedStoryEdit,
+                            modifier = Modifier.fillMaxWidth().testTag("saved-grouped-story-edit-retry")) {
+                            Text(t("Retry", "重试"))
+                        }
+                    }
                     creation.checking -> Column(
                         Modifier.fillMaxSize().padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                         Text(t("Checking library access…", "正在检查资料库访问权限…"))
                     }
@@ -70,7 +107,7 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         Text(
                             t(
                                 "Only a library owner or contributor can create a grouped story. Ask the library owner to grant contributor access.",
@@ -83,12 +120,12 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Header(t("Create a family story", "创建家庭故事"), t("Close", "关闭"), ::requestClose)
+                        Header(flowTitle, t("Close", "关闭"), ::requestClose)
                         Text(creation.problem?.let { words.message(it.message) }
                             ?: t("Story creation is unavailable right now.", "暂时无法创建故事。"),
                             color = MaterialTheme.colorScheme.error)
                         Button(
-                            onClick = { if (store.state.value.groupedStoryCreation === currentCreation) store.beginGroupedStoryCreation() },
+                            onClick = { if (store.state.value.groupedStoryCreation === currentCreation) store.beginGroupedStoryCreation(guided = creation.guided) },
                             enabled = !creation.checking,
                             modifier = Modifier.fillMaxWidth().testTag("grouped-story-creation-retry"),
                         ) { Text(t("Retry", "重试")) }
@@ -161,27 +198,42 @@ private fun SelectionScreen(
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val gallery = creation.gallery
+    val album = creation.selectedAlbum
     val totalPages = gallery?.let { ((it.total + it.page_size - 1) / it.page_size).coerceAtLeast(1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() } ?: 1
-    val items = gallery?.items.orEmpty().filter { it.kind == "image" || it.kind == "video" }
+    val items = (if (album != null) creation.albumAssets else gallery?.items.orEmpty())
+        .filter { it.kind == "image" || it.kind == "video" }
     val selected = editorState.selectedAssetIds
-    val canAct = !creation.pageBusy && !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
+    val canContinue = !creation.pageBusy && !creation.albumBusy && !creation.albumsPageBusy &&
+        !editorState.busy && editorState.status == StoryWorkspaceStoreStatus.SELECTION
+    val canAct = canContinue && editorState.draft == null
+    var confirmNewFrames by remember(editor) { mutableStateOf(false) }
     var limitReached by remember(editor) { mutableStateOf(false) }
     var relatedExpanded by remember(editor) { mutableStateOf(false) }
+    var optionsExpanded by remember(editor) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Header(t("Choose moments", "选择瞬间"), t("Close", "关闭"), onClose)
+        if (editorState.guideStep != null) StoryGuideProgress(StoryGuideStep.FRAMES, zh)
         Text(t("Choose 1–24 photos or videos in story order.", "按故事顺序选择 1–24 个照片或视频。"),
             style = MaterialTheme.typography.bodyMedium)
         Text(t("${selected.size} of 24 selected", "已选择 ${selected.size} / 24"),
             style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-selection-count"))
+        if (editorState.guideStep != null && editorState.draft != null) {
+            Text(t("Your draft and words are kept. Continue with these moments, or explicitly replace the draft to change them.",
+                "草稿与文字已保留。可以用这些画面继续，或确认重新编排后再调整画面。"), style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = { confirmNewFrames = true }, enabled = canContinue,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("story-guide-change-moments")) {
+                Text(t("Change moments and rebuild", "调整画面并重新编排"))
+            }
+        }
         if (creation.pageBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
         creation.problem?.let { problem ->
             Text(words.message(problem.message), color = MaterialTheme.colorScheme.error)
             TextButton(
                 onClick = {
                     val live = store.state.value.groupedStoryCreation
-                    if (live?.editor === editor && live.canCreate == true && !live.pageBusy) {
-                        store.loadGroupedStorySelectionPage(gallery?.page ?: requestedPage)
+                    if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy) {
+                        store.loadGroupedStorySelectionPage(if (album != null) creation.albumPage else gallery?.page ?: requestedPage)
                     }
                 },
                 enabled = !creation.pageBusy,
@@ -193,12 +245,12 @@ private fun SelectionScreen(
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag("grouped-story-selection-limit"),
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (album == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { onRequestPage((gallery?.page ?: requestedPage) - 1) },
                 enabled = canAct && (gallery?.page ?: requestedPage) > 1,
-                modifier = Modifier.weight(1f).testTag("grouped-story-selection-previous"),
-            ) { Text(t("Previous", "上一页")) }
+                modifier = Modifier.weight(1f).semantics { contentDescription = t("Previous page", "上一页") }.testTag("grouped-story-selection-previous"),
+            ) { Text(if (editorState.guideStep != null) "←" else t("Previous", "上一页")) }
             Text(
                 if (gallery != null) t("Page ${gallery.page} of $totalPages", "第 ${gallery.page} / $totalPages 页")
                 else t("Page $requestedPage", "第 $requestedPage 页"),
@@ -207,10 +259,10 @@ private fun SelectionScreen(
             OutlinedButton(
                 onClick = { onRequestPage((gallery?.page ?: requestedPage) + 1) },
                 enabled = canAct && gallery != null && gallery.page < totalPages,
-                modifier = Modifier.weight(1f).testTag("grouped-story-selection-next"),
-            ) { Text(t("Next", "下一页")) }
+                modifier = Modifier.weight(1f).semantics { contentDescription = t("Next page", "下一页") }.testTag("grouped-story-selection-next"),
+            ) { Text(if (editorState.guideStep != null) "→" else t("Next", "下一页")) }
         }
-        if (gallery == null && !creation.pageBusy && creation.problem == null) {
+        if (album == null && gallery == null && !creation.pageBusy && creation.problem == null) {
             Text(t("No moments are available on this page.", "此页没有可用的瞬间。"))
         }
         LazyColumn(
@@ -218,6 +270,9 @@ private fun SelectionScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
+            item(key = "album-story-picker") {
+                GroupedStoryAlbumPicker(store, creation, editor, zh, canAct)
+            }
             item(key = "same-day-related-picker") {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { relatedExpanded = !relatedExpanded }, modifier = Modifier.fillMaxWidth()
@@ -276,16 +331,21 @@ private fun SelectionScreen(
                 val position = selected.indexOf(asset.id)
                 SelectionAsset(
                     asset = asset,
-                    bytes = creation.previews[asset.id],
+                    bytes = (if (album != null) creation.albumPreviews else creation.previews)[asset.id],
                     words = words,
                     selected = position >= 0,
                     ordinal = position + 1,
-                    enabled = canAct && gallery != null,
+                    enabled = canAct && (album != null || gallery != null),
                     tag = "grouped-story-select-${asset.id}",
+                    compact = editorState.guideStep != null,
                     onToggle = {
                         val live = store.state.value.groupedStoryCreation
-                        if (live?.editor === editor && live.canCreate == true && !live.pageBusy &&
-                            live.gallery?.page == gallery?.page && live.gallery?.items?.any { it.id == asset.id && it.kind in setOf("image", "video") } == true &&
+                        val samePage = if (album != null) live?.selectedAlbum === album &&
+                            live.albumPage == creation.albumPage && live.albumAssets.any { it.id == asset.id && it.kind in setOf("image", "video") }
+                        else live?.selectedAlbum == null && live?.gallery?.page == gallery?.page &&
+                            live?.gallery?.items?.any { it.id == asset.id && it.kind in setOf("image", "video") } == true
+                        if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy &&
+                            !live.albumsPageBusy && samePage &&
                             editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION && !editor.state.value.busy) {
                             val currentlySelected = editor.state.value.selectedAssetIds
                             if (asset.id in currentlySelected) {
@@ -300,41 +360,64 @@ private fun SelectionScreen(
                 )
             }
         }
-        Text(t("Story theme", "故事主题"), style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            groupedStoryThemes.forEach { (theme, en, cn) ->
-                FilterChip(
-                    selected = editorState.theme == theme,
-                    onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setTheme(theme) },
-                    enabled = canAct,
-                    label = { Text(t(en, cn)) },
-                    modifier = Modifier.testTag("grouped-story-theme-$theme"),
-                )
+        val selectedTheme = groupedStoryThemes.firstOrNull { it.first == editorState.theme }
+        val themeLabel = selectedTheme?.let { t(it.second, it.third) }.orEmpty()
+        val languageLabel = if (editorState.language == "en") t("English", "英文") else t("Chinese", "中文")
+        OutlinedButton(
+            onClick = { if (canAct && latestEditorSelection(store, editor)) optionsExpanded = !optionsExpanded },
+            enabled = canAct,
+            modifier = Modifier.fillMaxWidth().testTag("grouped-story-options-toggle"),
+        ) { Text(t("$themeLabel · $languageLabel · ${if (optionsExpanded) "Hide options" else "Change options"}",
+            "$themeLabel · $languageLabel · ${if (optionsExpanded) "收起设置" else "调整设置"}")) }
+        if (optionsExpanded) {
+            Text(t("Story theme", "故事主题"), style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                groupedStoryThemes.forEach { (theme, en, cn) ->
+                    FilterChip(
+                        selected = editorState.theme == theme,
+                        onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setTheme(theme) },
+                        enabled = canAct,
+                        label = { Text(t(en, cn)) },
+                        modifier = Modifier.testTag("grouped-story-theme-$theme"),
+                    )
+                }
             }
-        }
-        Text(t("Story language", "故事语言"), style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf("zh" to t("Chinese", "中文"), "en" to t("English", "英文")).forEach { (language, label) ->
-                FilterChip(
-                    selected = editorState.language == language,
-                    onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setLanguage(language) },
-                    enabled = canAct,
-                    label = { Text(label) },
-                    modifier = Modifier.testTag("grouped-story-language-$language"),
-                )
+            Text(t("Story language", "故事语言"), style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("zh" to t("Chinese", "中文"), "en" to t("English", "英文")).forEach { (language, label) ->
+                    FilterChip(
+                        selected = editorState.language == language,
+                        onClick = { if (canAct && latestEditorSelection(store, editor)) editor.setLanguage(language) },
+                        enabled = canAct,
+                        label = { Text(label) },
+                        modifier = Modifier.testTag("grouped-story-language-$language"),
+                    )
+                }
             }
         }
         Button(
             onClick = {
                 val live = store.state.value.groupedStoryCreation
-                if (live?.editor === editor && live.canCreate == true && !live.pageBusy &&
+                if (live?.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy && !live.albumsPageBusy &&
                     editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
-                    editor.state.value.selectedAssetIds.isNotEmpty() && !editor.state.value.busy) editor.preview()
+                    editor.state.value.selectedAssetIds.isNotEmpty() && !editor.state.value.busy) {
+                    if (editor.state.value.guideStep != null) editor.continueGuide() else editor.preview()
+                }
             },
-            enabled = canAct && selected.isNotEmpty() && !creation.pageBusy,
+            enabled = canContinue && selected.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().testTag("grouped-story-selection-preview"),
-        ) { Text(t("Create outline", "创建提纲")) }
+        ) { Text(if (editorState.guideStep != null) t("Next: tell your memory", "下一步：讲述回忆") else t("Create outline", "创建提纲")) }
     }
+    if (confirmNewFrames) AlertDialog(onDismissRequest = { confirmNewFrames = false },
+        title = { Text(t("Replace this draft?", "重新编排这份草稿？")) },
+        text = { Text(t("Changing the moments clears this draft's title and words. Cancel to keep them.",
+            "调整画面会清除这份草稿的标题与正文。取消可保留原草稿。")) },
+        confirmButton = { TextButton(onClick = {
+            if (store.state.value.groupedStoryCreation?.editor === editor) editor.discardGuideDraft()
+            confirmNewFrames = false
+        }, modifier = Modifier.testTag("story-guide-rebuild-confirm")) { Text(t("Replace draft", "重新编排")) } },
+        dismissButton = { TextButton(onClick = { confirmNewFrames = false }, modifier = Modifier.testTag("story-guide-rebuild-cancel")) {
+            Text(t("Keep draft", "保留草稿")) } })
 }
 
 @Composable
@@ -346,6 +429,7 @@ private fun SelectionAsset(
     ordinal: Int,
     enabled: Boolean,
     tag: String,
+    compact: Boolean = false,
     onToggle: () -> Unit,
 ) {
     Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium,
@@ -355,6 +439,18 @@ private fun SelectionAsset(
                 .testTag(tag).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (compact) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.width(80.dp).height(64.dp)) {
+                    Preview(asset, bytes, words, modifier = Modifier.testTag("grouped-story-selection-thumbnail-${asset.id}"), kindBadge = false)
+                }
+                Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+                Column(Modifier.weight(1f)) {
+                    Text(if (asset.kind == "video") words.t("Video", "视频") else words.t("Photo", "照片"),
+                        style = MaterialTheme.typography.labelSmall)
+                    Text(if (selected) words.t("Story order: $ordinal", "选择顺序：$ordinal") else words.t("Select moment", "选择画面"))
+                }
+            } else {
             Preview(asset, bytes, words, modifier = Modifier.testTag("grouped-story-selection-thumbnail-${asset.id}"))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
@@ -365,13 +461,14 @@ private fun SelectionAsset(
                 )
                 if (selected) Text("#$ordinal", style = MaterialTheme.typography.labelLarge)
             }
+            }
         }
     }
 }
 
 private fun latestEditorSelection(store: ConnectedStore, editor: StoryWorkspaceStore): Boolean {
     val live = store.state.value.groupedStoryCreation ?: return false
-    return live.editor === editor && live.canCreate == true && !live.pageBusy &&
+    return live.editor === editor && live.canCreate == true && !live.pageBusy && !live.albumBusy && !live.albumsPageBusy &&
         editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION && !editor.state.value.busy
 }
 

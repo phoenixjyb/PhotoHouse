@@ -58,6 +58,9 @@ internal fun SavedMemoryStoriesDialog(
     val latestCompositionReading by rememberUpdatedState(reading)
     val story = reading.detail
     val readerAudio = remember(liveState.session?.account_id, reading.library, story?.id) { ReaderAudioCoordinator() }
+    var readerTextSize by remember(
+        liveState.session?.account_id, liveState.generation, reading.library, story?.id, story?.revision,
+    ) { mutableStateOf(ReaderTextSizePreset.DEFAULT) }
     val themeScrollState = key(reading.library) { rememberScrollState() }
     val chapter = story?.chapters?.getOrNull(reading.selectedChapter)
     val chapterFrameItems = remember(story?.id, story?.revision, chapter?.id, chapter?.assetIds, story?.items) {
@@ -66,9 +69,9 @@ internal fun SavedMemoryStoriesDialog(
     }
     var selectedFrame by remember(
         liveState.generation, liveState.session?.account_id, reading.library, story?.id, story?.revision,
-        reading.selectedChapter, chapter?.id, chapter?.assetIds, chapterFrameItems,
+        reading.selectedChapter, reading.selectedAssetId, chapter?.id, chapter?.assetIds, chapterFrameItems,
     ) {
-        mutableStateOf(chapterFrameItems.firstOrNull())
+        mutableStateOf(reading.selectedAssetId?.takeIf { it in chapterFrameItems } ?: chapterFrameItems.firstOrNull())
     }
     var sourcesExpanded by remember(liveState.session?.account_id, reading.library, story?.id, story?.revision, chapter?.id) { mutableStateOf(false) }
     var chaptersExpanded by remember(liveState.session?.account_id, reading.library, story?.id, story?.revision) { mutableStateOf(false) }
@@ -137,7 +140,7 @@ internal fun SavedMemoryStoriesDialog(
             community.contributionDraft.isNotBlank() || community.contributionConsent || community.audioConsent ||
             community.chatTurnContributionSeeded || community.pendingText != null || community.pendingAudio != null ||
             community.pendingConversation != null || community.pendingTurn != null || community.pendingNarrative != null ||
-            community.busy || community.contributionAudioBusy ||
+            community.busy || community.contributionAudioBusy || community.audio != null ||
             community.contributionAudioActivityId != null || community.job?.state in setOf("queued", "running") ||
             community.narrativeJob?.state in setOf("queued", "running") ||
             community.turns?.items?.any { it.state in setOf("queued", "running") } == true ||
@@ -224,6 +227,40 @@ internal fun SavedMemoryStoriesDialog(
                                 modifier = Modifier.testTag("saved-memory-draft-label"))
                             Text(story.title, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Serif,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("saved-memory-title"))
+                            if (story.canEdit && store != null) {
+                                val referencesMatch = reading.contributionReferences?.let { refs ->
+                                    refs.id == story.id && refs.libraryId == reading.library && refs.revision == story.revision &&
+                                        refs.chapters.map { it.chapterId } == story.chapters.map { it.id }
+                                } == true
+                                val linkDraftChanged = reading.contributionReferenceDraft?.let { draft ->
+                                    draft != reading.contributionReferences?.chapters?.associate { it.chapterId to it.contributionIds }
+                                } == true
+                                val canStartEdit = referencesMatch && !reading.contributionReferencesBusy &&
+                                    !reading.contributionReferenceSaveBusy && !reading.contributionReferenceSaveError &&
+                                    !reading.contributionReferenceSaveConflict && reading.pendingContributionReferenceMutation == null &&
+                                    !linkDraftChanged
+                                OutlinedButton(onClick = { store.beginSavedGroupedStoryEdit() }, enabled = canStartEdit,
+                                    modifier = Modifier.fillMaxWidth().testTag("saved-memory-edit-story")) {
+                                    Text(t("Edit saved story", "编辑已保存故事"))
+                                }
+                                if (!referencesMatch && !reading.contributionReferencesBusy) {
+                                    Text(t("The complete chapter memory links must be checked before editing.",
+                                        "编辑前必须核对完整的篇章回忆关联。"), style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (reading.contributionReferencesUnavailable) {
+                                        TextButton(onClick = { store.retrySavedMemoryStoryContributionReferences() },
+                                            modifier = Modifier.testTag("saved-memory-edit-links-retry")) {
+                                            Text(t("Retry linked memories", "重试回忆关联"))
+                                        }
+                                    }
+                                } else if (linkDraftChanged || reading.contributionReferenceSaveBusy ||
+                                    reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+                                    reading.pendingContributionReferenceMutation != null) {
+                                    Text(t("Finish or discard the pending chapter-link changes before editing the story.",
+                                        "编辑故事前请先完成或放弃待处理的篇章关联修改。"), style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                             ChapterReadAloud("${story.title}. ${chapter.narration}", story.language,
                                 listOf("story", liveState.session?.account_id, reading.library, story.id, story.revision, chapter.id), zh,
                                 enabled = chapter.narration.isNotBlank(),)
@@ -237,6 +274,55 @@ internal fun SavedMemoryStoriesDialog(
                             )
                             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds().testTag("saved-memory-reader-scroll")) {
                                 Column(Modifier.fillMaxSize().verticalScroll(readerScrollState), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    ReaderTextSizeControls(
+                                        selected = readerTextSize,
+                                        zh = zh,
+                                        tagPrefix = "saved-memory-reader-size",
+                                        onSelect = { readerTextSize = it },
+                                    )
+                                    reading.resumePosition?.takeIf {
+                                        store != null && it.accountId == liveState.session?.account_id &&
+                                            it.libraryId == reading.library && it.storyId == story.id && it.storyRevision == story.revision
+                                    }?.let { position ->
+                                        val resumeChapter = story.chapters.indexOfFirst { it.id == position.chapterId }
+                                        val resumeFrame = story.chapters.getOrNull(resumeChapter)?.assetIds?.indexOf(position.assetId) ?: -1
+                                        val resumeBlocked = hasUnfinishedPrivateWork(reading) || reading.contributionReferenceSaveBusy ||
+                                            reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+                                            reading.pendingContributionReferenceMutation != null ||
+                                            reading.contributionReferenceDraft?.let { draft ->
+                                                draft != reading.contributionReferences?.chapters?.associate { it.chapterId to it.contributionIds }
+                                            } == true
+                                        if (resumeChapter >= 0 && resumeFrame >= 0) Card(
+                                            Modifier.fillMaxWidth().testTag("saved-memory-resume-card"),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                                        ) {
+                                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                Text(t("Pick up where you left off", "接着上次阅读"), style = MaterialTheme.typography.titleMedium)
+                                                Text(t("Chapter ${resumeChapter + 1} · moment ${resumeFrame + 1}",
+                                                    "第 ${resumeChapter + 1} 篇 · 第 ${resumeFrame + 1} 个瞬间"),
+                                                    style = MaterialTheme.typography.bodyMedium)
+                                                Button(onClick = {
+                                                    val current = currentReading() ?: return@Button
+                                                    if (current.resumePosition != position || !isCurrentChapter(current)) return@Button
+                                                    store?.resumeSavedMemoryStory(position)
+                                                }, enabled = !reading.framesBusy && !reading.detailBusy && !resumeBlocked,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-resume")) {
+                                                    Text(t("Continue reading", "继续阅读"))
+                                                }
+                                                OutlinedButton(onClick = {
+                                                    val current = currentReading() ?: return@OutlinedButton
+                                                    if (current.resumePosition != position || !isCurrentChapter(current)) return@OutlinedButton
+                                                    store?.startSavedMemoryStoryOver(story.id, story.revision)
+                                                }, enabled = !reading.framesBusy && !reading.detailBusy && !resumeBlocked,
+                                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-start-over")) {
+                                                    Text(t("Start over", "从头阅读"))
+                                                }
+                                                if (resumeBlocked) Text(t("Finish your current input or chapter-link changes before changing the reading position.",
+                                                    "请先完成当前输入或篇章关联修改，再切换阅读位置。"), style = MaterialTheme.typography.bodySmall,
+                                                    modifier = Modifier.testTag("saved-memory-resume-blocked"))
+                                            }
+                                        }
+                                    }
                                     if (chaptersExpanded) {
                                         Column(Modifier.fillMaxWidth().testTag("saved-memory-chapter-directory"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             story.chapters.forEachIndexed { index, item ->
@@ -263,9 +349,23 @@ internal fun SavedMemoryStoriesDialog(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
+                                    if (store != null && selectedMedia != null && heroBitmap == null &&
+                                        !reading.detailBusy && !reading.framesBusy && !reading.heroBusy) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val current = currentReading() ?: return@OutlinedButton
+                                                val target = selectedFrame ?: return@OutlinedButton
+                                                if (!isCurrentChapter(current) || current.detailBusy || current.framesBusy || current.heroBusy ||
+                                                    current.selectedAssetId != target || target !in chapterFrameItems) return@OutlinedButton
+                                                store.loadSavedMemoryHero(target, forceReload = true)
+                                            },
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("saved-memory-retry-preview"),
+                                        ) { Text(t("Retry preview", "重试预览")) }
+                                    }
                                     Text(chapter.title, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif,
                                         modifier = Modifier.testTag("saved-memory-chapter-title"))
-                                    Text(chapter.narration, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 29.sp),
+                                    Text(chapter.narration, style = readerProseStyle(
+                                        MaterialTheme.typography.bodyLarge.copy(lineHeight = 29.sp), readerTextSize),
                                         modifier = Modifier.fillMaxWidth().testTag("saved-memory-narration"))
                                     ChapterSourceReferences(
                                         chapterSourceReferences(chapter, story), zh, sourcesExpanded,
@@ -313,6 +413,7 @@ internal fun SavedMemoryStoriesDialog(
                                             val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
                                             Card(Modifier.width(112.dp).heightIn(min = 44.dp).selectable(
                                                 selected = selectedFrame == assetId,
+                                                enabled = !reading.framesBusy,
                                                 role = Role.RadioButton,
                                                 onClick = {
                                                     val current = currentReading() ?: return@selectable

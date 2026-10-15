@@ -33,6 +33,118 @@ def base():
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_saved_memory_cards_require_explicit_assistant_workspace_and_collaboration(self):
+        legacy = s.parse_configuration(base())
+        self.assertFalse(legacy.assistant_saved_memory_cards_enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            legacy.build_app()
+        self.assertIs(runtime.call_args.kwargs['assistant_saved_memory_cards_enabled'], False)
+        enabled = dict(base(), assistant_enabled=True, memory_collaboration_enabled=True,
+                       assistant_workspace_path='/synthetic/private/conversations.sqlite',
+                       assistant_saved_memory_cards_enabled=True)
+        configured = s.parse_configuration(enabled)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            configured.build_app()
+        self.assertIs(runtime.call_args.kwargs['assistant_saved_memory_cards_enabled'], True)
+        for change in ({'assistant_saved_memory_cards_enabled': 1},
+                       {'assistant_enabled': False}, {'memory_collaboration_enabled': False},
+                       {'assistant_workspace_path': None}):
+            with self.subTest(change=change), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(enabled, **change))
+
+    def test_memory_groups_are_manual_default_off_and_forward_a_typed_vector_profile_only_when_complete(self):
+        legacy = s.parse_configuration(base())
+        self.assertFalse(legacy.memory_groups_enabled)
+        self.assertIsNone(legacy.memory_group_vector_root)
+        self.assertIsNone(legacy.memory_group_vector_identity)
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            legacy.build_app()
+        self.assertIs(runtime.call_args.kwargs['memory_groups_enabled'], False)
+        self.assertIsNone(runtime.call_args.kwargs['memory_group_vectors'])
+
+        manual = s.parse_configuration(dict(base(), memory_groups_enabled=True))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            manual.build_app()
+        self.assertIs(runtime.call_args.kwargs['memory_groups_enabled'], True)
+        self.assertIsNone(runtime.call_args.kwargs['memory_group_vectors'])
+
+        identity_json = {
+            'artifact_sha256': 'a' * 64,
+            'preprocessing_sha256': 'b' * 64,
+            'vector_space_id': 'family-photo-v1',
+            'model_version': 'clip-v2',
+            'dimension': 768,
+            'normalization': 'unit_l2',
+        }
+        source = dict(base(), memory_groups_enabled=True,
+            memory_group_vector_root='/synthetic/private/group-vectors',
+            memory_group_vector_identity=identity_json)
+        configuration = s.parse_configuration(source)
+        identity_json['model_version'] = 'mutated-after-parse'
+        self.assertEqual(configuration.memory_group_vector_identity[3], 'clip-v2')
+        derived = s.parse_configuration(dict(source, memory_group_vector_root=base()['derived_root']))
+        self.assertEqual(str(derived.memory_group_vector_root), base()['derived_root'])
+        child = s.parse_configuration(dict(source, memory_group_vector_root=base()['derived_root']+'/qualified'))
+        self.assertEqual(str(child.memory_group_vector_root), base()['derived_root']+'/qualified')
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            configuration.build_app()
+        fields = runtime.call_args.kwargs
+        self.assertIs(fields['memory_groups_enabled'], True)
+        from app.access.memory_group_transport import GroupVectorConfiguration
+        from app.access.visual_candidates import VectorSpaceIdentity
+        profile = fields['memory_group_vectors']
+        self.assertIs(type(profile), GroupVectorConfiguration)
+        self.assertEqual(profile.vector_root, Path('/synthetic/private/group-vectors'))
+        self.assertIs(type(profile.identity), VectorSpaceIdentity)
+        self.assertEqual(profile.identity.artifact_sha256, 'a' * 64)
+        self.assertEqual(profile.identity.preprocessing_sha256, 'b' * 64)
+        self.assertEqual(profile.identity.vector_space_id, 'family-photo-v1')
+        self.assertEqual(profile.identity.model_version, 'clip-v2')
+        self.assertEqual(profile.identity.dimension, 768)
+        self.assertEqual(profile.identity.normalization, 'unit_l2')
+
+    def test_memory_group_vector_configuration_is_all_or_nothing_and_strictly_qualified(self):
+        identity = {
+            'artifact_sha256': 'a' * 64,
+            'preprocessing_sha256': 'b' * 64,
+            'vector_space_id': 'family-photo-v1',
+            'model_version': 'clip-v2',
+            'dimension': 768,
+            'normalization': 'unit_l2',
+        }
+        invalid = [
+            {'memory_groups_enabled': 'true'}, {'memory_groups_enabled': 1},
+            {'memory_group_vector_root': '/synthetic/private/group-vectors'},
+            {'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': False, 'memory_group_vector_root': '/synthetic/private/group-vectors',
+             'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': True, 'memory_group_vector_root': 'relative/vectors',
+             'memory_group_vector_identity': identity},
+            {'memory_groups_enabled': True, 'memory_group_vector_root': '/synthetic/01_INCOMING/vectors',
+             'memory_group_vector_identity': identity},
+        ]
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+
+        for field, value in (
+                ('artifact_sha256', 'A' * 64), ('preprocessing_sha256', 'x' * 64),
+                ('vector_space_id', 'Uppercase'), ('model_version', ' model'),
+                ('dimension', 0), ('dimension', 4097), ('dimension', True),
+                ('normalization', 'l2')):
+            bad = dict(identity, **{field: value})
+            with self.subTest(field=field, value=value), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), memory_groups_enabled=True,
+                    memory_group_vector_root='/synthetic/private/group-vectors',
+                    memory_group_vector_identity=bad))
+        for bad in ({**identity, 'extra': 'unexpected'},
+                    {key: value for key, value in identity.items() if key != 'model_version'},
+                    None, ['not', 'a', 'mapping']):
+            with self.subTest(identity=bad), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), memory_groups_enabled=True,
+                    memory_group_vector_root='/synthetic/private/group-vectors',
+                    memory_group_vector_identity=bad))
+
     def test_title_configuration_is_independent_optional_and_passed_to_runtime(self):
         default = s.parse_configuration(base())
         self.assertFalse(default.story_title_suggestions_enabled)
@@ -122,6 +234,78 @@ class StagingConfigurationTests(unittest.TestCase):
         with patch('app.access.runtime.RuntimeConfiguration') as runtime:
             selected.build_app()
         self.assertEqual(runtime.call_args.kwargs['assistant_journal_path'],Path('/synthetic/private/journal.sqlite'))
+
+    def test_assistant_workspace_is_optional_separate_and_passed_without_creation(self):
+        self.assertIsNone(s.parse_configuration(base()).assistant_workspace_path)
+        invalid = (
+            {'assistant_workspace_path': '/synthetic/private/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': 'relative.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/01_INCOMING/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/VLM_DATA/derived/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/databases/metadata.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/tls/server.key'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/updates/workspace.sqlite',
+             'update_root': '/synthetic/updates'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/private/workspace.sqlite',
+             'assistant_journal_path': '/synthetic/private/workspace.sqlite'},
+            {'assistant_enabled': True, 'assistant_workspace_path': '/synthetic/private/workspace.sqlite',
+             'original_deletion_journal_path': '/synthetic/private/workspace.sqlite',
+             'original_deletion_namespace': '00000000-0000-4000-8000-000000000001'},
+        )
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+        selected = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_workspace_path='/synthetic/private/workspace.sqlite'))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            selected.build_app()
+        self.assertEqual(runtime.call_args.kwargs['assistant_workspace_path'],
+                         Path('/synthetic/private/workspace.sqlite'))
+        missing = Path('/synthetic/private/missing-workspace.sqlite')
+        with self.assertRaises(s.InvalidConfiguration):
+            s.parse_configuration(dict(base(), assistant_enabled=True,
+                assistant_workspace_path=str(missing))).build_app()
+        self.assertFalse(missing.exists())
+
+    def test_assistant_kinship_catalog_is_optional_explicit_and_forwarded_without_loading(self):
+        self.assertIsNone(s.parse_configuration(base()).assistant_kinship_path)
+        selected_path = '/synthetic/private/kinship-catalog.json'
+        selected = s.parse_configuration(dict(base(), assistant_enabled=True,
+            assistant_kinship_path=selected_path))
+        with patch('app.access.runtime.RuntimeConfiguration') as runtime:
+            selected.build_app()
+        self.assertEqual(runtime.call_args.kwargs['assistant_kinship_path'], Path(selected_path))
+
+        invalid = (
+            {'assistant_kinship_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': 'relative.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/01_INCOMING/catalog.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/VLM_DATA/derived/catalog.json'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/databases/metadata.sqlite'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/tls/server.key'},
+            {'assistant_enabled': True, 'assistant_kinship_path': '/synthetic/updates/catalog.json',
+             'update_root': '/synthetic/updates'},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'assistant_journal_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'assistant_workspace_path': selected_path},
+            {'assistant_enabled': True, 'assistant_kinship_path': selected_path,
+             'original_deletion_journal_path': selected_path,
+             'original_deletion_namespace': '00000000-0000-4000-8000-000000000001'},
+        )
+        for changes in invalid:
+            with self.subTest(changes=changes), self.assertRaises(s.InvalidConfiguration):
+                s.parse_configuration(dict(base(), **changes))
+
+    def test_configuration_file_cannot_be_selected_as_kinship_catalog(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='staging-config-') as temporary:
+            path = Path(temporary) / 'config.json'
+            document = dict(base(), assistant_enabled=True, assistant_kinship_path=str(path))
+            path.write_text(json.dumps(document), encoding='utf-8')
+            with self.assertRaises(s.InvalidConfiguration):
+                s.load_configuration(path)
 
     def test_a_configuration_written_before_upload_still_loads(self):
         configuration = s.parse_configuration(base())

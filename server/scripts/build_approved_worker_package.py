@@ -19,14 +19,19 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCHEMA_REVISION = 'a0c9d2e4f817'
-TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920')
+TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304')
 FILES = tuple(sorted([
     *('backend/app/' + name + '.py' for name in (
         '__init__', 'config', 'image_utils', 'vector_index',
         'face_detection_service', 'face_embedding_service', 'metrics',
         'scoped_face_worker')),
+    *('backend/app/access/' + name + '.py' for name in (
+        '__init__', 'credentials', 'service', 'private_storage',
+        'visual_candidates', 'visual_vector_artifacts', 'visual_vector_schema',
+        'visual_vector_loader', 'visual_vector_publication', 'visual_vector_worker')),
     *('scripts/' + name + '.py' for name in (
         'home_media_worker', 'home_preparation_resources', 'home_memory_envelope',
+        'image_embedding_receipts', 'image_preprocessing_receipts',
         'run_approved_cpu_worker', 'run_approved_video_worker',
         'run_approved_image_embed_worker', 'run_approved_video_embed_worker',
         'run_approved_face_worker', 'approved_face_inference_child',

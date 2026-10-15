@@ -9,6 +9,7 @@ import okio.Buffer
 import org.junit.*
 import org.junit.Assert.*
 import java.net.InetAddress
+import java.net.Proxy
 
 class TagDiscoveryTest {
     private lateinit var server: MockWebServer
@@ -19,7 +20,7 @@ class TagDiscoveryTest {
         val tls = HandshakeCertificates.Builder().heldCertificate(cert).build()
         val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
         server = MockWebServer(); server.useHttps(tls.sslSocketFactory(), false); server.start(InetAddress.getLoopbackAddress(), 0)
-        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).sslSocketFactory(trust.sslSocketFactory(), trust.trustManager)
             .dns(object : Dns { override fun lookup(hostname: String) = listOf(InetAddress.getLoopbackAddress()) }).build()
         gateway = HttpsDiscoveryGateway(HomeOrigin.parse("https://home.example:${server.port}"), client, 3)
     }

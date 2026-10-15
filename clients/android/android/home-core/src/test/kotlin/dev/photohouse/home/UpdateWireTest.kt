@@ -21,10 +21,32 @@ class UpdateWireTest {
         assertEquals(2048, offer.bytes)
     }
 
-    @Test fun rejectsWrongChannelPackageNonIncreasingVersionOrSigner() {
+    @Test fun rejectsWrongChannelPackageOrSigner() {
         for (bytes in listOf(feed(channel = "tv"), feed(packageName = "dev.photohouse.connected.qa"),
-            feed(version = 25), feed(cert = "c".repeat(64)))) {
+            feed(cert = "c".repeat(64)))) {
             try { parse(bytes); fail("unsafe update metadata accepted") } catch (_: HomeFailure) { }
+        }
+    }
+
+    @Test fun equalAndOlderFullyValidFeedsHaveTypedAlreadyCurrentResult() {
+        for (version in listOf(25, 24)) {
+            try {
+                parse(feed(version = version))
+                fail("non-newer feed accepted as an update")
+            } catch (e: UpdateNotNewerException) {
+                assertEquals(25L, e.installedVersionCode)
+                assertEquals(version.toLong(), e.offeredVersionCode)
+            }
+        }
+    }
+
+    @Test fun oldVersionDoesNotMaskMalformedOrNonmatchingFeed() {
+        val oldVersionWithWrongChannel = feed(channel = "tv", version = 24)
+        val oldVersionWithWrongSigner = feed(version = 24, cert = "c".repeat(64))
+        val oldVersionWithWrongUrl = feed(version = 24, url = "https://attacker.example/updates/v1/phone/$apkHash.apk")
+        val malformedOldVersion = feed(version = 24).decodeToString().replace("\"version_name\":\"1.2.3\",", "\"version_name\":broken,").toByteArray()
+        for (bytes in listOf(oldVersionWithWrongChannel, oldVersionWithWrongSigner, oldVersionWithWrongUrl, malformedOldVersion)) {
+            try { parse(bytes); fail("invalid old feed accepted") } catch (_: HomeFailure) { }
         }
     }
 

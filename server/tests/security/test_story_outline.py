@@ -1,4 +1,8 @@
 import unittest
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend'))
 
 from app.access.story_outline import build_outline
 
@@ -81,6 +85,19 @@ class StoryOutlineTests(unittest.TestCase):
             build_outline([], theme='everyday', language='fr')
         with self.assertRaises(ValueError):
             build_outline([item(str(i)) for i in range(25)], theme='everyday', language='en')
+
+    def test_shared_identity_is_consistent_and_deduplicated_per_chapter(self):
+        source = {'id': 'family-shared', 'source': 'family', 'text': 'Original memory'}
+        result = build_outline([item(str(i), evidence=[source]) for i in range(5)],
+                               theme='everyday', language='en')
+        self.assertEqual([c['evidence_ids'] for c in result['chapters']],
+                         [['family-shared'], ['family-shared']])
+        for items in ([item('1', evidence=[source, source])],
+                      [item('1', evidence=[source]), item('2', evidence=[dict(source, text='Other words')])],
+                      [item('1', evidence=[dict(source, id='caption-1', source='ai')]),
+                       item('2', evidence=[dict(source, id='caption-1', source='ai')])]):
+            with self.assertRaises(ValueError):
+                build_outline(items, theme='everyday', language='en')
 
 
 if __name__ == '__main__':

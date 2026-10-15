@@ -20,6 +20,7 @@ LibraryReadTests.setUpClass()
 head_503 = False
 index_serial = 0
 story_source_detail_fixture = False
+memory_group_fixture = False
 
 
 def build_client(*, source_detail=False):
@@ -54,6 +55,11 @@ def build_client(*, source_detail=False):
     producer.write_new(out, json.dumps(asdict(index), sort_keys=True, ensure_ascii=True,
                                        separators=(',', ':'), allow_nan=False).encode())
     options={}
+    if memory_group_fixture:
+        from app.access.memory_group_transport import GroupVectorConfiguration
+        from test_visual_vector_loader import IDENTITY
+        options.update(memory_groups_enabled=True,
+            memory_group_vectors=GroupVectorConfiguration(root.resolve()/'group-vectors', IDENTITY))
     if source_detail:
         # Explicit test-only opt-in, used only by the focused saved-story source
         # journey. This isolated journal is private fixture state, never a
@@ -221,6 +227,10 @@ try:
                 fixture.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id=?",(fixture.member_id,))
             elif scenario=='restore-member':
                 fixture.mutate("UPDATE access_memberships SET status='approved' WHERE account_id=?",(fixture.member_id,))
+            elif scenario=='advance-auth-window':
+                # Keep admission enabled while advancing only this synthetic
+                # fixture beyond its documented 10-minute retry window.
+                fixture.now += 601
             elif scenario=='change-joined-membership':
                 fixture.mutate("UPDATE access_memberships SET revision=revision+1 WHERE account_id IN (SELECT id FROM access_accounts WHERE phone_login='+12025550103')")
             elif scenario=='expire-sessions':
@@ -292,6 +302,28 @@ try:
                     db.execute('UPDATE access_memory_stories SET content=?,revision=revision+1 WHERE id=?',
                                (json.dumps(content),ident))
                     db.commit()
+            elif scenario=='memory-groups':
+                memory_group_fixture = True
+                from types import SimpleNamespace
+                from app.access.service import AccessService
+                from app.access.stories import Stories
+                from app.access.visual_vector_schema import create_visual_vector_schema
+                import test_visual_vector_loader as vectors
+                with fixture.connection() as db:
+                    create_visual_vector_schema(db)
+                    db.execute('UPDATE assets SET hash_sha256=?,taken_at=? WHERE id=101',
+                        (vectors.SOURCE_A,'2026-01-01T10:00:00+08:00'))
+                    db.execute('UPDATE assets SET hash_sha256=?,taken_at=? WHERE id=102',
+                        (vectors.SOURCE_B,'2026-01-01T11:00:00+08:00'))
+                    db.commit()
+                    helper=SimpleNamespace(db=db,root=root.resolve()/'group-vectors')
+                    vectors.VisualVectorLoaderTests.add_vector(helper,101,(1.0,0.0))
+                    vectors.VisualVectorLoaderTests.add_vector(helper,102,(0.99503719,0.09950372))
+                    Stories(AccessService(db,clock=lambda:fixture.now)).save(fixture.owner_token,
+                        'family-a',{'title':'那一天的散步','text':'一家人沿着湖边慢慢走，孩子把沿途的小花介绍给奶奶。',
+                        'language':'zh','byline':'讲述人：家人','mutation_id':str(__import__('uuid').uuid4())},asset_id=101)
+                fixture.client.close()
+                fixture.client=build_client()
             elif scenario=='related-day-seed':
                 fixture.mutate("UPDATE assets SET taken_at='2025-06-01T23:30:00+08:00' WHERE id=101")
                 fixture.mutate("UPDATE assets SET taken_at=NULL,path='private-synthetic/微信图片_20250601.jpg' WHERE id=102")

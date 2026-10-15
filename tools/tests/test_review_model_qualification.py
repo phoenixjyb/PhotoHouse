@@ -74,7 +74,7 @@ class ReviewQualificationTests(unittest.TestCase):
         output, report = self.export()
         worksheet = json.loads(output.read_text())
         self.assertEqual(worksheet['kind'], 'photohouse-model-review-worksheet')
-        self.assertEqual(len(worksheet['records']), 12)
+        self.assertEqual(len(worksheet['records']), 14)
         self.assertTrue(all(item['reviewed_by'] is None and item['reviewed_at'] is None
                             for item in worksheet['records']))
         self.assertTrue(all(criterion['verdict'] == 'unreviewed'
@@ -97,7 +97,10 @@ class ReviewQualificationTests(unittest.TestCase):
         self.assertEqual({row['case_id'] for row in title_rows},
                          {'synthetic-title-family', 'synthetic-title-uncertainty',
                           'synthetic-title-abstention'})
-        self.assertEqual(3, len(narrative_rows))
+        self.assertEqual({row['case_id'] for row in narrative_rows},
+                         {'synthetic-coherence', 'synthetic-conflict',
+                          'synthetic-provenance', 'synthetic-similar-photos',
+                          'synthetic-speaker-uploader-subject'})
         self.assertEqual({'title_grounded', 'exact_title_citations', 'title_language_fit',
                           'title_review_required'},
                          {criterion['id'] for row in title_rows

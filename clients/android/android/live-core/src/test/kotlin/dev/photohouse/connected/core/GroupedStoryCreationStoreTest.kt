@@ -26,10 +26,25 @@ class GroupedStoryCreationStoreTest {
         var canCreate: Boolean = true,
     ) : PhotoHouseApi, StoryWorkspaceApi, MemoryCommunityApi {
         override val protectedNativeV2Enabled = true
+        override val assistantEnabled get() = voiceEnabled
         var listCalls = 0
         var galleryPages = mutableListOf<Int>()
         var freshStoryReads = 0
+        var freshStoryRevision = 2L
+        var updateResponseRevision: Long? = null
+        var latestSavedStoryJson: String? = null
+        var groupedUpdateFailure: ApiFailure? = null
+        var groupedCreateFailure: ApiFailure? = null
+        var groupedCreateGate: CompletableDeferred<Unit>? = null
+        val groupedUpdateRequests = mutableListOf<Triple<String, String, Pair<Boolean, Boolean>>>()
         var detailFailures = 0
+        var contributionReferenceFailures = 0
+        var contributionReferenceFailureStatus: Int? = null
+        var contributionReferenceRevisionOffset = 0L
+        var contributionReferencesGate: CompletableDeferred<Unit>? = null
+        var voiceEnabled = false
+        var assistantCapabilityFailure: ApiFailure? = null
+        val contributionReferenceRequests = mutableListOf<Triple<String, Long, List<String>>>()
         var thumbnailGate: CompletableDeferred<Unit>? = null
         var lateThumbnail: ByteArray? = null
         val thumbnailBuffers = mutableListOf<ByteArray>()
@@ -92,7 +107,44 @@ class GroupedStoryCreationStoreTest {
                 detailFailures--
                 throw ApiFailure(FailureKind.OFFLINE)
             }
-            return ProtectedMemoryStoriesWire.detail(fixtureBytes("create_retry_after_edit"), library, storyId, revision)
+            val body = (latestSavedStoryJson ?: fixtureBytes("create_retry_after_edit").decodeToString())
+                .replace("\"revision\":\"2\"", "\"revision\":\"$freshStoryRevision\"")
+                .toByteArray(Charsets.UTF_8)
+            return ProtectedMemoryStoriesWire.detail(body, library, storyId, revision)
+        }
+
+        override suspend fun updateGroupedStory(
+            token: Bearer, library: String, storyId: String, json: String,
+            sourceReview: Boolean, contributionReferences: Boolean,
+        ): ByteArray {
+            groupedUpdateRequests += Triple(storyId, json, sourceReview to contributionReferences)
+            groupedUpdateFailure?.let { throw it }
+            val revision = updateResponseRevision ?: throw ApiFailure(FailureKind.OFFLINE)
+            freshStoryRevision = revision
+            val request = Json.parseToJsonElement(json).jsonObject
+            val title = request.getValue("title").jsonPrimitive.content
+            val chapterJson = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content).jsonArray
+            val narration = chapterJson.single().jsonObject.getValue("narration").jsonPrimitive.content
+            val original = fixtureBytes("create_retry_after_edit").decodeToString()
+            latestSavedStoryJson = original
+                .replace(JsonPrimitive("家人修改后的标题").toString(), JsonPrimitive(title).toString())
+                .replace(JsonPrimitive("我们一起种花，这是家人留下的回忆。").toString(), JsonPrimitive(narration).toString())
+                .replace("\"revision\":\"2\"", "\"revision\":\"$revision\"")
+            return latestSavedStoryJson!!.toByteArray(Charsets.UTF_8)
+        }
+
+        override suspend fun savedMemoryStoryContributionReferences(
+            token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
+        ): SavedMemoryStoryContributionReferences {
+            contributionReferenceRequests += Triple(storyId, revision, chapterIds.toList())
+            contributionReferencesGate?.let { withContext(NonCancellable) { it.await() } }
+            contributionReferenceFailureStatus?.let { status -> throw ApiFailure(FailureKind.HTTP, status) }
+            if (contributionReferenceFailures > 0) {
+                contributionReferenceFailures--
+                throw ApiFailure(FailureKind.HTTP, 503)
+            }
+            return SavedMemoryStoryContributionReferences(storyId, library, revision + contributionReferenceRevisionOffset,
+                chapterIds.map { SavedMemoryChapterContributionReferences(it, emptyList()) })
         }
 
         override suspend fun storyPreview(token: Bearer, library: String, json: String): ByteArray {
@@ -101,7 +153,11 @@ class GroupedStoryCreationStoreTest {
         }
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) = fixtureBytes("title_capabilities_off")
         override suspend fun storyTitles(token: Bearer, library: String, json: String) = fixtureBytes("titles")
-        override suspend fun createGroupedStory(token: Bearer, library: String, json: String) = fixtureBytes("created")
+        override suspend fun createGroupedStory(token: Bearer, library: String, json: String): ByteArray {
+            groupedCreateGate?.let { withContext(NonCancellable) { it.await() } }
+            groupedCreateFailure?.let { throw it }
+            return fixtureBytes("created")
+        }
 
         override suspend fun capabilities(token: Bearer, library: String) =
             """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
@@ -123,15 +179,59 @@ class GroupedStoryCreationStoreTest {
             throw ApiFailure(FailureKind.OFFLINE)
         }
 
+        override suspend fun assistantCapabilities(token: Bearer, library: String): AssistantCapabilities {
+            assistantCapabilityFailure?.let { throw it }
+            return AssistantCapabilities(true, true, true, false, 30)
+        }
+
+        override suspend fun assistantTranscribe(
+            token: Bearer, library: String, wav: ByteArray, requestId: String,
+        ): AssistantTranscript = throw ApiFailure(FailureKind.OFFLINE)
+
         private fun asset(id: String, kind: String = "image") = Asset(
             id, kind, 640, 480, if (kind == "video") 2.0 else null, null,
             "/assets/$id/thumbnail?library=family-a",
         )
     }
 
-    private fun TestScope.newStore(api: FakeApi, community: Boolean = false) = ConnectedStore(
+    private class ReaderPositions : SavedStoryReaderPositionPersistence {
+        val clearedAccounts = mutableListOf<String>()
+        override fun load(accountId: String) = emptyList<SavedStoryReaderPosition>()
+        override fun save(accountId: String, position: SavedStoryReaderPosition) = Unit
+        override fun remove(accountId: String, libraryId: String, storyId: String) = Unit
+        override fun clear(accountId: String) { clearedAccounts += accountId }
+    }
+
+    private class BookReaderPositions : MemoryBookReaderPositionPersistence {
+        private val positions = mutableMapOf<String, List<MemoryBookReaderPosition>>()
+        val clearedAccounts = mutableListOf<String>()
+
+        override fun load(accountId: String) = positions[accountId].orEmpty().toList()
+        override fun save(accountId: String, position: MemoryBookReaderPosition) {
+            positions[accountId] = MemoryBookReaderPositions.upsert(accountId, positions[accountId].orEmpty(), position)
+        }
+        override fun remove(accountId: String, libraryId: String, bookId: String) {
+            positions[accountId] = MemoryBookReaderPositions.without(accountId, positions[accountId].orEmpty(), libraryId, bookId)
+        }
+        override fun clear(accountId: String) {
+            clearedAccounts += accountId
+            positions.remove(accountId)
+        }
+        fun seed(accountId: String) {
+            save(accountId, MemoryBookReaderPosition(accountId, "family-a",
+                "66666666-6666-4666-8666-666666666666", 1,
+                "11111111-1111-4111-8111-111111111111", 3, "chapter-1", "1"))
+        }
+    }
+
+    private fun TestScope.newStore(api: FakeApi, community: Boolean = false,
+        positions: SavedStoryReaderPositionPersistence? = null,
+        bookPositions: MemoryBookReaderPositionPersistence? = null) = ConnectedStore(
         api, backgroundScope, memoryCommunityApi = api, memoryCommunityEnabled = community,
-    ) { testScheduler.currentTime }
+        savedStoryReaderPositionPersistence = positions,
+        memoryBookReaderPositionPersistence = bookPositions,
+        now = { testScheduler.currentTime },
+    )
 
     private suspend fun TestScope.signIn(store: ConnectedStore) {
         store.authenticate("+12025550123", "synthetic-password-only")
@@ -164,6 +264,67 @@ class GroupedStoryCreationStoreTest {
         assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
         assertTrue(store.readCreatedGroupedStory())
         runCurrent()
+    }
+
+    private suspend fun TestScope.prepareNewDraftForSave(store: ConnectedStore): StoryWorkspaceStore {
+        assertTrue(store.beginGroupedStoryCreation())
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertTrue(editor.selectAsset("102"))
+        assertTrue(store.loadGroupedStorySelectionPage(2))
+        runCurrent()
+        assertTrue(editor.selectAsset("101"))
+        assertTrue(editor.setTheme("trip"))
+        assertTrue(editor.preview())
+        runCurrent()
+        assertTrue(editor.confirmReviewed(true))
+        return editor
+    }
+
+    @Test fun guidedEntryStillRequiresServerCanCreate() = runTest {
+        val api = FakeApi(role = "owner", canCreate = false)
+        val store = newStore(api)
+        signIn(store)
+        assertTrue(store.beginGroupedStoryCreation(guided = true))
+        runCurrent()
+        assertTrue(store.state.value.groupedStoryCreation!!.guided)
+        assertEquals(false, store.state.value.groupedStoryCreation!!.canCreate)
+        assertNull(store.state.value.groupedStoryCreation!!.editor)
+    }
+
+    @Test fun guidedReviewLoadsEverySelectedPageAndClearsLateThumbnails() = runTest {
+        val api = FakeApi()
+        val store = newStore(api)
+        signIn(store)
+        assertTrue(store.beginGroupedStoryCreation(guided = true))
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertEquals(StoryGuideStep.FRAMES, editor.state.value.guideStep)
+        assertTrue(editor.selectAsset("102"))
+        assertTrue(store.loadGroupedStorySelectionPage(2))
+        runCurrent()
+        assertTrue(editor.selectAsset("101"))
+        assertTrue(editor.setTheme("trip"))
+        assertTrue(editor.continueGuide())
+        runCurrent()
+        assertTrue(editor.editChapterNarration(0, "A shared family memory."))
+        assertTrue(editor.continueGuide())
+        assertTrue(store.loadGroupedStoryReviewPreviews(editor))
+        runCurrent()
+        assertEquals(setOf("102", "101"), store.state.value.groupedStoryCreation!!.reviewPreviews.keys)
+        val reviewBuffers = store.state.value.groupedStoryCreation!!.reviewPreviews.values.toList()
+        assertTrue(editor.backGuide())
+        store.clearGroupedStoryReviewPreviews(editor)
+        assertTrue(reviewBuffers.all { bytes -> bytes.all { it == 0.toByte() } })
+        assertTrue(editor.continueGuide())
+        api.thumbnailGate = CompletableDeferred()
+        assertTrue(store.loadGroupedStoryReviewPreviews(editor))
+        runCurrent()
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        api.thumbnailGate!!.complete(Unit)
+        runCurrent()
+        assertNull(store.state.value.groupedStoryCreation)
+        assertTrue(api.lateThumbnail!!.all { it == 0.toByte() })
     }
 
     @Test fun serverCanCreateDeniesOwnersAndContributorsWhenCapabilityIsFalse() = runTest {
@@ -279,6 +440,285 @@ class GroupedStoryCreationStoreTest {
         assertEquals(2L, shelf?.result?.items?.single()?.revision)
         assertNull(shelf?.detail)
         assertEquals(2, api.listCalls)
+    }
+
+    @Test fun savedStoryEditEntryFreshReadsStoryAndCompleteExactRevisionLinks() = runTest {
+        val api = FakeApi()
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        val priorStoryReads = api.freshStoryReads
+        val priorReferenceReads = api.contributionReferenceRequests.size
+        val prior = store.state.value.savedMemoryStories!!
+        assertTrue(prior.detail!!.canEdit)
+        assertNotNull(prior.contributionReferences)
+
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        assertTrue(store.state.value.groupedStoryCreation!!.checking)
+        runCurrent()
+
+        val creation = store.state.value.groupedStoryCreation!!
+        val editor = creation.editor!!
+        assertTrue(creation.isSavedEdit)
+        assertEquals(storyId, creation.savedEditStoryId)
+        assertEquals(priorStoryReads + 1, api.freshStoryReads)
+        assertEquals(priorReferenceReads + 1, api.contributionReferenceRequests.size)
+        assertEquals(Triple(storyId, prior.detail!!.revision, prior.detail!!.chapters.map { it.id }),
+            api.contributionReferenceRequests.last())
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, editor.state.value.status)
+        assertEquals(prior.detail!!.title, editor.state.value.title)
+        assertEquals(prior.detail!!.items.map { it.asset.id }, editor.state.value.selectedAssetIds)
+        assertEquals(prior.detail!!.chapters.map { it.assetIds }, editor.state.value.editableChapters.map { it.assetIds })
+        assertNull("saved edits do not open the creation gallery", creation.gallery)
+        assertTrue("saved edits do not generate a new preview", creation.previews.isEmpty())
+    }
+
+    @Test fun savedStoryEditSuccessReturnsToFreshReaderAtUpdatedRevision() = runTest {
+        val api = FakeApi().apply { updateResponseRevision = 3L }
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertTrue(editor.editTitle("Updated family garden"))
+        assertTrue(editor.editChapterNarration(0, "Updated saved chapter words"))
+        assertTrue(editor.confirmReviewed(true))
+        assertTrue(editor.save())
+        runCurrent()
+
+        assertEquals(storyId, api.groupedUpdateRequests.single().first)
+        assertEquals(false to true, api.groupedUpdateRequests.single().third)
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
+        assertEquals(3L, editor.state.value.savedStory?.revision)
+        assertTrue(store.readCreatedGroupedStory())
+        runCurrent()
+        val reading = store.state.value.savedMemoryStories!!
+        assertEquals(storyId, reading.detail?.id)
+        assertEquals(3L, reading.detail?.revision)
+        assertEquals(3L, reading.contributionReferences?.revision)
+        assertEquals(reading.detail?.chapters?.map { it.id }, reading.contributionReferences?.chapters?.map { it.chapterId })
+        assertEquals("Updated family garden", reading.detail?.title)
+    }
+
+    @Test fun savedStoryEditRequestClosingBeforeReferencesArriveCannotPublishLateEditor() = runTest {
+        val api = FakeApi()
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        val gate = CompletableDeferred<Unit>()
+        api.contributionReferencesGate = gate
+
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        assertNull("the editor waits for complete fresh links", store.state.value.groupedStoryCreation?.editor)
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        gate.complete(Unit)
+        runCurrent()
+
+        assertNull("a closed editor request cannot recreate the dialog", store.state.value.groupedStoryCreation)
+        assertNotNull("the reader remains available", store.state.value.savedMemoryStories?.detail)
+    }
+
+    @Test fun savedStoryEditRequiresCompleteFreshLinksAndOffersExplicitRetry() = runTest {
+        val api = FakeApi()
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        api.contributionReferenceFailures = 1
+
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        val failed = store.state.value.groupedStoryCreation!!
+        assertTrue(failed.isSavedEdit)
+        assertNull("an unavailable link map never opens an editable draft", failed.editor)
+        assertFalse(failed.checking)
+        assertNotNull(failed.problem)
+        api.contributionReferenceRevisionOffset = -1
+        assertTrue(store.retrySavedGroupedStoryEdit())
+        runCurrent()
+        assertNull("a stale revision-bound link map is not accepted", store.state.value.groupedStoryCreation?.editor)
+        assertNotNull(store.state.value.groupedStoryCreation?.problem)
+        api.contributionReferenceRevisionOffset = 0
+        assertTrue(store.retrySavedGroupedStoryEdit())
+        runCurrent()
+        assertNotNull("retry reads the full story and link map again", store.state.value.groupedStoryCreation?.editor)
+    }
+
+    @Test fun conflictReloadKeepsUnsavedWordsAcrossGatedLinkFailureAndReplacesOnlyAfterRetry() = runTest {
+        val api = FakeApi().apply { groupedUpdateFailure = ApiFailure(FailureKind.HTTP, 409) }
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        createReceiptAndOpenReader(store)
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        val conflictedEditor = store.state.value.groupedStoryCreation!!.editor!!
+        assertTrue(conflictedEditor.editChapterNarration(0, "Words that must survive a failed reload"))
+        assertTrue(conflictedEditor.confirmReviewed(true))
+        assertTrue(conflictedEditor.save())
+        runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.CONFLICT, conflictedEditor.state.value.status)
+
+        val gate = CompletableDeferred<Unit>()
+        api.contributionReferencesGate = gate
+        api.contributionReferenceFailureStatus = 503
+        assertTrue(store.reloadSavedGroupedStoryEdit(conflictedEditor))
+        runCurrent()
+        assertTrue(store.state.value.groupedStoryCreation!!.checking)
+        assertSame("keep the conflicted editor attached while links are read", conflictedEditor,
+            store.state.value.groupedStoryCreation!!.editor)
+        assertEquals("Words that must survive a failed reload", conflictedEditor.state.value.editableChapters.single().narration)
+
+        gate.complete(Unit)
+        runCurrent()
+        val failedReload = store.state.value.groupedStoryCreation!!
+        assertFalse(failedReload.checking)
+        assertNotNull(failedReload.problem)
+        assertSame("failed replacement leaves the original editor attached", conflictedEditor, failedReload.editor)
+        assertEquals("Words that must survive a failed reload", failedReload.editor!!.state.value.editableChapters.single().narration)
+
+        api.contributionReferencesGate = null
+        api.contributionReferenceFailureStatus = null
+        assertTrue(store.reloadSavedGroupedStoryEdit(conflictedEditor))
+        runCurrent()
+        val replacement = store.state.value.groupedStoryCreation!!.editor!!
+        assertNotSame(conflictedEditor, replacement)
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, replacement.state.value.status)
+        assertEquals("我们一起种花，这是家人留下的回忆。", replacement.state.value.editableChapters.single().narration)
+        assertFalse(replacement.state.value.reviewed)
+
+        api.groupedUpdateFailure = ApiFailure(FailureKind.HTTP, 403)
+        assertTrue(replacement.editChapterNarration(0, "Attempt after a successful replacement"))
+        assertTrue(replacement.confirmReviewed(true))
+        assertTrue(replacement.save())
+        runCurrent()
+        assertEquals("a denial from the published replacement editor is current", Message.ACCESS_DENIED,
+            store.state.value.problem?.message)
+        assertTrue(store.state.value.covered)
+        assertTrue(store.hasSession)
+        assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
+    }
+
+    @Test fun staleSavedStoryEditDenialAfterCloseCannotClearTheReaderSession() = runTest {
+        val api = FakeApi()
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        createReceiptAndOpenReader(store)
+        val gate = CompletableDeferred<Unit>()
+        api.contributionReferencesGate = gate
+
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        api.contributionReferenceFailureStatus = 403
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        gate.complete(Unit)
+        runCurrent()
+
+        assertNotNull("a denial from the closed stale request is ignored", store.state.value.savedMemoryStories?.detail)
+        assertEquals("family-a", store.state.value.library)
+        assertTrue(store.hasSession)
+        assertNull(store.state.value.groupedStoryCreation)
+        assertTrue("a stale denial must not erase current reading positions", positions.clearedAccounts.isEmpty())
+        assertTrue("a stale denial must not erase memoir positions", bookPositions.clearedAccounts.isEmpty())
+        assertEquals(1, bookPositions.load("synthetic-account").size)
+    }
+
+    @Test fun currentDictationDenialFromLoadedSavedStoryEditorCoversSession() = runTest {
+        val api = FakeApi().apply {
+            voiceEnabled = true
+            assistantCapabilityFailure = ApiFailure(FailureKind.HTTP, 403)
+        }
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        createReceiptAndOpenReader(store)
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation?.editor ?: error("saved edit should load")
+
+        assertTrue(editor.openChapterDictation(0))
+        runCurrent()
+
+        assertEquals(Message.ACCESS_DENIED, store.state.value.problem?.message)
+        assertTrue(store.state.value.covered)
+        assertTrue(store.hasSession)
+        assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
+    }
+
+    @Test fun currentNewDraftDenialClearsSavedStoryAndMemoirReadingPositions() = runTest {
+        val api = FakeApi().apply { groupedCreateFailure = ApiFailure(FailureKind.HTTP, 403) }
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        signIn(store)
+        val editor = prepareNewDraftForSave(store)
+
+        assertTrue(editor.save())
+        runCurrent()
+
+        assertEquals(Message.ACCESS_DENIED, store.state.value.problem?.message)
+        assertTrue(store.state.value.covered)
+        assertTrue(store.hasSession)
+        assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(listOf("synthetic-account"), positions.clearedAccounts)
+        assertEquals(listOf("synthetic-account"), bookPositions.clearedAccounts)
+        assertTrue(bookPositions.load("synthetic-account").isEmpty())
+    }
+
+    @Test fun staleNewDraftDenialAfterCloseCannotClearEitherReaderPositionStore() = runTest {
+        val api = FakeApi()
+        val positions = ReaderPositions()
+        val bookPositions = BookReaderPositions().also { it.seed("synthetic-account") }
+        val store = newStore(api, positions = positions, bookPositions = bookPositions)
+        signIn(store)
+        val editor = prepareNewDraftForSave(store)
+        val gate = CompletableDeferred<Unit>()
+        api.groupedCreateGate = gate
+
+        assertTrue(editor.save())
+        runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.SAVING, editor.state.value.status)
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals("family-a", store.state.value.library)
+        assertTrue(store.hasSession)
+        assertTrue(positions.clearedAccounts.isEmpty())
+        assertTrue(bookPositions.clearedAccounts.isEmpty())
+        assertEquals(1, bookPositions.load("synthetic-account").size)
+    }
+
+    @Test fun conflictReloadCannotReplaceEditorWithStoryOlderThanItsBaseRevision() = runTest {
+        val api = FakeApi().apply {
+            freshStoryRevision = 3
+            groupedUpdateFailure = ApiFailure(FailureKind.HTTP, 409)
+        }
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        assertTrue(store.beginSavedGroupedStoryEdit())
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation?.editor ?: error("saved edit should load")
+        assertEquals(3L, editor.savedEditStoryRevision)
+        assertTrue(editor.editChapterNarration(0, "Keep these words when the read is stale"))
+        assertTrue(editor.confirmReviewed(true))
+        assertTrue(editor.save())
+        runCurrent()
+        assertEquals(StoryWorkspaceStoreStatus.CONFLICT, editor.state.value.status)
+
+        api.freshStoryRevision = 2
+        assertTrue(store.reloadSavedGroupedStoryEdit(editor))
+        runCurrent()
+
+        val current = store.state.value.groupedStoryCreation!!
+        assertFalse(current.checking)
+        assertNotNull(current.problem)
+        assertSame(editor, current.editor)
+        assertEquals("Keep these words when the read is stale", editor.state.value.editableChapters.single().narration)
     }
 
     @Test fun receiptReaderFreezesWholeStoryScopeForPendingTextAndAudioSubmissions() = runTest {

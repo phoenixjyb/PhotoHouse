@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="/ui/styles.css">
   <script src="/ui/memory-community.js" defer></script>
   <script src="/ui/story-workspace.js" defer></script>
+  <script src="/ui/memory-groups.js" defer></script>
+  <script src="/ui/assistant-private-workspace.js" defer></script>
+  <script src="/ui/voice-turn-timing.js" defer></script>
   <script src="/ui/app.js" defer></script>
 </head>
 <body>
@@ -35,7 +38,7 @@
         <a href="#saved-memory-panel" data-i18n="memoryNavStories">故事</a><a href="#memory-books" id="memory-books-link" data-i18n="memoryNavMemoirs" hidden>回忆集</a><a href="#grid" data-story-word="navMedia">照片与视频</a><a href="#albums-panel" id="memory-albums-link" data-story-word="navAlbums">相册</a><a href="#assistant-panel" id="memory-assistant-link" data-story-word="navAssistant">助手</a>
       </nav>
       <section id="memory-home" class="memory-home" hidden>
-        <div class="memory-home-copy"><p class="eyebrow" data-story-word="eyebrow">把片段，连成回忆</p><h2 data-story-word="homeTitle">值得慢慢看的时光</h2><p data-story-word="homeText"></p><div class="memory-home-actions"><button id="memory-create" class="primary" type="button" data-story-word="create">编排一个故事</button><button id="memory-assistant" class="quiet" type="button" data-story-word="assistant">和助手聊聊</button></div></div>
+        <div class="memory-home-copy"><p class="eyebrow" data-story-word="eyebrow">把片段，连成回忆</p><h2 data-story-word="homeTitle">值得慢慢看的时光</h2><p data-story-word="homeText"></p><div class="memory-home-actions"><button id="memory-guide" class="primary" type="button" data-story-word="guideStart" hidden>讲一个故事</button><button id="memory-create" class="primary" type="button" data-story-word="create">编排一个故事</button><button id="memory-assistant" class="quiet" type="button" data-story-word="assistant">和助手聊聊</button></div></div>
         <div class="memory-home-art"><img id="memory-home-image" alt=""><span class="memory-home-stamp">PhotoHouse · Memories</span></div>
       </section>
       <section id="saved-memory-panel" class="saved-memory-panel" aria-labelledby="saved-memory-heading">
@@ -46,12 +49,68 @@
       <section id="memory-books" class="memory-books" hidden></section>
       <section class="memory-themes-section"><h3 data-story-word="chooseTheme">从一个主题开始</h3><div id="memory-themes" class="memory-themes"></div></section>
       <form id="story-search" class="story-search"><label for="search-text" data-i18n="searchMemories">Find a memory</label><input id="search-text" type="search" maxlength="160"><label for="search-source" data-i18n="searchIn">Search in</label><select id="search-source"><option value="all" data-i18n="allDescriptions">Stories and AI descriptions</option><option value="family" data-i18n="familySearchSources">Family entries</option><option value="ai" data-i18n="aiDescriptions">AI descriptions</option></select><button class="primary" type="submit" data-i18n="search">Search</button><button id="clear-search" class="quiet" type="button" data-i18n="clearSearch">Show all</button></form>
+      <span id="assistant-panel-placeholder" hidden></span>
+      <dialog id="assistant-workspace-dialog" class="assistant-workspace-dialog" aria-labelledby="assistant-workspace-title">
+        <header class="assistant-workspace-header">
+          <div><p class="assistant-workspace-kicker" data-i18n="assistantWorkspaceKicker">PRIVATE FAMILY SEARCH</p><h2 id="assistant-workspace-title" data-i18n="assistantTitle">拾光助手</h2><div class="assistant-library-chip"><span data-i18n="assistantPrivateLibrary">当前私密相册库</span><strong id="assistant-workspace-library"></strong></div></div>
+          <div class="assistant-workspace-header-actions"><button id="assistant-workspace-lock" class="quiet" type="button" data-i18n="signOut">退出登录</button><button id="assistant-workspace-close" class="quiet" type="button" data-i18n="assistantWorkspaceClose">返回</button></div>
+        </header>
+        <div id="assistant-workspace-voice" class="assistant-workspace-voice" role="group" aria-labelledby="assistant-voice-session-status"></div>
+        <div id="assistant-workspace-content" class="assistant-workspace-content" tabindex="0"></div>
+        <footer id="assistant-workspace-footer" class="assistant-workspace-footer"></footer>
+      </dialog>
       <details id="assistant-panel" class="access-panel assistant-panel">
         <summary data-i18n="assistantTitle">用一句话找回忆</summary>
         <p class="fine" data-i18n="assistantHelp">仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。</p>
+        <section id="assistant-private" class="assistant-private" hidden aria-labelledby="assistant-private-current-label">
+          <div class="assistant-private-current">
+            <div><span id="assistant-private-current-label" class="assistant-private-current-label" data-i18n="assistantPrivateCurrentLabel">当前对话</span><p id="assistant-private-current-summary" data-i18n="assistantPrivateNoCurrent">尚未选择对话</p></div>
+            <details id="assistant-private-management" class="assistant-private-management">
+              <summary id="assistant-private-management-toggle" data-i18n="assistantPrivateManage">管理对话</summary>
+              <div class="assistant-private-management-content">
+                <div class="assistant-private-heading"><div><h3 id="assistant-private-title" data-i18n="assistantPrivateTitle">我的私密对话</h3></div><button id="assistant-private-new" class="quiet" type="button" data-i18n="assistantPrivateNew">新对话</button></div>
+                <div class="assistant-private-toolbar"><label for="assistant-private-select" data-i18n="assistantPrivateChoose">继续之前的对话</label><select id="assistant-private-select"><option value="">选择对话</option></select><button id="assistant-private-refresh" class="quiet" type="button" data-i18n="refresh">刷新</button></div>
+                <div class="assistant-actions"><button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button><button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button></div>
+                <button id="assistant-private-abandon" class="quiet" type="button" hidden data-i18n="assistantPrivateAbandon">结束等待，开始新对话</button>
+                <section id="assistant-private-abandon-confirm" class="assistant-private-confirm" hidden>
+                  <p data-i18n="assistantPrivateAbandonHelp">服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。</p>
+                  <button id="assistant-private-abandon-yes" class="quiet" type="button" data-i18n="assistantPrivateAbandonYes">我了解，开始新对话</button><button id="assistant-private-abandon-no" class="quiet" type="button" data-i18n="cancel">取消</button>
+                </section>
+                <button id="assistant-private-retry-creation" class="quiet" type="button" hidden data-i18n="assistantPrivateRetryCreation">重试创建同一个对话</button>
+                <details class="assistant-private-preferences"><summary data-i18n="assistantPrivatePreferences">我的助手偏好</summary><label for="assistant-private-locale" data-i18n="assistantPrivateLocale">回复语言</label><select id="assistant-private-locale"><option value="" data-i18n="assistantPrivateAuto">跟随请求语言</option><option value="zh">中文</option><option value="en">English</option></select><button id="assistant-private-delete" class="quiet" type="button" hidden data-i18n="assistantPrivateDelete">删除这段对话</button><button id="assistant-private-delete-confirm" class="quiet danger" type="button" hidden data-i18n="assistantPrivateDeleteConfirm">确认删除对话</button></details>
+                <p id="assistant-private-older" class="fine" hidden data-i18n="assistantPrivateOlder">显示最近的完整消息。</p>
+                <button id="assistant-private-load-older" class="quiet" type="button" hidden data-i18n="assistantPrivateLoadOlder">查看更早消息</button>
+                <button id="assistant-private-reload-history" class="quiet" type="button" hidden data-i18n="assistantPrivateReloadHistory">对话已有更新，重新加载记录</button>
+              </div>
+            </details>
+          </div>
+          <p class="assistant-private-current-help fine" data-i18n="assistantPrivateHelp">只对你可见，保留 30 天。录音不保存在对话中。</p>
+          <p id="assistant-private-status" role="status" aria-live="polite"></p>
+        </section>
         <div id="assistant-prompts" class="assistant-prompts"><button class="quiet" type="button" data-assistant-prompt="photos" data-i18n="assistantFindPhotos">找照片</button><button class="quiet" type="button" data-assistant-prompt="videos" data-i18n="assistantFindVideos">找视频</button><button class="quiet" type="button" data-assistant-prompt="open" data-i18n="assistantOpenFirst">打开第一个</button></div>
+        <span id="assistant-form-placeholder" hidden></span>
         <form id="assistant-form" class="assistant-form">
           <div id="assistant-voice" class="assistant-voice" hidden>
+            <span id="assistant-voice-session-placeholder" hidden></span>
+            <div id="assistant-voice-session" class="assistant-voice-session" hidden>
+              <div class="assistant-voice-presence">
+                <div class="assistant-voice-orb" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="assistant-voice-presence-copy">
+                  <strong id="assistant-voice-title"></strong>
+                  <span id="assistant-voice-mic-state" class="assistant-voice-mic-state"></span>
+                  <p id="assistant-voice-session-status" role="status" aria-live="polite" aria-atomic="true"></p>
+                </div>
+              </div>
+              <button id="assistant-voice-start" class="primary" type="button" data-i18n="assistantVoiceStart">开始语音查找</button>
+              <button id="assistant-voice-pause" class="quiet" type="button" hidden data-i18n="assistantVoicePause">暂停</button>
+              <button id="assistant-voice-resume" class="quiet" type="button" hidden data-i18n="assistantVoiceResume">继续</button>
+              <button id="assistant-voice-end" class="quiet" type="button" hidden data-i18n="assistantVoiceEnd">结束语音查找</button>
+              <details id="assistant-voice-timing" hidden>
+                <summary data-i18n="assistantVoiceTiming">上轮用时</summary>
+                <dl id="assistant-voice-timing-values"></dl>
+                <p class="fine" data-i18n="assistantVoiceTimingNote">客户端观测，包含网络等待和本地启动，不代表服务提供方耗时。</p>
+              </details>
+            </div>
             <button id="assistant-mic" class="quiet" type="button" aria-pressed="false" data-i18n="assistantMic">按住说话</button>
             <button id="assistant-stop" class="quiet" type="button" hidden data-i18n="assistantStop">结束录音</button>
             <button id="assistant-recording-cancel" class="quiet" type="button" hidden data-i18n="assistantRecordingCancel">取消录音</button>
@@ -63,7 +122,8 @@
             <div class="assistant-actions"><button id="assistant-use-transcript" class="quiet" type="button" data-i18n="assistantUseTranscript">放入搜索框</button><button id="assistant-discard-transcript" class="quiet" type="button" data-i18n="assistantDiscardTranscript">丢弃</button></div>
           </section>
           <label for="assistant-text" data-i18n="assistantPrompt">你想找什么？</label>
-          <textarea id="assistant-text" maxlength="1024" rows="2" autocomplete="off"></textarea>
+          <p id="assistant-send-shortcut" class="fine" data-i18n="assistantSendShortcut">Ctrl/⌘ + Enter 发送；Enter 换行。</p>
+          <textarea id="assistant-text" maxlength="1024" rows="2" autocomplete="off" aria-describedby="assistant-send-shortcut" aria-keyshortcuts="Control+Enter Meta+Enter"></textarea>
           <div class="assistant-actions"><button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button><button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button><button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button></div>
         </form>
         <p id="assistant-status" role="status" aria-live="polite"></p>
@@ -166,12 +226,16 @@
   <dialog id="story-workspace" class="story-workspace" aria-labelledby="story-workspace-heading">
     <header class="story-workspace-heading"><div><p class="eyebrow" data-story-word="eyebrow"></p><h2 id="story-workspace-heading" data-story-word="draft">故事草稿</h2></div><button id="story-workspace-close" class="quiet" type="button" data-story-word="close">返回</button></header>
     <p class="story-workspace-help" data-story-word="draftHelp"></p>
+    <nav id="story-guide-progress" class="story-guide-progress" aria-label="故事编排进度" hidden><ol></ol></nav>
+    <section id="story-guide-intro" class="story-guide-intro" hidden><h3 id="story-guide-heading" tabindex="-1"></h3><p id="story-guide-help"></p><p id="story-guide-status" role="status" aria-live="polite"></p></section>
+    <section id="story-guide-review" class="story-guide-review" aria-label="检查故事" hidden></section>
     <form id="story-workspace-form"><div class="story-workspace-layout"><aside class="story-selection-panel"><h3 data-story-word="select">选择画面</h3><p class="fine" data-story-word="selectionHelp"></p><span id="story-selection-count" class="fine"></span><div class="story-selection-actions"><button id="story-selection-clear" class="quiet" type="button" data-story-word="clearFrames">清空选择</button><button id="story-selection-first" class="quiet" type="button" data-story-word="selectFirst" hidden>选择前 24 个画面</button></div><details id="story-related" class="story-related" hidden><summary data-story-word="relatedDayHeading">同一天的更多瞬间</summary><p class="fine" data-story-word="relatedDayHelp">按记录的拍摄日期查找，不代表属于同一个活动。由你选择要加入的画面。</p><div class="story-related-actions"><button id="story-related-find" class="quiet" type="button" data-story-word="relatedDayFind">查找同一天的画面</button><button id="story-related-more" class="quiet" type="button" data-story-word="relatedDayMore" hidden>继续查找</button></div><p id="story-related-status" class="fine" role="status" aria-live="polite"></p><div id="story-related-items" class="story-related-items"></div></details><div id="story-selection" class="story-selection"></div><nav id="story-selection-pages" class="story-selection-pages" hidden><button id="story-selection-previous" class="quiet" type="button" data-story-word="framesPrevious">上一组画面</button><span id="story-selection-page" class="fine" role="status" aria-live="polite"></span><button id="story-selection-next" class="quiet" type="button" data-story-word="framesNext">下一组画面</button></nav></aside><section class="story-writing-panel"><div class="story-workspace-fields"><label><span data-story-word="title">故事标题</span><input id="story-workspace-title" maxlength="160"></label><label><span data-story-word="theme">故事主题</span><select id="story-workspace-theme"></select></label></div><button id="story-build" class="primary" type="submit" data-story-word="outline">整理章节</button><p id="story-workspace-status" role="status" aria-live="polite"></p><div id="story-chapter-editor"></div></section></div></form>
     <div id="story-draft-actions" class="story-draft-actions" hidden><button id="story-preview" class="primary" type="button" data-story-word="read">沉浸预览</button><button id="story-save-memory" class="primary" type="button" data-story-word="saveMemory">保存到相册库</button><button id="story-reload-memory" class="quiet" type="button" hidden data-story-word="reloadMemory">重新打开已保存版本</button><button id="story-export" class="quiet" type="button" data-story-word="export">下载故事草稿</button></div>
+    <footer id="story-guide-actions" class="story-guide-actions" hidden><button id="story-guide-back" class="quiet" type="button" data-story-word="guideBack">上一步</button><button id="story-guide-next" class="primary" type="button">下一步</button><button id="story-guide-advanced" class="quiet" type="button" data-story-word="guideAdvanced">使用完整编排界面</button></footer>
   </dialog>
   <dialog id="story-reader" class="story-reader" aria-labelledby="story-reader-title">
     <header><span class="story-reader-brand">PhotoHouse · Stories</span><span id="story-reader-memory-title"></span><button id="story-reader-edit" class="quiet" type="button" data-story-word="editStory" hidden>编辑故事</button><button id="story-reader-close" class="quiet" type="button" data-story-word="close">返回</button></header>
-    <div class="story-reader-layout"><div class="story-reader-visual"><div id="story-reader-stage" class="story-reader-stage"></div><div id="story-reader-frames" class="story-reader-frames" role="group" aria-label="本章画面"></div></div><article class="story-reader-prose"><p id="story-reader-eyebrow" class="eyebrow"></p><h2 id="story-reader-title"></h2><p id="story-reader-text"></p><p id="story-reader-date" class="fine"></p></article></div>
+    <div class="story-reader-layout"><div class="story-reader-visual"><div id="story-reader-stage" class="story-reader-stage"></div><div id="story-reader-frames" class="story-reader-frames" role="group" aria-label="本章画面"></div></div><article class="story-reader-prose"><div id="story-reader-font-presets" class="reader-font-presets" role="group" aria-labelledby="story-reader-font-label"><span id="story-reader-font-label" data-story-word="readerFontGroup">阅读字号</span><button class="quiet" type="button" aria-pressed="false" data-reader-font-scale="0.9" data-story-word="readerFontSmaller">较小</button><button class="quiet" type="button" aria-pressed="true" data-reader-font-scale="1" data-story-word="readerFontDefault">标准</button><button class="quiet" type="button" aria-pressed="false" data-reader-font-scale="1.25" data-story-word="readerFontLarger">较大</button></div><p id="story-reader-eyebrow" class="eyebrow"></p><h2 id="story-reader-title"></h2><p id="story-reader-text"></p><p id="story-reader-date" class="fine"></p></article></div>
     <nav id="story-reader-chapters" class="story-reader-chapters" aria-label="故事章节"></nav>
     <section id="story-reader-community" class="story-reader-community" hidden></section>
     <nav class="story-reader-controls"><button id="story-reader-play" class="quiet" type="button" data-story-word="playStory">慢慢播放</button><button id="story-reader-contribute" class="quiet" type="button" data-story-word="contribute">补充这张照片的回忆</button><button id="story-reader-related" class="quiet" type="button" data-story-word="related">和助手找更多片段</button><button id="story-reader-previous" class="quiet" type="button" data-story-word="previous">上一章</button><button id="story-reader-next" class="quiet" type="button" data-story-word="next">下一章</button></nav>
@@ -206,6 +270,7 @@
       <form id="story-form" hidden><label for="story-title" data-i18n="storyTitle">Title (optional)</label><input id="story-title"><label for="story-byline" data-i18n="storyByline">Written by (display name)</label><input id="story-byline" autocomplete="off"><label for="story-language" data-i18n="storyLanguage">Language of your story</label><select id="story-language"><option value="en">English</option><option value="zh">中文</option><option value="mixed">English + 中文</option><option value="und" data-i18n="otherLanguage">Other / unspecified</option></select><label for="story-text" data-i18n="storyText">What would you like to remember?</label><textarea id="story-text" rows="8" required></textarea><p class="fine" data-i18n="storyLimit">No word-count limit. Up to 64 KiB of text; longer entries are rejected, never shortened.</p><div class="story-actions"><button id="story-save" class="primary" type="submit" data-i18n="saveStory">Save story</button><button id="story-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button><button id="story-compare" class="quiet" type="button" hidden data-i18n="compareLatest">Compare latest version</button></div><div id="story-conflict"></div></form>
       <section id="story-history" hidden aria-label="Story history"></section>
     </section>
+    <section id="memory-groups" class="memory-groups" aria-label="共享回忆"></section>
     <details class="ai-descriptions"><summary data-i18n="aiAndLegacy">AI descriptions and earlier caption edits</summary><div id="captions"></div><p class="fine" data-i18n="captionNote">Generated descriptions may be inaccurate. Original downloads require separate permission.</p></details><a id="original" class="quiet" hidden data-i18n="download">Download original</a></dialog>
   <dialog id="album-editor" aria-label="Album editor"></dialog>
   <dialog id="transfer-review" aria-labelledby="transfer-review-title"><button id="transfer-review-close" class="quiet close" type="button" data-i18n="cancel">Cancel</button><h2 id="transfer-review-title" data-i18n="reviewMove">Review move</h2><p id="transfer-review-copy" class="fine"></p><div id="transfer-review-summary" class="transfer-summary"></div><p id="transfer-review-status" role="status" aria-live="assertive"></p><div class="transfer-review-actions"><button id="transfer-review-confirm" class="primary" type="button" data-i18n="confirmMove">Confirm move</button><button id="transfer-review-cancel" class="quiet" type="button" data-i18n="cancel">Cancel</button></div></dialog>

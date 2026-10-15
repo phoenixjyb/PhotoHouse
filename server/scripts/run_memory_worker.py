@@ -19,7 +19,8 @@ from app.access.annotation_local import LocalAnnotationModels  # noqa: E402
 from app.access.memory_narrative import LocalMemoryNarrator  # noqa: E402
 from app.access.memory_processing import process_contribution, process_job  # noqa: E402
 from app.access.runtime import (ExistingDatabase, COLLABORATION_REVISIONS,
-                                SOURCE_REFERENCE_REVISIONS, EDITORIAL_REVISIONS)  # noqa: E402
+                                SOURCE_REFERENCE_REVISIONS, EDITORIAL_REVISIONS, IDENTITY_REVISIONS)  # noqa: E402
+from app.access.memory_group_schema import GROUP_REVISION  # noqa: E402
 
 
 MAX_CONFIG_BYTES = 16 * 1024
@@ -90,6 +91,7 @@ def validate_config(config):
     """Validate the closed configuration shape in memory, without storage/provider I/O."""
     if (type(config) is not dict or not CONFIG_FIELDS <= set(config)
             or set(config) - CONFIG_FIELDS - {'memory_editorial_enabled',
+                                            'memory_groups_enabled',
                                             'asr_timeout_seconds', 'ollama_timeout_seconds'}):
         raise WorkerConfigurationError('Invalid worker configuration')
     for key in ('asr_timeout_seconds', 'ollama_timeout_seconds'):
@@ -97,6 +99,8 @@ def validate_config(config):
         if type(timeout) not in (int, float) or not 0 < timeout <= PROVIDER_TIMEOUT:
             raise WorkerConfigurationError('Invalid worker configuration')
     if type(config.get('memory_editorial_enabled', False)) is not bool:
+        raise WorkerConfigurationError('Invalid worker configuration')
+    if type(config.get('memory_groups_enabled', False)) is not bool:
         raise WorkerConfigurationError('Invalid worker configuration')
     if type(config['database']) is not str or not config['database']:
         raise WorkerConfigurationError('Invalid worker configuration')
@@ -106,6 +110,8 @@ def validate_config(config):
     if type(config['mode']) is not str or config['mode'] not in {'narrative', 'contributions'}:
         raise WorkerConfigurationError('Invalid worker configuration')
     if config.get('memory_editorial_enabled', False) and config['mode'] != 'narrative':
+        raise WorkerConfigurationError('Invalid worker configuration')
+    if config.get('memory_groups_enabled', False) and config['mode'] != 'narrative':
         raise WorkerConfigurationError('Invalid worker configuration')
     journal = config['original_deletion_journal_path']
     namespace = config['original_deletion_namespace']
@@ -144,19 +150,26 @@ def with_model_deployment(config, deployment, *, platform, processing_enabled=Fa
     return validate_config(projected)
 
 
-def _check_schema(db, *, editorial_enabled=False):
+def _check_schema(db, *, editorial_enabled=False, groups_enabled=False):
     try:
         versions = db.execute('SELECT version_num FROM alembic_version').fetchall()
-        if len(versions) != 1 or versions[0][0] not in COLLABORATION_REVISIONS:
+        if type(groups_enabled) is not bool:
+            return False
+        if (len(versions) != 1 or
+                (versions[0][0] != GROUP_REVISION if groups_enabled
+                 else versions[0][0] not in COLLABORATION_REVISIONS)):
             return False
         from app.access.family_note_identity_schema import IDENTITY_REVISION
-        if versions[0][0] == IDENTITY_REVISION:
+        if versions[0][0] in IDENTITY_REVISIONS:
             from app.access.family_note_identity import verify_family_note_identity_schema
             from app.access.transport import TransportError
             try:
                 verify_family_note_identity_schema(db)
             except TransportError:
                 return False
+        from app.access.memory_group_schema import verify_memory_group_schema
+        if (versions[0][0] == GROUP_REVISION and not verify_memory_group_schema(db)):
+            return False
         tables = {row[0] for row in db.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
         if (type(editorial_enabled) is not bool or (editorial_enabled and
@@ -201,7 +214,9 @@ def validate_storage(config, *, read_only):
     try:
         database = _database(config, read_only=read_only)
         with database() as db:
-            if not _check_schema(db, editorial_enabled=config.get('memory_editorial_enabled', False)):
+            if not _check_schema(db,
+                    editorial_enabled=config.get('memory_editorial_enabled', False),
+                    groups_enabled=config.get('memory_groups_enabled', False)):
                 return False
             if read_only and db.in_transaction:
                 return False
@@ -230,7 +245,9 @@ def _run(config, *, maximum_items, maximum_seconds, once, clock=time.monotonic):
     counts = {}
     processed = 0
     with _database(config, read_only=False)() as db:
-        if not _check_schema(db, editorial_enabled=config.get('memory_editorial_enabled', False)):
+        if not _check_schema(db,
+                editorial_enabled=config.get('memory_editorial_enabled', False),
+                groups_enabled=config.get('memory_groups_enabled', False)):
             return {'status': 'unavailable', 'mode': config['mode'], 'processed': 0, 'states': {}}
         while processed < maximum_items and (deadline is None or clock() < deadline):
             if config['mode'] == 'narrative':
@@ -239,7 +256,8 @@ def _run(config, *, maximum_items, maximum_seconds, once, clock=time.monotonic):
                     break
                 adapter = _adapters(config, timeout=remaining)
                 outcome = process_job(db, narrator=adapter, clock=time.time,
-                    editorial_enabled=config.get('memory_editorial_enabled', False))
+                    editorial_enabled=config.get('memory_editorial_enabled', False),
+                    memory_groups_enabled=config.get('memory_groups_enabled', False))
             else:
                 # ASR and polishing share one per-item wall budget. A synchronous
                 # socket read may run until its timeout; no second phase starts

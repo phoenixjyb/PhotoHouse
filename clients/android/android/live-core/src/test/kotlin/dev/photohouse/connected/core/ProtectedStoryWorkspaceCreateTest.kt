@@ -62,6 +62,100 @@ class ProtectedStoryWorkspaceCreateTest {
         assertFalse(bodyString.contains("author"))
     }
 
+    @Test fun profileOptInAddsOnlyPolicyAndAllowsExplicitEvidenceSubsetIncludingEmpty() {
+        val current = draft()
+        val edits = edits(current).mapIndexed { index, chapter ->
+            chapter.copy(evidenceIds = if (index == 0) emptyList() else chapter.evidenceIds)
+        }
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(current, "title", edits,
+            "22222222-2222-4222-8222-222222222222", "chapter_sources_v1")).jsonObject
+        assertEquals(setOf("title", "theme", "language", "asset_ids", "chapters", "selection_revision", "revision", "mutation_id", "source_policy"), body.keys)
+        assertEquals("chapter_sources_v1", body.getValue("source_policy").jsonPrimitive.content)
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertTrue(chapters.first().jsonObject.getValue("evidence_ids").jsonArray.isEmpty())
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "title", edits,
+            "22222222-2222-4222-8222-222222222222", "unknown") }
+    }
+
+    @Test fun savedStoryUpdateBodyCarriesBaseRevisionAndFrozenContributionReferenceJson() {
+        val current = draft()
+        val groups = listOf(
+            SavedMemoryChapterContributionReferences("chapter-1", listOf("11111111-1111-4111-8111-111111111111")),
+            SavedMemoryChapterContributionReferences("chapter-2", emptyList()),
+        )
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title",
+            edits(current), "22222222-2222-4222-8222-222222222222", revision = 7,
+            contributionReferences = groups)).jsonObject
+        assertEquals("7", body.getValue("revision").jsonPrimitive.content)
+        assertEquals("22222222-2222-4222-8222-222222222222", body.getValue("mutation_id").jsonPrimitive.content)
+        assertEquals("[{\"chapter_id\":\"chapter-1\",\"contribution_ids\":[\"11111111-1111-4111-8111-111111111111\"]},{\"chapter_id\":\"chapter-2\",\"contribution_ids\":[]}]",
+            body.getValue("contribution_refs").jsonPrimitive.content)
+        assertTrue(body.values.all { it.jsonPrimitive.isString })
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title", edits(current),
+            "22222222-2222-4222-8222-222222222222", revision = 7) }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title", edits(current),
+            "22222222-2222-4222-8222-222222222222", revision = 0, contributionReferences = groups) }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title", edits(current),
+            "22222222-2222-4222-8222-222222222222", revision = Long.MAX_VALUE,
+            contributionReferences = groups) }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title", edits(current),
+            "22222222-2222-4222-8222-222222222222", revision = 7,
+            contributionReferences = groups.reversed()) }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(current, "Updated title", edits(current),
+            "22222222-2222-4222-8222-222222222222", revision = 7,
+            contributionReferences = listOf(groups.first().copy(contributionIds = listOf("bad")), groups.last())) }
+    }
+
+    @Test fun newReviewedStoryAllowsManualThreePlusTwoGroupsAndLegacyCreateKeepsPreviewChunks() {
+        val current = draft()
+        val grouped = current.copy(chapters = listOf(
+            current.chapters.first().copy(assetIds = listOf("1", "2", "3")),
+            current.chapters.last().copy(id = "chapter-2", assetIds = listOf("4", "5")),
+        ))
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(grouped,
+            "Reviewed title", edits(grouped), "22222222-2222-4222-8222-222222222222",
+            sourcePolicy = "chapter_sources_v1")).jsonObject
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")), chapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+        assertEquals(listOf("chapter-1", "chapter-2"), chapters.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+        assertEquals("chapter_sources_v1", body.getValue("source_policy").jsonPrimitive.content)
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(grouped, "Legacy title", edits(grouped),
+            "22222222-2222-4222-8222-222222222222") }
+
+        val crossChapter = edits(grouped).mapIndexed { index, chapter ->
+            if (index == 0) chapter.copy(evidenceIds = listOf("caption-5")) else chapter
+        }
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(grouped, "Reviewed title", crossChapter,
+            "22222222-2222-4222-8222-222222222222", sourcePolicy = "chapter_sources_v1") }
+    }
+
+    @Test fun savedStoryUpdatePreservesIrregularChapterGrouping() {
+        val current = draft()
+        val grouped = current.copy(chapters = listOf(
+            current.chapters.first().copy(assetIds = listOf("1", "2", "3")),
+            current.chapters.last().copy(id = "chapter-2", assetIds = listOf("4", "5")),
+        ))
+        val edited = edits(grouped)
+        val refs = listOf(
+            SavedMemoryChapterContributionReferences("chapter-1", emptyList()),
+            SavedMemoryChapterContributionReferences("chapter-2", emptyList()),
+        )
+
+        val body = Json.parseToJsonElement(ProtectedStoryWorkspaceCreateWire.encode(grouped,
+            "Updated title", edited, "22222222-2222-4222-8222-222222222222", revision = 7,
+            contributionReferences = refs)).jsonObject
+        val savedChapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf(listOf("1", "2", "3"), listOf("4", "5")), savedChapters.map { chapter ->
+            chapter.jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content }
+        })
+        assertEquals("1,2,3,4,5", body.getValue("asset_ids").jsonPrimitive.content)
+
+        badInput { ProtectedStoryWorkspaceCreateWire.encode(grouped, "Updated title", edited,
+            "22222222-2222-4222-8222-222222222222") }
+    }
+
     @Test fun acceptsUnicodeAtCodePointAndUtf8LimitsAndKeepsSnapshotPrivateAndImmutable() {
         val current = draft(listOf(1))
         val maxTitle = "😀".repeat(160)
@@ -112,5 +206,14 @@ class ProtectedStoryWorkspaceCreateTest {
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse().toByteArray(), "family", listOf("2", "1")) }
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse(revision = "0").toByteArray(), "family", listOf("1", "2")) }
         badResponse { ProtectedMemoryStoriesWire.decode(savedResponse().replace("\"questions\":[]", "\"questions\":[],\"extra\":true").toByteArray(), "family", listOf("1", "2")) }
+    }
+
+    @Test fun savedDetailAcceptsSourcePolicyOnlyOnProfileRoute() {
+        val profile = savedResponse().replace("\"questions\":[]", "\"questions\":[],\"source_policy\":\"chapter_sources_v1\"").toByteArray()
+        badResponse { ProtectedMemoryStoriesWire.detail(profile, "family", storyId, 4) }
+        val decoded = ProtectedMemoryStoriesWire.detail(profile, "family", storyId, 4, sourceReview = true)
+        assertEquals("chapter_sources_v1", decoded.sourcePolicy)
+        val legacy = ProtectedMemoryStoriesWire.detail(savedResponse().replace("\"questions\":[]", "\"questions\":[],\"source_policy\":null").toByteArray(), "family", storyId, 4, sourceReview = true)
+        assertNull(legacy.sourcePolicy)
     }
 }

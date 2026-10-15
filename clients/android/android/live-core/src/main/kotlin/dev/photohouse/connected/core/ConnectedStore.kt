@@ -5,15 +5,19 @@ import dev.photohouse.playback.PlaybackProgress
 import dev.photohouse.playback.PlaybackBookmark
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
+import java.util.Collections
+import java.util.UUID
 
 private const val MEMORY_BOOK_CHAPTER_ASSET_LIMIT = 8
 
 enum class GalleryMedia(val wire: String) { ALL("all"), PHOTOS("image"), VIDEOS("video"), PREPARED_VIDEOS("prepared_video");
     val assetKind get() = if (this == PREPARED_VIDEOS) "video" else wire
 }
-enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE }
+enum class Message { SESSION_STORAGE_UNAVAILABLE, SIGNED_OUT_LOCAL, SIGNED_OUT_CONFIRMED, SESSION_ENDED, ACCESS_DENIED, UNAVAILABLE, NETWORK_UNAVAILABLE, TLS_ERROR, CLOSED, RATE_LIMITED, MEMORY_CONVERSATION_FULL, INVALID_INPUT, INVALID_RESPONSE, TOO_LARGE, MEDIA_UNAVAILABLE, DISCOVERY_CHANGED, DISCOVERY_INPUT, VIDEO_NOT_READY, VIDEO_CHANGED, VIDEO_BUSY, PLAYBACK_UNAVAILABLE, ASSISTANT_ASR_NO_INPUT, ASSISTANT_ASR_BUSY, ASSISTANT_ASR_TIMEOUT, ASSISTANT_ASR_INVALID, ASSISTANT_ASR_UNAVAILABLE }
 data class LiveProblem(val message: Message, val retryAtMillis: Long = 0, val playbackFailure: VideoPlaybackFailure? = null)
 /** Only the current page's IDs, never a persistent or cross-library history. */
 data class PhotoNavigation(val page: Int, val assetIds: List<String>, val index: Int, val discovery: PhoneDiscoveryState? = null, val media: GalleryMedia = GalleryMedia.ALL, val videoIds: Set<String> = emptySet())
@@ -35,6 +39,8 @@ data class SavedMemoryStoriesReading(
     val contributionReferenceSaveBusy: Boolean = false, val contributionReferenceSaveError: Boolean = false,
     val contributionReferenceSaveConflict: Boolean = false,
     val pendingContributionReferenceMutation: SavedMemoryStoryContributionReferencesMutation? = null,
+    val resumePosition: SavedStoryReaderPosition? = null,
+    val selectedAssetId: String? = null,
 )
 data class MemoryBooksReading(
     val library: String, val page: Int = 1, val busy: Boolean = false,
@@ -53,6 +59,8 @@ data class MemoryBooksReading(
     val readerScopeId: Long = 0,
     val sourceInspection: MemoryBookEditorialSourceInspectionState = MemoryBookEditorialSourceInspectionState(),
     val companion: MemoryBookChatState? = null,
+    /** Identity of the freshly authorized shelf; independent of child reading navigation. */
+    val shelfScopeId: Long = 0,
 )
 data class MemoryBookEditorialSourceInspectionState(
     val source: EditorialSourceIdentity? = null,
@@ -69,6 +77,7 @@ data class MemoryBookChatState(
     val turns: MemoryTurnPage? = null, val job: MemoryJob? = null,
     val pendingConversation: MemoryConversationRequest? = null, val pendingTurn: MemoryTurnRequest? = null,
     val pendingTurnConversationId: String? = null,
+    val continuation: MemoryChatContinuation? = null,
     /** Composer text stays in memory and is partitioned by conversation ID. */
     val threadDrafts: Map<String, String> = emptyMap(),
     val chatDraftFocusRequestId: Int = 0,
@@ -80,7 +89,68 @@ data class MemoryBookChatState(
     val editorialContext: MemoryBookChatEditorialContext = MemoryBookChatEditorialContext.BASIC,
 )
 enum class MemoryBookChatEditorialContext { BASIC, CHECKING, READY, UNAVAILABLE, CHANGED, SMALLER_SCOPE, FAILED }
-data class MemoryBookResumePosition(val storyId: String, val storyRevision: Long, val chapterId: String)
+data class MemoryBookResumePosition(
+    val storyId: String,
+    val storyRevision: Long,
+    val chapterId: String,
+    val assetId: String? = null,
+    val accountId: String? = null,
+    val libraryId: String? = null,
+    val bookId: String? = null,
+    val bookRevision: Long? = null,
+)
+data class MemoryBookSpeechChildRevision(val storyId: String, val revision: Long)
+/** Immutable same-story transition binding captured for one explicit TTS run. */
+data class MemoryBookSpeechAdvanceScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoryBookSpeechChildRevision>,
+    val storyId: String,
+    val storyRevision: Long,
+    val fromChapterIndex: Int,
+    val fromChapterId: String,
+    val nextChapterId: String,
+)
+data class MemoryBookReaderNavigationChild(val storyId: String, val revision: Long)
+/** Immutable binding for callbacks rendered by one exact memoir reader state. */
+data class MemoryBookReaderNavigationScope(
+    val accountId: String,
+    val generation: Long,
+    val libraryId: String,
+    val readerScopeId: Long,
+    val bookId: String,
+    val bookRevision: Long,
+    val orderedChildren: List<MemoryBookReaderNavigationChild>,
+    val storyIndex: Int?,
+    val storyId: String?,
+    val storyRevision: Long?,
+    val chapterIndex: Int?,
+    val chapterId: String?,
+    val framePage: Int,
+    val selectedAssetId: String?,
+)
+data class MemoryStoryChatContinuationScope(
+    val accountId: String, val generation: Long, val libraryId: String, val readerScopeId: Long,
+    val storyId: String, val storyRevision: Long, val sourceFingerprint: String,
+    val conversationId: String, val rejectedTurn: MemoryTurnRequest,
+)
+data class MemoryBookChatContinuationScope(
+    val accountId: String, val generation: Long, val libraryId: String, val readerScopeId: Long,
+    val bookId: String, val bookRevision: Long, val orderedChildren: List<MemoryBookReaderNavigationChild>,
+    val storyId: String, val storyRevision: Long, val sourceFingerprint: String,
+    val conversationId: String, val rejectedTurn: MemoryTurnRequest,
+)
+data class MemoryChatContinuation(
+    val sourceConversationId: String,
+    val rejectedTurn: MemoryTurnRequest,
+    val storyScope: MemoryStoryChatContinuationScope? = null,
+    val bookScope: MemoryBookChatContinuationScope? = null,
+)
+enum class MemoryConversationContinuationResult { STARTED, BLOCKED, STALE, LIMIT, ALREADY_PENDING }
 data class MemoryBookEditorialCatalogState(
     val busy: Boolean = false, val unavailable: Boolean = false,
     val sources: List<EditorialSourceIdentity> = emptyList(),
@@ -96,6 +166,7 @@ data class MemoryCommunityStoryState(
     val pendingText: MemoryContributionRequest? = null, val pendingAudio: MemoryContributionRequest? = null,
     val pendingConversation: MemoryConversationRequest? = null, val pendingTurn: MemoryTurnRequest? = null,
     val pendingNarrative: MemoryNarrativeRequest? = null,
+    val continuation: MemoryChatContinuation? = null,
     /** Composer text stays in memory and is partitioned by conversation ID. */
     val threadDrafts: Map<String, String> = emptyMap(),
     val contributionDraft: String = "", val contributionConsent: Boolean = false, val audioConsent: Boolean = false,
@@ -138,6 +209,16 @@ private suspend fun recoverPendingChatJob(
 
 private fun dictationHasUnfinishedInput(dictation: MemoryDictationStore?): Boolean =
     dictation?.state?.value?.let { it.loading || it.recording || it.transcribing || it.transcript != null } == true
+
+private fun continuationDraft(rejected: String, later: String): String? {
+    val combined = when {
+        rejected.isBlank() -> later
+        later.isBlank() || later == rejected -> rejected
+        later.startsWith("$rejected\n") -> later
+        else -> "$rejected\n$later"
+    }
+    return combined.takeIf { it.toByteArray(Charsets.UTF_8).size <= 4096 && it.none { ch -> ch == '\u0000' } }
+}
 
 private fun nextRequestId(current: Int): Int = if (current == Int.MAX_VALUE) 1 else current + 1
 
@@ -208,17 +289,40 @@ data class AssistantClientState(
     val context: kotlinx.serialization.json.JsonObject? = null, val busy: Boolean = false,
     val transcribing: Boolean = false, val transcript: AssistantTranscript? = null,
     val speechBusy: Boolean = false, val speechAudio: ProtectedAnnotationAudio? = null,
+    val speechMemoryOpeningOrdinal: Int? = null,
+    /** Ephemeral segment progress tied to the exact fresh memory-card result; indices are zero based. */
+    val speechMemorySegmentProgress: AssistantMemorySegmentProgress? = null,
     val pendingTurn: AssistantPendingTurn? = null,
     val lastRequestReceipt: AssistantRequestReceipt? = null, val receiptDetail: AssistantReceipt? = null,
     val confirmedTranscriptRequestId: String? = null,
     val receiptChecking: Boolean = false, val receiptCheckFailed: Boolean = false,
     val failure: LiveProblem? = null,
+    val privateThreadId: String? = null,
+    /** Ledger status is independent of optional audit-journal tracking. */
+    val privateRequestStatus: String? = null,
+)
+data class AssistantMemorySegmentProgress(
+    val threadId: String,
+    val turnId: String,
+    val revision: Long,
+    val ordinal: Int,
+    val sourceKind: String,
+    val segmentIndex: Int,
+    val segmentCount: Int?,
+    val completedSegmentIndex: Int? = null,
 )
 data class GroupedStoryCreationState(
-    val checking: Boolean = false, val canCreate: Boolean? = null,
+    val checking: Boolean = false, val canCreate: Boolean? = null, val guided: Boolean = false,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val pageBusy: Boolean = false,
+    val albumsPage: ProtectedLibraryAlbumPage? = null, val albumsPageBusy: Boolean = false,
+    val albumsProblem: LiveProblem? = null, val selectedAlbum: ProtectedLibraryAlbum? = null,
+    val albumPage: Int = 1, val albumAssets: List<Asset> = emptyList(),
+    val albumPreviews: Map<String, ByteArray> = emptyMap(), val albumBusy: Boolean = false,
+    val albumUnsupportedCount: Int = 0, val albumChoiceFailure: Boolean = false,
     val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
+    val reviewPreviews: Map<String, ByteArray> = emptyMap(), val reviewPreviewsBusy: Boolean = false,
+    val isSavedEdit: Boolean = false, val savedEditStoryId: String? = null, val savedEditRequestId: Long = 0,
     val problem: LiveProblem? = null,
 )
 data class LiveState(
@@ -240,6 +344,9 @@ data class LiveState(
     val familyTags: FamilyTagsBrowsing? = null,
     val media: GalleryMedia = GalleryMedia.ALL,
     val storyEditor: ProtectedStoryEditorStore? = null,
+    val memoryGroups: MemoryGroupsStore? = null,
+    /** Current detail's originating page only; cleared with account/library/private state. */
+    val memoryGroupGallery: List<Asset> = emptyList(),
     val upload: UploadStore? = null,
     val uploadHistory: UploadHistoryState? = null,
     val uploadAnnotationWrite: UploadAnnotationWriteState? = null,
@@ -250,12 +357,112 @@ data class LiveState(
 )
 
 /** UI-dispatcher-confined; only the wire DTO module is shared with fixture code. */
-class ConnectedStore(private val api: PhotoHouseApi, private val scope: CoroutineScope, private val persistence: SessionPersistence? = null, private val uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN }, batchPersistence: UploadQueuePersistence? = null, batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null, memoryCommunityApi: MemoryCommunityApi? = null, private val memoryCommunityEnabled: Boolean = false, private val now: () -> Long = System::currentTimeMillis) {
+class ConnectedStore(
+    private val api: PhotoHouseApi,
+    private val scope: CoroutineScope,
+    private val persistence: SessionPersistence? = null,
+    private val uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN },
+    batchPersistence: UploadQueuePersistence? = null,
+    batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null,
+    memoryCommunityApi: MemoryCommunityApi? = null,
+    private val memoryCommunityEnabled: Boolean = false,
+    private val memoryGroupsApi: MemoryGroupsApi? = null,
+    private val memoryGroupsEnabled: Boolean = false,
+    private val savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
+    private val now: () -> Long = System::currentTimeMillis,
+    private val memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
+    assistantWorkspaceApi: AssistantWorkspaceApi? = null,
+) {
+    /** Keeps historical trailing-lambda clock construction source-compatible. */
+    constructor(
+        api: PhotoHouseApi,
+        scope: CoroutineScope,
+        persistence: SessionPersistence? = null,
+        uploadNetwork: () -> UploadNetwork = { UploadNetwork.UNKNOWN },
+        batchPersistence: UploadQueuePersistence? = null,
+        batchSource: ((UploadQueueRecord) -> BatchUploadSource?)? = null,
+        memoryCommunityApi: MemoryCommunityApi? = null,
+        memoryCommunityEnabled: Boolean = false,
+        memoryGroupsApi: MemoryGroupsApi? = null,
+        memoryGroupsEnabled: Boolean = false,
+        savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
+        clock: () -> Long,
+    ) : this(api, scope, persistence, uploadNetwork, batchPersistence, batchSource, memoryCommunityApi,
+        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null)
+
+    private var assistantSpeechJob: Job? = null
+    private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
+    private var assistantSpeechMemoryReference: MemoryOpeningSpeechReference? = null
+    private var assistantSpeechSegmentReference: MemoryOpeningSpeechReference? = null
+    private data class AssistantPlaybackOwner(val requestId: String, val accountId: String, val library: String,
+                                             val generation: Long, val credential: Bearer,
+                                             val segmentReference: MemoryOpeningSpeechReference? = null,
+                                             val segmentIndex: Int? = null, val segmentCount: Int? = null,
+                                             var reported: Boolean = false)
+    private val assistantPlaybackOwners = java.util.WeakHashMap<ProtectedAnnotationAudio, AssistantPlaybackOwner>()
+    private val assistantWorkspaceTransport = assistantWorkspaceApi?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
     private var assistantSpeechRequest = 0L
     private var assistantTurnRequest = 0L
     private var assistantTranscriptRequest = 0L
     private val mutable = MutableStateFlow(LiveState())
     val state = mutable.asStateFlow()
+    val assistantWorkspaceCoordinator: AssistantWorkspaceStore? = assistantWorkspaceApi
+        ?.takeIf { api.assistantEnabled && it.assistantWorkspaceEnabled }
+        ?.let { workspaceApi -> AssistantWorkspaceStore(workspaceApi, scope, ::currentAssistantWorkspaceScope) }
+    private val emptyAssistantWorkspaceState = MutableStateFlow(AssistantWorkspaceState())
+    val assistantWorkspaceState: StateFlow<AssistantWorkspaceState>
+        get() = assistantWorkspaceCoordinator?.state ?: emptyAssistantWorkspaceState.asStateFlow()
+    private val assistantWorkspaceScopeMonitor = assistantWorkspaceCoordinator?.let { coordinator ->
+        scope.launch { state.collect { coordinator.onScopeChanged() } }
+    }
+    private val assistantWorkspaceSelectionMonitor = assistantWorkspaceCoordinator?.let { coordinator ->
+        scope.launch { coordinator.state.collect { workspace ->
+            if (workspace.error == AssistantWorkspaceError.ACCESS_DENIED) {
+                val credential = token
+                if (credential != null && !state.value.covered)
+                    readFailure(ApiFailure(FailureKind.HTTP, status = 403), state.value.generation, credential) { }
+                return@collect
+            }
+            val current = state.value.assistant ?: return@collect
+            val selected = current.privateThreadId ?: return@collect
+            val speakingReply = assistantSpeechReplyReference
+            val speakingMemory = assistantSpeechMemoryReference
+            val speakingSegment = assistantSpeechSegmentReference
+            if (((current.speechBusy || current.speechAudio != null) &&
+                (speakingReply != null && privateReplySpeechReference() != speakingReply ||
+                    speakingMemory != null && memoryOpeningSpeechReference(speakingMemory.ordinal) != speakingMemory ||
+                    speakingSegment != null && memorySegmentSpeechReference(speakingSegment.ordinal) != speakingSegment)) ||
+                (speakingSegment != null && memorySegmentSpeechReference(speakingSegment.ordinal) != speakingSegment)) {
+                assistantSpeechRequest++
+                assistantSpeechJob?.cancel(); assistantSpeechJob = null
+                assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null; assistantSpeechSegmentReference = null
+                current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+                mutable.value = state.value.copy(assistant = current.copy(speechBusy = false, speechAudio = null,
+                    speechMemoryOpeningOrdinal = null,
+                    speechMemorySegmentProgress = null,
+                    failure = LiveProblem(Message.DISCOVERY_CHANGED)))
+            }
+            if (workspace.accountId == state.value.session?.account_id && workspace.libraryId == current.library &&
+                workspace.generation == current.generation && workspace.detail?.thread?.threadId == selected &&
+                workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true) return@collect
+            // A switched/deleted thread must not leave its private text on the central screen.
+            // Retain the selection marker so subsequent voice never silently becomes stateless.
+            if (current.turns.isEmpty() && current.context == null && current.pendingTurn == null && !current.busy &&
+                current.speechAudio == null && !current.speechBusy && current.transcript == null && !current.transcribing &&
+                current.failure?.message == Message.DISCOVERY_CHANGED) return@collect
+            assistantTurnRequest++; assistantTranscriptRequest++; assistantSpeechRequest++
+            assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+            assistantSpeechMemoryReference = null
+            assistantSpeechSegmentReference = null
+            current.speechAudio?.close()
+            mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null,
+                pendingTurn = null, busy = false, transcript = null, transcribing = false,
+                confirmedTranscriptRequestId = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null,
+                speechMemorySegmentProgress = null,
+                lastRequestReceipt = null, receiptDetail = null, receiptChecking = false,
+                privateRequestStatus = null, failure = LiveProblem(Message.DISCOVERY_CHANGED)))
+        } }
+    }
     private val playbackProgress = PlaybackProgress()
     private var restorationAttempted = false
     private var resumeLibrary: String? = null
@@ -271,8 +478,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private var uploadAnnotationAudioRequest = 0L
     private var uploadAnnotationAudioJob: Job? = null
     private var groupedStoryRequest = 0L
+    private var savedGroupedStoryEditRequest = 0L
     private var groupedStoryPageRequest = 0L
+    private var groupedStoryAlbumsRequest = 0L
+    private var groupedStoryAlbumPageRequest = 0L
+    private var groupedStoryAlbumChoiceRequest = 0L
     private var groupedStoryRelatedPreviewRequest = 0L
+    private var groupedStoryReviewPreviewRequest = 0L
     private var savedMemoryListRequest = 0L
     private var savedMemoryDetailRequest = 0L
     private var savedMemoryReaderEpoch = 0L
@@ -313,6 +525,142 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 MemoryCommunityBinding(currentToken, currentLibrary, state.value.generation) else null
         }, onDenied = ::memoryCommunityDenied)
     }
+    private val bookShelfCovers = MemoryBookShelfCoverStore(api, scope,
+        ::currentMemoryBookShelfCoverScope, ::memoryCommunityDenied)
+    val memoryBookShelfCoverState get() = bookShelfCovers.state
+
+    private fun currentMemoryBookShelfCoverScope(): MemoryBookShelfCoverScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val page = reading.result ?: return null
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        if (!api.protectedNativeV2Enabled || !memoryCommunityAvailable || !allowed() ||
+            reading.library != state.value.library || page.libraryId != reading.library ||
+            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy ||
+            reading.selectedBook != null || reading.capabilities?.enabled != true ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
+        return MemoryBookShelfCoverScope(account, credential, state.value.generation, reading.library,
+            reading.shelfScopeId, page.items.mapNotNull { book ->
+                book.stories.firstOrNull()?.let { MemoryBookShelfCoverEntry(book.id, it.coverAssetId) }
+            })
+    }
+
+    fun isCurrentMemoryBookShelf(account: String, generation: Long, library: String, shelfScopeId: Long): Boolean =
+        currentMemoryBookShelfCoverScope()?.let {
+            it.accountId == account && it.generation == generation && it.library == library && it.shelfScopeId == shelfScopeId
+        } == true
+
+    fun retryMemoryBookShelfCovers(account: String, generation: Long, library: String, shelfScopeId: Long): Boolean {
+        if (!isCurrentMemoryBookShelf(account, generation, library, shelfScopeId)) return false
+        return bookShelfCovers.retryUnavailable()
+    }
+
+    private val bookCompositionDictation = MemoryBookCompositionDictationStore(
+        api, scope, ::currentMemoryBookCompositionDictationScope, ::memoryCommunityDenied)
+    val memoryBookCompositionDictationState get() = bookCompositionDictation.state
+    val memoryBookCompositionDictationCoordinator get() = bookCompositionDictation
+
+    private val bookCompositionStore = memoryCommunity?.let {
+        MemoryBookCompositionStore(api, it, scope, ::currentMemoryBookCompositionScope,
+            onDenied = ::memoryCommunityDenied, hasUnfinishedInput = { bookCompositionDictation.hasUnfinishedInput })
+    }
+    private val emptyBookCompositionState = MutableStateFlow(MemoryBookCompositionStoreState())
+    val memoryBookCompositionState get() = bookCompositionStore?.state ?: emptyBookCompositionState.asStateFlow()
+    val memoryBookCompositionCoordinator get() = bookCompositionStore
+
+    private fun currentMemoryBookCompositionScope(): MemoryBookCompositionScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library ||
+            reading.shelfScopeId != memoryBooksRequest || reading.busy || reading.readerBusy ||
+            reading.capabilities?.enabled != true) return null
+        val parent = reading.selectedBook
+        if (parent != null && !parent.canEdit || parent == null && reading.result?.canCreate != true) return null
+        return MemoryBookCompositionScope(account, credential, state.value.generation, reading.library,
+            reading.shelfScopeId, ownerCanCreate = reading.result?.canCreate == true,
+            editableBookId = parent?.id, editableBookRevision = parent?.revision,
+            editableReaderScopeId = parent?.let { reading.readerScopeId })
+    }
+
+    private fun currentMemoryBookCompositionDictationScope(): MemoryBookCompositionDictationScope? {
+        val current = currentMemoryBookCompositionScope() ?: return null
+        val draft = memoryBookCompositionState.value
+        if (draft.accountId != current.accountId || draft.generation != current.generation ||
+            draft.library != current.library || draft.shelfScopeId != current.shelfScopeId ||
+            draft.editingBookId != current.editableBookId || draft.editingBookRevision != current.editableBookRevision ||
+            draft.editingReaderScopeId != current.editableReaderScopeId ||
+            draft.status != MemoryBookCompositionStatus.READY || !(draft.canCreate || draft.canEdit) || draft.pendingRetry) return null
+        return MemoryBookCompositionDictationScope(current.accountId, current.credential, current.generation,
+            current.library, current.shelfScopeId, draft.actionEpoch, editable = true)
+    }
+
+    fun startMemoryBookComposition(account: String, generation: Long, library: String, shelfScopeId: Long,
+                                   defaultTitle: String, language: String): Boolean {
+        val current = currentMemoryBookCompositionScope() ?: return false
+        if (current.accountId != account || current.generation != generation || current.library != library ||
+            current.shelfScopeId != shelfScopeId || current.editableBookId != null ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
+        bookCompositionDictation.clear()
+        val started = bookCompositionStore?.open(defaultTitle, language) == true
+        if (started) bookShelfCovers.close()
+        return started
+    }
+
+    /** An edit begins only from this rendered parent, after every unfinished reader action is settled. */
+    fun canStartSavedMemoryBookEdit(expected: MemoryBookReaderNavigationScope): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            isCurrentMemoryBookReaderNavigation(expected) && reading.selectedBook?.canEdit == true &&
+            canSwitchMemoryBookReading(reading, allowPreviewLoading = true)
+    }
+
+    fun startSavedMemoryBookEdit(expected: MemoryBookReaderNavigationScope): Boolean {
+        if (!canStartSavedMemoryBookEdit(expected)) return false
+        state.value.memoryBooks?.companion?.dictation?.close()
+        bookNarrativeDictation.clear()
+        bookCompositionDictation.clear()
+        val started = bookCompositionStore?.openEdit(expected.bookId, expected.bookRevision) == true
+        if (started) bookShelfCovers.close()
+        return started
+    }
+
+    fun closeMemoryBookComposition(shelfScopeId: Long, actionEpoch: Long) {
+        val draft = memoryBookCompositionState.value
+        if (draft.shelfScopeId != shelfScopeId || draft.actionEpoch != actionEpoch) return
+        val saved = draft.createdBook
+        if (draft.status == MemoryBookCompositionStatus.SAVED && saved != null &&
+            openComposedMemoryBook(draft.accountId.orEmpty(), draft.generation ?: -1,
+                draft.library.orEmpty(), shelfScopeId, actionEpoch, saved.id)) return
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close(shelfScopeId, actionEpoch)
+        bookShelfCovers.load()
+    }
+
+    /** Opens only a verified result of this exact local composer, through the existing protected reader. */
+    fun openComposedMemoryBook(account: String, generation: Long, library: String,
+                              shelfScopeId: Long, actionEpoch: Long, bookId: String): Boolean {
+        val current = currentMemoryBookCompositionScope() ?: return false
+        val composition = memoryBookCompositionState.value
+        val created = composition.createdBook ?: return false
+        if (current.accountId != account || current.generation != generation || current.library != library ||
+            current.shelfScopeId != shelfScopeId || composition.actionEpoch != actionEpoch ||
+            composition.status !in setOf(MemoryBookCompositionStatus.CREATED, MemoryBookCompositionStatus.SAVED) ||
+            composition.editingBookId != current.editableBookId ||
+            composition.editingBookRevision != current.editableBookRevision ||
+            composition.editingReaderScopeId != current.editableReaderScopeId || composition.busy || composition.pendingRetry ||
+            created.id != bookId) return false
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close(shelfScopeId, actionEpoch)
+        val reading = state.value.memoryBooks ?: return false
+        val updatedShelf = reading.result?.let { page ->
+            page.copy(items = page.items.map { if (it.id == created.id) created else it })
+        }
+        mutable.value = state.value.copy(memoryBooks = reading.copy(result = updatedShelf))
+        openMemoryBookSummary(created)
+        return true
+    }
+
     private val bookNarrativeStore = memoryCommunity?.let {
         MemoryBookNarrativeStore(it, scope, ::currentMemoryBookNarrativeScope)
     }
@@ -363,6 +711,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     val batchUploads get() = batchQueue
     val groupedStoryCreationAvailable get() = api.protectedNativeV2Enabled && api is StoryWorkspaceApi
     val protectedNativeV2Enabled get() = api.protectedNativeV2Enabled
+    val memoryGroupsAvailable get() = memoryGroupsEnabled && api.protectedNativeV2Enabled && memoryGroupsApi?.memoryGroupsEnabled == true
     val mediaFilterEnabled get() = api.mediaFilterEnabled
     val preparedBrowseEnabled get() = api.preparedBrowseEnabled
     val canRememberSession get() = persistence != null
@@ -379,11 +728,19 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private fun invalidate(keepIdentity: Boolean, cover: Boolean = false, preserveConversationNavigation: Boolean = false) {
         if (!keepIdentity || !preserveConversationNavigation) memoryConversationNavigation.clear()
         clearMemoryBookEditorial()
+        bookShelfCovers.close()
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         val previous = state.value
-        groupedStoryRequest++; groupedStoryPageRequest++
+        groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
+        groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
+        savedGroupedStoryEditRequest++
         previous.groupedStoryCreation?.editor?.clear()
         previous.groupedStoryCreation?.previews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.albumPreviews?.values?.forEach { it.fill(0) }
         previous.groupedStoryCreation?.relatedPreviews?.values?.forEach { it.fill(0) }
+        previous.groupedStoryCreation?.reviewPreviews?.values?.forEach { it.fill(0) }
+        groupedStoryReviewPreviewRequest++
         groupedStoryRelatedPreviewRequest++
         previous.savedMemoryStories?.frames?.values?.forEach { it.fill(0) }
         previous.savedMemoryStories?.hero?.fill(0)
@@ -400,12 +757,16 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
         savedMemoryContributionChapterEpoch++
         assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
         assistantTurnRequest++
         assistantTranscriptRequest++
         val nextGeneration = previous.generation + 1
         state.value.videoBookmark?.close()
         state.value.video?.close()
         state.value.storyEditor?.close()
+        state.value.memoryGroups?.close()
         state.value.upload?.close()
         state.value.uploadAnnotationAudio?.audio?.close()
         state.value.assistant?.speechAudio?.close()
@@ -420,10 +781,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             storageFailed = runCatching { persistence?.clear() }.isFailure
             token = null; identity = null; deadline = 0; expiryJob?.cancel(); expiryJob = null }
         val assistant = previous.assistant?.takeIf { keepIdentity && !cover && previous.library == it.library }
-            ?.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, pendingTurn = null)
+            ?.let { it.copy(generation = nextGeneration, loadingCapabilities = false, busy = false, speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, pendingTurn = null,
+                privateThreadId = null, privateRequestStatus = null,
+                turns = if (it.privateThreadId != null) emptyList() else it.turns,
+                context = if (it.privateThreadId != null) null else it.context) }
         mutable.value = LiveState(generation = nextGeneration, session = if (cover) null else identity, covered = cover,
             assistant = assistant,
             problem = if (storageFailed) LiveProblem(Message.SESSION_STORAGE_UNAVAILABLE) else if (coolingDown()) LiveProblem(Message.RATE_LIMITED, cooldownUntil) else null)
+        assistantWorkspaceCoordinator?.onScopeChanged()
     }
     private fun active(generation: Long): Boolean {
         if (state.value.generation != generation) return false
@@ -432,6 +797,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
     private fun usable(): Boolean = !state.value.covered && token != null && active(state.value.generation)
     private fun allowed(): Boolean = usable() && identity?.memberships?.any { it.library_id == state.value.library && it.available } == true
+    private fun currentAssistantWorkspaceScope(): AssistantWorkspaceScope? {
+        val credential = token ?: return null
+        val account = identity?.account_id ?: return null
+        val library = state.value.library ?: return null
+        val live = state.value
+        return AssistantWorkspaceScope(account, credential, library, live.generation,
+            foregroundAllowed = allowed() && !live.covered)
+    }
     private fun launch(block: suspend (Long) -> Unit) {
         val generation = state.value.generation
         val job = scope.launch {
@@ -527,7 +900,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     /** Explicit creation entry. Actual protected can_create, not a UI role label, grants this editor. */
-    fun beginGroupedStoryCreation(): Boolean {
+    fun beginGroupedStoryCreation(guided: Boolean = false): Boolean {
         val workspace = api as? StoryWorkspaceApi ?: return false
         if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
             state.value.detail != null || state.value.savedMemoryStories != null || state.value.memoryBooks != null ||
@@ -535,15 +908,16 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (state.value.groupedStoryCreation?.editor != null) return true
         val library = state.value.library ?: return false
         val credential = token ?: return false
+        val accountId = identity?.account_id ?: return false
         val request = ++groupedStoryRequest
-        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(checking = true))
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(checking = true, guided = guided))
         launch { generation ->
             try {
                 val capability = api.savedMemoryStories(credential, library, 1)
                 if (!active(generation) || token !== credential || state.value.library != library || request != groupedStoryRequest) return@launch
                 validResponse(capability.libraryId == library && capability.page == 1 && capability.pageSize == 8 && capability.items.size <= 8)
                 if (!capability.canCreate) {
-                    mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = false))
+                    mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = false, guided = guided))
                     return@launch
                 }
                 val binding = {
@@ -552,37 +926,443 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                     if (current != null && selectedLibrary != null && allowed())
                         MemoryCommunityBinding(current, selectedLibrary, state.value.generation) else null
                 }
+                lateinit var editor: StoryWorkspaceStore
                 val repository = StoryWorkspaceRepository(workspace, binding, onDenied = {
-                    if (token != null) {
+                    if (active(generation) && token === credential && identity?.account_id == accountId &&
+                        state.value.library == library && state.value.groupedStoryCreation?.editor === editor) {
+                        clearSavedStoryReaderPositions(accountId)
+                        clearMemoryBookReaderPositions(accountId)
                         invalidate(keepIdentity = true, cover = true)
                         mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
                         retry = { foreground() }
                     }
                 })
-                val editor = StoryWorkspaceStore(repository, scope, binding).also { created ->
+                val editorAccount = identity?.account_id.orEmpty()
+                editor = StoryWorkspaceStore(repository, scope, binding, dictationApi = api,
+                    currentAccount = { identity?.account_id },
+                    onDictationDenied = {
+                        if (active(generation) && token === credential && identity?.account_id == editorAccount &&
+                            state.value.library == library) {
+                            clearSavedStoryReaderPositions(editorAccount)
+                            clearMemoryBookReaderPositions(editorAccount)
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    }).also { created ->
                     created.observeRelatedCandidates { candidates ->
                         updateGroupedStoryRelatedPreviews(created, candidates)
                     }
                 }
-                mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor))
+                if (guided) editor.startGuide()
+                mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(canCreate = true, editor = editor, guided = guided))
                 loadGroupedStorySelectionPage(1)
             } catch (failure: CancellationException) { throw failure }
             catch (failure: Exception) {
                 if (!active(generation) || token !== credential || state.value.library != library || request != groupedStoryRequest) return@launch
                 if (failure is ApiFailure && failure.status in setOf(401, 403))
-                    readFailure(failure, generation, credential) { beginGroupedStoryCreation() }
-                else mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(problem = problem(failure)))
+                    readFailure(failure, generation, credential) { beginGroupedStoryCreation(guided) }
+                else mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(problem = problem(failure), guided = guided))
             }
         }
         return true
+    }
+
+    /** Freshly reads an editable saved story and its complete revision-bound family links before editing. */
+    fun beginSavedGroupedStoryEdit(): Boolean {
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        val references = reading.contributionReferences ?: return false
+        if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
+            reading.library != state.value.library || reading.detailBusy || !story.canEdit ||
+            !completeContributionReferences(story, references) || reading.contributionReferenceSaveBusy ||
+            reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
+            reading.pendingContributionReferenceMutation != null ||
+            reading.contributionReferenceDraft?.let { draft -> draft != references.chapters.associate { it.chapterId to it.contributionIds } } == true ||
+            state.value.groupedStoryCreation != null ||
+            state.value.memoryBooks != null) return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = reading.library
+        val storyId = story.id
+        val expectedRevision = story.revision
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(
+            checking = true, isSavedEdit = true, savedEditStoryId = storyId, savedEditRequestId = request))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, storyId, expectedRevision, readerEpoch, request)
+        return true
+    }
+
+    /** Retries a fresh detail/link read after an edit entry failure. */
+    fun retrySavedGroupedStoryEdit(): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        if (!creation.isSavedEdit || creation.editor != null || creation.checking) return false
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        if (story.id != creation.savedEditStoryId || !story.canEdit) return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = reading.library
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(
+            checking = true, savedEditRequestId = request, problem = null))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, story.id, story.revision, readerEpoch, request)
+        return true
+    }
+
+    /** Keeps conflicted editor text until the newest story and complete family-link map seed successfully. */
+    fun reloadSavedGroupedStoryEdit(editor: StoryWorkspaceStore): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        if (creation.checking || !creation.isSavedEdit || creation.editor !== editor || editor.state.value.status !in
+            setOf(StoryWorkspaceStoreStatus.CONFLICT, StoryWorkspaceStoreStatus.UNAVAILABLE) ||
+            editor.hasUnfinishedChapterDictation || editor.state.value.hasPendingSave) return false
+        val editorBaseRevision = editor.savedEditStoryRevision ?: return false
+        val story = state.value.savedMemoryStories?.detail ?: return false
+        if (story.id != creation.savedEditStoryId || story.libraryId != state.value.library) return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val library = story.libraryId
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(
+            checking = true, savedEditRequestId = request, problem = null,
+            gallery = null, previews = emptyMap(), relatedPreviews = emptyMap()))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, library, story.id,
+            maxOf(story.revision, editorBaseRevision), readerEpoch, request)
+        return true
+    }
+
+    private fun completeContributionReferences(
+        story: SavedMemoryStory,
+        references: SavedMemoryStoryContributionReferences,
+    ): Boolean = references.id == story.id && references.libraryId == story.libraryId && references.revision == story.revision &&
+        references.chapters.map { it.chapterId } == story.chapters.map { it.id } &&
+        references.chapters.all { group -> group.contributionIds.size <= 12 &&
+            group.contributionIds.distinct().size == group.contributionIds.size && group.contributionIds.all {
+                runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)
+            } }
+
+    private fun savedStoryPositionMatches(position: SavedStoryReaderPosition, story: SavedMemoryStory): Boolean {
+        if (position.accountId != identity?.account_id || position.libraryId != story.libraryId ||
+            position.storyId != story.id || position.storyRevision != story.revision) return false
+        val chapter = story.chapters.firstOrNull { it.id == position.chapterId } ?: return false
+        return position.assetId in chapter.assetIds && story.items.any { it.asset.id == position.assetId }
+    }
+
+    /** A pointer is only offered after a fresh authorized detail proves its exact revision and location. */
+    private fun savedStoryResumePosition(accountId: String, story: SavedMemoryStory): SavedStoryReaderPosition? {
+        if (identity?.account_id != accountId) return null
+        val store = savedStoryReaderPositionPersistence ?: return null
+        val positions = try { SavedStoryReaderPositions.validated(accountId, store.load(accountId)) }
+        catch (_: Exception) { return null }
+        val position = positions.firstOrNull { it.libraryId == story.libraryId && it.storyId == story.id } ?: return null
+        if (position.storyRevision == story.revision && savedStoryPositionMatches(position, story)) return position
+        removeSavedStoryReaderPosition(accountId, story.libraryId, story.id)
+        return null
+    }
+
+    /** Persistence failures never block the protected story reader. */
+    private fun saveSavedStoryReaderPosition(accountId: String, story: SavedMemoryStory, chapterId: String, assetId: String) {
+        if (identity?.account_id != accountId || token == null || !allowed() || state.value.library != story.libraryId) return
+        val candidate = SavedStoryReaderPosition(accountId, story.libraryId, story.id, story.revision, chapterId, assetId)
+        if (!savedStoryPositionMatches(candidate, story)) return
+        runCatching { savedStoryReaderPositionPersistence?.save(accountId, candidate) }
+    }
+
+    private fun removeSavedStoryReaderPosition(accountId: String, libraryId: String, storyId: String) {
+        if (identity?.account_id != accountId) return
+        runCatching { savedStoryReaderPositionPersistence?.remove(accountId, libraryId, storyId) }
+    }
+
+    private fun savedStoryReaderSwitchBlocked(reading: SavedMemoryStoriesReading): Boolean =
+        reading.contributionReferenceSaveBusy || reading.contributionReferenceSaveError ||
+            reading.contributionReferenceSaveConflict || reading.pendingContributionReferenceMutation != null ||
+            reading.contributionReferenceDraft?.let { draft ->
+                draft != reading.contributionReferences?.chapters?.associate { it.chapterId to it.contributionIds }
+            } == true ||
+            reading.community?.let { community ->
+                community.chatDraft.isNotBlank() || community.threadDrafts.values.any(String::isNotBlank) ||
+                    community.contributionDraft.isNotBlank() || community.contributionConsent || community.audioConsent ||
+                    community.chatTurnContributionSeeded || community.busy || community.contributionAudioBusy ||
+                    community.contributionAudioActivityId != null || community.audio != null || community.pendingText != null ||
+                    community.pendingAudio != null || community.pendingConversation != null || community.pendingTurn != null ||
+                    community.pendingNarrative != null || community.job?.state in setOf("queued", "running") ||
+                    community.narrativeJob?.state in setOf("queued", "running") ||
+                    community.turns?.items?.any { it.state in setOf("queued", "running") } == true ||
+                    dictationHasUnfinishedInput(community.dictation)
+            } == true
+
+    /** Clears only the still-current account; late denials cannot erase another account's pointers. */
+    private fun clearSavedStoryReaderPositions(accountId: String?) {
+        if (accountId == null || identity?.account_id != accountId) return
+        runCatching { savedStoryReaderPositionPersistence?.clear(accountId) }
+    }
+
+    private fun loadSavedGroupedStoryEdit(
+        workspace: StoryWorkspaceApi,
+        accountId: String,
+        credential: Bearer,
+        library: String,
+        storyId: String,
+        expectedRevision: Long,
+        readerEpoch: Long,
+        request: Long,
+    ) {
+        val preservedEditor = state.value.groupedStoryCreation?.takeIf {
+            it.isSavedEdit && it.savedEditStoryId == storyId && it.savedEditRequestId == request
+        }?.editor
+        launch { generation ->
+            fun valid(expectedEditor: StoryWorkspaceStore? = preservedEditor): Boolean {
+                val live = state.value
+                val reading = live.savedMemoryStories ?: return false
+                val creation = live.groupedStoryCreation ?: return false
+                return active(generation) && token === credential && identity?.account_id == accountId &&
+                    live.session?.account_id == accountId && live.library == library && allowed() &&
+                    savedMemoryReaderEpoch == readerEpoch && reading.library == library &&
+                    reading.detail?.id == storyId && reading.selectedSummary?.id == storyId &&
+                    creation.isSavedEdit && creation.savedEditStoryId == storyId && creation.savedEditRequestId == request &&
+                    creation.editor === expectedEditor
+            }
+            try {
+                val sourceCapabilities = try {
+                    val bytes = api.sourceCapabilities(credential, library)
+                    try { ProtectedStoryWorkspaceWire.decodeSourceCapabilities(bytes) } finally { bytes.fill(0) }
+                } catch (failure: ApiFailure) {
+                    if (failure.status in setOf(400, 404, 503)) null else throw failure
+                }
+                if (!valid()) return@launch
+                val fresh = api.savedMemoryStory(credential, library, storyId, expectedRevision, sourceCapabilities != null)
+                if (!valid()) return@launch
+                validResponse(fresh.id == storyId && fresh.libraryId == library && fresh.revision >= expectedRevision &&
+                    fresh.canEdit && (fresh.sourcePolicy == null || sourceCapabilities?.sourcePolicy == fresh.sourcePolicy))
+                val references = api.savedMemoryStoryContributionReferences(
+                    credential, library, storyId, fresh.revision, fresh.chapters.map { it.id })
+                if (!valid()) return@launch
+                validResponse(completeContributionReferences(fresh, references))
+                lateinit var editor: StoryWorkspaceStore
+                val binding = {
+                    val live = state.value
+                    val creation = live.groupedStoryCreation
+                    val requestCurrent = creation?.isSavedEdit == true && creation.savedEditStoryId == storyId &&
+                        creation.savedEditRequestId == request &&
+                        (creation.editor === preservedEditor || creation.editor === editor)
+                    val currentToken = token
+                    val currentLibrary = live.library
+                    if (requestCurrent && active(generation) && currentToken === credential && identity?.account_id == accountId &&
+                        live.session?.account_id == accountId && currentLibrary == library &&
+                        savedMemoryReaderEpoch == readerEpoch && allowed())
+                        MemoryCommunityBinding(credential, library, generation) else null
+                }
+                val repository = StoryWorkspaceRepository(workspace, binding, onDenied = {
+                    if (valid(editor)) {
+                        clearSavedStoryReaderPositions(accountId)
+                        clearMemoryBookReaderPositions(accountId)
+                        invalidate(keepIdentity = true, cover = true)
+                        mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                        retry = { foreground() }
+                    }
+                })
+                editor = StoryWorkspaceStore(repository, scope, binding, dictationApi = api,
+                    currentAccount = { identity?.account_id }, onDictationDenied = {
+                        if (valid(editor)) {
+                            clearSavedStoryReaderPositions(accountId)
+                            clearMemoryBookReaderPositions(accountId)
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    })
+                if (!editor.seedSavedStoryForEdit(fresh, references) || !valid()) {
+                    editor.clear()
+                    if (valid()) {
+                        val currentCreation = state.value.groupedStoryCreation ?: return@launch
+                        mutable.value = state.value.copy(groupedStoryCreation = currentCreation.copy(
+                            checking = false, problem = LiveProblem(Message.INVALID_RESPONSE)))
+                    }
+                    return@launch
+                }
+                val currentCreation = state.value.groupedStoryCreation ?: return@launch
+                preservedEditor?.clear()
+                mutable.value = state.value.copy(groupedStoryCreation = currentCreation.copy(
+                    checking = false, canCreate = true, editor = editor, problem = null))
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { closeSavedMemoryStories() }
+                } else {
+                    val current = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = current.copy(checking = false,
+                        problem = problem(failure)))
+                }
+            }
+        }
+    }
+
+    /** Loads album pages only after the editor explicitly opens its album picker. */
+    fun loadGroupedStoryAlbums(page: Int): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        if (!api.protectedNativeV2Enabled || !allowed() || current.canCreate != true || current.albumsPageBusy ||
+            current.albumBusy || editor.isSavedStoryEdit || page !in 1..100000 ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val request = ++groupedStoryAlbumsRequest
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumsPageBusy = true, albumsProblem = null, albumChoiceFailure = false))
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumsRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION
+            try {
+                val result = api.libraryAlbums(credential, library, page)
+                if (!valid()) return@launch
+                validResponse(result.libraryId == library && result.page == page && result.pageSize == 10 &&
+                    result.items.size <= 10 && result.total >= 0)
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    albumsPage = result, albumsPageBusy = false, albumsProblem = null, albumChoiceFailure = false))
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { loadGroupedStoryAlbums(page) }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumsPageBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryAlbumsRequest && live?.editor === editor && live.albumsPageBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumsPageBusy = false))
+                }
+            }
+        }
+        return true
+    }
+
+    /** Revalidates an album and its selected media before atomically replacing editor choices. */
+    fun selectGroupedStoryAlbum(
+        album: ProtectedLibraryAlbum,
+        expectedSelectedAssetIds: List<String>,
+        confirmedReplace: Boolean,
+    ): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        val listed = current.albumsPage?.items?.any { it === album } == true
+        val expectedSelection = ArrayList(expectedSelectedAssetIds)
+        val selected = editor.state.value.selectedAssetIds
+        if (!api.protectedNativeV2Enabled || !allowed() || current.canCreate != true || current.albumBusy ||
+            current.albumsPageBusy || !listed || editor.isSavedStoryEdit ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION || selected != expectedSelection ||
+            selected.isNotEmpty() && !confirmedReplace || album.assetIds.isEmpty() || album.assetIds.size > 60) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val albumPage = current.albumsPage?.page ?: return false
+        val request = ++groupedStoryAlbumChoiceRequest
+        groupedStoryPageRequest++
+        current.previews.values.forEach { it.fill(0) }
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumBusy = true, albumsProblem = null, albumChoiceFailure = false,
+            albumUnsupportedCount = 0, albumPreviews = emptyMap(), previews = emptyMap(), pageBusy = false))
+        launch { _ ->
+            var pageOwnsBusy = false
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumChoiceRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION &&
+                editor.state.value.selectedAssetIds == expectedSelection
+            try {
+                val freshPage = api.libraryAlbums(credential, library, albumPage)
+                if (!valid()) return@launch
+                validResponse(freshPage.libraryId == library && freshPage.page == albumPage && freshPage.pageSize == 10)
+                val fresh = freshPage.items.firstOrNull { it.id == album.id }
+                if (fresh == null || fresh.revision != album.revision || fresh.assetIds != album.assetIds || fresh.theme != album.theme) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumsPage = freshPage, albumBusy = false, albumChoiceFailure = true))
+                    return@launch
+                }
+                var unsupported = 0
+                for (assetId in fresh.assetIds.take(24)) {
+                    if (!valid()) return@launch
+                    val detail = api.detail(credential, library, assetId)
+                    if (!valid()) return@launch
+                    validResponse(detail.library_id == library && detail.asset.id == assetId)
+                    if (detail.asset.kind !in setOf("image", "video")) unsupported++
+                }
+                if (!valid()) return@launch
+                if (unsupported > 0) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                        albumBusy = false, albumUnsupportedCount = unsupported,
+                        albumsProblem = LiveProblem(Message.MEDIA_UNAVAILABLE)))
+                    return@launch
+                }
+                if (!editor.seedSelectionFromAlbum(fresh.assetIds, fresh.theme, expectedSelection, confirmedReplace)) {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                    return@launch
+                }
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    selectedAlbum = fresh, albumPage = 1, albumAssets = emptyList(), albumPreviews = emptyMap(),
+                    albumBusy = false, albumUnsupportedCount = 0, albumChoiceFailure = false,
+                    albumsProblem = null, gallery = null, previews = emptyMap(), pageBusy = false))
+                pageOwnsBusy = loadGroupedStorySelectionPage(1)
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) {
+                        val latest = state.value.groupedStoryCreation?.albumsPage?.items?.firstOrNull { it.id == album.id }
+                        if (latest != null) selectGroupedStoryAlbum(latest, expectedSelection, confirmedReplace)
+                    }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (!pageOwnsBusy && request == groupedStoryAlbumChoiceRequest && live?.editor === editor && live.albumBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                }
+            }
+        }
+        return true
+    }
+
+    /** Returns to regular gallery browsing without changing the ordered selection. */
+    fun returnToGroupedStoryLibrary(): Boolean {
+        val current = state.value.groupedStoryCreation ?: return false
+        val editor = current.editor ?: return false
+        if (!allowed() || current.canCreate != true || current.albumBusy || current.pageBusy || current.albumsPageBusy ||
+            editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        groupedStoryAlbumPageRequest++
+        groupedStoryAlbumChoiceRequest++
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            selectedAlbum = null, albumPage = 1, albumAssets = emptyList(), albumPreviews = emptyMap(),
+            albumBusy = false, albumUnsupportedCount = 0, albumsProblem = null, albumChoiceFailure = false))
+        return loadGroupedStorySelectionPage(current.gallery?.page ?: 1)
     }
 
     /** Selection has its own protected pages; browsing never invalidates the editor's ordered choices. */
     fun loadGroupedStorySelectionPage(page: Int): Boolean {
         val current = state.value.groupedStoryCreation ?: return false
         val editor = current.editor ?: return false
-        if (!allowed() || current.pageBusy || current.canCreate != true || page !in 1..100000 ||
+        if (!allowed() || current.pageBusy || current.albumBusy || current.albumsPageBusy || current.canCreate != true || page !in 1..100000 ||
             editor.state.value.status != StoryWorkspaceStoreStatus.SELECTION) return false
+        if (current.selectedAlbum != null) return loadGroupedStoryAlbumPage(current, editor, page)
         val credential = token ?: return false; val library = state.value.library ?: return false
         val request = ++groupedStoryPageRequest
         current.previews.values.forEach { it.fill(0) }
@@ -615,6 +1395,75 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 if (failure is ApiFailure && failure.status in setOf(401, 403))
                     readFailure(failure, generation, credential) { loadGroupedStorySelectionPage(page) }
                 else mutable.value = state.value.copy(groupedStoryCreation = state.value.groupedStoryCreation?.copy(pageBusy = false, problem = problem(failure)))
+            }
+        }
+        return true
+    }
+
+    private fun loadGroupedStoryAlbumPage(current: GroupedStoryCreationState, editor: StoryWorkspaceStore, page: Int): Boolean {
+        val album = current.selectedAlbum ?: return false
+        val totalPages = ((album.assetIds.size + 7) / 8).coerceAtLeast(1)
+        if (page !in 1..totalPages) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        val generation = state.value.generation
+        val request = ++groupedStoryAlbumPageRequest
+        current.albumPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = current.copy(
+            albumPage = page, albumAssets = emptyList(), albumPreviews = emptyMap(), albumBusy = true,
+            albumUnsupportedCount = 0, albumsProblem = null))
+        launch { _ ->
+            val previews = LinkedHashMap<String, ByteArray>()
+            var transferred = false
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryAlbumPageRequest && state.value.groupedStoryCreation?.editor === editor &&
+                state.value.groupedStoryCreation?.selectedAlbum === album &&
+                state.value.groupedStoryCreation?.albumPage == page && editor.state.value.status == StoryWorkspaceStoreStatus.SELECTION
+            try {
+                val ids = album.assetIds.drop((page - 1) * 8).take(8)
+                val assets = ArrayList<Asset>(ids.size)
+                var totalBytes = 0
+                var unsupported = 0
+                for (id in ids) {
+                    if (!valid()) return@launch
+                    val detail = api.detail(credential, library, id)
+                    if (!valid()) return@launch
+                    validResponse(detail.library_id == library && detail.asset.id == id)
+                    if (detail.asset.kind !in setOf("image", "video")) { unsupported++; continue }
+                    assets += detail.asset
+                    val bytes = try { api.thumbnail(credential, library, detail.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || totalBytes + bytes.size > CACHE_LIMIT) {
+                        bytes.fill(0); continue
+                    }
+                    totalBytes += bytes.size
+                    previews[id] = bytes
+                }
+                if (!valid()) return@launch
+                val live = state.value.groupedStoryCreation ?: return@launch
+                mutable.value = state.value.copy(groupedStoryCreation = live.copy(
+                    albumAssets = assets.toList(), albumPreviews = previews.toMap(),
+                    albumUnsupportedCount = unsupported, albumBusy = false))
+                transferred = true
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                if (!valid()) return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { loadGroupedStorySelectionPage(page) }
+                } else {
+                    val live = state.value.groupedStoryCreation ?: return@launch
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false, albumsProblem = problem(failure)))
+                }
+            } finally {
+                if (!transferred) previews.values.forEach { it.fill(0) }
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryAlbumPageRequest && live?.editor === editor && live.selectedAlbum === album &&
+                    live.albumPage == page && live.albumBusy) {
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(albumBusy = false))
+                }
             }
         }
         return true
@@ -665,12 +1514,70 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
     }
 
+    /** Read-only thumbnails for all explicitly selected draft frames, independent of picker paging. */
+    fun loadGroupedStoryReviewPreviews(editor: StoryWorkspaceStore): Boolean {
+        val creation = state.value.groupedStoryCreation ?: return false
+        val draft = editor.state.value.draft ?: return false
+        if (!allowed() || creation.editor !== editor || editor.state.value.guideStep != StoryGuideStep.REVIEW ||
+            draft.items.size !in 1..24 || creation.reviewPreviewsBusy) return false
+        val credential = token ?: return false
+        val library = state.value.library ?: return false
+        if (draft.libraryId != library) return false
+        val generation = state.value.generation
+        val request = ++groupedStoryReviewPreviewRequest
+        creation.reviewPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = creation.copy(reviewPreviews = emptyMap(), reviewPreviewsBusy = true))
+        launch { _ ->
+            fun valid() = active(generation) && token === credential && state.value.library == library &&
+                request == groupedStoryReviewPreviewRequest && state.value.groupedStoryCreation?.editor === editor &&
+                editor.state.value.guideStep == StoryGuideStep.REVIEW && editor.state.value.draft === draft
+            var total = 0
+            try {
+                for (item in draft.items) {
+                    if (!valid()) return@launch
+                    val bytes = try { api.thumbnail(credential, library, item.asset) }
+                    catch (failure: ApiFailure) {
+                        if (failure.status in setOf(401, 403) || failure.kind == FailureKind.TLS) throw failure else null
+                    } ?: continue
+                    if (!valid()) { bytes.fill(0); return@launch }
+                    if (bytes.size > HttpsPhotoHouseApi.IMAGE_LIMIT || total + bytes.size > CACHE_LIMIT) {
+                        bytes.fill(0); continue
+                    }
+                    total += bytes.size
+                    val live = state.value.groupedStoryCreation ?: run { bytes.fill(0); return@launch }
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviews = live.reviewPreviews + (item.asset.id to bytes)))
+                }
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: ApiFailure) {
+                if (valid() && failure.status in setOf(401, 403)) readFailure(failure, generation, credential) { foreground() }
+            } finally {
+                val live = state.value.groupedStoryCreation
+                if (request == groupedStoryReviewPreviewRequest && live?.editor === editor)
+                    mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviewsBusy = false))
+            }
+        }
+        return true
+    }
+
+    fun clearGroupedStoryReviewPreviews(editor: StoryWorkspaceStore) {
+        val live = state.value.groupedStoryCreation ?: return
+        if (live.editor !== editor) return
+        groupedStoryReviewPreviewRequest++
+        live.reviewPreviews.values.forEach { it.fill(0) }
+        mutable.value = state.value.copy(groupedStoryCreation = live.copy(reviewPreviews = emptyMap(), reviewPreviewsBusy = false))
+    }
+
     fun closeGroupedStoryCreation(discard: Boolean = false): Boolean {
         val current = state.value.groupedStoryCreation ?: return true
         if (current.editor?.close(discard) == false) return false
-        groupedStoryRequest++; groupedStoryPageRequest++
+        savedGroupedStoryEditRequest++
+        groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
+        groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
         current.previews.values.forEach { it.fill(0) }
+        current.albumPreviews.values.forEach { it.fill(0) }
         current.relatedPreviews.values.forEach { it.fill(0) }
+        current.reviewPreviews.values.forEach { it.fill(0) }
+        groupedStoryReviewPreviewRequest++
         groupedStoryRelatedPreviewRequest++
         mutable.value = state.value.copy(groupedStoryCreation = null)
         return true
@@ -736,9 +1643,55 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         readAuthorizedSavedMemoryStory(summary)
     }
 
+    /** Installs the detail returned by the exact assistant reference handoff into the ordinary story reader. */
+    fun openAssistantMemoryReader(handoff: AssistantMemoryReaderHandoff,
+                                  expectedAccount: String, expectedLibrary: String, expectedGeneration: Long): Boolean {
+        val live = state.value
+        val scope = currentAssistantWorkspaceScope()
+        if (!allowed() || scope?.foregroundAllowed != true || live.busy || live.library != expectedLibrary ||
+            live.generation != expectedGeneration || scope.accountId != expectedAccount || scope.libraryId != expectedLibrary ||
+            scope.generation != expectedGeneration || identity?.account_id != expectedAccount || token == null ||
+            assistantWorkspaceCoordinator?.consumeMemoryReaderHandoff(handoff) != true) return false
+        when (val payload = handoff.payload) {
+            is SavedMemoryReaderPayload.Story -> {
+                val story = payload.value
+                if (handoff.card.kind != "story" || story.id != handoff.card.id ||
+                    story.revision.toString() != handoff.card.revision || story.libraryId != expectedLibrary ||
+                    story.items.isEmpty() || story.chapters.isEmpty()) return false
+                closeMemoryBooks()
+                closeSavedMemoryStories()
+                val detailRequest = ++savedMemoryDetailRequest
+                val readerEpoch = ++savedMemoryReaderEpoch
+                val summary = SavedMemoryStorySummary(story.id, story.title, story.theme, story.language, story.revision,
+                    story.items.first().asset.id, story.items.size, story.chapters.size, story.updatedAt, story.canEdit)
+                mutable.value = state.value.copy(savedMemoryStories = SavedMemoryStoriesReading(
+                    library = expectedLibrary, detail = story, selectedSummary = summary,
+                    selectedChapter = 0, selectedAssetId = story.chapters.first().assetIds.firstOrNull(),
+                ))
+                loadSavedMemoryChapterFrames(0)
+                initializeMemoryCommunity(story.id)
+                loadSavedMemoryStoryContributionReferences(story, token!!, expectedGeneration, detailRequest, readerEpoch)
+                return true
+            }
+            is SavedMemoryReaderPayload.Memoir -> {
+                val book = payload.value
+                if (handoff.card.kind != "memoir" || book.id != handoff.card.id ||
+                    book.revision.toString() != handoff.card.revision || book.stories.isEmpty()) return false
+                closeSavedMemoryStories()
+                closeMemoryBooks()
+                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(
+                    library = expectedLibrary, selectedBook = book, storyIndex = null,
+                ))
+                loadMemoryBookStory(0)
+                return true
+            }
+        }
+    }
+
     private fun readAuthorizedSavedMemoryStory(summary: SavedMemoryStorySummary, wholeStoryContribution: Boolean = false) {
         clearMemoryCommunity(clearState = true)
         val reading = state.value.savedMemoryStories ?: return
+        val accountId = identity?.account_id ?: return
         val request = ++savedMemoryDetailRequest
         savedMemoryContributionReferenceSaveRequest++
         val readerEpoch = ++savedMemoryReaderEpoch
@@ -749,15 +1702,23 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         savedMemoryFramesRequest++; savedMemoryHeroRequest++
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(detail = null, detailBusy = true, detailUnavailable = false,
             selectedSummary = summary, selectedChapter = 0, frames = emptyMap(), heroAssetId = null, hero = null, heroBusy = false,
+            resumePosition = null, selectedAssetId = null,
             contributionReferences = null, contributionReferencesBusy = false, contributionReferencesUnavailable = false,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,
             contributionDetailBusy = false, contributionDetailUnavailable = false, problem = null))
         val credential = token!!; val library = reading.library
         launch { activeGeneration ->
             try {
-                val result = api.savedMemoryStory(credential, library, summary.id, summary.revision)
+                val profileEnabled = try {
+                    val capabilityBytes = api.sourceCapabilities(credential, library)
+                    try { ProtectedStoryWorkspaceWire.decodeSourceCapabilities(capabilityBytes); true }
+                    finally { capabilityBytes.fill(0) }
+                } catch (failure: ApiFailure) {
+                    if (failure.status in setOf(400, 404, 503)) false else throw failure
+                }
+                val result = api.savedMemoryStory(credential, library, summary.id, summary.revision, profileEnabled)
                 if (!active(activeGeneration) || request != savedMemoryDetailRequest || readerEpoch != savedMemoryReaderEpoch ||
-                    token !== credential || state.value.library != library) return@launch
+                    token !== credential || identity?.account_id != accountId || state.value.library != library) return@launch
                 validResponse(result.libraryId == library && result.id == summary.id && result.revision >= summary.revision && result.items.isNotEmpty())
                 val latestSummary = summary.copy(
                     title = result.title, theme = result.theme, language = result.language, revision = result.revision,
@@ -770,15 +1731,18 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                     current.covers[result.id]?.fill(0)
                     current.covers - result.id
                 } else current.covers
+                val resumePosition = savedStoryResumePosition(accountId, result)
+                val firstAssetId = result.chapters.first().assetIds.firstOrNull()
                 mutable.value = state.value.copy(savedMemoryStories = current.copy(result = refreshedPage, covers = covers,
-                    detail = result, detailBusy = false, selectedSummary = latestSummary, selectedChapter = 0))
+                    detail = result, detailBusy = false, selectedSummary = latestSummary, selectedChapter = 0,
+                    resumePosition = resumePosition, selectedAssetId = firstAssetId))
                 loadSavedMemoryChapterFrames(0)
                 initializeMemoryCommunity(result.id, wholeStoryContribution)
                 loadSavedMemoryStoryContributionReferences(result, credential, activeGeneration, request, readerEpoch)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(activeGeneration) || request != savedMemoryDetailRequest || readerEpoch != savedMemoryReaderEpoch ||
-                    token !== credential || state.value.library != library) return@launch
+                    token !== credential || identity?.account_id != accountId || state.value.library != library) return@launch
                 if (e is ApiFailure && e.status in listOf(401, 403))
                     readFailure(e, activeGeneration, credential) { closeSavedMemoryStories() }
                 else mutable.value = state.value.copy(savedMemoryStories = state.value.savedMemoryStories!!.copy(detailBusy = false, detailUnavailable = true, problem = problem(e)))
@@ -916,7 +1880,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             )) }
             val json = JsonArray(groups).toString()
             SavedMemoryStoryContributionReferencesMutation(story.id, story.revision, story.selectionRevision,
-                story.title, story.theme, story.language, story.chapters.toList(), json)
+                story.title, story.theme, story.language, story.chapters.toList(), json, sourcePolicy = story.sourcePolicy)
         }
         if (mutation.storyId != story.id || mutation.revision != story.revision || mutation.selectionRevision != story.selectionRevision) return
         val credential = token ?: return
@@ -927,7 +1891,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             pendingContributionReferenceMutation = mutation))
         val job = scope.launch {
             try {
-                val saved = api.saveMemoryStoryContributionReferences(credential, reading.library, mutation)
+                val saved = api.saveMemoryStoryContributionReferences(credential, reading.library, mutation,
+                    sourceReview = mutation.sourcePolicy != null)
                 val current = state.value.savedMemoryStories ?: return@launch
                 if (!active(generation) || token !== credential || identity?.account_id != accountId || state.value.session?.account_id != accountId ||
                     state.value.library != reading.library || request != savedMemoryContributionReferenceSaveRequest ||
@@ -1049,31 +2014,101 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     fun loadSavedMemoryChapter(index: Int) {
         val reading = state.value.savedMemoryStories ?: return
-        if (reading.detail == null || index !in reading.detail.chapters.indices || reading.framesBusy) return
-        if (reading.selectedChapter == index && reading.frames.isNotEmpty()) return
+        val story = reading.detail ?: return
+        if (!allowed() || token == null || reading.library != state.value.library || story.libraryId != reading.library ||
+            index !in story.chapters.indices || reading.framesBusy) return
+        val chapter = story.chapters[index]
+        val assetId = chapter.assetIds.firstOrNull() ?: return
+        if (reading.selectedChapter == index && reading.frames.isNotEmpty()) {
+            val accountId = identity?.account_id ?: return
+            mutable.value = state.value.copy(savedMemoryStories = reading.copy(
+                selectedAssetId = assetId, resumePosition = null))
+            saveSavedStoryReaderPosition(accountId, reading.detail, chapter.id, assetId)
+            if (reading.heroAssetId != assetId) loadSavedMemoryHero(assetId)
+            return
+        }
+        selectSavedMemoryChapter(index, assetId, clearResume = true, persistPosition = true)
+    }
+
+    private fun selectSavedMemoryChapter(
+        index: Int, assetId: String, clearResume: Boolean, persistPosition: Boolean,
+    ): Boolean {
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        val accountId = identity?.account_id ?: return false
+        if (reading.framesBusy || index !in story.chapters.indices || assetId !in story.chapters[index].assetIds ||
+            reading.library != state.value.library || !allowed()) return false
         savedMemoryContributionChapterEpoch++; savedMemoryContributionDetailRequest++
         savedMemoryContributionReferencesRequest++
         reading.frames.values.forEach { it.fill(0) }
         reading.hero?.fill(0); savedMemoryHeroRequest++
-        mutable.value = state.value.copy(savedMemoryStories = reading.copy(selectedChapter = index, frames = emptyMap(),
+        val chapter = story.chapters[index]
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(selectedChapter = index, selectedAssetId = assetId,
+            resumePosition = if (clearResume) null else reading.resumePosition, frames = emptyMap(),
             heroAssetId = null, hero = null, heroBusy = false, framesBusy = true,
             contributionReferences = null, contributionReferencesBusy = true, contributionReferencesUnavailable = false,
             contributionDetailChapterId = null, contributionDetailId = null, contributionDetail = null,
             contributionDetailBusy = false, contributionDetailUnavailable = false))
+        if (persistPosition) saveSavedStoryReaderPosition(accountId, story, chapter.id, assetId)
         loadSavedMemoryChapterFrames(index)
-        val current = state.value.savedMemoryStories ?: return
-        val currentStory = current.detail ?: return
-        val credential = token ?: return
+        val current = state.value.savedMemoryStories ?: return false
+        val currentStory = current.detail ?: return false
+        val credential = token ?: return false
         loadSavedMemoryStoryContributionReferences(currentStory, credential, state.value.generation,
             savedMemoryDetailRequest, savedMemoryReaderEpoch)
+        return true
     }
 
-    fun loadSavedMemoryHero(assetId: String) {
+    /** Applies a reviewed resume offer only while its exact account, story, revision and location remain current. */
+    fun resumeSavedMemoryStory(expected: SavedStoryReaderPosition): Boolean {
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        val accountId = identity?.account_id ?: return false
+        if (!allowed() || token == null || reading.framesBusy || savedStoryReaderSwitchBlocked(reading) || reading.resumePosition != expected ||
+            reading.library != state.value.library || expected.accountId != accountId || !savedStoryPositionMatches(expected, story)) return false
+        val index = story.chapters.indexOfFirst { it.id == expected.chapterId }
+        if (index < 0) return false
+        return selectSavedMemoryChapter(index, expected.assetId, clearResume = true, persistPosition = false)
+    }
+
+    /** Explicitly starts at the first chapter and clears only this story's saved pointer. */
+    fun startSavedMemoryStoryOver(expectedStoryId: String, expectedRevision: Long): Boolean {
+        val reading = state.value.savedMemoryStories ?: return false
+        val story = reading.detail ?: return false
+        val resume = reading.resumePosition ?: return false
+        val accountId = identity?.account_id ?: return false
+        if (!allowed() || token == null || reading.framesBusy || savedStoryReaderSwitchBlocked(reading) || reading.library != state.value.library ||
+            story.id != expectedStoryId || story.revision != expectedRevision || resume.storyId != expectedStoryId ||
+            resume.storyRevision != expectedRevision || resume.libraryId != reading.library || resume.accountId != accountId ||
+            !savedStoryPositionMatches(resume, story)) return false
+        removeSavedStoryReaderPosition(accountId, story.libraryId, story.id)
+        val firstChapter = story.chapters.firstOrNull() ?: return false
+        val firstAsset = firstChapter.assetIds.firstOrNull() ?: return false
+        return selectSavedMemoryChapter(0, firstAsset, clearResume = true, persistPosition = false)
+    }
+
+    /** Explicit frame selection owns persistence; private automatic frame and hero reads do not. */
+    fun selectSavedMemoryFrame(assetId: String) {
+        val reading = state.value.savedMemoryStories ?: return
+        val story = reading.detail ?: return
+        if (!allowed() || token == null || reading.library != state.value.library || story.libraryId != reading.library ||
+            reading.framesBusy ||
+            reading.selectedChapter !in story.chapters.indices ||
+            assetId !in story.chapters[reading.selectedChapter].assetIds) return
+        val accountId = identity?.account_id ?: return
+        val chapter = story.chapters[reading.selectedChapter]
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(selectedAssetId = assetId, resumePosition = null))
+        saveSavedStoryReaderPosition(accountId, story, chapter.id, assetId)
+        loadSavedMemoryHero(assetId)
+    }
+
+    fun loadSavedMemoryHero(assetId: String, forceReload: Boolean = false) {
         val reading = state.value.savedMemoryStories ?: return
         val detail = reading.detail ?: return
         if (reading.framesBusy || reading.selectedChapter !in detail.chapters.indices ||
             assetId !in detail.chapters[reading.selectedChapter].assetIds || reading.library != state.value.library || !allowed()) return
-        if (reading.heroAssetId == assetId && (reading.hero != null || reading.heroBusy)) return
+        if (forceReload && (reading.heroBusy || reading.selectedAssetId != assetId)) return
+        if (reading.heroAssetId == assetId && (reading.heroBusy || (!forceReload && reading.hero != null))) return
         val asset = detail.items.firstOrNull { it.asset.id == assetId }?.asset ?: return
         val request = ++savedMemoryHeroRequest; val generation = state.value.generation
         val library = reading.library; val storyId = detail.id; val chapterIndex = reading.selectedChapter; val credential = token!!
@@ -1124,7 +2159,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         frames[asset.id] = bytes
                     }
                 }
-                val heroAsset = assets.firstOrNull()
+                val selectedAssetId = state.value.savedMemoryStories?.selectedAssetId
+                val heroAsset = assets.firstOrNull { it.id == selectedAssetId } ?: assets.firstOrNull()
                 if (heroAsset != null) {
                     try {
                         hero = api.detailPreview(credential, library, heroAsset)
@@ -1153,6 +2189,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun closeSavedMemoryStories() {
+        savedGroupedStoryEditRequest++
         clearMemoryCommunity(clearState = true)
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
         savedMemoryReaderEpoch++; savedMemoryContributionReferencesRequest++; savedMemoryContributionDetailRequest++
@@ -1167,7 +2204,10 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     /** Protected read-only book shelf. Capability negotiation precedes every list request. */
     fun openMemoryBooks(page: Int = 1) {
         if (!memoryCommunityAvailable || !allowed() || state.value.busy || coolingDown() || page !in 1..100000) return
+        bookShelfCovers.close()
         clearMemoryBookEditorial()
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         val library = state.value.library ?: return
         val previous = state.value.memoryBooks
         invalidateBookChatRequests()
@@ -1175,23 +2215,26 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         wipeMemoryBookMedia(state.value.memoryBooks)
         val request = ++memoryBooksRequest
         memoryBooksReaderRequest++
-        mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, busy = true))
+        mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, busy = true, shelfScopeId = request))
         launch { generation ->
             val credential = token ?: return@launch
+            fun currentShelf() = active(generation) && request == memoryBooksRequest &&
+                state.value.library == library && state.value.memoryBooks?.shelfScopeId == request
             try {
                 val repository = memoryCommunity ?: return@launch
-                val capabilities = repository.loadCapabilities()
+                val capabilities = repository.loadCapabilities(::currentShelf)
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 validResponse(capabilities.enabled)
-                val result = repository.books(page)
+                val result = repository.books(page, ::currentShelf)
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 validResponse(result.libraryId == library && result.page == page && result.items.size <= 8)
-                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, capabilities = capabilities, result = result))
+                mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, capabilities = capabilities, result = result, shelfScopeId = request))
+                bookShelfCovers.load()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(generation) || request != memoryBooksRequest || state.value.library != library) return@launch
                 if (e is ApiFailure && e.status in listOf(401, 403)) readFailure(e, generation, credential) { closeMemoryBooks() }
-                else mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, problem = problem(e)))
+                else mutable.value = state.value.copy(memoryBooks = MemoryBooksReading(library, page, problem = problem(e), shelfScopeId = request))
             }
         }
     }
@@ -1199,7 +2242,14 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun openMemoryBook(bookId: String) {
         val reading = state.value.memoryBooks ?: return
         val summary = reading.result?.items?.firstOrNull { it.id == bookId } ?: return
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
+        openMemoryBookSummary(summary)
+    }
+
+    private fun openMemoryBookSummary(summary: MemoryBook) {
+        val reading = state.value.memoryBooks ?: return
         if (reading.busy || reading.readerBusy || reading.library != state.value.library || !allowed()) return
+        bookShelfCovers.close()
         clearMemoryBookEditorial()
         val request = ++memoryBooksReaderRequest
         invalidateBookChatRequests()
@@ -1215,12 +2265,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             sourceInspection = MemoryBookEditorialSourceInspectionState()))
         launch { generation ->
             val credential = token ?: return@launch
+            val accountId = identity?.account_id ?: return@launch
             val library = reading.library
             fun current() = active(generation) && request == memoryBooksReaderRequest && state.value.library == library &&
-                token === credential && state.value.memoryBooks?.library == library && bookChatEpoch == epoch
+                token === credential && identity?.account_id == accountId && state.value.memoryBooks?.library == library && bookChatEpoch == epoch
             try {
                 val repository = memoryCommunity ?: return@launch
-                val book = repository.book(summary.id, summary.revision)
+                val book = repository.book(summary.id, summary.revision, ::current)
                 if (!current()) return@launch
                 validResponse(book.id == summary.id && book.revision == summary.revision && book.stories == summary.stories)
                 val conversations = if (reading.capabilities?.generationEnabled == true) try {
@@ -1250,8 +2301,34 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 if (!current()) return@launch
                 val activeJob = turns?.let { recoverPendingChatJob(repository, it, book.revision, ::current) }
                 if (!current()) return@launch
+                var resumePosition = findMemoryBookResume(reading.library, book)
+                if (memoryBookReaderPositionPersistence != null && resumePosition != null) {
+                    val candidate = resumePosition
+                    try {
+                        val child = api.savedMemoryStory(credential, reading.library, candidate.storyId, candidate.storyRevision)
+                        if (!current()) return@launch
+                        if (memoryBookResumeMatches(candidate, book, child, identity?.account_id, reading.library)) {
+                            resumePosition = candidate
+                        } else {
+                            removeMemoryBookResume(reading.library, book)
+                            resumePosition = null
+                        }
+                    } catch (failure: CancellationException) { throw failure }
+                    catch (failure: ApiFailure) {
+                        if (!current()) return@launch
+                        if (failure.status in setOf(401, 403)) throw failure
+                        if (isDefinitiveMemoryBookPositionFailure(failure)) {
+                            removeMemoryBookResume(reading.library, book)
+                        }
+                        resumePosition = null
+                    } catch (_: Exception) {
+                        if (!current()) return@launch
+                        resumePosition = null
+                    }
+                }
+                if (!current()) return@launch
                 mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(selectedBook = book,
-                    readerBusy = false, readerUnavailable = false, resumePosition = findMemoryBookResume(reading.library, book),
+                    readerBusy = false, readerUnavailable = false, resumePosition = resumePosition,
                     companion = if (reading.capabilities?.generationEnabled == true)
                         MemoryBookChatState(book.id, book.revision, conversations, selected?.id, turns, activeJob,
                             conversationRestored = selection.restored && turns != null) else null))
@@ -1268,22 +2345,46 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     /** Refetch the parent on every child transition and fail closed if the ordered entry changed. */
-    fun loadMemoryBookStory(index: Int) = loadMemoryBookStoryAt(index, null)
+    fun loadMemoryBookStory(index: Int) = loadMemoryBookStoryAt(index, null, explicitNavigation = true)
 
     fun resumeMemoryBookReading() {
         val reading = state.value.memoryBooks ?: return
-        val book = reading.selectedBook ?: return
         val position = reading.resumePosition ?: return
-        val index = book.stories.indexOfFirst { it.id == position.storyId && it.revision == position.storyRevision }
+        resumeMemoryBookReading(position)
+    }
+
+    fun resumeMemoryBookReading(expected: MemoryBookResumePosition): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        val book = reading.selectedBook ?: return false
+        if (reading.resumePosition != expected || !memoryBookResumeScopeMatches(expected, reading, book) ||
+            !canSwitchMemoryBookReading(reading)) return false
+        val index = book.stories.indexOfFirst { it.id == expected.storyId && it.revision == expected.storyRevision }
         if (index < 0) {
             removeMemoryBookResume(reading.library, book)
             mutable.value = state.value.copy(memoryBooks = reading.copy(resumePosition = null))
-            return
+            return false
         }
-        loadMemoryBookStoryAt(index, position.chapterId)
+        loadMemoryBookStoryAt(index, expected, explicitNavigation = true)
+        return true
     }
 
-    private fun loadMemoryBookStoryAt(index: Int, resumeChapterId: String?) {
+    fun startMemoryBookReadingOver(expected: MemoryBookResumePosition): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        val book = reading.selectedBook ?: return false
+        if (reading.resumePosition != expected || !memoryBookResumeScopeMatches(expected, reading, book) ||
+            !canSwitchMemoryBookReading(reading)) return false
+        if (book.stories.isEmpty()) return false
+        removeMemoryBookResume(reading.library, book)
+        mutable.value = state.value.copy(memoryBooks = reading.copy(resumePosition = null))
+        loadMemoryBookStoryAt(0, null, explicitNavigation = false)
+        return true
+    }
+
+    private fun loadMemoryBookStoryAt(
+        index: Int,
+        resumePosition: MemoryBookResumePosition?,
+        explicitNavigation: Boolean,
+    ) {
         val reading = state.value.memoryBooks ?: return
         val selected = reading.selectedBook ?: return
         val entry = selected.stories.getOrNull(index) ?: return
@@ -1299,24 +2400,45 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             readerScopeId = request, sourceInspection = MemoryBookEditorialSourceInspectionState()))
         launch { generation ->
             val credential = token ?: return@launch
+            val accountId = identity?.account_id ?: return@launch
+            fun current() = active(generation) && request == memoryBooksReaderRequest && token === credential &&
+                identity?.account_id == accountId && state.value.library == reading.library &&
+                state.value.memoryBooks?.selectedBook?.id == selected.id &&
+                state.value.memoryBooks?.selectedBook?.revision == selected.revision
             try {
                 val repo = memoryCommunity ?: return@launch
-                val fresh = repo.book(selected.id, selected.revision)
-                if (!active(generation) || request != memoryBooksReaderRequest || state.value.library != reading.library) return@launch
+                val fresh = repo.book(selected.id, selected.revision, ::current)
+                if (!current()) return@launch
                 validResponse(fresh.id == selected.id && fresh.revision == selected.revision && fresh.stories == selected.stories &&
                     fresh.stories.getOrNull(index) == entry)
                 val child = api.savedMemoryStory(credential, reading.library, entry.id, entry.revision)
-                if (!active(generation) || request != memoryBooksReaderRequest || state.value.library != reading.library) return@launch
+                if (!current()) return@launch
                 validResponse(child.id == entry.id && child.libraryId == reading.library && child.revision == entry.revision &&
                     child.items.size == entry.itemCount && child.items.isNotEmpty())
-                val chapterIndex = resumeChapterId?.let { id -> child.chapters.indexOfFirst { it.id == id }.takeIf { it >= 0 } } ?: 0
-                mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(storyIndex = index,
-                    story = child, selectedChapter = chapterIndex, selectedAssetId = null, readerBusy = false, readerUnavailable = false))
-                loadMemoryBookChapter(chapterIndex)
+                val restored = resumePosition?.takeIf { memoryBookResumeMatches(it, fresh, child, accountId, reading.library) }
+                if (resumePosition != null && restored == null) {
+                    removeMemoryBookResume(reading.library, selected)
+                    if (!current()) return@launch
+                    mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(
+                        storyIndex = index, story = child, selectedChapter = 0, selectedAssetId = null,
+                        readerBusy = false, readerUnavailable = false, resumePosition = null,
+                        problem = LiveProblem(Message.DISCOVERY_CHANGED)))
+                    loadMemoryBookChapterAt(index = 0, framePage = 0, assetId = null, explicitNavigation = false)
+                } else {
+                    val chapterIndex = restored?.let { position -> child.chapters.indexOfFirst { it.id == position.chapterId } } ?: 0
+                    val assetId = restored?.assetId ?: child.chapters.getOrNull(chapterIndex)?.assetIds?.firstOrNull()
+                    val framePage = if (assetId == null || restored == null) 0 else
+                        child.chapters[chapterIndex].assetIds.indexOf(assetId) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+                    mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(storyIndex = index,
+                        story = child, selectedChapter = chapterIndex, selectedAssetId = null, readerBusy = false,
+                        readerUnavailable = false, resumePosition = null))
+                    loadMemoryBookChapterAt(chapterIndex, framePage, assetId,
+                        explicitNavigation = explicitNavigation || restored != null)
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (!active(generation) || request != memoryBooksReaderRequest || state.value.library != reading.library) return@launch
-                if (resumeChapterId != null) {
+                if (!current()) return@launch
+                if (resumePosition != null && e is ApiFailure && isDefinitiveMemoryBookPositionFailure(e)) {
                     selected.let { removeMemoryBookResume(reading.library, it) }
                     mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(resumePosition = null))
                 }
@@ -1328,11 +2450,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun closeMemoryBook() {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         clearMemoryBookEditorial()
         invalidateBookChatRequests()
         memoryBooksReaderRequest++
         memoryBooksMediaRequest++
         val reading = state.value.memoryBooks ?: return
+        val createdOutsidePage = reading.selectedBook?.id?.let { id -> reading.result?.items?.none { it.id == id } } == true
         reading.companion?.dictation?.close()
         wipeMemoryBookMedia(reading)
         mutable.value = state.value.copy(memoryBooks = reading.copy(selectedBook = null, storyIndex = null,
@@ -1342,9 +2466,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             heroAssetId = null, hero = null, heroBusy = false, heroUnavailable = false,
             resumePosition = reading.selectedBook?.let { findMemoryBookResume(reading.library, it) },
             readerScopeId = memoryBooksReaderRequest, companion = null))
+        if (createdOutsidePage) openMemoryBooks(1) else bookShelfCovers.load()
     }
 
     fun closeMemoryBooks() {
+        bookShelfCovers.close()
+        bookCompositionDictation.clear()
+        bookCompositionStore?.close()
         clearMemoryBookEditorial()
         invalidateBookChatRequests()
         memoryBooksRequest++; memoryBooksReaderRequest++
@@ -1358,7 +2486,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun openMemoryBookEditorial(forceReload: Boolean = false) {
         val reading = state.value.memoryBooks ?: return
         val book = reading.selectedBook ?: return
-        if (!book.canEdit || reading.library != state.value.library || !allowed() || reading.readerBusy) return
+        if (!book.canEdit || reading.library != state.value.library || !allowed() || reading.readerBusy ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         val credential = token ?: return
         val account = identity?.account_id ?: return
         val loadedKey = editorialKey(account, reading.library, book)
@@ -1553,8 +2682,10 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
 
-    fun editMemoryBookEditorial(introduction: List<EditorialSourceIdentity>, transitions: List<EditorialTransition>) =
+    fun editMemoryBookEditorial(introduction: List<EditorialSourceIdentity>, transitions: List<EditorialTransition>) {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return
         editorialStore.edit(introduction, transitions)
+    }
     fun saveMemoryBookEditorial() { launch { _ ->
         if (bookChatOperationActive()) return@launch
         val before = editorialStore.state.value.revision
@@ -1580,13 +2711,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val request = ++memoryBookEditorialRequest
         memoryBookEditorialCatalog.value = MemoryBookEditorialCatalogState(busy = true)
         launch { generation ->
+            fun current() = active(generation) && request == memoryBookEditorialRequest && token === credential &&
+                state.value.library == reading.library && state.value.memoryBooks?.selectedBook?.id == oldBook.id
             try {
                 val repo = memoryCommunity ?: return@launch
-                val page = repo.books(reading.page)
-                if (!active(generation) || request != memoryBookEditorialRequest || token !== credential || state.value.library != reading.library) return@launch
+                val page = repo.books(reading.page, ::current)
+                if (!current()) return@launch
                 val summary = page.items.firstOrNull { it.id == oldBook.id } ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
-                val fresh = repo.book(summary.id, summary.revision)
-                if (!active(generation) || request != memoryBookEditorialRequest || token !== credential || state.value.library != reading.library) return@launch
+                val fresh = repo.book(summary.id, summary.revision, ::current)
+                if (!current()) return@launch
                 if (fresh.id != oldBook.id || fresh.revision != summary.revision || fresh.stories != summary.stories || !fresh.canEdit)
                     throw ApiFailure(FailureKind.INVALID_RESPONSE)
                 val latest = state.value.memoryBooks ?: return@launch
@@ -1677,7 +2810,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     private fun bookChatOperationActive(): Boolean {
         val narrative = memoryBookNarrativeState.value
-        return memoryBookEditionState.value.hasUnfinishedWork || bookChatInteractionActive() || bookNarrativeDictation.hasUnfinishedInput || narrative.busy || narrative.pendingRequest != null ||
+        return memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
+            memoryBookEditionState.value.hasUnfinishedWork || bookChatInteractionActive() || bookNarrativeDictation.hasUnfinishedInput || narrative.busy || narrative.pendingRequest != null ||
             narrative.job?.state in setOf("queued", "running")
     }
 
@@ -1686,7 +2820,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val book = reading.selectedBook ?: return null
         val credential = token ?: return null
         val accountId = identity?.account_id ?: return null
-        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library) return null
+        if (!memoryCommunityAvailable || !allowed() || reading.library != state.value.library ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
         return MemoryBookNarrativeScope(accountId, credential, reading.library, state.value.generation,
             book.id, book.revision, book.stories.map { EditorialChild(it.id, it.revision.toString()) }, bookChatEpoch)
     }
@@ -1716,7 +2851,24 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
     }
 
+    /** Inserts only the transcript owned by the exact helper rendered by the caller. */
+    fun insertMemoryBookNarrativeDictation(expected: MemoryDictationStore): Boolean =
+        synchronized(bookNarrativeDictation) {
+            if (bookNarrativeDictation.state.value !== expected) false
+            else insertMemoryBookNarrativeDictation()
+        }
+
     fun clearMemoryBookNarrativeDictation() = bookNarrativeDictation.clear()
+
+    /** A delayed panel disposal must not clear a replacement helper opened in the meantime. */
+    fun clearMemoryBookNarrativeDictation(expected: MemoryDictationStore): Boolean =
+        synchronized(bookNarrativeDictation) {
+            if (bookNarrativeDictation.state.value !== expected) false
+            else {
+                bookNarrativeDictation.clear()
+                true
+            }
+        }
 
     fun updateMemoryBookNarrativeInstructions(text: String): Boolean =
         canOperateMemoryBookNarrative() && bookNarrativeStore?.updateInstructions(text) == true
@@ -1852,7 +3004,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val reading = state.value.memoryBooks ?: return false
         val book = reading.selectedBook
         val chat = reading.companion
-        return memoryCommunityAvailable && active(generation) && token === expectedToken && allowed() &&
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            memoryCommunityAvailable && active(generation) && token === expectedToken && allowed() &&
             state.value.library == library && reading.library == library &&
             book?.id == bookId && book.revision == revision && chat?.bookId == bookId && chat.bookRevision == revision &&
             bookChatEpoch == epoch
@@ -1861,11 +3014,20 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private fun launchBookChat(action: suspend (MemoryCommunityRepository, MemoryBookChatState, () -> Boolean) -> MemoryBookChatState) {
         val beforeReading = state.value.memoryBooks ?: return
         val before = beforeReading.companion ?: return
-        if (before.busy || beforeReading.story == null || !allowed() || bookNarrativeDictation.hasUnfinishedInput) return
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
+            before.busy || beforeReading.story == null || !allowed() || bookNarrativeDictation.hasUnfinishedInput) return
         val repository = memoryCommunity ?: return
         val expectedToken = token ?: return
         val library = beforeReading.library; val generation = state.value.generation; val epoch = bookChatEpoch
-        val valid = { bookChatCurrent(before.bookId, before.bookRevision, expectedToken, library, generation, epoch) }
+        val baseValid = { bookChatCurrent(before.bookId, before.bookRevision, expectedToken, library, generation, epoch) }
+        val continuation = before.continuation
+        val continuationRequest = before.pendingConversation
+        val valid = {
+            baseValid() && (continuation == null || state.value.memoryBooks?.companion?.let { live ->
+                live.continuation == continuation && live.pendingConversation == continuationRequest &&
+                    memoryBookContinuationScope(requireFullFailure = false) == continuation.bookScope
+            } == true)
+        }
         mutable.value = state.value.copy(memoryBooks = beforeReading.copy(companion = before.copy(busy = true, failure = null)))
         val job = scope.launch {
             try {
@@ -1874,10 +3036,11 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 if (!valid()) return@launch
                 val live = state.value.memoryBooks?.companion ?: return@launch
                 val sameThread = result.conversationId == before.conversationId
-                val mergedDraft = if (sameThread && live.draft != before.draft) live.draft else result.draft
+                val mergedDraft = if (before.continuation != null || sameThread && live.draft != before.draft) live.draft else result.draft
                 val merged = result.copy(draft = mergedDraft,
                     threadDrafts = mergeThreadDraftChanges(result.threadDrafts, before.threadDrafts, live.threadDrafts,
-                        before.conversationId, before.draft, live.draft, result.conversationId, mergedDraft, result.conversations),
+                        before.conversationId.takeUnless { before.continuation != null }, before.draft, live.draft,
+                        result.conversationId, mergedDraft, result.conversations),
                     dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation)
                 mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(companion = merged.copy(busy = false, failure = null)))
                 rememberConversationNavigation()
@@ -1900,6 +3063,77 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         job.invokeOnCompletion { bookChatJobs.remove(job) }
     }
 
+    private fun memoryBookContinuationScope(requireFullFailure: Boolean): MemoryBookChatContinuationScope? {
+        val live = state.value
+        val reading = live.memoryBooks ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val chat = reading.companion ?: return null
+        val account = live.session?.account_id ?: return null
+        val conversation = chat.conversationId ?: return null
+        val rejected = chat.pendingTurn ?: return null
+        val child = book.stories.getOrNull(reading.storyIndex ?: return null) ?: return null
+        if (!memoryCommunityAvailable || memoryCommunity == null || token == null || !allowed() ||
+            live.library != reading.library || reading.readerScopeId != memoryBooksReaderRequest ||
+            reading.capabilities?.generationEnabled != true || reading.readerUnavailable ||
+            book.id != chat.bookId || book.revision != chat.bookRevision ||
+            child.id != story.id || child.revision != story.revision || story.libraryId != reading.library ||
+            chat.pendingTurnConversationId != conversation || chat.turns?.conversationId != conversation ||
+            rejected.revision != book.revision || (requireFullFailure && chat.failure?.message != Message.MEMORY_CONVERSATION_FULL)) return null
+        return MemoryBookChatContinuationScope(account, live.generation, reading.library, reading.readerScopeId,
+            book.id, book.revision, Collections.unmodifiableList(book.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) }),
+            story.id, story.revision, story.selectionRevision, conversation, rejected)
+    }
+
+    /** Scope presented to the explicit continue action after a full-conversation refusal. */
+    fun memoryBookChatContinuationScope(): MemoryBookChatContinuationScope? = memoryBookContinuationScope(requireFullFailure = true)
+
+    fun continueMemoryBookChatInNewConversation(expected: MemoryBookChatContinuationScope): MemoryConversationContinuationResult {
+        val reading = state.value.memoryBooks ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.companion ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != null || chat.continuation != null) return MemoryConversationContinuationResult.ALREADY_PENDING
+        if (memoryBookContinuationScope(requireFullFailure = true) != expected) return MemoryConversationContinuationResult.STALE
+        if (reading.selectedBook == null) return MemoryConversationContinuationResult.STALE
+        val narrative = memoryBookNarrativeState.value
+        if (state.value.busy || reading.busy || reading.readerBusy || chat.busy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || bookNarrativeDictation.hasUnfinishedInput ||
+            narrative.busy || narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running") ||
+            memoryBookEditionState.value.hasUnfinishedWork || editorialStore.state.value.status in
+            setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN))
+            return MemoryConversationContinuationResult.BLOCKED
+        val transfer = continuationDraft(expected.rejectedTurn.text, chat.draft)
+            ?: return MemoryConversationContinuationResult.LIMIT
+        val request = MemoryConversationRequest(targetType = "book", targetId = expected.bookId)
+        mutable.value = state.value.copy(memoryBooks = reading.copy(companion = chat.copy(
+            pendingConversation = request, continuation = MemoryChatContinuation(expected.conversationId, expected.rejectedTurn, bookScope = expected),
+            draft = transfer, failure = null, conversationRestored = false,
+            editorialContext = MemoryBookChatEditorialContext.BASIC)))
+        retryStartMemoryBookConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
+    fun retryMemoryBookChatContinuation(
+        expectedScope: MemoryBookChatContinuationScope,
+        expectedRequest: MemoryConversationRequest,
+    ): MemoryConversationContinuationResult {
+        val reading = state.value.memoryBooks ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.companion ?: return MemoryConversationContinuationResult.STALE
+        val continuation = chat.continuation ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != expectedRequest || continuation.bookScope != expectedScope ||
+            continuation.sourceConversationId != expectedScope.conversationId || continuation.rejectedTurn != expectedScope.rejectedTurn ||
+            chat.pendingTurn != expectedScope.rejectedTurn || expectedRequest.targetType != "book" || expectedRequest.targetId != expectedScope.bookId ||
+            memoryBookContinuationScope(requireFullFailure = false) != expectedScope) return MemoryConversationContinuationResult.STALE
+        val narrative = memoryBookNarrativeState.value
+        if (state.value.busy || reading.busy || reading.readerBusy || chat.busy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || bookNarrativeDictation.hasUnfinishedInput || narrative.busy ||
+            narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running") ||
+            memoryBookEditionState.value.hasUnfinishedWork || editorialStore.state.value.status in
+            setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN))
+            return MemoryConversationContinuationResult.BLOCKED
+        retryStartMemoryBookConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
     fun queueMemoryBookConversation() {
         val reading = state.value.memoryBooks ?: return
         val chat = reading.companion ?: return
@@ -1917,20 +3151,37 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun retryStartMemoryBookConversation() = launchBookChat { repository, before, valid ->
-        if (before.pendingTurn != null) return@launchBookChat before
         val request = before.pendingConversation ?: return@launchBookChat before
-        val conversation = repository.startConversation(request)
-        if (!valid()) return@launchBookChat before
-        val conversations = repository.conversations("book", before.bookId, withPreview = true, currentRequest = valid)
-        if (!valid()) return@launchBookChat before
-        val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
-        if (!valid()) return@launchBookChat before
-        val job = recoverPendingChatJob(repository, turns, before.bookRevision, valid)
+        val continuation = before.continuation
+        val scope = continuation?.bookScope
+        if (continuation != null && (scope == null || memoryBookContinuationScope(requireFullFailure = false) != scope ||
+                scope.conversationId != continuation.sourceConversationId || scope.rejectedTurn != continuation.rejectedTurn || before.pendingTurn != continuation.rejectedTurn ||
+                request.targetType != "book" || request.targetId != before.bookId)) return@launchBookChat before
+        if (continuation == null && before.pendingTurn != null) return@launchBookChat before
+        val requestValid = {
+            valid() && (continuation == null || memoryBookContinuationScope(requireFullFailure = false) == continuation.bookScope &&
+                state.value.memoryBooks?.companion?.pendingConversation == request)
+        }
+        if (!requestValid()) return@launchBookChat before
+        val conversation = repository.startConversation(request, requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (conversation.id != request.id) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val conversations = repository.conversations("book", before.bookId, withPreview = true, currentRequest = requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (continuation != null && conversations.items.none { it.id == conversation.id }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = requestValid)
+        if (!requestValid()) return@launchBookChat before
+        if (turns.conversationId != conversation.id || turns.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        val job = recoverPendingChatJob(repository, turns, before.bookRevision, requestValid)
         val drafts = before.threadDrafts
-        val newDraft = if (before.conversationId == null) before.draft else drafts[conversation.id].orEmpty()
+        val newDraft = when {
+            continuation != null -> before.draft
+            before.conversationId == null -> before.draft
+            else -> drafts[conversation.id].orEmpty()
+        }
         val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
         before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
-            threadDrafts = boundedDrafts, draft = newDraft,
+            threadDrafts = boundedDrafts, draft = newDraft, continuation = null,
             pendingConversation = null, pendingTurn = null, pendingTurnConversationId = null, conversationRestored = false)
     }
 
@@ -1956,11 +3207,12 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun updateMemoryBookChatDraft(text: String): Boolean {
+        if (memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return false
         if (text.toByteArray(Charsets.UTF_8).size > 4096 || text.any { it == '\u0000' }) return false
         val reading = state.value.memoryBooks ?: return false
         val chat = reading.companion ?: return false
-        val drafts = chat.conversationId?.let { rememberThreadDraft(chat.threadDrafts, it, text, chat.conversations) }
-            ?: chat.threadDrafts
+        val drafts = if (chat.continuation != null) chat.threadDrafts else
+            (chat.conversationId?.let { rememberThreadDraft(chat.threadDrafts, it, text, chat.conversations) } ?: chat.threadDrafts)
         mutable.value = state.value.copy(memoryBooks = reading.copy(companion = chat.copy(draft = text, threadDrafts = drafts)))
         return true
     }
@@ -2041,7 +3293,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     private fun canMutateMemoryBookChat(reading: MemoryBooksReading, chat: MemoryBookChatState): Boolean {
         val book = reading.selectedBook ?: return false
-        return memoryCommunityAvailable && memoryCommunity != null && token != null && allowed() &&
+        return memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            memoryCommunityAvailable && memoryCommunity != null && token != null && allowed() &&
             !state.value.busy && !coolingDown() && !chat.busy && reading.story != null &&
             !bookNarrativeDictation.hasUnfinishedInput && !memoryBookEditionState.value.hasUnfinishedWork &&
             editorialStore.state.value.status !in setOf(MemoryBookEditorialStoreStatus.SAVING, MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN) &&
@@ -2103,6 +3356,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun retryMemoryBookChatTurn() = launchBookChat { repository, before, valid ->
+        if (before.continuation != null || before.pendingConversation != null) return@launchBookChat before
         val id = before.pendingTurnConversationId ?: return@launchBookChat before
         val request = before.pendingTurn ?: return@launchBookChat before
         val job = repository.sendTurn(id, request)
@@ -2134,7 +3388,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun memoryBookChatDictation(): MemoryDictationStore? {
-        if (!api.assistantEnabled || !memoryCommunityAvailable || bookNarrativeDictation.hasUnfinishedInput) return null
+        if (!api.assistantEnabled || !memoryCommunityAvailable || bookNarrativeDictation.hasUnfinishedInput ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED) return null
         val reading = state.value.memoryBooks ?: return null
         val chat = reading.companion ?: return null
         chat.dictation?.let { return it }
@@ -2163,46 +3418,314 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     private fun findMemoryBookResume(library: String, book: MemoryBook): MemoryBookResumePosition? {
         val key = memoryBookResumeKey(library, book) ?: return null
-        val position = memoryBookResume[key] ?: return null
-        if (book.stories.any { it.id == position.storyId && it.revision == position.storyRevision }) return position
-        memoryBookResume.remove(key)
-        return null
+        val accountId = key.accountId
+        val position = if (memoryBookReaderPositionPersistence != null) {
+            try {
+                MemoryBookReaderPositions.validated(accountId, memoryBookReaderPositionPersistence.load(accountId))
+                    .firstOrNull { it.libraryId == library && it.bookId == book.id }
+                    ?.toResumePosition()
+            } catch (_: Exception) { null }
+        } else memoryBookResume[key]
+        if (position == null) return null
+        if (position.accountId != accountId || position.libraryId != library || position.bookId != book.id ||
+            position.bookRevision != book.revision || book.stories.none { it.id == position.storyId && it.revision == position.storyRevision }) {
+            removeMemoryBookResume(library, book)
+            return null
+        }
+        memoryBookResume[key] = position
+        return position
     }
 
-    private fun saveMemoryBookResume(reading: MemoryBooksReading, chapterId: String) {
+    private fun saveMemoryBookResume(reading: MemoryBooksReading, chapterId: String, assetId: String) {
         val accountBook = reading.selectedBook ?: return
         val story = reading.story ?: return
         val account = identity?.account_id ?: return
+        if (reading.library != state.value.library || !allowed() || accountBook.stories.none { it.id == story.id && it.revision == story.revision }) return
+        val chapter = story.chapters.firstOrNull { it.id == chapterId } ?: return
+        if (assetId !in chapter.assetIds || story.items.none { it.asset.id == assetId }) return
+        val position = MemoryBookReaderPosition(account, reading.library, accountBook.id, accountBook.revision,
+            story.id, story.revision, chapterId, assetId)
         val key = MemoryBookResumeKey(account, reading.library, accountBook.id, accountBook.revision)
+        val offer = position.toResumePosition()
         memoryBookResume.remove(key)
-        memoryBookResume[key] = MemoryBookResumePosition(story.id, story.revision, chapterId)
-        while (memoryBookResume.size > 12) memoryBookResume.remove(memoryBookResume.keys.first())
+        memoryBookResume[key] = offer
+        while (memoryBookResume.size > MemoryBookReaderPositions.MAX_POSITIONS) memoryBookResume.remove(memoryBookResume.keys.first())
+        runCatching { memoryBookReaderPositionPersistence?.save(account, position) }
     }
 
     private fun removeMemoryBookResume(library: String, book: MemoryBook) {
-        memoryBookResumeKey(library, book)?.let(memoryBookResume::remove)
+        val key = memoryBookResumeKey(library, book)
+        if (key != null) memoryBookResume.remove(key)
+        val account = identity?.account_id ?: return
+        runCatching { memoryBookReaderPositionPersistence?.remove(account, library, book.id) }
+    }
+
+    private fun clearMemoryBookReaderPositions(accountId: String?) {
+        if (accountId == null || identity?.account_id != accountId) return
+        memoryBookResume.keys.removeAll { it.accountId == accountId }
+        runCatching { memoryBookReaderPositionPersistence?.clear(accountId) }
+    }
+
+    private fun MemoryBookReaderPosition.toResumePosition() = MemoryBookResumePosition(
+        storyId = storyId, storyRevision = storyRevision, chapterId = chapterId, assetId = assetId,
+        accountId = accountId, libraryId = libraryId, bookId = bookId, bookRevision = bookRevision,
+    )
+
+    private fun memoryBookResumeScopeMatches(
+        expected: MemoryBookResumePosition,
+        reading: MemoryBooksReading,
+        book: MemoryBook,
+    ): Boolean {
+        val account = identity?.account_id ?: return false
+        return allowed() && token != null && reading.library == state.value.library && expected.accountId == account &&
+            expected.libraryId == reading.library && expected.bookId == book.id && expected.bookRevision == book.revision &&
+            book.stories.any { it.id == expected.storyId && it.revision == expected.storyRevision }
+    }
+
+    private fun memoryBookResumeMatches(
+        expected: MemoryBookResumePosition,
+        book: MemoryBook,
+        story: SavedMemoryStory,
+        accountId: String?,
+        library: String,
+    ): Boolean {
+        val chapter = story.chapters.firstOrNull { it.id == expected.chapterId } ?: return false
+        val assetId = expected.assetId ?: return false
+        val childEntry = book.stories.firstOrNull { it.id == expected.storyId && it.revision == expected.storyRevision } ?: return false
+        return accountId != null && expected.accountId == accountId && expected.libraryId == library &&
+            expected.bookId == book.id && expected.bookRevision == book.revision &&
+            childEntry.itemCount == story.items.size &&
+            story.id == expected.storyId && story.libraryId == library && story.revision == expected.storyRevision &&
+            assetId in chapter.assetIds && story.items.any { it.asset.id == assetId }
+    }
+
+    private fun isDefinitiveMemoryBookPositionFailure(failure: ApiFailure): Boolean =
+        failure.kind == FailureKind.INVALID_RESPONSE || failure.status in setOf(404, 409)
+
+    private fun canSwitchMemoryBookReading(reading: MemoryBooksReading, allowPreviewLoading: Boolean = false): Boolean {
+        if (!allowed() || token == null || state.value.busy || reading.busy || reading.readerBusy ||
+            memoryBookCompositionState.value.status != MemoryBookCompositionStatus.CLOSED ||
+            (reading.framesBusy && !allowPreviewLoading) ||
+            reading.library != state.value.library || bookChatOperationActive() ||
+            reading.companion?.let { chat -> chat.draft.isNotBlank() || chat.threadDrafts.values.any(String::isNotBlank) ||
+                dictationHasUnfinishedInput(chat.dictation) } == true ||
+            reading.sourceInspection.busy || reading.sourceInspection.audioBusy || reading.sourceInspection.audio != null ||
+            bookNarrativeDictation.hasUnfinishedInput || bookEditionStore?.state?.value?.hasUnfinishedWork == true ||
+            bookEditionShelfStore?.state?.value?.busy == true) return false
+        val narrative = memoryBookNarrativeState.value
+        if (narrative.hasUnfinishedInput || narrative.busy || narrative.pendingRequest != null || narrative.job?.state in setOf("queued", "running")) return false
+        val editorial = editorialStore.state.value
+        return !editorial.dirty && editorial.status !in setOf(MemoryBookEditorialStoreStatus.SAVING,
+            MemoryBookEditorialStoreStatus.SAVE_UNCERTAIN, MemoryBookEditorialStoreStatus.CONFLICT)
     }
 
     fun loadMemoryBookChapter(index: Int, framePage: Int = 0) {
+        loadMemoryBookChapterAt(index, framePage, assetId = null, explicitNavigation = true)
+    }
+
+    /** Captures the exact reader state represented by manual story/chapter/frame controls. */
+    fun captureMemoryBookReaderNavigation(): MemoryBookReaderNavigationScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        if (!allowed() || token == null || state.value.library != reading.library) return null
+        val story = reading.story
+        val storyIndex = reading.storyIndex
+        val chapterIndex = story?.let { reading.selectedChapter }
+        val chapter = if (story == null) null else story.chapters.getOrNull(chapterIndex ?: return null) ?: return null
+        if ((story == null) != (storyIndex == null) || (story == null) != (chapterIndex == null) ||
+            (story == null) != (chapter == null)) return null
+        if (story != null && book.stories.getOrNull(storyIndex!!)?.let { it.id == story.id && it.revision == story.revision } != true) return null
+        if (chapter != null) {
+            val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+            if (reading.framePage !in 0 until pageCount.coerceAtLeast(1) ||
+                reading.selectedAssetId?.let { selected ->
+                    selected !in chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+                        .take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+                } == true) return null
+        } else if (reading.framePage != 0 || reading.selectedAssetId != null) return null
+        return MemoryBookReaderNavigationScope(
+            accountId = accountId,
+            generation = state.value.generation,
+            libraryId = reading.library,
+            readerScopeId = reading.readerScopeId,
+            bookId = book.id,
+            bookRevision = book.revision,
+            orderedChildren = Collections.unmodifiableList(book.stories.map { MemoryBookReaderNavigationChild(it.id, it.revision) }),
+            storyIndex = storyIndex,
+            storyId = story?.id,
+            storyRevision = story?.revision,
+            chapterIndex = chapterIndex,
+            chapterId = chapter?.id,
+            framePage = reading.framePage,
+            selectedAssetId = reading.selectedAssetId,
+        )
+    }
+
+    /** The scope ticket is checked before any manual navigation can mutate reader state. */
+    fun isCurrentMemoryBookReaderNavigation(expected: MemoryBookReaderNavigationScope): Boolean =
+        memoryBookCompositionState.value.status == MemoryBookCompositionStatus.CLOSED &&
+            captureMemoryBookReaderNavigation() == expected
+
+    /** Runs a rendered story action only against the book/story-list snapshot that created it. */
+    fun loadMemoryBookStory(expected: MemoryBookReaderNavigationScope, index: Int): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val book = reading.selectedBook ?: return false
+        if (reading.readerBusy || index !in book.stories.indices) return false
+        loadMemoryBookStory(index)
+        val after = state.value.memoryBooks ?: return false
+        val requested = book.stories[index]
+        return after.selectedBook?.id == expected.bookId && after.storyIndex == index &&
+            (after.readerBusy || after.story?.let { it.id == requested.id && it.revision == requested.revision } == true)
+    }
+
+    /** Runs a rendered chapter action only against the story/chapter snapshot that created it. */
+    fun loadMemoryBookChapter(expected: MemoryBookReaderNavigationScope, index: Int, framePage: Int = 0): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(index) ?: return false
+        val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+        if (reading.readerBusy || framePage !in 0 until pageCount.coerceAtLeast(1)) return false
+        loadMemoryBookChapter(index, framePage)
+        val after = state.value.memoryBooks ?: return false
+        return after.story?.id == expected.storyId && after.selectedChapter == index && after.framePage == framePage
+    }
+
+    /** Runs a rendered frame-page action only against the selected chapter snapshot that created it. */
+    fun loadMemoryBookFramePage(expected: MemoryBookReaderNavigationScope, page: Int): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
+        val pageCount = (chapter.assetIds.size + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
+        if (reading.readerBusy || page !in 0 until pageCount.coerceAtLeast(1)) return false
+        loadMemoryBookFramePage(page)
+        val after = state.value.memoryBooks ?: return false
+        return after.story?.id == expected.storyId && after.selectedChapter == expected.chapterIndex && after.framePage == page
+    }
+
+    /** Runs a rendered frame selection only against its exact visible-page snapshot. */
+    fun selectMemoryBookAsset(expected: MemoryBookReaderNavigationScope, assetId: String): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
+        val visible = chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+            .take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+        if (reading.readerBusy || reading.framesBusy || assetId !in visible) return false
+        selectMemoryBookAsset(assetId)
+        return state.value.memoryBooks?.let { it.story?.id == expected.storyId && it.selectedChapter == expected.chapterIndex &&
+            it.framePage == expected.framePage && it.selectedAssetId == assetId } == true
+    }
+
+    /** Retries only the selected protected preview, without changing the content-free resume bookmark. */
+    fun retryMemoryBookPreview(expected: MemoryBookReaderNavigationScope): Boolean {
+        if (!isCurrentMemoryBookReaderNavigation(expected)) return false
+        val reading = state.value.memoryBooks ?: return false
+        val assetId = expected.selectedAssetId ?: return false
+        if (reading.readerBusy || reading.framesBusy || reading.heroBusy || reading.selectedAssetId != assetId) return false
+        return selectMemoryBookAssetInternal(assetId, persistPosition = false)
+    }
+
+    /** Captures only a next chapter in the same freshly selected child story. */
+    fun captureMemoryBookSpeechAdvance(): MemoryBookSpeechAdvanceScope? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val storyIndex = reading.storyIndex ?: return null
+        if (reading.readerUnavailable || !canSwitchMemoryBookReading(reading, allowPreviewLoading = true) ||
+            book.stories.getOrNull(storyIndex)?.let { it.id == story.id && it.revision == story.revision } != true) return null
+        val fromChapter = story.chapters.getOrNull(reading.selectedChapter) ?: return null
+        val nextChapter = story.chapters.getOrNull(reading.selectedChapter + 1) ?: return null
+        return MemoryBookSpeechAdvanceScope(
+            accountId = accountId,
+            generation = state.value.generation,
+            libraryId = reading.library,
+            readerScopeId = reading.readerScopeId,
+            bookId = book.id,
+            bookRevision = book.revision,
+            orderedChildren = Collections.unmodifiableList(book.stories.map { MemoryBookSpeechChildRevision(it.id, it.revision) }),
+            storyId = story.id,
+            storyRevision = story.revision,
+            fromChapterIndex = reading.selectedChapter,
+            fromChapterId = fromChapter.id,
+            nextChapterId = nextChapter.id,
+        )
+    }
+
+    /** Source phase is checked before consuming the matching one-shot TTS advance request. */
+    fun isCurrentMemoryBookSpeechAdvance(expected: MemoryBookSpeechAdvanceScope): Boolean =
+        memoryBookSpeechAdvanceMatches(expected, destination = false) != null
+
+    /** Destination phase is checked before the new chapter's generic TTS control can start. */
+    fun isCurrentMemoryBookSpeechDestination(expected: MemoryBookSpeechAdvanceScope): Boolean =
+        memoryBookSpeechAdvanceMatches(expected, destination = true) != null
+
+    /** Moves one chapter within the same story and uses ordinary explicit navigation/bookmarking. */
+    fun advanceMemoryBookSpeech(expected: MemoryBookSpeechAdvanceScope): Boolean {
+        if (memoryBookSpeechAdvanceMatches(expected, destination = false) == null) return false
+        val nextIndex = expected.fromChapterIndex + 1
+        loadMemoryBookChapterAt(nextIndex, framePage = 0, assetId = null, explicitNavigation = true)
+        val after = state.value.memoryBooks ?: return false
+        val afterBook = after.selectedBook ?: return false
+        val afterStory = after.story ?: return false
+        return afterBook.id == expected.bookId && afterBook.revision == expected.bookRevision &&
+            afterStory.id == expected.storyId && afterStory.revision == expected.storyRevision &&
+            after.selectedChapter == nextIndex && afterStory.chapters.getOrNull(nextIndex)?.id == expected.nextChapterId
+    }
+
+    private fun memoryBookSpeechAdvanceMatches(
+        expected: MemoryBookSpeechAdvanceScope,
+        destination: Boolean,
+    ): MemoryBooksReading? {
+        val reading = state.value.memoryBooks ?: return null
+        val accountId = identity?.account_id ?: return null
+        val book = reading.selectedBook ?: return null
+        val story = reading.story ?: return null
+        val chapterIndex = if (destination) expected.fromChapterIndex + 1 else expected.fromChapterIndex
+        val chapterId = if (destination) expected.nextChapterId else expected.fromChapterId
+        val storyIndex = book.stories.indexOfFirst { it.id == expected.storyId && it.revision == expected.storyRevision }
+        val sourceChapter = story.chapters.getOrNull(expected.fromChapterIndex) ?: return null
+        val nextChapter = story.chapters.getOrNull(expected.fromChapterIndex + 1) ?: return null
+        val chapter = story.chapters.getOrNull(chapterIndex) ?: return null
+        val orderedChildren = book.stories.map { MemoryBookSpeechChildRevision(it.id, it.revision) }
+        if (accountId != expected.accountId || state.value.generation != expected.generation ||
+            state.value.library != expected.libraryId || reading.library != expected.libraryId ||
+            reading.readerScopeId != expected.readerScopeId || book.id != expected.bookId ||
+            book.revision != expected.bookRevision || orderedChildren != expected.orderedChildren ||
+            reading.storyIndex != storyIndex || story.id != expected.storyId || story.revision != expected.storyRevision ||
+            sourceChapter.id != expected.fromChapterId || nextChapter.id != expected.nextChapterId ||
+            reading.selectedChapter != chapterIndex || chapter.id != chapterId || reading.readerUnavailable ||
+            !canSwitchMemoryBookReading(reading, allowPreviewLoading = true)) return null
+        return reading
+    }
+
+    private fun loadMemoryBookChapterAt(index: Int, framePage: Int, assetId: String?, explicitNavigation: Boolean) {
         val reading = state.value.memoryBooks ?: return
         val story = reading.story ?: return
         val selectedBook = reading.selectedBook ?: return
         val pageCount = ((story.chapters.getOrNull(index)?.assetIds?.size ?: return) + MEMORY_BOOK_CHAPTER_ASSET_LIMIT - 1) / MEMORY_BOOK_CHAPTER_ASSET_LIMIT
         if (index !in story.chapters.indices || framePage !in 0 until pageCount.coerceAtLeast(1) || reading.readerBusy || !allowed() || reading.library != state.value.library) return
+        val chapter = story.chapters[index]
+        val visibleIds = chapter.assetIds.drop(framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT).take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
+        if (assetId != null && assetId !in visibleIds) return
         if (index != reading.selectedChapter) clearMemoryBookEditorialSourceInspection()
         memoryBooksMediaRequest++
         val request = memoryBooksMediaRequest
         wipeMemoryBookMedia(reading)
-        val assets = story.chapters[index].assetIds.drop(framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT).take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
-            .mapNotNull { assetId -> story.items.firstOrNull { it.asset.id == assetId }?.asset }
+        val assets = visibleIds.mapNotNull { id -> story.items.firstOrNull { it.asset.id == id }?.asset }
+        val selectedAssetId = assetId ?: assets.firstOrNull()?.id
         val library = reading.library
         val generation = state.value.generation
         mutable.value = state.value.copy(memoryBooks = reading.copy(selectedChapter = index,
-            framePage = framePage, selectedAssetId = assets.firstOrNull()?.id, frames = emptyMap(), framesBusy = true,
+            framePage = framePage, selectedAssetId = selectedAssetId, frames = emptyMap(), framesBusy = true,
             unavailableFrameIds = emptySet(), framesUnavailable = false, heroAssetId = null, hero = null,
             heroBusy = assets.isNotEmpty(), heroUnavailable = false,
             sourceInspection = if (index != reading.selectedChapter) MemoryBookEditorialSourceInspectionState() else reading.sourceInspection))
-        story.chapters.getOrNull(index)?.id?.let { saveMemoryBookResume(reading, it) }
+        if (explicitNavigation && selectedAssetId != null) saveMemoryBookResume(reading, chapter.id, selectedAssetId)
         val credential = token ?: return
         launch { activeGeneration ->
             val frames = linkedMapOf<String, ByteArray>()
@@ -2222,7 +3745,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         frames[asset.id] = bytes
                     } else unavailable += asset.id
                 }
-                val heroAsset = assets.firstOrNull()
+                val heroAsset = selectedAssetId?.let { selectedId -> assets.firstOrNull { it.id == selectedId } }
+                    ?: assets.firstOrNull()
                 if (heroAsset != null) {
                     val preview = api.detailPreview(credential, library, heroAsset)
                     if (!active(activeGeneration) || activeGeneration != generation || request != memoryBooksMediaRequest) {
@@ -2236,7 +3760,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 val current = state.value.memoryBooks
                 if (!active(activeGeneration) || activeGeneration != generation || request != memoryBooksMediaRequest ||
                     state.value.library != library || current?.selectedBook?.id != selectedBook.id || current.story?.id != story.id ||
-                    current.selectedChapter != index) {
+                    current.selectedChapter != index || current.selectedAssetId != selectedAssetId) {
                     frames.values.forEach { it.fill(0) }; hero?.fill(0); return@launch
                 }
                 mutable.value = state.value.copy(memoryBooks = current.copy(frames = frames, framesBusy = false,
@@ -2253,12 +3777,17 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
 
     fun selectMemoryBookAsset(assetId: String) {
-        val reading = state.value.memoryBooks ?: return
-        val story = reading.story ?: return
-        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return
+        selectMemoryBookAssetInternal(assetId, persistPosition = true)
+    }
+
+    private fun selectMemoryBookAssetInternal(assetId: String, persistPosition: Boolean): Boolean {
+        val reading = state.value.memoryBooks ?: return false
+        val story = reading.story ?: return false
+        val chapter = story.chapters.getOrNull(reading.selectedChapter) ?: return false
         val visibleAssetIds = chapter.assetIds.drop(reading.framePage * MEMORY_BOOK_CHAPTER_ASSET_LIMIT).take(MEMORY_BOOK_CHAPTER_ASSET_LIMIT)
-        if (assetId !in visibleAssetIds || reading.readerBusy || reading.framesBusy || !allowed()) return
-        val asset = story.items.firstOrNull { it.asset.id == assetId }?.asset ?: return
+        if (assetId !in visibleAssetIds || reading.readerBusy || reading.framesBusy || !allowed()) return false
+        val asset = story.items.firstOrNull { it.asset.id == assetId }?.asset ?: return false
+        val credential = token ?: return false
         memoryBooksMediaRequest++
         val request = memoryBooksMediaRequest
         val generation = state.value.generation
@@ -2266,7 +3795,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         reading.hero?.fill(0)
         mutable.value = state.value.copy(memoryBooks = reading.copy(selectedAssetId = assetId,
             heroAssetId = null, hero = null, heroBusy = true, heroUnavailable = false))
-        val credential = token ?: return
+        if (persistPosition) saveMemoryBookResume(reading, chapter.id, assetId)
         launch { activeGeneration ->
             var bytes: ByteArray? = null
             try {
@@ -2288,6 +3817,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 else mutable.value = state.value.copy(memoryBooks = state.value.memoryBooks?.copy(heroBusy = false, heroUnavailable = true))
             }
         }
+        return true
     }
 
     fun loadMemoryBookFramePage(page: Int) {
@@ -2342,7 +3872,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         reading.frames.values.forEach { it.fill(0) }
         reading.hero?.fill(0)
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(detail = null, detailBusy = false,
-            detailUnavailable = false, selectedSummary = null, selectedChapter = 0, frames = emptyMap(), heroAssetId = null,
+            detailUnavailable = false, selectedSummary = null, selectedChapter = 0, selectedAssetId = null,
+            resumePosition = null, frames = emptyMap(), heroAssetId = null,
             hero = null, heroBusy = false, framesBusy = false, contributionReferences = null,
             contributionReferencesBusy = false, contributionReferencesUnavailable = false,
             contributionReferenceDraft = null, contributionReferenceSaveBusy = false, contributionReferenceSaveError = false,
@@ -2365,6 +3896,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     private fun memoryCommunityDenied() {
         if (!memoryCommunityAvailable || token == null) return
+        clearSavedStoryReaderPositions(identity?.account_id)
+        clearMemoryBookReaderPositions(identity?.account_id)
         invalidate(keepIdentity = true, cover = true)
         mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
         retry = { foreground() }
@@ -2389,18 +3922,27 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val library = reading.library
         val generation = state.value.generation
         val epoch = communityEpoch
+        val continuation = before.continuation
+        val continuationRequest = before.pendingConversation
+        val baseValid = { communityCurrent(storyId, expectedToken, library, generation, epoch) }
+        val valid = {
+            baseValid() && (continuation == null || state.value.savedMemoryStories?.community?.let { live ->
+                live.continuation == continuation && live.pendingConversation == continuationRequest &&
+                    memoryStoryContinuationScope(requireFullFailure = false) == continuation.storyScope
+            } == true)
+        }
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = before.copy(busy = busy, failure = null)))
         val job = scope.launch {
             try {
-                val result = action(repository, before, { communityCurrent(storyId, expectedToken, library, generation, epoch) })
-                if (communityCurrent(storyId, expectedToken, library, generation, epoch)) {
+                val result = action(repository, before, valid)
+                if (valid()) {
                     val currentReading = state.value.savedMemoryStories ?: return@launch
                     val live = currentReading.community ?: return@launch
                     // An in-flight read/write may complete after the user has edited a local
                     // field or switched tabs. Keep those newer local choices while applying
                     // the response-owned fields from the request snapshot.
                     val sameThread = result.conversationId == before.conversationId
-                    val mergedChatDraft = if (sameThread && live.chatDraft != before.chatDraft) live.chatDraft else result.chatDraft
+                    val mergedChatDraft = if (before.continuation != null || sameThread && live.chatDraft != before.chatDraft) live.chatDraft else result.chatDraft
                     val merged = result.copy(
                         tab = if (live.tab != before.tab) live.tab else result.tab,
                         contributionDraft = if (live.contributionDraft != before.contributionDraft) live.contributionDraft else result.contributionDraft,
@@ -2410,7 +3952,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                         contributionLanguage = if (live.contributionLanguage != before.contributionLanguage) live.contributionLanguage else result.contributionLanguage,
                         chatDraft = mergedChatDraft,
                         threadDrafts = mergeThreadDraftChanges(result.threadDrafts, before.threadDrafts, live.threadDrafts,
-                            before.conversationId, before.chatDraft, live.chatDraft, result.conversationId, mergedChatDraft, result.conversations),
+                            before.conversationId.takeUnless { before.continuation != null }, before.chatDraft, live.chatDraft,
+                            result.conversationId, mergedChatDraft, result.conversations),
                         dictation = if (live.dictation !== before.dictation) live.dictation else result.dictation,
                     )
                     mutable.value = state.value.copy(savedMemoryStories = currentReading.copy(community = merged.copy(busy = false, failure = null)))
@@ -2418,7 +3961,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 } else result.audio?.close()
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (communityCurrent(storyId, expectedToken, library, generation, epoch)) {
+                if (valid()) {
                     if (e is ApiFailure && e.status in listOf(401, 403)) {
                         readFailure(e, generation, expectedToken) { closeSavedMemoryStories() }
                     } else {
@@ -2686,6 +4229,64 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
     }
 
+    private fun memoryStoryContinuationScope(requireFullFailure: Boolean): MemoryStoryChatContinuationScope? {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return null
+        val story = reading.detail ?: return null
+        val chat = reading.community ?: return null
+        val account = live.session?.account_id ?: return null
+        val conversation = chat.conversationId ?: return null
+        val rejected = chat.pendingTurn ?: return null
+        if (!memoryCommunityAvailable || memoryCommunity == null || token == null || !allowed() ||
+            live.library != reading.library || chat.storyId != story.id || chat.readerScopeId != communityEpoch ||
+            story.libraryId != reading.library || chat.capabilities?.generationEnabled != true ||
+            chat.turns?.conversationId != conversation || rejected.revision != story.revision ||
+            (requireFullFailure && chat.failure?.message != Message.MEMORY_CONVERSATION_FULL)) return null
+        return MemoryStoryChatContinuationScope(account, live.generation, reading.library, chat.readerScopeId,
+            story.id, story.revision, story.selectionRevision, conversation, rejected)
+    }
+
+    /** Scope presented to the explicit continue action after a full-conversation refusal. */
+    fun memoryStoryChatContinuationScope(): MemoryStoryChatContinuationScope? = memoryStoryContinuationScope(requireFullFailure = true)
+
+    fun continueMemoryStoryChatInNewConversation(expected: MemoryStoryChatContinuationScope): MemoryConversationContinuationResult {
+        val reading = state.value.savedMemoryStories ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.community ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != null || chat.continuation != null) return MemoryConversationContinuationResult.ALREADY_PENDING
+        if (memoryStoryContinuationScope(requireFullFailure = true) != expected) return MemoryConversationContinuationResult.STALE
+        if (state.value.busy || reading.busy || reading.detailBusy || chat.busy || chat.pendingText != null || chat.pendingAudio != null ||
+            chat.pendingNarrative != null || chat.contributionAudioBusy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || chat.contributionAudioActivityId != null)
+            return MemoryConversationContinuationResult.BLOCKED
+        val transfer = continuationDraft(expected.rejectedTurn.text, chat.chatDraft)
+            ?: return MemoryConversationContinuationResult.LIMIT
+        val request = MemoryConversationRequest(targetType = "story", targetId = expected.storyId)
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = chat.copy(
+            pendingConversation = request, continuation = MemoryChatContinuation(expected.conversationId, expected.rejectedTurn, storyScope = expected),
+            chatDraft = transfer, failure = null, conversationRestored = false)))
+        retryStartMemoryConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
+    fun retryMemoryStoryChatContinuation(
+        expectedScope: MemoryStoryChatContinuationScope,
+        expectedRequest: MemoryConversationRequest,
+    ): MemoryConversationContinuationResult {
+        val reading = state.value.savedMemoryStories ?: return MemoryConversationContinuationResult.STALE
+        val chat = reading.community ?: return MemoryConversationContinuationResult.STALE
+        val continuation = chat.continuation ?: return MemoryConversationContinuationResult.STALE
+        if (chat.pendingConversation != expectedRequest || continuation.storyScope != expectedScope ||
+            continuation.sourceConversationId != expectedScope.conversationId || continuation.rejectedTurn != expectedScope.rejectedTurn ||
+            chat.pendingTurn != expectedScope.rejectedTurn || expectedRequest.targetType != "story" || expectedRequest.targetId != expectedScope.storyId ||
+            memoryStoryContinuationScope(requireFullFailure = false) != expectedScope) return MemoryConversationContinuationResult.STALE
+        if (state.value.busy || reading.busy || reading.detailBusy || chat.busy || chat.pendingText != null || chat.pendingAudio != null ||
+            chat.pendingNarrative != null || chat.contributionAudioBusy || conversationJobActive(chat.job, chat.turns) ||
+            dictationHasUnfinishedInput(chat.dictation) || chat.contributionAudioActivityId != null)
+            return MemoryConversationContinuationResult.BLOCKED
+        retryStartMemoryConversation()
+        return MemoryConversationContinuationResult.STARTED
+    }
+
     fun startMemoryConversation() {
         val current = state.value.savedMemoryStories?.community ?: return
         if (!canChangeMemoryStoryThread(current)) return
@@ -2704,20 +4305,38 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun retryStartMemoryConversation() {
         val current = state.value.savedMemoryStories?.community ?: return
         val request = current.pendingConversation ?: return
+        val continuation = current.continuation
+        val scope = continuation?.storyScope
+        if (continuation != null && (scope == null || memoryStoryContinuationScope(requireFullFailure = false) != scope ||
+                scope.conversationId != continuation.sourceConversationId || scope.rejectedTurn != continuation.rejectedTurn || current.pendingTurn != continuation.rejectedTurn ||
+                request.targetType != "story" || request.targetId != current.storyId)) return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
-            val conversation = repository.startConversation(request)
-            if (!valid()) return@launchMemoryCommunity before
-            val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = valid)
-            if (!valid()) return@launchMemoryCommunity before
-            val conversations = repository.conversations("story", current.storyId, withPreview = true, currentRequest = valid)
-            if (!valid()) return@launchMemoryCommunity before
+            val requestValid = {
+                valid() && (continuation == null || memoryStoryContinuationScope(requireFullFailure = false) == continuation.storyScope &&
+                    state.value.savedMemoryStories?.community?.pendingConversation == request)
+            }
+            if (!requestValid()) return@launchMemoryCommunity before
+            val conversation = repository.startConversation(request, requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (conversation.id != request.id) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            val turns = repository.turns(conversation.id, 1, replyContext = true, currentRequest = requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (turns.conversationId != conversation.id || turns.page != 1) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            val conversations = repository.conversations("story", current.storyId, withPreview = true, currentRequest = requestValid)
+            if (!requestValid()) return@launchMemoryCommunity before
+            if (continuation != null && conversations.items.none { it.id == conversation.id }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
             val revision = state.value.savedMemoryStories?.detail?.revision ?: return@launchMemoryCommunity before
-            val job = recoverPendingChatJob(repository, turns, revision, valid)
+            val job = recoverPendingChatJob(repository, turns, revision, requestValid)
             val drafts = before.threadDrafts
-            val newDraft = if (before.conversationId == null) before.chatDraft else drafts[conversation.id].orEmpty()
+            val newDraft = when {
+                continuation != null -> before.chatDraft
+                before.conversationId == null -> before.chatDraft
+                else -> drafts[conversation.id].orEmpty()
+            }
             val boundedDrafts = rememberThreadDraft(drafts, conversation.id, newDraft, conversations)
             before.copy(conversations = conversations, conversationId = conversation.id, turns = turns, job = job,
-                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null, conversationRestored = false)
+                threadDrafts = boundedDrafts, chatDraft = newDraft, pendingConversation = null,
+                pendingTurn = null, continuation = null, conversationRestored = false)
         }
     }
 
@@ -2752,8 +4371,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val reading = state.value.savedMemoryStories ?: return false
         val current = reading.community ?: return false
         if (text.toByteArray(Charsets.UTF_8).size > 4096 || text.any { it == '\u0000' }) return false
-        val drafts = current.conversationId?.let { rememberThreadDraft(current.threadDrafts, it, text, current.conversations) }
-            ?: current.threadDrafts
+        val drafts = if (current.continuation != null) current.threadDrafts else
+            (current.conversationId?.let { rememberThreadDraft(current.threadDrafts, it, text, current.conversations) } ?: current.threadDrafts)
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(community = current.copy(chatDraft = text, threadDrafts = drafts)))
         return true
     }
@@ -2809,6 +4428,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
 
     fun retryMemoryChatTurn() {
         val current = state.value.savedMemoryStories?.community ?: return
+        if (current.continuation != null || current.pendingConversation != null) return
         val conversation = current.conversationId ?: return
         val request = current.pendingTurn ?: return
         launchMemoryCommunity(current.storyId) { repository, before, valid ->
@@ -2958,6 +4578,62 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         state.value.storyEditor?.close()
         mutable.value = state.value.copy(storyEditor = null)
         loadStories(1)
+    }
+    /** Explicit protected entry. The first page of original notes is refreshed before linking. */
+    fun openMemoryGroups(): Boolean {
+        val groupsApi = memoryGroupsApi ?: return false
+        if (!memoryGroupsAvailable || !allowed() || state.value.busy || coolingDown() ||
+            state.value.storyEditor != null || state.value.memoryGroups != null ||
+            state.value.viewingOriginal || state.value.video != null) return false
+        val anchor = state.value.detail?.asset ?: return false
+        val library = state.value.library!!; val credential = token!!
+        val account = identity!!.account_id
+        mutable.value = state.value.copy(busy = true)
+        launch { generation ->
+            try {
+                val notes = api.stories(credential, library, anchor.id, 1)
+                if (!active(generation) || !allowed() || token !== credential ||
+                    identity?.account_id != account || state.value.library != library ||
+                    state.value.detail?.asset?.id != anchor.id) return@launch
+                validResponse(notes.libraryId == library && notes.assetId == anchor.id && notes.page == 1 &&
+                    notes.items.size <= 5 && notes.items.all { it.assetId == anchor.id } &&
+                    notes.items.map { it.id }.distinct().size == notes.items.size)
+                lateinit var groups: MemoryGroupsStore
+                groups = MemoryGroupsStore(groupsApi, scope, credential, library, anchor,
+                    state.value.memoryGroupGallery, notes.items,
+                    valid = { active(generation) && allowed() && token === credential &&
+                        identity?.account_id == account && state.value.library == library &&
+                        state.value.detail?.asset?.id == anchor.id && state.value.memoryGroups === groups },
+                    onDenied = {
+                        if (active(generation) && token === credential && state.value.library == library) {
+                            invalidate(keepIdentity = true, cover = true)
+                            mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                            retry = { foreground() }
+                        }
+                    }, now = now,
+                    preview = { asset -> api.thumbnail(credential, library, asset) })
+                mutable.value = state.value.copy(memoryGroups = groups, busy = false,
+                    photoSlideshow = false, stories = StoryReading(1, notes))
+                groups.load()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                if (!active(generation)) return@launch
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    invalidate(keepIdentity = true, cover = true)
+                    mutable.value = state.value.copy(problem = LiveProblem(Message.ACCESS_DENIED))
+                    retry = { foreground() }
+                } else readFailure(e, generation, credential) { openMemoryGroups() }
+            }
+        }
+        return true
+    }
+    fun closeMemoryGroups(discard: Boolean = false): Boolean {
+        val groups = state.value.memoryGroups ?: return true
+        if (groups.state.value.phase == MemoryGroupsStorePhase.SAVING) return false
+        if (!discard && !groups.canClose()) return false
+        groups.close()
+        mutable.value = state.value.copy(memoryGroups = null)
+        return true
     }
     /** Incoming contribution is account scoped and never grants library visibility. */
     fun openUpload(): UploadStore? {
@@ -3221,53 +4897,430 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
     fun clearAssistant() {
         val current = state.value.assistant ?: return
+        // Private conversation switches go through the explicit workspace controls.
+        if (current.privateThreadId != null) return
         if (current.library != state.value.library || current.generation != state.value.generation) return
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         assistantSpeechRequest++
         assistantTurnRequest++
         assistantTranscriptRequest++
         mutable.value = state.value.copy(assistant = current.copy(turns = emptyList(), context = null, failure = null, busy = false,
-            speechAudio = null, speechBusy = false, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
+            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, transcribing = false, transcript = null, lastRequestReceipt = null, receiptDetail = null,
             receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, pendingTurn = null))
+    }
+    /** Stop local voice work, retaining uncertain submitted requests for read-only recovery. */
+    fun cancelAssistantVoiceWork() {
+        val current = state.value.assistant ?: return
+        if (current.library != state.value.library || current.generation != state.value.generation) return
+        assistantTranscriptRequest++
+        assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
+        if (current.busy) assistantTurnRequest++
+        if (current.privateThreadId != null) current.pendingTurn?.let {
+            assistantWorkspaceCoordinator?.cancelWaitingForTurn(it.requestId)
+        }
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(
+            transcribing = false, transcript = null, confirmedTranscriptRequestId = null,
+            speechBusy = false, speechAudio = null, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null, busy = false,
+        ))
     }
     fun clearAssistantSpeech() {
         val current = state.value.assistant ?: return
         if (current.library != state.value.library || current.generation != state.value.generation) return
-        current.speechAudio?.close()
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
         assistantSpeechRequest++
-        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false))
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
+        mutable.value = state.value.copy(assistant = current.copy(speechAudio = null, speechBusy = false,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null))
     }
-    fun loadAssistantSpeech(language: String) {
-        val current = state.value.assistant ?: return
-        val latest = current.turns.lastOrNull()?.turn
+    fun clearAssistantMemoryOpeningSpeech() {
+        if (state.value.assistant?.let { it.speechMemoryOpeningOrdinal != null || it.speechMemorySegmentProgress != null } == true)
+            clearAssistantSpeech()
+    }
+    private data class PrivateReplySpeechReference(val threadId: String, val turnId: String,
+                                                  val revision: Long, val kind: String, val reply: String)
+    private data class MemoryOpeningSpeechReference(
+        val accountId: String, val library: String, val generation: Long, val threadId: String,
+        val turnId: String, val revision: Long, val ordinal: Int,
+        val card: AssistantSavedMemoryCard, val contextDigest: String,
+        val references: List<AssistantSavedMemoryReference>,
+    )
+
+    private fun memoryOpeningSpeechReference(ordinal: Int, segments: Boolean = false): MemoryOpeningSpeechReference? {
+        val live = state.value
+        val assistant = live.assistant ?: return null
+        val workspace = assistantWorkspaceState.value
+        val detail = workspace.detail ?: return null
+        val turn = workspace.currentTurn ?: return null
+        val result = turn.result ?: return null
+        val context = result.savedMemoryContext ?: return null
+        val refs = context.references
+        if (ordinal !in 0..11 || ordinal !in result.memoryCards.indices || !allowed() || live.covered ||
+            assistant.library != live.library || assistant.generation != live.generation ||
+            assistant.privateThreadId != detail.thread.threadId ||
+            workspace.accountId != live.session?.account_id || workspace.libraryId != assistant.library ||
+            workspace.generation != assistant.generation || !workspace.savedMemoryCardsAvailable ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } != true ||
+            !(if (segments) workspace.savedMemorySegmentReadingAvailable else workspace.savedMemoryReadingAvailable) ||
+            workspace.busy || workspace.pendingTurn != null ||
+            workspace.historyRefreshRequired || assistant.busy || assistant.pendingTurn != null ||
+            turn.status != AssistantWorkspaceRequestStatus.COMPLETED || turn.recovered ||
+            turn.threadId != detail.thread.threadId || turn.revision != detail.thread.revision || turn.revision <= 0 ||
+            !AssistantWorkspaceWire.validUuid4(turn.requestId) || result.kind != "memory_cards" || result.effect != null ||
+            assistant.turns.lastOrNull()?.let { it.localRequestId == turn.requestId && !it.turn.recovered &&
+                it.turn.kind == result.kind && it.turn.memoryCards == result.memoryCards } != true ||
+            result.memoryCards.isEmpty() || context.libraryId != assistant.library ||
+            refs.size != result.memoryCards.size || !Regex("[0-9a-f]{64}").matches(context.sourceRevision) ||
+            refs.indices.any { index ->
+                val card = result.memoryCards[index]
+                refs[index] != AssistantSavedMemoryReference(card.kind, card.id, card.revision, card.sourceRevision)
+            }) return null
+        val card = result.memoryCards[ordinal]
+        return MemoryOpeningSpeechReference(live.session?.account_id ?: return null, assistant.library,
+            assistant.generation, detail.thread.threadId, turn.requestId, turn.revision, ordinal, card,
+            context.sourceRevision, refs.toList())
+    }
+
+    private fun memorySegmentSpeechReference(ordinal: Int): MemoryOpeningSpeechReference? =
+        memoryOpeningSpeechReference(ordinal, segments = true)
+
+    fun canReadAssistantMemoryOpening(ordinal: Int): Boolean =
+        api.assistantEnabled && assistantWorkspaceTransport != null && memoryOpeningSpeechReference(ordinal) != null
+
+    fun canReadAssistantMemorySegment(ordinal: Int, segment: Int = 0): Boolean {
+        if (!api.assistantEnabled || assistantWorkspaceTransport == null || segment !in 0..127) return false
+        val anchor = memoryOpeningSpeechReference(ordinal, segments = true) ?: return false
+        val assistant = state.value.assistant ?: return false
+        val progress = assistant.speechMemorySegmentProgress
+        val sameSource = progress?.threadId == anchor.threadId && progress.turnId == anchor.turnId &&
+            progress.revision == anchor.revision && progress.ordinal == ordinal && progress.sourceKind == anchor.card.kind
+        return if (progress == null || !sameSource) segment == 0 && assistant.speechAudio == null && !assistant.speechBusy
+        else if (segment == 0 && progress.completedSegmentIndex == progress.segmentIndex &&
+            progress.segmentCount != null && progress.segmentIndex + 1 == progress.segmentCount)
+            assistant.speechAudio == null && !assistant.speechBusy
+        else
+            progress.ordinal == ordinal && progress.sourceKind == anchor.card.kind && progress.completedSegmentIndex == progress.segmentIndex &&
+            progress.segmentCount != null && segment == progress.segmentIndex + 1 && segment < progress.segmentCount &&
+            assistant.speechAudio == null && !assistant.speechBusy
+    }
+
+    /** One-shot speech for the saved opening bound to the latest fresh card result. */
+    fun loadAssistantMemoryOpening(
+        ordinal: Int,
+        expectedParentTurnId: String? = null,
+        expectedRevision: Long? = null,
+    ): Boolean {
+        if (state.value.assistant?.speechBusy == true) return false
+        val anchor = memoryOpeningSpeechReference(ordinal) ?: return false
+        if ((expectedParentTurnId == null) != (expectedRevision == null) ||
+            expectedParentTurnId != null && (anchor.turnId != expectedParentTurnId || anchor.revision != expectedRevision)) return false
+        val current = state.value.assistant ?: return false
+        val credential = token ?: return false
+        val workspaceApi = assistantWorkspaceTransport ?: return false
+        if (!api.assistantEnabled || !allowed() || current.library != anchor.library || current.generation != anchor.generation)
+            return false
+        val requestId = UUID.randomUUID().toString()
+        if (!AssistantWorkspaceWire.validUuid4(requestId) || requestId == anchor.turnId) return false
+        assistantSpeechRequest++
+        val request = assistantSpeechRequest
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null
+        assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = anchor
+        assistantSpeechSegmentReference = null
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = ordinal, speechMemorySegmentProgress = null,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            var bytes: ByteArray? = null
+            try {
+                if (memoryOpeningSpeechReference(ordinal) != anchor) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = workspaceApi.speakSavedMemoryOpening(credential, anchor.library, anchor.threadId,
+                    anchor.turnId, anchor.ordinal, anchor.revision, requestId)
+                bytes = speech.bytes
+                val received = speech.bytes
+                if (!active(anchor.generation) || state.value.covered || state.value.library != anchor.library ||
+                    token !== credential || request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal) != anchor) {
+                    received.fill(0); return@launch
+                }
+                val latest = state.value.assistant?.takeIf { it.library == anchor.library && it.generation == anchor.generation }
+                    ?: run { received.fill(0); return@launch }
+                val audio = ProtectedAnnotationAudio(received); bytes = null
+                if (speech.receipt.playbackTracking && speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") {
+                    state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                        assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, anchor.library,
+                            anchor.generation, credential)
+                    } }
+                }
+                mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false, speechAudio = audio,
+                    speechMemoryOpeningOrdinal = ordinal, speechMemorySegmentProgress = null,
+                    lastRequestReceipt = speech.receipt, failure = null))
+                if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded")
+                    reportAssistantOutcome(anchor.library, anchor.generation, credential, requestId, "displayed")
+            } catch (e: CancellationException) { bytes?.fill(0); throw e }
+            catch (e: Exception) {
+                bytes?.fill(0)
+                if (!active(anchor.generation) || state.value.library != anchor.library || token !== credential ||
+                    request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal) != anchor) return@launch
+                if (assistantSpeechMemoryReference == anchor) assistantSpeechMemoryReference = null
+                if (e is ApiFailure && e.status in listOf(401, 403)) readFailure(e, anchor.generation, credential) { }
+                else state.value.assistant?.let { latest ->
+                    mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false,
+                        speechMemoryOpeningOrdinal = null,
+                        speechMemorySegmentProgress = null,
+                        lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
+            }
+        }
+        assistantSpeechJob = job
+        requests += job
+        job.invokeOnCompletion {
+            requests.remove(job)
+            if (assistantSpeechJob === job) assistantSpeechJob = null
+        }
+        job.start()
+        return true
+    }
+
+    /** One explicit, bounded source segment. Continuation is admitted only after actual playback completion. */
+    fun loadAssistantMemorySegment(
+        ordinal: Int,
+        segment: Int,
+        expectedParentTurnId: String? = null,
+        expectedRevision: Long? = null,
+    ): Boolean {
+        if (!canReadAssistantMemorySegment(ordinal, segment)) return false
+        val anchor = memoryOpeningSpeechReference(ordinal, segments = true) ?: return false
+        if ((expectedParentTurnId == null) != (expectedRevision == null) ||
+            expectedParentTurnId != null && (anchor.turnId != expectedParentTurnId || anchor.revision != expectedRevision)) return false
+        val current = state.value.assistant ?: return false
+        val credential = token ?: return false
+        val workspaceApi = assistantWorkspaceTransport ?: return false
+        if (!api.assistantEnabled || !allowed() || current.library != anchor.library || current.generation != anchor.generation)
+            return false
+        val previous = current.speechMemorySegmentProgress?.takeIf {
+            it.threadId == anchor.threadId && it.turnId == anchor.turnId && it.revision == anchor.revision &&
+                it.ordinal == ordinal && it.sourceKind == anchor.card.kind
+        }?.takeIf { segment > 0 }
+        if (segment > 0 && (previous == null ||
+                previous.completedSegmentIndex != previous.segmentIndex || previous.segmentIndex + 1 != segment ||
+                previous.segmentCount == null || segment >= previous.segmentCount)) return false
+        val requestId = UUID.randomUUID().toString()
+        if (!AssistantWorkspaceWire.validUuid4(requestId) || requestId == anchor.turnId) return false
+        val expectedProgress = AssistantMemorySegmentProgress(anchor.threadId, anchor.turnId, anchor.revision,
+            ordinal, anchor.card.kind, segment, previous?.segmentCount, previous?.completedSegmentIndex)
+        assistantSpeechRequest++
+        val request = assistantSpeechRequest
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null
+        assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = anchor
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = expectedProgress,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            var bytes: ByteArray? = null
+            try {
+                if (memoryOpeningSpeechReference(ordinal, segments = true) != anchor ||
+                    state.value.assistant?.speechMemorySegmentProgress != expectedProgress) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = workspaceApi.speakSavedMemorySegment(credential, anchor.library, anchor.threadId,
+                    anchor.turnId, anchor.ordinal, segment, anchor.revision, requestId)
+                bytes = speech.bytes
+                val received = speech.bytes
+                val latestProgress = state.value.assistant?.speechMemorySegmentProgress
+                if (speech.segment != segment || speech.segmentCount !in 1..128 || speech.segmentCount <= segment ||
+                    previous?.segmentCount?.let { it != speech.segmentCount } == true ||
+                    !active(anchor.generation) || state.value.covered || state.value.library != anchor.library ||
+                    token !== credential || request != assistantSpeechRequest ||
+                    memoryOpeningSpeechReference(ordinal, segments = true) != anchor || latestProgress != expectedProgress) {
+                    received.fill(0)
+                    throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                }
+                val latest = state.value.assistant?.takeIf { it.library == anchor.library && it.generation == anchor.generation }
+                    ?: run { received.fill(0); return@launch }
+                val progress = expectedProgress.copy(segmentCount = speech.segmentCount)
+                val audio = ProtectedAnnotationAudio(received); bytes = null
+                state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                    assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, anchor.library,
+                        anchor.generation, credential, anchor, segment, speech.segmentCount)
+                } }
+                mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false, speechAudio = audio,
+                    speechMemorySegmentProgress = progress, lastRequestReceipt = speech.receipt, failure = null))
+                if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded")
+                    reportAssistantOutcome(anchor.library, anchor.generation, credential, requestId, "displayed")
+            } catch (e: CancellationException) {
+                bytes?.fill(0)
+                if (request == assistantSpeechRequest && assistantSpeechSegmentReference == anchor) {
+                    assistantSpeechSegmentReference = null
+                    state.value.assistant?.let { latest -> mutable.value = state.value.copy(assistant = latest.copy(
+                        speechBusy = false, speechAudio = null, speechMemorySegmentProgress = null)) }
+                }
+                throw e
+            } catch (e: Exception) {
+                bytes?.fill(0)
+                if (!active(anchor.generation) || state.value.library != anchor.library || token !== credential ||
+                    request != assistantSpeechRequest || memoryOpeningSpeechReference(ordinal, segments = true) != anchor) return@launch
+                if (assistantSpeechSegmentReference == anchor) assistantSpeechSegmentReference = null
+                state.value.assistant?.let { latest -> mutable.value = state.value.copy(assistant = latest.copy(speechBusy = false,
+                    speechMemorySegmentProgress = null,
+                    lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e))) }
+            }
+        }
+        assistantSpeechJob = job
+        requests += job
+        job.invokeOnCompletion {
+            requests.remove(job)
+            if (assistantSpeechJob === job) assistantSpeechJob = null
+        }
+        job.start()
+        return true
+    }
+
+    /** Capability presence is separate from an eligible fresh reply; never fall back on an over-limit reply. */
+    fun privateReplySpeechEnabled(): Boolean {
+        val current = state.value.assistant ?: return false
+        val workspace = assistantWorkspaceState.value
+        return current.privateThreadId != null && workspace.capabilities?.replySpeech == true
+    }
+
+    private fun privateReplySpeechReference(): PrivateReplySpeechReference? {
+        val current = state.value.assistant ?: return null
+        val workspace = assistantWorkspaceState.value
+        val thread = workspace.detail?.thread ?: return null
+        val completed = workspace.currentTurn ?: return null
+        val exchange = current.turns.lastOrNull() ?: return null
+        val result = completed.result ?: return null
+        if (!allowed() || current.library != state.value.library || current.generation != state.value.generation ||
+            workspace.accountId != state.value.session?.account_id || workspace.libraryId != current.library ||
+            workspace.generation != current.generation || current.privateThreadId != thread.threadId ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns && it.replySpeech } != true ||
+            workspace.busy || workspace.pendingTurn != null || workspace.historyRefreshRequired ||
+            current.busy || current.pendingTurn != null || completed.threadId != thread.threadId ||
+            completed.status != AssistantWorkspaceRequestStatus.COMPLETED || completed.revision != thread.revision ||
+            completed.recovered || exchange.turn.recovered || completed.requestId != exchange.localRequestId ||
+            exchange.turn.reply != result.reply || exchange.turn.kind != result.kind || result.effect != null ||
+            result.kind !in setOf("results", "clarification", "unsupported") || result.reply.isBlank() ||
+            result.reply.toByteArray(Charsets.UTF_8).size !in 1..600) return null
+        return PrivateReplySpeechReference(thread.threadId, completed.requestId, completed.revision, result.kind, result.reply)
+    }
+
+    fun canReadAssistantReply(): Boolean {
+        val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
-            current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || current.context == null ||
-            latest?.kind != "results" || latest.items.isEmpty() || language !in setOf("zh", "en") || !allowed() || coolingDown()) return
+            current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || !allowed() || coolingDown()) return false
+        if (privateReplySpeechEnabled()) return privateReplySpeechReference() != null
+        val latest = current.turns.lastOrNull()?.turn
+        return current.context != null && latest?.kind == "results" && latest.items.isNotEmpty()
+    }
+
+    /** Records playback only while this exact speech result still owns the account/library generation. */
+    fun reportAssistantPlaybackOutcome(audio: ProtectedAnnotationAudio, outcome: String): Boolean {
+        if (outcome !in setOf("completed", "failed", "cancelled")) return false
+        val live = state.value
+        val assistant = live.assistant ?: return false
+        val receipt = assistant.lastRequestReceipt ?: return false
+        if (!api.assistantEnabled || !allowed() || live.covered || assistant.speechAudio !== audio ||
+            assistant.library != live.library || assistant.generation != live.generation || !receipt.playbackTracking ||
+            !AssistantWire.validRequestId(receipt.requestId)) return false
+        val owner = synchronized(assistantPlaybackOwners) { assistantPlaybackOwners[audio] } ?: return false
+        if (owner.reported || owner.requestId != receipt.requestId || owner.library != assistant.library ||
+            owner.generation != assistant.generation || owner.accountId != live.session?.account_id || token !== owner.credential) return false
+        synchronized(assistantPlaybackOwners) {
+            if (assistantPlaybackOwners[audio] !== owner || owner.reported) return false
+            owner.reported = true
+        }
+        if (owner.segmentReference != null && owner.segmentIndex != null && owner.segmentCount != null) {
+            val progress = assistant.speechMemorySegmentProgress
+            if (assistantSpeechSegmentReference != owner.segmentReference ||
+                memoryOpeningSpeechReference(owner.segmentReference.ordinal, segments = true) != owner.segmentReference ||
+                progress?.threadId != owner.segmentReference.threadId || progress.turnId != owner.segmentReference.turnId ||
+                progress.ordinal != owner.segmentReference.ordinal || progress.segmentIndex != owner.segmentIndex ||
+                progress.segmentCount != owner.segmentCount || assistant.speechAudio !== audio) return false
+            if (outcome == "completed") {
+                mutable.value = live.copy(assistant = assistant.copy(
+                    speechAudio = null,
+                    speechMemorySegmentProgress = progress.copy(completedSegmentIndex = owner.segmentIndex)))
+                audio.close()
+            } else {
+                assistantSpeechSegmentReference = null
+                mutable.value = live.copy(assistant = assistant.copy(speechMemorySegmentProgress = null))
+            }
+        }
+        scope.launch {
+            val latest = state.value
+            if (!latest.covered && latest.generation == owner.generation && latest.library == owner.library &&
+                latest.session?.account_id == owner.accountId && token === owner.credential)
+                runCatching { api.assistantPlaybackOutcome(owner.credential, owner.library, owner.requestId, outcome) }
+        }
+        return true
+    }
+
+    fun loadAssistantSpeech(language: String): Boolean {
+        if (language !in setOf("zh", "en") || !canReadAssistantReply()) return false
+        val current = state.value.assistant ?: return false
+        val privateReply = if (privateReplySpeechEnabled()) privateReplySpeechReference() ?: return false else null
+        val workspaceApi = if (privateReply != null) assistantWorkspaceTransport ?: return false else null
         val library = current.library; val generation = current.generation; val credential = token!!; val context = current.context
         val parentId = current.turns.lastOrNull()?.turn?.receipt?.takeIf { it.tracking == "enabled" && it.status == "succeeded" }?.requestId
         val requestId = java.util.UUID.randomUUID().toString()
         val request = ++assistantSpeechRequest
-        current.speechAudio?.close()
-        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
-        launch { activeGeneration ->
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
+        current.speechAudio?.let { reportAssistantPlaybackOutcome(it, "cancelled"); it.close() }
+        mutable.value = state.value.copy(assistant = current.copy(speechBusy = true, speechAudio = null,
+            speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, failure = null))
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             var bytes: ByteArray? = null
             try {
-                val speech = api.assistantSpeech(credential, library, context, language, requestId, parentId)
+                if (privateReply != null && privateReplySpeechReference() != privateReply)
+                    throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                val speech = if (privateReply != null) workspaceApi!!.speakTurn(credential, library,
+                    privateReply.threadId, privateReply.turnId, privateReply.revision, requestId)
+                else api.assistantSpeech(credential, library, context, language, requestId, parentId)
                 bytes = speech.bytes
                 val received = speech.bytes
-                if (!active(activeGeneration) || generation != activeGeneration || state.value.library != library || request != assistantSpeechRequest) { received.fill(0); return@launch }
+                if (!active(generation) || state.value.library != library || token !== credential || request != assistantSpeechRequest ||
+                    privateReply != null && privateReplySpeechReference() != privateReply) { received.fill(0); return@launch }
                 val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: run { received.fill(0); return@launch }
                 val audio = ProtectedAnnotationAudio(received); bytes = null
+                if (speech.receipt.playbackTracking && speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") {
+                    state.value.session?.account_id?.let { account -> synchronized(assistantPlaybackOwners) {
+                        assistantPlaybackOwners[audio] = AssistantPlaybackOwner(requestId, account, library, generation, credential)
+                    } }
+                }
                 mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, speechAudio = audio, lastRequestReceipt = speech.receipt, failure = null))
                 if (speech.receipt.tracking == "enabled" && speech.receipt.status == "succeeded") reportAssistantOutcome(library, generation, credential, requestId, "displayed")
             } catch (e: CancellationException) { bytes?.fill(0); throw e }
             catch (e: Exception) {
                 bytes?.fill(0)
-                if (!active(activeGeneration) || state.value.library != library || request != assistantSpeechRequest) return@launch
-                val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                if (!active(generation) || state.value.library != library || token !== credential || request != assistantSpeechRequest) return@launch
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    readFailure(e, generation, credential) { }
+                } else {
+                    val latestState = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
+                    mutable.value = state.value.copy(assistant = latestState.copy(speechBusy = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
             }
         }
+        assistantSpeechJob = job
+        assistantSpeechReplyReference = privateReply
+        requests += job
+        job.invokeOnCompletion { requests.remove(job); if (assistantSpeechJob === job) {
+            assistantSpeechJob = null; assistantSpeechReplyReference = null; assistantSpeechMemoryReference = null
+        } }
+        job.start()
+        return true
     }
     fun clearAssistantTranscript() {
         val current = state.value.assistant ?: return
@@ -3279,6 +5332,9 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     fun checkAssistantReceipt() {
         val current = state.value.assistant ?: return
         val receipt = current.lastRequestReceipt ?: return
+        if (current.privateThreadId != null && current.pendingTurn?.requestId == receipt.requestId) {
+            recoverPrivateAssistantTurn(current); return
+        }
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation || current.receiptChecking || receipt.tracking == "disabled" || !allowed()) return
         val credential = token ?: return; val library = current.library; val generation = current.generation
         mutable.value = state.value.copy(assistant = current.copy(receiptChecking = true, receiptCheckFailed = false))
@@ -3313,15 +5369,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
                 runCatching { api.assistantOutcome(credential, library, requestId, outcome) }
         }
     }
-    fun transcribeAssistant(wav: ByteArray) {
-        val current = state.value.assistant ?: return
+    fun transcribeAssistant(wav: ByteArray): Boolean {
+        val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
             current.capabilities?.let { it.enabled && it.transcribe && it.maxAudioSeconds in 1..30 } != true ||
-            current.transcribing || current.busy || current.pendingTurn != null || !allowed() || coolingDown()) return
+            current.transcribing || current.busy || current.pendingTurn != null || !allowed() || coolingDown()) return false
         val library = current.library; val generation = current.generation; val credential = token!!
         val requestId = java.util.UUID.randomUUID().toString()
         if (wav.size !in 16046..(44 + 16_000 * 2 * 30) ||
-            !wav.copyOfRange(0, 4).contentEquals("RIFF".toByteArray()) || !wav.copyOfRange(8, 12).contentEquals("WAVE".toByteArray())) return
+            !wav.copyOfRange(0, 4).contentEquals("RIFF".toByteArray()) || !wav.copyOfRange(8, 12).contentEquals("WAVE".toByteArray())) return false
         val request = ++assistantTranscriptRequest
         mutable.value = state.value.copy(assistant = current.copy(transcribing = true, transcript = null, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null))
         launch { activeGeneration ->
@@ -3334,10 +5390,15 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (!active(activeGeneration) || state.value.library != library || request != assistantTranscriptRequest) return@launch
-                val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
-                mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
-            }
+                if (e is ApiFailure && e.status in listOf(401, 403)) {
+                    readFailure(e, activeGeneration, credential) { }
+                } else {
+                    val latest = state.value.assistant?.takeIf { it.library == library && it.generation == generation } ?: return@launch
+                    mutable.value = state.value.copy(assistant = latest.copy(transcribing = false, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), failure = problem(e)))
+                }
+            } finally { wav.fill(0) }
         }
+        return true
     }
     /** Explicitly accept the exact current transcript into the caller's editable draft. */
     fun takeAssistantTranscriptForDraft(expected: AssistantTranscript): String? {
@@ -3352,6 +5413,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val current = state.value.assistant ?: return false
         if (!api.assistantEnabled || current.library != state.value.library || current.generation != state.value.generation ||
             current.capabilities?.let { it.enabled && it.text } != true || current.busy || current.transcribing || current.pendingTurn != null || !allowed() || coolingDown()) return false
+        if (current.privateThreadId != null) return sendPrivateAssistantText(current, text)
         val library = current.library; val generation = current.generation; val credential = token ?: return false; val context = current.context
         val requestId = java.util.UUID.randomUUID().toString()
         val parentId = current.confirmedTranscriptRequestId
@@ -3365,7 +5427,13 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
         current.speechAudio?.close()
         assistantSpeechRequest++
-        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending, lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null, speechAudio = null, speechBusy = false))
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
+        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), receiptDetail = null,
+            receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null, failure = null,
+            speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null, speechMemorySegmentProgress = null))
         launch { activeGeneration ->
             try {
                 val result = api.assistantTurn(credential, library, text, context, requestId, parentId)
@@ -3390,6 +5458,120 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         }
         return true
     }
+    /** Explicitly selects an owned thread. Reading history alone never activates voice. */
+    fun activatePrivateAssistantConversation(threadId: String, expectedRevision: Long): Boolean {
+        val current = state.value.assistant ?: return false
+        val workspace = assistantWorkspaceState.value
+        val detail = workspace.detail ?: return false
+        if (!allowed() || current.library != state.value.library || current.generation != state.value.generation ||
+            current.busy || current.transcribing || current.speechBusy || current.speechAudio != null ||
+            workspace.accountId != identity?.account_id || workspace.libraryId != current.library ||
+            workspace.generation != current.generation || workspace.busy || workspace.pendingTurn != null ||
+            workspace.pendingCreationId != null || !workspace.continuationEnabled ||
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } != true ||
+            detail.thread.threadId != threadId || detail.thread.revision != expectedRevision) return false
+        assistantTurnRequest++
+        val history = detail.exchanges.takeLast(40).map { exchange ->
+            AssistantExchange(exchange.inputText,
+                AssistantTurn("unsupported", exchange.reply, null, null, emptyList(), 0, false, null, recovered = true),
+                exchange.requestId ?: "history-${exchange.exchangeId}")
+        }
+        mutable.value = state.value.copy(assistant = current.copy(
+            privateThreadId = threadId, privateRequestStatus = null, turns = history, context = null,
+            pendingTurn = null, transcript = null, confirmedTranscriptRequestId = null,
+            lastRequestReceipt = null, receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, failure = null))
+        return true
+    }
+
+    /** An active selection never silently falls back to the stateless route. */
+    fun privateAssistantConversationAvailable(): Boolean {
+        val current = state.value.assistant ?: return false
+        val thread = current.privateThreadId ?: return true
+        val workspace = assistantWorkspaceState.value
+        return allowed() && workspace.accountId == identity?.account_id &&
+            workspace.libraryId == current.library && workspace.generation == current.generation &&
+            workspace.detail?.thread?.threadId == thread &&
+            workspace.capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true &&
+            (workspace.continuationEnabled || workspace.pendingTurn?.threadId == thread)
+    }
+
+    private fun sendPrivateAssistantText(current: AssistantClientState, text: String): Boolean {
+        val coordinator = assistantWorkspaceCoordinator ?: return false
+        if (!privateAssistantConversationAvailable()) return false
+        val requestId = UUID.randomUUID().toString()
+        val pending = AssistantPendingTurn(identity?.account_id ?: return false, current.library, current.generation,
+            text, null, current.confirmedTranscriptRequestId, requestId)
+        val workspaceDraft = coordinator.state.value
+        if (workspaceDraft.memoryFollowupDraftParent == null || workspaceDraft.draft != text) coordinator.setDraft(text)
+        if (!coordinator.sendTurn(requestId, pending.parentRequestId)) return false
+        current.speechAudio?.close()
+        assistantSpeechRequest++
+        assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+        assistantSpeechMemoryReference = null
+        assistantSpeechSegmentReference = null
+        val request = ++assistantTurnRequest
+        mutable.value = state.value.copy(assistant = current.copy(busy = true, pendingTurn = pending,
+            lastRequestReceipt = AssistantRequestReceipt(requestId, "unknown", null), privateRequestStatus = "pending",
+            receiptDetail = null, receiptChecking = false, receiptCheckFailed = false, confirmedTranscriptRequestId = null,
+            failure = null, speechAudio = null, speechBusy = false, speechMemoryOpeningOrdinal = null,
+            speechMemorySegmentProgress = null))
+        awaitPrivateAssistantTurn(current, pending, request, checking = false)
+        return true
+    }
+
+    private fun recoverPrivateAssistantTurn(current: AssistantClientState) {
+        val coordinator = assistantWorkspaceCoordinator ?: return
+        val pending = current.pendingTurn ?: return
+        if (!allowed() || current.busy || current.receiptChecking ||
+            coordinator.state.value.pendingTurn?.requestId != pending.requestId ||
+            !privateAssistantConversationAvailable() || !coordinator.recoverPendingTurn()) return
+        val request = ++assistantTurnRequest
+        mutable.value = state.value.copy(assistant = current.copy(receiptChecking = true, receiptCheckFailed = false))
+        awaitPrivateAssistantTurn(current, pending, request, checking = true)
+    }
+
+    private fun awaitPrivateAssistantTurn(owner: AssistantClientState, pending: AssistantPendingTurn, request: Long, checking: Boolean) {
+        val coordinator = assistantWorkspaceCoordinator ?: return
+        val credential = token ?: return
+        launch { activeGeneration ->
+            val workspace = withTimeoutOrNull(40_000) {
+                coordinator.state.first { value ->
+                    value.accountId != pending.accountId || value.libraryId != pending.library || value.generation != pending.generation ||
+                        (!value.busy && (value.currentTurn?.requestId == pending.requestId || value.pendingTurn?.requestId == pending.requestId))
+                }
+            }
+            if (!active(activeGeneration) || activeGeneration != pending.generation || token !== credential ||
+                state.value.library != pending.library || request != assistantTurnRequest) return@launch
+            if (workspace?.error == AssistantWorkspaceError.ACCESS_DENIED) {
+                readFailure(ApiFailure(FailureKind.HTTP, status = 403), activeGeneration, credential) { }; return@launch
+            }
+            val latest = state.value.assistant?.takeIf { it.privateThreadId == owner.privateThreadId && it.pendingTurn?.requestId == pending.requestId } ?: return@launch
+            if (workspace == null) coordinator.cancelWaitingForTurn(pending.requestId)
+            val turn = workspace?.currentTurn?.takeIf { it.requestId == pending.requestId && it.threadId == owner.privateThreadId }
+            val result = turn?.result?.takeIf { turn.status == AssistantWorkspaceRequestStatus.COMPLETED }
+            if (result != null) {
+                val safeResult = result.copy(recovered = turn.recovered)
+                mutable.value = state.value.copy(assistant = latest.copy(
+                    turns = (latest.turns.filterNot { it.localRequestId == pending.requestId } + AssistantExchange(pending.text, safeResult, pending.requestId)).takeLast(40),
+                    context = safeResult.context, busy = false, pendingTurn = null, transcript = null, failure = null,
+                    receiptChecking = false, receiptCheckFailed = false, privateRequestStatus = "completed",
+                    lastRequestReceipt = safeResult.receipt ?: AssistantRequestReceipt(pending.requestId, "unknown", null)))
+                safeResult.receipt?.takeIf { !turn.recovered && it.tracking == "enabled" && it.status == "succeeded" }
+                    ?.let { reportAssistantOutcome(pending.library, pending.generation, credential, pending.requestId, "displayed") }
+                safeResult.items.forEach { loadAssistantPreview(pending.library, pending.generation, it) }
+            } else {
+                val status = when (turn?.status) {
+                    AssistantWorkspaceRequestStatus.FAILED -> "failed"
+                    AssistantWorkspaceRequestStatus.INTERRUPTED -> "interrupted"
+                    else -> "pending"
+                }
+                mutable.value = state.value.copy(assistant = latest.copy(busy = false, receiptChecking = false,
+                    receiptCheckFailed = checking && turn == null, privateRequestStatus = status,
+                    failure = LiveProblem(if (workspace?.error == AssistantWorkspaceError.INVALID_RESPONSE) Message.INVALID_RESPONSE else Message.UNAVAILABLE)))
+            }
+        }
+    }
+
     private fun loadAssistantPreview(library: String, generation: Long, asset: Asset) {
         if (!api.assistantEnabled || !PhoneDiscoveryWire.validLibrary(library) || !PhoneDiscoveryWire.validId(asset.id) ||
             state.value.library != library || state.value.generation != generation || state.value.previews.containsKey(asset.id) ||
@@ -3839,9 +6021,12 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         if (!allowed() || coolingDown()) return
         val library = state.value.library!!; val credential = token!!
         val familyTags = state.value.familyTags
+        val groupGallery = if (memoryGroupsAvailable)
+            (state.value.gallery?.items ?: state.value.memoryGroupGallery).take(100) else emptyList()
         invalidate(keepIdentity = true)
         mutable.value = state.value.copy(library = library, busy = true, photoNavigation = navigation,
-            familyTags = familyTags, viewingOriginal = originalAfterLoad, photoSlideshow = slideshow, media = navigation?.media ?: GalleryMedia.ALL)
+            familyTags = familyTags, memoryGroupGallery = groupGallery,
+            viewingOriginal = originalAfterLoad, photoSlideshow = slideshow, media = navigation?.media ?: GalleryMedia.ALL)
         launch { generation ->
             try {
                 val detail = api.detail(credential, library, assetId)
@@ -3890,6 +6075,17 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     private suspend fun readFailure(error: Exception, generation: Long, credential: Bearer, allowTransientRetry: Boolean = false, retryRead: () -> Unit) {
         if (!active(generation)) return
         if (error is ApiFailure && error.status in listOf(401, 403)) {
+            // A denied protected read also revokes cached assistant context and
+            // late voice callbacks; no new request is admitted by the old scope.
+            state.value.assistant?.speechAudio?.close()
+            assistantTranscriptRequest++; assistantSpeechRequest++; assistantTurnRequest++
+            assistantSpeechJob?.cancel(); assistantSpeechJob = null; assistantSpeechReplyReference = null
+            assistantSpeechMemoryReference = null
+            mutable.value = state.value.copy(assistant = null)
+            if (token === credential) {
+                clearSavedStoryReaderPositions(identity?.account_id)
+                clearMemoryBookReaderPositions(identity?.account_id)
+            }
             playbackProgress.clear()
             memoryConversationNavigation.clear()
             closeGroupedStoryCreation(discard = true)
@@ -3910,7 +6106,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         state.value.savedMemoryStories?.covers?.values?.forEach { it.fill(0) }
         savedMemoryListRequest++; savedMemoryDetailRequest++; savedMemoryFramesRequest++; savedMemoryCoversRequest++; savedMemoryHeroRequest++
         state.value.video?.close()
-        mutable.value = state.value.copy(video = null, gallery = null, detail = null, captions = null, previews = emptyMap(), photoNavigation = null, originalPhoto = null, viewingOriginal = false, photoSlideshow = false, photoPreviewOnly = false, photoOriginalQuality = false, discovery = null, stories = null, savedMemoryStories = null, familyTags = null, busy = false, problem = problem(error))
+        state.value.memoryGroups?.close()
+        mutable.value = state.value.copy(video = null, gallery = null, detail = null, captions = null, previews = emptyMap(), photoNavigation = null, originalPhoto = null, viewingOriginal = false, photoSlideshow = false, photoPreviewOnly = false, photoOriginalQuality = false, discovery = null, stories = null, savedMemoryStories = null, familyTags = null, memoryGroups = null, memoryGroupGallery = emptyList(), busy = false, problem = problem(error))
         if (error is ApiFailure && error.status == 401) {
             mutable.value = state.value.copy(busy = true)
             try {
@@ -3985,6 +6182,8 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
     }
     fun logout() {
         val credential = token
+        clearSavedStoryReaderPositions(identity?.account_id)
+        clearMemoryBookReaderPositions(identity?.account_id)
         invalidate(keepIdentity = false)
         mutable.value = state.value.copy(problem = state.value.problem?.takeIf { it.message == Message.SESSION_STORAGE_UNAVAILABLE }
             ?: LiveProblem(Message.SIGNED_OUT_LOCAL, cooldownUntil))
@@ -3997,13 +6196,23 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             catch (_: Exception) { /* Local logout remains final even when server acknowledgement fails. */ }
         }
     }
-    private fun expire() { invalidate(keepIdentity = false); mutable.value = state.value.copy(problem = state.value.problem?.takeIf { it.message == Message.SESSION_STORAGE_UNAVAILABLE } ?: LiveProblem(Message.SESSION_ENDED)) }
+    private fun expire() {
+        clearSavedStoryReaderPositions(identity?.account_id)
+        clearMemoryBookReaderPositions(identity?.account_id)
+        invalidate(keepIdentity = false)
+        mutable.value = state.value.copy(problem = state.value.problem?.takeIf { it.message == Message.SESSION_STORAGE_UNAVAILABLE } ?: LiveProblem(Message.SESSION_ENDED))
+    }
     fun canRetry(at: Long = now()) = retry != null && at >= cooldownUntil
     fun retry() { if (canRetry()) { val action = retry; retry = null; action?.invoke() } }
     private fun problem(error: Exception): LiveProblem {
         if (error is IllegalArgumentException) return LiveProblem(Message.INVALID_INPUT)
         if (error !is ApiFailure) return LiveProblem(Message.INVALID_RESPONSE)
         val message = when {
+            error.assistantErrorCode == "speech_no_input" -> Message.ASSISTANT_ASR_NO_INPUT
+            error.assistantErrorCode == "speech_busy" -> Message.ASSISTANT_ASR_BUSY
+            error.assistantErrorCode == "speech_unavailable" -> Message.ASSISTANT_ASR_UNAVAILABLE
+            error.assistantErrorCode == "speech_timeout" -> Message.ASSISTANT_ASR_TIMEOUT
+            error.assistantErrorCode == "speech_invalid_response" -> Message.ASSISTANT_ASR_INVALID
             error.kind == FailureKind.TOO_LARGE -> Message.TOO_LARGE
             error.status == 404 -> Message.MEDIA_UNAVAILABLE
             error.kind == FailureKind.TLS -> Message.TLS_ERROR
@@ -4011,6 +6220,7 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
             error.status in 500..599 -> Message.UNAVAILABLE
             error.status == 401 -> Message.ACCESS_DENIED
             error.status == 403 || error.status in 300..399 -> Message.CLOSED
+            error.status == 429 && error.kind == FailureKind.HTTP && error.errorCode == ApiErrorCode.MEMORY_CONVERSATION_FULL -> Message.MEMORY_CONVERSATION_FULL
             error.status == 429 -> Message.RATE_LIMITED
             error.kind == FailureKind.INVALID_INPUT || error.status == 400 || error.status == 409 -> Message.INVALID_INPUT
             else -> Message.INVALID_RESPONSE
@@ -4018,8 +6228,9 @@ class ConnectedStore(private val api: PhotoHouseApi, private val scope: Coroutin
         val wait = error.retryAfterMillis.coerceAtLeast(0)
         val at = if (Long.MAX_VALUE - now() < wait) Long.MAX_VALUE else now() + wait
         val retryAfterCooldown = error.status in 502..504 && wait > 0
-        if (message == Message.RATE_LIMITED || retryAfterCooldown) cooldownUntil = maxOf(cooldownUntil, at)
-        return LiveProblem(message, if (message == Message.RATE_LIMITED || retryAfterCooldown) cooldownUntil else 0)
+        val rateLimited = error.status == 429 || retryAfterCooldown
+        if (rateLimited) cooldownUntil = maxOf(cooldownUntil, at)
+        return LiveProblem(message, if (rateLimited) cooldownUntil else 0)
     }
     private fun validateSession(session: Session, account: String? = null) {
         validResponse(session.account_id.isNotBlank() && (account == null || session.account_id == account))

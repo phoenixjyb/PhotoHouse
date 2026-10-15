@@ -3,7 +3,8 @@
 Local operator controller, October 8, 2026. This is source and synthetic
 qualification; native Windows execution remains a separate gate. See the
 [family-note erasure contract](FAMILY_NOTE_ERASURE_V2.md) and
-[replay contract](ORIGINAL_DELETION_RECOVERY.md).
+[replay implementation](../../backend/app/access/original_deletions.py) and
+[replay refusal tests](../../tests/security/test_family_note_deletion_boundaries.py).
 
 ## Inputs and review
 
@@ -20,10 +21,10 @@ these from a primary restored without its ledger. The primary marker must match
 the full journal head exactly, with no pending records. Populated original
 sources are permitted; upgrading a capability does not adopt or erase them.
 
-Run read-only review with private operator paths, for example:
+From the monorepo root, run read-only review with private operator paths, for example:
 
 ```sh
-python scripts/upgrade_original_deletion_journal.py \
+python server/scripts/upgrade_original_deletion_journal.py \
   --database /private/primary.sqlite --backup /private/primary-backup.sqlite \
   --journal /private/deletions.sqlite --journal-backup /private/deletions-backup.sqlite \
   --namespace "$JOURNAL_NAMESPACE" --expected-sequence "$JOURNAL_SEQUENCE" \

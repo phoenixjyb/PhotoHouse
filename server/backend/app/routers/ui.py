@@ -45,6 +45,11 @@ async def ui_story_workspace():
     return _ui_file_response(UI_DIR / "story-workspace.js", "application/javascript")
 
 
+@router.get("/ui/memory-groups.js")
+async def ui_memory_groups():
+    return _ui_file_response(UI_DIR / "memory-groups.js", "application/javascript")
+
+
 @router.get("/ui/memory-community.js")
 async def ui_memory_community():
     return _ui_file_response(UI_DIR / "memory-community.js", "application/javascript")
@@ -53,6 +58,16 @@ async def ui_memory_community():
 @router.get("/ui/styles.css")
 async def ui_css():
     return _ui_file_response(STYLE_FILE, "text/css")
+
+
+@router.get("/ui/assistant-private-workspace.js")
+async def ui_assistant_private_workspace():
+    return _ui_file_response(UI_DIR / "assistant-private-workspace.js", "application/javascript")
+
+
+@router.get("/ui/voice-turn-timing.js")
+async def ui_voice_turn_timing():
+    return _ui_file_response(UI_DIR / "voice-turn-timing.js", "application/javascript")
 
 
 @router.get("/ui/photohouse-icon.svg")

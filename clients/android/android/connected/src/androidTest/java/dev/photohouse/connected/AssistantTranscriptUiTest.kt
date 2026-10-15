@@ -2,10 +2,10 @@ package dev.photohouse.connected
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.photohouse.connected.core.*
@@ -71,8 +71,10 @@ class AssistantTranscriptUiTest {
 
     private fun capture(name: String) {
         rule.waitForIdle()
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val context = instrumentation.targetContext
         val uri = requireNotNull(context.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             android.content.ContentValues().apply {
                 put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "assistant-transcript-$name.png")
@@ -81,6 +83,19 @@ class AssistantTranscriptUiTest {
             }))
         context.contentResolver.openOutputStream(uri).use { output ->
             requireNotNull(output).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        bitmap.recycle()
+    }
+
+    private fun capturePrivate(name: String) {
+        rule.waitForIdle()
+        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+        bitmap.density = android.util.DisplayMetrics.DENSITY_DEFAULT
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("voice-reliability-20261013"))
+        require(directory.mkdirs() || directory.isDirectory)
+        java.io.File(directory, "$name.png").outputStream().use {
+            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
         }
         bitmap.recycle()
     }
@@ -254,5 +269,35 @@ class AssistantTranscriptUiTest {
         rule.onNodeWithTag("assistant-text").assertTextContains("My typed words")
         assertNull(client.value.confirmedTranscriptRequestId)
         assertEquals(0, sends)
+    }
+
+    @Test fun recognizedNoInputCategoryShowsHelpfulLocalizedVoiceError() {
+        val failed = mutableStateOf(AssistantClientState("synthetic-library", 1,
+            capabilities = AssistantCapabilities(true, true, true, false, 30),
+            failure = LiveProblem(Message.ASSISTANT_ASR_NO_INPUT)))
+        val zh = mutableStateOf(false)
+        rule.setContent {
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(currentDensity.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(failed.value, zh.value, onBack = {}, previews = emptyMap(), onRetryCapabilities = {},
+                        onSend = { false }, onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {},
+                        onRecord = {}, onStopRecording = {}, onCancelRecording = {}, recording = false,
+                        recordError = false, onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {})
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-turns").performScrollToNode(hasTestTag("assistant-turn-error"))
+        rule.onNodeWithTag("assistant-turn-error").performScrollTo()
+        rule.onNodeWithTag("assistant-turn-error").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-turn-error").assertTextContains("No words were recognized. Please speak clearly and try again.")
+        capturePrivate("assistant-asr-no-input-en-150")
+        rule.runOnIdle { zh.value = true }
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-turns").performScrollToNode(hasTestTag("assistant-turn-error"))
+        rule.onNodeWithTag("assistant-turn-error").performScrollTo()
+        rule.onNodeWithTag("assistant-turn-error").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-turn-error").assertTextContains("没有识别到内容，请说清楚后重试。")
+        capturePrivate("assistant-asr-no-input-zh-150")
     }
 }

@@ -41,6 +41,7 @@ class SavedMemoryStoriesStoreTest {
         var detailError: Exception? = null
         var listGate: CompletableDeferred<Unit>? = null
         var detailGate: CompletableDeferred<Unit>? = null
+        var gatedDetailFailureAfterCancellation: Exception? = null
         var referencesError: Exception? = null
         val referencesGates = mutableMapOf<Int, CompletableDeferred<Unit>>()
         val referencesErrors = mutableMapOf<Int, Exception>()
@@ -53,13 +54,18 @@ class SavedMemoryStoriesStoreTest {
         var contributionDetailResult: MemoryContributionDetail = sourceDetail()
         val contributionDetailReads = mutableListOf<String>()
         var previewError: Exception? = null
+        val previewGates = mutableMapOf<String, CompletableDeferred<Unit>>()
         var coverGate: CompletableDeferred<Unit>? = null
         var coverStarted = false
         var listReads = 0
         var editMode = false
+        var accountId = "account"
+        var storyOverride: SavedMemoryStory? = null
         var saveError: Exception? = null
         var saveGate: CompletableDeferred<Unit>? = null
         var originalDeleteCalls = 0
+        var originalReads = 0
+        var videoRangeReads = 0
         var secondLibraryAvailable = false
         var nextRevision = 4L
         var savedRefs: SavedMemoryStoryContributionReferences? = null
@@ -73,7 +79,7 @@ class SavedMemoryStoriesStoreTest {
         val previewReads = mutableListOf<String>()
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
-        override suspend fun session(token: Bearer) = Session("account", "+8612345678",
+        override suspend fun session(token: Bearer) = Session(accountId, "+8612345678",
             listOf(Membership("family", "approved", if (editMode) "owner" else "viewer", 1, null, 0, true)) +
                 if (secondLibraryAvailable) listOf(Membership("family-2", "approved", "owner", 1, null, 0, true)) else emptyList())
         override suspend fun logout(token: Bearer) = Unit
@@ -102,11 +108,18 @@ class SavedMemoryStoriesStoreTest {
         }
         override suspend fun detailPreview(token: Bearer, library: String, asset: Asset): ByteArray {
             previewReads += asset.id
+            previewGates[asset.id]?.let { withContext(NonCancellable) { it.await() } }
             previewError?.let { throw it }
             return byteArrayOf(4, 5, 6)
         }
-        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int) = VideoChunk(start, 1, byteArrayOf(0))
-        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String) = byteArrayOf(1)
+        override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int): VideoChunk {
+            videoRangeReads++
+            return VideoChunk(start, 1, byteArrayOf(0))
+        }
+        override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray {
+            originalReads++
+            return byteArrayOf(1)
+        }
         override suspend fun savedMemoryStories(token: Bearer, library: String, page: Int, theme: String?): SavedMemoryStoryPage {
             listReads++
             listRequests += page to theme
@@ -120,9 +133,15 @@ class SavedMemoryStoriesStoreTest {
         }
         override suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long): SavedMemoryStory {
             detailReads += storyId
-            detailGate?.let { withContext(NonCancellable) { it.await() } }
+            detailGate?.let {
+                try { withContext(NonCancellable) { it.await() } }
+                catch (cancelled: CancellationException) {
+                    gatedDetailFailureAfterCancellation?.let { failure -> throw failure }
+                    throw cancelled
+                }
+            }
             detailError?.let { throw it }
-            return savedStory(revision = nextRevision, canEdit = editMode)
+            return storyOverride ?: savedStory(revision = nextRevision, canEdit = editMode)
         }
         override suspend fun savedMemoryStoryContributionReferences(
             token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,
@@ -157,8 +176,53 @@ class SavedMemoryStoriesStoreTest {
         }
     }
 
-    private fun TestScope.newStore(api: Api, community: Boolean = false): ConnectedStore = ConnectedStore(
+    private class PositionPersistence : SavedStoryReaderPositionPersistence {
+        private val positions = mutableMapOf<String, List<SavedStoryReaderPosition>>()
+        var failLoad = false
+        var failSave = false
+        var failRemove = false
+        var failClear = false
+
+        override fun load(accountId: String): List<SavedStoryReaderPosition> {
+            check(!failLoad)
+            return positions[accountId].orEmpty().toList()
+        }
+
+        override fun save(accountId: String, position: SavedStoryReaderPosition) {
+            check(!failSave)
+            positions[accountId] = SavedStoryReaderPositions.upsert(accountId, positions[accountId].orEmpty(), position)
+        }
+
+        override fun remove(accountId: String, libraryId: String, storyId: String) {
+            check(!failRemove)
+            positions[accountId] = SavedStoryReaderPositions.without(accountId, positions[accountId].orEmpty(), libraryId, storyId)
+        }
+
+        override fun clear(accountId: String) {
+            check(!failClear)
+            positions.remove(accountId)
+        }
+
+        fun all(accountId: String) = positions[accountId].orEmpty()
+    }
+
+    private fun readerPosition(
+        account: String = "account", library: String = "family", story: String = storyId,
+        revision: Long = 4, chapter: String = "chapter-2", asset: String = "2",
+    ) = SavedStoryReaderPosition(account, library, story, revision, chapter, asset)
+
+    private fun multiAssetStory() = savedStory().copy(
+        items = listOf(MemoryStoryAsset(asset("1"), emptyList()), MemoryStoryAsset(asset("2"), emptyList()),
+            MemoryStoryAsset(asset("3"), emptyList())),
+        chapters = listOf(SavedMemoryStoryChapter("chapter-1", "Before lunch", "A quiet start.", listOf("1", "2"), emptyList()),
+            SavedMemoryStoryChapter("chapter-2", "After lunch", "Then the garden.", listOf("3"), emptyList())),
+    )
+
+    private fun TestScope.newStore(
+        api: Api, community: Boolean = false, positions: SavedStoryReaderPositionPersistence? = null,
+    ): ConnectedStore = ConnectedStore(
         api, backgroundScope, memoryCommunityApi = api, memoryCommunityEnabled = community,
+        savedStoryReaderPositionPersistence = positions,
     ) { testScheduler.currentTime }
     private fun TestScope.signIn(store: ConnectedStore) {
         store.authenticate("+8612345678", "synthetic-password")
@@ -192,6 +256,246 @@ class SavedMemoryStoriesStoreTest {
         store.closeSavedMemoryStories()
         assertTrue(protectedCover.all { it == 0.toByte() })
         assertNull(store.state.value.savedMemoryStories)
+    }
+
+    @Test fun selectingAnotherFrameSupersedesPendingPreviewAndForcedRetryRefusesDuplicateWhileBusy() = runTest {
+        val api = Api().apply { storyOverride = multiAssetStory() }
+        val positions = PositionPersistence()
+        val store = newStore(api, positions = positions)
+        signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+        assertEquals("1", store.state.value.savedMemoryStories?.selectedAssetId)
+
+        api.previewGates["2"] = CompletableDeferred()
+        store.selectSavedMemoryFrame("2"); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories?.heroBusy == true)
+        assertEquals("2", store.state.value.savedMemoryStories?.selectedAssetId)
+        val readsWhileSecondPreviewLoads = api.previewReads.size
+        store.selectSavedMemoryFrame("1"); runCurrent()
+        assertEquals("ordinary frame navigation supersedes the pending preview", "1",
+            store.state.value.savedMemoryStories?.selectedAssetId)
+        assertEquals(readsWhileSecondPreviewLoads + 1, api.previewReads.size)
+        assertEquals("1", store.state.value.savedMemoryStories?.heroAssetId)
+        api.previewGates.getValue("2").complete(Unit); runCurrent()
+        assertEquals("stale preview result cannot replace the selected asset", "1",
+            store.state.value.savedMemoryStories?.heroAssetId)
+
+        api.previewGates["1"] = CompletableDeferred()
+        store.loadSavedMemoryHero("1", forceReload = true); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories?.heroBusy == true)
+        val readsWhileForcedRetryLoads = api.previewReads.size
+        store.loadSavedMemoryHero("1", forceReload = true)
+        runCurrent()
+        assertEquals("forced retry while busy is not duplicated", readsWhileForcedRetryLoads, api.previewReads.size)
+        api.previewGates.getValue("1").complete(Unit); runCurrent()
+        assertFalse(store.state.value.savedMemoryStories?.heroBusy ?: true)
+        assertEquals(0, api.originalReads)
+        assertEquals(0, api.videoRangeReads)
+    }
+
+    @Test fun explicitNavigationOffersFreshPositionAndContinueRequiresAnExplicitTap() = runTest {
+        val positions = PositionPersistence()
+        val api = Api().apply { storyOverride = multiAssetStory() }
+        val first = newStore(api, positions = positions)
+        signIn(first)
+        first.openSavedMemoryStories(); runCurrent()
+        first.openSavedMemoryStory(summary); runCurrent()
+        val initial = first.state.value.savedMemoryStories!!
+        assertNull("fresh authorized detail is required before showing a resume offer", initial.resumePosition)
+        assertEquals(0, initial.selectedChapter)
+        assertEquals("1", initial.selectedAssetId)
+        assertEquals("1", initial.heroAssetId)
+
+        first.selectSavedMemoryFrame("2"); runCurrent()
+        assertEquals("2", first.state.value.savedMemoryStories?.selectedAssetId)
+        assertEquals("2", first.state.value.savedMemoryStories?.heroAssetId)
+        val framePosition = readerPosition(chapter = "chapter-1", asset = "2")
+        assertEquals(framePosition, positions.all("account").single())
+
+        first.loadSavedMemoryChapter(1); runCurrent()
+        val saved = readerPosition(chapter = "chapter-2", asset = "3")
+        assertEquals(saved, positions.all("account").single())
+
+        val reopened = newStore(api, positions = positions)
+        signIn(reopened)
+        reopened.openSavedMemoryStories(); runCurrent()
+        reopened.openSavedMemoryStory(summary); runCurrent()
+        val fresh = reopened.state.value.savedMemoryStories!!
+        assertEquals(saved, fresh.resumePosition)
+        assertEquals(0, fresh.selectedChapter)
+        assertEquals("1", fresh.selectedAssetId)
+        assertEquals("1", fresh.heroAssetId)
+        assertEquals("reader opens at the beginning until the user selects Continue", 0, fresh.selectedChapter)
+        assertEquals("1", fresh.heroAssetId)
+
+        assertTrue(reopened.resumeSavedMemoryStory(saved))
+        runCurrent()
+        assertNull(reopened.state.value.savedMemoryStories?.resumePosition)
+        assertEquals(1, reopened.state.value.savedMemoryStories?.selectedChapter)
+        assertEquals("3", reopened.state.value.savedMemoryStories?.selectedAssetId)
+        assertEquals("3", reopened.state.value.savedMemoryStories?.heroAssetId)
+        assertEquals(0, api.originalDeleteCalls)
+        assertEquals(0, api.originalReads)
+        assertEquals(0, api.videoRangeReads)
+
+        positions.save("account", readerPosition(library = "family-2", story = "22222222-2222-2222-2222-222222222222"))
+        reopened.closeSavedMemoryStoryDetail()
+        val latestSummary = reopened.state.value.savedMemoryStories!!.result!!.items.single()
+        reopened.openSavedMemoryStory(latestSummary); runCurrent()
+        assertNotNull(reopened.state.value.savedMemoryStories?.resumePosition)
+        assertTrue(reopened.startSavedMemoryStoryOver(storyId, 4))
+        runCurrent()
+        assertNull(reopened.state.value.savedMemoryStories?.resumePosition)
+        assertEquals(0, reopened.state.value.savedMemoryStories?.selectedChapter)
+        assertEquals("1", reopened.state.value.savedMemoryStories?.selectedAssetId)
+        assertEquals(listOf(readerPosition(library = "family-2", story = "22222222-2222-2222-2222-222222222222")),
+            positions.all("account"))
+    }
+
+    @Test fun resumeWaitsForFreshDetailAndDiscardsWrongRevisionChapterOrAsset() = runTest {
+        val positions = PositionPersistence()
+        val valid = readerPosition()
+        positions.save("account", valid)
+        val api = Api().apply { detailGate = CompletableDeferred() }
+        val store = newStore(api, positions = positions)
+        signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(summary); runCurrent()
+        assertNull("a cached pointer is not offered before protected detail returns", store.state.value.savedMemoryStories?.resumePosition)
+        api.detailGate!!.complete(Unit); runCurrent()
+        assertEquals(valid, store.state.value.savedMemoryStories?.resumePosition)
+
+        for (stale in listOf(
+            readerPosition(revision = 3),
+            readerPosition(chapter = "chapter-3"),
+            readerPosition(asset = "99"),
+        )) {
+            positions.save("account", stale)
+            store.closeSavedMemoryStoryDetail()
+            store.openSavedMemoryStory(store.state.value.savedMemoryStories!!.result!!.items.single()); runCurrent()
+            assertNull("stale revision/chapter/asset must not be offered", store.state.value.savedMemoryStories?.resumePosition)
+            assertFalse(positions.all("account").any { it.libraryId == stale.libraryId && it.storyId == stale.storyId })
+        }
+    }
+
+    @Test fun positionStorageFailuresAndOtherAccountOrLibraryPointersDoNotAffectReader() = runTest {
+        val positions = PositionPersistence()
+        val foreignAccount = readerPosition(account = "other-account")
+        val foreignLibrary = readerPosition(library = "family-2", story = "22222222-2222-2222-2222-222222222222")
+        positions.save("other-account", foreignAccount)
+        positions.save("account", foreignLibrary)
+        positions.failLoad = true
+        val api = Api()
+        val store = newStore(api, positions = positions)
+        signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        store.openSavedMemoryStory(summary); runCurrent()
+        assertNull(store.state.value.savedMemoryStories?.resumePosition)
+        assertNotNull(store.state.value.savedMemoryStories?.detail)
+        assertNull(store.state.value.savedMemoryStories?.problem)
+
+        positions.failLoad = false
+        positions.failSave = true
+        store.loadSavedMemoryChapter(1); runCurrent()
+        assertEquals(1, store.state.value.savedMemoryStories?.selectedChapter)
+        assertEquals("2", store.state.value.savedMemoryStories?.selectedAssetId)
+        assertNotNull(store.state.value.savedMemoryStories?.detail)
+        assertNull(store.state.value.savedMemoryStories?.problem)
+        assertEquals(listOf(foreignAccount), positions.all("other-account"))
+        assertEquals(listOf(foreignLibrary), positions.all("account"))
+    }
+
+    @Test fun currentDenialClearsCurrentAccountButLateOldAccountDenialCannotClearNewAccount() = runTest {
+        val positions = PositionPersistence()
+        positions.save("account", readerPosition())
+        val deniedApi = Api().apply { detailError = ApiFailure(FailureKind.HTTP, 403) }
+        val deniedStore = newStore(deniedApi, positions = positions)
+        signIn(deniedStore)
+        deniedStore.openSavedMemoryStories(); runCurrent()
+        deniedStore.openSavedMemoryStory(summary); runCurrent()
+        assertNull(deniedStore.state.value.savedMemoryStories)
+        assertTrue(positions.all("account").isEmpty())
+
+        val gate = CompletableDeferred<Unit>()
+        val switchingApi = Api().apply {
+            detailGate = gate
+            gatedDetailFailureAfterCancellation = ApiFailure(FailureKind.HTTP, 403)
+        }
+        val switchingStore = newStore(switchingApi, positions = positions)
+        signIn(switchingStore)
+        switchingStore.openSavedMemoryStories(); runCurrent()
+        switchingStore.openSavedMemoryStory(summary); runCurrent()
+        switchingStore.logout(); runCurrent()
+        switchingApi.accountId = "new-account"
+        signIn(switchingStore)
+        val newAccountPosition = readerPosition(account = "new-account")
+        positions.save("new-account", newAccountPosition)
+        gate.complete(Unit); runCurrent()
+
+        assertEquals("new-account", switchingStore.state.value.session?.account_id)
+        assertEquals(listOf(newAccountPosition), positions.all("new-account"))
+        assertEquals("family", switchingStore.state.value.library)
+    }
+
+    @Test fun resumeAndStartOverCannotDiscardPendingChapterReferenceWrite() = runTest {
+        val positions = PositionPersistence()
+        val saved = readerPosition()
+        positions.save("account", saved)
+        val gate = CompletableDeferred<Unit>()
+        val api = Api().apply { editMode = true; saveGate = gate }
+        val store = newStore(api, community = true, positions = positions)
+        signIn(store)
+        store.openSavedMemoryStories(); runCurrent()
+        val editable = store.state.value.savedMemoryStories!!.result!!.items.single()
+        store.openSavedMemoryStory(editable); runCurrent()
+        assertEquals(saved, store.state.value.savedMemoryStories?.resumePosition)
+
+        store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        store.saveSavedMemoryStoryContributionReferences(); runCurrent()
+        assertTrue(store.state.value.savedMemoryStories!!.contributionReferenceSaveBusy)
+        assertFalse(store.resumeSavedMemoryStory(saved))
+        assertFalse(store.startSavedMemoryStoryOver(storyId, 4))
+        assertEquals(saved, positions.all("account").single())
+
+        gate.complete(Unit); runCurrent()
+    }
+
+    @Test fun resumeAndStartOverKeepChangedOrFailedChapterReferenceDraftsInPlace() = runTest {
+        suspend fun preparedStore(api: Api, positions: PositionPersistence): ConnectedStore {
+            val store = newStore(api, community = true, positions = positions)
+            signIn(store)
+            store.openSavedMemoryStories(); runCurrent()
+            val editable = store.state.value.savedMemoryStories!!.result!!.items.single()
+            store.openSavedMemoryStory(editable); runCurrent()
+            return store
+        }
+
+        val changedPositions = PositionPersistence().apply { save("account", readerPosition()) }
+        val changedApi = Api().apply { editMode = true }
+        val changedStore = preparedStore(changedApi, changedPositions)
+        changedStore.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+        assertFalse(changedStore.resumeSavedMemoryStory(readerPosition()))
+        assertFalse(changedStore.startSavedMemoryStoryOver(storyId, 4))
+        assertEquals("chapter-1", changedStore.state.value.savedMemoryStories?.detail?.chapters
+            ?.get(changedStore.state.value.savedMemoryStories!!.selectedChapter)?.id)
+
+        for (status in listOf(500, 409)) {
+            val positions = PositionPersistence().apply { save("account", readerPosition()) }
+            val api = Api().apply {
+                editMode = true
+                saveError = ApiFailure(FailureKind.HTTP, status = status)
+            }
+            val store = preparedStore(api, positions)
+            store.toggleSavedMemoryChapterContribution("chapter-1", contributionId)
+            store.saveSavedMemoryStoryContributionReferences(); runCurrent()
+            val failed = store.state.value.savedMemoryStories!!
+            assertTrue(failed.contributionReferenceSaveError)
+            assertEquals(status == 409, failed.contributionReferenceSaveConflict)
+            assertFalse(store.resumeSavedMemoryStory(readerPosition()))
+            assertFalse(store.startSavedMemoryStoryOver(storyId, 4))
+            assertEquals(listOf(readerPosition()), positions.all("account"))
+        }
     }
 
     @Test fun chapterReferencesUseFetchedCurrentRevisionAndRevealOnlyExplicitEligibleTextOrReadyTranscript() = runTest {

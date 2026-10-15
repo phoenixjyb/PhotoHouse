@@ -8,6 +8,17 @@ import java.nio.charset.CodingErrorAction
 
 data class AssistantCapabilities(val enabled: Boolean, val text: Boolean, val transcribe: Boolean, val speech: Boolean, val maxAudioSeconds: Int)
 data class AssistantEffect(val type: String, val assetId: String)
+data class AssistantSavedMemoryCard(
+    val kind: String, val id: String, val revision: String, val sourceRevision: String,
+    val title: String, val excerpt: String,
+)
+data class AssistantSavedMemoryContext(
+    val libraryId: String, val sourceRevision: String, val references: List<AssistantSavedMemoryReference>,
+)
+data class AssistantSavedMemoryReference(
+    val kind: String, val id: String, val revision: String, val sourceRevision: String,
+)
+data class AssistantSavedMemoryAction(val type: String, val ordinal: Int)
 data class AssistantTurn(
     val kind: String,
     val reply: String,
@@ -17,13 +28,18 @@ data class AssistantTurn(
     val total: Int,
     val hasMore: Boolean,
     val effect: AssistantEffect?, val receipt: AssistantRequestReceipt? = null,
+    /** Local recovery marker; never accepted as an extra wire field. */
+    val recovered: Boolean = false,
+    val memoryCards: List<AssistantSavedMemoryCard> = emptyList(),
+    val savedMemoryContext: AssistantSavedMemoryContext? = null,
+    val memoryAction: AssistantSavedMemoryAction? = null,
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,
     /** Client-local UI identity; never serialized or accepted as server correlation. */
     val localRequestId: String = "",
 )
-data class AssistantRequestReceipt(val requestId: String, val tracking: String, val status: String?)
+data class AssistantRequestReceipt(val requestId: String, val tracking: String, val status: String?, val playbackTracking: Boolean = false)
 data class AssistantSpeechResult(val bytes: ByteArray, val receipt: AssistantRequestReceipt)
 data class AssistantReceipt(
     val requestId: String, val operation: String, val parentRequestId: String?, val status: String,
@@ -69,6 +85,34 @@ object AssistantWire {
         }
         return AssistantRequestReceipt(sentId, tracking, status)
     }
+    fun speechRequestReceipt(headers: Map<String, String>, sentId: String): AssistantRequestReceipt {
+        val receipt = requestReceipt(headers, sentId)
+        val playback = headers["X-PhotoHouse-Playback-Tracking"] ?: return receipt
+        if (playback !in setOf("enabled", "disabled")) bad()
+        return receipt.copy(playbackTracking = playback == "enabled")
+    }
+    fun playbackOutcome(bytes: ByteArray, expectedId: String, expectedOutcome: String) = guarded {
+        check(bytes.size in 1..2048 && validRequestId(expectedId) && expectedOutcome in setOf("completed", "failed", "cancelled"))
+        val o = DiscoveryJson.parse(bytes, 2048).obj("version", "request_id", "playback_outcome")
+        check(o.getValue("version").int(1) == 1)
+        check(o.getValue("request_id").str(36) == expectedId && validRequestId(expectedId))
+        check(o.getValue("playback_outcome").str(16) == expectedOutcome)
+    }
+    /** Extracts only known local ASR categories; provider text and unknown response fields are discarded. */
+    fun asrErrorCode(bytes: ByteArray, status: Int): String? = runCatching {
+        check(bytes.size in 1..4096)
+        val o = DiscoveryJson.parse(bytes, 4096).obj("error", "detail")
+        val code = o.getValue("error").str(64)
+        o.getValue("detail").str(256)
+        val expectedStatus = when (code) {
+            "speech_no_input" -> 422
+            "speech_busy", "speech_unavailable" -> 503
+            "speech_timeout" -> 504
+            "speech_invalid_response" -> 502
+            else -> return@runCatching null
+        }
+        code.takeIf { expectedStatus == status }
+    }.getOrNull()
     fun receipt(bytes: ByteArray, expectedId: String): AssistantReceipt = guarded {
         check(bytes.size in 1..16 * 1024 && validRequestId(expectedId))
         val o = DiscoveryJson.parse(bytes).obj("version", "request_id", "operation", "parent_request_id", "status", "created_at", "updated_at", "expires_at", "http_status", "error_code", "input_text", "recognized_text", "result_kind", "result_total", "client_outcome")
@@ -161,7 +205,8 @@ object AssistantWire {
 
     private fun parseAsset(value: JsonElement, library: String): Asset {
         val o = value as? JsonObject ?: bad()
-        check(o.keys == setOf("id", "kind", "width", "height", "duration_sec", "taken_at", "thumbnail_url", "date_hint"))
+        val legacyKeys = setOf("id", "kind", "width", "height", "duration_sec", "taken_at", "thumbnail_url")
+        check(o.keys == legacyKeys || o.keys == legacyKeys + "date_hint")
         val id = o.getValue("id").str(19).also { check(PhoneDiscoveryWire.validId(it)) }
         val kind = o.getValue("kind").str(8).also { check(it in setOf("image", "video", "other")) }
         fun dimension(key: String): Int? = o.getValue(key).let { if (it == JsonNull) null else it.int(1_000_000).also { n -> check(n > 0) } }
@@ -175,9 +220,11 @@ object AssistantWire {
         val expected = base.newBuilder().addPathSegment("assets").addPathSegment(id).addPathSegment("thumbnail")
             .addQueryParameter("library", library).build()
         check(thumbnail.startsWith('/') && !thumbnail.startsWith("//") && '\\' !in thumbnail && base.resolve(thumbnail) == expected)
-        val hint = o.getValue("date_hint").let { if (it == JsonNull) null else {
+        val hint = o["date_hint"]?.let { if (it == JsonNull) null else {
             val h = it.obj("value", "source")
-            DateHint(h.getValue("value").str(64), h.getValue("source").str(16))
+            val source = h.getValue("source").str(16)
+            check(source in setOf("filename", "received"))
+            DateHint(h.getValue("value").str(64), source)
         } }
         return Asset(id, kind, dimension("width"), dimension("height"), duration, taken, thumbnail, hint)
     }

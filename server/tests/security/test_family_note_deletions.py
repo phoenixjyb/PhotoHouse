@@ -156,6 +156,21 @@ class FamilyNoteDeletionTests(unittest.TestCase):
         return tuple(db.execute('SELECT applied_seq,applied_digest '
                                 'FROM access_original_deletion_state WHERE id=1').fetchone())
 
+    def test_v3_keeps_family_note_append_and_replay_compatible(self):
+        with self.f.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            self.journal.upgrade_asset_format(db, expected_head=self.journal.head())
+            db.commit()
+        backup = self.root / 'v3-family-backup.sqlite'
+        _snapshot(self.f.path, backup)
+        self._live_erase()
+        _, restored = self._restore(backup)
+        with closing(restored):
+            self.assertEqual(self.journal.replay(restored)[3], 1)
+            self.assertIsNone(restored.execute('SELECT id FROM access_stories WHERE id=?',
+                                               (self.note['id'],)).fetchone())
+            self.assertEqual(self.journal.replay(restored)[3], 0)
+
     def test_live_erasure_scrubs_note_and_revision_bytes_but_reserves_identity(self):
         note_id = self.note['id']
         text_value = 'Private family note source'

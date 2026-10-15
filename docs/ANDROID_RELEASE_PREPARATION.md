@@ -21,6 +21,11 @@ cannot establish the historical value of every build-only property. Record
 inferred values and newly selected choices separately. Release preparation
 keeps `photohouseStoryFixtureEnabled=false`; the phone's
 `photohousePhoneUiQa=false` selects the household package.
+The new `photohouseMemoryGroupsEnabled` property defaults to false and requires
+`photohouseProtectedNativeV2Enabled=true`. Enabling the phone control does not
+enable server storage or similarity lookup. Record it explicitly in a future
+phone release profile, and qualify the e7 API and private vector profile before
+claiming the shared-memory journey works live.
 
 Build the modules in separate serial invocations. Shared property names such
 as `photohouseHomeCalendarEnabled` can legitimately have different phone and
@@ -28,6 +33,40 @@ TV values. Clear inherited `ORG_GRADLE_PROJECT_*` variables before supplying
 the selected module's complete profile. Reuse existing toolchains and caches;
 Gradle's `--offline` does not prevent a wrapper from downloading its missing
 distribution before Gradle starts.
+
+### Check a complete private profile
+
+`tools/prepare_android_profile.py` checks the actual module's declared property
+keys against a complete explicit profile. It requires a clean full commit, an
+expected profile SHA-256 and a direct private profile file outside the repository.
+The profile format is deliberately simple UTF-8 `key=value` lines and `#`
+comments, with no property escapes, continuations, duplicate keys or credentials.
+
+```sh
+python3 tools/prepare_android_profile.py --module phone \
+  --commit FULL_40_CHARACTER_COMMIT \
+  --profile /absolute/private/phone.properties \
+  --profile-sha256 FULL_64_CHARACTER_SHA256
+```
+
+Use `--module tv` for the separate TV profile. The checker validates boolean
+dependencies, release QA/fixture mode, catalog constraints and routing shape.
+Current phone/TV Home and OTA consumers require canonical HTTPS DNS origins.
+Private RFC1918 IPv4 LAN overrides map only the selected hostname; they preserve
+TLS and hostname checks. This checker does not attest HTTP media support, which
+is not implemented by the current APK clients. No path, query, credential or
+trust override can be embedded in an origin.
+The main phone/API or TV/catalog origin is required, as is the phone Home origin
+when Home discovery is enabled. A disconnected debug profile is not a release
+profile. Optional disabled Home/OTA routes can remain empty.
+
+Its JSON contains source/profile/Gradle hashes, boolean choices and routing-value
+hashes, never the original endpoints. It performs no Gradle invocation, network
+request, signature access, service operation or publication. A passed preparation
+is not an APK check: embedded DEX values, actual icon, signer and full artifact
+still need the checks below. Source property additions deliberately fail closed
+until this checker and its generated tests are updated. POSIX fixture checks are
+recorded locally; native Windows release preparation remains a separate gate.
 
 ## Verify the unsigned artifacts
 

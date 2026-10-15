@@ -227,6 +227,98 @@ def _case_three() -> dict:
     }
 
 
+def _case_four() -> dict:
+    prefix = "synthetic-similar-photos"
+    sources = [
+        _source(f"{prefix}-pond-memory", "family",
+                "On April 12, Synthetic family member A photographed Mira at the pond holding a folded paper boat. The note identifies Mira in this photo.",
+                f"{prefix}-pond-photo", "Synthetic family member A"),
+        _source(f"{prefix}-school-memory", "family",
+                "On April 14 at school pickup, Synthetic family member B saw a child in a yellow coat similar to the coat in the pond photo. The child's face is turned away, so B cannot tell whether this is Mira. B remembers no pond, paper boat, or shared outing at school pickup.",
+                f"{prefix}-school-photo", "Synthetic family member B"),
+    ]
+    bundle = _bundle(
+        prefix,
+        "Two Similar Coats, Two Different Days",
+        "Keep similar-looking photos tied to their own days, activities, and evidence",
+        [
+            _chapter(f"{prefix}-chapter-01", "At the pond on April 12",
+                     "On April 12, Mira held a folded paper boat at the pond.",
+                     assets=[f"{prefix}-pond-photo"], evidence=[f"{prefix}-pond-memory"]),
+            _chapter(f"{prefix}-chapter-02", "School pickup on April 14",
+                     "At school pickup two days later, a child wore a similar yellow coat. The face is turned away, and the note does not identify the child as Mira.",
+                     assets=[f"{prefix}-school-photo"], evidence=[f"{prefix}-school-memory"]),
+        ],
+        sources,
+        [],
+        "Keep the two photos and activities separate. Similar clothing does not establish that the child in the second photo is Mira or that either photo belongs to the same outing.",
+    )
+    return {
+        "case_id": prefix,
+        "focus": "similar_photos_distinct_days_and_evidence_boundaries",
+        "task": "narrative",
+        "bundle": bundle,
+        "withheld_source_ids": [],
+        "human_review_expectations": {
+            "grounding": "Use the pond and paper boat only in the April 12 chapter; the April 14 source supports school pickup and a child in a similar yellow coat only.",
+            "conflicts": "Keep the second child's identity explicitly unknown; do not resolve the resemblance by assigning Mira's name.",
+            "attribution": "Keep family member A's identification of Mira separate from family member B's uncertain observation.",
+            "chronology": "Keep April 12 and April 14 attached to their own accounts; do not infer a continuous outing or transfer details between days.",
+            "transitions": "Connect the entries as two nearby memories while stating that the sources do not establish a shared event or identity.",
+            "literary_style": "Write readable connected prose without turning the photos into captions or inventing a relationship, activity, or identity. This text-only fixture tests narrative grounding, not visual recognition.",
+        },
+    }
+
+
+def _case_five() -> dict:
+    prefix = "synthetic-speaker-uploader-subject"
+    sources = [
+        _source(f"{prefix}-subject-memory", "family",
+                "Mira remembers waiting at a station with Jo. She cannot place the year and cannot confirm that either audio recollection below describes this same visit.",
+                f"{prefix}-station-photo", "Synthetic story subject Mira"),
+        _source(f"{prefix}-ren-transcript", "transcript",
+                "AI transcript of audio uploaded by Synthetic member Sam. The source attributes the voice to Synthetic speaker Aunt Ren. Ren tentatively remembers that a person near the station platform may have been Mira and that it may have been late 2020, but says she could be mixing this with another visit.",
+                None, "Synthetic speaker Aunt Ren"),
+        _source(f"{prefix}-dev-transcript", "transcript",
+                "AI transcript of a separate audio recording uploaded by Synthetic member Lee. The source attributes the voice to Synthetic speaker Uncle Dev. Dev tentatively remembers that the person near the platform may have been Jo and that it may have been 2021, but is unsure whether this was the same visit.",
+                None, "Synthetic speaker Uncle Dev"),
+        _source(f"{prefix}-upload-log", "metadata",
+                "Synthetic upload log: member Sam uploaded one recording on 2024-11-02 and member Lee uploaded a separate recording on 2024-11-09. These are file upload dates only; they do not identify either speaker, any person in the photo, or the station visit date.",
+                None, None),
+    ]
+    bundle = _bundle(
+        prefix,
+        "A Station Memory with Different Voices",
+        "Separate the story subject, recorded speakers, uploaders, and uncertain retellings",
+        [
+            _chapter(f"{prefix}-chapter-01", "Mira's station memory",
+                     "Mira remembers waiting at a station with Jo, but cannot date the visit or connect it to the recordings.",
+                     assets=[f"{prefix}-station-photo"], evidence=[f"{prefix}-subject-memory"]),
+            _chapter(f"{prefix}-chapter-02", "Two tentative audio recollections",
+                     "A transcript attributed to Aunt Ren tentatively places Mira near the platform in late 2020. A separate transcript attributed to Uncle Dev tentatively suggests Jo and 2021. Both speakers are unsure, and the sources do not establish whether these are the same visit Mira remembers. Sam and Lee are identified only as the recording uploaders; the upload dates do not date the visit.",
+                     assets=[], evidence=[f"{prefix}-ren-transcript", f"{prefix}-dev-transcript", f"{prefix}-upload-log"]),
+        ],
+        sources,
+        [],
+        "Keep Mira as the subject of her family note, Aunt Ren and Uncle Dev as the reported speakers, and Sam and Lee as uploaders. Treat transcript wording as derived speech, not direct quotations. Preserve disagreements and uncertainty; do not merge the accounts into one confirmed visit or infer event dates from upload dates.",
+    )
+    return {
+        "case_id": prefix,
+        "focus": "speaker_uploader_subject_roles_and_conflicting_oral_recollections",
+        "task": "narrative",
+        "bundle": bundle,
+        "withheld_source_ids": [],
+        "human_review_expectations": {
+            "grounding": "Mira's family note supports her own station recollection only. The transcripts support attributed, tentative recollections; upload metadata supports file handling only.",
+            "conflicts": "Keep Ren's tentative Mira/late-2020 account and Dev's tentative Jo/2021 account distinct. Do not choose, average, or reconcile identities, years, or whether the events match.",
+            "attribution": "Distinguish story subject Mira, reported speakers Aunt Ren and Uncle Dev, and uploaders Sam and Lee. Never state or imply that an uploader is the speaker or the person in the photo.",
+            "chronology": "Keep the visit year unknown; 2024 upload dates do not date the event. Do not infer that the two recordings describe one visit.",
+            "transitions": "Connect the accounts as unresolved recollections and ask for clarification if a single identity, year, or event is needed.",
+            "literary_style": "Paraphrase transcript content with attribution; do not put transcript words in quotation marks or present them as speaker-authored text. Avoid opaque source IDs and raw technical detail. This fixture tests narrative handling of role descriptions, not structured role metadata.",
+        },
+    }
+
+
 def _title_case(prefix: str, language: str, sources: list[dict], focus: str,
                 expectations: dict[str, str]) -> dict:
     """Build an independent title API bundle; it contains no narrative fields."""
@@ -314,7 +406,7 @@ def _check_asset_crosslinks(bundle: dict) -> None:
 
 def build_plan() -> dict:
     """Return a deterministic plan containing fresh, validated synthetic bundles."""
-    cases = [_case_one(), _case_two(), _case_three(), _title_family_case(),
+    cases = [_case_one(), _case_two(), _case_three(), _case_four(), _case_five(), _title_family_case(),
              _title_uncertainty_case(), _title_abstention_case()]
     case_ids: set[str] = set()
     all_bundle_ids: set[str] = set()

@@ -3,6 +3,10 @@ package dev.photohouse.connected
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -95,6 +99,36 @@ class MemoryDictationUiTest {
         rule.onNodeWithTag("memory-dictation-transcript").assertDoesNotExist()
         assertEquals("保留这段文字", editor.state.value.draft.text)
         rule.runOnIdle { editor.close() }
+    }
+
+    @Test fun rejectedOversizeTranscriptEditStaysVisibleAndCannotInsertStoredOldWords() {
+        val speech = MemoryDictationStore(scope, { AssistantCapabilities(true, true, true, false, 30) }, { _, id ->
+            AssistantTranscript("Recognized words", "en", AssistantRequestReceipt(id, "enabled", "succeeded"))
+        })
+        var inserted: String? = null
+        rule.setContent { Column(Modifier.verticalScroll(rememberScrollState())) {
+            MemoryDictationInput(speech, zh = false, onInsert = { inserted = speech.takeTranscript() })
+        } }
+        rule.waitUntil(5000) { speech.state.value.capabilities != null }
+        rule.runOnIdle { speech.beginRecording(); speech.stopRecording(wav()) }
+        rule.waitUntil(5000) { speech.state.value.transcript == "Recognized words" }
+
+        val rejected = "x".repeat(65 * 1024)
+        rule.onNodeWithTag("memory-dictation-transcript").performScrollTo().performTextReplacement(rejected)
+        rule.onNodeWithTag("memory-dictation-transcript-edit-rejected").performScrollTo().assertIsDisplayed()
+        val visibleEdit = rule.onNodeWithTag("memory-dictation-transcript").fetchSemanticsNode()
+            .config[SemanticsProperties.EditableText].text
+        assertEquals(rejected.length, visibleEdit.length)
+        assertTrue(visibleEdit.startsWith(rejected.take(64)))
+        rule.onNodeWithTag("memory-dictation-insert").performScrollTo().assertIsNotEnabled()
+        assertEquals("Recognized words", speech.state.value.transcript)
+        assertNull(inserted)
+
+        rule.onNodeWithTag("memory-dictation-transcript").performScrollTo().performTextReplacement("Edited words")
+        rule.waitUntil(5000) { speech.state.value.transcript == "Edited words" }
+        rule.onNodeWithTag("memory-dictation-transcript-edit-rejected").assertDoesNotExist()
+        rule.onNodeWithTag("memory-dictation-insert").performScrollTo().assertIsEnabled().performClick()
+        assertEquals("Edited words", inserted)
     }
 
     @Test fun recordingAndTranscriptionStatusesArePoliteAndErrorsFollowUiLanguage() {

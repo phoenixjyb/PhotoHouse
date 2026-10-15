@@ -250,11 +250,13 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         self.assertNotIn(secret, stdout[0])
         self.assertEqual("configuration_invalid", json.loads(stdout[0])["error_code"])
 
-    def test_all_three_exact_cases_route_once_with_matching_hash_and_unreviewed_criteria(self):
+    def test_all_five_narrative_and_companion_cases_route_once_with_matching_hash_and_unreviewed_criteria(self):
         expected = {
             "synthetic-coherence": ("narrative", "4146b546ba71f011b9062017c5eb57e1addaefa6ed2a08e613df1b926532a5f3"),
             "synthetic-conflict": ("narrative", "ca79efa76960d1c7f4cbf1fdf997679032b656da45a266a3ca516b1ae6772767"),
             "synthetic-provenance": ("companion", "733dbf227527f1bac08f89b9a83fa02bd60885fc04f63599e6039ce47603ca88"),
+            "synthetic-similar-photos": ("narrative", "b8778072052c33d6a7b805fb7da384a1d918ed105134ee3220fcfd33ac2fc648"),
+            "synthetic-speaker-uploader-subject": ("narrative", "723c1f18b6d0b6ccc10f2341c53cac6ddeeec0ab30dd99c7be064f1fface607f"),
         }
         for case_id, (task, input_hash) in expected.items():
             with self.subTest(case_id=case_id):

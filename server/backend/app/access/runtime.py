@@ -15,10 +15,12 @@ from .media import MediaRuntime
 from .transport import AccessRuntime
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
 from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
+from .memory_group_schema import GROUP_REVISION, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
-EDITION_REVISIONS = frozenset({EDITION_REVISION, IDENTITY_REVISION})
+IDENTITY_REVISIONS = frozenset({IDENTITY_REVISION, GROUP_REVISION})
+EDITION_REVISIONS = frozenset({EDITION_REVISION, *IDENTITY_REVISIONS})
 EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, *EDITION_REVISIONS})
 SOURCE_REFERENCE_REVISIONS = frozenset({REQUIRED_REVISION, *EDITORIAL_REVISIONS})
 COLLABORATION_REVISIONS = frozenset({'f7c3a9d2e614', *SOURCE_REFERENCE_REVISIONS})
@@ -38,7 +40,7 @@ REQUIRED_TABLES = frozenset({
     'access_original_deletion_state',
     'access_memory_contribution_refs',
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
-    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES,
+    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES, GROUP_TABLE, GROUP_HISTORY,
 })
 
 
@@ -47,7 +49,9 @@ def required_tables_for_revision(revision):
     if type(revision) is not str or revision not in COMPATIBLE_REVISIONS:
         raise ValueError('Unsupported schema revision')
     required_tables = REQUIRED_TABLES
-    if revision != IDENTITY_REVISION:
+    if revision != GROUP_REVISION:
+        required_tables = required_tables - {GROUP_TABLE, GROUP_HISTORY}
+    if revision not in IDENTITY_REVISIONS:
         required_tables = required_tables - IDENTITY_TABLES
     if revision not in EDITION_REVISIONS:
         required_tables = required_tables - {EDITION_TABLE, SOURCES_TABLE}
@@ -116,7 +120,11 @@ class ExistingDatabase:
             required_tables = required_tables_for_revision(versions[0][0])
             if not required_tables <= tables:
                 raise RuntimeUnavailable('Access unavailable')
-            if versions[0][0] == IDENTITY_REVISION:
+            if versions[0][0] == GROUP_REVISION:
+                from .memory_group_schema import verify_memory_group_schema
+                if not verify_memory_group_schema(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in IDENTITY_REVISIONS:
                 from .family_note_identity import verify_family_note_identity_schema
                 from .transport import TransportError
                 try:
@@ -163,6 +171,8 @@ class RuntimeConfiguration:
     upload_review_enabled: bool = False
     annotation_intake_enabled: bool = False
     assistant_enabled: bool = False
+    memory_groups_enabled: bool = False
+    memory_group_vectors: object = None
     memory_collaboration_enabled: bool = False
     memory_originals_enabled: bool = False
     memory_generation_enabled: bool = False
@@ -176,6 +186,8 @@ class RuntimeConfiguration:
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
+    assistant_workspace_path: Path | None = None
+    assistant_kinship_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -184,6 +196,8 @@ class RuntimeConfiguration:
     update_root: Path | None = None
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
+    assistant_reply_speech_enabled: bool = False
+    assistant_saved_memory_cards_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -271,6 +285,32 @@ class RuntimeConfiguration:
             raise ValueError('Explicit annotation intake opt-in required')
         if type(self.assistant_enabled) is not bool:
             raise ValueError('Explicit assistant opt-in required')
+        assistant_kinship_provider = None
+        if self.assistant_kinship_path is not None:
+            selected = self.assistant_kinship_path
+            protected = (self.database, self.derived_root, *self.original_roots,
+                         *self.discovery_indexes,
+                         *((self.incoming_root,) if self.incoming_root else ()),
+                         *((self.update_root,) if self.update_root else ()),
+                         *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                         *((self.assistant_workspace_path,) if self.assistant_workspace_path else ()),
+                         *((self.original_deletion_journal_path,)
+                           if self.original_deletion_journal_path else ()))
+            if (not self.assistant_enabled or not isinstance(selected, Path) or
+                    not selected.is_absolute() or '..' in selected.parts or
+                    any(selected.is_relative_to(other) or other.is_relative_to(selected)
+                        for other in protected)):
+                raise ValueError('Assistant kinship catalog must be explicit and separate from runtime data')
+            from .kinship import PrivateKinshipProvider
+            assistant_kinship_provider = PrivateKinshipProvider(
+                selected, source_root=Path(__file__).resolve().parents[4])
+        if type(self.assistant_reply_speech_enabled) is not bool:
+            raise ValueError('Explicit private reply speech opt-in required')
+        if type(self.assistant_saved_memory_cards_enabled) is not bool:
+            raise ValueError('Explicit saved-memory cards opt-in required')
+        if self.assistant_saved_memory_cards_enabled and (not self.assistant_enabled or
+                not self.memory_collaboration_enabled or self.assistant_workspace_path is None):
+            raise ValueError('Saved-memory cards require assistant, workspace and collaboration')
         for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
             if type(timeout) not in (int, float) or not 0 < timeout <= 60:
                 raise ValueError('Invalid assistant provider timeout')
@@ -280,6 +320,10 @@ class RuntimeConfiguration:
             raise ValueError('Assistant ASR requires assistant opt-in')
         if self.assistant_tts_url is not None and not self.assistant_enabled:
             raise ValueError('Assistant TTS requires assistant opt-in')
+        if (self.assistant_reply_speech_enabled and
+                (not self.assistant_enabled or self.assistant_tts_url is None or
+                 self.assistant_journal_path is None or self.assistant_workspace_path is None)):
+            raise ValueError('Private reply speech requires assistant TTS, journal and workspace')
         assistant_journal = None
         if self.assistant_journal_path is not None:
             if not self.assistant_enabled:
@@ -294,6 +338,25 @@ class RuntimeConfiguration:
                 raise ValueError('Journal must be separate from runtime data')
             from .assistant_journal import Journal
             assistant_journal = Journal(selected, clock=clock)
+        assistant_workspace_store = None
+        if self.assistant_workspace_path is not None:
+            if not self.assistant_enabled:
+                raise ValueError('Assistant workspace requires assistant opt-in')
+            selected = self.assistant_workspace_path
+            protected = (self.database, self.derived_root, *self.original_roots,
+                         *self.discovery_indexes,
+                         *((self.incoming_root,) if self.incoming_root else ()),
+                         *((self.update_root,) if self.update_root else ()),
+                         *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                         *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))
+            if (not isinstance(selected, Path) or not selected.is_absolute() or
+                    any(selected.is_relative_to(other) or other.is_relative_to(selected)
+                        for other in protected)):
+                raise ValueError('Assistant workspace must be separate from runtime data')
+            from .assistant_workspace_store import AssistantWorkspaceStore
+            # This opens only an existing validated store in mode=rw. It never
+            # initializes or creates the optional private database.
+            assistant_workspace_store = AssistantWorkspaceStore(selected, clock=clock)
         assistant_asr = None
         if self.assistant_asr_url is not None:
             from .assistant_speech import LocalAssistantAsr
@@ -314,6 +377,8 @@ class RuntimeConfiguration:
                           upload_runtime=upload, upload_review_runtime=review,
                           annotation_intake_enabled=self.annotation_intake_enabled,
                           assistant_enabled=self.assistant_enabled,
+                          memory_groups_enabled=self.memory_groups_enabled,
+                          memory_group_vectors=self.memory_group_vectors,
                           memory_collaboration_enabled=self.memory_collaboration_enabled,
                           memory_originals_enabled=self.memory_originals_enabled,
                           memory_generation_enabled=self.memory_generation_enabled,
@@ -323,4 +388,8 @@ class RuntimeConfiguration:
                           story_title_suggester=title_suggester,
                           assistant_asr=assistant_asr, assistant_tts=assistant_tts,
                           assistant_journal=assistant_journal,
+                          assistant_workspace_store=assistant_workspace_store,
+                          assistant_kinship_provider=assistant_kinship_provider,
+                          assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
+                          assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           update_root=self.update_root)

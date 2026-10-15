@@ -27,10 +27,15 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'memory_editions_enabled', 'family_note_erasure_enabled', 'assistant_asr_url',
                    'assistant_asr_model', 'assistant_asr_token', 'assistant_tts_url',
                    'assistant_tts_token', 'assistant_journal_path', 'update_root',
+                   'assistant_workspace_path',
+                   'assistant_kinship_path',
+                   'assistant_reply_speech_enabled',
+                   'assistant_saved_memory_cards_enabled',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
                    'original_deletion_journal_path', 'original_deletion_namespace',
                    'story_title_suggestions_enabled', 'story_title_url', 'story_title_model',
-                   'story_title_timeout_seconds'}
+                   'story_title_timeout_seconds', 'memory_groups_enabled',
+                   'memory_group_vector_root', 'memory_group_vector_identity'}
 PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network,
     ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
      '127.0.0.0/8', 'fc00::/7', '::1/128')))
@@ -80,6 +85,8 @@ class StagingConfiguration:
     original_deletion_journal_path: Path | None = None
     original_deletion_namespace: str | None = None
     assistant_journal_path: Path | None = None
+    assistant_workspace_path: Path | None = None
+    assistant_kinship_path: Path | None = None
     assistant_asr_url: str | None = None
     assistant_asr_model: str | None = None
     assistant_asr_token: str | None = None
@@ -88,6 +95,12 @@ class StagingConfiguration:
     update_root: Path | None = None
     assistant_asr_timeout_seconds: float = 45
     assistant_tts_timeout_seconds: float = 45
+    assistant_reply_speech_enabled: bool = False
+    assistant_saved_memory_cards_enabled: bool = False
+    memory_groups_enabled: bool = False
+    memory_group_vector_root: Path | None = None
+    # An immutable tuple copied from the private JSON object.  The JSON mapping is never retained.
+    memory_group_vector_identity: tuple | None = None
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Project private provider settings explicitly without constructing the app."""
@@ -158,6 +171,38 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if type(self.annotation_intake_enabled) is not bool:
                 raise InvalidConfiguration()
+            if type(self.memory_groups_enabled) is not bool:
+                raise InvalidConfiguration()
+            if (self.memory_group_vector_root is None) != (self.memory_group_vector_identity is None):
+                raise InvalidConfiguration()
+            if self.memory_group_vector_root is not None:
+                vector_root = self.memory_group_vector_root
+                if (not self.memory_groups_enabled or not isinstance(vector_root, Path)
+                        or _path(str(vector_root)) != vector_root):
+                    raise InvalidConfiguration()
+                if any(vector_root.is_relative_to(other) or other.is_relative_to(vector_root)
+                       for other in (*self.original_roots, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.original_deletion_journal_path,) if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
+                if (self.derived_root.is_relative_to(vector_root)
+                        and not vector_root.is_relative_to(self.derived_root)):
+                    raise InvalidConfiguration()
+                if (type(self.memory_group_vector_identity) is not tuple
+                        or len(self.memory_group_vector_identity) != 6):
+                    raise InvalidConfiguration()
+                artifact, preprocessing, vector_space, model_version, dimension, normalization = self.memory_group_vector_identity
+                digest = re.compile(r'[0-9a-f]{64}\Z', re.ASCII)
+                identifier = re.compile(r'[a-z0-9][a-z0-9._-]{0,63}\Z', re.ASCII)
+                if (type(artifact) is not str or not digest.fullmatch(artifact)
+                        or type(preprocessing) is not str or not digest.fullmatch(preprocessing)
+                        or type(vector_space) is not str or not identifier.fullmatch(vector_space)
+                        or type(model_version) is not str or not identifier.fullmatch(model_version)
+                        or type(dimension) is not int or not 1 <= dimension <= 4096
+                        or type(normalization) is not str or normalization != 'unit_l2'):
+                    raise InvalidConfiguration()
             if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
                 raise InvalidConfiguration()
             if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
@@ -194,6 +239,10 @@ class StagingConfiguration:
                         or any(unicodedata.category(ch) == 'Cc' for ch in self.story_title_model)):
                     raise InvalidConfiguration()
             if type(self.assistant_enabled) is not bool:
+                raise InvalidConfiguration()
+            if type(self.assistant_reply_speech_enabled) is not bool:
+                raise InvalidConfiguration()
+            if type(self.assistant_saved_memory_cards_enabled) is not bool:
                 raise InvalidConfiguration()
             for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
                 if type(timeout) not in (int, float) or not 0 < timeout <= 60:
@@ -239,6 +288,41 @@ class StagingConfiguration:
                                      *((self.incoming_root,) if self.incoming_root else ()),
                                      *((self.update_root,) if self.update_root else ()))):
                     raise InvalidConfiguration()
+            if self.assistant_workspace_path is not None:
+                workspace = self.assistant_workspace_path
+                if (not self.assistant_enabled or not isinstance(workspace, Path)
+                        or _path(str(workspace)) != workspace):
+                    raise InvalidConfiguration()
+                if any(workspace.is_relative_to(other) or other.is_relative_to(workspace)
+                       for other in (*media, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.original_deletion_journal_path,)
+                                       if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
+            if self.assistant_kinship_path is not None:
+                catalog = self.assistant_kinship_path
+                if (not self.assistant_enabled or not isinstance(catalog, Path)
+                        or _path(str(catalog)) != catalog):
+                    raise InvalidConfiguration()
+                if any(catalog.is_relative_to(other) or other.is_relative_to(catalog)
+                       for other in (*media, *files, *self.discovery_indexes,
+                                     *((self.incoming_root,) if self.incoming_root else ()),
+                                     *((self.update_root,) if self.update_root else ()),
+                                     *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                                     *((self.assistant_workspace_path,) if self.assistant_workspace_path else ()),
+                                     *((self.original_deletion_journal_path,)
+                                       if self.original_deletion_journal_path else ()))):
+                    raise InvalidConfiguration()
+            if (self.assistant_reply_speech_enabled and
+                    (not self.assistant_enabled or self.assistant_tts_url is None or
+                     self.assistant_journal_path is None or self.assistant_workspace_path is None)):
+                raise InvalidConfiguration()
+            if (self.assistant_saved_memory_cards_enabled and
+                    (not self.assistant_enabled or not self.memory_collaboration_enabled
+                     or self.assistant_workspace_path is None)):
+                raise InvalidConfiguration()
             protected = (*media, *files, *((self.incoming_root,) if self.incoming_root else ()))
             for index in self.discovery_indexes:
                 if not isinstance(index, Path) or _path(str(index)) != index:
@@ -262,7 +346,17 @@ class StagingConfiguration:
         # Deliberate source root; no .env, legacy config or model entry point.
         sys.path.insert(0, str(ROOT/'backend'))
         from app.access.runtime import RuntimeConfiguration
-        return RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
+        from app.access.assistant_workspace_store import WorkspaceStoreUnavailable
+        memory_group_vectors = None
+        if self.memory_group_vector_identity is not None:
+            from app.access.memory_group_transport import GroupVectorConfiguration
+            from app.access.visual_candidates import VectorSpaceIdentity
+            artifact, preprocessing, vector_space, model_version, dimension, normalization = self.memory_group_vector_identity
+            identity = VectorSpaceIdentity(artifact_sha256=artifact,
+                preprocessing_sha256=preprocessing, vector_space_id=vector_space,
+                model_version=model_version, dimension=dimension, normalization=normalization)
+            memory_group_vectors = GroupVectorConfiguration(self.memory_group_vector_root, identity)
+        runtime = RuntimeConfiguration(database=self.database, web_origin=self.web_origin,
             original_roots=self.original_roots, derived_root=self.derived_root,
             incoming_root=self.incoming_root, discovery_indexes=self.discovery_indexes,
             upload_review_enabled=self.upload_review_enabled,
@@ -280,6 +374,8 @@ class StagingConfiguration:
             original_deletion_journal_path=self.original_deletion_journal_path,
             original_deletion_namespace=self.original_deletion_namespace,
             assistant_journal_path=self.assistant_journal_path,
+            assistant_workspace_path=self.assistant_workspace_path,
+            assistant_kinship_path=self.assistant_kinship_path,
             assistant_asr_url=self.assistant_asr_url,
             assistant_asr_model=self.assistant_asr_model,
             assistant_asr_token=self.assistant_asr_token,
@@ -287,7 +383,15 @@ class StagingConfiguration:
             assistant_tts_token=self.assistant_tts_token,
             assistant_asr_timeout_seconds=self.assistant_asr_timeout_seconds,
             assistant_tts_timeout_seconds=self.assistant_tts_timeout_seconds,
-            update_root=self.update_root).build_app()
+            assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
+            assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
+            update_root=self.update_root,
+            memory_groups_enabled=self.memory_groups_enabled,
+            memory_group_vectors=memory_group_vectors)
+        try:
+            return runtime.build_app()
+        except WorkspaceStoreUnavailable:
+            raise InvalidConfiguration() from None
 
     def server_options(self):
         return dict(host=self.bind_host, port=self.port, ssl_certfile=str(self.tls_certificate),
@@ -309,6 +413,17 @@ def parse_configuration(value):
         indexes = value.get('discovery_indexes', [])
         if type(indexes) is not list:
             raise InvalidConfiguration()
+        vector_root_value = value.get('memory_group_vector_root')
+        vector_identity_value = value.get('memory_group_vector_identity')
+        vector_identity = None
+        if vector_identity_value is not None:
+            required_identity = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
+                                 'model_version', 'dimension', 'normalization'}
+            if type(vector_identity_value) is not dict or set(vector_identity_value) != required_identity:
+                raise InvalidConfiguration()
+            vector_identity = tuple(vector_identity_value[key] for key in (
+                'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
+                'model_version', 'dimension', 'normalization'))
         return StagingConfiguration(database=_path(value['database']), web_origin=value['web_origin'],
             original_roots=tuple(_path(p) for p in value['original_roots']),
             derived_root=_path(value['derived_root']), bind_host=value['bind_host'], port=value['port'],
@@ -330,6 +445,8 @@ def parse_configuration(value):
             original_deletion_journal_path=_path(value['original_deletion_journal_path']) if value.get('original_deletion_journal_path') is not None else None,
             original_deletion_namespace=value.get('original_deletion_namespace'),
             assistant_journal_path=_path(value['assistant_journal_path']) if value.get('assistant_journal_path') is not None else None,
+            assistant_workspace_path=_path(value['assistant_workspace_path']) if value.get('assistant_workspace_path') is not None else None,
+            assistant_kinship_path=_path(value['assistant_kinship_path']) if value.get('assistant_kinship_path') is not None else None,
             assistant_asr_url=value.get('assistant_asr_url'),
             assistant_asr_model=value.get('assistant_asr_model'),
             assistant_asr_token=value.get('assistant_asr_token'),
@@ -337,7 +454,12 @@ def parse_configuration(value):
             assistant_tts_token=value.get('assistant_tts_token'),
             assistant_asr_timeout_seconds=value.get('assistant_asr_timeout_seconds', 45),
             assistant_tts_timeout_seconds=value.get('assistant_tts_timeout_seconds', 45),
-            update_root=None if value.get('update_root') is None else _path(value['update_root']))
+            assistant_reply_speech_enabled=value.get('assistant_reply_speech_enabled', False),
+            assistant_saved_memory_cards_enabled=value.get('assistant_saved_memory_cards_enabled', False),
+            update_root=None if value.get('update_root') is None else _path(value['update_root']),
+            memory_groups_enabled=value.get('memory_groups_enabled', False),
+            memory_group_vector_root=None if vector_root_value is None else _path(vector_root_value),
+            memory_group_vector_identity=vector_identity)
     except (TypeError, ValueError, KeyError):
         raise InvalidConfiguration() from None
 
@@ -366,9 +488,20 @@ def load_configuration(path):
         if any(path.is_relative_to(root) for root in (*config.original_roots, config.derived_root)):
             raise InvalidConfiguration()
         if path in (config.database, config.tls_certificate, config.tls_private_key,
-                    *config.discovery_indexes):
+                    *config.discovery_indexes, *((config.assistant_workspace_path,)
+                                                   if config.assistant_workspace_path else ()),
+                    *((config.assistant_kinship_path,)
+                      if config.assistant_kinship_path else ())):
             raise InvalidConfiguration()
         if config.update_root is not None and path.is_relative_to(config.update_root):
+            raise InvalidConfiguration()
+        if (config.assistant_workspace_path is not None and
+                (path.is_relative_to(config.assistant_workspace_path) or
+                 config.assistant_workspace_path.is_relative_to(path))):
+            raise InvalidConfiguration()
+        if (config.assistant_kinship_path is not None and
+                (path.is_relative_to(config.assistant_kinship_path) or
+                 config.assistant_kinship_path.is_relative_to(path))):
             raise InvalidConfiguration()
         return config
     except (OSError, ValueError, UnicodeError, RecursionError):

@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from fastapi.testclient import TestClient
 from test_library_reads import LibraryReadTests
 from app.access.assistant_journal import initialize
+from app.access.assistant_workspace_store import initialize_v2
 from app.access.runtime import RuntimeConfiguration
 
 fixture = LibraryReadTests()
@@ -35,9 +36,18 @@ producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True, ensure_
 
 journal_path = root / 'assistant-receipts.sqlite'
 initialize(journal_path)
+# This journey exercises the legacy receipt-only route. Private continuation
+# has its own workspace bridge; admitting it here would select that route before
+# the legacy POST interception and make the uncertainty fixture ineffective.
+if sys.argv[1:] not in ([], ['--private-workspace']):
+    raise ValueError('Unknown synthetic bridge profile')
+workspace_path = None
+if sys.argv[1:] == ['--private-workspace']:
+    workspace_path = root / 'assistant-workspace-v2.sqlite'
+    initialize_v2(workspace_path, clock=lambda: fixture.now)
 client = TestClient(RuntimeConfiguration(fixture.path.resolve(), 'https://photohouse.test',
     (originals,), derived, discovery_indexes=(index_path,), assistant_enabled=True,
-    assistant_journal_path=journal_path).build_app(clock=lambda: fixture.now),
+    assistant_journal_path=journal_path, assistant_workspace_path=workspace_path).build_app(clock=lambda: fixture.now),
     base_url='https://photohouse.test', client=('192.0.2.25', 23461))
 fixture.addCleanup(client.close)
 fixture.client = client

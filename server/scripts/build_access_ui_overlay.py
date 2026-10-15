@@ -21,6 +21,7 @@ ASSETS = tuple(sorted((
     'backend/app/ui/access/app.js',
     'backend/app/ui/access/story-workspace.js',
     'backend/app/ui/access/memory-community.js',
+    'backend/app/ui/access/memory-groups.js',
     'backend/app/ui/access/styles.css',
 )))
 MANIFEST_NAME = 'manifest.json'
@@ -42,7 +43,7 @@ def _commit_id(commit):
 
 
 def source_files(commit):
-    """Read exactly the five selected regular blobs from the immutable commit."""
+    """Read exactly the six selected regular blobs from the immutable commit."""
     commit = _commit_id(commit)
     prefix = git('rev-parse', '--show-prefix').decode('utf-8').strip()
     records = git('ls-tree', '-r', '-z', '--full-tree', commit,
@@ -78,7 +79,7 @@ def manifest_bytes(commit, files):
         raise ValueError('UI overlay size limit exceeded')
     manifest = {
         'artifact_kind': 'photohouse_access_ui_overlay_source_only',
-        'format_version': 1,
+        'format_version': 2,
         'source_commit': commit,
         'files': {name: hashlib.sha256(files[name]).hexdigest() for name in ASSETS},
     }
