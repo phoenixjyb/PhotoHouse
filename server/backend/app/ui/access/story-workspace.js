@@ -57,7 +57,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   // Proposal source IDs outside the per-asset evidence set and accepted
   // contribution-reference contract get a volatile review note beside this draft.
   let proposalReferenceWarnings=new Map();
-  let titleView=null,titleEpoch=0,titleComposing=false;
+  let titleView=null,titleEpoch=0,titleComposing=false,openingTitleView=null;
   const SOURCE_POLICY='chapter_sources_v1';
   let sourceCapabilities=null,sourceCapabilityEpoch=0,sourceReviewOptedIn=false,sourceProfileLoaded=false;
   let sourceRefreshEpoch=0,sourceRefreshRequired=false,sourceRefreshPending=false,sourceRefreshNeedsAcknowledgement=false,sourceRefreshAcknowledged=false,sourceRefreshUI=null;
@@ -93,8 +93,46 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   Object.assign(labels.zh,{titleAssist:'帮我起个标题',titleAssistHelp:'根据章节草稿与参考资料提出候选标题。选择后仍可修改，不会自动保存。',titleAssistWorking:'正在想几个标题…',titleAssistEmpty:'还没有合适的候选标题，可以补充回忆后再试。',titleAssistFailed:'标题建议暂不可用，你仍可修改标题并保存故事。',titleAssistReview:'AI 标题建议 · 请核对',titleAssistSources:'查看依据',titleAssistDraft:'章节草稿',titleAssistFrame:'画面'});
   Object.assign(labels.en,{titleAssist:'Suggest a title',titleAssistHelp:'Suggest titles from chapter drafts and references. Choose one, then edit it if needed. Nothing is saved automatically.',titleAssistWorking:'Thinking of a few titles…',titleAssistEmpty:'No suitable title yet. Add more context and try again.',titleAssistFailed:'Title suggestions are unavailable. You can still edit the title and save your story.',titleAssistReview:'AI title suggestions · review',titleAssistSources:'View references',titleAssistDraft:'Chapter draft',titleAssistFrame:'Frame'});
-  function invalidateTitles(){titleEpoch++;if(titleView){titleView.busy=false;titleView.choices.replaceChildren();titleView.status.textContent='';titleView.action.disabled=frozen()||sourceRefreshPending||titleComposing;}}
+  function invalidateTitles(){titleEpoch++;if(titleView){titleView.busy=false;titleView.choices.replaceChildren();titleView.status.textContent='';titleView.action.disabled=frozen()||sourceRefreshPending||titleComposing;}queueMicrotask(syncOpeningTitle);}
   function titleSnapshot(){return JSON.stringify([draft?.selection_revision,draft?.theme,draft?.language,draft?.items.map(i=>i.id),sourceReviewOptedIn,draft?.chapters.map(c=>({id:c.id,title:c.title,...(sourceReviewOptedIn?{asset_ids:c.asset_ids}:{}),narration:c.narration,evidence_ids:c.evidence_ids})),$('story-workspace-title').value]);}
+  Object.assign(labels.zh,{openingTitle:'用章节开头做标题',openingTitleHelp:'取自你正在编辑的章节文字。使用后仍可修改，不会自动保存。',openingTitleUse:'用作标题',openingTitleChapter:'来自篇章'});
+  Object.assign(labels.en,{openingTitle:'Title from a chapter opening',openingTitleHelp:'Taken from the chapter text you are editing. You can edit the title afterward; nothing is saved automatically.',openingTitleUse:'Use as title',openingTitleChapter:'From chapter'});
+  function chapterOpeningTitle(){
+    if(!draft||draft.saved)return null;
+    const index=draft.chapters.findIndex(c=>authoredNarrations.has(c)&&c.narration.trim());
+    if(index<0)return null;
+    const section=draft.chapters[index],line=section.narration.split(/\r\n|[\r\n]/u).find(value=>value.trim());
+    if(!line||/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/u.test(line))return null;
+    const chars=Array.from(line);let end=chars.length;
+    for(let i=0;i<chars.length;i++)if('。！？!?'.includes(chars[i])||(chars[i]==='.'&&(i===chars.length-1||/\s/u.test(chars[i+1])))){end=i+1;break;}
+    const title=chars.slice(0,end).join('').trim();
+    if(!title||!validText(title,80)||new TextEncoder().encode(title).length>640)return null;
+    return {title,index,chapterId:section.id,snapshot:titleSnapshot()};
+  }
+  function openingTitleCurrent(view){return openingTitleView===view&&view.section.isConnected&&draft===view.story&&current(view.ticket,view.owner)&&$('story-workspace').open;}
+  function syncOpeningTitle(){
+    const view=openingTitleView;if(!view||!openingTitleCurrent(view))return;
+    const candidate=chapterOpeningTitle();view.section.hidden=!candidate;
+    if(!candidate){view.content.replaceChildren();view.key=null;return;}
+    const disabled=frozen()||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||titleComposing||Boolean(dictation)||scope().locked;
+    const key=JSON.stringify([candidate.snapshot,scope().language]);
+    if(view.key===key&&view.use?.isConnected){view.use.disabled=disabled;return;}
+    // A newly rendered action owns its captured wording and editor snapshot.
+    // Retained controls cannot apply a later chapter's opening or replace a newer title.
+    const quote=node('p',candidate.title,'story-opening-title-text'),source=node('small',`${text('openingTitleChapter')} ${candidate.index+1}`),use=button(text('openingTitleUse'),()=>{
+      if(!openingTitleCurrent(view)||!use.isConnected||frozen()||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||titleComposing||dictation||scope().locked||candidate.snapshot!==titleSnapshot())return;
+      const fresh=chapterOpeningTitle();if(!fresh||fresh.title!==candidate.title||fresh.chapterId!==candidate.chapterId)return;
+      $('story-workspace-title').value=candidate.title;view.story.title=candidate.title;dirty=true;downloaded=false;
+      invalidateTitles();syncLocalControls();$('story-workspace-title').focus();
+    });
+    use.className='quiet story-opening-title-use';use.disabled=disabled;view.key=key;view.use=use;
+    view.heading.textContent=text('openingTitle');view.help.textContent=text('openingTitleHelp');view.content.replaceChildren(source,quote,use);
+  }
+  function mountOpeningTitle(root){
+    openingTitleView=null;if(!draft||draft.saved)return;
+    const section=node('section',undefined,'story-opening-title'),heading=node('h3'),help=node('p',undefined,'fine'),content=node('div');section.hidden=true;section.append(heading,help,content);root.append(section);
+    openingTitleView={section,heading,help,content,story:draft,owner:{...scope()},ticket:generation};syncOpeningTitle();
+  }
   function mountTitleAssistance(root){
     invalidateTitles();titleView=null;
     if(!titleRequest||!draft||readOnly())return;
@@ -402,7 +440,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       $('story-workspace').open&&$('story-chapter-editor').contains(session.panel));
   }
   function dictationCurrent(session){return Boolean(session&&dictation===session&&dictationBound(session));}
-  function syncDictationAvailability(){for(const record of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))record.disabled=frozen()||sourceRefreshPending||Boolean(dictation);syncGuide();}
+  function syncDictationAvailability(){for(const record of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))record.disabled=frozen()||sourceRefreshPending||Boolean(dictation);syncGuide();syncOpeningTitle();}
   function paintDictation(session){
     if(!dictationCurrent(session))return;
     syncLocalControls();
@@ -1038,6 +1076,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function syncChapterStructureAvailability(){
     for(const control of $('story-chapter-editor').querySelectorAll('.story-chapter-structure-controls button'))control.__photoHouseSync?.();
+    syncOpeningTitle();
   }
   function refreshSourceControls(){
     if(!draft)return;
@@ -1057,6 +1096,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const renderedStory=draft,renderedOwner={...scope()},renderedTicket=generation;
     document.querySelector('[data-story-word=draftHelp]').textContent=text(readOnly()?'readOnly':draft.saved?'savedHelp':'draftHelp');
     $('story-workspace-title').value=draft.title;
+    mountOpeningTitle(root);
     mountTitleAssistance(root);
     const questions=node(guideCurrent()?'details':'section',undefined,'story-questions');questions.append(node(guideCurrent()?'summary':'h3',text('questionTitle')));
     const list=node('ul');for(const q of draft.questions)list.append(node('li',q));questions.append(list);root.append(questions);

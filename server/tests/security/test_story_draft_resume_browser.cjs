@@ -78,13 +78,17 @@ const testRun=(async()=>{
   await page.locator('#memory-guide').waitFor({state:'visible'});
   const body=page.locator('#story-chapter-editor .story-chapter-card textarea[maxlength="6000"]').first();
   const authored='河边的那天下午，Jane 讲了一个故事。<b>这是原话</b>\n还记得风的声音。';
-  const title='还记得那阵风';
+  const title='河边的那天下午，Jane 讲了一个故事。';
   await page.locator('#memory-guide').click();
   await page.locator('#story-selection input[value="101"]').check();
   await page.locator('#story-selection input[value="102"]').check();
   await page.locator('#story-guide-next').click();
   await page.locator('#story-workspace[data-guide-step="words"]').waitFor();
-  await page.locator('#story-workspace-title').fill(title);await body.fill(authored);
+  await page.locator('#story-workspace-title').fill('还记得那阵风');await body.fill(authored);
+  assert.equal(await page.locator('#story-workspace-title').inputValue(),'还记得那阵风','chapter wording never automatically replaces a custom title');
+  await page.locator('.story-opening-title-use').click();
+  assert.equal(await page.locator('#story-workspace-title').inputValue(),title);
+  assert.equal(await body.inputValue(),authored,'adopting the opening preserves the exact chapter wording');
   await page.locator('#story-workspace-title').dispatchEvent('compositionstart');
   assert.equal(await page.locator('#story-local-save').isDisabled(),true);
   await page.locator('#story-workspace-title').dispatchEvent('compositionend');
@@ -97,6 +101,8 @@ const testRun=(async()=>{
   const previousPreviews=count('POST',/^\/story-workspace\/preview(?:\?|$)/);
   await page.locator('#story-local-resume').click();await page.locator('#story-workspace[data-guide-step="words"]').waitFor();
   assert.equal(await body.inputValue(),authored);assert.equal(await page.locator('#story-workspace-title').inputValue(),title);
+  await page.locator('.story-opening-title-text').waitFor({state:'visible'});
+  assert.equal(await page.locator('.story-opening-title-text').textContent(),title,'resumed authored wording retains the local option');
   assert.equal(count('POST',/^\/story-workspace\/preview(?:\?|$)/),previousPreviews+1,'resume obtains fresh whole-selection evidence');
   assert.equal(await page.locator('#story-save-memory').isDisabled(),true,'restored content requires renewed review');
   assert.equal(await page.locator('#story-local-reviewed').isChecked(),false);
