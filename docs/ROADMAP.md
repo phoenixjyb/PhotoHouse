@@ -130,6 +130,14 @@ focused 64 tests/70 subchecks pass; it is not in frozen v64. Then qualify ground
 source-linked title/narrative suggestions; ordinary draft saving does not activate
 providers or turn original family words into generated facts.
 
+A following source-only [offline review workspace](MEMOIR_QUALITY_REVIEW.md)
+puts captured story/title/chat wording beside its original sources and current
+rubric, without scoring or activating a model. The capture runner independently
+validates narrative/chat output before retaining it, including the cited-answer
+contract. The focused 79-test/104-subcheck cohort and five generated browser groups
+pass. Next run one separately authorized bounded synthetic provider capture and
+perform human source/coherence review; fixture pages are not model quality evidence.
+
 The synthetic corpus now has eight cases, including cross-event visual
 similarity and separate subject/speaker/uploader attribution. Its planner and
 canary contract checks do not establish model output quality. Next add an

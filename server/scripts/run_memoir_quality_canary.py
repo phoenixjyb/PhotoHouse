@@ -252,7 +252,18 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
     start_clock = time.monotonic()
     try:
         result = getattr(provider, task)(bundle)
-        if role == "title_suggestions":
+        if task in {"narrative", "companion"}:
+            from app.access.memory_narrative import (
+                validate_companion,
+                validate_narrative,
+            )
+            try:
+                result = (validate_narrative(result, bundle) if task == "narrative"
+                          else validate_companion(result, bundle))
+            except ValueError:
+                from app.access.memory_narrative import LocalMemoryNarrativeError
+                raise LocalMemoryNarrativeError("invalid_response") from None
+        elif role == "title_suggestions":
             from app.access.story_titles import validate_suggestions
             try:
                 result = validate_suggestions(result, bundle)
