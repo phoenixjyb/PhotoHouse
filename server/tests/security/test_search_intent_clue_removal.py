@@ -49,27 +49,47 @@ class DescriptiveClueRemovalTests(unittest.TestCase):
         cases = (
             ('remove the “red coat” clue', 'red coat'),
             ('drop "red coat" clue.', 'red coat'),
+            ('please remove red coat clue', 'red coat'),
+            ('drop the red coat clue!', 'red coat'),
             ('移除“red coat”这条线索。', 'red coat'),
             ('去掉"red coat"线索！', 'red coat'),
+            ('请移除red coat这条线索', 'red coat'),
+            ('请移除红外套这条线索。', '红外套'),
+            ('去掉红外套线索', '红外套'),
         )
         for query, target in cases:
             with self.subTest(query=query):
                 planner = UnavailablePlanner()
-                previous = {**HARD_FILTERS, 'descriptive': DESCRIPTION}
+                description = DESCRIPTION
+                if target == '红外套':
+                    description = {'version': 1, 'concepts': [
+                        {'surface': '红外套', 'alternatives': ['红外套', 'red coat']},
+                        DESCRIPTION['concepts'][1],
+                    ]}
+                previous = {**HARD_FILTERS, 'descriptive': description}
                 result = plan_query(query, now=NOW, entities=entities(),
                                     previous_filters=previous, planner=planner)
                 self.assertEqual('ready', result.status)
                 self.assertEqual(HARD_FILTERS, {key: value for key, value in result.filters.items()
                                                 if key != 'descriptive'})
-                self.assertEqual([DESCRIPTION['concepts'][1]], result.filters['descriptive']['concepts'])
+                self.assertEqual([description['concepts'][1]], result.filters['descriptive']['concepts'])
                 self.assertEqual([], planner.calls)
 
     def test_ambiguous_wrapper_or_target_label_is_not_interpreted_as_removal(self):
         previous = {**HARD_FILTERS, 'descriptive': DESCRIPTION}
-        for label in ('Remove', 'red coat'):
-            with self.subTest(label=label):
+        cases = (
+            ('remove “red coat” clue', 'Remove'),
+            ('please remove red coat clue', 'please'),
+            ('please remove red coat clue', 'clue'),
+            ('please remove red coat clue', 'red coat'),
+            ('请移除红外套这条线索', '请'),
+            ('请移除红外套这条线索', '线索'),
+            ('请移除红外套这条线索', '红外套'),
+        )
+        for query, label in cases:
+            with self.subTest(query=query, label=label):
                 planner = UnavailablePlanner()
-                result = plan_query('remove “red coat” clue', now=NOW,
+                result = plan_query(query, now=NOW,
                                     entities=entities(labels=(label,)),
                                     previous_filters=previous, planner=planner)
                 self.assertEqual(('clarification', 'ambiguous_entities', previous),
@@ -115,16 +135,35 @@ class DescriptiveClueRemovalTests(unittest.TestCase):
         previous = {**HARD_FILTERS, 'descriptive': DESCRIPTION}
         for query in (
                 'remove “red coat” clue and September 2032',
-                'remove red coat clue',
                 'remove “red coat” clue please',
                 '移除“红外套"线索',
-                '去掉“红外套”线索然后找照片'):
+                '去掉“红外套”线索然后找照片',
+                'please remove redcoatclue',
+                'remove clue',
+                'remove red coat and playing in snow clue',
+                'remove red coat clue and keep the date',
+                '移除线索',
+                '移除红外套和玩雪线索'):
             with self.subTest(query=query):
                 planner = UnavailablePlanner()
                 result = plan_query(query, now=NOW, entities=entities(),
                                     previous_filters=previous, planner=planner)
                 self.assertEqual(('clarification', 'description_removal_unsupported', previous),
                                  (result.status, result.reason, result.filters))
+                self.assertEqual([], planner.calls)
+
+    def test_remove_all_forms_keep_action_or_clear_all_meaning(self):
+        previous = {**HARD_FILTERS, 'descriptive': DESCRIPTION}
+        for query in ('remove all clues', 'remove all clue', 'please remove all clues',
+                      '移除全部线索', '去掉所有线索'):
+            with self.subTest(query=query):
+                planner = UnavailablePlanner()
+                result = plan_query(query, now=NOW, entities=entities(),
+                                    previous_filters=previous, planner=planner)
+                self.assertIn((result.status, result.reason), (
+                    ('unsupported', 'unsupported_action'),
+                    ('clarification', 'description_removal_unsupported')))
+                self.assertEqual(previous, result.filters)
                 self.assertEqual([], planner.calls)
 
     def test_removing_last_concept_clears_only_descriptive_filter(self):

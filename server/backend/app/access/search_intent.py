@@ -31,11 +31,17 @@ class IntentUnavailable(RuntimeError):
 _REMOVAL = re.compile(r'^(?:any description|clear (?:the )?description filter|不限描述|不限场景)[。.!！?？]*$', re.I)
 _QUOTED_TARGET = r'(?:"(?P<target_ascii>[^"\r\n]+)"|“(?P<target_curly>[^“”\r\n]+)”)'
 _DESCRIPTIVE_REMOVALS = (
-    re.compile(rf'^\s*(?:remove|drop)[ \t]+(?:the[ \t]+)?{_QUOTED_TARGET}[ \t]+clue[ \t]*[。.!！?？]*\s*$', re.I),
-    re.compile(rf'^\s*(?:移除|去掉)[ \t]*{_QUOTED_TARGET}[ \t]*(?:这条|这个)?线索[ \t]*[。.!！?？]*\s*$'),
+    (re.compile(rf'^\s*(?:please[ \t]+)?(?:remove|drop)[ \t]+(?:the[ \t]+)?{_QUOTED_TARGET}[ \t]+clue[ \t]*[。.!！?？]*\s*$', re.I), True),
+    (re.compile(rf'^\s*(?:请)?(?:移除|去掉)[ \t]*{_QUOTED_TARGET}[ \t]*(?:这条|这个)?线索[ \t]*[。.!！?？]*\s*$'), True),
+    (re.compile(r'^\s*(?:please[ \t]+)?(?:remove|drop)[ \t]+(?:the[ \t]+)?(?P<target_unquoted>\S(?:[^\r\n]*?\S)?)[ \t]+clue[ \t]*[。.!！?？]*\s*$', re.I), False),
+    (re.compile(r'^\s*(?:请)?(?:移除|去掉)[ \t]*(?P<target_unquoted>\S(?:[^\r\n]*?\S)?)[ \t]*(?:这条|这个)?线索[ \t]*[。.!！?？]*\s*$'), False),
 )
 _MALFORMED_DESCRIPTIVE_REMOVAL = re.compile(
-    r'^(?:(?:remove|drop)(?a:\b).*(?a:\b)clues?(?a:\b).*|(?:移除|去掉).+线索.*)$', re.I | re.S)
+    r'^(?:(?:please\s+)?(?:remove|drop)(?a:\b).*clues?.*|(?:请)?(?:移除|去掉).*线索.*)$', re.I | re.S)
+_UNQUOTED_REMOVAL_CONNECTOR = re.compile(
+    r'(?a:(?:^|\s)(?:and|or|both|together|then)(?:$|\s))|以及|并且|同时|然后|和|或')
+_UNQUOTED_REMOVE_ALL = frozenset(('all', '所有', '全部'))
+_REMOVAL_QUOTES = frozenset('"“”')
 _ACTION = re.compile(r'^(?:delete|remove all|share|send|upload|rename|move|record|take a photo|'
                      r'删除|分享|发送|上传|重命名|移动|录音|拍照|照一下)(?a:\b)|^(?:删除|分享|发送|上传|重命名|移动|录音|拍照|照一下)', re.I)
 _GRAMMAR = re.compile(r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|please|me|for|and|or|both|together|with)(?a:\b)|'
@@ -150,14 +156,23 @@ def _descriptive_correction_parts(words):
 
 
 def _descriptive_removal_parts(words):
-    """Return only the exact quoted target from a closed removal command."""
-    for pattern in _DESCRIPTIVE_REMOVALS:
+    """Return an exact stored-surface target from a closed removal command."""
+    for pattern, quoted in _DESCRIPTIVE_REMOVALS:
         match = pattern.fullmatch(words)
         if match is not None:
-            target = match.group('target_ascii') or match.group('target_curly')
-            span = (match.span('target_ascii') if match.group('target_ascii') is not None
-                    else match.span('target_curly'))
-            return target, span
+            if quoted:
+                target = match.group('target_ascii') or match.group('target_curly')
+                span = (match.span('target_ascii') if match.group('target_ascii') is not None
+                        else match.span('target_curly'))
+                return target, span, True
+            target = match.group('target_unquoted')
+            if any(char in target for char in _REMOVAL_QUOTES):
+                return None
+            normalized = d.fold(target)
+            if (normalized in _UNQUOTED_REMOVE_ALL or
+                    _UNQUOTED_REMOVAL_CONNECTOR.search(normalized)):
+                return None
+            return target, match.span('target_unquoted'), False
     return None
 
 
@@ -371,7 +386,11 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
         return QueryPlan(3, 'ready', {key: value for key, value in previous.items() if key != 'descriptive'})
     descriptive_removal = _descriptive_removal_parts(words)
     if descriptive_removal is not None:
-        target, target_span = descriptive_removal
+        target, target_span, quoted = descriptive_removal
+        # Preserve destructive/action classification ahead of the broader
+        # unquoted transcription grammar.
+        if not quoted and _ACTION.match(words.strip()):
+            return QueryPlan(3, 'unsupported', kept, 'unsupported_action')
         _, entity_error = _entity_filters(entities)
         if entity_error:
             return QueryPlan(3, 'clarification', dict(previous or {}), entity_error)
