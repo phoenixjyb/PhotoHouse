@@ -20674,6 +20674,103 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "phone-reviewed-story-proposal-adoption-and-v65-status",
+      "source_commit": "11945e703019cc5875b0a43c8cd42a8b066ed9e6",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "5862fd2e4d7ce84c3eaf3875046f93199a7b52a0164e50d935099ef5da0deb32",
+          "sha256": "5cffea8fc3fbed35c9f2a34cc539caa29560820879ae102a8471e4b7359f92d9"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/StoryProposalAdoptionUiTest.kt",
+          "before_sha256": null,
+          "sha256": "058eb6cc948313909b3dac71d6c1316fcb1c7c19caebb3f855cd153e54e7fb05"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryCreationDialog.kt",
+          "before_sha256": "4918cba3be2d9662fecfeb0a5ce8553d9a44ba4cf0eab85227fceafb60ebe760",
+          "sha256": "37ebb9823665a8a441585cc8a1baa2a82261b22ca9563be6d77bb54160861b2b"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "f559a2ce0183c627cafea53d1aae91717c0fd678f34a2e8db44d783af2cd92cc",
+          "sha256": "5b02a9de2675e4e3e792cfbdcee06611063bde17fe5bdd7a8f774a48e15bd410"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MemoryCommunityPanel.kt",
+          "before_sha256": "03fc89798a3b0846e671c9d0b2c2bf5882b60a701086ce95959a4c43d34e1797",
+          "sha256": "417a2a1f87d92e718134b3dcd9b20c8300548b9b10bfd9159e6328986e99dae6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "86159bdd2a832fcec4fe62f33e507945f746f021b3587ccdc5c3d4fe6a611301",
+          "sha256": "8ea442177a6569475825828d93d4b692c23952ee28bd066c5bd7e20be133bcd9"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryProposalAdoption.kt",
+          "before_sha256": null,
+          "sha256": "5e3547bf63dcd037d7b6d706c9f0874006651d1d814585497fac27d4aac62e22"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "b94712942a698470b6e859fba55f88823b3d59a6fe6161876a6208239b666d52",
+          "sha256": "848f4c9d1087c98d6aee3ce51dc1af6a4f1ccbd570c0c4f026e9b057d21079a4"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GroupedStoryCreationStoreTest.kt",
+          "before_sha256": "47e428f97a5ff61b8b740a00d8dbc3ce08507da55271859e5f81236b5d543dcd",
+          "sha256": "4b68dc987ae43c3a031c779b93cd7673a413bf2a43be06b6e3b6ce06fdc72fd7"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryProposalAdoptionTest.kt",
+          "before_sha256": null,
+          "sha256": "1b9b38039206b058fe90c007ea81f05261e3a257542d092a81a0a6d22c4f4a37"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "743dce802f2dec10e27533580cfb5aeb8cbdefadc6681e74084ea2b538fab22c",
+          "sha256": "42c033ed757fb2567002645a886a2769e287747140de5da3f5bcbd70cb24aa24"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V65_RELEASE_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "b1c0bafc24fb24580023a22aca72f5a9210158ff5d5ca9e9feb459cd67a72633"
+        },
+        {
+          "path": "docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md",
+          "before_sha256": "d98fa29c5891f0902f752cd12f6f3d2fe5601b3ed9d323941de11f12502b009c",
+          "sha256": "b5df55c7cb1c4cb3f01489a14088f47ed1315c81d73fd120093f2511205bb789"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f0339e07b95f2e13faa09f4c2b4b88e66a97babfb8df18f2fc639097da881c7e",
+          "sha256": "bacb2f8b7868b77e5a60637cc4ffba3de51bb2ce1811321b65595841c69eecba"
+        },
+        {
+          "path": "docs/PHONE_STORY_PROPOSAL_ADOPTION.md",
+          "before_sha256": null,
+          "sha256": "fa60035fad73dd6d5d8ec5fd83551ff89f1291ee69da00df1d1892cb5e7f09c1"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "6a00bac18c76bb93c9d88c1fd863563934296b6c68141fc54ffab57053e7c75b",
+          "sha256": "63aba15f0083c75f8cc379bfcdc1d76456c671fdfcd56c293705d64364350479"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "5202a1fd5a36d3adda27a6d5d5c22034ede0dd8bcedbb382bfdc29c4d9c6acb0",
+          "sha256": "0fef7c15e16e873c3d12ce4cde96d87a822a85e7b5f7da756f74fda162ab74a3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "windows_runtime_changed": false,
+      "apk_published": false,
+      "original_attribution_and_links_preserved": true
     }
   ]
 }
