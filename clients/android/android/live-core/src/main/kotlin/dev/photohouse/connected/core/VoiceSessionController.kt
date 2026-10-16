@@ -38,6 +38,11 @@ data class VoiceSessionState(
     val playbackStarted: Boolean = false,
     /** Latest completed client-observed turn timing in this foreground voice session. */
     val clientTiming: VoiceTurnTimingSummary? = null,
+    /** Whether this opted-in session is reading a bounded saved-memory sequence. */
+    val readingContinuation: Boolean = false,
+    /** Zero-based segment currently completed or requested while reading. */
+    val readingSegment: Int? = null,
+    val readingSegmentCount: Int? = null,
 ) {
     val microphoneActive: Boolean get() = phase == VoiceSessionPhase.LISTENING
     val speechActive: Boolean get() = phase == VoiceSessionPhase.SPEAKING
@@ -58,6 +63,9 @@ enum class VoiceSessionStopReason {
     TRANSCRIPT_TOO_LONG,
     INVALID_TRANSCRIPT,
     REVIEW_REQUIRED,
+    READING_NEEDS_SELECTION,
+    READING_UNAVAILABLE,
+    READING_FINISHED,
 }
 
 enum class VoiceRequestReceipt { CONFIRMED_SUCCESS, CONFIRMED_FAILURE, UNCERTAIN }
@@ -79,6 +87,11 @@ sealed interface VoiceSessionEffect {
     data class SubmitReadOnlyRequest(val binding: VoiceSessionBinding, val text: String) : VoiceSessionEffect
     data class ShowReviewCard(val binding: VoiceSessionBinding, val reviewCardId: String) : VoiceSessionEffect
     data class Speak(val binding: VoiceSessionBinding, val text: String) : VoiceSessionEffect
+    data class ReadMemorySegment(
+        val binding: VoiceSessionBinding,
+        val segment: Int,
+        val segmentCount: Int,
+    ) : VoiceSessionEffect
     data class StopSpeech(val binding: VoiceSessionBinding?) : VoiceSessionEffect
     /** Cancels local waiting only. The caller must treat a sent request as uncertain. */
     data class CancelInFlight(val binding: VoiceSessionBinding) : VoiceSessionEffect
@@ -109,6 +122,19 @@ class VoiceSessionController {
         return beginSession(scope)
     }
 
+    /** Starts a foreground voice session attached to a bounded saved-memory reading selection. */
+    @Synchronized
+    fun startMemoryReading(
+        scope: VoiceSessionScope,
+        foreground: Boolean,
+        segment: Int,
+        segmentCount: Int,
+    ): VoiceSessionTransition {
+        if (!foreground || state.phase !in setOf(VoiceSessionPhase.IDLE, VoiceSessionPhase.ENDED) ||
+            segment < 0 || segmentCount !in 1..MAX_READING_SEGMENTS || segment >= segmentCount - 1) return rejected()
+        return beginSession(scope, readingSegment = segment, readingSegmentCount = segmentCount)
+    }
+
     /** Resuming a paused loop is explicit and cannot switch account, library or app generation. */
     @Synchronized
     fun resume(scope: VoiceSessionScope, foreground: Boolean): VoiceSessionTransition {
@@ -116,7 +142,11 @@ class VoiceSessionController {
         return beginSession(scope)
     }
 
-    private fun beginSession(scope: VoiceSessionScope): VoiceSessionTransition {
+    private fun beginSession(
+        scope: VoiceSessionScope,
+        readingSegment: Int? = null,
+        readingSegmentCount: Int? = null,
+    ): VoiceSessionTransition {
         nextSessionGeneration++
         activeBinding = newBinding(scope)
         state = VoiceSessionState(
@@ -124,6 +154,9 @@ class VoiceSessionController {
             scope = scope,
             sessionGeneration = nextSessionGeneration,
             operationGeneration = activeBinding!!.operationGeneration,
+            readingContinuation = readingSegment != null,
+            readingSegment = readingSegment,
+            readingSegmentCount = readingSegmentCount,
         )
         return accepted(VoiceSessionEffect.StartCapture(activeBinding!!))
     }
@@ -151,11 +184,28 @@ class VoiceSessionController {
         if (text.codePointCount(0, text.length) > MAX_TRANSCRIPT_CODE_POINTS || utf8Bytes > MAX_TRANSCRIPT_UTF8_BYTES) {
             return pauseInternal(VoiceSessionStopReason.TRANSCRIPT_TOO_LONG)
         }
-        when (classifyVoiceSessionSpokenControl(text)) {
+        val spokenControl = classifyVoiceSessionSpokenControl(text)
+        when (spokenControl) {
             VoiceSessionSpokenControl.PAUSE -> return pauseInternal(VoiceSessionStopReason.USER_PAUSED)
             VoiceSessionSpokenControl.END -> return stopInternal(VoiceSessionPhase.ENDED, VoiceSessionStopReason.USER_ENDED)
+            VoiceSessionSpokenControl.CONTINUE_READING -> Unit
             null -> Unit
         }
+        if (spokenControl == VoiceSessionSpokenControl.CONTINUE_READING) {
+            if (!state.readingContinuation) return pauseInternal(VoiceSessionStopReason.READING_NEEDS_SELECTION)
+            val segment = requireNotNull(state.readingSegment) + 1
+            val segmentCount = requireNotNull(state.readingSegmentCount)
+            val next = rotateBinding()
+            state = state.copy(
+                phase = VoiceSessionPhase.SPEAKING,
+                operationGeneration = next.operationGeneration,
+                readingSegment = segment,
+                captureStarted = false,
+                playbackStarted = false,
+            )
+            return accepted(VoiceSessionEffect.ReadMemorySegment(next, segment, segmentCount))
+        }
+        state = state.copy(readingContinuation = false, readingSegment = null, readingSegmentCount = null)
         val next = rotateBinding()
         state = state.copy(phase = VoiceSessionPhase.REQUESTING, operationGeneration = next.operationGeneration,
             captureStarted = false, playbackStarted = false)
@@ -198,6 +248,13 @@ class VoiceSessionController {
     fun speechCompleted(binding: VoiceSessionBinding, success: Boolean): VoiceSessionTransition {
         if (!matches(binding, VoiceSessionPhase.SPEAKING)) return rejected()
         if (!success) return pauseInternal(VoiceSessionStopReason.SPEECH_FAILED)
+        if (state.readingContinuation) {
+            val segment = requireNotNull(state.readingSegment)
+            val segmentCount = requireNotNull(state.readingSegmentCount)
+            if (segment + 1 >= segmentCount) {
+                return pauseInternal(VoiceSessionStopReason.READING_FINISHED)
+            }
+        }
         if (state.reviewRequired) return pauseAfterReviewSpeech()
         val next = rotateBinding()
         state = state.copy(
@@ -253,6 +310,15 @@ class VoiceSessionController {
         return stopInternal(VoiceSessionPhase.ENDED, VoiceSessionStopReason.CONTEXT_CHANGED)
     }
 
+    /** Pauses the opted-in loop if its caller can no longer resolve the selected memory source. */
+    @Synchronized
+    fun readingUnavailable(): VoiceSessionTransition {
+        if (!state.readingContinuation || state.phase in setOf(VoiceSessionPhase.IDLE, VoiceSessionPhase.PAUSED, VoiceSessionPhase.ENDED)) {
+            return rejected()
+        }
+        return pauseInternal(VoiceSessionStopReason.READING_UNAVAILABLE)
+    }
+
     private fun pauseInternal(reason: VoiceSessionStopReason): VoiceSessionTransition =
         stopInternal(VoiceSessionPhase.PAUSED, reason)
 
@@ -267,6 +333,9 @@ class VoiceSessionController {
             reviewRequired = true,
             captureStarted = false,
             playbackStarted = false,
+            readingContinuation = false,
+            readingSegment = null,
+            readingSegmentCount = null,
         )
         return VoiceSessionTransition(state)
     }
@@ -290,6 +359,9 @@ class VoiceSessionController {
             reviewRequired = state.reviewRequired && preserveReview,
             captureStarted = false,
             playbackStarted = false,
+            readingContinuation = false,
+            readingSegment = null,
+            readingSegmentCount = null,
         )
         val effects = buildList {
             if (wasCapturing) add(VoiceSessionEffect.StopCapture(old))
@@ -316,5 +388,6 @@ class VoiceSessionController {
     private companion object {
         const val MAX_TRANSCRIPT_CODE_POINTS = 512
         const val MAX_TRANSCRIPT_UTF8_BYTES = 1024
+        const val MAX_READING_SEGMENTS = 128
     }
 }

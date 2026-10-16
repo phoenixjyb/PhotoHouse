@@ -2,12 +2,15 @@ package dev.photohouse.connected
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import android.content.ContentValues
 import android.provider.MediaStore
 import android.os.Environment
@@ -257,6 +260,112 @@ class AssistantMemoryOpeningUiTest {
         assertEquals(listOf("what is the first saved memory about"), drafts)
         assertEquals(listOf(0 to 1), reads)
         saveRender("en-central-continued-segment")
+    }
+
+    @Test fun privatePanelVoiceContinuationAppearsOnlyAfterCompletionAndKeepsPauseEndVisibleAtLargeText() {
+        var progress by mutableStateOf<AssistantMemorySegmentProgress?>(null)
+        var ready by mutableStateOf(true)
+        var session by mutableStateOf<AssistantVoiceSessionUiState?>(null)
+        val starts = mutableListOf<Pair<Int, AssistantMemorySegmentProgress>>()
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    PrivateAssistantPanel(
+                        workspace(), true,
+                        onNew = {}, onRefresh = {}, onOpenThread = { _, _ -> }, onDraft = {}, onSend = {},
+                        onRecover = {}, onDelete = { _, _ -> }, onSetLocale = {}, onDismiss = {},
+                        assistant = AssistantClientState("synthetic-library", 1, speechMemorySegmentProgress = progress),
+                        voiceMemoryReadingReady = ready,
+                        onContinueSavedMemoryByVoice = { ordinal, captured ->
+                            starts += ordinal to captured
+                            ready = false
+                            session = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.LISTENING,
+                                detail = "正在聆听", microphoneActive = true, readingContinuation = true)
+                        },
+                        voiceSessionState = session,
+                        onPauseVoiceSession = {}, onResumeVoiceSession = {}, onEndVoiceSession = {},
+                    )
+                }
+            }
+        }
+        rule.onNodeWithTag("private-assistant-continue-memory-by-voice-0").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-voice-continuation-consent-0").assertDoesNotExist()
+        val completed = AssistantMemorySegmentProgress(threadId, turnId, 1, 0, "story", 0, 2, 0)
+        rule.runOnUiThread { progress = completed }
+        rule.waitForIdle()
+        rule.onNodeWithTag("private-assistant-voice-continuation-consent-0").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-memory-by-voice-0").performScrollTo().assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp).performClick()
+        assertEquals(listOf(0 to completed), starts)
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        rule.onNodeWithTag("private-assistant-continue-memory-by-voice-0").assertDoesNotExist()
+        saveRender("zh-voice-continuation")
+        rule.runOnUiThread {
+            session = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.SPEAKING,
+                detail = "第2/2段；麦克风已关闭。", readingContinuation = true,
+                readingSegment = 1, readingSegmentCount = 2)
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-session-status").assertTextEquals("正在朗读")
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        saveRender("zh-voice-continuation-speaking")
+        rule.runOnUiThread {
+            session = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.PAUSED,
+                detail = "本章已读完。打开回忆可浏览后续章节；继续会返回语音查找。",
+                reason = VoiceSessionStopReason.READING_FINISHED)
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-session-status").assertTextEquals("本节已读完")
+        rule.onNodeWithTag("assistant-voice-resume").assertIsDisplayed().assertTextEquals("继续语音查找")
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
+        saveRender("zh-voice-continuation-finished")
+    }
+
+    @Test fun centralVoiceContinuationShowsEnglishConsentAndTappableLargeTarget() {
+        var session by mutableStateOf<AssistantVoiceSessionUiState?>(null)
+        var ready by mutableStateOf(true)
+        val starts = mutableListOf<Pair<Int, AssistantMemorySegmentProgress>>()
+        val completed = AssistantMemorySegmentProgress(threadId, turnId, 1, 0, "story", 0, 2, 0)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantScreen(
+                        AssistantClientState("synthetic-library", 1, speechMemorySegmentProgress = completed), false,
+                        onBack = {}, previews = emptyMap(), onRetryCapabilities = {}, onSend = { true },
+                        onClear = {}, onOpen = { _, _ -> }, onCheckReceipt = {}, onRecord = {},
+                        onStopRecording = {}, onCancelRecording = {}, recording = false, recordError = false,
+                        onClearTranscript = {}, onPlaySpeech = {}, onStopSpeech = {},
+                        savedMemoryWorkspace = workspace(), voiceMemoryReadingReady = ready,
+                        onReadSavedMemorySegment = { _, _ -> },
+                        voiceSessionState = session,
+                        onPauseVoiceSession = {}, onResumeVoiceSession = {}, onEndVoiceSession = {},
+                        onContinueSavedMemoryByVoice = { ordinal, captured ->
+                            starts += ordinal to captured
+                            ready = false
+                            session = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.LISTENING,
+                                detail = "Say continue reading for the next segment. Microphone is on.",
+                                microphoneActive = true, readingContinuation = true)
+                        },
+                    )
+                }
+            }
+        }
+        rule.onNodeWithTag("assistant-voice-continuation-consent-0").performScrollTo()
+            .assertIsDisplayed().assertTextContains("starts the microphone")
+        rule.onNodeWithTag("assistant-continue-memory-by-voice-0").performScrollTo().assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp).assertTextEquals("Continue by voice")
+        saveRender("en-central-voice-continuation-consent")
+        rule.onNodeWithTag("assistant-continue-memory-by-voice-0").performClick()
+        assertEquals(listOf(0 to completed), starts)
+        rule.waitForIdle()
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        saveRender("en-central-voice-continuation")
     }
 
     @Test fun staleOrUnsupportedSavedMemoryResultKeepsLegitimateEmptyIntro() {

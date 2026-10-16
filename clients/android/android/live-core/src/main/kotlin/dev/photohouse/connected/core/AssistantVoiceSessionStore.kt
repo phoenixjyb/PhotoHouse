@@ -55,6 +55,8 @@ class AssistantVoiceSessionStore(
     private var ownedTurnRequestId: String? = null
     private var ownedSpeechRequestId: String? = null
     private var ownedMemoryReaderOrdinal: Int? = null
+    private var readingSelection: AssistantMemoryVoiceSelection? = null
+    private var ownedReadingProgress: AssistantMemorySegmentProgress? = null
     /** The explicit start/resume choice is held for this session; capability loss ends the loop. */
     @Volatile private var sessionPrivateReplySpeechEnabled: Boolean? = null
     @Volatile private var sessionMemoryActionsEnabled: Boolean = false
@@ -66,6 +68,7 @@ class AssistantVoiceSessionStore(
                 when {
                     !scopeMatches(live) -> stopForTransition(controller.contextChanged(observedScope(live)))
                     !supportsVoice(live) -> stopForTransition(controller.contextChanged(null))
+                    !readingScopeCurrent(live) -> stopForTransition(controller.readingUnavailable())
                 }
             }
         }
@@ -79,6 +82,9 @@ class AssistantVoiceSessionStore(
             } else if (!closed && controller.state.phase in ACTIVE_PHASES &&
                 store.state.value.assistant?.speechMemoryOpeningOrdinal != null && !it.savedMemoryReadingAvailable) {
                 stopForTransition(controller.contextChanged(null))
+            } else if (!closed && readingSelection != null && controller.state.phase in ACTIVE_PHASES &&
+                !readingScopeCurrent(store.state.value)) {
+                stopForTransition(controller.readingUnavailable())
             } else if (!closed && sessionMemoryActionsEnabled && !it.savedMemoryActionsAvailable &&
                 controller.state.phase in ACTIVE_PHASES) {
                 stopForTransition(controller.contextChanged(null))
@@ -107,6 +113,29 @@ class AssistantVoiceSessionStore(
         ownedTranscriptRequestId = null
         ownedTurnRequestId = null
         ownedSpeechRequestId = null
+        ownedMemoryReaderOrdinal = null
+        publish(transition.state)
+        transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
+        true
+    }
+
+    fun canStartMemoryReading(selection: AssistantMemoryVoiceSelection): Boolean = synchronized(lock) {
+        !closed && foregroundNow() && controller.state.phase in setOf(VoiceSessionPhase.IDLE, VoiceSessionPhase.ENDED) &&
+            readyForStart() && store.memoryVoiceSelectionCurrent(selection)
+    }
+
+    /** Distinct foreground consent retains only the exact completed player's current source. */
+    fun startMemoryReading(selection: AssistantMemoryVoiceSelection): Boolean = synchronized(lock) {
+        if (!canStartMemoryReading(selection)) return false
+        val progress = selection.progress
+        val transition = controller.startMemoryReading(voiceScope, foreground = true,
+            segment = progress.segmentIndex, segmentCount = progress.segmentCount ?: return false)
+        if (!transition.accepted) return false
+        sessionPrivateReplySpeechEnabled = store.privateReplySpeechEnabled()
+        sessionMemoryActionsEnabled = store.assistantWorkspaceState.value.savedMemoryActionsAvailable
+        readingSelection = selection
+        ownedReadingProgress = progress
+        ownedTranscriptRequestId = null; ownedTurnRequestId = null; ownedSpeechRequestId = null
         ownedMemoryReaderOrdinal = null
         publish(transition.state)
         transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
@@ -197,6 +226,21 @@ class AssistantVoiceSessionStore(
         it.enabled && it.text && it.transcribe && it.speech && it.maxAudioSeconds in 1..30
     } == true
 
+    private fun readingScopeCurrent(live: LiveState): Boolean {
+        val selection = readingSelection ?: return true
+        if (!store.memoryVoiceSelectionCurrent(selection, requireCompletedProgress = false)) return false
+        val progress = live.assistant?.speechMemorySegmentProgress ?: return false
+        val expected = selection.progress
+        val voice = controller.state
+        if (voice.phase != VoiceSessionPhase.SPEAKING) return progress === expected
+        // ASR transcript cleanup may publish before the next request is registered.
+        if (ownedSpeechRequestId == null && progress === expected) return true
+        return progress.threadId == expected.threadId && progress.turnId == expected.turnId &&
+            progress.revision == expected.revision && progress.ordinal == expected.ordinal &&
+            progress.sourceKind == expected.sourceKind && progress.segmentIndex == voice.readingSegment &&
+            progress.segmentCount == voice.readingSegmentCount
+    }
+
     private fun observedScope(live: LiveState): VoiceSessionScope? {
         if (live.covered) return null
         val account = live.session?.account_id ?: return null
@@ -208,6 +252,8 @@ class AssistantVoiceSessionStore(
 
     /** Never clear or cancel work that was started by a separate manual assistant control. */
     private fun cancelOwnedStoreWork() {
+        val readingProgress = ownedReadingProgress
+        readingSelection = null; ownedReadingProgress = null
         val memoryReaderIsOurs = ownedMemoryReaderOrdinal != null
         ownedMemoryReaderOrdinal = null
         if (memoryReaderIsOurs) store.assistantWorkspaceCoordinator?.invalidateSavedMemoryReader()
@@ -224,6 +270,7 @@ class AssistantVoiceSessionStore(
         } == true
         if (transcriptIsOurs || turnIsOurs) store.cancelAssistantVoiceWork()
         else if (speechIsOurs) store.clearAssistantSpeech()
+        readingProgress?.let(store::clearCompletedMemoryVoiceProgress)
         ownedTranscriptRequestId = null
         ownedTurnRequestId = null
         ownedSpeechRequestId = null
@@ -239,6 +286,10 @@ class AssistantVoiceSessionStore(
         }
         if (sessionPrivateReplySpeechEnabled?.let { it != store.privateReplySpeechEnabled() } == true) {
             stopForTransition(controller.contextChanged(null))
+            return false
+        }
+        if (!readingScopeCurrent(store.state.value)) {
+            stopForTransition(controller.readingUnavailable())
             return false
         }
         val current = controller.state
@@ -308,21 +359,25 @@ class AssistantVoiceSessionStore(
         val transition = controller.transcriptReady(binding, transcript.text)
         if (!transition.accepted) return
         val request = transition.effects.filterIsInstance<VoiceSessionEffect.SubmitReadOnlyRequest>().singleOrNull()
-        if (request == null && transition.state.reason in setOf(
-                VoiceSessionStopReason.USER_PAUSED, VoiceSessionStopReason.USER_ENDED,
-            )) {
-            // Discard only this voice session's exact ASR result; leave any newer/manual transcript alone.
+        val reading = transition.effects.filterIsInstance<VoiceSessionEffect.ReadMemorySegment>().singleOrNull()
+        if (request == null) {
+            // Control transcripts are consumed locally and cannot parent a later chat request.
             val currentTranscript = store.state.value.assistant?.transcript
-            if (currentTranscript === transcript && currentTranscript.localRequestId == requestId) {
+            if (currentTranscript === transcript && currentTranscript.localRequestId == requestId)
                 store.discardAssistantVoiceControlTranscript(transcript)
-            }
             ownedTranscriptRequestId = null
-            stopForTransition(transition)
+            if (reading != null) {
+                if (accept(transition)) fetchAndPlayMemorySegment(reading.binding, reading.segment, reading.segmentCount)
+            } else if (transition.state.phase in setOf(VoiceSessionPhase.PAUSED, VoiceSessionPhase.ENDED))
+                stopForTransition(transition)
+            else fail(binding)
             return
         }
         ownedTranscriptRequestId = null
         if (!accept(transition)) return
-        if (request == null) { fail(binding); return }
+        val oldProgress = ownedReadingProgress
+        readingSelection = null; ownedReadingProgress = null
+        oldProgress?.let(store::clearCompletedMemoryVoiceProgress)
         val acceptedText = store.takeAssistantTranscriptForDraft(transcript)
         if (acceptedText == null) { fail(request.binding); return }
         requestAssistantTurn(request.binding, acceptedText)
@@ -460,6 +515,75 @@ class AssistantVoiceSessionStore(
         fetchAndPlaySpeech(speak.binding)
     }
 
+    private suspend fun fetchAndPlayMemorySegment(binding: VoiceSessionBinding, segment: Int, count: Int) {
+        if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+        val selection = readingSelection ?: run { fail(binding); return }
+        val previous = selection.progress
+        if (!store.memoryVoiceSelectionCurrent(selection) || segment != previous.segmentIndex + 1 ||
+            count != previous.segmentCount) { stopForTransition(controller.readingUnavailable()); return }
+        val priorReceipt = store.state.value.assistant?.lastRequestReceipt?.requestId
+        if (!store.loadAssistantMemorySegment(previous.ordinal, segment, previous.turnId, previous.revision)) {
+            stopForTransition(controller.readingUnavailable()); return
+        }
+        val requestId = store.state.value.assistant?.lastRequestReceipt?.requestId
+            ?.takeIf(AssistantWire::validRequestId)?.takeIf { it != priorReceipt }
+            ?: run { stopForTransition(controller.readingUnavailable()); return }
+        ownedSpeechRequestId = requestId
+        ownedReadingProgress = store.state.value.assistant?.speechMemorySegmentProgress
+        try {
+            val result = awaitAssistantState(binding, STEP_TIMEOUT_MILLIS) { assistant ->
+                assistant?.lastRequestReceipt?.requestId == requestId &&
+                    (assistant.speechAudio != null || !assistant.speechBusy)
+            }
+            if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+            val audio = result?.assistant?.speechAudio?.takeIf { result.assistant.lastRequestReceipt?.requestId == requestId }
+                ?: run { completeSpeech(binding, false); return }
+            var success = false
+            try {
+                val completed = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                    platform.playSpeech(audio) { observePlatformStart(binding, VoiceSessionPhase.SPEAKING) }
+                } == true
+                if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+                // Set the failure phase before its report clears progress, so source monitors
+                // cannot misclassify an observed player failure as a source replacement.
+                val failedPlayback = if (!completed) controller.speechCompleted(binding, false) else null
+                success = store.reportAssistantPlaybackOutcome(audio, if (completed) "completed" else "failed") && completed
+                if (failedPlayback != null) { stopForTransition(failedPlayback); return }
+                if (success) ownedReadingProgress = store.state.value.assistant?.speechMemorySegmentProgress
+            } catch (cancelled: CancellationException) {
+                store.reportAssistantPlaybackOutcome(audio, "cancelled")
+                throw cancelled
+            } catch (_: Exception) {
+                val failedPlayback = if (bindingCurrent(binding, VoiceSessionPhase.SPEAKING))
+                    controller.speechCompleted(binding, false) else null
+                store.reportAssistantPlaybackOutcome(audio, "failed")
+                if (failedPlayback != null) stopForTransition(failedPlayback)
+            } finally {
+                val latest = store.state.value.assistant
+                if (ownedSpeechRequestId == requestId && latest?.lastRequestReceipt?.requestId == requestId &&
+                    latest.speechAudio === audio) {
+                    if (!success) runCatching { platform.stopAudio() }
+                    store.clearAssistantSpeech()
+                }
+                audio.close()
+                if (ownedSpeechRequestId == requestId) ownedSpeechRequestId = null
+            }
+            if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
+            if (success && segment + 1 < count) {
+                readingSelection = store.assistantMemoryVoiceSelection(previous.ordinal)
+                    ?: run { stopForTransition(controller.readingUnavailable()); return }
+                ownedReadingProgress = readingSelection?.progress
+            }
+            completeSpeech(binding, success)
+        } finally {
+            if (ownedSpeechRequestId == requestId) {
+                val latest = store.state.value.assistant
+                if (latest?.lastRequestReceipt?.requestId == requestId && latest.speechBusy) store.clearAssistantSpeech()
+                ownedSpeechRequestId = null
+            }
+        }
+    }
+
     private suspend fun fetchAndPlaySpeech(
         binding: VoiceSessionBinding,
         memoryOpeningOrdinal: Int? = null,
@@ -545,6 +669,9 @@ class AssistantVoiceSessionStore(
     private fun completeSpeech(binding: VoiceSessionBinding, success: Boolean) {
         if (!bindingCurrent(binding, VoiceSessionPhase.SPEAKING)) return
         val transition = controller.speechCompleted(binding, success)
+        if (readingSelection != null && transition.state.phase == VoiceSessionPhase.PAUSED) {
+            stopForTransition(transition); return
+        }
         if (!accept(transition)) return
         transition.effects.filterIsInstance<VoiceSessionEffect.StartCapture>().singleOrNull()?.binding?.let(::startCapture)
     }

@@ -48,6 +48,7 @@ import dev.photohouse.connected.core.AssistantWorkspaceRequestStatus
 import dev.photohouse.connected.core.AssistantWorkspaceState
 import dev.photohouse.connected.core.AssistantClientState
 import dev.photohouse.connected.core.ProtectedAnnotationAudio
+import dev.photohouse.connected.core.AssistantMemorySegmentProgress
 import java.time.Instant
 
 /** Local UI for the opt-in, account-private conversation workspace. */
@@ -75,10 +76,17 @@ internal fun PrivateAssistantPanel(
     onOpenSavedMemoryCard: (Int) -> Unit = {},
     onReadSavedMemoryOpening: (Int) -> Unit = {},
     onReadSavedMemorySegment: (Int, Int) -> Unit = { _, _ -> },
+    onContinueSavedMemoryByVoice: ((Int, AssistantMemorySegmentProgress) -> Unit)? = null,
+    voiceMemoryReadingReady: Boolean = false,
     assistant: AssistantClientState? = null,
     onStopMemoryOpening: () -> Unit = {},
     onMemoryOpeningPlaybackOutcome: (ProtectedAnnotationAudio, String) -> Unit = { _, _ -> },
     onSavedMemoryFollowupDraft: (String) -> Boolean = { false },
+    voiceSessionState: AssistantVoiceSessionUiState? = null,
+    onPauseVoiceSession: (() -> Unit)? = null,
+    onResumeVoiceSession: (() -> Unit)? = null,
+    onEndVoiceSession: (() -> Unit)? = null,
+    onFinishVoiceTurn: (() -> Unit)? = null,
     onSceneDraft: (String) -> Unit = {},
     onSceneSend: () -> Unit = {},
     sceneInteractionBlocked: Boolean = false,
@@ -89,7 +97,8 @@ internal fun PrivateAssistantPanel(
     val ready = historyReady && capabilities?.serverOwnedTurns == true
     val pending = state.pendingTurn != null
     val scopeAvailable = state.accountId != null && state.libraryId != null
-    val controlsEnabled = historyReady && !state.busy && !pending && state.pendingCreationId == null && scopeAvailable
+    val controlsEnabled = historyReady && !state.busy && !pending && state.pendingCreationId == null && scopeAvailable &&
+        voiceSessionState == null
     val draftBytes = state.draft.toByteArray(Charsets.UTF_8).size
     val draftValid = state.draft.isNotBlank() && draftBytes in 1..1024
     val detail = state.detail
@@ -132,11 +141,19 @@ internal fun PrivateAssistantPanel(
 
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         val compact = maxHeight < 640.dp
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .imePadding().padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (voiceSessionState != null && onPauseVoiceSession != null && onResumeVoiceSession != null && onEndVoiceSession != null) {
+                AssistantVoiceSessionPanel(
+                    state = voiceSessionState, zh = zh, onPause = onPauseVoiceSession,
+                    onResume = onResumeVoiceSession, onEnd = onEndVoiceSession,
+                    onFinishTurn = onFinishVoiceTurn,
+                )
+            }
+            Column(
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                    .imePadding().padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -155,7 +172,7 @@ internal fun PrivateAssistantPanel(
                 modifier = Modifier.testTag("private-assistant-retention"),
             )
             assistant?.let { currentAssistant ->
-                if (currentAssistant.speechBusy && (currentAssistant.speechMemoryOpeningOrdinal != null ||
+                if (voiceSessionState == null && currentAssistant.speechBusy && (currentAssistant.speechMemoryOpeningOrdinal != null ||
                         currentAssistant.speechMemorySegmentProgress != null)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -164,13 +181,14 @@ internal fun PrivateAssistantPanel(
                         else t("Preparing saved opening…", "正在准备保存的开篇语音…"),
                             Modifier.weight(1f).testTag("private-assistant-memory-opening-preparing"),
                             style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = onStopMemoryOpening, modifier = Modifier.testTag("private-assistant-memory-opening-stop")) {
+                        TextButton(onClick = onStopMemoryOpening, enabled = voiceSessionState == null,
+                            modifier = Modifier.testTag("private-assistant-memory-opening-stop")) {
                             Text(t("Stop", "停止"))
                         }
                     }
                 }
-                currentAssistant.speechAudio?.takeIf { currentAssistant.speechMemoryOpeningOrdinal != null ||
-                    currentAssistant.speechMemorySegmentProgress != null }?.let { audio ->
+                currentAssistant.speechAudio?.takeIf { voiceSessionState == null && (currentAssistant.speechMemoryOpeningOrdinal != null ||
+                    currentAssistant.speechMemorySegmentProgress != null) }?.let { audio ->
                     AssistantSpeechPlayback(audio, zh, memoryOpening = currentAssistant.speechMemoryOpeningOrdinal != null,
                         memorySegment = currentAssistant.speechMemorySegmentProgress != null, onStop = onStopMemoryOpening) { outcome ->
                         onMemoryOpeningPlaybackOutcome(audio, outcome)
@@ -203,7 +221,7 @@ internal fun PrivateAssistantPanel(
                         }
                         OutlinedButton(
                             onClick = { managementExpanded = !managementExpanded },
-                            enabled = historyReady && !managementForcedOpen,
+                            enabled = voiceSessionState == null && historyReady && !managementForcedOpen,
                             modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)
                                 .semantics { stateDescription = if (managementVisible) t("Expanded", "已展开") else t("Collapsed", "已收起") }
                                 .testTag("private-assistant-manage-toggle"),
@@ -219,7 +237,7 @@ internal fun PrivateAssistantPanel(
                 capabilities == null -> {
                     Text(t("Private conversations are not available yet. Check availability to continue.", "私人对话暂不可用。请检查当前状态后继续。"),
                         style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("private-assistant-unavailable"))
-                    OutlinedButton(onClick = onRefresh, enabled = !state.busy && scopeAvailable,
+                    OutlinedButton(onClick = onRefresh, enabled = voiceSessionState == null && !state.busy && scopeAvailable,
                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-refresh")) {
                         Text(if (state.busy) t("Checking…", "正在检查…") else t("Check availability", "检查可用状态"))
                     }
@@ -227,7 +245,7 @@ internal fun PrivateAssistantPanel(
                 !historyReady -> {
                     Text(t("Private server-owned conversations are unavailable for this library.", "此资料库暂未开放由服务器管理的私人对话。"),
                         style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("private-assistant-unavailable"))
-                    OutlinedButton(onClick = onRefresh, enabled = !state.busy && scopeAvailable,
+                    OutlinedButton(onClick = onRefresh, enabled = voiceSessionState == null && !state.busy && scopeAvailable,
                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-refresh")) { Text(t("Retry", "重试")) }
                 }
                 else -> {
@@ -238,14 +256,14 @@ internal fun PrivateAssistantPanel(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { if (state.pendingCreationId != null) onReconcileCreation?.invoke() else onNew() },
-                            enabled = scopeAvailable && !state.busy && !pending,
+                            enabled = voiceSessionState == null && scopeAvailable && !state.busy && !pending,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("private-assistant-new"),
                         ) {
                             Text(if (state.pendingCreationId != null) t("Check creation status", "检查创建状态")
                                 else t("New conversation", "新建对话"))
                         }
                         OutlinedButton(
-                            onClick = onRefresh, enabled = scopeAvailable && !state.busy,
+                            onClick = onRefresh, enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                             modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-refresh"),
                         ) { Text(t("Refresh", "刷新")) }
                     }
@@ -257,7 +275,7 @@ internal fun PrivateAssistantPanel(
                             modifier = Modifier.testTag("private-assistant-pending-creation"))
                         OutlinedButton(
                             onClick = onNew,
-                            enabled = scopeAvailable && !state.busy && !pending,
+                            enabled = voiceSessionState == null && scopeAvailable && !state.busy && !pending,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .testTag("private-assistant-retry-creation"),
                         ) {
@@ -279,7 +297,7 @@ internal fun PrivateAssistantPanel(
                                     Text(question, style = MaterialTheme.typography.bodyMedium)
                                     OutlinedButton(
                                         onClick = { onDraft(question) },
-                                        enabled = scopeAvailable && !state.busy,
+                                        enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-restore-question"),
                                     ) { Text(t("Use previous question as a draft", "将上一条问题放入草稿")) }
                                 }
@@ -288,7 +306,7 @@ internal fun PrivateAssistantPanel(
                                     Text(localDraft, style = MaterialTheme.typography.bodyMedium)
                                     OutlinedButton(
                                         onClick = { onDraft(localDraft) },
-                                        enabled = scopeAvailable && !state.busy,
+                                        enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-restore-draft"),
                                     ) { Text(t("Restore unsent draft", "恢复未发送草稿")) }
                                 }
@@ -304,7 +322,7 @@ internal fun PrivateAssistantPanel(
                                 val selected = state.detail?.thread?.threadId == thread.threadId
                                 OutlinedButton(
                                     onClick = { onOpenThread(thread.threadId, thread.revision) },
-                                    enabled = scopeAvailable && !state.busy && !pending,
+                                    enabled = voiceSessionState == null && scopeAvailable && !state.busy && !pending,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                         .testTag("private-assistant-thread-${thread.threadId}"),
                                 ) {
@@ -342,11 +360,11 @@ internal fun PrivateAssistantPanel(
                                     showDeleteDialog = true
                                     deleteAcknowledged = false
                                 },
-                                enabled = !state.busy && !pending,
+                                enabled = voiceSessionState == null && !state.busy && !pending,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-delete"),
                             ) { Text(t("Delete conversation", "删除对话"), color = MaterialTheme.colorScheme.error) }
                         }
-                        if ((onContinueVoice != null || onContinueText != null) && ready && state.continuationEnabled &&
+                        if (voiceSessionState == null && (onContinueVoice != null || onContinueText != null) && ready && state.continuationEnabled &&
                             state.pendingTurn == null && !state.busy && scopeAvailable) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (onContinueText != null) OutlinedButton(
@@ -370,13 +388,13 @@ internal fun PrivateAssistantPanel(
                                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("private-assistant-history-changed"))
                             onReloadHistory?.let { reload -> OutlinedButton(
                                 onClick = { reload(detail.thread.threadId, detail.thread.revision) },
-                                enabled = !state.busy && !pending, modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-reload"),
+                                enabled = voiceSessionState == null && !state.busy && !pending, modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-reload"),
                             ) { Text(t("Reload history", "重新加载记录")) } }
                         } else if (detail.hasOlderExchanges) {
                             val before = detail.exchanges.firstOrNull()?.revision
                             if (capabilities.historyPaging && before != null && onLoadOlder != null) {
                                 OutlinedButton(onClick = { onLoadOlder(detail.thread.threadId, detail.thread.revision, before) },
-                                    enabled = !state.busy && !pending && state.pendingCreationId == null,
+                                    enabled = voiceSessionState == null && !state.busy && !pending && state.pendingCreationId == null,
                                     modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-history-older")) {
                                     Text(t("Read earlier messages", "查看更早消息"))
                                 }
@@ -422,7 +440,7 @@ internal fun PrivateAssistantPanel(
                                         OutlinedButton(
                                             onClick = { if (action.type == "open") onOpenSavedMemoryCard(action.ordinal)
                                                 else onReadSavedMemoryOpening(action.ordinal) },
-                                            enabled = !state.busy && state.pendingTurn == null &&
+                                            enabled = controlsEnabled && !state.busy && state.pendingTurn == null &&
                                                 (if (action.type == "open") state.savedMemoryReaderAvailable else state.savedMemoryReadingAvailable),
                                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                                 .testTag("private-assistant-memory-action"),
@@ -433,7 +451,8 @@ internal fun PrivateAssistantPanel(
                                         }
                                     }
                                     if (state.savedMemoryFollowupAvailable) AssistChip(
-                                        onClick = { onSavedMemoryFollowupDraft(memoryFollowupPrompt(0, 2, zh)) },
+                                        onClick = { if (controlsEnabled) onSavedMemoryFollowupDraft(memoryFollowupPrompt(0, 2, zh)) },
+                                        enabled = controlsEnabled,
                                         label = { Text(memoryFollowupLabel(2, zh)) },
                                         modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(0, 2, zh) }
                                             .testTag("private-assistant-memory-followup-all"),
@@ -452,7 +471,7 @@ internal fun PrivateAssistantPanel(
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     (0..1).forEach { promptIndex ->
                                                         val prompt = memoryFollowupPrompt(ordinal, promptIndex, zh)
-                                                        AssistChip(onClick = { onSavedMemoryFollowupDraft(prompt) },
+                                                        AssistChip(onClick = { if (controlsEnabled) onSavedMemoryFollowupDraft(prompt) }, enabled = controlsEnabled,
                                                             label = { Text(memoryFollowupLabel(promptIndex, zh)) },
                                                             modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(ordinal, promptIndex, zh) }
                                                                 .testTag("private-assistant-memory-followup-$ordinal-$promptIndex"))
@@ -460,11 +479,19 @@ internal fun PrivateAssistantPanel(
                                                 }
                                                 val canReadMemorySegments = state.savedMemorySegmentReadingAvailable &&
                                                     card.kind in setOf("story", "memoir")
+                                                val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
+                                                    it.ordinal == ordinal && it.threadId == currentTurn.threadId &&
+                                                        it.turnId == currentTurn.requestId && it.revision == currentTurn.revision &&
+                                                        it.sourceKind == card.kind
+                                                }
+                                                val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
+                                                    segmentProgress?.segmentCount != null
+                                                val canContinue = segmentReady && segmentProgress!!.segmentIndex + 1 < segmentProgress.segmentCount!!
                                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
                                                     verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                     OutlinedButton(
                                                         onClick = { onOpenSavedMemoryCard(ordinal) },
-                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                        enabled = controlsEnabled && scopeAvailable && !state.busy && state.pendingTurn == null &&
                                                             state.savedMemoryReaderAvailable && state.memoryReaderOrdinal != ordinal,
                                                         modifier = Modifier.heightIn(min = 48.dp)
                                                             .testTag("private-assistant-open-memory-$ordinal"),
@@ -473,7 +500,7 @@ internal fun PrivateAssistantPanel(
                                                             else t("Open memoir", "打开回忆录"))
                                                     }
                                                     TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
-                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                        enabled = controlsEnabled && scopeAvailable && !state.busy && state.pendingTurn == null &&
                                                             state.savedMemoryReadingAvailable &&
                                                             assistant?.speechBusy != true,
                                                         modifier = Modifier.heightIn(min = 48.dp)
@@ -484,15 +511,7 @@ internal fun PrivateAssistantPanel(
                                                             t("Opening ready", "开篇语音已准备好")
                                                         else t("Read opening", "朗读开篇"))
                                                     }
-                                                    val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
-                                                        it.ordinal == ordinal && it.threadId == currentTurn.threadId &&
-                                                            it.turnId == currentTurn.requestId && it.revision == currentTurn.revision &&
-                                                            it.sourceKind == card.kind
-                                                    }
                                                     if (canReadMemorySegments) {
-                                                        val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
-                                                            segmentProgress?.segmentCount != null
-                                                        val canContinue = segmentReady && segmentProgress!!.segmentIndex + 1 < segmentProgress.segmentCount!!
                                                         val canRestart = segmentReady && segmentProgress!!.segmentCount != null &&
                                                             segmentProgress.segmentIndex + 1 >= segmentProgress.segmentCount!!
                                                         val sourceName = if (card.kind == "story") t("first chapter", "第一章")
@@ -511,18 +530,26 @@ internal fun PrivateAssistantPanel(
                                                         TextButton(onClick = {
                                                             onReadSavedMemorySegment(ordinal,
                                                                 if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1)
-                                                        }, enabled = scopeAvailable && !state.busy && state.pendingTurn == null &&
+                                                        }, enabled = controlsEnabled && scopeAvailable && !state.busy && state.pendingTurn == null &&
                                                             assistant?.speechBusy != true && assistant?.speechAudio == null &&
                                                             (segmentProgress == null || canContinue || canRestart),
                                                             modifier = Modifier.heightIn(min = 48.dp)
                                                                 .testTag("private-assistant-read-memory-segment-$ordinal")) {
                                                             Text(label)
                                                         }
-                                                        if ((assistant?.speechBusy == true || assistant?.speechAudio != null) && segmentProgress != null) TextButton(
+                                                        if (voiceSessionState == null &&
+                                                            (assistant?.speechBusy == true || assistant?.speechAudio != null) && segmentProgress != null) TextButton(
                                                             onClick = onStopMemoryOpening,
                                                             modifier = Modifier.heightIn(min = 48.dp)
                                                                 .testTag("private-assistant-stop-memory-segment-$ordinal")) {
                                                             Text(t("Stop", "停止"))
+                                                        }
+                                                        if (voiceMemoryReadingReady && onContinueSavedMemoryByVoice != null && canContinue) {
+                                                            TextButton(
+                                                                onClick = { onContinueSavedMemoryByVoice(ordinal, segmentProgress!!) },
+                                                                modifier = Modifier.heightIn(min = 48.dp)
+                                                                    .testTag("private-assistant-continue-memory-by-voice-$ordinal"),
+                                                            ) { Text(t("Continue by voice", "语音继续")) }
                                                         }
                                                     }
                                                 }
@@ -531,6 +558,11 @@ internal fun PrivateAssistantPanel(
                                                         "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         modifier = Modifier.testTag("private-assistant-memory-segment-guidance-$ordinal"))
+                                                if (canReadMemorySegments && voiceMemoryReadingReady && onContinueSavedMemoryByVoice != null && canContinue) Text(
+                                                    t("Continue by voice starts the microphone. Say “continue reading” to hear this saved memory’s next section; other requests use read-only search until Pause or End.",
+                                                        "语音继续会开启麦克风。说“继续朗读”收听这段已保存内容的下一段；其他语音请求只进行只读查找，直到你点“暂停”或“结束”。"),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    modifier = Modifier.testTag("private-assistant-voice-continuation-consent-$ordinal"))
                                                 if (state.memoryReaderOrdinal == ordinal) Text(
                                                     t("Opening…", "正在打开…"), style = MaterialTheme.typography.bodySmall,
                                                     modifier = Modifier.testTag("private-assistant-memory-opening-$ordinal"))
@@ -540,7 +572,7 @@ internal fun PrivateAssistantPanel(
                                                         color = MaterialTheme.colorScheme.error,
                                                         modifier = Modifier.testTag("private-assistant-memory-error-$ordinal"))
                                                     TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
-                                                        enabled = scopeAvailable && !state.busy && state.pendingTurn == null,
+                                                    enabled = voiceSessionState == null && scopeAvailable && !state.busy && state.pendingTurn == null,
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-memory-retry-$ordinal")) {
                                                         Text(t("Retry", "重试"))
                                                     }
@@ -557,7 +589,7 @@ internal fun PrivateAssistantPanel(
                                     result.items.forEachIndexed { ordinal, asset ->
                                         OutlinedButton(
                                             onClick = { onOpenAsset(asset.id) },
-                                            enabled = scopeAvailable && !state.busy,
+                                            enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                                 .testTag("private-assistant-open-asset-${asset.id}"),
                                         ) {
@@ -580,14 +612,14 @@ internal fun PrivateAssistantPanel(
                                     Text(t("The last response is uncertain. Check its saved status before continuing; this only reads the existing request.",
                                         "上一条回复状态不确定。请先查询已保存的状态再继续；此操作只读取现有请求。"),
                                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
-                                    Button(onClick = onRecover, enabled = scopeAvailable && !state.busy,
+                                    Button(onClick = onRecover, enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                         modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-recover")) {
                                         Text(if (state.busy) t("Checking…", "正在查询…") else t("Check saved status", "查询已保存状态"))
                                     }
                                     if (onAbandonPending != null) {
                                         OutlinedButton(
                                             onClick = { showAbandonDialog = true; abandonAcknowledged = false },
-                                            enabled = scopeAvailable && !state.busy,
+                                            enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                             modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-abandon-pending"),
                                         ) {
                                             Text(t("Leave this request and start a new conversation", "放下这次请求，开始新对话"))
@@ -658,7 +690,7 @@ internal fun PrivateAssistantPanel(
                         OutlinedTextField(
                             value = state.draft,
                             onValueChange = onDraft,
-                            enabled = ready && scopeAvailable && !state.busy,
+                            enabled = voiceSessionState == null && ready && scopeAvailable && !state.busy,
                             modifier = Modifier.fillMaxWidth().testTag("private-assistant-composer"),
                             label = { Text(t("Your message", "输入消息")) },
                             supportingText = {
@@ -677,7 +709,7 @@ internal fun PrivateAssistantPanel(
                         )
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween) {
-                            TextButton(onClick = { onRefresh() }, enabled = scopeAvailable && !state.busy,
+                            TextButton(onClick = { onRefresh() }, enabled = voiceSessionState == null && scopeAvailable && !state.busy,
                                 modifier = Modifier.heightIn(min = 48.dp)) { Text(t("Refresh history", "刷新记录")) }
                             Button(onClick = send, enabled = controlsEnabled && ready && state.continuationEnabled && draftValid,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("private-assistant-send")) {
@@ -687,6 +719,7 @@ internal fun PrivateAssistantPanel(
 
                     }
                 }
+            }
             }
         }
     }
@@ -716,7 +749,7 @@ internal fun PrivateAssistantPanel(
                         deleteTarget = null
                         if (target != null) onDelete(target.first, target.second)
                     },
-                    enabled = deleteAcknowledged && !state.busy && state.pendingTurn == null,
+                    enabled = voiceSessionState == null && deleteAcknowledged && !state.busy && state.pendingTurn == null,
                     modifier = Modifier.testTag("private-assistant-delete-confirm"),
                 ) { Text(t("Delete permanently", "永久删除"), color = MaterialTheme.colorScheme.error) }
             },
@@ -763,7 +796,7 @@ internal fun PrivateAssistantPanel(
                             onAbandonPending(pendingTurn.threadId, pendingTurn.requestId, renderedRevision)
                         }
                     },
-                    enabled = abandonAcknowledged && !state.busy && state.pendingTurn != null,
+                    enabled = voiceSessionState == null && abandonAcknowledged && !state.busy && state.pendingTurn != null,
                     modifier = Modifier.testTag("private-assistant-abandon-confirm"),
                 ) { Text(t("Leave request", "放下请求")) }
             },

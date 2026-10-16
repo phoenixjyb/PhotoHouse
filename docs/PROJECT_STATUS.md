@@ -60,6 +60,12 @@ without a new chat turn, and only actual playback completion can reopen the
 microphone. The final segment pauses; Pause/End, failures and source replacement
 clear intent. It is not claimed live and does not change the phone APK.
 
+Following phone source adds the same explicit continuation to both reader
+surfaces, preserving the exact completed-playback selection across microphone
+permission. One spoken command requests one next segment; successful completion
+alone can relisten. Pause/End and source replacement clear intent. This does not
+change the frozen v66 release or claim a new signed APK/Windows delivery.
+
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |

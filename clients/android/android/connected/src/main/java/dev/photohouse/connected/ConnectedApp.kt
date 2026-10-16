@@ -777,6 +777,33 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 }
                             }
                         },
+                        voiceSessionState = voice?.session,
+                        onPauseVoiceSession = voice?.pause, onResumeVoiceSession = voice?.resume,
+                        onEndVoiceSession = voice?.end, onFinishVoiceTurn = voice?.finishTurn,
+                        voiceMemoryReadingReady = voice?.memoryReadingReady == true,
+                        onContinueSavedMemoryByVoice = { ordinal, renderedProgress ->
+                            val renderedTurn = privateAssistantState.currentTurn
+                            val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                            val liveWorkspace = privateAssistant.state.value
+                            val selection = store.assistantMemoryVoiceSelection(ordinal)
+                            val progressMatches = selection?.progress === renderedProgress &&
+                                renderedProgress.threadId == renderedTurn?.threadId &&
+                                renderedProgress.turnId == renderedTurn?.requestId &&
+                                renderedProgress.revision == renderedTurn?.revision &&
+                                renderedProgress.ordinal == ordinal && renderedProgress.sourceKind == renderedCard?.kind &&
+                                renderedProgress.completedSegmentIndex == renderedProgress.segmentIndex &&
+                                renderedProgress.segmentCount?.let { renderedProgress.segmentIndex + 1 < it } == true
+                            voice?.let { voiceControls -> if (selection != null && voiceControls.memoryReadingReady && progressMatches && current() &&
+                                privateAssistantState.savedMemorySegmentReadingAvailable &&
+                                isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                    liveWorkspace.currentTurn, liveWorkspace.detail) &&
+                                liveWorkspace.currentTurn == renderedTurn &&
+                                store.state.value.assistant?.let { it.speechBusy || it.speechAudio != null } != true &&
+                                assistantPermissionContext == null && assistantPendingCapture == null && !assistantRecording &&
+                                voiceControls.canStartMemoryReading(selection)) {
+                                voiceControls.startMemoryReading(selection)
+                            } }
+                        },
                         onOpenSavedMemoryCard = { ordinal ->
                             val renderedTurn = privateAssistantState.currentTurn
                             val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
@@ -878,6 +905,30 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 store.loadAssistantMemorySegment(ordinal, segment, renderedTurn?.requestId, renderedTurn?.revision)
                             }
                         }
+                    },
+                    voiceMemoryReadingReady = voice?.memoryReadingReady == true,
+                    onContinueSavedMemoryByVoice = { ordinal, renderedProgress ->
+                        val renderedTurn = privateAssistantState.currentTurn
+                        val renderedCard = renderedTurn?.result?.memoryCards?.getOrNull(ordinal)
+                        val liveWorkspace = privateAssistant?.state?.value
+                        val selection = store.assistantMemoryVoiceSelection(ordinal)
+                        val progressMatches = selection?.progress === renderedProgress &&
+                            renderedProgress.threadId == renderedTurn?.threadId &&
+                            renderedProgress.turnId == renderedTurn?.requestId &&
+                            renderedProgress.revision == renderedTurn?.revision &&
+                            renderedProgress.ordinal == ordinal && renderedProgress.sourceKind == renderedCard?.kind &&
+                            renderedProgress.completedSegmentIndex == renderedProgress.segmentIndex &&
+                            renderedProgress.segmentCount?.let { renderedProgress.segmentIndex + 1 < it } == true
+                        voice?.let { voiceControls -> if (selection != null && voiceControls.memoryReadingReady && progressMatches && assistantScopeCurrent() &&
+                            privateAssistantState.savedMemorySegmentReadingAvailable &&
+                            isCurrentFreshMemoryOpeningSelection(renderedTurn, ordinal, renderedCard,
+                                liveWorkspace?.currentTurn, liveWorkspace?.detail) &&
+                            liveWorkspace?.currentTurn == renderedTurn &&
+                            store.state.value.assistant?.let { it.speechBusy || it.speechAudio != null } != true &&
+                            assistantPermissionContext == null && assistantPendingCapture == null && !assistantRecording &&
+                            voiceControls.canStartMemoryReading(selection)) {
+                            voiceControls.startMemoryReading(selection)
+                        } }
                     },
                     showMemoryOpeningPlayback = !privateAssistantOpen,
                     onSavedMemoryFollowupDraft = { text ->

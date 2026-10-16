@@ -22,6 +22,231 @@ class ConnectedPrivateAssistantVoiceTest {
     private val threadId = "11111111-1111-4111-8111-111111111111"
     private val secondThreadId = "22222222-2222-4222-8222-222222222222"
 
+    private suspend fun TestScope.completedSection(fixture: Fixture, count: Int = 3): AssistantMemoryVoiceSelection {
+        val coordinator = requireNotNull(fixture.store.assistantWorkspaceCoordinator)
+        fixture.workspaceApi.savedMemoryCardsAvailable = true
+        fixture.workspaceApi.savedMemorySegmentReadingAvailable = true
+        fixture.workspaceApi.resultFactory = ::savedMemoryResult
+        fixture.workspaceApi.memorySegmentHandler = { _, _, _, _, segment, _, request ->
+            AssistantMemorySegmentSpeechResult(syntheticAnnotationWav(),
+                AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true), segment, count)
+        }
+        assertTrue(coordinator.refreshSavedMemoryCardsCapabilities()); runCurrent()
+        assertTrue(coordinator.refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+        assertTrue(fixture.store.sendAssistantText("find saved memories")); runCurrent()
+        assertNull(fixture.store.assistantMemoryVoiceSelection(0))
+        assertTrue(fixture.store.loadAssistantMemorySegment(0, 0)); runCurrent()
+        assertNull(fixture.store.assistantMemoryVoiceSelection(0))
+        val audio = requireNotNull(fixture.store.state.value.assistant?.speechAudio)
+        assertTrue(fixture.store.reportAssistantPlaybackOutcome(audio, "completed"))
+        return requireNotNull(fixture.store.assistantMemoryVoiceSelection(0))
+    }
+
+    @Test fun explicitReadingVoiceRequestsOneNextSegmentAndRelistensOnlyAfterActualCompletion() = runTest {
+        val f = fixture(activatePrivate = true)
+        val selection = completedSection(f)
+        assertTrue(f.driver.canStartMemoryReading(selection))
+        assertEquals(0, f.platform.captureCalls)
+        assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+        assertEquals(1, f.platform.captureCalls)
+        assertEquals(listOf(0), f.workspaceApi.memorySegmentIndices)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        assertEquals(VoiceSessionPhase.LISTENING, f.driver.state.value.phase)
+        assertTrue(f.driver.state.value.readingContinuation)
+
+        f.photoApi.transcriptText = "继续朗读。"
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(listOf(0, 1), f.workspaceApi.memorySegmentIndices)
+        assertEquals(VoiceSessionPhase.SPEAKING, f.driver.state.value.phase)
+        assertEquals(1, f.platform.captureCalls)
+        assertEquals(1, f.platform.speechCalls)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        assertEquals(0, f.workspaceApi.speechCalls)
+        assertEquals(0, f.workspaceApi.memoryOpeningSpeechCalls)
+        assertEquals(0, f.photoApi.v1TurnCalls)
+        assertNull(f.store.state.value.assistant?.transcript)
+        assertNull(f.store.state.value.assistant?.confirmedTranscriptRequestId)
+        assertEquals(listOf<String?>(null), f.workspaceApi.parentIds)
+
+        f.platform.speechResults.send(true); runCurrent()
+        assertEquals(VoiceSessionPhase.LISTENING, f.driver.state.value.phase)
+        assertEquals(2, f.platform.captureCalls)
+        f.photoApi.transcriptText = "READ THE NEXT PART!"
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(listOf(0, 1, 2), f.workspaceApi.memorySegmentIndices)
+        assertEquals(2, f.platform.captureCalls)
+        f.platform.speechResults.send(true); runCurrent()
+        assertEquals(VoiceSessionPhase.PAUSED, f.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.READING_FINISHED, f.driver.state.value.reason)
+        assertFalse(f.driver.state.value.readingContinuation)
+        assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+        assertEquals(2, f.platform.captureCalls)
+        assertEquals(1, f.workspaceApi.submitCalls)
+
+        assertTrue(f.driver.resume()); runCurrent()
+        f.photoApi.transcriptText = "continue reading"
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(VoiceSessionStopReason.READING_NEEDS_SELECTION, f.driver.state.value.reason)
+        assertEquals(listOf(0, 1, 2), f.workspaceApi.memorySegmentIndices)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        f.driver.close()
+    }
+
+    @Test fun permissionSelectionCannotFollowAnOtherwiseIdenticalManualReplay() = runTest {
+        val f = fixture(activatePrivate = true)
+        val old = completedSection(f)
+        f.store.clearAssistantSpeech()
+        assertTrue(f.store.loadAssistantMemorySegment(0, 0)); runCurrent()
+        assertTrue(f.store.reportAssistantPlaybackOutcome(requireNotNull(f.store.state.value.assistant?.speechAudio), "completed"))
+        val replacement = requireNotNull(f.store.assistantMemoryVoiceSelection(0))
+        assertEquals(old.progress, replacement.progress)
+        assertFalse(f.driver.canStartMemoryReading(old))
+        assertFalse(f.driver.startMemoryReading(old))
+        assertEquals(0, f.platform.captureCalls)
+        assertTrue(f.driver.startMemoryReading(replacement)); runCurrent()
+        assertEquals(1, f.platform.captureCalls)
+        f.driver.end(); f.driver.close()
+    }
+
+    @Test fun readingPauseFencesLateAsrAndResumeNeverRestoresReadingIntent() = runTest {
+        val f = fixture(activatePrivate = true)
+        val selection = completedSection(f)
+        val gate = CompletableDeferred<Unit>()
+        f.photoApi.transcriptionGate = gate
+        f.photoApi.transcriptText = "继续读"
+        assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(VoiceSessionPhase.TRANSCRIBING, f.driver.state.value.phase)
+        assertTrue(f.driver.pause()); runCurrent()
+        assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+        gate.complete(Unit); runCurrent()
+        assertEquals(listOf(0), f.workspaceApi.memorySegmentIndices)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        assertNull(f.store.state.value.assistant?.transcript)
+        assertTrue(f.driver.resume()); runCurrent()
+        f.photoApi.transcriptionGate = null
+        f.photoApi.transcriptText = "continue reading"
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(VoiceSessionStopReason.READING_NEEDS_SELECTION, f.driver.state.value.reason)
+        assertEquals(2, f.platform.captureCalls)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        f.driver.close()
+    }
+
+    @Test fun readingEndFencesLateSynthesisWithoutClearingANewerManualOwner() = runTest {
+        val f = fixture(activatePrivate = true)
+        val selection = completedSection(f)
+        val gate = CompletableDeferred<Unit>()
+        var lateBytes: ByteArray? = null
+        f.workspaceApi.memorySegmentHandler = { _, _, _, _, segment, _, request ->
+            withContext(NonCancellable) { gate.await() }
+            val bytes = syntheticAnnotationWav().also { lateBytes = it }
+            AssistantMemorySegmentSpeechResult(bytes,
+                AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true), segment, 3)
+        }
+        f.photoApi.transcriptText = "继续朗读"
+        assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(VoiceSessionPhase.SPEAKING, f.driver.state.value.phase)
+        assertTrue(f.driver.end()); runCurrent()
+        assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+        f.workspaceApi.memorySegmentHandler = { _, _, _, _, segment, _, request ->
+            AssistantMemorySegmentSpeechResult(syntheticAnnotationWav(),
+                AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true), segment, 3)
+        }
+        assertTrue(f.store.loadAssistantMemorySegment(0, 0)); runCurrent()
+        val newAudio = requireNotNull(f.store.state.value.assistant?.speechAudio)
+        gate.complete(Unit); runCurrent()
+        assertSame(newAudio, f.store.state.value.assistant?.speechAudio)
+        assertTrue(requireNotNull(lateBytes).all { it == 0.toByte() })
+        assertEquals(VoiceSessionPhase.ENDED, f.driver.state.value.phase)
+        assertEquals(0, f.platform.speechCalls)
+        assertEquals(1, f.platform.captureCalls)
+        f.store.clearAssistantSpeech(); f.driver.close()
+    }
+
+    @Test fun lateEndedReadingPlayerCannotRecaptureOrStopANewerGeneralSession() = runTest {
+        val f = fixture(activatePrivate = true)
+        val selection = completedSection(f)
+        f.platform.ignoreSpeechCancellation = true
+        f.photoApi.transcriptText = "continue reading"
+        assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(VoiceSessionPhase.SPEAKING, f.driver.state.value.phase)
+        assertTrue(f.driver.end()); runCurrent()
+        assertTrue(f.driver.start()); runCurrent()
+        val stopCalls = f.platform.stopAudioCalls
+        assertEquals(2, f.platform.captureCalls)
+        f.platform.speechResults.send(true); runCurrent()
+        assertEquals(VoiceSessionPhase.LISTENING, f.driver.state.value.phase)
+        assertFalse(f.driver.state.value.readingContinuation)
+        assertEquals(2, f.platform.captureCalls)
+        assertEquals(stopCalls, f.platform.stopAudioCalls)
+        assertEquals(listOf(0, 1), f.workspaceApi.memorySegmentIndices)
+        assertEquals(1, f.workspaceApi.submitCalls)
+        f.driver.close()
+    }
+
+    @Test fun readingCapabilityLossAndSourceReplacementStopListening() = runTest {
+        for (replace in listOf(false, true)) {
+            val f = fixture(activatePrivate = true)
+            val selection = completedSection(f)
+            assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+            if (replace) {
+                assertTrue(f.store.sendAssistantText("another source")); runCurrent()
+            } else {
+                f.workspaceApi.savedMemorySegmentReadingAvailable = false
+                assertTrue(requireNotNull(f.store.assistantWorkspaceCoordinator).refreshSavedMemorySegmentReadingCapabilities()); runCurrent()
+            }
+            assertEquals(VoiceSessionPhase.PAUSED, f.driver.state.value.phase)
+            assertEquals(VoiceSessionStopReason.READING_UNAVAILABLE, f.driver.state.value.reason)
+            assertFalse(f.driver.state.value.microphoneActive)
+            assertEquals(1, f.platform.captureCalls)
+            assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+            assertFalse(f.driver.startMemoryReading(selection))
+            f.driver.close()
+        }
+    }
+
+    @Test fun ordinaryReadingQuestionClearsTheAnchorAndUsesOnlyItsOwnAsrParent() = runTest {
+        val f = fixture(activatePrivate = true)
+        val selection = completedSection(f)
+        assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+        f.photoApi.transcriptText = "find garden photos"
+        f.platform.captures.send(wav()); runCurrent()
+        assertEquals(2, f.workspaceApi.submitCalls)
+        assertEquals("find garden photos", f.workspaceApi.texts.last())
+        assertEquals(f.photoApi.transcriptionIds.single(), f.workspaceApi.parentIds.last())
+        assertFalse(f.driver.state.value.readingContinuation)
+        assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+        assertEquals(listOf(0), f.workspaceApi.memorySegmentIndices)
+        assertEquals(1, f.platform.captureCalls)
+        f.driver.close()
+    }
+
+    @Test fun changedCountAndPlaybackFailureCannotRestartReadingCapture() = runTest {
+        for (badCount in listOf(true, false)) {
+            val f = fixture(activatePrivate = true)
+            val selection = completedSection(f)
+            if (badCount) f.workspaceApi.memorySegmentHandler = { _, _, _, _, segment, _, request ->
+                AssistantMemorySegmentSpeechResult(syntheticAnnotationWav(),
+                    AssistantRequestReceipt(request, "enabled", "succeeded", playbackTracking = true), segment, 4)
+            }
+            f.photoApi.transcriptText = "continue reading"
+            assertTrue(f.driver.startMemoryReading(selection)); runCurrent()
+            f.platform.captures.send(wav()); runCurrent()
+            if (!badCount) { f.platform.speechResults.send(false); runCurrent() }
+            assertEquals(if (badCount) VoiceSessionStopReason.READING_UNAVAILABLE else VoiceSessionStopReason.SPEECH_FAILED,
+                f.driver.state.value.reason)
+            assertEquals(VoiceSessionPhase.PAUSED, f.driver.state.value.phase)
+            assertNull(f.store.state.value.assistant?.speechAudio)
+            assertNull(f.store.state.value.assistant?.speechMemorySegmentProgress)
+            assertEquals(1, f.platform.captureCalls)
+            assertEquals(1, f.workspaceApi.submitCalls)
+            f.driver.close()
+        }
+    }
+
     @Test fun noSelectedPrivateThreadKeepsTheExistingV1Route() = runTest {
         val fixture = fixture(activatePrivate = false)
 
@@ -1025,6 +1250,7 @@ class ConnectedPrivateAssistantVoiceTest {
         var speechCalls = 0
         var stopAudioCalls = 0
         var lastSpeechAudio: ProtectedAnnotationAudio? = null
+        var ignoreSpeechCancellation = false
         override suspend fun capture(maxSeconds: Int): ByteArray? {
             captureCalls++
             return captures.receive()
@@ -1033,7 +1259,8 @@ class ConnectedPrivateAssistantVoiceTest {
             speechCalls++
             lastSpeechAudio = audio
             speechStarted.send(Unit)
-            return speechResults.receive()
+            return if (ignoreSpeechCancellation) withContext(NonCancellable) { speechResults.receive() }
+                else speechResults.receive()
         }
         override fun stopAudio() { stopAudioCalls++ }
         override fun finishCapture() { captures.trySend(null) }
@@ -1046,11 +1273,13 @@ class ConnectedPrivateAssistantVoiceTest {
         val transcriptionIds = mutableListOf<String>()
         val transcriptionTexts = mutableListOf<String>()
         var transcriptText = "find the beach"
+        var transcriptionGate: CompletableDeferred<Unit>? = null
         override suspend fun assistantCapabilities(token: Bearer, library: String) = AssistantCapabilities(true, true, true, true, 30)
         override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
             transcriptionIds += requestId
             val transcript = transcriptText
             transcriptionTexts += transcript
+            transcriptionGate?.let { withContext(NonCancellable) { it.await() } }
             return AssistantTranscript(transcript, "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
         }
         override suspend fun assistantTurn(token: Bearer, library: String, text: String,
