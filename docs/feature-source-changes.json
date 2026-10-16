@@ -20939,6 +20939,30 @@
       "apk_publication_recorded": true,
       "models_activated": false,
       "physical_device_acceptance": false
+    },
+    {
+      "feature": "v66-delivery-versus-following-android-scene-source",
+      "source_commit": "f00e62922980853c16d1e1fa076dadedaf30ebf8",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "a5d02a095fd3e7a87794026d655889afa9997d8641b81c9566413072d5b1cd0a",
+          "sha256": "ca92e4469e371f834dabec73ee9af2699658e1434228e84296057f1466015c87"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "cbdd30de52d088ae7490c6c86862aedbabe6ebe46beea24c380251899de9624b",
+          "sha256": "386c4737dd7a7c01c176228a41fa04aa1d225efcc555eb362acaec8729a568b3"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "97e49c42c27f94049773fb57b8f73cdcf5c41b68d5fef9002099bbb0e7505eef",
+          "sha256": "cd4c0cada572fdf5b2333008a9345692b51cf646a6dcfcaeaf3053105d9656ac"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_changed": false
     }
   ]
 }
