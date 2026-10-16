@@ -254,6 +254,40 @@ def _correction_consumes_label(words, entities):
     return False
 
 
+_DISPOSAL_ACTIONS = ('放', '摆', '搬', '挪', '倒', '调', '混合', '折', '叠',
+                     '装', '塞', '铺', '卷', '挂', '捏', '排', '摞', '码',
+                     '涂', '染', '切', '打开', '关上', '收')
+_BA_CONTENT_WORDS = ('把手', '把柄', '把戏', '把玩', '把持', '把关', '把關',
+                    '把握', '把守', '把脉', '把舵', '把式')
+
+
+def _covered_disposal_particle(words, provider_words, entities, concepts):
+    """Recognize one person-led 把 construction, never arbitrary residue.
+
+    Require one reviewed person immediately before the particle, a separate
+    object span and a covered action after it. Ambiguous 把 content words and
+    incomplete proposals stay on the ordinary clarification path.
+    """
+    groups, labels = entities['groups'], entities.get('labels', [])
+    if (len(groups.get('people', [])) != 1 or groups.get('tags') or groups.get('locations')
+            or len(labels) != 1 or not labels[0].strip() or len(concepts) < 2):
+        return None
+    first = concepts[0]
+    if len(first['surface']) < 2:
+        return None
+    prefix = words[:first['start']].rstrip(' \t')
+    if not prefix.endswith('把'):
+        return None
+    position = len(prefix) - 1
+    if (provider_words[position] != '把' or
+            any(words.startswith(word, position) for word in _BA_CONTENT_WORDS) or
+            not d.fold(prefix[:-1].rstrip(' \t')).endswith(d.fold(labels[0].strip()))):
+        return None
+    if not any(concept['surface'].startswith(_DISPOSAL_ACTIONS) for concept in concepts[1:]):
+        return None
+    return position
+
+
 def _compile_plan(words, *, now, entities, previous_search, hard_previous,
                   refine, kept, planner, redacted_span=None):
     """Compile one source query through the closed descriptive-span checks."""
@@ -312,6 +346,10 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
         if any(start < quote.end() and stop > quote.start() for quote in quoted):
             return QueryPlan(3, 'clarification', kept, 'invalid_intent')
         masked[start:stop] = ' ' * (stop - start)
+    disposal_particle = _covered_disposal_particle(
+        words, provider_words, entities, suggestion['concepts'])
+    if disposal_particle is not None:
+        masked[disposal_particle] = ' '
     residue = ''.join(masked)
     if (_kinship_hits(grammar_words) != _kinship_hits(residue) or
             _vague_date_hits(grammar_words) != _vague_date_hits(residue)):
