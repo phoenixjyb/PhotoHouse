@@ -554,3 +554,28 @@ measured earlier source `23466be`, whose adapter still sent marker-filled views.
 The following fixed-suite trial at `cd20f47` measured the fragment payload and
 met 9/12 expectations. Broader held-out recall for that payload remains unmeasured;
 the optional provider stays off for users.
+
+## Interpreting synthetic quality reports
+
+The fixed-suite qualifier keeps its original expectation policy and fixture
+digest. Diagnostic schema v1 adds per-case provider outcome, proposal validation,
+compiler status/reason, status/question expectations, hard-filter equality and
+caption-evidence accounting. Overall and separate English, Chinese and mixed
+summaries retain all expected positive and negative denominators. An expected
+descriptive case that cannot reach evidence matching contributes missed positives;
+its absence of false positives is not reported as successful negative testing.
+Date-only clarifications have no applicable descriptive evidence. Empty
+denominators cannot produce a successful recall or false-positive check.
+
+These stages describe what the qualifier observes. A refused adapter does not
+identify whether HTTP, the model envelope or proposal validation failed; bounded
+native HTTP capture supplies separate evidence. The complete native receipt
+retains the source report under `qualification`; its `case_outcomes` field is a
+short HTTP-oriented summary. Adapter `elapsed_ms` covers the request and adapter
+validation, not the complete compiler, API or user-perceived latency.
+
+The following prompt explicitly excludes standalone Chinese grammar particles
+while retaining complete content words. Strict validation still rejects a
+grammar-only concept even when other concepts are valid; no concept is silently
+dropped. Source checks do not establish that the installed model follows this
+instruction. See the [native trial record](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md).

@@ -37,7 +37,7 @@ fixture outcomes were counted; only two complete case expectations were met.
 Zero false positives alongside two positive hits does not establish useful recall.
 The held-out fixture remained frozen and separate from the public suite.
 
-The fixed suite's model-plus-compiler time was 846 ms median and 1291 ms maximum
+The fixed suite's adapter request/validation time was 846 ms median and 1291 ms maximum
 among model-attempt cases. Each warm-up took about 79 seconds. These are synthetic
 planning measurements, not signed-in API, browser, phone or family latency.
 Full GPU residency was observed in both trials, with peak sampled target-GPU use
@@ -81,7 +81,7 @@ three failures each added the standalone grammar particle `的` as a scene clue;
 strict validation rejected it. No validator or match requirement was relaxed to
 make these cases pass.
 
-Model-plus-compiler time was 946 ms median and 8453 ms maximum among measured
+Adapter request/validation time was 946 ms median and 8453 ms maximum among measured
 model attempts. Warm-up took 79005 ms. GPU residency and owned-process cleanup
 were verified. These observations describe this development fixture and source,
 not full API/voice latency or general language quality.
@@ -91,3 +91,33 @@ The 24-case held-out suite was not rerun on this following source. Its earlier
 result does not establish held-out recall. Provider activation remains unsupported.
 Remaining work includes Chinese grammar-only proposal handling and multilingual
 retrieval/ranking quality, with source-pinned evaluation and unchanged hard filters.
+
+## Following source: stage diagnostics and Chinese grammar instructions
+
+Source `6f18d72ba9ff295b0cc61a87f28cf8b130b7fd71` adds diagnostic schema v1 to the
+fixed-suite qualifier, without changing its fixture digest or expectation policy.
+The local-model prompt explicitly excludes standalone Chinese grammar particles;
+the response schema and strict validator are unchanged. Offline checks cover
+whole-proposal refusal when a grammar-only clue accompanies valid content, and
+preservation of complete content words containing the same character.
+
+Re-reading the prior fragment trial's retained full report distinguishes its
+9/12 case expectations from descriptive recall: six ready descriptive searches
+and three correct no-model date clarifications passed. The descriptive cases
+produced 6/9 positive hits and 0/27 negative false positives. Three expected
+descriptive cases never reached evidence matching. This is a retrospective
+breakdown of the same earlier trial, not new inference or broader recall.
+
+A subsequent native launch for the following source was refused by the
+pre-existing-provider admission gate before source extraction, controller or
+model startup. It produced no warm-up, case measurement or quality result.
+The one-use transfer claim and failure evidence are retained privately, with no
+automatic retry or interference with the existing process. The new prompt's
+native quality remains unmeasured; provider activation remains unsupported.
+
+The timing labels above now specify their actual scope: `elapsed_ms` measures
+the adapter request and validation. It does not include the compiler work around
+that call, the API, voice transport or device experience. The full native
+measurement already retained detailed qualifier rows under `qualification`;
+the new diagnostics summarize those stages without adding raw invalid responses
+or pretending to observe separate uninstrumented validation steps.

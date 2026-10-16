@@ -22443,6 +22443,27 @@
       "validation_relaxed": false,
       "household_data_included": false,
       "native_relevance_qualified": false
+    },
+    {
+      "feature": "synthetic-stage-diagnostics-and-native-admission-refusal-record",
+      "source_commit": "6f18d72ba9ff295b0cc61a87f28cf8b130b7fd71",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca",
+          "sha256": "ec43303a33df7fc74c7e07976d2f3955693a4d0dd514d24e7b76adbd48905a56"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f",
+          "sha256": "564f017a10ca095fe6a3ff97d732731e349246e41d19ae4b61381594ceb04c46"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_quality_measured": false,
+      "household_data_included": false
     }
   ]
 }
