@@ -1,26 +1,30 @@
 # Current project status
 
-Source and delivery records refreshed **2026-10-16**. The Windows HTTPS phone
-feed publishes **v67 / `0.67-voice-reading`**. Build source is
-`4c2731277ad005ae61e10ddbe665734ee6551db2`; PR #64 merged at
-`cad2572458522e9d57dc7da8a0e14b4005435bc4` with an identical Android subtree.
-The signed APK is **11,716,984 bytes**, SHA-256
-`17cbfa7b5c644d31c880a18850e3efc9db804fa454c7d134f35957ddc4bd6589`.
-The original certificate and icon were preserved; signing left DEX bytes
-unchanged. Native signature/alignment, Windows full-HTTPS readback and an
-independent Mac trusted HTTPS stream passed. The Mac saved no second APK copy.
-See the [v67 release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md)
-and [Chinese trial guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md).
+Source and delivery records refreshed **2026-10-16**. Windows HTTPS phone OTA
+publishes **v68 / `0.68-voice-recovery`**. Build source is
+`8de94671b230f389060ec3858c619d42e9b08a94`; PR #71 merged at
+`1bc6432a0f5556838dbf5ed1e4aa7594f2dbb342` with the identical Android subtree.
+Signed APK: **11,716,984 bytes**, SHA-256
+`d35ec97f6d9c36cd7cbf8df43463e419b8cee75602b97e0a488d0ea1d82d4953`.
+The original certificate and icon were preserved; signed DEX bytes are unchanged.
+Native signature/alignment, Windows full HTTPS readback and independent Mac
+HTTPS streaming passed. No additional Mac APK copy was saved.
 
-All five source CI jobs passed at the integrated review source `88de08e` in run
-`38863300472`, after one targeted API retry for an unchanged optional Node
-fixture. All 166 local source-tool tests passed. Configured release build/lint,
-17 embedded-setting checks, package identity, unsigned state and original-icon
-checks passed. The preceding PR #61 feature source passed 86 focused JVM cases,
-18 emulator cases and inspected Chinese/English renders at 150% text size.
-Those checks do not establish physical microphone, ASR/TTS, latency or family
-acceptance. A Samsung phone installation of v67 and app launch were confirmed;
-the actual voice flow remains untested.
+All five CI jobs passed at integrated review head `a279b11` (run `38886108884`).
+Configured build/lint, all 17 embedded settings and packaged original-icon
+checks passed. Two focused emulator tests and six inspected Chinese/English
+150% renders cover the new stage-specific failure guidance. Those checks do not
+establish physical microphone/ASR/TTS, latency or family acceptance. No physical
+phone action was part of v68 delivery; the earlier v67 install/launch remains
+historical evidence. TV OTA remains v30. See the
+[v68 release record](../clients/android/docs/PHONE_V68_RELEASE_2026-10-16.md) and
+[Chinese trial guide](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md).
+
+Read-only pre/postflight matched the separate search deployment's live API/Web
+source `54394ed`, schema `a0c9d2e4f817`, and its current task/process/listener and
+configuration binding. v68 phone publication did not restart the API, change
+tasks, migrate data or enable models/providers. Later merged source is not
+necessarily live.
 
 ## Voice controls: phone delivered; Web/API source deployed
 

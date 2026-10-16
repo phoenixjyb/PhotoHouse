@@ -2,25 +2,23 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v67 / `0.67-voice-reading`**. Its signed
-artifact, native HTTPS readback and CI evidence are recorded in the
-[v67 release record](docs/PHONE_V67_RELEASE_2026-10-16.md). The release adds
-spoken Pause/End and explicitly opted-in saved-section voice continuation;
-reviewed chapter-proposal adoption remains available and generation stays off.
-Installation and launch of v67 on a Samsung phone were confirmed; real ASR/TTS
-and family acceptance remain open. TV OTA remains v30; v31 source is unpublished.
-See the dated
-[project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
-PR #54's Android scene-search controls are included, with server capability
-negotiation. This release does not activate a scene provider. The paired
-API/Web source `88de08e` passed Windows synthetic qualification and has since
-been deployed in a separate cutover. Real voice and family acceptance remain
-open; synthetic qualification is not a real audio trial.
+The phone release baseline is **v68 / `0.68-voice-recovery`**. Its signed
+artifact, native/full HTTPS readback and source evidence are in the
+[v68 release record](docs/PHONE_V68_RELEASE_2026-10-16.md). Recognition, request
+and playback failures have distinct Chinese/English recovery guidance; existing
+v67 spoken Pause/End and saved-section voice continuation remain available.
+Original certificate, icon and connection settings are retained.
 
-The following phone candidate is **v68 / `0.68-voice-recovery`**, with clearer
-recognition/request/playback failure guidance. It is not published. See the
-[v68 candidate](docs/PHONE_V68_CANDIDATE_2026-10-16.md) and
-[Chinese trial guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
+Windows and an independent Mac verified the complete OTA APK. No physical
+phone was installed in the v68 delivery; real ASR/TTS and family acceptance
+remain open. Use the [Chinese v68 trial guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
+TV OTA remains v30; v31 source is unpublished. See the dated
+[project status](../../docs/PROJECT_STATUS.md) for delivery/runtime evidence.
+
+The separate search-session API/Web source `54394ed` is live; later main source
+is not automatically deployed. Android scene controls negotiate server
+capability; this release did not enable an intent/scene provider or story
+model. Reviewed chapter-proposal adoption remains available; generation stays off.
 
 ## Projects
 
