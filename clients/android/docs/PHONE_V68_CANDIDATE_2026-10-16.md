@@ -48,10 +48,12 @@ documentation does not alter that Android subtree or rebuild the APK.
 
 ## Server compatibility and delivery gates
 
-The latest verified live API/Web source is `88de08e`, schema `a0c9d2e4f817`.
-Later main source includes bilingual visual-clue additions and optional scene
-recovery. Source merge does not deploy those server changes or activate scene
-search or a model. The v68 guidance uses the existing voice state contract and
+A separate search-session deployment switched API/Web to `54394ed` at
+2026-10-16 09:20 UTC, retaining schema `a0c9d2e4f817`. Its deployment receipts
+and the current running API entry hash were reconciled during this candidate's
+read-only preflight. This includes the later bilingual visual-clue source;
+optional scene search and intent providers remain off. This phone preparation
+does not change that deployment or activate a model. The v68 guidance uses the existing voice state contract and
 does not require a new API route or schema migration.
 
 Before publication: build and inspect the exact unsigned candidate, pin its
