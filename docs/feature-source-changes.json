@@ -21284,6 +21284,113 @@
       "models_activated": false,
       "apk_published": false,
       "microphone_speaker_overlap": false
+    },
+    {
+      "feature": "phone-source-bound-voice-section-continuation",
+      "source_commit": "f69040304c7d53841b6ca5bbd984aa478723d43d",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantMemoryOpeningUiTest.kt",
+          "before_sha256": "2eeaf1367412fc73ad5715fd9afb77ec6fb8344b4d203f87b067429f04a089fe",
+          "sha256": "4f6a9d26918cef63394841ae52bfb53c47c15790638803812d2b42838219cabb"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "fa69cd9010c7ce5535c63d23544a850415c1f72f50d1f648298ee978ed299ce2",
+          "sha256": "dd7c9106ef225ecc29804c61d2da68fca256336791b3438b3aa84269a3af12d4"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": "40940d6c672a836e3030337ea24626b7125330198f0d27a6b7b9708474836791",
+          "sha256": "a9aaaf15c4e4dab7a5dddec20904e12754268331eace07478833f04f4c0ce7a1"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": "84e3eecaa4598ecb2e38622ac457e44d10a80d4673eb8ece0bf8e22138f91a4d",
+          "sha256": "b93e74c15f4a1dc2e07b464de1982b4707d53db6ce9c001d4c779d2f0b1859cd"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "5ce957ffa9a56eb417946c9b0646d8e71c6b61dd168c57acf69dbdcd53d3fa41",
+          "sha256": "00b8d6d0bfa12bec3520c14b2af571f79e3a5b677aa71c9ab28fb12735df6704"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "before_sha256": "48fb2a596aa5014c6889959c46d050e4322b56899f4bd3c7060d93cede644a21",
+          "sha256": "267e17d76fbe5a1c7891bfcc4d0caf8269f478e2832d115bc3799403d6f6bd1d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
+          "before_sha256": "64cf07a44e798adf5fb9df73486866dff336c2f33021f4d95ffe5e18b913a997",
+          "sha256": "75795ba586335d238e7e1a45c49a2a2e8bef4b7578b4196334e7a153196f1c29"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "b67f9c073b54415b091e167cfd5f8d7f9f8e1559f4f039cf0c1a9815c1ee36d2",
+          "sha256": "9a39791c363f8248fbfd600de90490653537d8fbe668ec886249e56dca3136ce"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionController.kt",
+          "before_sha256": "5aeb28ce7f08942cda9d05da46c0474354c7d1fa0d631767efd16c7c91421e52",
+          "sha256": "90b8a7407de9162d651a587d26962a32df52f2f6379c6819aba094c1942458d6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionSpokenControl.kt",
+          "before_sha256": "4302fff939d54bebf0c727e606656630aa8edafa511d8a269515bc7adfb79f22",
+          "sha256": "14e2ee738099ed1c084cefdb7b041038e9cf6f28f62c04f264bd7bc8170bae57"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedPrivateAssistantVoiceTest.kt",
+          "before_sha256": "3fab23cd3ac508d8a9a0b88d2343f5c69a293f4848c2bf029113798376251aef",
+          "sha256": "47046af169e281966805395c14702b798962ba289d476bfd65380de8741f9498"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceSessionControllerTest.kt",
+          "before_sha256": "147277e904718bf87b4554f568c3bced769227ef23f515e241a8020f2889a921",
+          "sha256": "d0999ddccfa817642ec347a9ba9c417420b7d8881f48e7d2acf936c54578125c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceSessionSpokenControlTest.kt",
+          "before_sha256": "19d79627a456c386470ecbf4c92026870ad3d5d87eeb9526a0eb90ceb938778e",
+          "sha256": "f3aa8c9f0000002ce67d2a08685d5b6dc1755029c1797ca9d5548e9f713a074b"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "d2ef9210bfa4015b2fb64c53d6d8ad40fa80ba562f3fecc9e83cb1d137356bf5",
+          "sha256": "ac933e5cd1571b3850be1482b799aa250d91c772a2c7ee8b185a726d8e422002"
+        },
+        {
+          "path": "docs/ASSISTANT_SEGMENT_READING.md",
+          "before_sha256": "b2a2d929c4a485109fe8a365703b62a792839cb8e0df6de43d73c602ffd4996c",
+          "sha256": "ac10c0cc0e82c8f2323c4be0da42a9d46d74316fc1c054683cb13573661a5831"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "1619ca9d80ce335672b66a6b2e1208b1f05ca823c3baf368b5320351f636ed99",
+          "sha256": "d796e2af0482d4023546caeec3ad3b05af8a41abe9f6ef68b798932c43981274"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "69b5684ed8ae813e44d926e4b8225270dbb23a22518f7b783b3cea6e1c0e6136",
+          "sha256": "d71144b8c769cedd554d680c9cd032a8aff8a8a8334feb3c936fefb30936ae58"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "3057b836979c018a273b81662ef548736829fac9bb33a8e1a1e96427c318d240",
+          "sha256": "5ed5298f79faab78a787b0e508d6c58f3a3f357b31aa3dffa02435e5a70be302"
+        },
+        {
+          "path": "docs/VOICE_SESSION_SPOKEN_CONTROLS.md",
+          "before_sha256": "f21328ea2fb43cea88c4fbc064810ddd6b7ed3e249a79a080f6df2c2e42dbf5d",
+          "sha256": "becf8480f72dbb351c8432ece54e7c74a6538898293ce23231c54fc200056b82"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "models_activated": false,
+      "apk_published": false,
+      "microphone_speaker_overlap": false
     }
   ]
 }
