@@ -22156,6 +22156,21 @@
       "runtime_changed": false,
       "schema_changed": false,
       "physical_audio_acceptance": false
+    },
+    {
+      "feature": "phone-v68-unsigned-package-qualification-record",
+      "source_commit": "5c6faa1dc98294a8edcb9618bcad8366e023d894",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "4c41858a34aa15f3d36809b5f030e7dacf4e0b4419374d021996999d35f5936d",
+          "sha256": "6b28f3cc7136b92ab8572ae6d13bb435081cdb6a542d92feb7f5c016bbb0d53f"
+        }
+      ],
+      "documentation_only": true,
+      "apk_rebuilt": false,
+      "apk_published": false,
+      "runtime_changed": false
     }
   ]
 }
