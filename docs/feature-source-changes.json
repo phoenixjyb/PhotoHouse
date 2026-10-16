@@ -21461,6 +21461,22 @@
       "models_activated": false,
       "apk_published": false,
       "microphone_speaker_overlap": false
+    },
+    {
+      "feature": "phone-voice-consent-substring-qualification",
+      "source_commit": "6b6657df3642b3fd488e6596a8793aeff9e6a3b9",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantMemoryOpeningUiTest.kt",
+          "before_sha256": "4f6a9d26918cef63394841ae52bfb53c47c15790638803812d2b42838219cabb",
+          "sha256": "839f7a9e534902942c1da8e69de947415062b199842cecb87ca3e0c4950f9f44"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "application_behavior_changed": false,
+      "runtime_changed": false,
+      "apk_published": false
     }
   ]
 }
