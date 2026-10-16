@@ -54,6 +54,12 @@ A fresh October 16 read-only Windows check found the expected API task/process
 and listener bound with unchanged entry/config pins, phone OTA v66 and TV OTA
 v30. It did not inventory all services, workers, model health or video progress.
 
+The next Web source increment adds explicit [saved-section voice continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source)
+after an exact completed segment. Saying “继续朗读” requests one next segment
+without a new chat turn, and only actual playback completion can reopen the
+microphone. The final segment pauses; Pause/End, failures and source replacement
+clear intent. It is not claimed live and does not change the phone APK.
+
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |

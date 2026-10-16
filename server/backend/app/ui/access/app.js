@@ -9,7 +9,7 @@
   let memoryGroupGalleryItems=[];
   let assistantRestoreGate=null,assistantRestoreSerial=0;
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
-  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
+  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,voiceReading:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
   let assistantFocusRevision=0;
   const assistantVoiceTiming=typeof window.PhotoHouseVoiceTurnTiming==='function'?window.PhotoHouseVoiceTurnTiming():null;
   let assistantVoiceTimingPhase=null,assistantVoiceTimingOperation=0,assistantVoiceTimingGeneration=-1,assistantVoiceTimingRendered=null;
@@ -108,13 +108,19 @@
       return {status:finished||'CONTINUE',used};
     },get totalSamples(){return total;}};
   }
-  async function annotationCapture(onReady,maxSeconds=60,{isCurrent=()=>true,signal,endpointDetector,endpointDetectorFactory,onEndpoint}={}){
+  async function annotationCapture(onReady,maxSeconds=60,{isCurrent=()=>true,signal,endpointDetector,endpointDetectorFactory,onEndpoint,completedReadingOwner=null}={}){
     if(!Number.isInteger(maxSeconds)||maxSeconds<1||maxSeconds>60)throw new RangeError('Invalid capture duration');
     if(!navigator.mediaDevices?.getUserMedia)throw new Error('Microphone unavailable');
     const aborted=()=>new DOMException('Capture cancelled','AbortError');
     const current=()=>{try{return !signal?.aborted&&isCurrent()===true;}catch{return false;}};
     if(!current())throw aborted();
-    stopAssistantSpeech();memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));
+    // A foreground continuation may retain only an already completed/released
+    // section source. Every active or unrelated audio owner is still stopped.
+    const retainCompletedReading=completedReadingOwner&&voiceMemorySourceCurrent(completedReadingOwner)&&
+      completedMemorySegment(completedReadingOwner.operation)&&assistantState.voiceSession.phase==='listening'&&
+      !assistantState.activePlayback&&!assistantState.speechController&&!assistantState.manualPlayback&&!assistantState.voicePlayback;
+    if(!retainCompletedReading)stopAssistantSpeech();
+    memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));
     const raceAbort=(promise)=>{
       if(!signal)return Promise.resolve(promise);
       if(signal.aborted)return Promise.reject(aborted());
@@ -689,6 +695,8 @@
     $('assistant-voice-start').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
     $('assistant-mic').hidden=active||paused;
     $('assistant-play').disabled=sessionOwnsVoice;
+    const managementBlocked=privateAssistantBusy||!!privatePending||sessionOwnsVoice||state.locked||privateSnapshot?.locked===true;
+    for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=managementBlocked;
     const presentationPhase=session.phase!=='idle'?session.phase:assistantState.capture||assistantState.captureStarting?'listening':assistantState.transcribing?'transcribing':assistantState.busy||privateAssistantBusy?'requesting':assistantState.activePlayback||assistantState.speechController?'speaking':'idle';
     const microphoneReady=presentationPhase==='listening'&&!!assistantState.capture&&!assistantState.captureStarting;
     const playbackReady=presentationPhase==='speaking'&&assistantState.activePlayback?.playConfirmed===true;
@@ -700,6 +708,10 @@
     $('assistant-voice-title').textContent=t(restorePending?'assistantPresenceChecking':presenceTitle[presence]||'assistantPresenceIdle');
     $('assistant-voice-mic-state').textContent=t(microphoneReady?'assistantMicOn':'assistantMicOff');
     $('assistant-voice-session-status').textContent=t(restorePending?'assistantVoiceChecking':session.phase==='idle'&&presence==='listening'?'assistantRecording':voiceStatus[presence]||'assistantVoiceReady');
+    const reading=assistantState.voiceReading;
+    if(reading&&presence==='listening')$('assistant-voice-session-status').textContent=t('assistantVoiceReadingListening');
+    if(reading&&['preparing','speaking'].includes(presence))$('assistant-voice-session-status').textContent=t(presence==='speaking'?'assistantPlayingMemorySegment':'assistantPreparingVoiceMemorySegment').replace('{segment}',String(reading.operation.segment+1)).replace('{count}',String(reading.operation.segmentCount));
+    syncMemorySegmentControls();
     const privateMode=privateSnapshot?.capabilities?.available===true&&privateSnapshot?.capabilities?.threads===true;
     $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
     $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
@@ -707,6 +719,8 @@
     renderAssistantSceneControls(privateAssistant?.state());
     if(assistantState.pendingTurn)renderAssistantPending();
   }
+  Object.assign(words.zh,{assistantMemoryVoiceContinue:'语音继续',assistantMemoryVoiceOptInHelp:'语音继续会开启麦克风。说“继续朗读”可听下一段；每段读完后再次聆听。',assistantMemoryVoiceHelp:'说“继续朗读”可听下一段，也可说“暂停”或“结束语音”。播报时麦克风关闭。',assistantVoiceReadingListening:'正在聆听。说“继续朗读”可听当前回忆的下一段；也可说“暂停”或“结束语音”。',assistantPreparingVoiceMemorySegment:'正在准备第 {segment}/{count} 段；麦克风关闭。',assistantVoiceReadingNeedsSelection:'请先分段朗读一段回忆，再选择“语音继续”。麦克风已关闭。',assistantVoiceReadingUnavailable:'朗读已暂停，麦克风已关闭。请重新选择当前回忆的分段朗读。',assistantVoiceReadingFinished:'本章或序言已读完，麦克风已关闭。后续章节请打开故事；继续可回到语音查找。'});
+  Object.assign(words.en,{assistantMemoryVoiceContinue:'Continue by voice',assistantMemoryVoiceOptInHelp:'Continue by voice turns on the microphone. Say “continue reading” for one next segment; listening resumes after it finishes.',assistantMemoryVoiceHelp:'Say “continue reading”, “pause” or “stop listening”. The microphone is off during playback.',assistantVoiceReadingListening:'Listening. Say “continue reading” for the next segment of this memory, “pause” or “stop listening”.',assistantPreparingVoiceMemorySegment:'Preparing segment {segment}/{count}. Microphone off.',assistantVoiceReadingNeedsSelection:'Read a memory segment first, then choose Continue by voice. Microphone off.',assistantVoiceReadingUnavailable:'Reading paused. Microphone off. Select the current memory’s section reading again.',assistantVoiceReadingFinished:'Section finished. Microphone off. Open the story for later chapters; Resume returns to voice search.'});
   function assistantVoiceBinding(){if(!state.profile||!state.library)return null;return Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:state.generation});}
   function sameAssistantVoiceBinding(left,right){return !!left&&!!right&&left.account===right.account&&left.library===right.library&&left.generation===right.generation;}
   function assistantVoiceBindingCurrent(){const session=assistantState.voiceSession;return !!session.binding&&assistantBindingCurrent(session.binding)&&sameAssistantVoiceBinding(session.binding,assistantVoiceBinding());}
@@ -722,13 +736,68 @@
   }
   function endAssistantVoice(){const session=assistantState.voiceSession;if(session.phase==='idle')return;pauseAssistantVoice('assistantVoiceScope');session.generation++;session.phase='idle';session.binding=null;session.reason=null;syncAssistantControls();}
   function stopMemoryOpeningBeforeCapture(){if(assistantState.memoryOpeningPlayback||assistantState.memorySegmentPlayback)stopAssistantSpeech();}
-  function startAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return;stopMemoryOpeningBeforeCapture();const binding=assistantVoiceBinding();if(!binding)return;session.generation++;session.phase='listening';session.binding=binding;session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,binding);}
+  function assistantVoiceStartBinding(){
+    if(assistantRestoreGate||assistantState.voiceSession.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return null;
+    return assistantVoiceBinding();
+  }
+  function beginAssistantVoice(binding,readingOperation=null){
+    const session=assistantState.voiceSession;
+    session.generation++;session.phase='listening';session.binding=binding;session.reason=null;
+    assistantState.voiceReading=readingOperation?{token:session.generation,binding:{...binding},turn:readingOperation.turn,
+      card:readingOperation.card,ordinal:readingOperation.ordinal,threadId:readingOperation.threadId,
+      revision:readingOperation.revision,operation:readingOperation}:null;
+    syncMemorySegmentControls();syncAssistantControls();void captureAssistantVoice(session.generation,binding);
+  }
+  function startAssistantVoice(){
+    const binding=assistantVoiceStartBinding();if(!binding)return;
+    stopMemoryOpeningBeforeCapture();beginAssistantVoice(binding);
+  }
+  function memorySegmentSourceCurrent(operation,snapshot=privateAssistant?.state()){
+    const binding=operation?.binding;
+    return !!operation&&assistantBindingCurrent(binding)&&!state.locked&&!document.hidden&&
+      snapshot?.savedMemorySegmentReadingReady===true&&snapshot.currentResult===operation.turn&&
+      operation.turn?.kind==='memory_cards'&&operation.turn.memory_cards?.[operation.ordinal]===operation.card&&
+      snapshot.activeThread?.thread_id===operation.threadId&&snapshot.activeThread?.revision===operation.revision&&
+      snapshot.revision===operation.revision&&snapshot.pendingTurn==null&&snapshot.pendingCreation==null;
+  }
+  function completedMemorySegment(operation,snapshot=privateAssistant?.state()){
+    return assistantState.memorySegmentPlayback===operation&&memorySegmentSourceCurrent(operation,snapshot)&&
+      operation.phase==='complete'&&operation.playConfirmed===true&&Number.isSafeInteger(operation.segment)&&operation.segment>=0&&
+      Number.isSafeInteger(operation.segmentCount)&&operation.segmentCount>=1&&operation.segmentCount<=128&&
+      operation.segment+1<operation.segmentCount;
+  }
+  function voiceMemorySourceCurrent(anchor,snapshot=privateAssistant?.state()){
+    return !!anchor&&assistantState.voiceReading===anchor&&currentAssistantVoice(anchor.token,anchor.binding)&&
+      assistantState.transcribe&&assistantState.speech&&memorySegmentSourceCurrent(anchor.operation,snapshot)&&
+      anchor.operation===assistantState.memorySegmentPlayback&&anchor.turn===anchor.operation.turn&&anchor.card===anchor.operation.card&&
+      anchor.ordinal===anchor.operation.ordinal&&anchor.threadId===anchor.operation.threadId&&anchor.revision===anchor.operation.revision;
+  }
+  function startAssistantMemoryReadingVoice(memory,turn,epoch,ordinal){
+    const binding=assistantVoiceStartBinding(),operation=assistantState.memorySegmentPlayback;
+    if(!binding||stale(epoch)||operation?.card!==memory||operation.turn!==turn||operation.ordinal!==ordinal||!completedMemorySegment(operation))return;
+    // This distinct foreground action grants the microphone loop for exactly
+    // the already-completed section source. Ordinary Start discards progress.
+    beginAssistantVoice(binding,operation);
+    if(assistantState.voiceReading?.operation===operation&&assistantState.voiceSession.phase==='listening'){
+      $('assistant-voice-pause').focus({preventScroll:true});
+      // The inline view has sticky navigation; centering keeps the listening
+      // instruction above the controls visible instead of underneath it.
+      if(!$('assistant-workspace-dialog').open)$('assistant-voice-session').scrollIntoView({block:'center'});
+    }
+  }
+  function ensureMemoryVoiceButton(card,memory,turn,epoch,ordinal){
+    let button=card.querySelector('.assistant-memory-segment-voice');
+    if(!button){button=document.createElement('button');button.type='button';button.className='quiet assistant-memory-segment-voice';
+      button.addEventListener('click',()=>startAssistantMemoryReadingVoice(memory,turn,epoch,ordinal));ensureAssistantMemoryPrimaryActions(card).append(button);}
+    button.textContent=t('assistantMemoryVoiceContinue');button.setAttribute('aria-description',t('assistantMemoryVoiceOptInHelp'));button.hidden=true;button.disabled=true;
+    return button;
+  }
   function resumeAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='paused'||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
   async function captureAssistantVoice(token,binding){
     if(assistantRestoreGate||!currentAssistantVoice(token,binding)||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy())return;
     const attempt={binding,completed:false,controller:new AbortController(),voiceToken:token};assistantState.captureAttempt=attempt;assistantState.captureStarting=true;syncAssistantControls();
     try{
-      const capture=await annotationCapture((file,finishedCapture)=>{if(!currentAssistantCapture(attempt)||!currentAssistantVoice(token,binding)){void finishedCapture.stop(false);return;}attempt.completed=true;if(assistantState.capture===finishedCapture)assistantState.capture=null;if(annotationState.capture===finishedCapture)annotationState.capture=null;assistantState.captureAttempt=null;assistantState.captureStarting=false;assistantState.voiceSession.phase='transcribing';syncAssistantControls();void transcribeAssistantRecording(file,binding,token);},30,{isCurrent:()=>currentAssistantCapture(attempt)&&currentAssistantVoice(token,binding),signal:attempt.controller.signal,endpointDetectorFactory:rate=>assistantEndpointDetector(rate),onEndpoint:status=>{
+      const capture=await annotationCapture((file,finishedCapture)=>{if(!currentAssistantCapture(attempt)||!currentAssistantVoice(token,binding)){void finishedCapture.stop(false);return;}attempt.completed=true;if(assistantState.capture===finishedCapture)assistantState.capture=null;if(annotationState.capture===finishedCapture)annotationState.capture=null;assistantState.captureAttempt=null;assistantState.captureStarting=false;assistantState.voiceSession.phase='transcribing';syncAssistantControls();void transcribeAssistantRecording(file,binding,token);},30,{isCurrent:()=>currentAssistantCapture(attempt)&&currentAssistantVoice(token,binding),signal:attempt.controller.signal,completedReadingOwner:assistantState.voiceReading,endpointDetectorFactory:rate=>assistantEndpointDetector(rate),onEndpoint:status=>{
         if(!currentAssistantVoice(token,binding))return;if(status==='NO_SPEECH')pauseAssistantVoice('assistantVoiceNoSpeech');else if(status==='TOO_SHORT')pauseAssistantVoice('assistantVoiceTooShort');else if(status==='LIMIT')pauseAssistantVoice('assistantVoiceLimit');
       }});
       if(!currentAssistantCapture(attempt)||!currentAssistantVoice(token,binding)){void capture.stop(false);return;}if(capture.stopped)return;assistantState.capture=capture;annotationState.capture=capture;$('assistant-mic').setAttribute('aria-pressed','true');$('assistant-stop').hidden=false;$('assistant-recording-cancel').hidden=true;$('assistant-status').textContent=t('assistantRecording');
@@ -821,11 +890,20 @@
       else if(current&&operation.phase==='complete'&&operation.segment+1<operation.segmentCount)button.textContent=t('assistantContinueMemorySegment').replace('{segment}',String(operation.segment+2)).replace('{count}',String(operation.segmentCount));
       else button.textContent=t(card?.dataset.memoryKind==='story'?'assistantReadMemoryStorySections':'assistantReadMemoryMemoirSections');
       if(status){const value=current&&operation.phase==='playing'?t('assistantMemorySegmentPlayingStatus'):current&&operation.phase==='complete'?operation.segment+1<operation.segmentCount?t('assistantMemorySegmentCompletedStatus').replace('{segment}',String(operation.segment+1)).replace('{count}',String(operation.segmentCount)):t('assistantMemorySegmentsComplete'):'';status.textContent=value;status.hidden=!value;}
-      if(help){help.textContent=t('assistantMemorySegmentHelp');help.hidden=privateState?.savedMemorySegmentReadingReady!==true;}
+      const voiceButton=card?.querySelector('.assistant-memory-segment-voice');
+      if(voiceButton){voiceButton.textContent=t('assistantMemoryVoiceContinue');voiceButton.hidden=!current||!completedMemorySegment(operation,privateState)||assistantState.voiceSession.phase!=='idle'||!assistantState.transcribe||!assistantState.speech;
+        voiceButton.disabled=voiceButton.hidden||!assistantVoiceStartBinding();}
+      if(help){help.textContent=t(assistantState.voiceReading?.operation===operation&&current?'assistantMemoryVoiceHelp':current&&completedMemorySegment(operation,privateState)?'assistantMemoryVoiceOptInHelp':'assistantMemorySegmentHelp');help.hidden=privateState?.savedMemorySegmentReadingReady!==true;}
       if(stop){stop.textContent=t('assistantStopMemorySegment');stop.hidden=!current||!['preparing','playing'].includes(operation.phase);stop.disabled=stop.hidden;}
     }
   }
   function stopAssistantSpeech(revoke=true) {
+    // Stopping an owned section also revokes its listening loop. Pause changes
+    // phase first, so the nested cleanup cannot recursively pause itself.
+    if(assistantState.voiceReading&&!['idle','paused'].includes(assistantState.voiceSession.phase)){
+      pauseAssistantVoice('assistantVoiceReadingUnavailable');return;
+    }
+    assistantState.voiceReading=null;
     assistantState.speechController?.abort();assistantState.speechController=null;
     const playback=assistantState.activePlayback;if(playback)reportAssistantPlaybackOutcome(playback,'cancelled');assistantState.activePlayback=null;
     const manual=assistantState.manualPlayback;assistantState.manualPlayback=null;if(manual){manual.player.removeEventListener('ended',manual.onEnded);manual.player.removeEventListener('error',manual.onError);manual.player.pause();manual.player.removeAttribute('src');manual.player.load();if(manual.url)URL.revokeObjectURL(manual.url);}
@@ -928,6 +1006,18 @@
           $('assistant-status').textContent=t(control==='pause'?'assistantVoiceSpokenPause':'assistantVoiceSpokenEnd');
           return;
         }
+        if(control==='continue_reading'){
+          assistantState.transcriptRequestId=null;assistantState.pendingTranscriptRequestId=null;
+          assistantState.transcribing=false;assistantState.transcriptionAttempt=null;
+          const anchor=assistantState.voiceReading,operation=anchor?.operation;
+          if(!voiceMemorySourceCurrent(anchor)||!completedMemorySegment(operation)){
+            pauseAssistantVoice('assistantVoiceReadingNeedsSelection');return;
+          }
+          assistantState.voiceSession.phase='speaking';syncAssistantControls();
+          await playAssistantMemorySegment(anchor.card,anchor.turn,binding.generation,anchor.ordinal,operation.button,
+            operation.segment+1,operation.segmentCount,voiceToken);return;
+        }
+        if(assistantState.voiceReading){assistantState.voiceReading=null;stopAssistantSpeech(false);}
         assistantState.transcriptRequestId=assistantState.pendingTranscriptRequestId;assistantState.pendingTranscriptRequestId=null;
         assistantState.transcribing=false;assistantState.transcriptionAttempt=null;assistantState.voiceSession.phase='requesting';$('assistant-status').textContent=t('assistantVoiceWorking');syncAssistantControls();void submitAssistant(null,text,voiceToken);return;
       }
@@ -1080,19 +1170,30 @@
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&error?.name!=='AbortError')pauseAssistantVoice('assistantVoiceReview');
     }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
   }
-  async function playAssistantMemorySegment(memory,turn,epoch,ordinal,button,segment=0,expectedSegmentCount=null){
+  async function playAssistantMemorySegment(memory,turn,epoch,ordinal,button,segment=0,expectedSegmentCount=null,voiceToken=null){
+    const voiceAnchor=Number.isSafeInteger(voiceToken)?assistantState.voiceReading:null;
+    const refuseVoice=()=>{if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken))pauseAssistantVoice('assistantVoiceReadingUnavailable');};
     const binding=assistantState.binding,valid=()=>{
       const latest=privateAssistant?.state();
       return !stale(epoch)&&!state.locked&&state.profile?.account_id===binding?.account&&state.library===binding?.library&&binding?.generation===epoch&&
         latest?.savedMemorySegmentReadingReady===true&&latest.currentResult===turn&&turn?.kind==='memory_cards'&&turn.memory_cards?.[ordinal]===memory&&
-        latest.activeThread?.revision===latest.revision&&latest.pendingTurn==null&&latest.pendingCreation==null&&assistantState.voiceSession.phase==='idle';
+        latest.activeThread?.revision===latest.revision&&latest.pendingTurn==null&&latest.pendingCreation==null&&
+        (Number.isSafeInteger(voiceToken)?voiceMemorySourceCurrent(voiceAnchor,latest)&&assistantState.voiceSession.phase==='speaking':assistantState.voiceSession.phase==='idle');
     };
-    if(!valid()||assistantState.busy||privateAssistantBusy||assistantState.captureStarting||assistantState.capture||assistantState.captureAttempt)return;
+    if(!valid()||assistantState.busy||privateAssistantBusy||assistantState.captureStarting||assistantState.capture||assistantState.captureAttempt){refuseVoice();return;}
     const previous=assistantState.memorySegmentPlayback;
-    if(previous?.ordinal===ordinal&&previous.turn===turn&&['preparing','playing'].includes(previous.phase))return;
-    stopAssistantSpeech(false);if(!valid())return;
-    const operation={ordinal,segment,segmentCount:expectedSegmentCount,phase:'preparing',turn,card:memory,binding:{...binding},button,player:new Audio(),url:null,onEnded:null,onError:null,playback:null,playConfirmed:false};
+    if(previous?.ordinal===ordinal&&previous.turn===turn&&['preparing','playing'].includes(previous.phase)){refuseVoice();return;}
+    if(Number.isSafeInteger(voiceToken)){
+      if(!voiceMemorySourceCurrent(voiceAnchor)||!completedMemorySegment(previous)||segment!==previous.segment+1||expectedSegmentCount!==previous.segmentCount){refuseVoice();return;}
+      // The previous player is already released. Retain only its source-bound
+      // anchor; do not invoke general Stop, which revokes microphone consent.
+      assistantState.memorySegmentPlayback=null;
+    }else stopAssistantSpeech(false);
+    const snapshot=privateAssistant.state();
+    const operation={ordinal,segment,segmentCount:expectedSegmentCount,phase:'preparing',turn,card:memory,binding:{...binding},
+      threadId:snapshot.activeThread.thread_id,revision:snapshot.revision,button,player:new Audio(),url:null,onEnded:null,onError:null,playback:null,playConfirmed:false};
     const controller=new AbortController();assistantState.speechController=controller;state.controllers.add(controller);assistantState.memorySegmentPlayback=operation;
+    if(voiceAnchor)voiceAnchor.operation=operation;
     $('assistant-speech-stop').hidden=false;syncMemorySegmentControls();syncAssistantControls();
     const release=({preserveProgress=false}={})=>{
       operation.player.removeEventListener('ended',operation.onEnded);operation.player.removeEventListener('error',operation.onError);
@@ -1119,12 +1220,17 @@
       operation.playback={receipt,binding:{...binding},requestId:receipt?.id,player:operation.player,started:false,outcomeSent:false,owner:operation};
       operation.onEnded=()=>{
         if(assistantState.memorySegmentPlayback!==operation||assistantState.activePlayback!==operation.playback||!operation.playConfirmed)return;
-        if(!valid()){operation.phase='cancelled';release();return;}
+        if(!valid()){operation.phase='cancelled';release();if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceReadingUnavailable');return;}
         reportAssistantPlaybackOutcome(operation.playback,'completed');operation.playback.started=false;operation.phase='complete';release({preserveProgress:true});
+        if(Number.isSafeInteger(voiceToken)&&voiceMemorySourceCurrent(voiceAnchor)){
+          if(operation.segment+1>=operation.segmentCount)pauseAssistantVoice('assistantVoiceReadingFinished');
+          else{assistantState.voiceSession.phase='listening';syncAssistantControls();void captureAssistantVoice(voiceToken,binding);}
+        }
       };
       operation.onError=()=>{
         if(assistantState.memorySegmentPlayback!==operation||assistantState.activePlayback!==operation.playback)return;
         reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;release();if(valid())$('assistant-status').textContent=t('assistantMemorySegmentUnavailable');
+        if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceReadingUnavailable');
       };
       operation.player.addEventListener('ended',operation.onEnded);operation.player.addEventListener('error',operation.onError);
       assistantState.activePlayback=operation.playback;syncMemorySegmentControls();syncAssistantControls();await operation.player.play();
@@ -1134,6 +1240,7 @@
     }catch(error){
       if(operation.playback&&assistantState.activePlayback===operation.playback){reportAssistantPlaybackOutcome(operation.playback,'failed');assistantState.activePlayback=null;}
       const current=assistantState.memorySegmentPlayback===operation;release();if(current&&error?.name!=='AbortError'&&valid())$('assistant-status').textContent=t('assistantMemorySegmentUnavailable');
+      if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding))pauseAssistantVoice('assistantVoiceReadingUnavailable');
     }finally{if(assistantState.speechController===controller)assistantState.speechController=null;state.controllers.delete(controller);syncAssistantControls();}
   }
   async function startAssistantCapture() {
@@ -1525,6 +1632,7 @@
       }
     });
     if(assistantState.memoryOpeningPlayback&&(!snapshot.savedMemoryReadingReady||snapshot.currentResult!==assistantState.memoryOpeningPlayback.turn||assistantState.memoryOpeningPlayback.actionBound&&snapshot.savedMemoryActionsAvailable!==true))stopAssistantSpeech();
+    if(assistantState.voiceReading&&!voiceMemorySourceCurrent(assistantState.voiceReading,snapshot))pauseAssistantVoice('assistantVoiceReadingUnavailable');
     if(assistantState.memorySegmentPlayback&&(!snapshot.savedMemorySegmentReadingReady||snapshot.currentResult!==assistantState.memorySegmentPlayback.turn||snapshot.activeThread?.revision!==snapshot.revision))stopAssistantSpeech();
     if(snapshot.currentResult?.kind==='memory_cards'){
       const turn=snapshot.currentResult,epoch=state.generation;
@@ -1551,6 +1659,10 @@
           segmentStop.hidden=true;segmentStop.disabled=true;
         }else{if(segmentHelp)segmentHelp.hidden=true;if(segmentStatus)segmentStatus.hidden=true;if(segmentButton)segmentButton.hidden=true;if(segmentStop){segmentStop.hidden=true;segmentStop.disabled=true;}}
       }
+    }
+    for(const card of $('assistant-results').querySelectorAll('.assistant-memory-card')){
+      const ordinal=Number(card.dataset.memoryOrdinal),turn=snapshot.currentResult,memory=turn?.memory_cards?.[ordinal];
+      if(memory&&snapshot.savedMemorySegmentReadingAvailable)ensureMemoryVoiceButton(card,memory,turn,state.generation,ordinal);
     }
     ensureAssistantMemoryFollowups(snapshot);syncMemoryOpeningControls();syncMemorySegmentControls();
     for(const button of $('assistant-results')?.querySelectorAll('.assistant-memory-action')||[]){

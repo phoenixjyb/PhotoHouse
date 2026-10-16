@@ -21221,6 +21221,69 @@
       "household_data_included": false,
       "native_cpu_diagnostic_measured": true,
       "family_relevance_accepted": false
+    },
+    {
+      "feature": "web-source-bound-voice-section-continuation",
+      "source_commit": "54ace4072482efb724249828aeb8fed7b6b8ad0b",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SEGMENT_READING.md",
+          "before_sha256": "3b792750148519d590df701ae8b30575f2c551253554bc91d3a9efeff0786eb2",
+          "sha256": "b2a2d929c4a485109fe8a365703b62a792839cb8e0df6de43d73c602ffd4996c"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "2dbb5cc1d2b72ca7ab20ef3e0db9ca34dd734c5ed88f00b6818fde4242154ba2",
+          "sha256": "1619ca9d80ce335672b66a6b2e1208b1f05ca823c3baf368b5320351f636ed99"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3ab8c9fcbf4fc879f1cd2608419c10b0e53d314ad70a4b0b73ac978282c18edb",
+          "sha256": "69b5684ed8ae813e44d926e4b8225270dbb23a22518f7b783b3cea6e1c0e6136"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "1567d647894eb945f12d39ec9661f16d9947f9c5bdbacd316dca2ea298626f88",
+          "sha256": "3057b836979c018a273b81662ef548736829fac9bb33a8e1a1e96427c318d240"
+        },
+        {
+          "path": "docs/VOICE_SESSION_SPOKEN_CONTROLS.md",
+          "before_sha256": "dc58dbde68f34460cbbdfab9c7e1823c41ed6c87b5b75e918a26dd1ca9808337",
+          "sha256": "f21328ea2fb43cea88c4fbc064810ddd6b7ed3e249a79a080f6df2c2e42dbf5d"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "4de1b0243140e741305e294b32803bfefaafeadbef3bb6c8cbcd50fb4642a9e5",
+          "sha256": "e708936db0a35b1a184317d54cd7c57acf1182b4e7e99824f7288b084b0403b3"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "0f3b13860701a69a146b86fae976f7394179c68622b0540dfc750d198c3c9465",
+          "sha256": "1cfbfba816275016865010ecac02e8bff87ba91f628e3120b8aab95a9d6769bb"
+        },
+        {
+          "path": "server/backend/app/ui/access/voice-session-control.js",
+          "before_sha256": "65799afbbd0ada61b7d5bafcfe385b996d70868d1cee7481df34ec18340a97c5",
+          "sha256": "678814bf1b35c7c34f3ada49bbbc13de1a86a2e4a05a64a142d47ee2a62aaad1"
+        },
+        {
+          "path": "server/tests/security/test_assistant_saved_memory_browser.cjs",
+          "before_sha256": "20b84bbc38bd6c49c17d04b04eda98ba68ac82fb43254158f9eb2ccbe6a04a44",
+          "sha256": "9c092e51f0b80a9b71572241538b04dd0d59629c4d1ddf4bb12329bbfdb1db5d"
+        },
+        {
+          "path": "server/tests/ui/voice-session-control.test.mjs",
+          "before_sha256": "a7c0c432d1ec8319f574538ed33fdb3d6bc59d99d9b8b9cbae4e4bc966b691ac",
+          "sha256": "c299b44c0f05ea52336f8b9ba07ba4d70c733e23eee4a2e47369d1a373e0561a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "phone_changed": false,
+      "runtime_changed": false,
+      "models_activated": false,
+      "apk_published": false,
+      "microphone_speaker_overlap": false
     }
   ]
 }

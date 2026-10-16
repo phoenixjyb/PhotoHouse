@@ -18,3 +18,8 @@ test('negated quoted compound or near-match requests are never controls', () => 
 test('rejects absent oversized or malformed transcript values', () => {
   for (const value of [null, undefined, 1, {}, '', '   ', ' '.repeat(1024) + 'pause', '\ud800pause', 'pause\udfff']) assert.equal(classify(value), null);
 });
+
+test('recognizes only complete Web reading-continuation commands', () => {
+  for (const value of ['继续朗读', '继续读', '读下一段', 'continue reading', 'read the next part', 'read the next segment', ' CONTINUE READING。 ']) assert.equal(classify(value), 'continue_reading', value);
+  for (const value of ['继续', '不要继续朗读', '继续朗读另一章', 'continue reading about Jane', 'please continue reading', '“继续朗读”', 'read the next part of another story']) assert.equal(classify(value), null, value);
+});
