@@ -22199,6 +22199,67 @@
       "native_relevance_qualified": false,
       "household_data_included": false,
       "recorded_api_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
+      "feature": "phone-v68-voice-recovery-release-candidate",
+      "source_commit": "7b7484726112d693535e0bb21568b68ecc74dbad",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "sha256": "b59aad1053704386235e07117bfe57c1c1e79e42f567effabf5eaed0ac4c286f",
+          "before_sha256": "e439b3aeac9ef2855849d1f25a4c60e4db400cac6cd540a84306d9da686f4d75"
+        },
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "07d8f1c1772bbcf4fa576d00426566ae7be3a4762907f6d83cb0841d68860dc8",
+          "before_sha256": "d94cf6aceb420b8d691140d273851108959bc1b07c8f18ee180edd2be4ec3162"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "sha256": "4c41858a34aa15f3d36809b5f030e7dacf4e0b4419374d021996999d35f5936d"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md",
+          "sha256": "4a3d2c5f9cc7553b25ab4f7165fab726cef0463c447bd41a7705db6e6b3106a1"
+        }
+      ],
+      "version_code": 68,
+      "version_name": "0.68-voice-recovery",
+      "apk_published": false,
+      "runtime_changed": false,
+      "schema_changed": false,
+      "physical_audio_acceptance": false
+    },
+    {
+      "feature": "phone-v68-unsigned-package-qualification-record",
+      "source_commit": "5c6faa1dc98294a8edcb9618bcad8366e023d894",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "4c41858a34aa15f3d36809b5f030e7dacf4e0b4419374d021996999d35f5936d",
+          "sha256": "6b28f3cc7136b92ab8572ae6d13bb435081cdb6a542d92feb7f5c016bbb0d53f"
+        }
+      ],
+      "documentation_only": true,
+      "apk_rebuilt": false,
+      "apk_published": false,
+      "runtime_changed": false
+    },
+    {
+      "feature": "phone-v68-search-api-baseline-reconciliation",
+      "source_commit": "730c9cd714072b93e4f86dd5abf8cdb7c58bee8f",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "6b28f3cc7136b92ab8572ae6d13bb435081cdb6a542d92feb7f5c016bbb0d53f",
+          "sha256": "f71670f7d62a97de4276424effb1e756507761697b95f142bd5ec42daf546ee2"
+        }
+      ],
+      "documentation_only": true,
+      "apk_rebuilt": false,
+      "apk_published": false,
+      "runtime_changed": false,
+      "recorded_live_api_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
     }
   ]
 }
