@@ -285,7 +285,7 @@ class AssistantWorkspaceWireTest {
         val v3 = """{"version":3,"kind":"results","reply":"Found one.","context":$context,"filters":{},"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
         val parsed = AssistantWorkspaceWire.turn(turn(v3).toByteArray(), "family-a", thread, request,
             fromGet = true, searchVersion = 3).result!!
-        assertEquals(3, parsed.searchVersion, "existing v3 results remain readable")
+        assertEquals("existing v3 results remain readable", 3, parsed.searchVersion)
         val v4 = v3.replace("\"version\":3", "\"version\":4").replace("\"search_version\":3", "\"search_version\":4")
         invalid { AssistantWorkspaceWire.turn(turn(v4).toByteArray(), "family-a", thread, request,
             fromGet = true, searchVersion = 3) }

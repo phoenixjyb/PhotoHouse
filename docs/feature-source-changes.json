@@ -20563,6 +20563,21 @@
       "models_activated": false,
       "household_data_included": false,
       "apk_published": false
+    },
+    {
+      "feature": "compile-legacy-client-scene-refusal-regressions-with-junit",
+      "source_commit": "6e1a16ddedcc9b7754626e446c056a2f703f6874",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "d6a42888b9160ba8155ca3e3e0226f4fdb7d5ff30eb38bb70d4e23446ab1bca3",
+          "sha256": "85b1e8f9d8b7eb3dccbddda3b482195490b4ead134ce8d566686ab565a1fcff3"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }
