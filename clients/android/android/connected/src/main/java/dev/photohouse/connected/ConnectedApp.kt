@@ -227,9 +227,12 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var batchPickerAccount by remember { mutableStateOf<String?>(null) }
     var batchUris by remember { mutableStateOf<Pair<String, List<Uri>>?>(null) }
     var batchTree by remember { mutableStateOf<Pair<String, Uri>?>(null) }
-    var batchReview by remember { mutableStateOf<List<BatchUploadSource>>(emptyList()) }
-    var batchSkipped by remember { mutableIntStateOf(0) }
-    var batchApproved by remember { mutableStateOf(false) }
+    var batchReview by remember(state.generation, state.session?.account_id) { mutableStateOf<List<BatchUploadSource>>(emptyList()) }
+    var batchSkipped by remember(state.generation, state.session?.account_id) { mutableIntStateOf(0) }
+    var batchApproved by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
+    var batchEnqueueIssue by remember(state.generation, state.session?.account_id, batchReview, batchItems,
+        batchReviewDestination, selectedUploadLibrary) { mutableStateOf<BatchUploadEnqueueIssue?>(null) }
+    var batchNetworkReviewRequired by remember(state.generation, state.session?.account_id, batchReview) { mutableStateOf(false) }
     var selectionError by remember(state.session?.account_id) { mutableStateOf(false) }
     var annotationTarget by remember(state.generation, state.session?.account_id) { mutableStateOf<UploadAnnotationTarget?>(null) }
     var annotationWavPicker by remember { mutableStateOf<AnnotationWavSelection?>(null) }
@@ -412,10 +415,19 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         else selectionError = source == null
     }
     val enqueueReviewedBatch: (String) -> Unit = { destination ->
-        val queued = batchQueue?.enqueue(batchReview, destination).orEmpty()
-        if (queued.isNotEmpty()) {
-            batchQueue?.resume()
-            batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null; batchApproved = false
+        val queue = batchQueue
+        if (queue == null) batchEnqueueIssue = BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE
+        else if (batchUploadStartDecision(uploadNetwork(context), batchApproved, confirmationVisible = false)
+            != BatchUploadStartDecision.START) batchNetworkReviewRequired = true
+        else try {
+            val queued = queue.enqueue(batchReview, destination)
+            if (queued.isNotEmpty()) {
+                queue.resume()
+                batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null; batchApproved = false
+            }
+        } catch (rejected: BatchUploadEnqueueRejected) {
+            // Keep the reviewed selection; a changed queue or membership must not crash or start work.
+            batchEnqueueIssue = rejected.issue
         }
     }
     val scroll = rememberLazyListState()
@@ -1116,25 +1128,35 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         }
                                     }
                                 } }
-                                if (batchReview.isNotEmpty() || batchSkipped > 0) Card(Modifier.fillMaxWidth().testTag("batch-review")) {
-                                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(t("Review uploads", "检查上传"), style = MaterialTheme.typography.titleMedium)
-                                        Text(t("${batchReview.size} files · ${batchReview.sumOf { it.bytes }} bytes", "${batchReview.size} 个文件 · ${batchReview.sumOf { it.bytes }} 字节"))
-                                        val batchDestination = batchReviewDestination?.let { id -> availableMemberships.firstOrNull { it.library_id == id }?.let { LibraryNames.display(it.library_id, words.zh) } }
-                                        Text(batchDestination?.let { t("Destination: $it", "目标资料库：$it") }
-                                            ?: t("Choose a destination library before starting.", "开始前请选择目标资料库。"),
-                                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-destination-summary"))
-                                        if (batchSkipped > 0) Text(t("$batchSkipped unsupported or unknown-size files were skipped.", "已跳过 $batchSkipped 个不支持或大小未知的文件。"), color = MaterialTheme.colorScheme.error)
-                                        if (!batchApproved && uploadNetwork(context) != UploadNetwork.UNMETERED) Text(t("This connection may incur data charges. Continue only after review.", "当前网络可能产生流量费用，请确认后继续。"))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Button(onClick = { if (uploadNetwork(context) == UploadNetwork.UNMETERED || batchApproved) {
-                                                val destination = batchReviewDestination ?: selectedUploadLibrary
-                                                if (destination != null) enqueueReviewedBatch(destination)
-                                                else destinationDialogAction = UploadDestinationAction.BATCH
-                                            } else batchApproved = true }, modifier = Modifier.testTag("batch-start")) { Text(if (batchApproved || uploadNetwork(context) == UploadNetwork.UNMETERED) t("Start", "开始") else t("Continue", "继续")) }
-                                            OutlinedButton(onClick = { batchReview = emptyList(); batchReviewDestination = null; batchSkipped = 0 }, modifier = Modifier.testTag("batch-discard")) { Text(t("Discard", "放弃")) }
-                                        }
-                                    }
+                                if (batchReview.isNotEmpty() || batchSkipped > 0) {
+                                    val destination = batchReviewDestination ?: selectedUploadLibrary
+                                    val batchDestination = destination?.let { id -> availableMemberships.firstOrNull { it.library_id == id }
+                                        ?.let { LibraryNames.display(it.library_id, words.zh) } }
+                                    val issue = batchEnqueueIssue ?: batchQueue?.enqueueIssue(batchReview, destination)
+                                        ?: if (batchQueue == null) BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE else null
+                                    val needsNetworkConfirmation = !batchApproved && (batchNetworkReviewRequired ||
+                                        uploadNetwork(context) != UploadNetwork.UNMETERED)
+                                    BatchUploadReviewCard(
+                                        selectedCount = batchReview.size, selectedBytes = batchReview.sumOf { it.bytes },
+                                        skippedCount = batchSkipped,
+                                        availableSlots = (100 - batchItems.count { it.record.status !in setOf("complete", "cancelled") }).coerceAtLeast(0),
+                                        destinationLabel = batchDestination, issue = issue,
+                                        needsNetworkConfirmation = needsNetworkConfirmation,
+                                        zh = words.zh,
+                                        onStart = {
+                                            when (batchUploadStartDecision(uploadNetwork(context), batchApproved, needsNetworkConfirmation)) {
+                                                BatchUploadStartDecision.REQUIRE_NETWORK_REVIEW -> batchNetworkReviewRequired = true
+                                                BatchUploadStartDecision.ACKNOWLEDGE_NETWORK_REVIEW -> {
+                                                    batchApproved = true; batchNetworkReviewRequired = false
+                                                }
+                                                BatchUploadStartDecision.START -> {
+                                                    if (destination != null) enqueueReviewedBatch(destination)
+                                                    else destinationDialogAction = UploadDestinationAction.BATCH
+                                                }
+                                            }
+                                        },
+                                        onDiscard = { batchReview = emptyList(); batchReviewDestination = null; batchSkipped = 0; batchApproved = false },
+                                    )
                                 }
                                 if (batchItems.isNotEmpty()) Card(Modifier.fillMaxWidth().testTag("batch-queue")) {
                                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
