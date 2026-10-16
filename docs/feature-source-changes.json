@@ -22036,6 +22036,34 @@
       "recorded_live_api_delivery_verified": true,
       "recorded_phone_installation_verified": true,
       "real_voice_family_acceptance": false
+    },
+    {
+      "feature": "phone-stage-specific-voice-failure-recovery-guidance",
+      "source_commit": "63ff580928796077d304aab74b026299cb70688f",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": "7bf3c0390515cfc6c44ef549e23ccbcaf1a18fbfa02f098f62ec52d715c28759",
+          "sha256": "5e21f73023b00ddfdc7a1f9e09f8952844bc1dae84be2aeff38cbf4f3957638d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": "a9aaaf15c4e4dab7a5dddec20904e12754268331eace07478833f04f4c0ce7a1",
+          "sha256": "6cea71b44c1c894b9464ed6b5ff3feec61e2636b22b0f9c7102126425d4ae6d3"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_PRESENCE.md",
+          "before_sha256": "37a5e75881bfd8904c7af36b4fb5bce6338bbc6c60e3a0a911a1af53100ac503",
+          "sha256": "e940df95ebef821b85ba184d57d6e4e353896a7b6431644cad91ee96995210f9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "microphone_consent_changed": false,
+      "automatic_retries_added": false,
+      "apk_published": false,
+      "physical_audio_acceptance": false
     }
   ]
 }
