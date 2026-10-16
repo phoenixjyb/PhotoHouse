@@ -20792,6 +20792,60 @@
       "phone_version_code": 66,
       "apk_published": false,
       "models_activated": false
+    },
+    {
+      "feature": "phone-v66-delivery-records-and-acceptance-status",
+      "source_commit": "b0c02c343c1d1926f7d18efcd85bd7b5e94926c8",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "5cffea8fc3fbed35c9f2a34cc539caa29560820879ae102a8471e4b7359f92d9",
+          "sha256": "a5d02a095fd3e7a87794026d655889afa9997d8641b81c9566413072d5b1cd0a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "edf1d57bd0b1b2c235dcd11eef614b2f650e8b38b892f6cefa875a906041fb89"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md",
+          "before_sha256": "c1e1a3516e969c6e3d5a1510b8896e489c5239c44673de2e4002589b1d98f20d",
+          "sha256": "6fda0c56c779b4681fa59e39b37c6301479867c22b7bcc9bd5236d3d691899a3"
+        },
+        {
+          "path": "docs/CHAPTER_FAMILY_MEMORY_CHOOSER.md",
+          "before_sha256": "b5df55c7cb1c4cb3f01489a14088f47ed1315c81d73fd120093f2511205bb789",
+          "sha256": "67f5c549e9c89cdc5268ea8df8e71710fdc859ff9059a42150b70bf27cc8d2d5"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "bacb2f8b7868b77e5a60637cc4ffba3de51bb2ce1811321b65595841c69eecba",
+          "sha256": "d8d21e6d9a45ca5fc2a4428372f748f1a28561f715f7298cf119bff05ea11b8f"
+        },
+        {
+          "path": "docs/PHONE_STORY_PROPOSAL_ADOPTION.md",
+          "before_sha256": "fa60035fad73dd6d5d8ec5fd83551ff89f1291ee69da00df1d1892cb5e7f09c1",
+          "sha256": "dfe2368643c24c2f0b2368dbb3eb179fb1d484eb2dc265f1c2c14fa70d52298d"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "63aba15f0083c75f8cc379bfcdc1d76456c671fdfcd56c293705d64364350479",
+          "sha256": "cbdd30de52d088ae7490c6c86862aedbabe6ebe46beea24c380251899de9624b"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "0fef7c15e16e873c3d12ce4cde96d87a822a85e7b5f7da756f74fda162ab74a3",
+          "sha256": "97e49c42c27f94049773fb57b8f73cdcf5c41b68d5fef9002099bbb0e7505eef"
+        }
+      ],
+      "documentation_only": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed_by_documentation": false,
+      "phone_version_code": 66,
+      "apk_publication_recorded": true,
+      "models_activated": false,
+      "physical_device_acceptance": false
     }
   ]
 }
