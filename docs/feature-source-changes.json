@@ -21319,6 +21319,41 @@
       "models_activated": false,
       "household_data_included": false,
       "translation_quality_qualified": false
+    },
+    {
+      "feature": "native-local-scene-translation-comparison-and-meaning-drift",
+      "source_commit": "66f3a479d1dbeca6d809d3dfc8186fd4d0e539c1",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SCENE_TRANSLATION_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "1216f9ec41c0136453c5a95c8a8e73bb294ec6abc3ca63707acfe9b340ca8148"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": "641e24ca696c643e1962716b8db8e700dca21ac7a6dc5c6dc4424cbc6655d548",
+          "sha256": "6e1d8789259467bf2cc2255ae406776c49aa7bd6936cc2cb943fd9b50dcb792c"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_BENCHMARK_2026-10-16.md",
+          "before_sha256": "7d9233c046d27b990f26294093d4ee7ba6a377a87ef5f382ab65c075eb4ea2fe",
+          "sha256": "76dd8c19cd6279bbffe1afe5cb82b44756c854d3117cf9655ac5cc47ba7461fd"
+        },
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "6a4a21a26686c5c91d8ad59970cf9d92c28d2b536ce5d7c1d6f548fd902d8d25",
+          "sha256": "a79b307822d8c6901115308761aadbba810ab5b135dc92d0d964eeb2b370323f"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "02b2b9d987dc1bcf57ae003d82978d5d03146c77a674da2ed1f154734731f144",
+          "sha256": "b279c642c71a98047f9d1bfc2c32070a3e40d7d2691d6b905b2aff7c62667e04"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
     }
   ]
 }
