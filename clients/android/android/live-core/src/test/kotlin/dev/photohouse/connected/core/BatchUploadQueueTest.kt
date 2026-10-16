@@ -43,6 +43,97 @@ class BatchUploadQueueTest {
         override suspend fun originalPhoto(token: Bearer, library: String, assetId: String) = byteArrayOf()
     }
     private fun source() = BatchUploadSource("a.mp4", 8, UploadKind.VIDEO, { ByteArrayInputStream(ByteArray(8) { 7 }) }, "content://a")
+    private fun queuedRecord(index: Int, status: String = "queued") = UploadQueueRecord(
+        localId = "local-$index", requestId = index.toString().padStart(32, '0'), batch = "2".repeat(32),
+        filename = "queued-$index.jpg", locator = "content://queued/$index", bytes = 8,
+        kind = UploadKind.IMAGE, sha256 = "", status = status,
+    )
+
+    @Test fun enqueuePreflightReportsAndRejectsInvalidInputsWithoutMutation() {
+        val persistence = InMemoryUploadQueuePersistence()
+        val queue = BatchUploadQueue(Api(), CoroutineScope(Dispatchers.Default), persistence,
+            { null }, { true }, { token }, { it == "family-a" })
+        assertEquals(BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE, queue.enqueueIssue(listOf(source())))
+        queue.attach("account-a")
+
+        assertEquals(BatchUploadEnqueueIssue.EMPTY_SELECTION, queue.enqueueIssue(emptyList()))
+        assertEquals(BatchUploadEnqueueIssue.INVALID_SOURCE,
+            queue.enqueueIssue(listOf(source().copy(filename = "../unsafe.jpg"))))
+        val invalidName = assertThrows(BatchUploadEnqueueRejected::class.java) {
+            queue.enqueue(listOf(source().copy(filename = "../unsafe.jpg")))
+        }
+        assertEquals(BatchUploadEnqueueIssue.INVALID_SOURCE, invalidName.issue)
+        assertEquals(BatchUploadEnqueueIssue.INVALID_SOURCE,
+            queue.enqueueIssue(listOf(source().copy(bytes = 0))))
+        assertEquals(BatchUploadEnqueueIssue.INVALID_SOURCE,
+            queue.enqueueIssue(listOf(source().copy(bytes = 16L * 1024 * 1024 * 1024 + 1))))
+        assertEquals(BatchUploadEnqueueIssue.DESTINATION_UNAVAILABLE, queue.enqueueIssue(listOf(source()), "revoked"))
+
+        val rejected = assertThrows(BatchUploadEnqueueRejected::class.java) { queue.enqueue(emptyList()) }
+        assertEquals(BatchUploadEnqueueIssue.EMPTY_SELECTION, rejected.issue)
+        assertTrue(queue.state.value.isEmpty())
+        assertTrue(persistence.load("account-a").isEmpty())
+    }
+
+    @Test fun enqueueEnforcesCombinedQueueLimitWithoutMutationAndAllowsRemainingSlot() {
+        val persistence = InMemoryUploadQueuePersistence()
+        persistence.save("full", (1..100).map { queuedRecord(it) })
+        val full = BatchUploadQueue(Api(), CoroutineScope(Dispatchers.Default), persistence,
+            { null }, { true }, { token })
+        full.attach("full")
+        val before = full.state.value
+        assertEquals(BatchUploadEnqueueIssue.QUEUE_LIMIT, full.enqueueIssue(listOf(source())))
+        val rejected = assertThrows(BatchUploadEnqueueRejected::class.java) { full.enqueue(listOf(source())) }
+        assertEquals(BatchUploadEnqueueIssue.QUEUE_LIMIT, rejected.issue)
+        assertEquals(before, full.state.value)
+        assertEquals(before.map { it.record }, persistence.load("full"))
+
+        persistence.save("one-slot", (1..99).map { queuedRecord(it) })
+        val oneSlot = BatchUploadQueue(Api(), CoroutineScope(Dispatchers.Default), persistence,
+            { null }, { true }, { token })
+        oneSlot.attach("one-slot")
+        assertNull(oneSlot.enqueueIssue(listOf(source())))
+        assertEquals(1, oneSlot.enqueue(listOf(source())).size)
+        assertEquals(100, oneSlot.state.value.size)
+    }
+
+    @Test fun enqueueRejectsBatchOver64GiBWithoutMutation() {
+        val persistence = InMemoryUploadQueuePersistence()
+        val queue = BatchUploadQueue(Api(), CoroutineScope(Dispatchers.Default), persistence,
+            { null }, { true }, { token })
+        queue.attach("account-a")
+        val items = List(5) { source().copy(bytes = 16L * 1024 * 1024 * 1024) }
+        assertEquals(BatchUploadEnqueueIssue.BATCH_TOO_LARGE, queue.enqueueIssue(items))
+        val rejected = assertThrows(BatchUploadEnqueueRejected::class.java) { queue.enqueue(items) }
+        assertEquals(BatchUploadEnqueueIssue.BATCH_TOO_LARGE, rejected.issue)
+        assertTrue(queue.state.value.isEmpty())
+        assertTrue(persistence.load("account-a").isEmpty())
+    }
+
+    @Test fun restoredUploadingRecordBecomesPausedWithoutReadingSourceOrCallingApi() {
+        val persistence = InMemoryUploadQueuePersistence()
+        val uploading = queuedRecord(1, "uploading").copy(
+            sha256 = "3".repeat(64), uploadId = "4".repeat(32), offset = 4,
+            destinationLibraryId = "family-a",
+        )
+        persistence.save("account-a", listOf(uploading))
+        val api = Api()
+        var sourceOpens = 0
+        val queue = BatchUploadQueue(api, CoroutineScope(Dispatchers.Default), persistence,
+            { sourceOpens++; null }, { true }, { token })
+
+        queue.attach("account-a")
+
+        val restored = queue.state.value.single().record
+        assertEquals("paused", restored.status)
+        assertEquals(uploading.copy(status = "paused"), restored)
+        assertEquals(listOf(restored), persistence.load("account-a"))
+        assertEquals(0, sourceOpens)
+        assertEquals(0, api.queried)
+        assertTrue(api.sessionRequests.isEmpty())
+        assertEquals(0, api.chunks)
+    }
+
     @Test fun hashesStreamsResyncs409AndCompletes() = runBlocking {
         val api = Api(); val persistence = InMemoryUploadQueuePersistence(); val map = mapOf("content://a" to source())
         val queue = BatchUploadQueue(api, CoroutineScope(Dispatchers.Default), persistence, { it.locator?.let(map::get) }, { true }, { token }); queue.attach("account-a")

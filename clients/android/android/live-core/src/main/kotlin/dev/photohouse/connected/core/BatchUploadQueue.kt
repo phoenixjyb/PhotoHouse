@@ -27,6 +27,18 @@ class InMemoryUploadQueuePersistence : UploadQueuePersistence {
 }
 data class UploadQueueItem(val record: UploadQueueRecord, val sent: Long = record.offset)
 
+enum class BatchUploadEnqueueIssue {
+    EMPTY_SELECTION,
+    QUEUE_LIMIT,
+    INVALID_SOURCE,
+    BATCH_TOO_LARGE,
+    DESTINATION_UNAVAILABLE,
+    ACCOUNT_UNAVAILABLE,
+}
+
+class BatchUploadEnqueueRejected(val issue: BatchUploadEnqueueIssue) :
+    IllegalArgumentException("Batch upload rejected: $issue")
+
 /** One active file at a time. Restoring the queue never starts a network request. */
 class BatchUploadQueue(
     private val api: PhotoHouseApi, private val scope: CoroutineScope,
@@ -42,19 +54,43 @@ class BatchUploadQueue(
 
     fun attach(accountId: String) {
         pause(); account = accountId
-        mutable.value = persistence.load(accountId).take(100).map { UploadQueueItem(it) }
+        val loaded = persistence.load(accountId).take(100)
+        val restored = loaded.map { record ->
+            if (record.status == "uploading") record.copy(status = "paused") else record
+        }
+        mutable.value = restored.map { UploadQueueItem(it) }
+        if (restored != loaded) persistence.save(accountId, restored)
     }
     fun detach() { pause(); account = null; mutable.value = emptyList() }
+    fun enqueueIssue(items: List<BatchUploadSource>, destinationLibraryId: String? = null): BatchUploadEnqueueIssue? {
+        if (account == null) return BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE
+        if (destinationLibraryId != null && !destinationAllowed(destinationLibraryId))
+            return BatchUploadEnqueueIssue.DESTINATION_UNAVAILABLE
+        if (items.isEmpty()) return BatchUploadEnqueueIssue.EMPTY_SELECTION
+
+        val activeCount = mutable.value.count { it.record.status !in setOf("complete", "cancelled") }
+        if (items.size > 100 || activeCount + items.size > 100) return BatchUploadEnqueueIssue.QUEUE_LIMIT
+
+        var totalBytes = 0L
+        for (item in items) {
+            val maxBytes = when (item.kind) {
+                UploadKind.IMAGE -> MAX_IMAGE
+                UploadKind.VIDEO -> MAX_VIDEO
+            }
+            if (item.bytes !in 1L..maxBytes || !validName(item.filename))
+                return BatchUploadEnqueueIssue.INVALID_SOURCE
+            if (item.bytes > MAX_BATCH - totalBytes) return BatchUploadEnqueueIssue.BATCH_TOO_LARGE
+            totalBytes += item.bytes
+        }
+        return null
+    }
     fun enqueue(items: List<BatchUploadSource>, destinationLibraryId: String? = null): List<String> {
-        val accountId = account ?: return emptyList()
-        require(destinationLibraryId == null || destinationAllowed(destinationLibraryId))
+        val issue = enqueueIssue(items, destinationLibraryId)
+        if (issue != null) throw BatchUploadEnqueueRejected(issue)
+        val accountId = account ?: throw BatchUploadEnqueueRejected(BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE)
         val records = mutable.value.map { it.record }.filterNot { it.status in setOf("complete", "cancelled") }.toMutableList()
-        require(items.isNotEmpty() && items.size <= 100 && records.size + items.size <= 100)
-        require(items.all { it.bytes in 1L..(if (it.kind == UploadKind.IMAGE) MAX_IMAGE else MAX_VIDEO) })
-        require(items.fold(0L) { sum, item -> sum + item.bytes } <= MAX_BATCH)
         val batchId = hex(); val ids = mutableListOf<String>()
         items.forEach { item ->
-            require(validName(item.filename))
             val id = hex(); ids += id
             records += UploadQueueRecord(id, hex(), batchId, item.filename, item.locator, item.bytes, item.kind, "",
                 status = "needs_hash", destinationLibraryId = destinationLibraryId)

@@ -9,6 +9,7 @@ import dev.photohouse.protocol.Session
 import dev.photohouse.protocol.SessionToken
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -58,6 +59,15 @@ class RememberedSessionStoreTest {
         val store = store(api, storage)
         store.restoreSession()
         runCurrent()
+        assertEquals(1, api.sessionReads)
+        assertTrue(store.state.value.covered)
+        assertTrue(store.state.value.busy)
+        assertNull(store.state.value.problem)
+        assertFalse(store.canRetry())
+        advanceTimeBy(350)
+        runCurrent()
+        assertEquals(2, api.sessionReads)
+        assertFalse(store.state.value.busy)
         assertEquals(Message.NETWORK_UNAVAILABLE, store.state.value.problem?.message)
         assertTrue(store.state.value.covered)
         assertTrue(store.canRetry())
@@ -66,7 +76,7 @@ class RememberedSessionStoreTest {
         runCurrent()
         assertFalse(store.state.value.covered)
         assertEquals(session, store.state.value.session)
-        assertEquals(2, api.sessionReads)
+        assertEquals(3, api.sessionReads)
     }
 
     @Test fun expiredFutureAndInvalidDiskCredentialsAreClearedWithoutNetwork() = runTest {
