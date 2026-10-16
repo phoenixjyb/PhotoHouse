@@ -22409,6 +22409,61 @@
       "documentation_only": true,
       "runtime_changed": false,
       "models_activated": false
+    },
+    {
+      "feature": "synthetic-intent-stage-recall-diagnostics-and-chinese-grammar-instructions",
+      "source_commit": "02d63c573043c6932fe29694dbb30c990efad802",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "9010b3a9f5452a4f045949232c1f87c75452c6412cd58f2337fd7a919fd3deed",
+          "sha256": "0aa4438096f022e57b0593365d0d2f6f89371b4336edab416791e8202b74ec01"
+        },
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": "c6fbca8149de6a2be15bf4d22dec9369960337ec90e7552eb77fcea2ae668a11",
+          "sha256": "baf278c45fdb9abe7840da7d159aa6902d765f9aa1627b0fb04c36c41b25f309"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_canary.py",
+          "before_sha256": "f02a0f25f69ca48656a78fdb3b5e69d069221357d1aa3137f4d2f84c16b1dc83",
+          "sha256": "569d2361a2893dec88b98c985fa1381e92fdcec5a45dd0b6b6c589a42e5669fa"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "3e3ff3036156553ab36e36acde73cad3db9c7f5f5ff02a7888dc3ff797723303",
+          "sha256": "f31ebf4ef40086da3a68472552dcdf14d086e97323ca3efe8f796af2931ae4c2"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "fixtures_changed": false,
+      "validation_relaxed": false,
+      "household_data_included": false,
+      "native_relevance_qualified": false
+    },
+    {
+      "feature": "synthetic-stage-diagnostics-and-native-admission-refusal-record",
+      "source_commit": "6f18d72ba9ff295b0cc61a87f28cf8b130b7fd71",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca",
+          "sha256": "ec43303a33df7fc74c7e07976d2f3955693a4d0dd514d24e7b76adbd48905a56"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f",
+          "sha256": "564f017a10ca095fe6a3ff97d732731e349246e41d19ae4b61381594ceb04c46"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_quality_measured": false,
+      "household_data_included": false
     }
   ]
 }
