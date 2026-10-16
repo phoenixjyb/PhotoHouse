@@ -18,6 +18,7 @@ import test_memory_books as fixture
 import run_memory_worker as worker
 from app.access.memory_jobs import MemoryJobs
 from app.access.memory_contributions import MemoryContributions
+from app.access.memory_processing import LEASE_SECONDS
 from app.access.service import AccessService
 from app.access.original_deletions import OriginalDeletionJournal
 
@@ -123,6 +124,95 @@ class MemoryWorkerLauncherTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(output)['status'], 'ready')
         client.assert_not_called()
+
+    def test_narrative_timeout_can_extend_to_120_but_asr_and_contributions_stay_at_30(self):
+        self.write_config(self.config | {'ollama_timeout_seconds': 90})
+        self.assertEqual(worker.read_config(self.config_path)['ollama_timeout_seconds'], 90)
+        self.write_config(self.config | {'ollama_timeout_seconds': 120})
+        self.assertEqual(worker.read_config(self.config_path)['ollama_timeout_seconds'], 120)
+        for invalid in (120.01, float('inf'), float('nan'), True, '90'):
+            with self.subTest(narrative_ollama_timeout=invalid):
+                self.write_config(self.config | {'ollama_timeout_seconds': invalid})
+                with self.assertRaises(worker.WorkerConfigurationError):
+                    worker.read_config(self.config_path)
+
+        for config in (
+                self.config | {'asr_timeout_seconds': 31},
+                self.config | {'asr_timeout_seconds': True},
+                self.config | {'mode': 'contributions',
+                    'asr_url': 'http://localhost:9081/transcribe',
+                    'asr_model': 'fixture-asr', 'asr_token': None,
+                    'ollama_timeout_seconds': 31},
+                self.config | {'mode': 'contributions',
+                    'asr_url': 'http://localhost:9081/transcribe',
+                    'asr_model': 'fixture-asr', 'asr_token': None,
+                    'asr_timeout_seconds': 31},
+        ):
+            with self.subTest(config=config):
+                self.write_config(config)
+                with self.assertRaises(worker.WorkerConfigurationError):
+                    worker.read_config(self.config_path)
+        self.write_config(self.config)
+
+    def test_once_honors_explicit_narrative_timeout_while_default_stays_30(self):
+        self.assertLess(worker.MAX_NARRATIVE_PROVIDER_TIMEOUT, LEASE_SECONDS)
+        self.queue_job()
+        seen_timeouts = []
+
+        class FakeNarrator:
+            def __init__(self, *_args, **kwargs):
+                seen_timeouts.append(kwargs['timeout'])
+
+            def narrative(self, bundle):
+                chapter = bundle['chapters'][0]
+                return {'version': 1, 'title': 'Synthetic draft',
+                        'chapters': [{'id': chapter['id'], 'narration': 'Synthetic output.',
+                                      'source_ids': chapter['evidence_ids'][:1]}],
+                        'questions': [], 'needs_review': True}
+
+        with patch.object(worker, 'LocalMemoryNarrator', FakeNarrator):
+            code, _output = self.cli('--once')
+        self.assertEqual(code, 0)
+        self.assertEqual(seen_timeouts, [30])
+
+        self.queue_job()
+        self.write_config(self.config | {'ollama_timeout_seconds': 90})
+        seen_timeouts.clear()
+        with patch.object(worker, 'LocalMemoryNarrator', FakeNarrator):
+            code, _output = self.cli('--once')
+        self.assertEqual(code, 0)
+        self.assertEqual(seen_timeouts, [90])
+
+    def test_narrative_timeout_is_clipped_to_remaining_budget_and_stops_before_second_item(self):
+        from contextlib import nullcontext
+
+        now = [0.0]
+        created = []
+        outcomes = []
+
+        class FakeNarrator:
+            def __init__(self, *_args, **kwargs):
+                created.append(kwargs['timeout'])
+
+        def database(_config, *, read_only):
+            self.assertFalse(read_only)
+            now[0] = 35.0  # Database setup used 35 of the 45 second run budget.
+            return lambda: nullcontext(object())
+
+        def process_job(*_args, **_kwargs):
+            outcomes.append('started')
+            now[0] = 45.0
+            return {'state': 'ready'}
+
+        with patch.object(worker, '_database', side_effect=database), \
+                patch.object(worker, '_check_schema', return_value=True), \
+                patch.object(worker, 'LocalMemoryNarrator', FakeNarrator), \
+                patch.object(worker, 'process_job', side_effect=process_job):
+            result = worker._run(self.config | {'ollama_timeout_seconds': 90},
+                maximum_items=2, maximum_seconds=45, once=False, clock=lambda: now[0])
+        self.assertEqual(result['processed'], 1)
+        self.assertEqual(created, [10.0])
+        self.assertEqual(outcomes, ['started'])
 
     def test_editorial_config_is_explicit_boolean_and_requires_native_b1_shape(self):
         self.write_config(self.config | {'memory_editorial_enabled': False})

@@ -403,6 +403,55 @@ _EDITORIAL_SAFETY_SUFFIX = (
 )
 
 
+def _response_schema(bundle, task):
+    """Constrain output shape and known references, never certify prose facts.
+
+    The ordinary validators remain authoritative for order, unique citations,
+    UTF-8 byte limits and the relationship between narration and citations.
+    Build a fresh schema from the already validated request, with no cache.
+    """
+    def closed(properties):
+        return {'type': 'object', 'properties': properties,
+                'required': list(properties), 'additionalProperties': False}
+
+    def refs(allowed, minimum=0):
+        item = {'type': 'string'}
+        if allowed:
+            item['enum'] = list(allowed)
+        return {'type': 'array', 'items': item, 'minItems': minimum,
+                'maxItems': len(allowed)}
+
+    def questions(limit):
+        return {'type': 'array', 'items': {'type': 'string', 'minLength': 1,
+                                          'maxLength': 512}, 'maxItems': limit}
+
+    chapters = [closed({
+        'id': {'type': 'string', 'const': chapter['id']},
+        'narration': {'type': 'string', 'maxLength': 6000},
+        'source_ids': refs(chapter['evidence_ids']),
+    }) for chapter in bundle['chapters']]
+    narrative = closed({
+        'version': {'type': 'integer', 'const': 1},
+        'title': {'type': 'string', 'maxLength': 512},
+        'chapters': {'type': 'array', 'minItems': len(chapters), 'maxItems': len(chapters),
+                     'items': {'oneOf': chapters} if chapters else {'type': 'object'}},
+        'questions': questions(6),
+        'needs_review': {'type': 'boolean', 'const': True},
+    })
+    if task == 'narrative':
+        return narrative
+    allowed = [source['id'] for source in bundle['sources']]
+    kinds = ['answer', 'clarification', 'proposal'] if allowed else ['clarification', 'proposal']
+    return {'oneOf': [closed({
+        'version': {'type': 'integer', 'const': 1},
+        'kind': {'type': 'string', 'const': kind},
+        'reply': {'type': 'string', 'minLength': 1, 'maxLength': 4000},
+        'source_ids': refs(allowed, 1 if kind == 'answer' else 0),
+        'questions': questions(3),
+        'proposal': narrative if kind == 'proposal' else {'type': 'null'},
+    }) for kind in kinds]}
+
+
 class LocalMemoryNarrator:
     """Explicit Ollama loopback adapter with bounded streamed response and no fallback.
 
@@ -472,7 +521,7 @@ class LocalMemoryNarrator:
                     'stream': False,
                     'think': False,
                     'truncate': False,
-                    'format': 'json',
+                    'format': _response_schema(clean_bundle, task),
                     'options': {'temperature': 0.2, 'num_predict': 2048},
                 }) as response:
                     self._check_deadline(deadline)

@@ -22764,6 +22764,88 @@
       "documentation_only": true,
       "runtime_changed": false,
       "apk_rebuilt": false
+    },
+    {
+      "feature": "guarded-saved-story-drafting-and-explicit-request-recovery",
+      "source_commit": "f0cb7458430b7efd946ede03146c79eddf1a4402",
+      "files": [
+        {
+          "path": "docs/AI_STORY_COMPLETION.md",
+          "before_sha256": null,
+          "sha256": "041aa36d597fb2e36a21c76d34a98a3c91239e2cf14563402ee612b66bd14642"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "e5b15767b7f60ffd53d6b10ee44f16e3a5d3f1eacc37e7e00822773cc26c9b9f",
+          "sha256": "99fe4130320fdaace690bc3f3a0c648f6bff5f5904223ab40efab94fcc0404ba"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "f44c7d94032e0e86de48340cfc5199e08495a59bfa9c486995e688af1f663723",
+          "sha256": "41fcb8964f068d09f365d00a5f49174437be3bdd889226deef4786af67813d8f"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "85c0bf31e953a81ede56b7f912a623f2347be3a65494a649df0c0bdb379adb1d",
+          "sha256": "f6bb98bafe4e5efe735e7b81bc1605b72c583c717ea5118d8b52ad7a472049b5"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-community.js",
+          "before_sha256": "c06ed9cf23b4d58841946380d618c9d6b39080b86a2fa84447a620984266e75e",
+          "sha256": "cb6d2b4e1636718b233e4d9c9279defb2c3e3181dfdc212039b7fbdee35d01e9"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "c3be318c655a0a526986d726fa9732147c26196c79421e088c59bab85121472e",
+          "sha256": "df7f4b6117ee0cf51e535e26350836ae78fe259f664ade61bac43d383474f6a9"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "before_sha256": "24757f40787cb94e09b6221fb1081d4c5c6fcf22a0fc266ed9ab7078894d3c0d",
+          "sha256": "530e99dc2b8140496154fad23a90028ae034269dfe16a6e4ce706a1725dd05f8"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "2d2ac57c902cf761e341b2ac8faec99d9ea9fe3add8de4f78498cfbb523173b1",
+          "sha256": "f5dd7c8c4b6ad51e2e51eb3dba7c2219b4c7bc0592f544af99d0749ff7e3a61e"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "f224d43ca6c8a29dbd144dc534042b966dacc37a1b562db881a91083d37cb081",
+          "sha256": "6a5796c62df8786d1216f2ec51bb272a2134e8ac192f3287c5c9093fe42a39cf"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative_recovery_browser.cjs",
+          "before_sha256": null,
+          "sha256": "af6591bc6171ac5e4af422b55c054b2b2ccda60664cfbd50b4fe2b09ff56e1a1"
+        },
+        {
+          "path": "server/tests/security/test_memory_worker_launcher.py",
+          "before_sha256": "469e383d41745d0dc545f366f8280be2acde273eb0b2847d8c0d82a0cb8cbd03",
+          "sha256": "c8d19746c3c40aef5dba0b741e8cc598b93b3ed13ae5aae65a3b5cb5c9a06ef9"
+        },
+        {
+          "path": "server/tests/security/test_story_first_guide_browser.cjs",
+          "before_sha256": "93df2e6b6a36eceaa85465ffc105c37b6721ecd0084c2ef2d75bf95290e47a02",
+          "sha256": "c084ff400b13368a074bd49346d9dc9d4df9b3202d9d125f31dc8029ed41d58f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7476c5481f68dafc903b8ccd2a17b5ba772322357f9c9b2e5976acd5eecec1b4",
+          "sha256": "16455a6c35e501e7632caaf89c7aa87d365b0870b53ee5e48786953993b47871"
+        }
+      ],
+      "runtime_source_changed": true,
+      "deployed_runtime_changed": false,
+      "database_schema_changed": false,
+      "public_wire_changed": false,
+      "internal_provider_request_changed": true,
+      "models_activated": false,
+      "original_quality_fixtures_changed": false,
+      "narrative_default_timeout_seconds": 30,
+      "narrative_explicit_max_timeout_seconds": 120,
+      "contribution_provider_max_timeout_seconds": 30,
+      "household_data_included": false
     }
   ]
 }
