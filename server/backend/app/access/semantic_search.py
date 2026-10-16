@@ -11,7 +11,7 @@ from pathlib import Path
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
-from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, rank_semantic
+from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, rank_semantic
 from .service import AccessService
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components, canonical_vector_checksum
 from .visual_vector_artifacts import identity_sha256
@@ -190,9 +190,16 @@ class SemanticSearchRuntime:
                 # the same authorized source read to obtain it directly.
                 binding = reader._run(token, library, None,
                     lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
-            result = reader.search(token, library, binding=binding, filters=filters,
-                page=values.get('page', 1), page_size=values.get('page_size', 20),
-                fingerprint=values.get('fingerprint'), cancelled=bounded_cancelled)
+            try:
+                result = reader.search(token, library, binding=binding, filters=filters,
+                    page=values.get('page', 1), page_size=values.get('page_size', 20),
+                    fingerprint=values.get('fingerprint'), cancelled=bounded_cancelled)
+            except SemanticUnsupported:
+                # A refusal is meaningful only while this authorized cohort is
+                # still current. Re-read after the provider transaction unwinds.
+                reader._run(token, library, binding,
+                    lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
+                raise d.DiscoveryQueryUnsupported() from None
             # A provider call can outlive a concurrent membership or source
             # change. Re-read in a fresh transaction before releasing cards.
             reader._run(token, library, result['binding'],

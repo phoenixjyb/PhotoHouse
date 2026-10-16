@@ -66,6 +66,23 @@ class AssistantWorkspaceWireTest {
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
     }
 
+    @Test fun unsupportedSceneReceiptIsAcceptedOnlyAsFailedV4Envelope() {
+        val failed = turn("null", recovered = false, status = "failed", error = "\"scene_query_unsupported\"")
+        val parsed = AssistantWorkspaceWire.turn(failed.toByteArray(), "family-a", thread, request,
+            fromGet = false, searchVersion = 4)
+        assertEquals(AssistantWorkspaceRequestStatus.FAILED, parsed.status)
+        assertEquals("scene_query_unsupported", parsed.error)
+        assertNull(parsed.result)
+        val recovered = AssistantWorkspaceWire.turn(failed.replace("\"recovered\":false", "\"recovered\":true").toByteArray(),
+            "family-a", thread, request, fromGet = true, searchVersion = 4)
+        assertEquals("scene_query_unsupported", recovered.error)
+        invalid { AssistantWorkspaceWire.turn(failed.toByteArray(), "family-a", thread, request, fromGet = false, searchVersion = 3) }
+        invalid { AssistantWorkspaceWire.turn(failed.replace("\"status\":\"failed\"", "\"status\":\"interrupted\"").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4) }
+        invalid { AssistantWorkspaceWire.turn(failed.replace("\"result\":null", "\"result\":${result()}").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4) }
+    }
+
     @Test fun sceneResultCannotHideVideoCardsUnderPhotoFilters() {
         invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"kind\":\"image\"", "\"kind\":\"video\""),
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }

@@ -164,6 +164,10 @@
           <p id="assistant-scene-help" class="fine" data-i18n="assistantSceneHelp">描述动作、颜色或环境，例如“在蓝桥旁放风筝”。人物、日期和其他条件保持如下；要更改这些条件，请先在主输入框完整查找。</p>
           <ul id="assistant-scene-scope" class="assistant-scene-scope"></ul>
           <p id="assistant-scene-unready" class="fine" data-i18n="assistantSceneUnready">请先完成一次条件明确的照片查找。待确认的人物或其他条件需要先处理。</p>
+          <section id="assistant-scene-reword" class="assistant-scene-reword" hidden aria-live="polite">
+            <p id="assistant-scene-reword-help" class="fine" data-i18n="assistantSceneRewordHelp">这个画面描述暂时无法使用。请改写描述；保留的原文不会自动发送。继续前，请重新加载并确认当前查找条件。</p>
+            <button id="assistant-scene-reload" class="quiet" type="button" data-i18n="assistantSceneReload">重新加载当前条件</button>
+          </section>
           <form id="assistant-scene-form" class="assistant-form">
             <label for="assistant-scene-text" data-i18n="assistantSceneLabel">想找什么样的画面？</label>
             <textarea id="assistant-scene-text" maxlength="512" rows="2" autocomplete="off" aria-describedby="assistant-scene-help assistant-scene-limit"></textarea>

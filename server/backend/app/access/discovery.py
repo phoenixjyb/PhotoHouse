@@ -35,6 +35,8 @@ class DiscoveryChanged(Exception):
     def __init__(self): super().__init__('Refresh discovery state')
 class DiscoveryUnavailable(Exception):
     def __init__(self): super().__init__('Discovery unavailable')
+class DiscoveryQueryUnsupported(Exception):
+    def __init__(self): super().__init__('Scene query unsupported')
 class DiscoveryBusy(Exception):
     retry_after_seconds = 2
     def __init__(self): super().__init__('Discovery busy')

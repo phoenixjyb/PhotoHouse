@@ -353,6 +353,7 @@ def _stored_summary(raw, library_id):
 _SAFE_ERROR_CODES = frozenset({
     'assistant_unavailable', 'context_changed', 'request_cancelled',
     'access_denied', 'invalid_request', 'storage_unavailable', 'turn_interrupted',
+    'scene_query_unsupported',
 })
 
 

@@ -17,6 +17,7 @@ from app.access.semantic_encoder import (
     JointSpaceBinding,
     SemanticInvalid,
     SemanticUnavailable,
+    SemanticUnsupported,
     TextVector,
 )
 from app.access.visual_candidates import (
@@ -149,7 +150,7 @@ class ReviewedProjection:
         try:
             return self._entries[query]
         except KeyError:
-            raise SemanticUnavailable() from None
+            raise SemanticUnsupported() from None
 
     def provenance(self, query: object) -> dict[str, str]:
         model_input = self.project(query)
@@ -311,10 +312,10 @@ class ReviewedSemanticProvider:
         try:
             # Projection validates before invoking any inner provider. Exact
             # strings are neither trimmed nor normalized.
-            model_input = self._projection.project(query)
             self._check_inner_binding()
             self._run_source_check()
             self._run_check(check)
+            model_input = self._projection.project(query)
             self._check_inner_binding()
             original_digest = hashlib.sha256(query.encode("utf-8")).hexdigest()
             derived_digest = hashlib.sha256(model_input.encode("ascii")).hexdigest()

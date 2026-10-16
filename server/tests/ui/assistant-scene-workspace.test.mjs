@@ -12,16 +12,18 @@ const item={id:'101',kind:'image',width:640,height:480,duration_sec:null,taken_a
 function ordinary(){return {version:3,kind:'results',reply:'Found.',context:{library_id:library,binding:hash,fingerprint:fp,filters:structuredClone(filters),visible_ids:['101'],total:1,search_version:3},filters:structuredClone(filters),items:[structuredClone(item)],total:1,has_more:false,effect:null,interpretation:structuredClone(interpretation)};}
 function scene(){const base=ordinary();return {...base,version:4,context:{...base.context,search_version:4,scene:{version:1,query,scope:structuredClone(base.context),scores:[.75]}},items:[{...base.items[0],semantic_score:.75}],semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:1,coverage:'complete_eligible_images',needs_review:true}};}
 const env=(result,id=rid,recovered=false)=>({version:1,thread_id:tid,request_id:id,status:'completed',revision:result.version===4?2:1,recovered,error:null,result});
+const failed=(id=rid,recovered=false,code='scene_query_unsupported',revision=1)=>({version:1,thread_id:tid,request_id:id,status:'failed',revision,recovered,error:code,result:null});
 const error=(status,code='unavailable')=>Object.assign(new Error(code),{status,code});
-function setup({probe=sceneCaps,turn=null,read=null}={}){
+function setup({probe=sceneCaps,turn=null,read=null,detail=null}={}){
  const calls=[],scope={account:'fictional',library,generation:1,locked:false};let n=0;
  const request=async(path,options)=>{calls.push({path,...options});
   if(path.includes('/scene-search-capabilities?')){if(probe instanceof Error)throw probe;return typeof probe==='function'?probe():probe;}
   if(path.includes('/capabilities?'))return caps;
   if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0)};
+  if(path.includes('/threads/')&&options.method==='DELETE')return {deleted:true,thread_id:tid};
   if(path.endsWith('/turns')){if(options.extraHeaders?.['X-PhotoHouse-Search-Version']==='4'){if(turn) return turn(options);return env(scene(),options.body.request_id);}return env(ordinary(),options.body.request_id);}
   if(path.includes('/requests/'))return read?read(path,options):env(scene(),path.split('/requests/')[1].split('?')[0],true);
-  if(path.includes('/threads/'))return {version:1,thread:thread(2),exchanges:[],latest_request_id:rid};
+  if(path.includes('/threads/'))return detail?detail(path,options):{version:1,thread:thread(2),exchanges:[],latest_request_id:rid};
   throw Error('unexpected fixture request');
  };
  const c=Private.createController({scope:()=>scope,request,newUUID:()=>n++===0?tid:rid});
@@ -50,10 +52,63 @@ test('scene POST sends only exact opt-in and bound revision, preserves main draf
 });
 test('lost scene POST recovers GET-only with original v4 after capability loss and preserves input edit',async()=>{
  const f=setup({turn:()=>{throw error(503);}});await ready(f);f.c.setSceneDraft(query);await assert.rejects(f.c.sendScene());
- assert.equal(f.c.state().pendingTurn.search_version,4);assert.equal(f.c.state().currentResult,null);assert.equal(f.c.state().sceneReady,false);
+ assert.equal(f.c.state().pendingTurn.search_version,4);assert.equal(f.c.state().currentResult,null);assert.equal(f.c.state().sceneReady,false);assert.equal(f.c.state().sceneRewordRequired,false);
  await f.c.capabilities();f.c.setSceneDraft('a different draft');await f.c.recover(tid,rid);
  assert.equal(f.c.state().sceneDraft,'a different draft');assert.equal(f.c.state().currentResult.version,4);assert.equal(f.c.state().speechReady,false);
  const reads=f.calls.filter(c=>c.path.includes('/requests/'));assert.equal(reads.length,1);assert.equal(reads[0].extraHeaders['X-PhotoHouse-Search-Version'],'4');assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,2);f.c.close();
+});
+test('durable unsupported scene failure clears results, keeps both drafts, and only reload unlocks explicit rewording',async()=>{
+ let scenePosts=0;const f=setup({turn:options=>{if(scenePosts++===0)return failed(options.body.request_id);const result=scene();result.context.scene.query=options.body.text;return {...env(result,options.body.request_id),revision:2};},read:path=>{if(!path.includes('/requests/'))return null;return {...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1};},detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid})});
+ await ready(f);f.c.setDraft('unsent ordinary conditions');f.c.setSceneDraft(query);const envelope=await f.c.sendScene();
+ assert.equal(envelope.status,'failed');assert.equal(envelope.error,'scene_query_unsupported');assert.equal(f.c.state().pendingTurn,null);
+ assert.equal(f.c.state().currentResult,null);assert.equal(f.c.state().sceneDraft,query);assert.equal(f.c.state().draft,'unsent ordinary conditions');
+ assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().sceneReady,false);
+ const posts=f.calls.filter(c=>c.path.endsWith('/turns')).length;await assert.rejects(f.c.sendScene('another wording'));assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,posts);
+ f.c.setSceneDraft('reword typed before reload');const getsBeforeReload=f.calls.filter(c=>c.method==='GET').length;await f.c.read(tid,{sceneReloadGuard:true});assert.equal(f.c.state().sceneDraft,'reword typed before reload');assert.equal(f.c.state().sceneRewordRequired,false);assert.equal(f.c.state().sceneReady,true);assert.equal(f.c.state().currentResult.version,4);
+ const result=await f.c.sendScene();assert.equal(result.status,'completed');
+ const sent=f.calls.filter(c=>c.path.endsWith('/turns')).at(-1);assert.equal(sent.body.text,'reword typed before reload');assert.deepEqual(sent.body.accepts,['scene_search_v1']);
+ assert.equal(sent.body.expected_revision,1);assert.equal(f.c.state().draft,'unsent ordinary conditions');assert.equal(f.c.state().sceneDraft,'');
+ assert.equal(f.calls.filter(c=>c.path.includes('/requests/')).length,1);assert.equal(f.calls.filter(c=>c.method==='GET').length-getsBeforeReload,3);f.c.close();
+});
+test('lost unsupported scene response is resolved by one v4 GET and preserves a newer draft edit',async()=>{
+ const f=setup({turn:()=>{throw error(503);},read:path=>path.includes('/requests/')?failed(path.split('/requests/')[1].split('?')[0],true):env(ordinary(),rid,true)});
+ await ready(f);f.c.setSceneDraft(query);await assert.rejects(f.c.sendScene());f.c.setSceneDraft('edited after response was lost');
+ const getsBefore=f.calls.filter(c=>c.method==='GET').length;const recovered=await f.c.recover(tid,rid);
+ assert.equal(recovered.status,'failed');assert.equal(recovered.error,'scene_query_unsupported');assert.equal(f.c.state().pendingTurn,null);
+ assert.equal(f.c.state().sceneDraft,'edited after response was lost');assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);
+ const gets=f.calls.filter(c=>c.method==='GET').slice(getsBefore);assert.equal(gets.length,1);assert.equal(gets[0].extraHeaders['X-PhotoHouse-Search-Version'],'4');
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,2);f.c.close();
+});
+test('reword hint survives a stale reload and clears with a source change without restoring cards',async()=>{
+ const stale=setup({turn:options=>failed(options.body.request_id),read:path=>path.includes('/requests/')?({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}):{version:1,thread:thread(3),exchanges:[],latest_request_id:rid}});
+ await ready(stale);await stale.c.sendScene(query);assert.equal(stale.c.state().sceneRewordRequired,true);
+ await assert.rejects(stale.c.read(tid,{sceneReloadGuard:true}));assert.equal(stale.c.state().sceneRewordRequired,true);assert.equal(stale.c.state().currentResult,null);assert.equal(stale.c.state().sceneReady,false);stale.c.close();
+ const changed=setup({turn:options=>failed(options.body.request_id)});await ready(changed);await changed.c.sendScene(query);assert.equal(changed.c.state().sceneRewordRequired,true);
+ changed.scope.library='another-library';changed.scope.generation++;const snapshot=changed.c.state();
+ assert.equal(snapshot.sceneRewordRequired,false);assert.equal(snapshot.currentResult,null);assert.equal(snapshot.sceneDraft,'');assert.equal(snapshot.draft,'');changed.c.close();
+});
+test('guarded reload rejects a latest-request change and never publishes hydrated stale cards',async()=>{
+ let detailReads=0;const replacement='33333333-3333-4333-8333-333333333333';
+ const f=setup({turn:options=>failed(options.body.request_id),read:path=>({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}),detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:++detailReads===1?rid:replacement})});
+ await ready(f);await f.c.sendScene(query);assert.equal(f.c.state().sceneRewordRequired,true);
+ await assert.rejects(f.c.read(tid,{sceneReloadGuard:true}),error=>error.code==='conflict');
+ assert.equal(detailReads,2);assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);assert.equal(f.c.state().sceneReady,false);f.c.close();
+});
+test('deleting the active thread clears its scene reword hint',async()=>{
+ const f=setup({turn:options=>failed(options.body.request_id)});await ready(f);await f.c.sendScene(query);assert.equal(f.c.state().sceneRewordRequired,true);
+ await f.c.delete(tid);assert.equal(f.c.state().activeThread,null);assert.equal(f.c.state().sceneRewordRequired,false);f.c.close();
+});
+test('scene unsupported error requires the failed status and v4 negotiation',()=>{
+ const bad=failed();assert.throws(()=>Private.validateEnvelope(bad,tid,rid,library,'POST',false,false,3));
+ assert.throws(()=>Private.validateEnvelope({...bad,status:'completed'},tid,rid,library,'POST',false,false,4));
+ assert.throws(()=>Private.validateEnvelope({...bad,error:'unsupported_query'},tid,rid,library,'POST',false,false,4));
+});
+test('unsupported receipt revision mismatch remains uncertain and does not offer reword reload',async()=>{
+ const fresh=setup({turn:options=>failed(options.body.request_id,false,'scene_query_unsupported',2)});await ready(fresh);fresh.c.setSceneDraft(query);
+ await assert.rejects(fresh.c.sendScene(),error=>error.code==='invalid_response');assert.equal(fresh.c.state().pendingTurn.status,'uncertain');assert.equal(fresh.c.state().sceneRewordRequired,false);fresh.c.close();
+ const recovered=setup({turn:()=>{throw error(503);},read:path=>path.includes('/requests/')?failed(path.split('/requests/')[1].split('?')[0],true,'scene_query_unsupported',2):env(ordinary(),rid,true)});
+ await ready(recovered);recovered.c.setSceneDraft(query);await assert.rejects(recovered.c.sendScene());await assert.rejects(recovered.c.recover(tid,rid),error=>error.code==='invalid_response');
+ assert.equal(recovered.c.state().pendingTurn.status,'uncertain');assert.equal(recovered.c.state().sceneRewordRequired,false);recovered.c.close();
 });
 test('reopen uses v4 only after optional probe and restores no speech or action',async()=>{
  const f=setup();await f.c.capabilities();await f.c.sceneCapabilities();const detail=await f.c.read(tid);

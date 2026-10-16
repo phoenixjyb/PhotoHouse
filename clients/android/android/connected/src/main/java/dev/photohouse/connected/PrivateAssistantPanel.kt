@@ -89,6 +89,7 @@ internal fun PrivateAssistantPanel(
     onFinishVoiceTurn: (() -> Unit)? = null,
     onSceneDraft: (String) -> Unit = {},
     onSceneSend: () -> Unit = {},
+    onSceneReload: () -> Unit = {},
     sceneInteractionBlocked: Boolean = false,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -677,7 +678,7 @@ internal fun PrivateAssistantPanel(
                         }
                         else AssistantSceneControls(state, zh, sceneInteractionBlocked, onSceneDraft, {
                             keyboard?.hide(); focusManager.clearFocus(); onSceneSend()
-                        }, { sceneExpanded = false })
+                        }, { sceneExpanded = false }, onSceneReload)
                     }
                     if (detail == null) {
                         Text(t("Choose a saved conversation or start a new one. Each conversation is private to your account and library.",
@@ -830,5 +831,6 @@ private fun workspaceErrorText(error: AssistantWorkspaceError, zh: Boolean): Str
     AssistantWorkspaceError.INVALID_RESPONSE -> if (zh) "服务器返回的内容无法验证。" else "The server response could not be verified."
     AssistantWorkspaceError.TURN_FAILED -> if (zh) "服务器未能完成这次回复。" else "The server could not complete this response."
     AssistantWorkspaceError.TURN_INTERRUPTED -> if (zh) "这次回复处理中断。" else "This response was interrupted."
+    AssistantWorkspaceError.SCENE_REWORD -> if (zh) "请换一种画面描述，并重新载入之前的查找条件。" else "Reword the scene description and reload the previous search conditions."
     AssistantWorkspaceError.UNKNOWN -> if (zh) "操作未完成。" else "The action did not complete."
 }

@@ -38,12 +38,15 @@ class AssistantSceneWorkspaceStoreTest {
     }, searchVersion = 4, sceneRanking = AssistantSceneRanking(text, emptyMap(), 0))
     private fun turn(result: AssistantTurn, recovered: Boolean = true, revision: Long = if (result.searchVersion == 4) 2 else 1) =
         AssistantWorkspaceTurn(1, tid, rid, AssistantWorkspaceRequestStatus.COMPLETED, revision, recovered, null, result)
+    private fun unsupported(recovered: Boolean = false, revision: Long = 1) =
+        AssistantWorkspaceTurn(1, tid, rid, AssistantWorkspaceRequestStatus.FAILED, revision, recovered, "scene_query_unsupported", null)
     private inner class Api : AssistantWorkspaceApi {
         override val assistantWorkspaceEnabled = true
         var savedText: String? = null
         var revision = 1L
         var sceneAvailable = true
         var gets = mutableListOf<Int>()
+        var threadReads = 0
         var scenePosts = 0
         var normalPosts = 0
         var submitted: Triple<Long,String,String>? = null
@@ -51,9 +54,12 @@ class AssistantSceneWorkspaceStoreTest {
         var posting: suspend () -> AssistantWorkspaceTurn = { revision = 2; turn(scene(), false) }
         override suspend fun capabilities(token: Bearer, library: String) = caps
         override suspend fun sceneSearchCapabilities(token: Bearer, library: String) = AssistantSceneSearchCapabilities(1, sceneAvailable)
-        override suspend fun readThread(token: Bearer, library: String, threadId: String) = detail(revision).let { current ->
-            savedText?.let { text -> current.copy(exchanges=listOf(AssistantWorkspaceExchange(tid, revision,
-                "2032-09-01T00:00:00Z", "2032-10-01T00:00:00Z", text, "Saved reply", emptyList(), 0, rid))) } ?: current
+        override suspend fun readThread(token: Bearer, library: String, threadId: String): AssistantWorkspaceThreadDetail {
+            threadReads++
+            val current = detail(revision)
+            val text = savedText ?: "previous conditions"
+            return current.copy(exchanges=listOf(AssistantWorkspaceExchange(tid, revision,
+                "2032-09-01T00:00:00Z", "2032-10-01T00:00:00Z", text, "Saved reply", emptyList(), 0, rid)))
         }
         override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String, searchVersion: Int): AssistantWorkspaceTurn {
             gets.add(searchVersion); return reading(searchVersion)
@@ -80,9 +86,74 @@ class AssistantSceneWorkspaceStoreTest {
         store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
         api.posting={throw ApiFailure(FailureKind.OFFLINE)};api.reading={throw ApiFailure(FailureKind.OFFLINE)}
         store.setSceneDraft(query);store.sendSceneTurn();runCurrent();assertEquals(4,store.state.value.pendingTurn!!.searchVersion)
+        assertFalse(store.state.value.sceneRecoveryRequired);assertTrue(store.state.value.uncertain)
         api.sceneAvailable=false;store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent()
         api.revision=2;api.reading={turn(scene())};store.recoverPendingTurn();runCurrent()
         assertEquals(4,api.gets.last());assertEquals(1,api.scenePosts);assertNull(store.state.value.pendingTurn);assertEquals(4,store.state.value.currentTurn!!.result!!.searchVersion)
+    }
+    @Test fun terminalUnsupportedScenePreservesBothDraftsAndRequiresExplicitGetReload() = runTest {
+        val api=Api();val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
+        store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
+        store.setDraft("ordinary exact draft");store.setSceneDraft(query)
+        api.posting={unsupported()};store.sendSceneTurn();runCurrent()
+        assertEquals(1,api.scenePosts);assertNull(store.state.value.pendingTurn);assertNull(store.state.value.currentTurn)
+        assertFalse(store.state.value.uncertain);assertTrue(store.state.value.sceneRecoveryRequired);assertFalse(store.state.value.sceneReady)
+        assertEquals("ordinary exact draft",store.state.value.draft);assertEquals(query,store.state.value.sceneDraft)
+        val getsBeforeReload=api.gets.size;assertFalse(store.sendSceneTurn());assertEquals(1,api.scenePosts)
+        val readsBeforeReload=api.threadReads
+        val reword="children playing by a red gate"
+        store.setSceneDraft(reword);assertFalse(store.sendSceneTurn());assertEquals(1,api.scenePosts)
+        val getGate=CompletableDeferred<AssistantWorkspaceTurn>();api.reading={getGate.await()}
+        assertTrue(store.reloadPreviousSceneConditions());runCurrent();assertTrue(store.state.value.busy)
+        store.setDraft("edited while reloading");store.setSceneDraft("children beside the red gate")
+        getGate.complete(turn(ordinary()));runCurrent()
+        assertEquals(readsBeforeReload+2,api.threadReads);assertEquals(getsBeforeReload+1,api.gets.size)
+        assertEquals(1,api.scenePosts);assertFalse(store.state.value.sceneRecoveryRequired)
+        assertEquals(4,api.gets.last());assertEquals(3,store.state.value.currentTurn!!.result!!.searchVersion)
+        assertEquals("edited while reloading",store.state.value.draft);assertEquals("children beside the red gate",store.state.value.sceneDraft)
+        val acceptedReword=store.state.value.sceneDraft
+        api.posting={api.revision=2;turn(scene(acceptedReword),false,2)}
+        assertTrue(store.sendSceneTurn());runCurrent();assertEquals(2,api.scenePosts)
+        assertEquals(acceptedReword,api.submitted!!.second);assertEquals(4,store.state.value.currentTurn!!.result!!.searchVersion)
+    }
+    @Test fun lostUnsupportedReceiptRecoversByGetAndNeverRepeatsScenePost() = runTest {
+        val api=Api();val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
+        store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
+        store.setDraft("keep me");store.setSceneDraft(query)
+        api.posting={throw ApiFailure(FailureKind.OFFLINE)};api.reading={unsupported(recovered=true)}
+        val getsBeforeScene=api.gets.size
+        store.sendSceneTurn();runCurrent()
+        assertEquals(1,api.scenePosts);assertEquals(getsBeforeScene+1,api.gets.size);assertNull(store.state.value.pendingTurn)
+        assertTrue(store.state.value.sceneRecoveryRequired);assertEquals("keep me",store.state.value.draft);assertEquals(query,store.state.value.sceneDraft)
+        assertFalse(store.sendSceneTurn());assertEquals(1,api.scenePosts)
+        api.reading={turn(ordinary())};store.reloadPreviousSceneConditions();runCurrent()
+        assertEquals(1,api.scenePosts);assertFalse(store.state.value.sceneRecoveryRequired);assertEquals(getsBeforeScene+2,api.gets.size)
+    }
+    @Test fun sceneReloadRefusesAuthorizationSourceAndRevisionChanges() = runTest {
+        for(failure in listOf(ApiFailure(FailureKind.HTTP,401),ApiFailure(FailureKind.HTTP,403),ApiFailure(FailureKind.HTTP,409))) {
+            val api=Api();val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
+            store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
+            api.posting={unsupported()};store.setSceneDraft(query);store.sendSceneTurn();runCurrent()
+            val readsBefore=api.threadReads;api.reading={throw failure}
+            store.reloadPreviousSceneConditions();runCurrent()
+            assertNull(store.state.value.currentTurn)
+            if (failure.status == 401 || failure.status == 403) {
+                assertFalse(store.state.value.sceneRecoveryRequired)
+                assertEquals(AssistantWorkspaceError.ACCESS_DENIED,store.state.value.error)
+            } else {
+                assertTrue(store.state.value.sceneRecoveryRequired)
+                assertEquals(AssistantWorkspaceError.CONTEXT_CHANGED,store.state.value.error)
+            }
+            assertEquals(1,api.scenePosts)
+            assertEquals(readsBefore+1,api.threadReads)
+            store.close()
+        }
+        val api=Api();val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
+        store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
+        api.posting={unsupported()};store.setSceneDraft(query);store.sendSceneTurn();runCurrent()
+        api.revision=2;api.reading={turn(ordinary())};store.reloadPreviousSceneConditions();runCurrent()
+        assertTrue(store.state.value.sceneRecoveryRequired);assertNull(store.state.value.currentTurn)
+        assertEquals(listOf(4),api.gets);store.close()
     }
     @Test fun newOrdinaryDraftAndEditedSceneDraftSurviveRecovery() = runTest {
         val api=Api();val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
@@ -118,7 +189,7 @@ class AssistantSceneWorkspaceStoreTest {
         }
     }
     @Test fun reopenV4AndFailedSourceReadNeverLeaveOldCardsOrPendingMarker() = runTest {
-        val api=Api();api.revision=2;api.reading={turn(scene())};val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
+        val api=Api();api.revision=2;api.savedText=query;api.reading={turn(scene())};val store=AssistantWorkspaceStore(api,backgroundScope,{scope()},{rid})
         store.refreshCapabilities();runCurrent();store.refreshSceneSearchCapabilities();runCurrent();store.openThread(tid);runCurrent()
         assertEquals(4,api.gets.last());assertEquals(4,store.state.value.currentTurn!!.result!!.searchVersion)
         api.reading={throw ApiFailure(FailureKind.HTTP,503)};store.openThread(tid);runCurrent()
