@@ -21389,6 +21389,24 @@
       "models_activated": false,
       "household_data_included": false,
       "translation_quality_qualified": false
+    },
+    {
+      "feature": "bind-scene-comparison-to-exact-cohort-membership",
+      "source_commit": "8332b84075e9731c80320bdcc6e469cbff969d91",
+      "files": [
+        {
+          "path": "server/scripts/semantic_scene_comparison.py",
+          "before_sha256": "b487ce6fe510601550edf1d8f3cf98c7aa9e534bdd2e214572b617124d8ec97a",
+          "sha256": "d7e30e3ad11ac8d52f4523fd553079e89cbb96862ca87f5908d52d4b3486a831"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_comparison.py",
+          "before_sha256": "2ec66d302fdfc9f515a937896961d33dda75e3038137fdb638c6f702c40024d6",
+          "sha256": "1fcd5d5d65c3d5e37b29a6c990a11d7d7391aa3410cbeda198203b3d87dbc51f"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false
     }
   ]
 }

@@ -1,6 +1,8 @@
 """Pure, private-safe comparison of two semantic scene evaluation reports."""
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 from typing import Any
@@ -187,6 +189,10 @@ def compare_evaluations(before: object, after: object, cohorts: object) -> dict[
             or before_report["review_declarations"] != after_report["review_declarations"]):
         _invalid()
     selected_cohorts = _validate_cohorts(cohorts, before_report["case_ids"])
+    cohort_bytes = json.dumps(
+        {label: sorted(members) for label, members in selected_cohorts.items()},
+        sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+    ).encode("ascii")
     before_cases, after_cases = before_report["cases"], after_report["cases"]
     sorted_ids = sorted(before_report["case_ids"])
     overall = _summarize(_rows(before_cases, after_cases, sorted_ids, _LANGUAGES))
@@ -211,6 +217,7 @@ def compare_evaluations(before: object, after: object, cohorts: object) -> dict[
         "candidate_count": before_report["candidate_count"],
         "matched_case_count": len(sorted_ids),
         "cohort_labels": sorted(selected_cohorts),
+        "cohorts_sha256": hashlib.sha256(cohort_bytes).hexdigest(),
         "overall": overall,
         "languages": languages,
         "cohorts": cohort_summaries,

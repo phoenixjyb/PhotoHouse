@@ -182,3 +182,14 @@ def test_top_five_losses_and_gains_are_visible_even_when_aggregate_is_unchanged(
     assert literal["mean_reciprocal_rank_before"] == 0.125
     assert literal["mean_reciprocal_rank_after"] == 1.0
     assert contrast["mean_reciprocal_rank_after"] == 0.125
+
+
+def test_cohort_identity_binds_membership_and_ignores_dictionary_order():
+    before, after = reports()
+    first = compare_evaluations(before, after, COHORTS)
+    reordered = dict(reversed(list(COHORTS.items())))
+    assert compare_evaluations(before, after, reordered) == first
+    reassigned = {"literal": ["scene-three"], "vague": ["scene-two"],
+                  "contrast": ["scene-one"]}
+    assert compare_evaluations(before, after, reassigned)["cohorts_sha256"] != first["cohorts_sha256"]
+    assert len(first["cohorts_sha256"]) == 64
