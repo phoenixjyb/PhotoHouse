@@ -22750,6 +22750,20 @@
       "runtime_changed": false,
       "apk_rebuilt": false,
       "physical_upload_acceptance": false
+    },
+    {
+      "feature": "plan-unified-evidence-backed-import-status",
+      "source_commit": "2fc27ac07ac761b131d9944bbcd10c4f2cfc5d6c",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "97aee598392803e2fb379135ed7f527741482b0423b92df0b856ee27071c9fb7",
+          "sha256": "247aa2d5a801e7a65764dc216349b0bc3babb1282107c3388b699ef2f3aa4414"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false
     }
   ]
 }
