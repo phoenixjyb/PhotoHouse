@@ -18,6 +18,121 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AssistantVoiceSessionStoreTest {
+    @Test fun spokenPauseConsumesItsOwnedTranscriptStopsLocallyAndNeedsExplicitResume() = runTest {
+        val fixture = fixture()
+        fixture.api.transcriptText = "  PAUSE!?  "
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.USER_PAUSED, fixture.driver.state.value.reason)
+        assertNull(fixture.store.state.value.assistant?.transcript)
+        assertEquals(1, fixture.api.transcriptionCalls)
+        assertEquals(0, fixture.api.assistantTurnCalls)
+        assertEquals(0, fixture.api.speechCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertTrue(fixture.platform.stopCalls > 0)
+        assertFalse(fixture.driver.state.value.microphoneActive)
+
+        fixture.api.transcriptText = "find the beach"
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.resume())
+        runCurrent()
+        assertEquals(2, fixture.platform.captureCalls)
+        assertEquals(1, fixture.api.assistantTurnCalls)
+        fixture.driver.end()
+        fixture.driver.close()
+    }
+
+    @Test fun spokenEndStopsTheOwnedSessionWithoutRequestSpeechOrRecapture() = runTest {
+        val fixture = fixture()
+        fixture.api.transcriptText = "结束语音。"
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.ENDED, fixture.driver.state.value.phase)
+        assertEquals(VoiceSessionStopReason.USER_ENDED, fixture.driver.state.value.reason)
+        assertNull(fixture.store.state.value.assistant?.transcript)
+        assertEquals(1, fixture.api.transcriptionCalls)
+        assertEquals(0, fixture.api.assistantTurnCalls)
+        assertEquals(0, fixture.api.speechCalls)
+        assertEquals(0, fixture.platform.speechCalls)
+        assertEquals(1, fixture.platform.captureCalls)
+        assertTrue(fixture.platform.stopCalls > 0)
+        assertFalse(fixture.driver.resume())
+        fixture.driver.close()
+    }
+
+    @Test fun nearMissSpokenControlsRemainOrdinaryVoiceQueries() = runTest {
+        for (nearMiss in listOf("please pause", "do not pause", "pause please", "pause, please", "pause .", "\"pause\"")) {
+            val fixture = fixture()
+            fixture.api.transcriptText = nearMiss
+            fixture.platform.captures.send(wav())
+
+            assertTrue(fixture.driver.start())
+            runCurrent()
+
+            assertEquals(nearMiss, fixture.api.turnTexts.single())
+            assertEquals(1, fixture.api.assistantTurnCalls)
+            assertEquals(1, fixture.platform.captureCalls)
+            fixture.driver.end()
+            fixture.driver.close()
+        }
+    }
+
+    @Test fun lateOldAsrEndCannotStopTheResumedSession() = runTest {
+        val fixture = fixture()
+        val gate = CompletableDeferred<Unit>()
+        fixture.api.transcriptText = "end voice chat"
+        fixture.api.transcriptionGate = gate
+        fixture.platform.captures.send(wav())
+
+        assertTrue(fixture.driver.start())
+        runCurrent()
+        assertEquals(listOf("end voice chat"), fixture.api.transcriptionTexts)
+        assertEquals(VoiceSessionPhase.TRANSCRIBING, fixture.driver.state.value.phase)
+
+        assertTrue(fixture.driver.pause())
+        assertEquals(VoiceSessionPhase.PAUSED, fixture.driver.state.value.phase)
+        fixture.api.transcriptText = "find the beach"
+        fixture.platform.captures.send(wav())
+        assertTrue(fixture.driver.resume())
+        runCurrent()
+        assertEquals(2, fixture.api.transcriptionCalls)
+        assertEquals(listOf("end voice chat", "find the beach"), fixture.api.transcriptionTexts)
+
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(VoiceSessionPhase.SPEAKING, fixture.driver.state.value.phase)
+        assertEquals(1, fixture.api.assistantTurnCalls)
+        assertEquals(listOf("find the beach"), fixture.api.turnTexts)
+        assertEquals(2, fixture.platform.captureCalls)
+        fixture.driver.end()
+        fixture.driver.close()
+    }
+
+    @Test fun manualPauseTranscriptOutsideVoiceSessionRemainsReviewText() = runTest {
+        val fixture = fixture()
+        fixture.api.transcriptText = "pause"
+
+        assertTrue(fixture.store.transcribeAssistant(wav()))
+        runCurrent()
+
+        assertEquals("pause", fixture.store.state.value.assistant?.transcript?.text)
+        assertEquals(VoiceSessionPhase.IDLE, fixture.driver.state.value.phase)
+        assertFalse(fixture.driver.start())
+        assertEquals(0, fixture.api.assistantTurnCalls)
+        assertEquals(0, fixture.platform.stopCalls)
+        fixture.driver.close()
+        assertEquals("pause", fixture.store.state.value.assistant?.transcript?.text)
+    }
+
     @Test fun playbackCompletionGatesTheNextCaptureAndRunsTwoTurns() = runTest {
         val fixture = fixture()
         val firstWav = wav()
@@ -507,9 +622,12 @@ class AssistantVoiceSessionStoreTest {
         var playbackTracking = true
         val playbackOutcomes = mutableListOf<Pair<String, String>>()
         var responseKind = "results"
+        var transcriptText = "find the beach"
         var responseItems = listOf(testAsset())
         val transcriptionIds = mutableListOf<String>()
+        val transcriptionTexts = mutableListOf<String>()
         val turnParentIds = mutableListOf<String?>()
+        val turnTexts = mutableListOf<String>()
         var transcriptionGate: CompletableDeferred<Unit>? = null
         var transcriptionFailure: ApiFailure? = null
         var turnFailure: ApiFailure? = null
@@ -518,16 +636,19 @@ class AssistantVoiceSessionStoreTest {
         override suspend fun assistantCapabilities(token: Bearer, library: String) = AssistantCapabilities(true, true, true, true, 30)
         override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
             transcriptionCalls++
+            val requestText = transcriptText
+            transcriptionTexts += requestText
             transcriptionGate?.await()
             transcriptionIds += requestId
             transcriptionFailure?.let { throw it }
-            return AssistantTranscript("find the beach", "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+            return AssistantTranscript(requestText, "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
         }
         override suspend fun assistantTurn(
             token: Bearer, library: String, text: String, context: kotlinx.serialization.json.JsonObject?, requestId: String,
             parentRequestId: String?,
         ): AssistantTurn {
             assistantTurnCalls++
+            turnTexts += text
             turnParentIds += parentRequestId
             turnFailure?.let { throw it }
             return AssistantTurn(

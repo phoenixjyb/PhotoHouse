@@ -224,6 +224,19 @@ class VoiceSessionControllerTest {
     }
 
     @Test
+    fun malformedAndOversizedSpokenCommandsFailValidationBeforeClassification() {
+        val malformed = VoiceSessionController()
+        val invalidUtf8 = malformed.transcriptReady(beginTranscription(malformed), "pause\uD800")
+        assertEquals(VoiceSessionStopReason.INVALID_TRANSCRIPT, invalidUtf8.state.reason)
+        assertFalse(invalidUtf8.effects.any { it is VoiceSessionEffect.SubmitReadOnlyRequest })
+
+        val oversized = VoiceSessionController()
+        val overLimit = oversized.transcriptReady(beginTranscription(oversized), " ".repeat(508) + "pause")
+        assertEquals(VoiceSessionStopReason.TRANSCRIPT_TOO_LONG, overLimit.state.reason)
+        assertFalse(overLimit.effects.any { it is VoiceSessionEffect.SubmitReadOnlyRequest })
+    }
+
+    @Test
     fun missingReviewCardAndEmptyTranscriptFailClosed() {
         val controller = VoiceSessionController()
         val capture = effect<VoiceSessionEffect.StartCapture>(controller.start(scope, true)).binding

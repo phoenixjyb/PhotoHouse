@@ -305,10 +305,23 @@ class AssistantVoiceSessionStore(
         if (!bindingCurrent(binding, VoiceSessionPhase.TRANSCRIBING)) return
         val transcript = result?.assistant?.transcript?.takeIf { it.localRequestId == requestId }
         if (transcript == null) { fail(binding); return }
-        ownedTranscriptRequestId = null
         val transition = controller.transcriptReady(binding, transcript.text)
-        if (!accept(transition)) return
+        if (!transition.accepted) return
         val request = transition.effects.filterIsInstance<VoiceSessionEffect.SubmitReadOnlyRequest>().singleOrNull()
+        if (request == null && transition.state.reason in setOf(
+                VoiceSessionStopReason.USER_PAUSED, VoiceSessionStopReason.USER_ENDED,
+            )) {
+            // Discard only this voice session's exact ASR result; leave any newer/manual transcript alone.
+            val currentTranscript = store.state.value.assistant?.transcript
+            if (currentTranscript === transcript && currentTranscript.localRequestId == requestId) {
+                store.clearAssistantTranscript()
+            }
+            ownedTranscriptRequestId = null
+            stopForTransition(transition)
+            return
+        }
+        ownedTranscriptRequestId = null
+        if (!accept(transition)) return
         if (request == null) { fail(binding); return }
         val acceptedText = store.takeAssistantTranscriptForDraft(transcript)
         if (acceptedText == null) { fail(request.binding); return }
