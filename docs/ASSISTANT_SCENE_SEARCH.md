@@ -1,11 +1,13 @@
 # Gated conversation scene search
 
-This backend increment connects the explicit [semantic image search
+This feature connects the explicit [semantic image search
 pilot](SEMANTIC_SEARCH_PILOT.md) to the private assistant workspace. It is a
 separately negotiated, server-owned v4 turn, not a new default language planner.
-The existing Web and Android clients continue to negotiate v1–v3 and reject
-unsolicited v4 contexts or semantic scores. There is no scene-search UI or
-live model activation in this increment.
+Ordinary Web and Android search continues to negotiate v1–v3 and rejects
+unsolicited v4 contexts or semantic scores. The Web client separately probes
+scene availability and provides an explicit scene-search flow. Android has no
+scene controls yet. The runtime switch remains default off; no live model
+activation is included.
 
 ## Scope and explicit opt-in
 
@@ -109,6 +111,54 @@ cannot recover a v4 result as ordinary results or refine away its semantic
 state. They can still read non-actionable history and start a complete new
 ordinary search; the latter deliberately leaves the old scene behind.
 
+## Web scene-search flow
+
+The private assistant probes the optional scene endpoint after ordinary workspace
+capabilities. An unavailable/malformed/404 probe leaves ordinary search usable.
+An older API may refuse unknown routes with 403: the client rechecks ordinary
+capabilities before treating that as an unavailable feature. A true base denial
+revokes the scoped state and drafts. Racing probes cannot restore older readiness.
+
+Inside a selected conversation, **Find a scene within these conditions** shows
+reviewed person/date/place/tag/literal-text conditions and the explicit photo
+scope. It enables submission only after the current completed result has resolved
+v2/v3/v4 conditions, with no pending request, descriptive caption condition,
+video/mixed scope, recording or voice session. A clarification retaining older
+cards is not ready. The user acknowledges that the shown conditions stay in
+place and supplies a separate single-line scene description. The UTF-8 byte
+counter enforces the server's 512-byte limit. Unsent ordinary and scene drafts
+stay separate. In the assistant dialog, opening the scene editor temporarily hides
+the ordinary composer; **Return to full search** restores it and keyboard focus.
+Abandoning a scene request never places its visual wording in the
+ordinary composer.
+
+Only that action sends v4 and `accepts:["scene_search_v1"]`. Its validator
+requires the original scope, exact query, next revision, closed scene context,
+ordered finite bounded scores, matching card IDs, complete-coverage descriptor,
+image media and null effects. Normal v1–v3 validation remains closed. Approximate
+ranking and the original scene text appear separately from factual match
+reasons; scores are not rendered as percentages. At most 20 candidates appear,
+with narrowing guidance when more exist. Scene results expose no reply speech
+or automatic viewer action. A complete new ordinary search exits scene mode.
+
+A lost POST keeps its original UUID/revision/text and v4 recovery header, even
+if capabilities subsequently change. Recovery is GET-only and never resends. Definitive HTTP 400/409 refusals clear
+the local pending marker, keep the scene draft, withhold old cards and offer
+history refresh or a complete new search; an unaccepted UUID cannot strand the
+thread in endless recovery. Transport/invalid-response failures remain uncertain.
+After a fresh successful scene probe, history GETs use the v4 reader, which can
+also rehydrate earlier v1–v3 results under their original binding policy. A saved
+scene read does not seed speech or effects. A failed history read clears old
+cards before revalidation; no stale scene cards remain after artifact refusal.
+Account/library/lock changes clear both drafts and prevent late completions.
+
+The generated scene browser journey uses synthetic identities, two-dimensional
+vectors and a mock encoder in a disposable SQLite fixture. It disables the
+encoder after a lost response to exercise recovery and reopening, damages an
+artifact to check stale-card concealment, and renders Chinese/English enlarged
+phone and desktop layouts. These checks establish the UI/transport behavior;
+they do not establish natural-scene model quality.
+
 ## Remaining delivery gates
 
 The generated HTTP/vector tests establish routing, hard-condition composition,
@@ -118,7 +168,7 @@ reject the unmodeled v4 extension. These are source checks with fictional
 vectors and a mock encoder, not natural-scene relevance, native GPU or family
 acceptance.
 
-A client scene-search flow, meaningful English/Chinese/mixed natural-scene
+Android scene-search controls, meaningful English/Chinese/mixed natural-scene
 pair qualification, complete immutable-vector coverage, native resource
 qualification and explicit runtime activation remain separate work. The
 [pair measurement guide](SEMANTIC_PAIR_QUALIFICATION.md) distinguishes the

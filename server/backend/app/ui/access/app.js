@@ -23,6 +23,8 @@
   Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateCurrentLabel:'当前对话',assistantPrivateNoCurrent:'尚未选择对话',assistantPrivateContinue:'可以继续补充条件',assistantPrivateManage:'管理对话',assistantPrivateReturn:'返回对话',assistantPrivateExchangeCount:'{count} 条交流',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近的完整消息。',assistantPrivateLoadOlder:'查看更早消息',assistantPrivateReloadHistory:'对话已有更新，重新加载记录',assistantPrivateSearchOffline:'检索暂不可用，仍可查看已保存的对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
   Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateCurrentLabel:'Current conversation',assistantPrivateNoCurrent:'No conversation selected',assistantPrivateContinue:'Ready to add details',assistantPrivateManage:'Manage conversations',assistantPrivateReturn:'Return to conversation',assistantPrivateExchangeCount:'{count} exchanges',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing recent complete messages.',assistantPrivateLoadOlder:'Read earlier messages',assistantPrivateReloadHistory:'Conversation changed; reload history',assistantPrivateSearchOffline:'Search is unavailable. Saved conversations are still readable.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
   const t = key => words[state.language][key] || key;
+  Object.assign(words.zh,{assistantSceneBack:'返回完整查找',assistantSceneTitle:'在当前条件内按画面查找',assistantSceneHelp:'描述动作、颜色或环境，例如“在蓝桥旁放风筝”。人物、日期和其他条件保持如下；要更改这些条件，请先在主输入框完整查找。',assistantSceneLabel:'想找什么样的画面？',assistantSceneConfirm:'保留上面的条件，我只补充画面描述。',assistantSceneUnready:'请先完成一次条件明确的照片查找。待确认的人物或其他条件需要先处理。',assistantSceneSend:'按画面相似度排列照片',assistantSceneLimit:'{count}/512 UTF-8 字节；请使用单行描述。',assistantSceneRankingTitle:'按画面相似度排列 · 请查看确认',assistantSceneQuery:'画面描述：{query}',assistantSceneRankingHelp:'相似度是近似排序，不是匹配概率或文字证据。已显示 {shown}/{total} 张候选照片。',assistantSceneMore:'当前只提供前 20 张。请缩小查找条件以查看其他照片。',assistantSceneRank:'画面相似度排序 #{rank}',assistantSceneRejected:'这次画面查找未能完成。请重新加载对话以确认当前条件，或输入完整的新查找；画面描述已保留。',assistantSceneFailed:'尚未确认结果。请恢复已发送的请求，不会自动重发。',assistantSceneNewSearch:'要更改人物、日期或其他条件，请在主输入框输入完整的新查找。'});
+  Object.assign(words.en,{assistantSceneBack:'Return to full search',assistantSceneTitle:'Find a scene within these conditions',assistantSceneHelp:'Describe actions, colors or surroundings, such as “flying a kite beside a blue bridge”. People, dates and other conditions below stay in place. To change them, first enter a complete search in the main composer.',assistantSceneLabel:'What does the scene look like?',assistantSceneConfirm:'Keep the conditions above; I am only adding a scene description.',assistantSceneUnready:'First complete a photo search with resolved conditions. Resolve any unanswered person or other condition first.',assistantSceneSend:'Rank photos by scene similarity',assistantSceneLimit:'{count}/512 UTF-8 bytes; use a single line.',assistantSceneRankingTitle:'Ranked by scene similarity · Check the photos',assistantSceneQuery:'Scene description: {query}',assistantSceneRankingHelp:'Similarity is an approximate ranking, not a match probability or text evidence. Showing {shown}/{total} candidate photos.',assistantSceneMore:'Only the first 20 are available here. Narrow your search to see other photos.',assistantSceneRank:'Scene similarity rank #{rank}',assistantSceneRejected:'This scene search could not finish. Reload the conversation to check its current conditions, or enter a complete new search. Your scene description is kept.',assistantSceneFailed:'The result is unconfirmed. Recover the sent request; it will not be resent automatically.',assistantSceneNewSearch:'To change people, dates or other conditions, enter a complete new search in the main composer.'});
   Object.assign(words.zh,{assistantPrivateAbandon:'结束等待，开始新对话',assistantPrivateAbandonHelp:'服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。',assistantPrivateAbandonYes:'我了解，开始新对话',assistantPrivateRetryCreation:'重试创建同一个对话'});
   Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
   Object.assign(words.en,{libraryTools:'Explore this library'});
@@ -443,6 +445,7 @@
     $('grid').setAttribute('aria-label',t('memoryMediaRegion'));
     storyWorkspace?.translate();
     renderAssistantTrail();
+    const sceneTurn=privateAssistant?.state().currentResult;if(sceneTurn?.version===4){renderAssistantSceneRanking(sceneTurn);const rows=$('assistant-search-summary-items');rows.replaceChildren();for(const line of assistantSearchLines(sceneTurn)){const li=document.createElement('li');li.textContent=line;rows.append(li);}for(const [i,rank] of Array.from($('assistant-results').querySelectorAll('.assistant-scene-rank')).entries())rank.textContent=t('assistantSceneRank').replace('{rank}',String(i+1));}
     if(assistantState.transcriptReviewPending){renderAssistantTranscriptLanguage();$('assistant-status').textContent=t('assistantTranscriptReady');}
     syncAssistantControls();
   }
@@ -681,7 +684,7 @@
     $('assistant-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();
     $('assistant-mic').disabled=blocked||restorePending||sessionOwnsVoice;
     $('assistant-voice-session').hidden=!assistantState.transcribe;
-    $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden);
+    $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden||$('assistant-scene').open&&!$('assistant-scene').hidden);
     $('assistant-voice-start').hidden=session.phase!=='idle';$('assistant-voice-pause').hidden=!active;$('assistant-voice-resume').hidden=!paused;$('assistant-voice-end').hidden=!(active||paused);
     $('assistant-voice-start').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
     $('assistant-mic').hidden=active||paused;
@@ -701,6 +704,7 @@
     $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
     $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
     $('assistant-cancel').hidden=!assistantState.busy;
+    renderAssistantSceneControls(privateAssistant?.state());
     if(assistantState.pendingTurn)renderAssistantPending();
   }
   function assistantVoiceBinding(){if(!state.profile||!state.library)return null;return Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:state.generation});}
@@ -1281,9 +1285,9 @@
     }
   }
 
-  function clearAssistantSearchSummary(){const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;}
+  function clearAssistantSearchSummary(){const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;const ranking=$('assistant-scene-ranking');if(ranking)ranking.hidden=true;}
   function assistantSearchLines(turn){
-    if(![2,3].includes(turn?.version)||!turn.interpretation||!turn.filters)return [];
+    if(![2,3,4].includes(turn?.version)||!turn.interpretation||!turn.filters)return [];
     const lines=[],labels=rows=>rows.map(row=>row.label).join('、');
     const fill=(key,values)=>Object.entries(values).reduce((text,[name,value])=>text.replace(`{${name}}`,value),t(key));
     if(turn.filters.people?.ids?.length){const key=turn.filters.people.match==='all'?'assistantSearchPeopleAll':'assistantSearchPeopleAny';lines.push(fill(key,{labels:labels(turn.interpretation.people)}));}
@@ -1295,6 +1299,47 @@
     if(turn.filters.locations?.length)lines.push(fill('assistantSearchLocations',{labels:labels(turn.interpretation.locations)}));
     if(turn.interpretation.perspective?.label)lines.push(fill('assistantSearchPerspective',{label:turn.interpretation.perspective.label}));
     return lines;
+  }
+  function renderAssistantSceneControls(snapshot){
+    const panel=$('assistant-scene');if(!panel)return;
+    panel.hidden=!snapshot?.sceneAvailable||snapshot.locked||!snapshot.activeThread;
+    $('assistant-scene-new-search').hidden=snapshot?.currentResult?.version!==4;
+    if(snapshot?.locked||!snapshot?.currentResult)renderAssistantSceneRanking(null);
+    const key=JSON.stringify([snapshot?.account,snapshot?.library,snapshot?.activeThread?.thread_id,snapshot?.revision]);
+    if(panel.dataset.scope!==key){panel.dataset.scope=key;$('assistant-scene-confirm').checked=false;$('assistant-scene-status').textContent='';}
+    const input=$('assistant-scene-text');if(input.value!==(snapshot?.sceneDraft||''))input.value=snapshot?.sceneDraft||'';
+    const text=input.value,bytes=new TextEncoder().encode(text).length;
+    $('assistant-scene-limit').textContent=t('assistantSceneLimit').replace('{count}',String(bytes));
+    const scope=$('assistant-scene-scope');scope.replaceChildren();
+    if(snapshot?.currentResult?.kind==='results'){
+      const lines=assistantSearchLines(snapshot.currentResult);
+      if(!snapshot.currentResult.filters?.media)lines.push(t('assistantSearchMedia').replace('{media}',t('photo')));
+      for(const line of lines){const li=document.createElement('li');li.textContent=line;scope.append(li);}
+    }
+    $('assistant-scene-unready').hidden=snapshot?.sceneReady===true;
+    const blocked=!snapshot?.sceneReady||privateAssistantBusy||assistantState.busy||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending||assistantState.voiceSession.phase!=='idle'||state.locked;
+    input.disabled=blocked;$('assistant-scene-confirm').disabled=blocked;
+    $('assistant-scene-send').disabled=blocked||!text.trim()||bytes>512||/\p{Cc}/u.test(text)||!$('assistant-scene-confirm').checked;
+  }
+  function renderAssistantSceneRanking(turn){
+    const panel=$('assistant-scene-ranking');panel.hidden=turn?.version!==4;
+    if(panel.hidden){$('assistant-scene-query').textContent='';return;}
+    $('assistant-scene-query').textContent=t('assistantSceneQuery').replace('{query}',turn.context.scene.query);
+    $('assistant-scene-ranking-help').textContent=t('assistantSceneRankingHelp').replace('{shown}',String(turn.items.length)).replace('{total}',String(turn.total))+(turn.has_more?' '+t('assistantSceneMore'):'');
+  }
+  async function submitAssistantScene(){
+    const snapshot=privateAssistant?.state();
+    renderAssistantSceneControls(snapshot);if($('assistant-scene-send').disabled)return;
+    const text=$('assistant-scene-text').value,epoch=state.generation;
+    privateAssistantBusy=true;stopAssistantSpeech();assistantState.busy=true;
+    // Retain the reviewed conditions while withholding old result cards.
+    $('assistant-results').replaceChildren();$('assistant-scene-ranking').hidden=true;$('assistant-reply').textContent='';
+    $('assistant-scene-status').textContent=t('assistantWorking');syncAssistantControls();renderAssistantSceneControls(snapshot);
+    try{const envelope=await privateAssistant.sendScene(text);if(stale(epoch))return;
+      if(envelope.status==='completed'){showPrivateAssistantResult(envelope,text);$('assistant-scene-status').textContent='';}
+      else $('assistant-scene-status').textContent=t('assistantSceneFailed');
+    }catch(error){if(!stale(epoch)){const key=error.status===400||error.status===409?'assistantSceneRejected':'assistantSceneFailed';$('assistant-scene-status').textContent=t(key);$('assistant-status').textContent=t(key);}}
+    finally{if(!stale(epoch)){privateAssistantBusy=false;assistantState.busy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();}}
   }
   function assistantMatchReason(reason,turn){
     if(reason.source==='photo_memory')return t('assistantReasonMemory');
@@ -1309,10 +1354,11 @@
     const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;assistantState.items=turn.items;
     const summary=$('assistant-search-summary'),summaryItems=$('assistant-search-summary-items');
     if(summary&&summaryItems){summaryItems.replaceChildren();for(const line of assistantSearchLines(turn)){const item=document.createElement('li');item.textContent=line;summaryItems.append(item);}summary.hidden=summaryItems.childElementCount===0;}
+    renderAssistantSceneRanking(turn);
     $('assistant-reply').textContent=turn.reply;
     const privateSpeech=privateAssistant?.state(),privateReplyReady=assistantState.speech&&privateSpeech?.speechReady===true;
     const privateSpeechEnabled=privateSpeech?.capabilities?.reply_speech===true;
-    $('assistant-speech').hidden=!(privateSpeechEnabled?privateReplyReady&&privateSpeech.speechReplyBytes<=600:assistantState.speech&&turn.kind==='results'&&turn.context);
+    $('assistant-speech').hidden=turn.version===4||!(privateSpeechEnabled?privateReplyReady&&privateSpeech.speechReplyBytes<=600:assistantState.speech&&turn.kind==='results'&&turn.context);
     $('assistant-play').dataset.i18n=privateReplyReady?'assistantPlayReply':'assistantPlay';$('assistant-play').textContent=t(privateReplyReady?'assistantPlayReply':'assistantPlay');
     if(turn.kind==='unsupported'&&!turn.reply)$('assistant-reply').textContent=t('assistantUnsupported');
     if(!turn.items.length&&turn.kind==='results'&&!turn.reply)$('assistant-reply').textContent=t('assistantNoResults');
@@ -1371,6 +1417,7 @@
       const image=document.createElement('img');image.className='assistant-thumbnail';image.loading='lazy';image.alt=assetLabel(item);image.src=safeMediaURL(item.id,'thumbnail');
       image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});card.append(image);
       const title=document.createElement('p');title.textContent=assetLabel(item);card.append(title);
+      if(turn.version===4){const rank=document.createElement('p');rank.className='assistant-scene-rank';rank.textContent=t('assistantSceneRank').replace('{rank}',String(turn.items.indexOf(item)+1));card.append(rank);}
       if(item.match&&typeof item.match.excerpt==='string'){const excerpt=document.createElement('p');excerpt.className='fine';excerpt.textContent=item.match.excerpt.slice(0,1200);card.append(excerpt);}
       if(Array.isArray(item.match_reasons)&&item.match_reasons.length){const reasons=document.createElement('ul');reasons.className='assistant-match-reasons';for(const reason of item.match_reasons){const label=assistantMatchReason(reason,turn);if(label){const entry=document.createElement('li');entry.textContent=label;reasons.append(entry);}}if(reasons.childElementCount)card.append(reasons);}
       const button=document.createElement('button');button.type='button';button.className='quiet';button.textContent=t('assistantOpen');button.addEventListener('click',()=>{if(stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;reportAssistantOutcome(assistantState.turnReceipt,'open_requested');void openAsset(item,{sequence:assistantState.items,origin:'assistant'});});card.append(button);root.append(card);
@@ -1445,6 +1492,7 @@
   }
 
   function renderPrivateAssistant(snapshot){
+    renderAssistantSceneControls(snapshot);
     if(!$('assistant-private'))return;
     const searchPerspective=$('assistant-search-perspective'),perspective=snapshot.capabilities?.search?.perspective;
     if(searchPerspective){searchPerspective.hidden=![2,3].includes(snapshot.capabilities?.search?.version);searchPerspective.textContent=searchPerspective.hidden?'':perspective?.label?t('assistantSearchPerspective').replace('{label}',perspective.label):t('assistantSearchPerspectiveDefault');}
@@ -1570,6 +1618,7 @@
   async function loadPrivateAssistant(epoch){
     if(!privateAssistant)return;
     try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();
+      if(!stale(epoch))await privateAssistant.sceneCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryActionsCapabilities==='function')await privateAssistant.savedMemoryActionsCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReadingCapabilities==='function')await privateAssistant.savedMemoryReadingCapabilities();
@@ -1644,6 +1693,7 @@
   async function readPrivateAssistant(id){
     if(!id)return;
     await privateAssistantAction(async()=>{
+      stopAssistantSpeech();assistantState.context=null;assistantState.items=[];$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();
       const detail=await privateAssistant.read(id);
       stopAssistantSpeech();assistantState.context=null;assistantState.items=[];
       assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
@@ -3403,7 +3453,7 @@
     dialog.showModal();syncAssistantControls();
     if(!privateAssistant?.state().capabilities)void loadPrivateAssistant(state.generation);
     if(setHash)history.replaceState(history.state,'','#assistant-panel');
-    const initialFocus=$('assistant-form').hidden?$('assistant-private-select'):$('assistant-workspace-footer').hidden?(!$('assistant-voice-pause').hidden?$('assistant-voice-pause'):$('assistant-voice-resume')):$('assistant-text');
+    const initialFocus=$('assistant-scene').open&&!$('assistant-scene').hidden?($('assistant-scene-text').disabled?$('assistant-scene-back'):$('assistant-scene-text')):$('assistant-form').hidden?$('assistant-private-select'):$('assistant-workspace-footer').hidden?(!$('assistant-voice-pause').hidden?$('assistant-voice-pause'):$('assistant-voice-resume')):$('assistant-text');
     initialFocus.focus({preventScroll:true});
   }
   function closeAssistantWorkspace({restoreFocus=true,restoreScroll=true,stopVoice=true}={}){
@@ -3590,6 +3640,11 @@
       request:privateWorkspaceRequest,
     });
   }
+  $('assistant-scene').addEventListener('toggle',()=>syncAssistantControls());
+  $('assistant-scene-back').addEventListener('click',()=>{$('assistant-scene').open=false;syncAssistantControls();$('assistant-text').focus();});
+  $('assistant-scene-text').addEventListener('input',()=>{try{privateAssistant?.setSceneDraft($('assistant-scene-text').value);}catch{}renderAssistantSceneControls(privateAssistant?.state());});
+  $('assistant-scene-confirm').addEventListener('change',()=>renderAssistantSceneControls(privateAssistant?.state()));
+  $('assistant-scene-form').addEventListener('submit',event=>{event.preventDefault();void submitAssistantScene();});
   const privateManagement=$('assistant-private-management');
   const privateManagementRequired=()=>{const snapshot=privateAssistant?.state();return !snapshot?.activeThread||!!snapshot.pendingTurn||!!snapshot.pendingCreation||!!privateCreationRetryId||!$('assistant-private-delete-confirm').hidden||!$('assistant-private-abandon-confirm').hidden;};
   $('assistant-private-management-toggle').addEventListener('click',event=>{if(privateManagementRequired())event.preventDefault();});
