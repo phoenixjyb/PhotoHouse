@@ -259,6 +259,10 @@ _DISPOSAL_ACTIONS = ('放', '摆', '搬', '挪', '倒', '调', '混合', '折', 
                      '涂', '染', '切', '打开', '关上', '收')
 _BA_CONTENT_WORDS = ('把手', '把柄', '把戏', '把玩', '把持', '把关', '把關',
                     '把握', '把守', '把脉', '把舵', '把式')
+# Complete object spans can disambiguate these prefix collisions. This is a
+# closed lexical boundary rule, not a caption synonym or a partial-word match.
+_DISPOSAL_OBJECT_WORDS = frozenset(('手套', '手帕', '手表', '手链', '手环',
+                                   '手电筒', '手提包', '手提袋', '玩具', '玩偶'))
 
 
 def _covered_disposal_particle(words, provider_words, entities, concepts):
@@ -280,7 +284,8 @@ def _covered_disposal_particle(words, provider_words, entities, concepts):
         return None
     position = len(prefix) - 1
     if (provider_words[position] != '把' or
-            any(words.startswith(word, position) for word in _BA_CONTENT_WORDS) or
+            (any(words.startswith(word, position) for word in _BA_CONTENT_WORDS) and
+             first['surface'] not in _DISPOSAL_OBJECT_WORDS) or
             not d.fold(prefix[:-1].rstrip(' \t')).endswith(d.fold(labels[0].strip()))):
         return None
     if not any(concept['surface'].startswith(_DISPOSAL_ACTIONS) for concept in concepts[1:]):

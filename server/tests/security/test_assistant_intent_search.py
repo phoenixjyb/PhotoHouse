@@ -132,6 +132,55 @@ class AssistantIntentSearchTests(unittest.TestCase):
         self.assertIn(denied.status_code, (401, 403))
         self.assertEqual([], self.planner.calls)
 
+    def test_complete_object_boundary_retrieves_actions_without_widening_scope(self):
+        self.planner.concepts = {'手套': ['手套', 'gloves'],
+                                 '放进': ['放进', 'put into'],
+                                 '纸盒': ['纸盒', 'paper box']}
+        self.mutate("UPDATE captions SET text='手套放进纸盒。 Gloves put into a paper box.' WHERE id=1")
+        self.mutate("UPDATE captions SET text='手套和纸盒。 Gloves and a paper box.' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        for query in (
+            '找示例儿童把手套放进纸盒的2032年9月照片',
+            'find Sample Child 把手套放进纸盒的 photos in September 2032',
+        ):
+            with self.subTest(query=query):
+                before = len(self.planner.calls)
+                result = self.intent(query).json()
+                self.assertEqual('results', result['kind'], result)
+                self.assertEqual(['101'], [item['id'] for item in result['items']])
+                self.assertEqual({'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                                  'date': {'from': '2032-09-01', 'to': '2032-09-30'}},
+                                 {k: v for k, v in result['filters'].items() if k != 'descriptive'})
+                self.assertEqual(['手套', '放进', '纸盒'],
+                                 [c['surface'] for c in result['filters']['descriptive']['concepts']])
+                self.assertEqual(before + 1, len(self.planner.calls))
+                self.assertIsNone(result['effect'])
+
+                for unresolved in (query.replace('手套', '两副手套'),
+                                   query.replace('手套', '手套筒'),
+                                   query.replace('放进', '悄悄放进')):
+                    # A bare follow-up refines the saved scope; an explicit
+                    # find/找 opener deliberately starts a separate search.
+                    followup = (unresolved[1:] if unresolved.startswith('找')
+                                else unresolved.removeprefix('find '))
+                    failed = self.intent(followup, result['context']).json()
+                    self.assertEqual('clarification', failed['kind'], failed)
+                    self.assertEqual(result['items'], failed['items'])
+                    self.assertEqual(result['context'], failed['context'])
+                    self.assertEqual(result['filters'], failed['filters'])
+
+        literal = self.intent('找示例儿童把手套放进纸盒的2032年9月照片包含“secret memory phrase”').json()
+        self.assertEqual('results', literal['kind'], literal)
+        self.assertEqual('secret memory phrase', literal['filters']['text'])
+        self.assertEqual(['101'], [item['id'] for item in literal['items']])
+        self.planner.calls.clear()
+        denied = self.intent('找示例儿童把手套放进纸盒的照片', token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertEqual([], self.planner.calls)
+
     def test_description_alone_is_a_readonly_search_and_quotes_remain_an_independent_literal(self):
         found = self.intent('playing in snow red coat').json()
         self.assertEqual(found['kind'], 'results', found)

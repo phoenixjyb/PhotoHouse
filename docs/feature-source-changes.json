@@ -22628,6 +22628,39 @@
       "test_only": true,
       "runtime_source_changed": false,
       "apk_rebuilt": false
+    },
+    {
+      "feature": "complete-object-boundaries-for-covered-chinese-disposal-clauses",
+      "source_commit": "43c1f8418e78fd1d64b63eeff40f6b28b6e5ab1e",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "2ecc81031d40c8dce97fa238a551887956f4cc42416dbb0e06fcae4f27ea5454",
+          "sha256": "2a5bd98f168920b1a1c212055afdfb1fd881740110d8637292a59ddde948bf9c"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "657c65617c93b8ee6a152e108036ed7b8895c7c6b568062b1d9167597d4ed7c5",
+          "sha256": "7e23e1141dc4d185148f66db2a38a4353d43098edce03cfe920fb478d603c025"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "9fac233809e23807e97b388f76184b5f877254d893f5869a5c17d724008caf58",
+          "sha256": "83dc82f0ce9a882d2350941eb453ef81bb23ef291f75afd8e7119b1d23385caf"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "29dd07a31ceb4b28028640a6516ea1cf76c87fecf8a48a9e5df74d7fd1b30500",
+          "sha256": "072a05017a6f579921d27c0678353aa30e823fddc3972e489f22189115a6fa8f"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "native_fixture_changed": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false
     }
   ]
 }
