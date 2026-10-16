@@ -1,6 +1,7 @@
 """Plan or measure a bounded local descriptive-intent trial on synthetic data.
 
-No arguments only emits the static twelve-case plan. Execution requires an
+No arguments only emits the original static twelve-case plan. A separate
+reviewed-v1 regression suite is available with --suite. Execution requires an
 explicit loopback URL, model name, and new private output file. Each case goes
 through the real deterministic compiler; it may make zero or one provider call.
 The executable path has no warm-up or retry.
@@ -68,16 +69,95 @@ class _CountingPlanner:
             self.elapsed_ms = max(0, int((self.clock() - start) * 1000))
 
 
-def plan_summary() -> dict:
-    cohorts = cases_by_cohort()
+def audit_reviewed_cases(cases) -> dict:
+    """Check annotation completeness, never infer semantic truth from labels.
+
+    Exact support quotations make independent review possible. This structural
+    check cannot prove that a quotation entails a requested condition. None of
+    these annotations enters the planner or changes evidence matching.
+    """
+    if (len(cases) != 12 or any(
+            sum(c["cohort"] == cohort and c["expected_status"] == status for c in cases) != count
+            for cohort in ("en", "zh", "mixed")
+            for status, count in (("ready", 3), ("clarification", 1)))):
+        raise ValueError("reviewed_fixture_invalid")
+    counts = {"positive_assets": 0, "negative_assets": 0, "conditions": 0}
+    case_ids, asset_ids = set(), set()
+    for case in cases:
+        if case["id"] in case_ids:
+            raise ValueError("reviewed_fixture_invalid")
+        case_ids.add(case["id"])
+        conditions = case.get("conditions")
+        if type(conditions) is not dict:
+            raise ValueError("reviewed_fixture_invalid")
+        if case["expected_status"] == "clarification":
+            if (conditions or case["evidence"] or case["expected_question"] != "date" or
+                    case["expected_hard_filters"]):
+                raise ValueError("reviewed_fixture_invalid")
+            continue
+        if (case["expected_question"] is not None or not 3 <= len(conditions) <= 4 or
+                len(case["evidence"]) != 2 + len(conditions) or
+                any(not key or type(value) is not str or not value.strip()
+                    for key, value in conditions.items())):
+            raise ValueError("reviewed_fixture_invalid")
+        counts["conditions"] += len(conditions)
+        positives, isolated_missing = 0, set()
+        for asset in case["evidence"]:
+            if asset["asset_id"] in asset_ids:
+                raise ValueError("reviewed_fixture_invalid")
+            asset_ids.add(asset["asset_id"])
+            sources = {s["source_id"]: s["content"] for s in asset["sources"]}
+            support, missing = asset.get("support_quotes"), asset.get("missing_conditions")
+            if (len(sources) != len(asset["sources"]) or type(support) is not dict or
+                    type(missing) is not list or len(set(missing)) != len(missing) or
+                    set(support) & set(missing) or
+                    set(support) | set(missing) != set(conditions) or
+                    type(asset["expected_match"]) is not bool or
+                    asset["expected_match"] != (not missing)):
+                raise ValueError("reviewed_fixture_invalid")
+            for quote in support.values():
+                if (type(quote) is not dict or set(quote) != {"source_id", "quote"} or
+                        type(quote["quote"]) is not str or not quote["quote"].strip() or
+                        quote["source_id"] not in sources or
+                        quote["quote"] not in sources[quote["source_id"]]):
+                    raise ValueError("reviewed_fixture_invalid")
+            if asset["expected_match"]:
+                positives += 1
+                counts["positive_assets"] += 1
+            else:
+                if len(missing) != 1:
+                    raise ValueError("reviewed_fixture_invalid")
+                counts["negative_assets"] += 1
+                isolated_missing.add(missing[0])
+        if positives != 2 or isolated_missing != set(conditions):
+            raise ValueError("reviewed_fixture_invalid")
+    return {"annotation_structure_verified": True, "semantic_truth_verified": False,
+            "annotations_sent_to_provider": False, **counts}
+
+
+def _select_cases(suite):
+    if suite == "fixed-v1":
+        return CASES, cases_by_cohort(), cases_digest(), None
+    if suite == "reviewed-v1":
+        import search_intent_review_cases as reviewed
+        if reviewed.NOW != NOW:
+            raise ValueError("reviewed_fixture_invalid")
+        audit = audit_reviewed_cases(reviewed.CASES)
+        return reviewed.CASES, reviewed.cases_by_cohort(), reviewed.cases_digest(), audit
+    raise ValueError("qualification_suite_invalid")
+
+
+def plan_summary(*, suite="fixed-v1") -> dict:
+    cases, cohorts, digest, audit = _select_cases(suite)
     return {
         "status": "plan_only",
-        "case_ids": [case["id"] for case in CASES],
+        "case_ids": [case["id"] for case in cases],
         "cohorts": {name: [case["id"] for case in group]
                     for name, group in cohorts.items()},
-        "case_count": len(CASES),
+        "case_count": len(cases),
         "cohort_counts": {name: len(group) for name, group in cohorts.items()},
-        "cases_sha256": cases_digest(),
+        "cases_sha256": digest,
+        **({"suite": suite, "fixture_audit": audit} if audit is not None else {}),
         "provider_calls": 0,
         "synthetic_expectations_evaluated": False,
         "quality_evaluated": False,
@@ -285,8 +365,10 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
     }
 
 
-def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_counter) -> dict:
+def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_counter,
+                      suite="fixed-v1") -> dict:
     """Measure all fixed cases through the real planner and at most one provider call."""
+    cases, cohorts, digest, audit = _select_cases(suite)
     fixed_now = now or datetime.combine(date.fromisoformat(NOW), datetime.min.time())
     if fixed_now.date().isoformat() != NOW:
         raise ValueError("qualification date must remain fixed")
@@ -294,11 +376,11 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
         raise ValueError("qualification clock invalid")
 
     results = []
-    for case in CASES:
+    for case in cases:
         results.append(_measure_case(case, planner, now=fixed_now, clock=clock))
 
     by_cohort = {}
-    for name, group in cases_by_cohort().items():
+    for name, group in cohorts.items():
         members = [row for row in results if row["cohort"] == name]
         by_cohort[name] = {
             "case_ids": [case["id"] for case in group],
@@ -315,13 +397,14 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
                        else "incomplete"),
         }
 
-    complete = len(results) == len(CASES)
+    complete = len(results) == len(cases)
     return {
         "status": "complete_synthetic_measurement" if complete else "incomplete",
         "policy_version": QUALIFICATION_POLICY_VERSION,
         "diagnostics_schema_version": DIAGNOSTICS_SCHEMA_VERSION,
-        "cases_sha256": cases_digest(),
-        "expected_case_count": len(CASES),
+        "cases_sha256": digest,
+        **({"suite": suite, "fixture_audit": audit} if audit is not None else {}),
+        "expected_case_count": len(cases),
         "attempted_case_count": len(results),
         "provider_call_count": sum(row["provider_call_count"] for row in results),
         "provider_attempt_count": sum(row["provider_attempt_count"] for row in results),
@@ -340,7 +423,7 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
             "cohorts": {
                 name: _diagnostic_summary(
                     [row for row in results if row["cohort"] == name])
-                for name in cases_by_cohort()
+                for name in cohorts
             },
         },
         "cases": results,
@@ -394,6 +477,7 @@ def _arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true",
                         help="run the twelve synthetic cases through local intent planning")
+    parser.add_argument("--suite", choices=("fixed-v1", "reviewed-v1"), default="fixed-v1")
     parser.add_argument("--url")
     parser.add_argument("--model")
     parser.add_argument("--out")
@@ -404,7 +488,7 @@ def _arguments(argv=None):
 def main(argv=None) -> int:
     args = _arguments(argv)
     if not args.run and not any((args.url, args.model, args.out)):
-        print(json.dumps(plan_summary(), sort_keys=True))
+        print(json.dumps(plan_summary(suite=args.suite), sort_keys=True))
         return 0
     if (not args.run or not args.url or not args.model or not args.out
             or type(args.timeout) not in (int, float) or not 0 < args.timeout <= 45):
@@ -413,7 +497,7 @@ def main(argv=None) -> int:
     try:
         target = _private_output_target(args.out)
         planner = LocalIntentPlanner(args.url, args.model, timeout=args.timeout)
-        report = run_qualification(planner)
+        report = run_qualification(planner, suite=args.suite)
         report["provider_model"] = planner.model
         report["provider_call_url"] = "loopback"
         _write_private_report(target, report)
@@ -429,7 +513,7 @@ def main(argv=None) -> int:
         "quality_evaluated": False,
         "native_runtime_verified": False,
     }, sort_keys=True))
-    return 0 if report["attempted_case_count"] == len(CASES) else 2
+    return 0 if report["attempted_case_count"] == report["expected_case_count"] else 2
 
 
 if __name__ == "__main__":
