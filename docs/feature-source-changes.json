@@ -21704,57 +21704,70 @@
       "apk_published": false
     },
     {
-      "feature": "phone-v67-delivery-and-native-web-qualification-record",
-      "source_commit": "2e218e5d20fa1e5ce77a875d52cd886cae98fdf4",
+      "feature": "offline-exact-reviewed-provider-scene-measurement",
+      "source_commit": "40ad44695932cb46f7cda1afbe9a8ad34ecb7dcf",
       "files": [
-        {
-          "path": "clients/android/README.md",
-          "before_sha256": "ca92e4469e371f834dabec73ee9af2699658e1434228e84296057f1466015c87",
-          "sha256": "0c5a237651c303863ab220f6b59acf3a9660ad7c1af3a8c0c0ae5e953ffbb5fb"
-        },
-        {
-          "path": "clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md",
-          "before_sha256": "eed5727f7cc33727269f147daaaaf8d88e7b810a25f347b320b2989fbb5fcafc",
-          "sha256": "2f8cb62ca8cd41c463d938a97245532d446b1716c1eed2282bef0a0b3905c45e"
-        },
-        {
-          "path": "clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md",
-          "before_sha256": null,
-          "sha256": "feae14bf313b18354825eb17fea9e791a472e4a5736d1541622b2ca15b7fb351"
-        },
-        {
-          "path": "clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md",
-          "before_sha256": "2b525c04e3648ec0fc992c87d88e50fdc43c7124a18bfd76b00a663335a48f5a",
-          "sha256": "7dda611c47e051ba23ee8c4daab213b7f7a4296451c9d1b3cfd7ac7667eac452"
-        },
-        {
-          "path": "docs/FEATURES.md",
-          "before_sha256": "d796e2af0482d4023546caeec3ad3b05af8a41abe9f6ef68b798932c43981274",
-          "sha256": "89a4bc2a01034cbe61eb8e49d5f3787c2831f74073ce45e195f8e27ea9c29f4d"
-        },
-        {
-          "path": "docs/PROJECT_STATUS.md",
-          "before_sha256": "4c76b9af0d3be18a3c3ce08865f7b3e406a20741f9eaccb3d327576ae2036cfc",
-          "sha256": "b024375733b9c5e67b9216a2a7dc95b268276cbadf51584db506f52b537b3597"
-        },
         {
           "path": "docs/README.md",
           "before_sha256": "61f10dfc2e0e4defaa0f87479f0a824fe86fe3764eed55908d0de16f53b3dbfc",
-          "sha256": "f3f1cd96678626521744da2025ff08fa524737bb7f2857f4d9da6cbb5f59d102"
+          "sha256": "1cad15a768ddb604c3be9ad1a1ba5dc0dfac60adae65179c408ad8447cd3f4ef"
         },
         {
-          "path": "docs/ROADMAP.md",
-          "before_sha256": "255da8cb493fde480aeaedb0951f1ec10eed6bafb849013ce3dc2b86f694ed7c",
-          "sha256": "fc36903fbfabcdf4a407ecb59fff29227b10ce3c670dcf54965c83305900de87"
+          "path": "docs/REVIEWED_SCENE_MEASUREMENT.md",
+          "before_sha256": null,
+          "sha256": "60cb6fecb755ed095f4a9b727a72d10b5b3881d51742e4aeac3aa2ad56824651"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_PROVIDER.md",
+          "before_sha256": "51c6aafc1cee29ce393ea1e069d253d722867409dfe7d4deeb5d3f49c68d9a3a",
+          "sha256": "4bbf085c056ed110d8db0be935d485f45ecc7c8dd4d73129a66ad4cff5ce463d"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": "a325ef36b0bcf0c6a3f12b7859b10d95b85c6c18a2dbfd7798331334dedacb8b",
+          "sha256": "abbd1edbb4311f2a9c4bf416b9d3f280830f58c1a939f3b5d566175a4862e127"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "c7e8cbd8e3cee8c233f3b205ee0703b5b0b402a3ff87fd9ad8dc8fee31ad0e2d",
+          "sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61"
+        },
+        {
+          "path": "server/scripts/qualify_reviewed_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "eb4891b58ae81010f130f703d10dcf39d0b69fd00a5991e22094f769f7dd80f9"
+        },
+        {
+          "path": "server/scripts/qualify_semantic_scenes.py",
+          "before_sha256": "f9f047cc755d4fe70c24185698494ee6881fa0ac54722f512371e6f78374db0a",
+          "sha256": "597a0ddf584d5e9c364e663a9c8d719a7dac8cecda75349eecae2140d2e7be39"
+        },
+        {
+          "path": "server/tests/security/test_qualify_reviewed_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "258891c93745d2c9a22a112a62f4b11e0dcdbab3bcc86411e2bac6aea2b9e4dc"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_scene_measurement.py",
+          "before_sha256": null,
+          "sha256": "30ab0d3d6d1291c748855a318532dc3f01a7543dd7c9ba55944a67436f3c3601"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "1c4b90363cb6e4b0715f55c80d095cc5e6d33dd7d9458f393030b0f09f335762",
+          "sha256": "e65c734f2d744456ce2889e3d144a8a5ddabfbfd95674f0b7d1f667df1a21120"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9712f6a506199fe84e4f1a02c0e9b411430eedda654e4219a51ef789e6d52879",
+          "sha256": "88e17cb7a6d38196c01c2df6a44d84c86808e5fb6636347a4134a1cbcd28ac30"
         }
       ],
-      "documentation_only": true,
-      "routes_added": false,
-      "schema_changed": false,
       "runtime_changed": false,
-      "apk_rebuilt": false,
-      "recorded_phone_ota_version": 67,
-      "recorded_api_candidate_only": true
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false,
+      "pair_binding_created": false
     }
   ]
 }

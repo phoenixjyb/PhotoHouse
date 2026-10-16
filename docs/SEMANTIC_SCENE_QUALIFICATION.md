@@ -187,3 +187,9 @@ semantic faithfulness. The caller must separately verify unchanged image
 identities/vectors, relevance labels, English inputs and encoder/preprocessing
 identity, and bind any adaptation receipt to the source and derived datasets.
 Matching candidate counts alone cannot establish those properties.
+
+The separate [reviewed-provider measurement runner](REVIEWED_SCENE_MEASUREMENT.md)
+uses existing matching inner/composite bindings and the same image pipeline. It
+calls the exact reviewed provider for original queries, records original/derived
+hashes and preserves language/cohort metrics. Its measured image identity must
+match the declared binding; it does not turn a diagnostic into an approval.

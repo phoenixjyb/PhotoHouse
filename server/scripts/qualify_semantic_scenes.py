@@ -5,6 +5,7 @@ No-argument planning reads no private files or optional model packages. Executio
 does not open a library, publish vectors, start a service or approve activation.
 """
 import argparse
+from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import importlib
@@ -25,6 +26,8 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from app.access.model_deployment import _load_private_document
 from app.access.private_storage import require_private_directory, require_private_file
 from app.access.visual_candidates import canonical_vector_checksum
+from app.access.visual_candidates import VectorRecord, _canonical_components
+from app.access.semantic_encoder import TextVector
 from image_embedding_receipts import (inspect_checkpoint, verify_checkpoint,
     recipe_sha256, _open_pinned)
 from image_preprocessing_receipts import observe_preprocessing
@@ -33,6 +36,7 @@ from serve_semantic_text import load_configuration, load_model
 from qualify_semantic_pair import (IMAGE_PACKAGES, canonical, output_target,
     write_record, quiet_dependencies)
 from semantic_scene_cases import validate_dataset, dataset_sha256, evaluate
+from semantic_reviewed_projection import ReviewedSemanticProvider
 
 MAX_IMAGE_BYTES = 32 * 1024**2
 MAX_TOTAL_BYTES = 256 * 1024**2
@@ -122,7 +126,10 @@ def decode_image(pin):
     return decoded
 
 
-def measure(model, dataset, image_pins, image_package_versions, deadline):
+def measure(model, dataset, image_pins, image_package_versions, deadline, *, reviewed_provider=None):
+    if reviewed_provider is not None and (type(reviewed_provider) is not ReviewedSemanticProvider
+            or model.binding is not reviewed_provider.inner_binding):
+        raise SceneRefused()
     if {name: version(name) for name in IMAGE_PACKAGES} != image_package_versions:
         raise SceneRefused()
     modules = {name: importlib.import_module(module) for name, module in {
@@ -146,6 +153,12 @@ def measure(model, dataset, image_pins, image_package_versions, deadline):
         package_versions={**model._recipe['package_versions'], **image_package_versions}, source_digests=digests)
     recipe['input_profile'] = 'private_single_frame_jpeg_png_exif_rgb_v1'
     recipe['dataset_sha256'] = dataset_sha256(dataset)
+    if reviewed_provider is not None:
+        identity = reviewed_provider.binding.image_identity
+        if (identity.artifact_sha256 != model._checkpoint_sha256
+                or identity.preprocessing_sha256 != recipe_sha256(recipe)
+                or identity.dimension != 512 or identity.normalization != 'unit_l2'):
+            raise SceneRefused()
     all_pins = (*model._pins, *pins.values(), *image_pins.values())
 
     def check():
@@ -154,7 +167,7 @@ def measure(model, dataset, image_pins, image_package_versions, deadline):
         for pin in all_pins:
             _current(pin)
 
-    images, texts, image_records = {}, {}, []
+    images, texts, image_records, query_receipts = {}, {}, [], {}
     timings = {'images': [], 'text': []}
     for image in dataset['images']:
         check()
@@ -186,7 +199,22 @@ def measure(model, dataset, image_pins, image_package_versions, deadline):
         for language in ('en', 'zh', 'zh-en'):
             check()
             started = time.monotonic()
-            texts[case['id'] + ':' + language] = model._vector(case['queries'][language], check)
+            key = case['id'] + ':' + language
+            query = case['queries'][language]
+            if reviewed_provider is None:
+                texts[key] = model._vector(query, check)
+            else:
+                result = reviewed_provider.encode(query, check=check)
+                original_sha256 = hashlib.sha256(query.encode('utf-8')).hexdigest()
+                if (type(result) is not TextVector
+                        or result.binding_sha256 != reviewed_provider.binding.binding_sha256
+                        or result.query_sha256 != original_sha256):
+                    raise SceneRefused()
+                _canonical_components(VectorRecord('1', reviewed_provider.binding.text_identity,
+                    result.vector, result.checksum_sha256), reviewed_provider.binding.text_identity)
+                texts[key] = result.vector
+                query_receipts[key] = {'original_query_sha256': original_sha256,
+                    'vector_checksum_sha256': result.checksum_sha256}
             check()
             timings['text'].append(time.monotonic() - started)
     metrics = evaluate(dataset, images, texts)
@@ -194,7 +222,7 @@ def measure(model, dataset, image_pins, image_package_versions, deadline):
     for pin in all_pins:
         verify_checkpoint(pin)
     check()
-    return {'schema': 'photohouse.semantic_scene_measurement.v1',
+    record = {'schema': 'photohouse.semantic_scene_measurement.v1',
         'dataset_sha256': dataset_sha256(dataset), 'text_probe': probe,
         'image_preprocessing_recipe': recipe, 'image_preprocessing_sha256': recipe_sha256(recipe),
         'images': image_records, 'metrics': metrics, 'timings_seconds': timings,
@@ -203,6 +231,13 @@ def measure(model, dataset, image_pins, image_package_versions, deadline):
         'pair_binding_created': False, 'legacy_vectors_qualified': False,
         'activation_performed': False, 'resource_limits_enforced_by_cli': False,
         'family_relevance_accepted': False, 'dialect_relevance_measured': False}
+    if reviewed_provider is not None:
+        record.update(schema='photohouse.reviewed_scene_measurement.v1',
+            reviewed_provider=reviewed_provider.probe(), query_receipts=query_receipts,
+            image_identity=asdict(reviewed_provider.binding.image_identity),
+            image_identity_matched=True, serving_transport_measured=False,
+            semantic_faithfulness_automatically_verified=False)
+    return record
 
 
 def execute(path, output, *, model_factory=load_model, measure_fn=measure):
