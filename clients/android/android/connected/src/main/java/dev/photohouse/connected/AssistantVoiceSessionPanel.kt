@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.photohouse.connected.core.VoiceTurnTimingSummary
+import dev.photohouse.connected.core.VoiceSessionStopReason
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -56,6 +57,10 @@ internal data class AssistantVoiceSessionUiState(
     val canResume: Boolean = true,
     val microphoneActive: Boolean = false,
     val clientTiming: VoiceTurnTimingSummary? = null,
+    val readingContinuation: Boolean = false,
+    val readingSegment: Int? = null,
+    val readingSegmentCount: Int? = null,
+    val reason: VoiceSessionStopReason? = null,
 )
 
 internal const val ASSISTANT_VOICE_DETAIL_MAX_CHARS = 120
@@ -80,9 +85,9 @@ internal fun AssistantVoiceSessionPanel(
         AssistantVoiceSessionStage.LISTENING -> t("Listening", "正在聆听")
         AssistantVoiceSessionStage.TRANSCRIBING -> t("Recognizing speech", "正在识别语音")
         AssistantVoiceSessionStage.FINDING -> t("Searching memories", "正在查找回忆")
-        AssistantVoiceSessionStage.PREPARING_REPLY -> t("Preparing reply", "正在准备回复")
-        AssistantVoiceSessionStage.SPEAKING -> t("Speaking", "正在回答")
-        AssistantVoiceSessionStage.PAUSED -> t("Voice conversation paused", "语音对话已暂停")
+        AssistantVoiceSessionStage.PREPARING_REPLY -> if (state.readingContinuation) t("Preparing reading", "正在准备朗读") else t("Preparing reply", "正在准备回复")
+        AssistantVoiceSessionStage.SPEAKING -> if (state.readingContinuation) t("Reading", "正在朗读") else t("Speaking", "正在回答")
+        AssistantVoiceSessionStage.PAUSED -> if (state.reason == VoiceSessionStopReason.READING_FINISHED) t("Section complete", "本节已读完") else t("Voice conversation paused", "语音对话已暂停")
     }
     val confirmedActivity = (state.stage == AssistantVoiceSessionStage.LISTENING && state.microphoneActive) ||
         state.stage == AssistantVoiceSessionStage.SPEAKING
@@ -142,8 +147,15 @@ internal fun AssistantVoiceSessionPanel(
                     modifier = Modifier.semantics { contentDescription = it.take(ASSISTANT_VOICE_DETAIL_MAX_CHARS) }
                         .testTag("assistant-voice-session-detail"))
             }
-            Text(t("Read-only search. Changes need confirmation.", "只读查找；更改回忆前仍须确认。"),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (state.readingContinuation && state.reason != VoiceSessionStopReason.READING_FINISHED) {
+                Text(t("One segment per request. Voice pauses after the final segment.",
+                    "每次朗读一段，最后一段读完后会暂停语音。"),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("assistant-voice-reading-context"))
+            } else if (!state.readingContinuation) {
+                Text(t("Read-only search. Changes need confirmation.", "只读查找；更改回忆前仍须确认。"),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (state.stage == AssistantVoiceSessionStage.LISTENING && onFinishTurn != null) {
@@ -153,7 +165,8 @@ internal fun AssistantVoiceSessionPanel(
                 }
                 if (state.stage == AssistantVoiceSessionStage.PAUSED) {
                     Button(onClick = onResume, enabled = state.canResume, modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-voice-resume")) {
-                        Text(t("Resume", "继续"))
+                        Text(if (state.reason == VoiceSessionStopReason.READING_FINISHED)
+                            t("Resume voice search", "继续语音查找") else t("Resume", "继续"))
                     }
                     if (!state.canResume && onCheckReceipt != null) {
                         OutlinedButton(

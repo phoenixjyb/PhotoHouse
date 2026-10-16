@@ -118,8 +118,8 @@ separate evidence.
 ## Web voice continuation (October 16 following source)
 
 This Web-only increment follows the published phone v66 and last verified live
-API/Web. It is not an APK, Windows deployment or provider-quality claim. Phone
-voice continuation and automatic advancement to later chapters remain future work.
+API/Web. It is not an APK, Windows deployment or provider-quality claim. The later phone source increment is described below; automatic advancement to
+later chapters remains future work.
 
 1. Retrieve a fresh saved story or memoir and play its first manual segment.
 2. After that exact player's successful completion, if another segment remains,
@@ -175,3 +175,37 @@ listening at 390 px and 150% text was inspected, including the Chinese assistant
 workspace; status hit-testing checks that sticky navigation does not cover the
 instructions. These fixtures do not exercise a live ASR/TTS provider or family
 audio. No Android source or installed device changed in this increment.
+
+## Phone voice continuation (October 16 following source)
+
+The following phone source adds the same distinct **语音继续 / Continue by voice**
+choice to the central assistant and private conversation reader cards. It appears
+only after a successful manual segment, with another segment remaining and the
+foreground voice owner idle or ended. The adjacent text explains microphone
+consent. Each spoken request advances one segment of the current first chapter
+or memoir introduction, using the existing protected route and count metadata.
+It does not generate a new chapter, submit a chat turn or change saved wording.
+
+A permission request captures an opaque selection of the exact completed player
+progress and full current source/cohort. Granting microphone permission rechecks
+that same selection; replaying the same segment creates a different progress
+instance and invalidates the old permission action. Account/library/generation,
+thread, card, revision and capability checks still apply at request and playback.
+Rendering, granting permission for another operation, general Start or Resume
+cannot adopt a stale reading selection.
+
+During voice ownership, manual reader and conversation management actions are
+unavailable. The current listening/preparing/speaking state and Pause/End remain
+reachable. The microphone is off during synthesis and playback. Only successful
+platform completion and the matching protected playback report can authorize
+another capture. The last segment pauses and clears progress; Resume returns to
+general voice search. A normal question also discards the reading anchor before
+using the existing read-only request flow.
+
+Pause, End, background/audio-focus interruption, source or capability replacement,
+failed playback and rejected metadata clear reading intent. Late ASR, synthesis
+or playback callbacks cannot reopen capture or clear a newer manual/voice owner.
+Control ASR receipts retain the existing input policy; consumed control text
+cannot parent a later chat turn. No schema, route, provider or audio-retention
+change is introduced. This is source work, separate from a new signed phone
+release, Windows delivery and real family microphone/speaker acceptance.

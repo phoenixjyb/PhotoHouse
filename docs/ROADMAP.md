@@ -84,7 +84,11 @@ Following Web source adds an explicit **语音继续** choice after a completed
 segment and accepts “继续朗读” for exactly one next segment. Actual completion
 returns to listening; the final segment pauses with the microphone off. See
 [Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source).
-Phone parity, later chapters and hands-free chapter advancement remain future work.
+Following phone source adds the same explicit opt-in, with exact completed-player
+selection across microphone permission, pinned Pause/End and owned cleanup.
+[Phone continuation](ASSISTANT_SEGMENT_READING.md#phone-voice-continuation-october-16-following-source)
+still needs signed delivery and physical listening acceptance. Later chapters
+and hands-free chapter advancement remain future work.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.

@@ -165,6 +165,8 @@ internal fun AssistantScreen(
     onOpenSavedMemoryCard: ((Int) -> Unit)? = null,
     onReadSavedMemoryOpening: ((Int) -> Unit)? = null,
     onReadSavedMemorySegment: ((Int, Int) -> Unit)? = null,
+    onContinueSavedMemoryByVoice: ((Int, AssistantMemorySegmentProgress) -> Unit)? = null,
+    voiceMemoryReadingReady: Boolean = false,
     onSavedMemoryFollowupDraft: ((String) -> Boolean)? = null,
     showMemoryOpeningPlayback: Boolean = true,
     draftState: MutableState<String>? = null,
@@ -196,11 +198,11 @@ internal fun AssistantScreen(
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("assistant-back")) { Text(t("Back to album", "返回相册")) }
-            onPrivateConversations?.let { open -> TextButton(onClick = open,
+            onPrivateConversations?.takeIf { voiceSessionState == null }?.let { open -> TextButton(onClick = open,
                 modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-private-conversations")) {
                 Text(t("My conversations", "我的对话"))
             } }
-            if (pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(if (state?.privateThreadId != null) t("Manage conversation", "管理对话") else t("Clear", "清空对话")) }
+            if (voiceSessionState == null && pending == null && exchanges.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.testTag("assistant-clear")) { Text(if (state?.privateThreadId != null) t("Manage conversation", "管理对话") else t("Clear", "清空对话")) }
             if (compactIntro) TextButton(onClick = {
                 if (recording) onCancelRecording()
                 if (voiceSessionState != null) onPauseVoiceSession?.invoke()
@@ -496,8 +498,9 @@ internal fun AssistantScreen(
                                         OutlinedButton(
                                             onClick = { if (action.type == "open") onOpenSavedMemoryCard?.invoke(action.ordinal)
                                                 else onReadSavedMemoryOpening?.invoke(action.ordinal) },
-                                            enabled = if (action.type == "open") savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null
-                                                else savedMemoryWorkspace.savedMemoryReadingAvailable && onReadSavedMemoryOpening != null,
+                                            enabled = voiceSessionState == null && (if (action.type == "open")
+                                                savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null
+                                            else savedMemoryWorkspace.savedMemoryReadingAvailable && onReadSavedMemoryOpening != null),
                                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                                 .testTag("assistant-saved-memory-action"),
                                         ) {
@@ -509,6 +512,7 @@ internal fun AssistantScreen(
                                     if (savedMemoryWorkspace.savedMemoryFollowupAvailable && onSavedMemoryFollowupDraft != null) {
                                         AssistChip(onClick = { val prompt = memoryFollowupPrompt(0, 2, zh)
                                             if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
+                                            enabled = voiceSessionState == null,
                                             label = { Text(memoryFollowupLabel(2, zh)) },
                                             modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(0, 2, zh) }
                                                 .testTag("assistant-memory-followup-all"))
@@ -528,6 +532,7 @@ internal fun AssistantScreen(
                                                     listOf(memoryFollowupPrompt(ordinal, 0, zh), memoryFollowupPrompt(ordinal, 1, zh))
                                                         .forEachIndexed { promptIndex, prompt ->
                                                             AssistChip(onClick = { if (onSavedMemoryFollowupDraft(prompt)) setDraft(prompt) },
+                                                                enabled = voiceSessionState == null,
                                                                 label = { Text(memoryFollowupLabel(promptIndex, zh)) },
                                                                 modifier = Modifier.semantics { contentDescription = memoryFollowupAccessibleLabel(ordinal, promptIndex, zh) }
                                                                     .testTag("assistant-memory-followup-$ordinal-$promptIndex"))
@@ -536,11 +541,22 @@ internal fun AssistantScreen(
                                             }
                                             val canReadSavedMemorySegments = savedMemoryWorkspace.savedMemorySegmentReadingAvailable &&
                                                 onReadSavedMemorySegment != null && card.kind in setOf("story", "memoir")
+                                            val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
+                                                it.ordinal == ordinal && it.threadId == freshMemoryTurn.threadId &&
+                                                    it.turnId == freshMemoryTurn.requestId && it.revision == freshMemoryTurn.revision &&
+                                                    it.sourceKind == card.kind
+                                            }
+                                            val segmentCount = segmentProgress?.segmentCount
+                                            val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
+                                                segmentProgress != null && segmentCount != null &&
+                                                segmentProgress.segmentIndex + 1 <= segmentCount
+                                            val canVoiceContinue = segmentProgress != null && segmentReady && segmentCount != null &&
+                                                segmentProgress.segmentIndex + 1 < segmentCount
                                             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
                                                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                 if (onOpenSavedMemoryCard != null) {
                                                     TextButton(onClick = { onOpenSavedMemoryCard(ordinal) },
-                                                        enabled = savedMemoryWorkspace.savedMemoryReaderAvailable &&
+                                                        enabled = voiceSessionState == null && savedMemoryWorkspace.savedMemoryReaderAvailable &&
                                                             savedMemoryWorkspace.memoryReaderOrdinal != ordinal,
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-open-saved-memory-$ordinal")) {
                                                         Text(if (savedMemoryWorkspace.memoryReaderOrdinal == ordinal)
@@ -550,7 +566,7 @@ internal fun AssistantScreen(
                                                 }
                                                 if (onReadSavedMemoryOpening != null) {
                                                     TextButton(onClick = { onReadSavedMemoryOpening(ordinal) },
-                                                        enabled = savedMemoryWorkspace.savedMemoryReadingAvailable &&
+                                                        enabled = voiceSessionState == null && savedMemoryWorkspace.savedMemoryReadingAvailable &&
                                                             !assistant.speechBusy &&
                                                             savedMemoryWorkspace.memoryReaderOrdinal != ordinal &&
                                                             savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy,
@@ -567,15 +583,7 @@ internal fun AssistantScreen(
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-opening-$ordinal"),
                                                     ) { Text(t("Stop", "停止")) }
                                                 }
-                                                val segmentProgress = assistant?.speechMemorySegmentProgress?.takeIf {
-                                                    it.ordinal == ordinal && it.threadId == freshMemoryTurn.threadId &&
-                                                        it.turnId == freshMemoryTurn.requestId && it.revision == freshMemoryTurn.revision &&
-                                                        it.sourceKind == card.kind
-                                                }
                                                 if (canReadSavedMemorySegments) {
-                                                    val segmentCount = segmentProgress?.segmentCount
-                                                    val segmentReady = segmentProgress?.completedSegmentIndex == segmentProgress?.segmentIndex &&
-                                                        segmentCount != null && segmentProgress.segmentIndex + 1 <= segmentCount
                                                     val canRestart = segmentReady && segmentCount != null &&
                                                         segmentProgress.segmentIndex + 1 >= segmentCount
                                                     val activeSegment = segmentProgress != null && !segmentReady
@@ -596,32 +604,44 @@ internal fun AssistantScreen(
                                                     TextButton(onClick = {
                                                         val next = if (segmentProgress == null || canRestart) 0 else segmentProgress.segmentIndex + 1
                                                         onReadSavedMemorySegment?.invoke(ordinal, next)
-                                                    }, enabled = savedMemoryWorkspace.savedMemorySegmentReadingAvailable && !assistant.let { it?.speechBusy == true || it?.speechAudio != null } &&
+                                                    }, enabled = voiceSessionState == null && savedMemoryWorkspace.savedMemorySegmentReadingAvailable && !assistant.let { it?.speechBusy == true || it?.speechAudio != null } &&
                                                         savedMemoryWorkspace.pendingTurn == null && !savedMemoryWorkspace.busy && !activeSegment &&
                                                         (segmentProgress == null || canRestart || segmentReady && segmentCount != null && segmentProgress.segmentIndex + 1 < segmentCount),
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-read-memory-segment-$ordinal")) {
                                                         Text(label)
                                                     }
                                                     if (assistant?.speechBusy == true && segmentProgress != null) TextButton(
-                                                        onClick = onStopSpeech,
+                                                        onClick = onStopSpeech, enabled = voiceSessionState == null,
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
                                                     ) { Text(t("Stop", "停止")) }
                                                     else if (assistant?.speechAudio != null && segmentProgress != null) TextButton(
-                                                        onClick = onStopSpeech,
+                                                        onClick = onStopSpeech, enabled = voiceSessionState == null,
                                                         modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-stop-memory-segment-$ordinal"),
                                                     ) { Text(t("Stop", "停止")) }
+                                                    if (voiceMemoryReadingReady && onContinueSavedMemoryByVoice != null && canVoiceContinue) {
+                                                        TextButton(
+                                                            onClick = { onContinueSavedMemoryByVoice.invoke(ordinal, segmentProgress!!) },
+                                                            modifier = Modifier.heightIn(min = 48.dp)
+                                                                .testTag("assistant-continue-memory-by-voice-$ordinal"),
+                                                        ) { Text(t("Continue by voice", "语音继续")) }
+                                                    }
                                                 }
                                             }
-                                            if (canReadSavedMemorySegments) Text(
+                                            if (canReadSavedMemorySegments && voiceSessionState == null) Text(
                                                 t("One segment at a time; continue after it finishes. The microphone stays off.",
                                                     "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 modifier = Modifier.testTag("assistant-memory-segment-guidance-$ordinal"))
+                                            if (canReadSavedMemorySegments && voiceMemoryReadingReady && onContinueSavedMemoryByVoice != null && canVoiceContinue) Text(
+                                                t("Continue by voice starts the microphone. Say “continue reading” to hear this saved memory’s next section; other requests use read-only search until Pause or End.",
+                                                    "语音继续会开启麦克风。说“继续朗读”收听这段已保存内容的下一段；其他语音请求只进行只读查找，直到你点“暂停”或“结束”。"),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.testTag("assistant-voice-continuation-consent-$ordinal"))
                                             if (savedMemoryWorkspace.memoryReaderErrorOrdinal == ordinal) {
                                                 Text(t("Could not open this memory.", "无法打开这段回忆。"),
                                                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                                 TextButton(onClick = { onOpenSavedMemoryCard?.invoke(ordinal) },
-                                                    enabled = savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null,
+                                                    enabled = voiceSessionState == null && savedMemoryWorkspace.savedMemoryReaderAvailable && onOpenSavedMemoryCard != null,
                                                     modifier = Modifier.heightIn(min = 48.dp).testTag("assistant-retry-saved-memory-$ordinal")) {
                                                     Text(t("Try again", "重试"))
                                                 }
@@ -710,7 +730,8 @@ internal fun AssistantScreen(
                                                         modifier = Modifier.testTag("assistant-match-reason-${asset.id}"))
                                                 }
                                             }
-                                            TextButton(onClick = { onOpen(asset.id, exchange.turn.receipt?.requestId) }, modifier = Modifier.testTag("assistant-open-${asset.id}")) {
+                                            TextButton(onClick = { onOpen(asset.id, exchange.turn.receipt?.requestId) },
+                                                enabled = voiceSessionState == null, modifier = Modifier.testTag("assistant-open-${asset.id}")) {
                                                 Text(t("Open", "打开"))
                                             }
                                         }

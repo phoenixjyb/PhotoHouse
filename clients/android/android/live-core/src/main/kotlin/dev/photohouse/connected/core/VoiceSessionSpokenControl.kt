@@ -1,7 +1,7 @@
 package dev.photohouse.connected.core
 
 /** Exact spoken controls accepted only inside an explicitly started voice session. */
-internal enum class VoiceSessionSpokenControl { PAUSE, END }
+internal enum class VoiceSessionSpokenControl { PAUSE, END, CONTINUE_READING }
 
 internal fun classifyVoiceSessionSpokenControl(text: String): VoiceSessionSpokenControl? {
     val normalized = text.trim().asciiLowercase().trimEnd('.', '!', '?', '。', '！', '？')
@@ -10,6 +10,8 @@ internal fun classifyVoiceSessionSpokenControl(text: String): VoiceSessionSpoken
             VoiceSessionSpokenControl.PAUSE
         "结束", "结束语音", "结束对话", "停止聆听", "end voice chat", "end voice search", "stop listening" ->
             VoiceSessionSpokenControl.END
+        "继续朗读", "继续读", "读下一段", "continue reading", "read the next part", "read the next segment" ->
+            VoiceSessionSpokenControl.CONTINUE_READING
         else -> null
     }
 }

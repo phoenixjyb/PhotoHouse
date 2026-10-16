@@ -58,6 +58,137 @@ class VoiceSessionControllerTest {
     }
 
     @Test
+    fun memoryReadingAdmissionRequiresForegroundBoundedSequenceWithAnotherSegment() {
+        val controller = VoiceSessionController()
+        assertFalse(controller.startMemoryReading(scope, false, segment = 0, segmentCount = 2).accepted)
+        assertFalse(controller.startMemoryReading(scope, true, segment = -1, segmentCount = 2).accepted)
+        assertFalse(controller.startMemoryReading(scope, true, segment = 0, segmentCount = 0).accepted)
+        assertFalse(controller.startMemoryReading(scope, true, segment = 0, segmentCount = 129).accepted)
+        assertFalse(controller.startMemoryReading(scope, true, segment = 1, segmentCount = 2).accepted)
+        assertEquals(VoiceSessionPhase.IDLE, controller.state.phase)
+
+        val started = controller.startMemoryReading(scope, true, segment = 0, segmentCount = 2)
+        assertEquals(VoiceSessionPhase.LISTENING, started.state.phase)
+        assertTrue(started.state.readingContinuation)
+        assertEquals(0, started.state.readingSegment)
+        assertEquals(2, started.state.readingSegmentCount)
+        assertFalse(controller.startMemoryReading(scope, true, segment = 0, segmentCount = 2).accepted)
+    }
+
+    @Test
+    fun readingContinuationRequestsNextSegmentAndPausesAtFinalCompletion() {
+        val controller = VoiceSessionController()
+        val firstCapture = effect<VoiceSessionEffect.StartCapture>(
+            controller.startMemoryReading(scope, true, segment = 0, segmentCount = 3),
+        ).binding
+        val firstAsr = effect<VoiceSessionEffect.Transcribe>(controller.captureCompleted(firstCapture)).binding
+        val continuation = controller.transcriptReady(firstAsr, "继续朗读")
+        val firstRead = effect<VoiceSessionEffect.ReadMemorySegment>(continuation)
+        assertEquals(1, firstRead.segment)
+        assertEquals(3, firstRead.segmentCount)
+        assertEquals(VoiceSessionPhase.SPEAKING, continuation.state.phase)
+        assertEquals(1, continuation.state.readingSegment)
+        assertTrue(continuation.effects.none { it is VoiceSessionEffect.SubmitReadOnlyRequest })
+
+        val nextCapture = effect<VoiceSessionEffect.StartCapture>(controller.speechCompleted(firstRead.binding, true)).binding
+        assertTrue(controller.state.readingContinuation)
+        assertEquals(1, controller.state.readingSegment)
+        val nextAsr = effect<VoiceSessionEffect.Transcribe>(controller.captureCompleted(nextCapture)).binding
+        val finalRead = effect<VoiceSessionEffect.ReadMemorySegment>(controller.transcriptReady(nextAsr, "read the next segment"))
+        assertEquals(2, finalRead.segment)
+
+        val finished = controller.speechCompleted(finalRead.binding, success = true)
+        assertEquals(VoiceSessionPhase.PAUSED, finished.state.phase)
+        assertEquals(VoiceSessionStopReason.READING_FINISHED, finished.state.reason)
+        assertFalse(finished.effects.any {
+            it is VoiceSessionEffect.StartCapture || it is VoiceSessionEffect.SubmitReadOnlyRequest ||
+                it is VoiceSessionEffect.ReadMemorySegment || it is VoiceSessionEffect.Speak
+        })
+        assertFalse(finished.state.readingContinuation)
+        assertEquals(null, finished.state.readingSegment)
+        assertEquals(null, finished.state.readingSegmentCount)
+        assertFalse(controller.speechCompleted(finalRead.binding, success = true).accepted)
+    }
+
+    @Test
+    fun continuationWithoutSelectionPausesAndDoesNotSubmit() {
+        val controller = VoiceSessionController()
+        val asr = beginTranscription(controller)
+        val result = controller.transcriptReady(asr, "读下一段")
+        assertEquals(VoiceSessionPhase.PAUSED, result.state.phase)
+        assertEquals(VoiceSessionStopReason.READING_NEEDS_SELECTION, result.state.reason)
+        assertFalse(result.effects.any {
+            it is VoiceSessionEffect.StartCapture || it is VoiceSessionEffect.SubmitReadOnlyRequest ||
+                it is VoiceSessionEffect.ReadMemorySegment || it is VoiceSessionEffect.Speak
+        })
+        assertFalse(result.state.readingContinuation)
+    }
+
+    @Test
+    fun pauseEndUnavailableAndStaleCallbacksClearOrPreserveReadingAsSpecified() {
+        val paused = VoiceSessionController()
+        assertFalse(paused.readingUnavailable().accepted)
+        val pausedCapture = effect<VoiceSessionEffect.StartCapture>(
+            paused.startMemoryReading(scope, true, segment = 0, segmentCount = 2),
+        ).binding
+        val pause = paused.pause()
+        assertEquals(VoiceSessionStopReason.USER_PAUSED, pause.state.reason)
+        assertFalse(pause.state.readingContinuation)
+        assertFalse(paused.captureCompleted(pausedCapture).accepted)
+        assertFalse(paused.readingUnavailable().accepted)
+        val resumed = paused.resume(scope, true)
+        assertFalse(resumed.state.readingContinuation)
+        assertEquals(null, resumed.state.readingSegment)
+        assertEquals(null, resumed.state.readingSegmentCount)
+
+        val ended = VoiceSessionController()
+        val endCapture = effect<VoiceSessionEffect.StartCapture>(
+            ended.startMemoryReading(scope, true, segment = 0, segmentCount = 2),
+        ).binding
+        val endAsr = effect<VoiceSessionEffect.Transcribe>(ended.captureCompleted(endCapture)).binding
+        val end = ended.transcriptReady(endAsr, "结束")
+        assertEquals(VoiceSessionPhase.ENDED, end.state.phase)
+        assertFalse(end.state.readingContinuation)
+        assertFalse(ended.transcriptReady(endAsr, "继续朗读").accepted)
+
+        val unavailable = VoiceSessionController()
+        val unavailableCapture = effect<VoiceSessionEffect.StartCapture>(
+            unavailable.startMemoryReading(scope, true, segment = 0, segmentCount = 2),
+        ).binding
+        val stopped = unavailable.readingUnavailable()
+        assertEquals(VoiceSessionStopReason.READING_UNAVAILABLE, stopped.state.reason)
+        assertFalse(stopped.state.readingContinuation)
+        assertFalse(unavailable.captureCompleted(unavailableCapture).accepted)
+
+        val failedSpeech = VoiceSessionController()
+        val failCapture = effect<VoiceSessionEffect.StartCapture>(
+            failedSpeech.startMemoryReading(scope, true, segment = 0, segmentCount = 2),
+        ).binding
+        val failAsr = effect<VoiceSessionEffect.Transcribe>(failedSpeech.captureCompleted(failCapture)).binding
+        val read = effect<VoiceSessionEffect.ReadMemorySegment>(failedSpeech.transcriptReady(failAsr, "继续读"))
+        val failure = failedSpeech.speechCompleted(read.binding, success = false)
+        assertEquals(VoiceSessionStopReason.SPEECH_FAILED, failure.state.reason)
+        assertFalse(failure.state.readingContinuation)
+        assertEquals(null, failure.state.readingSegment)
+        assertEquals(null, failure.state.readingSegmentCount)
+    }
+
+    @Test
+    fun ordinaryQueryClearsReadingModeAndKeepsGenericRequestBehavior() {
+        val controller = VoiceSessionController()
+        val capture = effect<VoiceSessionEffect.StartCapture>(
+            controller.startMemoryReading(scope, true, segment = 0, segmentCount = 2),
+        ).binding
+        val asr = effect<VoiceSessionEffect.Transcribe>(controller.captureCompleted(capture)).binding
+        val request = controller.transcriptReady(asr, "找去年春天的照片")
+        assertEquals(VoiceSessionPhase.REQUESTING, request.state.phase)
+        assertTrue(request.effects.single() is VoiceSessionEffect.SubmitReadOnlyRequest)
+        assertFalse(request.state.readingContinuation)
+        assertEquals(null, request.state.readingSegment)
+        assertEquals(null, request.state.readingSegmentCount)
+    }
+
+    @Test
     fun everyAsyncCallbackIsFencedBySessionOperationAndContext() {
         val controller = VoiceSessionController()
         val oldCapture = effect<VoiceSessionEffect.StartCapture>(controller.start(scope, true)).binding

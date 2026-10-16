@@ -13,10 +13,19 @@ class VoiceSessionSpokenControlTest {
         assertEquals(VoiceSessionSpokenControl.PAUSE, classifyVoiceSessionSpokenControl("PAUSE."))
     }
 
+    @Test fun exactContinuationAllowlistUsesTheSameNormalization() {
+        listOf("继续朗读", "继续读", "读下一段", "continue reading", "read the next part", "read the next segment")
+            .forEach {
+                assertEquals(VoiceSessionSpokenControl.CONTINUE_READING, classifyVoiceSessionSpokenControl("  $it!?。  "))
+            }
+        assertEquals(VoiceSessionSpokenControl.CONTINUE_READING, classifyVoiceSessionSpokenControl("CONTINUE READING."))
+    }
+
     @Test fun extraWordsNegationQuotesAndInternalPunctuationRemainOrdinaryText() {
         listOf(
             "please pause", "pause please", "do not pause", "don't pause", "please end voice chat",
             "pause, please", "'pause'", "\"pause\"", "暂停一下", "不要暂停", "pause voice chat now",
+            "please continue reading", "continue reading please", "read the next segment now", "继续朗读一下", "不要继续读",
         ).forEach { assertNull(it, classifyVoiceSessionSpokenControl(it)) }
     }
 
