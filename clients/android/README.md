@@ -2,15 +2,18 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v66 / `0.66-proposal-review`**. Its signed
+The phone release baseline is **v67 / `0.67-voice-reading`**. Its signed
 artifact, native HTTPS readback and CI evidence are recorded in the
-[v66 release record](docs/PHONE_V66_RELEASE_2026-10-16.md). The release adds
-reviewed adoption of selected story chapter proposals into an unsaved editor;
-story generation remains off. Physical phone installation and family
+[v67 release record](docs/PHONE_V67_RELEASE_2026-10-16.md). The release adds
+spoken Pause/End and explicitly opted-in saved-section voice continuation;
+reviewed chapter-proposal adoption remains available and generation stays off.
+Physical phone installation and real ASR/TTS/family
 acceptance remain open. TV OTA remains v30; v31 source is unpublished. See the dated
 [project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
-PR #54's Android scene-search controls are later source; they are not in the
-fixed v66 APK and need a later release.
+PR #54's Android scene-search controls are included, with server capability
+negotiation. This release does not activate a scene provider. The paired
+API/Web source passed Windows synthetic qualification and still needs its live
+cutover approval.
 
 ## Projects
 
@@ -109,12 +112,13 @@ signing, OTA delivery and family acceptance remain separate gates.
 ## Release and acceptance
 
 Source checks, debug APK assembly, a signed release, OTA publication,
-installation, and family/device acceptance are separate evidence. The v66
+installation, and family/device acceptance are separate evidence. The v67
 release record documents the signed phone APK and published phone update; it does
 not establish physical-phone or family acceptance. Native Windows and
 independent Mac full-stream readback passed, and API binding plus the unchanged
-TV feed were checked in postflight. Use the [Chinese v66 test guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
-for proposal review and explicit-save acceptance. TV OTA remains v30. The
+TV feed were checked in postflight. Use the [Chinese v67 test guide](docs/PHONE_V67_TEST_GUIDE_ZH.md)
+for voice continuation and interruption acceptance, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
+for retained proposal review and explicit saving. TV OTA remains v30. The
 physical TV/projector check is pending. Do not treat a local check or APK
 assembly as release signing, installation, or acceptance.
 

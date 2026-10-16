@@ -66,33 +66,27 @@ acceptance remain in the trial above.
 
 ## 2. Make assistant reading and conversation fluid
 
-API/Web `8f46905` and phone v61 are delivered with local/native
-qualification, verified backup, worker restoration and original-certificate OTA
-readback. The [release record](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)
-records exact artifacts; family acceptance remains ahead of broader narration.
+Phone **v67 / `0.67-voice-reading`** is delivered with the original certificate
+and icon, native package/signature/alignment checks and complete Windows plus
+independent Mac trusted HTTPS readback. Its [release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md)
+keeps the signed artifact, source and physical/family acceptance separate.
 
-v60 includes [temporary reading-size controls](READER_TEXT_SIZE.md),
-[explicit preview recovery](READER_PREVIEW_RECOVERY.md), compact phone memoir
-navigation and a [first-story guide](FIRST_STORY_GUIDE_ZH.md). Assistant
-[saved-section narration](ASSISTANT_SEGMENT_READING.md) reads a first chapter or
-memoir introduction in explicit segments. Successful playback enables Continue;
-Stop and source/scope changes clear progress. The following local source adds
-exact [spoken Pause/End controls](VOICE_SESSION_SPOKEN_CONTROLS.md), recognized
-after ASR during the opted-in Listening phase. Resume stays explicit and playback
-keeps the microphone off; this is not in the frozen v66 APK or claimed live.
-Following Web source adds an explicit **语音继续** choice after a completed
-segment and accepts “继续朗读” for exactly one next segment. Actual completion
-returns to listening; the final segment pauses with the microphone off. See
-[Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source).
-Following phone source adds the same explicit opt-in, with exact completed-player
-selection across microphone permission, pinned Pause/End and owned cleanup.
-[Phone continuation](ASSISTANT_SEGMENT_READING.md#phone-voice-continuation-october-16-following-source)
-still needs signed delivery and physical listening acceptance. Later chapters
-and hands-free chapter advancement remain future work.
+The delivered phone adds exact [spoken Pause/End](VOICE_SESSION_SPOKEN_CONTROLS.md)
+and an explicit **语音继续** choice after completed saved-section playback.
+One “继续朗读” requests one next segment; owned successful completion alone
+can reopen listening. The final segment pauses with the microphone off. Exact
+source/progress selection survives permission handling; Pause/End, lifecycle
+and scope changes clear intent. Resume returns to voice search. The mode keeps
+microphone and playback separate; later chapters and spoken interruption of playback
+remain future work.
 
-First deliver the merged controls and segment continuation as phone v67 and
-paired API/Web candidates, then run the [real voice trial](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md).
-Candidate preparation does not establish signing, Windows delivery or family acceptance.
+The paired [Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source)
+source `88de08e` passed Windows candidate-only qualification (12 assistant,
+12 oral-history and 26 planner checks). It is not served yet. Next prepare the
+exact live Web/API switch with a fresh stopped-writer backup and guarded rollback,
+obtain its separate service-operation authority, then run the [real voice trial](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md)
+on the updated phone and delivered Web. Real ASR/TTS, latency, owner/member and
+family acceptance stay ahead of broader narration or microphone/speaker overlap.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.
