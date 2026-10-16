@@ -12,6 +12,7 @@ from datetime import date, datetime
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import time
 
@@ -27,6 +28,8 @@ from app.access.search_text import normalize_sources
 from search_intent_cases import CASES, NOW, cases_by_cohort, cases_digest
 
 QUALIFICATION_POLICY_VERSION = 2
+DIAGNOSTICS_SCHEMA_VERSION = 1
+_DIAGNOSTIC_CODE = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 
 
 class _CountingPlanner:
@@ -104,6 +107,76 @@ def _evaluate_evidence(case: dict, description: dict) -> tuple[list[dict], bool]
     return checks, all_expected
 
 
+def _evidence_diagnostics(case: dict, checks: list[dict], evaluated: bool) -> dict:
+    if case["expected_status"] != "ready":
+        state = "not_applicable"
+    elif evaluated:
+        state = "evaluated"
+    else:
+        state = "skipped_expected_ready"
+
+    positives = [asset["asset_id"] for asset in case["evidence"]
+                 if asset["expected_match"] is True]
+    negatives = [asset["asset_id"] for asset in case["evidence"]
+                 if asset["expected_match"] is False]
+    by_id = {check["fixture_id"]: check for check in checks}
+    return {
+        "state": state,
+        "positive_hits": sum(
+            by_id.get(ident, {}).get("actual_match") is True for ident in positives),
+        "positive_total": len(positives),
+        "negative_false_positives": sum(
+            by_id.get(ident, {}).get("actual_match") is True for ident in negatives),
+        "negative_total": len(negatives),
+        "positive_recall_met": (state == "evaluated" and bool(positives) and all(
+            by_id.get(ident, {}).get("actual_match") is True for ident in positives)
+            if state != "not_applicable" else None),
+        "negative_false_positive_expectation_met": (state == "evaluated" and bool(negatives) and all(
+            by_id.get(ident, {}).get("actual_match") is False for ident in negatives)
+            if state != "not_applicable" else None),
+    }
+
+
+def _diagnostic_summary(rows: list[dict]) -> dict:
+    def counts(values):
+        result = {}
+        for value in values:
+            key = value if type(value) is str else "none"
+            result[key] = result.get(key, 0) + 1
+        return result
+
+    evidence = [row["diagnostics"]["evidence"] for row in rows]
+    positive_hits = sum(item["positive_hits"] for item in evidence)
+    positive_total = sum(item["positive_total"] for item in evidence)
+    false_positives = sum(item["negative_false_positives"] for item in evidence)
+    negative_total = sum(item["negative_total"] for item in evidence)
+    skipped_evidence = sum(item["state"] == "skipped_expected_ready" for item in evidence)
+    return {
+        "case_count": len(rows),
+        "provider_stages": counts(row["diagnostics"]["provider_stage"] for row in rows),
+        "proposal_stages": counts(row["diagnostics"]["proposal_stage"] for row in rows),
+        "compiler_statuses": counts(row["diagnostics"]["compiler_status"] for row in rows),
+        "compiler_reasons": counts(row["diagnostics"]["compiler_reason"] for row in rows),
+        "status_expectations_met": sum(row["status_expectation_met"] for row in rows),
+        "question_expectations_met": sum(row["question_expectation_met"] for row in rows),
+        "hard_filter_expectations_met": sum(row["hard_filters_preserved"] for row in rows),
+        "evidence": {
+            "applicable_case_count": sum(item["state"] != "not_applicable" for item in evidence),
+            "not_applicable_case_count": sum(item["state"] == "not_applicable" for item in evidence),
+            "skipped_expected_ready_case_count": sum(
+                item["state"] == "skipped_expected_ready" for item in evidence),
+            "positive_hits": positive_hits,
+            "positive_total": positive_total,
+            "positive_recall_met": (positive_total > 0 and skipped_evidence == 0
+                                     and positive_hits == positive_total),
+            "negative_false_positives": false_positives,
+            "negative_total": negative_total,
+            "negative_false_positive_expectation_met": (
+                negative_total > 0 and skipped_evidence == 0 and false_positives == 0),
+        },
+    }
+
+
 def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
     measured = _CountingPlanner(planner, clock=clock)
     try:
@@ -147,14 +220,28 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
 
     evidence_checks = []
     evidence_ok = True
+    evidence_evaluated = False
     if case["expected_status"] == "ready":
         description = result.filters.get("descriptive")
         if type(description) is dict:
             evidence_checks, evidence_ok = _evaluate_evidence(case, description)
+            evidence_evaluated = True
         else:
             evidence_ok = False
     invoked_at_most_once = measured.calls <= 1
     met = status_ok and question_ok and hard_ok and evidence_ok and invoked_at_most_once
+    provider_stage = {
+        "not_needed": "not_needed",
+        "response": "response",
+        "intent_unavailable": "refused",
+        "adapter_error": "error",
+    }.get(provider_outcome, "error")
+    proposal_stage = ("not_available" if provider_outcome != "response" else
+                      "validated" if validated is not None else "invalid")
+    reason = result.reason
+    diagnostic_reason = (reason if type(reason) is str and _DIAGNOSTIC_CODE.fullmatch(reason)
+                         else "other" if reason is not None else "none")
+    evidence_diagnostic = _evidence_diagnostics(case, evidence_checks, evidence_evaluated)
     return {
         "case_id": case["id"],
         "cohort": case["cohort"],
@@ -185,6 +272,16 @@ def _measure_case(case: dict, planner, *, now: datetime, clock) -> dict:
         "provider_query_view": measured.query_views[0] if measured.query_views else None,
         "expectations_met": met,
         "plan_query_invocations": 1,
+        "diagnostics": {
+            "provider_stage": provider_stage,
+            "proposal_stage": proposal_stage,
+            "compiler_status": result.status,
+            "compiler_reason": diagnostic_reason,
+            "status_expectation_met": status_ok,
+            "question_expectation_met": question_ok,
+            "hard_filters_expectation_met": hard_ok,
+            "evidence": evidence_diagnostic,
+        },
     }
 
 
@@ -222,6 +319,7 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
     return {
         "status": "complete_synthetic_measurement" if complete else "incomplete",
         "policy_version": QUALIFICATION_POLICY_VERSION,
+        "diagnostics_schema_version": DIAGNOSTICS_SCHEMA_VERSION,
         "cases_sha256": cases_digest(),
         "expected_case_count": len(CASES),
         "attempted_case_count": len(results),
@@ -237,6 +335,14 @@ def run_qualification(planner, *, now: datetime | None = None, clock=time.perf_c
         "retry_count": 0,
         "warmup_call_count": 0,
         "cohorts": by_cohort,
+        "diagnostics": {
+            "overall": _diagnostic_summary(results),
+            "cohorts": {
+                name: _diagnostic_summary(
+                    [row for row in results if row["cohort"] == name])
+                for name in cases_by_cohort()
+            },
+        },
         "cases": results,
         "synthetic_expectations_evaluated": True,
         "quality_evaluated": False,

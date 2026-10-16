@@ -45,6 +45,88 @@ def ready(query, spans):
 
 
 class SearchIntentTests(unittest.TestCase):
+    def test_person_led_disposal_construction_preserves_every_covered_condition(self):
+        cases = (
+            ('找示例儿童把绿色卡片放进纸盒的2031年6月视频包含“spring fair”',
+             '示例儿童', ('绿色卡片', '放进', '纸盒')),
+            ('find Mira 把 green card 放进 paper box 的 videos in June 2031 containing "spring fair"',
+             'Mira', ('green card', '放进', 'paper box')),
+            ('找Mira把红色纸条折成小船的2031年6月视频包含“spring fair”',
+             'Mira', ('红色纸条', '折成', '小船')),
+            ('找Mira把透明杯子摆在木桌的2031年6月视频包含“spring fair”',
+             'Mira', ('透明杯子', '摆', '木桌')),
+        )
+        for query, label, clues in cases:
+            with self.subTest(query=query):
+                planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
+                result = plan_query(query, now=NOW, entities=entities(labels=[label], people=['301']),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('ready', result.status, result)
+                self.assertEqual({'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                                  'date': {'from': '2031-06-01', 'to': '2031-06-30'},
+                                  'text': 'spring fair'},
+                                 {k: v for k, v in result.filters.items() if k != 'descriptive'})
+                self.assertEqual(list(clues), [c['surface'] for c in
+                                              result.filters['descriptive']['concepts']])
+                self.assertEqual(1, len(planner.calls))
+
+    def test_disposal_grammar_never_consumes_missing_actions_objects_or_quantities(self):
+        cases = (
+            ('找Mira把绿色卡片放进纸盒的视频', ('绿色卡片', '纸盒')),
+            ('找Mira把绿色卡片放进纸盒的视频', ('绿色卡片', '放进')),
+            ('找Mira把两张绿色卡片放进纸盒的视频', ('绿色卡片', '放进', '纸盒')),
+            ('找Mira把绿色卡片悄悄放进纸盒的视频', ('绿色卡片', '放进', '纸盒')),
+            ('找Mira把绿色卡片放进纸盒旁边的视频', ('绿色卡片', '放进', '纸盒')),
+            ('找Mira把绿色卡片的视频', ('绿色卡片',)),
+        )
+        for query, clues in cases:
+            with self.subTest(query=query, clues=clues):
+                planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
+                result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'unsupported_condition'),
+                                 (result.status, result.reason))
+                self.assertEqual({}, result.filters)
+                self.assertEqual(1, len(planner.calls))
+
+    def test_disposal_grammar_requires_one_unambiguous_person_label(self):
+        query = '找Mira把绿色卡片放进纸盒的视频'
+        for resolved in (entities(), entities(labels=['Mira'], tags=['301']),
+                         entities(labels=['Mira'], people=['301', '302']),
+                         entities(labels=['Mira', 'Alias'], people=['301']),
+                         entities(labels=['Mira'], people=['301'], locations=['401']),
+                         entities(labels=[''], people=['301'])):
+            with self.subTest(resolved=resolved):
+                planner = Proposal(ready(query, [(x, [x]) for x in ('绿色卡片', '放进', '纸盒')]))
+                result = plan_query(query, now=NOW, entities=resolved,
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('clarification', result.status, result)
+                self.assertEqual({}, result.filters)
+
+    def test_disposal_grammar_preserves_compound_words_and_refinement_scope(self):
+        for full, partial in (('把手', '手'), ('把玩红色丝带', '玩红色丝带')):
+            query = '找Mira' + full + '放进纸盒的视频'
+            for surface, expected in ((full, 'ready'), (partial, 'clarification')):
+                with self.subTest(surface=surface):
+                    planner = Proposal(ready(query, [(x, [x]) for x in (surface, '放进', '纸盒')]))
+                    result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                                        previous_filters=None, planner=planner)
+                    self.assertEqual(expected, result.status, result)
+                    if result.status == 'ready':
+                        self.assertEqual(full, result.filters['descriptive']['concepts'][0]['surface'])
+
+        previous = {'date': {'from': '2030-01-01', 'to': '2030-12-31'},
+                    'media': ['image'], 'text': 'retained note'}
+        query = '再找Mira把绿色卡片放进纸盒的视频'
+        planner = Proposal(ready(query, [(x, [x]) for x in ('绿色卡片', '放进', '纸盒')]))
+        result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                            previous_filters=previous, planner=planner)
+        self.assertEqual('ready', result.status, result)
+        self.assertEqual(previous['date'], result.filters['date'])
+        self.assertEqual(previous['text'], result.filters['text'])
+        self.assertEqual(['video'], result.filters['media'])
+        self.assertEqual({'ids': ['301'], 'match': 'any'}, result.filters['people'])
+
     def test_additional_provider_boundary_only_accepts_an_already_blank_slot(self):
         query = 'find photos carrying    red bag'
         gap = (query.index('    '), query.index('    ') + 4)

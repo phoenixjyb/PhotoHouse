@@ -22335,6 +22335,191 @@
       "physical_audio_family_acceptance": false
     },
     {
+      "feature": "safe-visible-fragment-intent-provider-input-and-native-baseline",
+      "source_commit": "23466bece2e7f46009eb92d0396d238bfa06e989",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "fde2b0a4203d8ae4bb6cfa578572b205261ec4f4a8d7509834559f80f8d31a13",
+          "sha256": "a77dc7562abea94cd5938bf8385015463a36c7b5a55b614b9e07329baa83e2f3"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "5d04b5191c06004d7fcef301f4fb751cc190c619003917102fca0a0274ec281a"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "abb904e2ee203dc94f5382e2511036df5b237119013e681fcbcb7713a6aa9278",
+          "sha256": "9296db1a11322e0efe5ee3ffbeb1e099091b7f0b0c25e7ca24e4ee627a171a50"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "ad36072a2739d3f57a4a3faee79a00ddf9d48288af8f9d9d7f6664379fabc065",
+          "sha256": "9010b3a9f5452a4f045949232c1f87c75452c6412cd58f2337fd7a919fd3deed"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "ee7b7239e7041a380f99b7c6b23418f9101f7716e2a535eea3f5a904725aea95",
+          "sha256": "3e3ff3036156553ab36e36acde73cad3db9c7f5f5ff02a7888dc3ff797723303"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "routes_added": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "native_relevance_qualified": false,
+      "recorded_native_baseline_source_commit": "23466bece2e7f46009eb92d0396d238bfa06e989",
+      "recorded_live_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
+      "feature": "safe-fragment-fixed-cohort-native-measurement-record",
+      "source_commit": "cd20f47927641ab089fc16101b161c65a2a5ef06",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "a77dc7562abea94cd5938bf8385015463a36c7b5a55b614b9e07329baa83e2f3",
+          "sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "5d04b5191c06004d7fcef301f4fb751cc190c619003917102fca0a0274ec281a",
+          "sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "safe-fragment-trial-and-phone-v68-status-integration",
+      "source_commit": "007edd4b542ec96d9d4d6dd30bb8f47c0b405464",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3a242ce57c31bccaac1a8ccec42e26eaca76343c8cbc556d052afc0081489821",
+          "sha256": "30ab1e4515364fc17a4be788080ae3ac73a3ac7f685c3256dd75364eeea9f4eb"
+        }
+      ],
+      "integrated_search_record_source_commit": "9022f38e095e899aa4f4c500324e151702946904",
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false
+    },
+    {
+      "feature": "synthetic-intent-stage-recall-diagnostics-and-chinese-grammar-instructions",
+      "source_commit": "02d63c573043c6932fe29694dbb30c990efad802",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "9010b3a9f5452a4f045949232c1f87c75452c6412cd58f2337fd7a919fd3deed",
+          "sha256": "0aa4438096f022e57b0593365d0d2f6f89371b4336edab416791e8202b74ec01"
+        },
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": "c6fbca8149de6a2be15bf4d22dec9369960337ec90e7552eb77fcea2ae668a11",
+          "sha256": "baf278c45fdb9abe7840da7d159aa6902d765f9aa1627b0fb04c36c41b25f309"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_canary.py",
+          "before_sha256": "f02a0f25f69ca48656a78fdb3b5e69d069221357d1aa3137f4d2f84c16b1dc83",
+          "sha256": "569d2361a2893dec88b98c985fa1381e92fdcec5a45dd0b6b6c589a42e5669fa"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "3e3ff3036156553ab36e36acde73cad3db9c7f5f5ff02a7888dc3ff797723303",
+          "sha256": "f31ebf4ef40086da3a68472552dcdf14d086e97323ca3efe8f796af2931ae4c2"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "fixtures_changed": false,
+      "validation_relaxed": false,
+      "household_data_included": false,
+      "native_relevance_qualified": false
+    },
+    {
+      "feature": "synthetic-stage-diagnostics-and-native-admission-refusal-record",
+      "source_commit": "6f18d72ba9ff295b0cc61a87f28cf8b130b7fd71",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca",
+          "sha256": "ec43303a33df7fc74c7e07976d2f3955693a4d0dd514d24e7b76adbd48905a56"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f",
+          "sha256": "564f017a10ca095fe6a3ff97d732731e349246e41d19ae4b61381594ceb04c46"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_quality_measured": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "person-led-disposal-grammar-and-quoted-content-cue-boundaries",
+      "source_commit": "6ab9c523d4a28152a5951b7c775613394ff787fa",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "d3079cf21892a44e17a1d1544550f677b8758154d558d6bd9bebef6cebdda021",
+          "sha256": "2ecc81031d40c8dce97fa238a551887956f4cc42416dbb0e06fcae4f27ea5454"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_view.py",
+          "before_sha256": "f81049451f70171030a6daf67027a420f6df60c53532a24430e9bab0eb651a79",
+          "sha256": "f5495f53b7e9e0f5eb341ef49798e69d63f32f42332e00ad1fb1e60dcce0cf87"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "21f5c54863ce9c7be49f3cc59ae8fed461dd0041fdf3f6eede650d808e6f771b",
+          "sha256": "9fac233809e23807e97b388f76184b5f877254d893f5869a5c17d724008caf58"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "4816ff19add36ffd37e3a0c57764d55e0d0d7c5936cf7d53855c83fc50b96e44",
+          "sha256": "657c65617c93b8ee6a152e108036ed7b8895c7c6b568062b1d9167597d4ed7c5"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "f31ebf4ef40086da3a68472552dcdf14d086e97323ca3efe8f796af2931ae4c2",
+          "sha256": "05fa9af66031e5ed01e16614e8879fa3638e997fbb33fdd4897f76f054c0b7c8"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_view.py",
+          "before_sha256": "7060e2833b0bdc24e48a2da9a1c32c34cf4ddae745d1811f41119cca8498c594",
+          "sha256": "8c6834ded15d6a63cba33c0de7a5f192e471cd0c82901618ca48a7871473ac62"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "ec43303a33df7fc74c7e07976d2f3955693a4d0dd514d24e7b76adbd48905a56",
+          "sha256": "29dd07a31ceb4b28028640a6516ea1cf76c87fecf8a48a9e5df74d7fd1b30500"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "564f017a10ca095fe6a3ff97d732731e349246e41d19ae4b61381594ceb04c46",
+          "sha256": "3953d3956826cfedd7f920c96bdc9e6cd04f06c8facbf0cd723485fb6cfc3a23"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "native_fixture_changed": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false,
+      "retained_proposal_replay_model_calls": 0
+    },
+    {
       "feature": "phone-batch-upload-validation-and-interruption-recovery",
       "source_commit": "ca151330a55d02c8e2429f266161107aecfbfd36",
       "files": [

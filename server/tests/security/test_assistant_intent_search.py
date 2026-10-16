@@ -90,6 +90,48 @@ class AssistantIntentSearchTests(unittest.TestCase):
                 self.assertIsNone(result['effect'])
                 self.assertNotIn('Foreign', str(result))
 
+    def test_person_led_chinese_disposal_keeps_hard_filters_and_all_scene_requirements(self):
+        self.planner.concepts = {
+            '绿色卡片': ['绿色卡片', 'green card'],
+            'green card': ['green card', '绿色卡片'],
+            '放进': ['放进', 'put into'],
+            '纸盒': ['纸盒', 'paper box'],
+            'paper box': ['paper box', '纸盒'],
+        }
+        self.mutate("UPDATE captions SET text='绿色卡片放进纸盒。 A green card put into a paper box.' WHERE id=1")
+        # Same objects without the requested action must not satisfy all clues.
+        self.mutate("UPDATE captions SET text='绿色卡片和纸盒。 A green card and a paper box.' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        for query in (
+            '找示例儿童把绿色卡片放进纸盒的2032年9月照片包含“secret memory phrase”',
+            'find Sample Child 把 green card 放进 paper box 的 photos in September 2032 containing "secret memory phrase"',
+        ):
+            with self.subTest(query=query):
+                before = len(self.planner.calls)
+                response = self.intent(query)
+                self.assertEqual(200, response.status_code, response.text)
+                result = response.json()
+                self.assertEqual('results', result['kind'], result)
+                self.assertEqual(['101'], [item['id'] for item in result['items']])
+                self.assertEqual({'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+                                  'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+                                  'text': 'secret memory phrase'},
+                                 {k: v for k, v in result['filters'].items() if k != 'descriptive'})
+                self.assertEqual(3, len(result['filters']['descriptive']['concepts']))
+                self.assertEqual(before + 1, len(self.planner.calls))
+                self.assertIsNone(result['effect'])
+                unsupported = self.intent(query.replace('放进', '悄悄放进'), result['context']).json()
+                self.assertEqual('clarification', unsupported['kind'], unsupported)
+                self.assertEqual([], unsupported['items'])
+
+        self.planner.calls.clear()
+        denied = self.intent('找示例儿童把绿色卡片放进纸盒的照片', token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertEqual([], self.planner.calls)
+
     def test_description_alone_is_a_readonly_search_and_quotes_remain_an_independent_literal(self):
         found = self.intent('playing in snow red coat').json()
         self.assertEqual(found['kind'], 'results', found)

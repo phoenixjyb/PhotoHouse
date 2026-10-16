@@ -1,18 +1,22 @@
 """Build an offset-preserving, redacted view for descriptive intent extraction.
 
-Deterministic hard conditions and recognized command prefixes are hidden from an optional provider.
+Deterministic hard conditions, recognized command prefixes, and literal-content
+introducers are hidden from an optional provider.
 The returned string has exactly the same Python code-point offsets as the
 source query; callers continue compiling filters from the untouched query.
 """
 from datetime import date
+import re
 
 from . import discovery as d
-from .assistant_query_plan import (_MEDIA, _QUOTE, _REFINE_OPEN, _SEARCH_OPEN,
-                                   _extract_dates, _remove_occurrences)
+from .assistant_query_plan import (_CONTENT_INTRO, _MEDIA, _QUOTE, _REFINE_OPEN,
+                                   _SEARCH_OPEN, _extract_dates,
+                                   _remove_occurrences)
 
 
 _ERROR = 'Invalid scene view'
 REDACTION_MARKER = '\u2588'
+_INTRO_GAP = re.compile(r'[\s:：]*\Z')
 
 
 def _fold_boundary_map(raw: str, folded: str) -> dict[int, int]:
@@ -75,6 +79,8 @@ def scene_view(words: str, today: date, labels) -> str:
             outside_chars[match.start():match.end()] = ' ' * (match.end() - match.start())
         outside = ''.join(outside_chars)
         folded = d.fold(outside)
+        boundaries = _fold_boundary_map(outside, folded)
+        source_to_folded = {source: offset for offset, source in boundaries.items()}
 
         _ranges, date_residue, date_error = _extract_dates(folded, today)
         if date_error is not None or len(date_residue) != len(folded):
@@ -92,10 +98,37 @@ def scene_view(words: str, today: date, labels) -> str:
         if command is not None:
             start, end = command_start + command.start(), command_start + command.end()
             masked = masked[:start] + ' ' * (end - start) + masked[end:]
+
+        # Content-introducer words are syntax only when they directly lead
+        # into an already paired literal. Leave unquoted content wording in
+        # the view so it can continue to describe the requested scene.
+        intro_matches = [match for match in _CONTENT_INTRO.finditer(folded)
+                         if match.group(0) not in {'内容', '內容'}]
+        intro_spans = []
+        for quote in _QUOTE.finditer(words):
+            quote_folded_start = source_to_folded.get(quote.start())
+            if quote_folded_start is None:
+                raise ValueError
+            for intro in intro_matches:
+                if intro.end() > quote_folded_start:
+                    continue
+                folded_gap = folded[intro.end():quote_folded_start]
+                if _INTRO_GAP.fullmatch(folded_gap) is None:
+                    continue
+                source_start = boundaries.get(intro.start())
+                source_end = boundaries.get(intro.end())
+                if source_start is None or source_end is None or source_start >= source_end:
+                    raise ValueError
+                if (d.fold(outside[source_start:source_end]) != folded[intro.start():intro.end()] or
+                        _INTRO_GAP.fullmatch(words[source_end:quote.start()]) is None):
+                    raise ValueError
+                intro_spans.append((intro.start(), intro.end()))
+                break
+        for start, end in intro_spans:
+            masked = masked[:start] + ' ' * (end - start) + masked[end:]
         if len(masked) != len(folded):
             raise ValueError
 
-        boundaries = _fold_boundary_map(outside, folded)
         source_runs = []
         for start, end in _changed_runs(folded, masked):
             source_start = boundaries.get(start)

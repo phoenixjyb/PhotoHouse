@@ -59,8 +59,13 @@ The deployed source includes explicit bilingual visual-clue addition and guarded
 rewording of unsupported reviewed scene queries. The optional local intent
 provider remains unconfigured and scene search remains off. These source paths
 therefore do not establish live broad natural-language or visual retrieval.
-The following redaction-boundary source improvement is not part of this frozen
-deployment and still needs a new installed-provider quality measurement.
+Following source changes mark boundaries internally and send only visible text
+fragments to the optional provider. They are not in this frozen deployment. The
+[native bilingual baseline](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) at source
+`23466be` met 7/12 fixed-suite expectations and retrieved 2/60 held-out positive
+examples. A following fixed-suite trial at `cd20f47` met 9/12 expectations with the fragment
+payload. Its broader held-out recall is unmeasured; provider activation remains
+unsupported by the observed retrieval quality.
 
 ## Other retained capabilities and limits
 
