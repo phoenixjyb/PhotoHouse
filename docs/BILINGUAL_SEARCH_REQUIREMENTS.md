@@ -617,3 +617,41 @@ these changes, including mixed English/Chinese input and rejection of evidence
 missing a required action. A retained-proposal replay is compiler evidence,
 not a new native-model measurement or general retrieval qualification. The
 optional provider remains unconfigured for users.
+
+## Reviewed multilingual regression evidence
+
+`server/scripts/qualify_search_intent.py --suite reviewed-v1` emits a plan only.
+The separate twelve-case suite has four English, four Chinese and four mixed
+queries: nine descriptive requests and three date clarifications. It deliberately
+uses parallel scene meanings across cohorts, so these are correlated regression
+cases, not twelve independent tasks or fresh held-out acceptance data. The original
+`fixed-v1` suite, default selection, digest and expectation policy are unchanged.
+
+Each descriptive case lists three requested conditions and two positive captions
+(one English, one Chinese). Both captions support every action, attribute/object
+and relation/destination condition. Three contrasting captions each lack support
+for one condition while supporting the others. Missing caption evidence means
+insufficient support for a match; it does not prove that condition was absent
+from the real scene. The suite checks eighteen positive and twenty-seven
+negative caption expectations. People, month, media and exact quoted text remain
+separate hard-filter checks; captions do not establish an asset's metadata.
+
+Support annotations cite exact substrings of a particular caption. The runner
+refuses incomplete annotation partitions, stale quotations, changed contrast
+counts and absent one-condition negatives. This verifies annotation structure,
+not semantic truth: an independent language review is still necessary. The
+annotations, captions and expected filters never enter provider input or derive
+proposal surfaces/alternatives. Test-only alternatives check the real matcher
+and show that removing each condition admits its corresponding contrast caption.
+A complete run or zero false positives while plans were refused is not a quality
+pass; all expected positive and negative denominators remain in diagnostics.
+
+Initial no-model inspection exposed two compiler-blocked English requests:
+`review_en_yellow_mailbox` and `review_en_cabin` are classified as refinements
+because of internal `her`/`she`, despite their explicit fresh-search opening. They
+return `refine_without_context` before a provider call. The queries remain in the
+suite; they are not simplified to hide the gap. A deliberately refusing test
+planner checks report behavior only and supplies no native quality measurement.
+The following native trial was not started because read-only readiness found a
+pre-existing provider process. It was preserved; the optional production intent
+provider remains unconfigured.
