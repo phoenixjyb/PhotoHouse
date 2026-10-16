@@ -22380,6 +22380,55 @@
       "automatic_retry_added": false,
       "apk_published": false,
       "physical_upload_acceptance": false
+    },
+    {
+      "feature": "phone-v69-folder-picker-session-recovery",
+      "source_commit": "09b0747d7f254825a3f7988be162b1433775dd27",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "09e22b77128a0a2913a81e5ccb5d6395758b790e24c37f80a8671ae8062335f9",
+          "before_sha256": "07d8f1c1772bbcf4fa576d00426566ae7be3a4762907f6d83cb0841d68860dc8"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchPickerRecoveryUiTest.kt",
+          "sha256": "c760d45cda79eddcdd82daffa3323ac277760c1930d2e86ad139ab4447305948"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchPickerSelectionEffect.kt",
+          "sha256": "5dcca19589bdf521cc33754dd95f7008a467965535b23aa381e9ce9568acb4f3"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "03006ce1965c885af4cd62e8fc758aca800f9f258c5b5c147daa3120cb2fb347",
+          "before_sha256": "d9763acab54b9f34b1247590c748f1760cfddcb6e7f32e1a5e9383ad9fa28ab3"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "sha256": "f6c5465c087c5bb3d8d73e829ea07a0e7725ea8680c8c14340b66791a7c6839b",
+          "before_sha256": "9a39791c363f8248fbfd600de90490653537d8fbe668ec886249e56dca3136ce"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "sha256": "baea8fc1102b04f4f8c7c46277a3b3ec9f6f30c540e228819dde29a8ef1cf0e6",
+          "before_sha256": "0e65bf86035fc14ceb72ae73a90cdc16e69b246c0b9781be0cf71f49ee9b54a8"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V69_CANDIDATE_2026-10-16.md",
+          "sha256": "e4488975029e4584f413b72ef60783d8e28e2c5f7ae4e0a104c8b9e091df14ac"
+        },
+        {
+          "path": "docs/ANDROID_UPLOAD_RECOVERY.md",
+          "sha256": "4f36d7f86c347a456811f55c342c8816050c3b4ad165e35b9cd531afd939e5ed",
+          "before_sha256": "cf73de9de6bdc32e1961f7e690154cede06ac2c1ae2beac755ac307bcc5d8a0a"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "upload_limits_changed": false,
+      "read_only_session_offline_retry_attempts": 1,
+      "apk_published": false,
+      "physical_upload_acceptance": false
     }
   ]
 }
