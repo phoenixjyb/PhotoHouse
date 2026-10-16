@@ -22064,6 +22064,26 @@
       "automatic_retries_added": false,
       "apk_published": false,
       "physical_audio_acceptance": false
+    },
+    {
+      "feature": "emulator-qa-file-based-installation",
+      "source_commit": "be9f04da385a0b89549cb66ec437cdae6daac0e6",
+      "files": [
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": "13ffbda7eda8449fb3727fc3e4cfdd6481e119185309caa1b1a25731134f7c3d",
+          "sha256": "3c5fdbf3fb7d7d761f054ea66e6981f0a3eaf9539e018f9b03d178017615742f"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": "bd6cc86cf5c4fcdceffa2416b80269002976f55112aaa279b08b12699c1a8ee6",
+          "sha256": "42f7a628abad98bb7ab3262fa71997ca88eb65948ec75aa7d8426f938595f20e"
+        }
+      ],
+      "qa_emulator_only": true,
+      "physical_devices_allowed": false,
+      "apk_published": false,
+      "runtime_changed": false
     }
   ]
 }
