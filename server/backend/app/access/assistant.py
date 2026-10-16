@@ -821,6 +821,18 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'description_removal_unsupported':
                 reply = ('请一次移除一个原描述线索，例如：去掉“红外套”线索。其他条件请分别调整。' if lang == 'zh' else
                          'Remove one original descriptive clue at a time, for example: remove the "red coat" clue. Change other conditions separately.')
+            elif plan.reason == 'description_addition_target_unavailable':
+                reply = ('请先开始一次查找，再补充场景线索，例如：再加上蓝帽子。' if lang == 'zh' else
+                         'Start a search first, then add a visual clue, for example: also with a blue hat.')
+            elif plan.reason == 'description_addition_duplicate':
+                reply = ('当前查找已包含这条场景线索，原有条件已保留。请补充其他细节。' if lang == 'zh' else
+                         'That visual clue is already in the current search. The existing conditions are kept; add a different detail.')
+            elif plan.reason == 'description_addition_limit':
+                reply = ('当前查找已有六条场景线索。请先移除一条，再补充新线索，或重新描述完整查找。' if lang == 'zh' else
+                         'The current search already has six visual clues. Remove one before adding another, or describe a complete new search.')
+            elif plan.reason == 'description_addition_unsupported':
+                reply = ('请一次补充一个场景线索，例如：再加上蓝帽子。原有线索和条件已保留；人物、日期和类型请分别调整。' if lang == 'zh' else
+                         'Add one visual clue at a time, for example: also with a blue hat. Existing clues and conditions are kept; change people, dates or media separately.')
             elif plan.reason == 'description_correction_mismatch':
                 reply = ('要更正的场景线索与当前查找不一致。请使用查找摘要中显示的原线索。' if lang == 'zh' else
                          'That scene clue does not match the current search. Use the original clue shown in the search summary.')

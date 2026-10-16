@@ -15,7 +15,7 @@ from .assistant_query_plan import (QueryPlan, _QUOTE, _MEDIA, _NEGATION, _entity
                                    _strip_prefix, _remove_occurrences)
 from .kinship import SELECTORS
 from .search_refinement import _operations, plan_query as literal_plan, query_mode
-from .search_description import normalize_description
+from .search_description import MAX_CONCEPTS, normalize_description
 from .search_pending import _AGE_PHRASE
 from .search_intent_view import scene_view
 
@@ -55,6 +55,19 @@ _DESCRIPTIVE_CORRECTIONS = (
     re.compile(r'^\s*不是\s*(?P<old>.+?)\s*[，,]?\s*(?:而)?是\s*(?P<new>.+?)\s*$'),
 )
 _CORRECTION_EDGE = ' \t\r\n,，;；、。.!！?？:'
+_DESCRIPTIVE_ADDITIONS = (
+    re.compile(r'^\s*(?:please[ \t]+)?(?:also[ \t]+)?add[ \t]+(?P<target>.+?)[ \t]+(?:as[ \t]+(?:a|another)[ \t]+)?(?:visual[ \t]+)?clue[ \t]*[。.!！?？]*\s*$', re.I),
+    re.compile(r'^\s*(?:please[ \t]+)?also[ \t]+(?:add|with)[ \t]+(?P<target>.+?)[ \t]*[。.!！?？]*\s*$', re.I),
+    re.compile(r'^\s*(?:请)?再加上[ \t]*(?P<target>.+?)(?:(?:这条)?(?:视觉)?线索)?[ \t]*[。.!！?？]*\s*$'),
+    re.compile(r'^\s*(?:请)?(?:加上|添加)[ \t]*(?P<target>.+?)(?:这条)?(?:视觉)?线索[ \t]*[。.!！?？]*\s*$'),
+)
+_DESCRIPTIVE_ADDITION_OPEN = re.compile(
+    r'^\s*(?:(?:please[ \t]+)?(?:(?:also[ \t]+)?add(?a:\b)|also[ \t]+with(?a:\b))|(?:请)?(?:再加上|加上|添加))', re.I)
+_ADDITION_COMPOUND = re.compile(
+    r'(?a:\b)(?:and|or|both|together|then|but|instead|also|add|remove|drop|clear|'
+    r'replace|delete|share|send|upload|rename|move|record|take a photo)(?a:\b)|'
+    r'和|与|及|或者|一起|同时|然后|接着|但是|而是|移除|去掉|取消|清除|换成|改成|'
+    r'添加|加上|删除|分享|发送|上传|重命名|移动|录音|拍照|照一下', re.I)
 _STRONG_CONTENT_INTRO = re.compile(
     r'包含|含有|關於|关于|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', re.I)
 
@@ -65,6 +78,8 @@ def _strong_content_cue_before(words, boundary):
 
 
 def intent_mode(words):
+    if type(words) is str and _DESCRIPTIVE_ADDITION_OPEN.match(words):
+        return 'refine'
     if type(words) is str and _INTENT_OPEN.match(words):
         return 'search'
     return query_mode(words)
@@ -360,6 +375,68 @@ def _plan_descriptive_correction(old, new, *, now, entities, previous,
     return QueryPlan(3, 'ready', filters)
 
 
+def _plan_descriptive_addition(words, *, now, entities, previous,
+                               hard_previous, planner):
+    """Append one explicit visual clue without replacing saved conditions."""
+    kept = dict(previous or {})
+
+    def clarify(reason='description_addition_unsupported'):
+        return QueryPlan(3, 'clarification', kept, reason)
+
+    if previous is None:
+        return clarify('description_addition_target_unavailable')
+    _, entity_error = _entity_filters(entities)
+    if entity_error:
+        return clarify(entity_error)
+    folded = d.fold(words)
+    # Neither command grammar nor a new clue may consume a reviewed label.
+    if _consumed_label(folded, ' ' * len(folded), entities.get('labels', [])):
+        return clarify('ambiguous_entities')
+    match = next((match for pattern in _DESCRIPTIVE_ADDITIONS
+                  if (match := pattern.fullmatch(words)) is not None), None)
+    if match is None:
+        return clarify()
+    target = match['target'].strip(_CORRECTION_EDGE)
+    if not target or any(mark in target for mark in '“”"\r\n\t'):
+        return clarify()
+    _, _, removed, references = _operations(target)
+    if (_ACTION.match(target) or _NEGATION.search(target) or _ADDITION_COMPOUND.search(target)
+            or _REMOVAL.fullmatch(target)
+            or removed or references or _kinship_hits(target)
+            or _descriptive_correction_parts(target) is not None
+            or intent_mode(target) in ('search', 'refine')
+            or _DESCRIPTIVE_ADDITION_OPEN.match(target)):
+        return clarify()
+    prior = normalize_description(previous['descriptive'])['concepts'] if 'descriptive' in previous else []
+    from .search_text import normalize_text
+    if normalize_text(target) in {normalize_text(item['surface']) for item in prior}:
+        return clarify('description_addition_duplicate')
+    if len(prior) >= MAX_CONCEPTS:
+        return clarify('description_addition_limit')
+    # Compile in isolation: comparing only final inherited values would miss
+    # a repeated hard condition such as "photos" when media is already image.
+    compiled = _compile_plan(target, now=now, entities=entities,
+                             previous_search=False, hard_previous=None,
+                             refine=False, kept={}, planner=planner)
+    if compiled.status != 'ready':
+        return clarify(compiled.reason if compiled.reason in (
+            'intent_unavailable', 'invalid_intent', 'intent_date',
+            'ambiguous_entities', 'ambiguous_date_entity', 'ambiguous_media_entity',
+            'invalid_date', 'conflicting_dates') else 'description_addition_unsupported')
+    if set(compiled.filters) != {'descriptive'}:
+        return clarify()
+    added = compiled.filters['descriptive']['concepts']
+    if len(added) != 1:
+        return clarify()
+    if normalize_text(added[0]['surface']) in {normalize_text(item['surface']) for item in prior}:
+        return clarify('description_addition_duplicate')
+    try:
+        description = normalize_description({'version': 1, 'concepts': [*prior, added[0]]})
+    except ValueError:
+        return clarify()
+    return QueryPlan(3, 'ready', {**(hard_previous or {}), 'descriptive': description})
+
+
 def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     """Plan v3 through current authorized entities and a separately supplied LLM.
 
@@ -390,6 +467,10 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
             return QueryPlan(3, 'clarification', {}, 'invalid_previous_filters')
     else:
         hard_previous = None
+    if _DESCRIPTIVE_ADDITION_OPEN.match(words):
+        return _plan_descriptive_addition(
+            words, now=now, entities=entities, previous=previous,
+            hard_previous=hard_previous, planner=planner)
     mode = intent_mode(words)
     refine = previous is not None and mode != 'search'
     kept = dict(previous or {}) if refine else {}
