@@ -120,3 +120,8 @@ separately reviewed production image recipe, measure a larger reviewed case
 set, establish selected CPU/GPU serving limits, and integrate explicit runtime
 and assistant/client configuration. The existing hard-filter and library
 authorization boundaries continue to apply.
+
+The separate [private scene-set evaluator](SEMANTIC_SCENE_QUALIFICATION.md)
+accepts explicitly selected natural-scene images and matched English, Chinese
+and mixed queries. It reports retrieval measurements for the selected set;
+it neither replaces this fixed generated baseline nor activates a provider.

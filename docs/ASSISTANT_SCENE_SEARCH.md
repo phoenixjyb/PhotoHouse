@@ -217,3 +217,7 @@ Meaningful English/Chinese/mixed natural-scene pair qualification, complete immu
 qualification and explicit runtime activation remain separate work. The
 [pair measurement guide](SEMANTIC_PAIR_QUALIFICATION.md) distinguishes the
 existing generated shape canary from those relevance requirements.
+The [private scene qualification runner](SEMANTIC_SCENE_QUALIFICATION.md) now
+provides matched-language, multi-relevant-image evaluation for an explicitly
+curated local image set. Its generated tests establish evaluator behavior;
+they do not supply a reviewed natural-scene dataset or model result.

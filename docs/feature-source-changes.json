@@ -20885,6 +20885,62 @@
       "models_activated": false,
       "household_data_included": false,
       "implementation_commit": "56cdcb36f5453ad6ab75e22610cd1df22b5fd453"
+    },
+    {
+      "feature": "private-natural-scene-matched-language-qualification",
+      "source_commit": "c5536bcbfe36d93c782c08d480e865ffe817397d",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "f8a54f4fe7c397a8454e26258721121ce863623c97bd0a3ec0602d4c8e389fa8",
+          "sha256": "428e65947b8e0a521ee3f904769ee3291e9360f470bb6f567fbc01be60f92058"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "9109c85ba7ee52ae6fb48b92f71ca8cc6fbb15d2d0404c1f950f3d23cda882c7",
+          "sha256": "3fd757fb80c0182247044865d94dcd6cf78fb28a17e68e99c407e1767a0e83e8"
+        },
+        {
+          "path": "docs/SEMANTIC_PAIR_QUALIFICATION.md",
+          "before_sha256": "6848e9d66061a5709ed90b4cbf0bc7f8ba7aaad4504e0b4a1904a0f117067788",
+          "sha256": "bf02369d1aa7aef540c6225d9d8ca727ee07bae8a2f6ae18366376a4b25da950"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "79f8c5bda3b67d6e5e0baee43176933f7723c9b110d3e3797b888e98671b53b0"
+        },
+        {
+          "path": "server/scripts/qualify_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "f9f047cc755d4fe70c24185698494ee6881fa0ac54722f512371e6f78374db0a"
+        },
+        {
+          "path": "server/scripts/semantic_scene_cases.py",
+          "before_sha256": null,
+          "sha256": "9043a1434ec1042c3312566a673b19ed61a611bdfad0c1758debb2a8a13a37bf"
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "9027d2a189cdac29b71439b9bafbbbfaa4415bc4ca434472d4b7c22c7cac0439"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_cases.py",
+          "before_sha256": null,
+          "sha256": "6ca525a1fe0fee5090b234bbfcc1c5524ab71abb3133dc345b7b17ec902d213a"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "cf039beb3888903cea076ef11d088e0dd7ba9111c304a6952eb101cacdcefa30",
+          "sha256": "a1c1c342813d3b414211d5d87cbfd918dd73f2c837597a88a2eac8c5690b962f"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "native_relevance_measured": false
     }
   ]
 }
