@@ -22661,6 +22661,42 @@
       "native_fixture_changed": false,
       "native_relevance_qualified": false,
       "household_data_included": false
+    },
+    {
+      "feature": "separate-reviewed-multilingual-intent-regression-evidence",
+      "source_commit": "6675122f1cf74e9a9f73132b9f4f43e31e78a2e7",
+      "files": [
+        {
+          "path": "server/scripts/qualify_search_intent.py",
+          "before_sha256": "baf278c45fdb9abe7840da7d159aa6902d765f9aa1627b0fb04c36c41b25f309",
+          "sha256": "b6ae531e51e6703848927974b2a48f33c9d246ecdc013bc504ad22e224a0353a"
+        },
+        {
+          "path": "server/scripts/search_intent_review_cases.py",
+          "before_sha256": null,
+          "sha256": "c18eaa55140d0197835c90d1649db2448c6dc8ab5175347b0b86f5e681952011"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_review.py",
+          "before_sha256": null,
+          "sha256": "2fc2b2dcff5cb2461b8e6a33da21d2b49d96147e7f4e9b34c6ed9ea30e577018"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "072a05017a6f579921d27c0678353aa30e823fddc3972e489f22189115a6fa8f",
+          "sha256": "e5b15767b7f60ffd53d6b10ee44f16e3a5d3f1eacc37e7e00822773cc26c9b9f"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "original_native_fixture_changed": false,
+      "new_reviewed_regression_cases": 12,
+      "reviewed_positive_evidence_count": 18,
+      "reviewed_negative_evidence_count": 27,
+      "native_quality_measured": false,
+      "household_data_included": false
     }
   ]
 }
