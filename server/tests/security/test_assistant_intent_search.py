@@ -27,6 +27,8 @@ class FixturePlanner:
             '玩雪': ['playing in snow', '在雪地玩'],
             'red coat': ['red coat', '红外套'],
             '红外套': ['red coat', '红外套'],
+            'birthday cake': ['birthday cake', '生日蛋糕'],
+            '蛋糕': ['birthday cake', '生日蛋糕'],
         }
 
     def propose(self, query, today, has_previous_search):
@@ -307,6 +309,201 @@ class AssistantIntentSearchTests(unittest.TestCase):
         changed = self.intent('not red coat, but blue coat', initial['context'])
         self.assertEqual(changed.status_code, 409, changed.text)
         self.assertNotIn('blue coat', changed.text)
+
+    def test_additive_scene_clue_narrows_evidence_and_preserves_bilingual_hard_filters(self):
+        # Give both eligible assets the reviewed Park tag and literal text, but
+        # only the first caption contains the clue added in the conversation.
+        self.mutate("UPDATE captions SET text='Sample Child playing in snow wearing a red coat birthday cake 海边' WHERE id=1")
+        self.mutate("UPDATE captions SET text='示例儿童穿红外套在雪地玩 海边' WHERE id=2")
+        self.mutate("INSERT INTO asset_tags(id,asset_id,tag_id,source) VALUES(7,101,501,'manual')")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+
+        variants = (
+            ('find photos of Sample Child in September 2032 at Example region Park '
+             'containing "海边" playing in snow red coat',
+             'also with birthday cake', 'birthday cake'),
+            ('找示例儿童2032年9月在示例地区公园包含"海边"的玩雪红外套照片',
+             '请再加上蛋糕线索', '蛋糕'),
+            ('find示例儿童2032年9月at Example region Park containing "海边" '
+             '玩雪red coat的photos',
+             'please also add 蛋糕 clue', '蛋糕'),
+        )
+        for original_query, addition, surface in variants:
+            with self.subTest(addition=addition):
+                initial_response = self.intent(original_query)
+                self.assertEqual(initial_response.status_code, 200, initial_response.text)
+                initial = initial_response.json()
+                self.assertEqual(initial['kind'], 'results', initial)
+                self.assertEqual({item['id'] for item in initial['items']}, {'101', '103'})
+                filters = initial['filters']
+                self.assertEqual(filters['people'], {'ids': ['301'], 'match': 'any'})
+                self.assertEqual(filters['date'], {'from': '2032-09-01', 'to': '2032-09-30'})
+                self.assertEqual(filters['media'], ['image'])
+                self.assertEqual(filters['tags']['ids'], ['501'])
+                self.assertEqual(filters['locations'], ['601'])
+                self.assertEqual(filters['text'], '海边')
+
+                response = self.intent(addition, initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual([item['id'] for item in result['items']], ['101'])
+                self.assertEqual(result['filters']['descriptive']['concepts'][:-1],
+                                 filters['descriptive']['concepts'])
+                self.assertEqual(result['filters']['descriptive']['concepts'][-1]['surface'],
+                                 surface)
+                self.assertEqual({key: value for key, value in result['filters'].items()
+                                  if key != 'descriptive'},
+                                 {key: value for key, value in filters.items()
+                                  if key != 'descriptive'})
+                self.assertIsNone(result['effect'])
+
+    def test_additive_scene_clue_accepts_hard_only_context_and_rejects_unsafe_additions(self):
+        self.mutate("UPDATE captions SET text='Sample Child playing in snow birthday cake' WHERE id=1")
+        self.mutate("UPDATE captions SET text='示例儿童在雪地玩' WHERE id=2")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+
+        hard_only = self.intent('find photos of Sample Child in September 2032').json()
+        self.assertEqual(hard_only['kind'], 'results', hard_only)
+        self.assertNotIn('descriptive', hard_only['filters'])
+        self.assertEqual({item['id'] for item in hard_only['items']}, {'101', '103'})
+        added = self.intent('also with birthday cake', hard_only['context']).json()
+        self.assertEqual(added['kind'], 'results', added)
+        self.assertEqual([item['id'] for item in added['items']], ['101'])
+        self.assertEqual({key: value for key, value in added['filters'].items()
+                          if key != 'descriptive'}, hard_only['filters'])
+
+        with_existing = added
+        for addition in ('also with birthday cake', 'add unfamiliar clue clue',
+                         'add birthday cake red coat clue', 'add September 2032 clue',
+                         'add "birthday cake" clue', 'add birthday cake and delete photos clue'):
+            with self.subTest(addition=addition):
+                response = self.intent(addition, with_existing['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertIn(result['kind'], ('clarification', 'unsupported'), result)
+                self.assertEqual(result['context'], with_existing['context'])
+                self.assertEqual(result['filters'], with_existing['filters'])
+                self.assertEqual(result['items'], with_existing['items'])
+                self.assertIsNone(result['effect'])
+                if addition == 'also with birthday cake':
+                    self.assertIn('already in the current search', result['reply'])
+
+        chinese_addition = self.intent('请再加上蛋糕线索', hard_only['context']).json()
+        self.assertEqual(chinese_addition['kind'], 'results', chinese_addition)
+        duplicate_zh = self.intent('请再加上蛋糕线索', chinese_addition['context']).json()
+        self.assertEqual(duplicate_zh['kind'], 'clarification', duplicate_zh)
+        self.assertIn('当前查找已包含', duplicate_zh['reply'])
+        unsupported_zh = self.intent('请再加上未知场景线索', chinese_addition['context']).json()
+        self.assertEqual(unsupported_zh['kind'], 'clarification', unsupported_zh)
+        self.assertIn('请一次补充一个场景线索', unsupported_zh['reply'])
+
+        self.planner.concepts['我的孩子们在雪地玩'] = ['我的孩子们在雪地玩']
+        calls = len(self.planner.calls)
+        kinship = self.intent('请再加上我的孩子们在雪地玩线索', with_existing['context'])
+        self.assertEqual(kinship.status_code, 200, kinship.text)
+        self.assertEqual(kinship.json()['kind'], 'clarification', kinship.json())
+        self.assertEqual(kinship.json()['context'], with_existing['context'])
+        self.assertEqual(kinship.json()['filters'], with_existing['filters'])
+        self.assertEqual(len(self.planner.calls), calls)
+
+        no_context = self.intent('also with birthday cake')
+        self.assertEqual(no_context.status_code, 200, no_context.text)
+        self.assertIn(no_context.json()['kind'], ('clarification', 'unsupported'))
+        self.assertIsNone(no_context.json()['context'])
+        self.assertEqual(no_context.json()['items'], [])
+
+        self.planner.concepts.update({
+            'blue hat': ['blue hat'], 'red shoes': ['red shoes'],
+            'holding a balloon': ['holding a balloon'],
+            'yellow umbrella': ['yellow umbrella'],
+        })
+        self.mutate("UPDATE captions SET text='playing in snow red coat birthday cake blue hat red shoes holding a balloon' WHERE id=1")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        six_clues = self.intent('find photos playing in snow red coat birthday cake blue hat '
+                                'red shoes holding a balloon').json()
+        self.assertEqual(six_clues['kind'], 'results', six_clues)
+        self.assertEqual(len(six_clues['filters']['descriptive']['concepts']), 6)
+        calls = len(self.planner.calls)
+        over_limit = self.intent('also with yellow umbrella', six_clues['context']).json()
+        self.assertEqual(over_limit['kind'], 'clarification', over_limit)
+        self.assertEqual(over_limit['context'], six_clues['context'])
+        self.assertEqual(over_limit['filters'], six_clues['filters'])
+        self.assertEqual(over_limit['items'], six_clues['items'])
+        self.assertEqual(len(self.planner.calls), calls)
+
+    def test_additive_scene_clue_rechecks_access_and_source_before_returning_results(self):
+        initial = self.intent('find photos of Sample Child in September 2032 playing in snow').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        calls = len(self.planner.calls)
+        denied = self.intent('also with birthday cake', initial['context'], token=OTHER)
+        self.assertIn(denied.status_code, (401, 403))
+        self.assertEqual(len(self.planner.calls), calls)
+
+        self.planner.before_reply = lambda: self.mutate(
+            "UPDATE captions SET text='changed synthetic source' WHERE id=1")
+        changed = self.intent('also with birthday cake', initial['context'])
+        self.assertEqual(changed.status_code, 409, changed.text)
+        self.assertNotIn('birthday cake', changed.text)
+        self.assertEqual(len(self.planner.calls), calls + 1)
+
+    def test_saved_scene_clue_addition_replays_without_model_or_duplicate_history(self):
+        self.mutate("UPDATE captions SET text='A child playing in snow wearing a red coat birthday cake' WHERE id=1")
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        store = initialize_v2(self.database.parent.resolve() / 'clue-addition-workspace.sqlite',
+                              clock=lambda: NOW)
+        self.app.state.assistant_workspace_store = store
+        self.app.state.assistant_workspace_healthy = True
+        headers = {'Authorization': 'Bearer ' + TOKEN, 'X-PhotoHouse-Search-Version': '3'}
+        base = '/assistant/workspace/v1'
+        thread = self.client.post(base + '/threads', json={'library_id': 'family-a'},
+            headers={'Authorization': headers['Authorization']}).json()['thread']['thread_id']
+
+        def send(words, revision, rid):
+            return self.client.post(f'{base}/threads/{thread}/turns', headers=headers,
+                json={'library_id': 'family-a', 'request_id': rid,
+                      'expected_revision': revision, 'text': words})
+
+        original_query = 'find photos playing in snow red coat'
+        first = send(original_query, 0, str(uuid.uuid4()))
+        self.assertEqual(first.status_code, 200, first.text)
+        addition, rid = 'also with birthday cake', str(uuid.uuid4())
+        response = send(addition, 1, rid)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['result']
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual([item['id'] for item in result['items']], ['101'])
+        self.assertEqual([concept['surface'] for concept in
+                          result['filters']['descriptive']['concepts']],
+                         ['playing in snow', 'red coat', 'birthday cake'])
+        calls = len(self.planner.calls)
+        self.planner.failure = True
+        replay = send(addition, 1, rid)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertTrue(replay.json()['recovered'])
+        self.assertEqual(replay.json()['result'], result)
+        recovered = self.client.get(
+            f'{base}/threads/{thread}/requests/{rid}?library_id=family-a', headers=headers)
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        self.assertEqual(recovered.json()['result'], result)
+        self.assertEqual(len(self.planner.calls), calls)
+        history = self.client.get(f'{base}/threads/{thread}?library_id=family-a',
+            headers={'Authorization': headers['Authorization']})
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual([row['input_text'] for row in history.json()['exchanges']],
+                         [original_query, addition])
 
     def test_explicit_clue_removal_repairs_empty_results_without_losing_hard_filters(self):
         self.planner.concepts['green coat'] = ['green coat', '绿外套']
