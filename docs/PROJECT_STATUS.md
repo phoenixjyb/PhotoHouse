@@ -1,69 +1,54 @@
 # Current project status
 
-Source reviewed **2026-10-16**. The following live-state statements record the
-last verified v64 delivery; this source review did not recheck service health.
-PR #25 is merged at
-`4e94650b9b75c2921a1990a6cdcd05a9a29ce1a4`. API/Web source
-`5480a0cc99133acc1308caf19a0e33d372cc32f6` is deployed and the Windows phone
-HTTPS OTA feed serves **v64 / 0.64-story-review**. TV remains v30. The update
-preserved the newer live `78a433b` search backend as its incumbent.
+Source and delivery records refreshed **2026-10-16**. Live-state statements
+below are the last verified v65 observations; this source round did not recheck
+Windows service health. PR #47 merged the Android
+chapter family-memory chooser at `2fe1586`. PR #48 merged bilingual search
+clarification; API/Web source `f476c5e16f032eb427e3504997d6e33b5a500d9b` is live.
+PR #49 merged phone v65 at `22472be475fd4e4b3b5423f2e96d91a773592b0d`, with
+tree-equal build and review evidence `8bd9c5a63b14c607aaadbcc29cdb3f9144d2e421`.
+The Windows HTTPS phone feed publishes **v65 / `0.65-chapter-memory`**. The
+original signing certificate and icon were retained. The signed APK is
+11,663,736 bytes with SHA-256
+`40b74da0a9e9a056f247bbf8bbb511586931550ebd847c23e3ab8d4187767b2e`.
+See the [v65 release record](../clients/android/docs/PHONE_V65_RELEASE_2026-10-16.md).
 
-The 217-file API candidate passed Windows synthetic qualification. The guarded
-switch verified a four-store stopped-writer backup, served assets and anonymous
-access boundaries, and restored five upload workers. Independent postflight
-verified all 66 task enabled states, preserved API startup/settings and unchanged
-ASR/OCR/TTS processes. Configuration and schema `a0c9d2e4f817` are unchanged.
-No model, generation, grouping, kinship binding or historical backfill was activated.
+All five source CI jobs passed in run `38835026125`. Separate release
+verification passed configured build/lint, 17 embedded-field checks, four
+signing-refusal checks, 11 publication tests, native full-HTTPS verification,
+an independent Mac full-stream readback and 10 Web asset checks. Postflight
+preserved all eight running root tasks, including five upload workers; ASR, TTS
+and OCR were unchanged. API/Web v65 pairing did not restart the API or change
+schema/configuration. TV remains v30 and unchanged; TV v31 source is unpublished.
+No physical phone installation or test occurred, so family/device acceptance
+remains open.
 
-The release adds an explicit [title from chapter wording](CHAPTER_OPENING_TITLE.md)
-for new stories and a [proposal wording review](STORY_PROPOSAL_WORDING_REVIEW.md)
-summary/focus. Private device drafts, guided creation, search v2 and voice remain
-available. Proposal review does not enable generation; the current installation
-keeps that provider path off. The original phone signing certificate and artwork
-are preserved. Windows and independent Mac full trusted HTTPS APK readbacks
-passed. See [the v64 release record](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
+PR #48's bilingual search clarification is part of the live API/Web source.
+The phone v65 chooser lists accepted, consented sources using metadata-only
+choices and the existing atomic link-save contract. Its release does not enable
+story generation. The [reviewed chapter-proposal adoption flow](PHONE_STORY_PROPOSAL_ADOPTION.md) into an unsaved
+existing-story editor is following source. Its 74 focused JVM tests, phone
+build/lint and eight explicit QA-emulator journeys passed. Chinese/English
+150% renders were inspected. It is not included in v65; later APK delivery and
+physical family acceptance remain separate.
+The provider/model story generation path remains off. The synthetic 9B
+cold-capture sample took 80.422 seconds and has not had human quality review;
+see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
-A following source-only [companion answer contract](STORY_COMPANION_GROUNDING.md)
-requires an answer to cite available inputs, with clarification when context is
-insufficient. It passed 64 focused tests and 70 subchecks, without a model.
-It is merged through PR #26 with all five review-head CI jobs passing, but is not
-part of the frozen v64 release. Citations are review pointers, not
-proof of factual accuracy; actual model quality retains a separate gate.
-
-PR #27 merged the offline review workspace and capture validation at `b194741`,
-with all five review-head CI jobs passing. The following
-[native story trial](STORY_MODEL_TRIAL_2026-10-16.md) captured one valid synthetic
-9B output, taking 85.875 seconds inside the cold-start canary. Its overall trial
-failed natural provider-helper drain; guarded cleanup completed and the eight
-preserved tasks/root processes matched. Human quality remains unreviewed.
-PR #28 merged the following attribution/question and temporary-provider teardown
-changes at `ea43c48`, with all five review-head CI jobs passing. One newly
-authorized capture from source `01c9f15` passed its declared owned-job cleanup
-gate (3 remaining processes → 0), preserved the eight task roots and produced a
-valid proposal with zero follow-up questions. Canary duration was 80.422 seconds;
-human quality and the remaining cases are still unreviewed. No model was
-activated and the changes have not been deployed to the family API.
-
-The [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) lets an
-editor explicitly link an accepted, consented contribution to a chapter using
-metadata-only choices and the existing atomic save contract. It is following
-source work merged through PR #30 at `96a839e`, with all five review-head CI
-jobs passing. Following Android source adds the same explicit metadata chooser
-to chapter-link management. Its 74 focused JVM tests, build/lint and three
-large-text emulator journeys passed, with rendered views inspected. Windows
-qualification and paired delivery remain separate, with no schema change or APK
-publication.
+PR #50 subsequently merged the [gated scene-search workspace source](ASSISTANT_SCENE_SEARCH.md)
+at `93c80aa`. That merge is following source, outside the v65 release and the
+last verified live API revision above; it does not establish a deployment.
 
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `5480a0c`, 217-file archive; Windows qualification, guarded backup/switch, served-asset and anonymous-denial checks | Real owner/member voice and UX acceptance |
-| Primary database | `a0c9d2e4f817`; four-store stopped-writer backup verified; no migration | Later feature/schema activation and paired recovery qualification |
-| Phone | v64 original-certificate/icon APK published; native and independent full trusted HTTPS readback | Installation and physical title, draft, reading/listening and search/story trial |
-| TV | v30 feed verified unchanged | Projector/library/playback check; v31 preview-retry source is not published |
-| Public source | PR #30 merged the Web chooser; main through PR #45 includes the other session's conversational search work | Following Android chooser source review/CI and later paired delivery |
-| Following storytelling | [Private quality review page](MEMOIR_QUALITY_REVIEW.md) merged; initial/revised [native captures](STORY_MODEL_TRIAL_2026-10-16.md) retained, revised declared cleanup verified; manual [Web source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) in following source | Human review, remaining model cases, Windows candidate qualification, paired delivery and family quality |
+| API/Web | Live source `f476c5e`; bilingual search clarification is deployed; no restart/schema/config change in the v65 pairing | Real owner/member search, voice and UX acceptance |
+| Primary database | No schema change in this release pairing | Later feature/schema activation and paired recovery qualification |
+| Phone | v65 original-certificate/icon APK published; five CI jobs passed, with separate native full-HTTPS and independent Mac full-stream verification | Physical installation and family/device acceptance |
+| TV | v30 feed verified unchanged; v31 source unpublished | Projector/library/playback check |
+| Public source | PRs #47–49 merged; phone v65 and API/Web search clarification delivered | Proposal adoption implementation under review; root checks pending |
+| Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before any activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
 Earlier dated source, test and release records below retain their exact scope.

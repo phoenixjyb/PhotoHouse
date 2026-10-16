@@ -2,13 +2,13 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v64**; its exact source, signature and OTA checks
-are recorded in the [v64 release record](docs/PHONE_V64_RELEASE_2026-10-15.md).
-Following source includes search improvements and a metadata-only chapter memory
-chooser. These edits are not a new signed APK or OTA release. The current TV
-source reserves v31; the last recorded TV OTA remains v30. Use the dated
-[project status](../../docs/PROJECT_STATUS.md) and recheck the live feed before
-making a delivery claim.
+The phone release baseline is **v65 / `0.65-chapter-memory`**. Its signed
+artifact, HTTPS publication and CI evidence are recorded in the
+[v65 release record](docs/PHONE_V65_RELEASE_2026-10-16.md). The release adds an
+explicit metadata-only family-memory chooser for saved-story chapter links.
+Physical phone installation and family acceptance remain open. TV OTA remains
+v30; v31 source is unpublished. See the dated
+[project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
 
 ## Projects
 
@@ -107,12 +107,11 @@ signing, OTA delivery and family acceptance remain separate gates.
 ## Release and acceptance
 
 Source checks, debug APK assembly, a signed release, OTA publication,
-installation, and family/device acceptance are separate evidence. The v64
-release record documents a signed phone APK and published phone update; it does
-not establish family acceptance of later source edits.
-TV OTA remains v30. The physical TV/projector check is pending. Do not treat a
-successful local check or APK assembly as release signing, installation, or
-acceptance.
+installation, and family/device acceptance are separate evidence. The v65
+release record documents the signed phone APK and published phone update; it does
+not establish physical-phone or family acceptance. TV OTA remains v30. The
+physical TV/projector check is pending. Do not treat a local check or APK
+assembly as release signing, installation, or acceptance.
 
 Keep dated release records as historical evidence. Check the current source,
 release record and device state before making a delivery claim.

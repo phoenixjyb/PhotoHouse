@@ -42,6 +42,8 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     val reviewScrollState = rememberScrollState()
     val guided = state.guideStep != null && !isSavedEdit
     val guideReview = guided && state.guideStep == StoryGuideStep.REVIEW
+    val proposalImportReview = state.proposalImportReview.takeIf { state.savedStory == null }
+    var proposalQuestionsExpanded by remember(store, proposalImportReview) { mutableStateOf(false) }
     LaunchedEffect(state.guideStep) { reviewScrollState.scrollTo(0) }
     val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave && !savedEditReloading
     Column(Modifier.fillMaxSize().verticalScroll(reviewScrollState).padding(20.dp)
@@ -49,6 +51,41 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         if (guided) StoryGuideProgress(requireNotNull(state.guideStep), zh)
         Text(if (guided && state.guideStep == StoryGuideStep.FRAMES) t("Preparing your moments", "正在整理所选画面") else if (guideReview) t("Review and save", "检查与保存") else if (guided) t("Tell your memory", "讲述回忆") else if (isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
             fontFamily = FontFamily.Serif)
+        proposalImportReview?.let { review ->
+            OutlinedCard(Modifier.fillMaxWidth().testTag("story-proposal-import-provenance")) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(t("Imported from an AI proposal · Review before saving", "内容来自 AI 建议 · 保存前请重新核对"),
+                        style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.testTag("story-proposal-import-origin"))
+                    Text(t("This wording is not verified. Your original family sources and chapter links were left unchanged.",
+                        "这些文字尚未核实。原有家人回忆来源与篇章关联均已保留。"),
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("story-proposal-import-unreviewed"))
+                    Text(t("${review.chapterIds.size} chapter(s) imported · ${review.sourceCount} proposal source reference(s)",
+                        "已导入 ${review.chapterIds.size} 篇 · 建议包含 ${review.sourceCount} 条来源引用"),
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("story-proposal-import-counts"))
+                    if (review.questions.isNotEmpty()) {
+                        TextButton(
+                            onClick = { proposalQuestionsExpanded = !proposalQuestionsExpanded },
+                            modifier = Modifier.fillMaxWidth().testTag("story-proposal-import-questions-toggle"),
+                        ) {
+                            Text(if (proposalQuestionsExpanded)
+                                t("Hide questions · ${review.questions.size}", "收起问题 · ${review.questions.size}")
+                            else t("Review questions · ${review.questions.size}", "查看待确认问题 · ${review.questions.size}"))
+                        }
+                        if (proposalQuestionsExpanded) {
+                            Column(Modifier.fillMaxWidth().testTag("story-proposal-import-questions"),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(t("Questions to confirm", "待确认的问题"), style = MaterialTheme.typography.labelLarge)
+                                review.questions.forEachIndexed { index, question ->
+                                    Text("• $question", style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.testTag("story-proposal-import-question-$index"))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Text(t("${state.selectedAssetIds.size} selected · photos and videos in your chosen order",
             "${state.selectedAssetIds.size} 个瞬间 · 照片与视频按所选顺序排列"), style = MaterialTheme.typography.bodyMedium)
         if (guided) Text(if (state.guideStep == StoryGuideStep.FRAMES) t("Preparing an editable outline. This does not save a story.", "正在准备可编辑的提纲，这一步不会保存故事。") else if (guideReview) t("Check the order and words. Nothing is saved until you confirm and tap Save story.", "核对顺序与文字。确认并点击“保存故事”之前，不会保存。")

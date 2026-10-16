@@ -1,8 +1,9 @@
 # Add an existing family memory to a chapter
 
-October 16 Web/API and following Android source after v64. This adds a manual
-source chooser to saved-story chapter links. Web source merged in PR #30;
-Android, paired live delivery and family acceptance have separate gates. It does not enable model generation or change the schema.
+October 16 Web/API and Android phone delivery. The Web chooser source merged in
+PR #30; Android chooser source merged in PR #47 and shipped in phone v65. The
+phone update is published, while physical installation and family acceptance
+remain open. The chooser does not enable model generation or change the schema.
 
 ## Family journey
 
@@ -94,20 +95,33 @@ and conflict handling. Save, chapter navigation, parent refresh/reopen and scope
 changes invalidate an active picker. Candidate metadata is not persisted to
 device drafts, history or server records.
 
-The Android source passed 74 focused JVM tests, compilation, lint and QA debug
-builds. Three emulator journeys passed with Chinese and English at 150% text
-size: selection/save/reopen, paging with exact failed-page retry and unsaved-source
-review, and explicit original-text/ready-transcript review. Their rendered views
-were inspected after recovering an emulator System UI interruption. These are
-synthetic emulator checks, not physical-device acceptance. Audio review here
-shows a ready transcript; it does not automatically fetch or play the recording.
+Before release, Android source passed 74 focused JVM tests, compilation, lint
+and QA debug builds. Three emulator journeys passed with Chinese and English at
+150% text size: selection/save/reopen, paging with exact failed-page retry and
+unsaved-source review, and explicit original-text/ready-transcript review. Their
+rendered views were inspected after recovering an emulator System UI interruption.
+These are synthetic emulator checks, not physical-device acceptance. Audio review
+here shows a ready transcript; it does not automatically fetch or play the
+recording.
 
 Reader refresh now preserves a dirty link draft against its verified baseline
 while blocking edits during loading or failure. Frozen uncertain saves cannot be
 replaced, and a revision-conflict Reload explicitly reacquires the story. Fresh
 readers clear candidate metadata and old mutation state.
 
-The next configured APK must reserve a new version before signing and
-publication; editing v64-labelled source does not replace the frozen released
-v64 APK. Windows candidate qualification and paired delivery remain separate
-steps. There is no new server schema or model activation in this slice.
+Phone v65 / `0.65-chapter-memory` is signed with the original certificate and
+published to the Windows HTTPS feed. All five source CI jobs passed in run
+`38835026125`. Separate release verification passed configured build/lint,
+embedded-field, signing-refusal, publication, native full-HTTPS, independent
+Mac full-stream and Web asset checks. The exact
+APK is documented in the
+[v65 release record](../clients/android/docs/PHONE_V65_RELEASE_2026-10-16.md).
+The physical phone has not been installed or tested, and family acceptance is
+open. No server schema or model activation is part of this chooser release.
+
+The separate reviewed chapter-proposal adoption flow into an unsaved existing
+story editor is following source. It passed 74 focused JVM tests, build/lint
+and eight QA-emulator journeys with inspected Chinese/English 150% renders. It
+is not part of the v65 chooser release; later APK and family acceptance remain
+separate. Search clarification shipped separately in PR #48 and is live in
+API/Web source.

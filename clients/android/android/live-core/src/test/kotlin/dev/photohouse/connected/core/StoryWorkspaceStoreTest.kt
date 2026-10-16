@@ -129,6 +129,20 @@ class StoryWorkspaceStoreTest {
         ProtectedMemoryStoriesWire.detail(savedEditStoryJson(revision, narration).toByteArray(),
             "family-a", "66666666-6666-4666-8666-666666666666", revision)
 
+    private fun proposalDraft(
+        base: SavedMemoryStory,
+        contributionId: String = "77777777-7777-4777-8777-777777777777",
+        title: String? = "AI title",
+        narration: String = "Reviewed AI wording",
+        sourceIds: List<String> = listOf("caption-101", "contribution-$contributionId", "editorial-${base.id}-chapter-1"),
+    ) = StoryProposalAdoptionDraft(
+        storyId = base.id, libraryId = base.libraryId, revision = base.revision,
+        jobId = "88888888-8888-4888-8888-888888888888", jobKind = "narrative",
+        selectionRevision = base.selectionRevision, title = title,
+        chapters = listOf(StoryProposalAdoptionChapter("chapter-1", narration, sourceIds)),
+        questions = listOf("Which year was it?"),
+    )
+
     private class DraftPersistenceFake : StoryDraftPersistence {
         var stored: StoryDraftRecord? = null
         var failNextWrite = false
@@ -675,6 +689,83 @@ class StoryWorkspaceStoreTest {
         assertEquals(listOf(false to true, false to true), api.updateProfiles)
         assertEquals(5L, store.state.value.savedStory?.revision)
         assertEquals("Edited saved title", Json.parseToJsonElement(frozen).jsonObject.getValue("title").jsonPrimitive.content)
+    }
+
+    @Test fun reviewedProposalAdoptionChangesOnlySelectedWordingAndKeepsLinksWithoutWriting() = runTest {
+        var current = binding()
+        val api = Fake()
+        val oneChapter = savedEditStory()
+        val base = oneChapter.copy(
+            items = oneChapter.items + MemoryStoryAsset(Asset("2", "image", 800, 600, null, null, "/assets/2"), emptyList()),
+            chapters = oneChapter.chapters + SavedMemoryStoryChapter("chapter-2", "Later", "Unchanged wording", listOf("2"), emptyList()),
+        )
+        val contributionId = "77777777-7777-4777-8777-777777777777"
+        val secondContributionId = "99999999-9999-4999-8999-999999999999"
+        val refs = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", listOf(contributionId)),
+                SavedMemoryChapterContributionReferences("chapter-2", listOf(secondContributionId))))
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        assertTrue(store.seedSavedStoryForEdit(base, refs))
+        val before = store.state.value.editableChapters.first()
+        val untouchedBefore = store.state.value.editableChapters[1]
+
+        assertTrue(store.applyReviewedStoryProposal(proposalDraft(base)))
+        val after = store.state.value
+        val chapter = after.editableChapters.first()
+        assertEquals("AI title", after.title)
+        assertEquals("Reviewed AI wording", chapter.narration)
+        assertEquals(before.id, chapter.id)
+        assertEquals(before.title, chapter.title)
+        assertEquals(before.assetIds, chapter.assetIds)
+        assertEquals(before.evidenceIds, chapter.evidenceIds)
+        assertEquals(untouchedBefore, after.editableChapters[1])
+        assertEquals(base.selectionRevision, after.draft?.selectionRevision)
+        assertEquals(listOf("1", "2"), after.draft?.chapters?.map { it.assetIds }?.flatten())
+        assertFalse(after.reviewed)
+        assertTrue(after.dirty)
+        assertEquals(listOf("chapter-1"), after.proposalImportReview?.chapterIds)
+        assertEquals(3, after.proposalImportReview?.sourceCount)
+        assertEquals(listOf("Which year was it?"), after.proposalImportReview?.questions)
+        assertTrue(api.updateBodies.isEmpty())
+        assertTrue(api.saveBodies.isEmpty())
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base)))
+
+        val keepTitleStore = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        assertTrue(keepTitleStore.seedSavedStoryForEdit(base, refs))
+        assertTrue(keepTitleStore.applyReviewedStoryProposal(proposalDraft(base, title = null)))
+        assertEquals(base.title, keepTitleStore.state.value.title)
+        assertTrue(api.updateBodies.isEmpty())
+
+        store.clear()
+        assertNull(store.state.value.proposalImportReview)
+    }
+
+    @Test fun reviewedProposalAdoptionRejectsStaleBindingsDirtyEditorAndForeignCitations() = runTest {
+        var current = binding()
+        val api = Fake()
+        val base = savedEditStory()
+        val contributionId = "77777777-7777-4777-8777-777777777777"
+        val refs = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", listOf(contributionId))))
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        assertTrue(store.seedSavedStoryForEdit(base, refs))
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base, title = "bad\ntitle")))
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base, title = "bad\u2028title")))
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base, sourceIds = listOf("foreign-source"))))
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base.copy(revision = base.revision + 1))))
+        assertEquals("Original saved narration", store.state.value.editableChapters.single().narration)
+
+        assertTrue(store.editTitle("A manual change"))
+        assertFalse(store.applyReviewedStoryProposal(proposalDraft(base)))
+        assertEquals("A manual change", store.state.value.title)
+        assertTrue(api.updateBodies.isEmpty())
+
+        val cleanStore = StoryWorkspaceStore(repo(api) { current }, this, { current })
+        assertTrue(cleanStore.seedSavedStoryForEdit(base, refs))
+        current = binding(generation = 2)
+        assertFalse(cleanStore.applyReviewedStoryProposal(proposalDraft(base)))
+        assertEquals(StoryWorkspaceStoreStatus.SELECTION, cleanStore.state.value.status)
+        assertTrue(api.updateBodies.isEmpty())
     }
 
     @Test fun savedStoryConflictRetainsUnsavedWordsUntilExplicitFreshReseed() = runTest {
