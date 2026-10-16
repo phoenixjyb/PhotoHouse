@@ -33,7 +33,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
 | Natural-language search diagnosis and next work | [Search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [new-session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
-| Gated conversational image-semantic retrieval | [Scene-search Web flow and recovery contract](ASSISTANT_SCENE_SEARCH.md), [semantic pilot](SEMANTIC_SEARCH_PILOT.md), [reviewed scene-query provider](REVIEWED_SCENE_PROVIDER.md) |
+| Gated conversational image-semantic retrieval | [Scene-search Web flow and recovery contract](ASSISTANT_SCENE_SEARCH.md), [semantic pilot](SEMANTIC_SEARCH_PILOT.md), [reviewed scene-query provider](REVIEWED_SCENE_PROVIDER.md), [offline reviewed measurement](REVIEWED_SCENE_MEASUREMENT.md) |
 | Measure scene relevance across languages | [Private scene-set evaluation](SEMANTIC_SCENE_QUALIFICATION.md), [native diagnostic](SEMANTIC_SCENE_BENCHMARK_2026-10-16.md), [local translation experiment](SEMANTIC_SCENE_TRANSLATION_2026-10-16.md), [untouched-photo intent diagnostic](SEMANTIC_SCENE_INTENT_EVALUATION_2026-10-16.md), [generated pair baseline](SEMANTIC_PAIR_QUALIFICATION.md) |
 | Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |

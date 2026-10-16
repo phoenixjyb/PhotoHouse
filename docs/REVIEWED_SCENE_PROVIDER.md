@@ -123,3 +123,8 @@ exact composite recipe, compatible image-vector coverage, native resource and
 serving checks, explicit activation, and family/device relevance assessment.
 Broader natural-language clarification and automatic faithful translation remain
 separate development work.
+
+The [offline reviewed-provider measurement runner](REVIEWED_SCENE_MEASUREMENT.md)
+now exercises the exact provider with original language cohorts and hash-only
+query receipts. It requires existing matching bindings, refuses an incompatible
+measured image recipe and creates no qualification approval or activation.

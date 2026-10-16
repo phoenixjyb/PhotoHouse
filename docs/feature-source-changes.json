@@ -21665,6 +21665,72 @@
       "models_activated": false,
       "household_data_included": false,
       "translation_quality_qualified": false
+    },
+    {
+      "feature": "offline-exact-reviewed-provider-scene-measurement",
+      "source_commit": "40ad44695932cb46f7cda1afbe9a8ad34ecb7dcf",
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "61f10dfc2e0e4defaa0f87479f0a824fe86fe3764eed55908d0de16f53b3dbfc",
+          "sha256": "1cad15a768ddb604c3be9ad1a1ba5dc0dfac60adae65179c408ad8447cd3f4ef"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_MEASUREMENT.md",
+          "before_sha256": null,
+          "sha256": "60cb6fecb755ed095f4a9b727a72d10b5b3881d51742e4aeac3aa2ad56824651"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_PROVIDER.md",
+          "before_sha256": "51c6aafc1cee29ce393ea1e069d253d722867409dfe7d4deeb5d3f49c68d9a3a",
+          "sha256": "4bbf085c056ed110d8db0be935d485f45ecc7c8dd4d73129a66ad4cff5ce463d"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": "a325ef36b0bcf0c6a3f12b7859b10d95b85c6c18a2dbfd7798331334dedacb8b",
+          "sha256": "abbd1edbb4311f2a9c4bf416b9d3f280830f58c1a939f3b5d566175a4862e127"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "c7e8cbd8e3cee8c233f3b205ee0703b5b0b402a3ff87fd9ad8dc8fee31ad0e2d",
+          "sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61"
+        },
+        {
+          "path": "server/scripts/qualify_reviewed_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "eb4891b58ae81010f130f703d10dcf39d0b69fd00a5991e22094f769f7dd80f9"
+        },
+        {
+          "path": "server/scripts/qualify_semantic_scenes.py",
+          "before_sha256": "f9f047cc755d4fe70c24185698494ee6881fa0ac54722f512371e6f78374db0a",
+          "sha256": "597a0ddf584d5e9c364e663a9c8d719a7dac8cecda75349eecae2140d2e7be39"
+        },
+        {
+          "path": "server/tests/security/test_qualify_reviewed_semantic_scenes.py",
+          "before_sha256": null,
+          "sha256": "258891c93745d2c9a22a112a62f4b11e0dcdbab3bcc86411e2bac6aea2b9e4dc"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_scene_measurement.py",
+          "before_sha256": null,
+          "sha256": "30ab0d3d6d1291c748855a318532dc3f01a7543dd7c9ba55944a67436f3c3601"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "1c4b90363cb6e4b0715f55c80d095cc5e6d33dd7d9458f393030b0f09f335762",
+          "sha256": "e65c734f2d744456ce2889e3d144a8a5ddabfbfd95674f0b7d1f667df1a21120"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9712f6a506199fe84e4f1a02c0e9b411430eedda654e4219a51ef789e6d52879",
+          "sha256": "88e17cb7a6d38196c01c2df6a44d84c86808e5fb6636347a4134a1cbcd28ac30"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false,
+      "pair_binding_created": false
     }
   ]
 }
