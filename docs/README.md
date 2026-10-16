@@ -34,7 +34,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Natural-language search diagnosis and next work | [Search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [new-session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Gated conversational image-semantic retrieval | [Scene-search Web flow and recovery contract](ASSISTANT_SCENE_SEARCH.md), [semantic pilot](SEMANTIC_SEARCH_PILOT.md) |
-| Measure scene relevance across languages | [Private scene-set evaluation](SEMANTIC_SCENE_QUALIFICATION.md), [generated pair baseline](SEMANTIC_PAIR_QUALIFICATION.md) |
+| Measure scene relevance across languages | [Private scene-set evaluation](SEMANTIC_SCENE_QUALIFICATION.md), [native diagnostic](SEMANTIC_SCENE_BENCHMARK_2026-10-16.md), [generated pair baseline](SEMANTIC_PAIR_QUALIFICATION.md) |
 | Assistant voice-turn timing | [Timing contract and source evidence](VOICE_TURN_TIMING.md) |
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |

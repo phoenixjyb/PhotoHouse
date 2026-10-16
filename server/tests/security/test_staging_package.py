@@ -44,6 +44,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_search_intent.py',
             'scripts/search_intent_cases.py',
             'scripts/check_private_search.py',
+            'scripts/semantic_scene_cases.py',
+            'scripts/qualify_semantic_scenes.py',
             'scripts/qualify_oral_history.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
@@ -198,6 +200,31 @@ class StagingPackageTests(unittest.TestCase):
                                     cwd=root, capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), 'isolated_extracted_api_import_passed')
+
+    def test_extracted_scene_evaluator_plans_without_optional_ml_or_checkout_fallback(self):
+        commit = package.git('rev-parse', 'HEAD').decode().strip()
+        files = package.source_files(commit)
+        with tempfile.TemporaryDirectory() as selected:
+            root = Path(selected).resolve()
+            with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
+                archive.extractall(root)
+            program = (
+                'import sys\nfrom pathlib import Path\n'
+                f'root=Path({str(root)!r})\n'
+                "sys.path.insert(0,str(root/'scripts'))\n"
+                'import qualify_semantic_scenes,semantic_scene_cases\n'
+                'for module in (qualify_semantic_scenes,semantic_scene_cases):\n'
+                ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
+                "assert not {'torch','torchvision','open_clip','numpy','PIL'} & set(sys.modules)\n"
+                'raise SystemExit(qualify_semantic_scenes.run([]))\n'
+            )
+            result = subprocess.run([sys.executable, '-I', '-B', '-c', program],
+                                    cwd=root, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            plan = json.loads(result.stdout)
+            self.assertEqual(plan['status'], 'scene_pair_plan')
+            self.assertFalse(plan['private_files_read'])
+            self.assertFalse(plan['models_loaded'])
 
     def test_extracted_api_prepares_and_serves_synthetic_a0_without_migration_to_package_head(self):
         commit = package.git('rev-parse', 'HEAD').decode().strip()
