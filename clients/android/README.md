@@ -17,6 +17,11 @@ API/Web source `88de08e` passed Windows synthetic qualification and has since
 been deployed in a separate cutover. Real voice and family acceptance remain
 open; synthetic qualification is not a real audio trial.
 
+The following phone candidate is **v68 / `0.68-voice-recovery`**, with clearer
+recognition/request/playback failure guidance. It is not published. See the
+[v68 candidate](docs/PHONE_V68_CANDIDATE_2026-10-16.md) and
+[Chinese trial guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
+
 ## Projects
 
 The Gradle project is in [`android/`](android/), with these main components:
