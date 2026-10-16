@@ -22333,6 +22333,53 @@
       "runtime_changed": false,
       "apk_rebuilt": false,
       "physical_audio_family_acceptance": false
+    },
+    {
+      "feature": "phone-batch-upload-validation-and-interruption-recovery",
+      "source_commit": "ca151330a55d02c8e2429f266161107aecfbfd36",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadReviewUiTest.kt",
+          "sha256": "ae3fb6454b94cc9833e3a1288e2aa8dedf1aa72c02716b6849ca57025a86793c"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadReviewCard.kt",
+          "sha256": "664fb94b0111fe389a22806a0e995856f5e2c8cef7311f6d9f094017ae06f039"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "d9763acab54b9f34b1247590c748f1760cfddcb6e7f32e1a5e9383ad9fa28ab3",
+          "before_sha256": "6323e3010a6b4968c5ae4fac0219814360b027d96d8932717c9a8bab7bb0a9db"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadConsent.kt",
+          "sha256": "d0e3a558475ef8ab1a7f5573521397a36babf4cb9b8eebc03daa891dd25ae51b"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt",
+          "sha256": "d90a43c521531edf0e6da9165fdd334cde32aff114c026f6705f509772a3ab1c",
+          "before_sha256": "b1022cae52300e0644e6b2de673edc2202baa2c76d963b8aaa7333ed4ac14e32"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadConsentTest.kt",
+          "sha256": "a21c3f3b5874d961dc862303d2525704df58e5b8df0a91a026ee96322c23e737"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadQueueTest.kt",
+          "sha256": "faf3dc3ec37a6aa0deae7b812e81b52b83c3136fdc5dc35dcdcde1316f11c6ef",
+          "before_sha256": "f0fedbab42ab3e8d58aade840591cc1a214fc2514e4b7862e341a06f372d5411"
+        },
+        {
+          "path": "docs/ANDROID_UPLOAD_RECOVERY.md",
+          "sha256": "cf73de9de6bdc32e1961f7e690154cede06ac2c1ae2beac755ac307bcc5d8a0a"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "upload_limits_changed": false,
+      "automatic_retry_added": false,
+      "apk_published": false,
+      "physical_upload_acceptance": false
     }
   ]
 }
