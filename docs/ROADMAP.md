@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 16 phone v65 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 16 phone v66 delivery**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
@@ -8,38 +8,40 @@ preserved below.
 
 PR #47 delivered the Android chapter family-memory chooser in phone v65. PR #48
 merged bilingual search clarification, and API/Web source
-`f476c5e16f032eb427e3504997d6e33b5a500d9b` is live. PR #49 delivered phone v65
-(`0.65-chapter-memory`) with the original signing certificate and icon. All five
-CI jobs passed. Separate release verification published the signed APK and
-confirmed it through native and independent full-stream HTTPS readback. Physical
-phone installation and family acceptance remain open. TV OTA
-remains v30, with v31 source unpublished. See the [v65 release record](../clients/android/docs/PHONE_V65_RELEASE_2026-10-16.md).
+`f476c5e16f032eb427e3504997d6e33b5a500d9b` remains the last verified live source.
+PR #53 delivered phone v66 (`0.66-proposal-review`) with the original signing
+certificate and icon. All five CI jobs passed; configured release build/lint,
+native signature checks, complete Windows HTTPS readback and independent Mac
+full-stream digest verification passed. Windows postflight matched the active
+API binding and unchanged TV v30 feed; it did not inventory all eight root
+tasks. Physical phone installation and family acceptance remain open. TV OTA
+remains v30, with v31 source unpublished. See the [v66 release record](../clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md).
 
-The phone story-editor implementation now adds [reviewed adoption of a chapter
-proposal](PHONE_STORY_PROPOSAL_ADOPTION.md) into an unsaved existing story. Its 74 focused JVM
-tests, build/lint and eight explicit QA-emulator journeys passed, with inspected
-Chinese/English 150% renders. It is following source, outside v65; later APK
-delivery and physical family acceptance remain separate.
-Provider/model story generation remains off. The synthetic 9B cold-capture
-sample took 80.422 seconds and has not had human quality review; see the
-[story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
+Phone v66 delivers [reviewed adoption of a chapter proposal](PHONE_STORY_PROPOSAL_ADOPTION.md)
+into an unsaved existing story. The proposal-adoption source qualification
+recorded 74 focused JVM checks, eight QA-emulator journeys and six inspected
+Chinese/English 150% renders. Provider/model story generation remains off. The
+synthetic 9B cold-capture sample took 80.422 seconds and has not had human
+quality review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
 ## Current priority: validate delivered family search and story linking
 
 Run owner/member acceptance journeys for the delivered bilingual search
-clarification and v65 chapter-source chooser on an installed physical phone.
-After a later APK release, add proposal adoption to that trial. Confirm source
-attribution, explicit transcript/original review, unsaved link changes, save and
-reopen, and behavior at large text. Keep search relevance, physical interaction
-and family acceptance separate from CI, APK and HTTPS evidence. Do not infer
-family acceptance from publication or emulator journeys.
+clarification, v65 chapter-source chooser and v66 proposal adoption on an
+installed physical phone. Confirm source attribution, explicit
+transcript/original review, proposal and title choices, unsaved editor behavior,
+save/reopen and large-text usability. Keep search relevance, physical
+interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
+not infer family acceptance from publication or emulator journeys.
 
 ## 1. Accept the delivered experience
 
 Use the [v65 chapter-source guide](../clients/android/docs/PHONE_V65_TEST_GUIDE_ZH.md)
 with owner and member accounts: choose and review an eligible source, preserve
 unsaved links, save and reopen, remove a link, and confirm the original record
-remains. Also run the still-relevant [voice/reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
+remains. Use the [v66 proposal-adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md)
+to check current suggestions, explicit chapter/title review, import into the
+unsaved editor and explicit save. Also run the still-relevant [voice/reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
 for saved-section playback, Pause/End, account/library change and recovery.
 Complete TV v30's physical named-library and playback check when the
 desktop/projector is available.

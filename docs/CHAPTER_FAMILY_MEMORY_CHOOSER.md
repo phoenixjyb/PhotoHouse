@@ -120,8 +120,8 @@ The physical phone has not been installed or tested, and family acceptance is
 open. No server schema or model activation is part of this chooser release.
 
 The separate reviewed chapter-proposal adoption flow into an unsaved existing
-story editor is following source. It passed 74 focused JVM tests, build/lint
-and eight QA-emulator journeys with inspected Chinese/English 150% renders. It
-is not part of the v65 chooser release; later APK and family acceptance remain
-separate. Search clarification shipped separately in PR #48 and is live in
+story editor is delivered in [phone v66](../clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md).
+Its source passed 74 focused JVM tests, build/lint and eight QA-emulator journeys
+with inspected Chinese/English 150% renders. V66 signing/OTA checks are recorded
+separately; physical family acceptance remains open. Search clarification shipped separately in PR #48 and is live in
 API/Web source.

@@ -2,12 +2,12 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v65 / `0.65-chapter-memory`**. Its signed
-artifact, HTTPS publication and CI evidence are recorded in the
-[v65 release record](docs/PHONE_V65_RELEASE_2026-10-16.md). The release adds an
-explicit metadata-only family-memory chooser for saved-story chapter links.
-Physical phone installation and family acceptance remain open. TV OTA remains
-v30; v31 source is unpublished. See the dated
+The phone release baseline is **v66 / `0.66-proposal-review`**. Its signed
+artifact, native HTTPS readback and CI evidence are recorded in the
+[v66 release record](docs/PHONE_V66_RELEASE_2026-10-16.md). The release adds
+reviewed adoption of selected story chapter proposals into an unsaved editor;
+story generation remains off. Physical phone installation and family
+acceptance remain open. TV OTA remains v30; v31 source is unpublished. See the dated
 [project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
 
 ## Projects
@@ -107,9 +107,12 @@ signing, OTA delivery and family acceptance remain separate gates.
 ## Release and acceptance
 
 Source checks, debug APK assembly, a signed release, OTA publication,
-installation, and family/device acceptance are separate evidence. The v65
+installation, and family/device acceptance are separate evidence. The v66
 release record documents the signed phone APK and published phone update; it does
-not establish physical-phone or family acceptance. TV OTA remains v30. The
+not establish physical-phone or family acceptance. Native Windows and
+independent Mac full-stream readback passed, and API binding plus the unchanged
+TV feed were checked in postflight. Use the [Chinese v66 test guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
+for proposal review and explicit-save acceptance. TV OTA remains v30. The
 physical TV/projector check is pending. Do not treat a local check or APK
 assembly as release signing, installation, or acceptance.
 

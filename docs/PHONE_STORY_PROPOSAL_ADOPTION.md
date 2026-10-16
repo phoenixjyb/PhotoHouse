@@ -1,8 +1,9 @@
 # Phone: review a proposal in an unsaved story edit
 
-Implemented 2026-10-16. This is following source work, outside the published
-phone v65 release. Story-generation activation and human model-quality review
-remain separate gates.
+Delivered 2026-10-16 in **phone v66 / `0.66-proposal-review`**. See the
+[release record](../clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md) for the
+signed artifact, native/HTTPS readback and open physical-family acceptance.
+Story-generation activation and human model-quality review remain separate gates.
 
 ## User flow
 
@@ -55,6 +56,8 @@ recovery. Six Chinese/English 150% renders of the selection, compact provenance
 card and reachable editor/save controls were inspected. The QA runner addressed
 only `emulator-5554` and the separate `dev.photohouse.connected.qa` packages.
 
-These generated checks do not establish live model or family acceptance. No
-Windows write, model request, service change, signing, OTA publication or
-physical-device write was performed in this source round.
+These generated checks did not establish live model or family acceptance. The
+following v66 release completed separately authorized original-certificate
+signing and Windows phone OTA publication with native and independent full
+HTTPS readback. No model activation or physical-device write occurred; device
+and family acceptance remain open.
