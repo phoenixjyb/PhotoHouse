@@ -221,3 +221,9 @@ The [private scene qualification runner](SEMANTIC_SCENE_QUALIFICATION.md) now
 provides matched-language, multi-relevant-image evaluation for an explicitly
 curated local image set. Its generated tests establish evaluator behavior;
 they do not supply a reviewed natural-scene dataset or model result.
+
+The separate [October 16 native scene diagnostic](SEMANTIC_SCENE_BENCHMARK_2026-10-16.md)
+retrieved a relevant image first in 15/16 English, 2/16 Chinese and 11/16 mixed
+cases over 32 public photos. It is a small assistant-curated diagnostic with
+possible training overlap, not family acceptance. The Chinese deficit keeps
+direct bilingual activation unqualified; serving/vector coverage gates remain.

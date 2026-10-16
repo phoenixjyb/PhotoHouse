@@ -21171,6 +21171,56 @@
       "apk_published": false,
       "runtime_changed": false,
       "microphone_speaker_overlap": false
+    },
+    {
+      "feature": "include-offline-scene-evaluator-in-source-package",
+      "source_commit": "aa339a2ffa5f92e562acf5a8205b5dc0da8b3295",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8d474210efe6949297b18fc83f35911abc98c9ed79d0c7d1d67ced67f336caf8",
+          "sha256": "abb611f25a08cace3646a7bd194668b51bc1085978e7659f98c361bd4f126f75"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "afa9a1836c095a98f8a68b11f9b91e688c85c67eb1e5831370665025f541d5b9",
+          "sha256": "9a18bb1272f9335c0bb89149c905e7ba723dfb5c0f53df7b091eddc59e5c2f3f"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "native-public-scene-diagnostic-and-bilingual-activation-gap",
+      "source_commit": "878ab0562981f6175dcc5f2bea588947ab175de4",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SCENE_BENCHMARK_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "7d9233c046d27b990f26294093d4ee7ba6a377a87ef5f382ab65c075eb4ea2fe"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": "79f8c5bda3b67d6e5e0baee43176933f7723c9b110d3e3797b888e98671b53b0",
+          "sha256": "641e24ca696c643e1962716b8db8e700dca21ac7a6dc5c6dc4424cbc6655d548"
+        },
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "428e65947b8e0a521ee3f904769ee3291e9360f470bb6f567fbc01be60f92058",
+          "sha256": "6a4a21a26686c5c91d8ad59970cf9d92c28d2b536ce5d7c1d6f548fd902d8d25"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "3fd757fb80c0182247044865d94dcd6cf78fb28a17e68e99c407e1767a0e83e8",
+          "sha256": "02b2b9d987dc1bcf57ae003d82978d5d03146c77a674da2ed1f154734731f144"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "native_cpu_diagnostic_measured": true,
+      "family_relevance_accepted": false
     }
   ]
 }

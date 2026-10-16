@@ -1,5 +1,10 @@
 # Private natural-scene retrieval measurements
 
+The [October 16 native diagnostic](SEMANTIC_SCENE_BENCHMARK_2026-10-16.md)
+measured the current local pair on 32 public photos and 48 matched queries.
+Its Chinese deficit keeps bilingual activation unqualified; source tests below
+remain distinct from that actual model measurement.
+
 `server/scripts/qualify_semantic_scenes.py` evaluates one explicitly selected
 local image/text checkpoint against an owner-selected private image set. Each
 case has English, Chinese and mixed Chinese-English wording with the same

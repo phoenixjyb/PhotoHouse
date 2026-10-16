@@ -246,6 +246,8 @@ FILES = (
     'scripts/image_preprocessing_receipts.py',
     'scripts/semantic_pair_cases.py',
     'scripts/qualify_semantic_pair.py',
+    'scripts/semantic_scene_cases.py',
+    'scripts/qualify_semantic_scenes.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
 )
