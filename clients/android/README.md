@@ -117,16 +117,16 @@ signing, OTA delivery and family acceptance remain separate gates.
 ## Release and acceptance
 
 Source checks, debug APK assembly, a signed release, OTA publication,
-installation, and family/device acceptance are separate evidence. The v67
-release record documents the signed phone APK and published phone update; the
-Samsung installation and launch are confirmed, while voice behavior and family
-acceptance remain open. Native Windows and independent Mac full-stream readback
-passed. The phone-publication postflight checked the then-current API binding and
-unchanged TV feed before the later API/Web cutover. Use the [Chinese v67 test guide](docs/PHONE_V67_TEST_GUIDE_ZH.md)
-for voice continuation and interruption acceptance, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
-for retained proposal review and explicit saving. TV OTA remains v30. The
-physical TV/projector check is pending. Do not treat a local check or APK
-assembly as release signing, installation, or acceptance.
+installation, and family/device acceptance are separate evidence. The
+[v68 release record](docs/PHONE_V68_RELEASE_2026-10-16.md) documents the signed
+phone APK, native Windows and independent Mac full HTTPS readback, and preserved
+API/TV bindings. No physical v68 installation occurred in that delivery. The
+earlier v67 Samsung install/launch remains historical evidence. Use the
+[Chinese v68 guide](docs/PHONE_V68_TEST_GUIDE_ZH.md) for recovery, continuation
+and interruption checks, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
+for retained proposal review and explicit saving. TV OTA remains v30; physical
+TV/projector acceptance remains open. Do not treat a local check or APK assembly
+as release signing, installation or family acceptance.
 
 Keep dated release records as historical evidence. Check the current source,
 release record and device state before making a delivery claim.

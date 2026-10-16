@@ -21,7 +21,7 @@ There are no new automatic retries, background listening, consent changes,
 recording retention changes or account/library access changes. Existing v67
 voice reading continuation remains available.
 
-The existing production connection profile and original icon will be checked
+The existing production connection profile and original icon were checked
 against the unsigned package. At this preparation checkpoint, v67 was still the signed/served version.
 The later v68 publication is recorded separately.
 

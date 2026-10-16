@@ -65,7 +65,7 @@ deployment and still needs a new installed-provider quality measurement.
 ## Other retained capabilities and limits
 
 The earlier [v66 proposal-adoption flow](PHONE_STORY_PROPOSAL_ADOPTION.md)
-remains in v67: reviewed chapter/title choices enter an unsaved editor while
+remains in v68: reviewed chapter/title choices enter an unsaved editor while
 retaining existing source links; saving stays explicit. Provider/model story
 generation remains off. The synthetic 9B cold sample still needs human quality
 review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
@@ -78,8 +78,8 @@ story-generation model was activated by v67 signing/publication or qualification
 
 ## Delivery and acceptance
 
-The phone OTA postflight checked the then-current API binding and unchanged TV
-v30 pointer before the separate API/Web cutover. The API/Web delivery then
+The earlier v67 phone OTA postflight checked its then-current API binding and
+unchanged TV v30 pointer before the separate API/Web cutover. The API/Web delivery then
 changed only the API task action; its non-action task fields and `PT30S` startup
 trigger were preserved. Native readback accepted source `54394ed`, all five
 writer workers were restored, ASR/TTS and OCR remained in place, and the TV v30
@@ -92,9 +92,9 @@ ran. These checks did not inventory model health or video progress.
 | --- | --- | --- |
 | API/Web | Source `54394ed` deployed at 17:20 Beijing time; native and HTTPS readback passed; stopped-writer backup verified; five writer workers restored | Real ASR/TTS, voice UX and owner/member/family acceptance |
 | Primary database | Same configured database and schema `a0c9d2e4f817`; stopped-writer backup integrity checks passed; no migration or configuration change | Later feature/schema activation and paired recovery qualification |
-| Phone | v67 original-certificate/icon APK published and installed/launched on a Samsung phone; native plus independent full-HTTPS readback passed | Real ASR/TTS voice flow and family acceptance |
+| Phone | v68 original-certificate/icon APK published; native and independent full HTTPS readback passed. Earlier v67 Samsung install/launch is historical evidence | v68 physical installation, real ASR/TTS recovery/voice flow and family acceptance |
 | TV | v30 pointer and manifest verified unchanged; v31 source unpublished | Projector/library/playback check |
-| Public source | PR #64 feature source and PR #66 release records merged; phone continuation delivered in v67; API/Web `54394ed` deployed after synthetic qualification | Scene/provider and story-generation model activation stay separate |
+| Public source | PR #70 recovery guidance and PR #71 v68 candidate merged; phone v68 published with [delivery record](../clients/android/docs/PHONE_V68_RELEASE_2026-10-16.md); API/Web `54394ed` deployed separately | Later server source delivery, scene/provider and story-generation model activation stay separate |
 | Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
