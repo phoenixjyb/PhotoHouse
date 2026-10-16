@@ -21824,6 +21824,57 @@
       "previous_reviewed_source_commit": "2e218e5d20fa1e5ce77a875d52cd886cae98fdf4",
       "integration_base_commit": "752ad029ed4955000e17236437cc5e5fab8f9cac",
       "prior_records_preserved_in_ref": "backup/phone-v67-delivery-before-scene-measurement-20261016"
+    },
+    {
+      "feature": "api-web-v67-live-delivery-and-device-install-record",
+      "source_commit": "eb8ec58b0388456796d81b9992f18c4926f70ff1",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "08353d76ca0072efff4d01062b264db1265b08503f055748f3e9cc8612725318",
+          "sha256": "6b364ad52afa2057ec1b39d68233a044d2dae2baaff11c82371f0e527781806c"
+        },
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "0c5a237651c303863ab220f6b59acf3a9660ad7c1af3a8c0c0ae5e953ffbb5fb",
+          "sha256": "e439b3aeac9ef2855849d1f25a4c60e4db400cac6cd540a84306d9da686f4d75"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md",
+          "before_sha256": "feae14bf313b18354825eb17fea9e791a472e4a5736d1541622b2ca15b7fb351",
+          "sha256": "b2e64a4563a3b4579dbbf20fdfa5bac5f0f56389c2b25926256aad3d3c4ca91c"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md",
+          "before_sha256": "7dda611c47e051ba23ee8c4daab213b7f7a4296451c9d1b3cfd7ac7667eac452",
+          "sha256": "519a1d1360dc60e274f68bbe73e57ec1b20a869be5643afd4c0917206bce2a66"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "89a4bc2a01034cbe61eb8e49d5f3787c2831f74073ce45e195f8e27ea9c29f4d",
+          "sha256": "c5e3799969741ab0237beb1112a08721d522f0d88aa33908ef24f78713b6deda"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b024375733b9c5e67b9216a2a7dc95b268276cbadf51584db506f52b537b3597",
+          "sha256": "055eff304c14715240fbbca2f5bcb82f8695c2aad8452f9851bcbaf4f97344a6"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "fc36903fbfabcdf4a407ecb59fff29227b10ce3c670dcf54965c83305900de87",
+          "sha256": "1f3fc5d0f9f6984865593d3524a786ebebe303a16ec04efc7b2cbe7dc2b8186f"
+        }
+      ],
+      "documentation_only": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "recorded_api_source_commit": "88de08ef03a6a3be91e02a02941fd57b223e48c4",
+      "recorded_phone_ota_version": 67,
+      "recorded_live_api_delivery_verified": true,
+      "recorded_phone_installation_verified": true,
+      "real_voice_family_acceptance": false
     }
   ]
 }
