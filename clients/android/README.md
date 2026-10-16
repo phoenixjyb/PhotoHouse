@@ -7,13 +7,15 @@ artifact, native HTTPS readback and CI evidence are recorded in the
 [v67 release record](docs/PHONE_V67_RELEASE_2026-10-16.md). The release adds
 spoken Pause/End and explicitly opted-in saved-section voice continuation;
 reviewed chapter-proposal adoption remains available and generation stays off.
-Physical phone installation and real ASR/TTS/family
-acceptance remain open. TV OTA remains v30; v31 source is unpublished. See the dated
+Installation and launch of v67 on a Samsung phone were confirmed; real ASR/TTS
+and family acceptance remain open. TV OTA remains v30; v31 source is unpublished.
+See the dated
 [project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
 PR #54's Android scene-search controls are included, with server capability
 negotiation. This release does not activate a scene provider. The paired
-API/Web source passed Windows synthetic qualification and still needs its live
-cutover approval.
+API/Web source `88de08e` passed Windows synthetic qualification and has since
+been deployed in a separate cutover. Real voice and family acceptance remain
+open; synthetic qualification is not a real audio trial.
 
 ## Projects
 
@@ -113,10 +115,11 @@ signing, OTA delivery and family acceptance remain separate gates.
 
 Source checks, debug APK assembly, a signed release, OTA publication,
 installation, and family/device acceptance are separate evidence. The v67
-release record documents the signed phone APK and published phone update; it does
-not establish physical-phone or family acceptance. Native Windows and
-independent Mac full-stream readback passed, and API binding plus the unchanged
-TV feed were checked in postflight. Use the [Chinese v67 test guide](docs/PHONE_V67_TEST_GUIDE_ZH.md)
+release record documents the signed phone APK and published phone update; the
+Samsung installation and launch are confirmed, while voice behavior and family
+acceptance remain open. Native Windows and independent Mac full-stream readback
+passed. The phone-publication postflight checked the then-current API binding and
+unchanged TV feed before the later API/Web cutover. Use the [Chinese v67 test guide](docs/PHONE_V67_TEST_GUIDE_ZH.md)
 for voice continuation and interruption acceptance, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
 for retained proposal review and explicit saving. TV OTA remains v30. The
 physical TV/projector check is pending. Do not treat a local check or APK

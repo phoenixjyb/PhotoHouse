@@ -19,9 +19,10 @@ fixture. All 166 local source-tool tests passed. Configured release build/lint,
 checks passed. The preceding PR #61 feature source passed 86 focused JVM cases,
 18 emulator cases and inspected Chinese/English renders at 150% text size.
 Those checks do not establish physical microphone, ASR/TTS, latency or family
-acceptance. The v67 operation did not install an APK on a physical device.
+acceptance. A Samsung phone installation of v67 and app launch were confirmed;
+the actual voice flow remains untested.
 
-## Voice controls: phone delivered, Web candidate qualified
+## Voice controls: phone delivered; Web/API source deployed
 
 Phone v67 delivers [exact spoken Pause/End](VOICE_SESSION_SPOKEN_CONTROLS.md)
 after ASR during an opted-in foreground Listening phase, and explicit
@@ -37,11 +38,18 @@ automatic later-chapter advancement remain future work.
 The paired API/Web source `88de08ef03a6a3be91e02a02941fd57b223e48c4` passed
 Windows **candidate-only** synthetic qualification: 12 assistant cases, 12
 oral-history cases and 26 planner assertions. Its 237-file ZIP was pinned and
-source-verified. The operation used generated stores, opened no production
-database or family media, invoked no model, started no listener and changed no
-service/task. The synthetic oral fixture does not enable production oral intake.
-The live API/Web switch still needs its own stopped-writer backup, exact
-cutover/rollback qualification and operation-specific authority.
+source-verified. That qualification used generated stores and did not exercise
+production data, models, listeners, workers or services. The synthetic oral
+fixture does not enable production oral intake.
+
+At **2026-10-16 16:12 Beijing time**, a separate API/Web cutover deployed
+`88de08e`. The stopped-writer backup passed four database/journal integrity
+checks, the API/Web readback accepted the new source, and all five writer workers
+were restored. The configured schema remained `a0c9d2e4f817`; no migration or
+configuration change occurred. Native and HTTPS readback verified nine UI
+assets, the icon, phone v67 and TV v30; nine anonymous protected-route checks
+returned 401. This is service and source evidence, not real voice or family
+acceptance.
 
 ## Other retained capabilities and limits
 
@@ -59,20 +67,23 @@ story-generation model was activated by v67 signing/publication or qualification
 
 ## Delivery and acceptance
 
-Windows postflight matched the API task/action/configuration, process and
-listener binding to the prepublication snapshot, retained `update_root`, and
-verified the TV v30 pointer and manifest unchanged. This was not an inventory of
-all services, workers, model health or video progress. No API restart, task
-change, live schema migration or production-database change was part of either
-approved operation.
+The phone OTA postflight checked the then-current API binding and unchanged TV
+v30 pointer before the separate API/Web cutover. The API/Web delivery then
+changed only the API task action; its non-action task fields and `PT30S` startup
+trigger were preserved. Native readback accepted source `88de08e`, all five
+writer workers were restored, ASR/TTS and OCR remained in place, and the TV v30
+pointer remained unchanged. The stopped-writer backup verified the
+primary database, assistant journal, deletion journal and assistant workspace;
+the application schema and configuration bytes were unchanged and no migration
+ran. These checks did not inventory model health or video progress.
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Last verified live source `f476c5e`; API binding/configuration/process/listener unchanged by v67; source `88de08e` passed private Windows synthetic qualification | Separate live cutover/backup/rollback approval; real owner/member voice and UX acceptance |
-| Primary database | No live migration or production-database access in these operations | Later feature/schema activation and paired recovery qualification |
-| Phone | v67 original-certificate/icon APK published; release build/lint and native plus independent full-HTTPS readback passed | Physical update and real ASR/TTS/family acceptance |
+| API/Web | Source `88de08e` deployed at 16:12 Beijing time; native and HTTPS readback passed; stopped-writer backup verified; five writer workers restored | Real ASR/TTS, voice UX and owner/member/family acceptance |
+| Primary database | Same configured database and schema `a0c9d2e4f817`; stopped-writer backup integrity checks passed; no migration or configuration change | Later feature/schema activation and paired recovery qualification |
+| Phone | v67 original-certificate/icon APK published and installed/launched on a Samsung phone; native plus independent full-HTTPS readback passed | Real ASR/TTS voice flow and family acceptance |
 | TV | v30 pointer and manifest verified unchanged; v31 source unpublished | Projector/library/playback check |
-| Public source | PRs through #64 merged; phone continuation delivered in v67; API/Web candidate `88de08e` qualified | API/Web source is not claimed deployed; scene/model activation stays separate |
+| Public source | PR #64 feature source and PR #66 release records merged; phone continuation delivered in v67; API/Web `88de08e` deployed after synthetic qualification | Scene/provider and story-generation model activation stay separate |
 | Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 

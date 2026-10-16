@@ -1,21 +1,21 @@
 # Product roadmap
 
-Active priorities after the **October 16 phone v66 delivery**. [Features](FEATURES.md)
+Active priorities after the **October 16 phone v67 and API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
 preserved below.
 
-PR #47 delivered the Android chapter family-memory chooser in phone v65. PR #48
-merged bilingual search clarification, and API/Web source
-`f476c5e16f032eb427e3504997d6e33b5a500d9b` remains the last verified live source.
-PR #53 delivered phone v66 (`0.66-proposal-review`) with the original signing
-certificate and icon. All five CI jobs passed; configured release build/lint,
-native signature checks, complete Windows HTTPS readback and independent Mac
-full-stream digest verification passed. Windows postflight matched the active
-API binding and unchanged TV v30 feed; it did not inventory all eight root
-tasks. Physical phone installation and family acceptance remain open. TV OTA
-remains v30, with v31 source unpublished. See the [v66 release record](../clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md).
+PR #47 delivered the Android chapter family-memory chooser in phone v65; PR #48
+merged bilingual search clarification. At the phone v66 checkpoint, API/Web
+source `f476c5e` was live. Phone v67 (`0.67-voice-reading`) was then signed and
+published with its original certificate and icon. A separate API/Web cutover
+deployed source `88de08e` at 16:12 Beijing time on October 16. Its stopped-writer
+backup and native/HTTPS readback passed, the five writer workers were restored,
+and schema `a0c9d2e4f817` and configuration bytes were unchanged. Phone v67 was
+installed and launched on a Samsung phone; real voice and family acceptance
+remain open. TV OTA remains v30, with v31 source unpublished. See the
+[v67 release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md).
 
 Phone v66 delivers [reviewed adoption of a chapter proposal](PHONE_STORY_PROPOSAL_ADOPTION.md)
 into an unsaved existing story. The proposal-adoption source qualification
@@ -24,15 +24,17 @@ Chinese/English 150% renders. Provider/model story generation remains off. The
 synthetic 9B cold-capture sample took 80.422 seconds and has not had human
 quality review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
-PR #54 subsequently merged Android scene-search controls as following source.
-They are not included in the fixed v66 APK. Keep the optional model/runtime
-qualification and a later phone release separate from this delivered artifact.
+PR #54's Android scene-search controls were following source after the fixed v66
+APK and are included in phone v67 with server capability negotiation. Scene
+search remains default-off; no scene provider or story-generation model was
+activated by the phone or API/Web releases.
 
-## Current priority: validate delivered family search and story linking
+## Current priority: validate delivered voice, family search and story linking
 
-Run owner/member acceptance journeys for the delivered bilingual search
-clarification, v65 chapter-source chooser and v66 proposal adoption on an
-installed physical phone. Confirm source attribution, explicit
+Run the v67 voice continuation trial on the installed physical phone and the
+now-served Web experience. Separately run owner/member acceptance journeys for
+the delivered bilingual search clarification, v65 chapter-source chooser and
+v66 proposal adoption. Confirm source attribution, explicit
 transcript/original review, proposal and title choices, unsaved editor behavior,
 save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
@@ -82,11 +84,11 @@ remain future work.
 
 The paired [Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source)
 source `88de08e` passed Windows candidate-only qualification (12 assistant,
-12 oral-history and 26 planner checks). It is not served yet. Next prepare the
-exact live Web/API switch with a fresh stopped-writer backup and guarded rollback,
-obtain its separate service-operation authority, then run the [real voice trial](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md)
-on the updated phone and delivered Web. Real ASR/TTS, latency, owner/member and
-family acceptance stay ahead of broader narration or microphone/speaker overlap.
+12 oral-history and 26 planner assertions), then was deployed in the separate
+API/Web cutover. That synthetic qualification is not a real voice trial. Use the
+[v67 test guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md) on the
+installed phone and served Web. Real ASR/TTS, latency, owner/member and family
+acceptance remain open ahead of broader narration or microphone/speaker overlap.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.
