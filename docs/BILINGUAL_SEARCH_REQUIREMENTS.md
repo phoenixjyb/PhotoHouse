@@ -176,11 +176,12 @@ The optional v3 path accepts natural openings such as `I'm looking for`,
 `do we have`, `我想看看` and `有没有`, as well as descriptive requests. A local
 planner proposes exact input spans and bounded Chinese/English alternatives.
 The server, rather than the model, resolves reviewed people and hard filters.
-The planner receives a view of the query with resolved names/labels, recognized
-dates, media terms and quoted literals marked by explicit redaction boundaries,
-plus the civil date
-and a previous-search flag. It receives no roster, captions, credentials or
-database access. Code-point offsets stay fixed, including complete Unicode
+The compiler first marks resolved names/labels, recognized dates, media terms
+and quoted literals in an internal offset-preserving view. The local adapter
+sends only separate visible text fragments from that view, plus the civil date
+and a previous-search flag. Its payload has no marked full-query field, redaction markers, roster, captions
+or credentials and grants no database access. Returned surfaces
+map to exact original code-point offsets, including complete Unicode
 normalization clusters; unsafe partial mappings refuse provider invocation.
 Every accepted span must be visible and identical in the untouched original.
 All hard filters and residual requirements still compile from that original.
@@ -526,26 +527,29 @@ wording that would otherwise be treated as search syntax.
 
 ## Explicit redaction boundaries for intent proposals
 
-The optional provider view marks hidden conditions and leading commands with
-`█` at unchanged Python code-point offsets. This makes a hidden name/date/media
-condition or quoted literal distinguishable from ordinary whitespace between
-scene words, including Chinese and mixed text with no surrounding spaces.
-Quoted spans and the server-owned resolved pending-date slot are marked
-throughout; visible scene spelling and ordinary spacing remain intact. The
-original request stays capped at 1024 UTF-8 bytes. The provider view is capped at
-1024 code points and 3072 UTF-8 bytes to accommodate the marker encoding. The
-original request still determines all hard filters.
+The compiler marks hidden conditions and leading commands internally with `█`
+at unchanged Python code-point offsets. Quoted spans and the server-owned
+resolved pending-date slot are marked throughout. Visible scene spelling and
+ordinary internal spacing remain intact. The original request stays capped at
+1024 UTF-8 bytes; its internal redacted view allows 1024 code points and 3072
+UTF-8 bytes for marker encoding. The original request determines all hard filters.
 
-The local adapter prompt treats the marker as an uncrossable boundary. The
-shared validator rejects surfaces or alternatives containing it, and the compiler
-still verifies exact original substrings and all retained hard conditions. A
-proposal cannot remove a boundary, guess a hidden word, or bridge hidden content
-by replacing the marker with spaces. Reserved-marker wording in a descriptive
-proposal asks for clarification; literal quoted-text search is unchanged.
+The local adapter splits this view at marker runs and sends a `segments` array
+of independent visible fragments. It trims fragment edges, omits empty fragments
+and refuses zero or more than 32 fragments before any HTTP request. Markers and a full-query field are absent from the provider payload. The prompt forbids
+joining fragments or guessing omitted text. The raw surface/alternatives response
+schema and the public search wire protocol are unchanged.
 
-Generated view/transport/compiler tests verify these boundaries with no model or
-network. They do not measure recall or translation quality. Previous private
-native measurements apply to their pinned earlier candidates; a new bounded
-installed-provider cohort is required before activating this changed prompt.
-The provider remains optional and off by default; schema, public wire protocol,
-matching requirements, model selection and runtime configuration are unchanged.
+Each returned surface must fit within one transmitted fragment and occur exactly
+once in the original redacted view. The adapter derives original offsets locally;
+the compiler checks exact original substrings and retained hard conditions.
+The shared validator continues to reject marker-bearing surfaces or alternatives.
+Repeated surfaces and repaired cross-fragment phrases refuse. There is no retry,
+new translation call, relaxed matching requirement or implicit filter removal.
+Literal quoted-text search is unchanged.
+
+Generated view/transport/compiler checks validate these boundaries without models
+or network access. The [October 16 native baseline](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md)
+measured earlier source `23466be`, whose adapter still sent marker-filled views.
+Those results do not measure this fragment payload. A fresh installed-provider
+trial remains required; the optional provider stays off for users.
