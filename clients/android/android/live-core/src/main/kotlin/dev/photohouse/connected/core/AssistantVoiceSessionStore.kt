@@ -314,7 +314,7 @@ class AssistantVoiceSessionStore(
             // Discard only this voice session's exact ASR result; leave any newer/manual transcript alone.
             val currentTranscript = store.state.value.assistant?.transcript
             if (currentTranscript === transcript && currentTranscript.localRequestId == requestId) {
-                store.clearAssistantTranscript()
+                store.discardAssistantVoiceControlTranscript(transcript)
             }
             ownedTranscriptRequestId = null
             stopForTransition(transition)
