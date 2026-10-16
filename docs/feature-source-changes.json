@@ -22260,6 +22260,79 @@
       "apk_published": false,
       "runtime_changed": false,
       "recorded_live_api_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
+      "feature": "phone-v68-signed-https-ota-delivery-record",
+      "source_commit": "11009b30246397a586abaa39ebbd4f57695085e6",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "sha256": "48db26d4aae30b973bf86784e17f94a8a0ba0d06fd73417dd2733f99577d3da9",
+          "before_sha256": "b59aad1053704386235e07117bfe57c1c1e79e42f567effabf5eaed0ac4c286f"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "sha256": "3e0b70d73fda45f7229677bcb46565d8932a142b616eaf90e30a1e560dd761ec",
+          "before_sha256": "f71670f7d62a97de4276424effb1e756507761697b95f142bd5ec42daf546ee2"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_RELEASE_2026-10-16.md",
+          "sha256": "389239ddc4edd1bcb8de7a4d52ebc14306768ac70b0ed0b398f3df3451519519"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md",
+          "sha256": "b2f1ab6c1f1b1fa088b1dfd03170bed0b98cc51709daa1e0d4512aa158a6d8eb",
+          "before_sha256": "4a3d2c5f9cc7553b25ab4f7165fab726cef0463c447bd41a7705db6e6b3106a1"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "366dfa2b7d5e7d23248a44aa1dce0fefabcaae2cfcda38aabcdd3b974385c3c9",
+          "before_sha256": "c5e3799969741ab0237beb1112a08721d522f0d88aa33908ef24f78713b6deda"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "24e631af13475ca3e973afb12bd322297b9c8afa8e65b4d3c98501bf73ab708c",
+          "before_sha256": "e58e868a8b15f95f9138d8f80c2291ae983661c3cd090a5571c518cada9b08ca"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "de514d7696456392d326cb4bf21e841666cb672c1ea7df4b4e85793cebba5206",
+          "before_sha256": "8858cf4be735fc4786c1077628a565c95eb97ac1bc39af42bb3a49ec704481ae"
+        }
+      ],
+      "documentation_only": true,
+      "apk_rebuilt": false,
+      "recorded_phone_ota_version": 68,
+      "recorded_phone_ota_sha256": "d35ec97f6d9c36cd7cbf8df43463e419b8cee75602b97e0a488d0ea1d82d4953",
+      "recorded_native_and_independent_https_readbacks": true,
+      "runtime_changed": false,
+      "physical_installation_performed": false,
+      "physical_audio_family_acceptance": false
+    },
+    {
+      "feature": "phone-v68-current-acceptance-summary-reconciliation",
+      "source_commit": "c303b9ba7c4323dbfa3d286f329ee8347a9b548d",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "48db26d4aae30b973bf86784e17f94a8a0ba0d06fd73417dd2733f99577d3da9",
+          "sha256": "964a094ceb2bf57c33ca6d7c62b30e3d728f6429f86097ef5084fc1f83c59f04"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "3e0b70d73fda45f7229677bcb46565d8932a142b616eaf90e30a1e560dd761ec",
+          "sha256": "a456873600f16204123db1e32602aa6de1efb03d7cb95eadaada36ac74dc2ccb"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "24e631af13475ca3e973afb12bd322297b9c8afa8e65b4d3c98501bf73ab708c",
+          "sha256": "3a242ce57c31bccaac1a8ccec42e26eaca76343c8cbc556d052afc0081489821"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "physical_audio_family_acceptance": false
     }
   ]
 }

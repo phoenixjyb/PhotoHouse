@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 16 phone v67 and API/Web deliveries**. [Features](FEATURES.md)
+Active priorities after the **October 16 phone v68 and API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
@@ -17,6 +17,14 @@ installed and launched on a Samsung phone; real voice and family acceptance
 remain open. TV OTA remains v30, with v31 source unpublished. See the
 [v67 release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md).
 
+Phone v68 (`0.68-voice-recovery`) is now signed and published, with clearer
+Chinese/English recognition/request/playback recovery guidance. The original
+certificate, icon and configuration are preserved. Windows and independent Mac
+full HTTPS APK verification passed. Its publication preserved API/TV bindings;
+no physical v68 install or real audio trial occurred. The separate search
+session deployed API/Web `54394ed` after `88de08e`; later main is still source.
+See the [v68 delivery record](../clients/android/docs/PHONE_V68_RELEASE_2026-10-16.md).
+
 Phone v66 delivers [reviewed adoption of a chapter proposal](PHONE_STORY_PROPOSAL_ADOPTION.md)
 into an unsaved existing story. The proposal-adoption source qualification
 recorded 74 focused JVM checks, eight QA-emulator journeys and six inspected
@@ -31,8 +39,8 @@ activated by the phone or API/Web releases.
 
 ## Current priority: validate delivered voice, family search and story linking
 
-Run the v67 voice continuation trial on the installed physical phone and the
-now-served Web experience. Separately run owner/member acceptance journeys for
+Update to v68 and run its recovery/voice continuation trial on the physical
+phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
 the delivered bilingual search clarification, v65 chapter-source chooser and
 v66 proposal adoption. Confirm source attribution, explicit
 transcript/original review, proposal and title choices, unsaved editor behavior,

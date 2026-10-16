@@ -4,8 +4,9 @@ Date: 2026-10-16
 
 Version: **68 / `0.68-voice-recovery`**
 
-Status: configured unsigned build, release lint and package verification passed;
-signing, OTA publication and physical acceptance pending.
+Historical preparation record. Phone v68 has since been signed and published.
+See the [release record](PHONE_V68_RELEASE_2026-10-16.md) for package and OTA
+evidence; physical audio and family acceptance remain open.
 
 ## Scope
 
@@ -20,9 +21,9 @@ There are no new automatic retries, background listening, consent changes,
 recording retention changes or account/library access changes. Existing v67
 voice reading continuation remains available.
 
-The existing production connection profile and original icon will be checked
-against the unsigned package. The current signed/served version remains v67;
-this document is not a publication receipt.
+The existing production connection profile and original icon were checked
+against the unsigned package. At this preparation checkpoint, v67 was still the signed/served version.
+The later v68 publication is recorded separately.
 
 ## Source and UI evidence
 
@@ -56,7 +57,7 @@ optional scene search and intent providers remain off. This phone preparation
 does not change that deployment or activate a model. The v68 guidance uses the existing voice state contract and
 does not require a new API route or schema migration.
 
-Before publication: build and inspect the exact unsigned candidate, pin its
+The prepared publication plan was to build and inspect the exact unsigned candidate, pin its
 source/tree and digest, retain the original certificate and icon, then obtain
 operation authority for signing and Windows OTA publication. Verify the full
 published APK and unchanged TV feed. Do not reinstall a physical phone as part
