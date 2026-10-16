@@ -202,6 +202,7 @@ const testRun=(async()=>{
   assert.equal(JSON.parse(saveBodies[1]).mutation_id,firstBody.mutation_id,'retry retains the original mutation ID');
   assert.equal(await guide.getAttribute('data-guide-step'),null,'successful save ends the guided step state');
   assert.equal(await page.locator('#story-workspace').isVisible(),true,'successful guide save leaves the normal editor open');
+  assert.equal(await page.locator('#story-preview').innerText(),'打开已保存故事并查看整理建议','first confirmed save updates the editor preview to the drafting handoff label');
   pass('A lost save response retries the same committed story and returns to the normal editor');
 
   await page.locator('#story-workspace-close').click();await guide.waitFor({state:'hidden'});

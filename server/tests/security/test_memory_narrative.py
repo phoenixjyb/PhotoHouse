@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from copy import deepcopy
 
 import httpx
 
@@ -186,12 +187,96 @@ class LocalMemoryNarratorTests(unittest.TestCase):
             self.assertIs(body['stream'], False)
             self.assertIs(body['think'], False)
             self.assertIs(body['truncate'], False)
-            self.assertEqual('json', body['format'])
+            self.assertIsInstance(body['format'], dict)
             self.assertEqual({'temperature': 0.2, 'num_predict': 2048}, body['options'])
             return httpx.Response(status, content=chunks if chunks is not None else response)
 
         transport = httpx.MockTransport(handler)
         return LocalMemoryNarrator('http://127.0.0.1:11434', 'qwen-local', transport=transport), seen
+
+    def test_request_schema_binds_each_chapter_to_its_current_sources_without_source_text(self):
+        src = bundle()
+        src['sources'].append({'id': 'ev-2', 'kind': 'family',
+                               'text': 'A separate private recollection.',
+                               'asset_id': 'asset-2', 'author': 'Another relative'})
+        src['chapters'].append({'id': 'chapter-2', 'title': 'Another moment', 'narration': '',
+                                'asset_ids': ['asset-2'], 'evidence_ids': ['ev-2']})
+        result = narrative()
+        result['chapters'].append({'id': 'chapter-2', 'narration': 'Another reviewed draft.',
+                                   'source_ids': ['ev-2']})
+        model, seen = self.narrator(provider_body('qwen-local', json.dumps(result)))
+        self.assertEqual(result, model.narrative(src))
+        schema = json.loads(seen[0].content)['format']
+        self.assertFalse(schema['additionalProperties'])
+        self.assertEqual(True, schema['properties']['needs_review']['const'])
+        chapters = schema['properties']['chapters']
+        self.assertEqual((2, 2), (chapters['minItems'], chapters['maxItems']))
+        allowed = {c['properties']['id']['const']: c['properties']['source_ids']['items']['enum']
+                   for c in chapters['items']['oneOf']}
+        self.assertEqual({'chapter-1': ['ev-1'], 'chapter-2': ['ev-2']}, allowed)
+        self.assertNotIn('private recollection', json.dumps(schema))
+        self.assertNotIn('Another relative', json.dumps(schema))
+        self.assertEqual('A separate private recollection.', src['sources'][1]['text'])
+
+        # A provider can ignore its schema: final validation must still refuse
+        # cross-chapter citations and cannot retry or return the unsafe prose.
+        invalid = []
+        unsafe = deepcopy(result)
+        unsafe['chapters'][0]['source_ids'] = ['ev-2']
+        invalid.append(('cross-chapter citation', unsafe))
+        unsafe = deepcopy(result)
+        unsafe['chapters'].reverse()
+        invalid.append(('reordered chapters', unsafe))
+        unsafe = deepcopy(result)
+        unsafe['chapters'][1] = deepcopy(unsafe['chapters'][0])
+        invalid.append(('repeated chapter', unsafe))
+        unsafe = deepcopy(result)
+        unsafe['chapters'][0]['narration'] = '记' * 2001
+        invalid.append(('UTF-8 byte overflow below schema character limit', unsafe))
+        for reason, unsafe in invalid:
+            with self.subTest(reason=reason):
+                model, seen = self.narrator(provider_body('qwen-local', json.dumps(unsafe)))
+                with self.assertRaises(LocalMemoryNarrativeError) as caught:
+                    model.narrative(src)
+                self.assertEqual('invalid_response', caught.exception.category)
+                self.assertEqual(1, len(seen))
+
+    def test_companion_schema_uses_kind_specific_proposals_and_abstains_without_sources(self):
+        for evidence in (True, False):
+            with self.subTest(evidence=evidence):
+                result = companion(kind='clarification', refs=())
+                model, seen = self.narrator(provider_body('qwen-local', json.dumps(result)))
+                self.assertEqual(result, model.companion(bundle(evidence=evidence)))
+                variants = {v['properties']['kind']['const']: v for v in
+                            json.loads(seen[0].content)['format']['oneOf']}
+                self.assertEqual({'answer', 'clarification', 'proposal'} if evidence else
+                                 {'clarification', 'proposal'}, set(variants))
+                self.assertEqual({'type': 'null'}, variants['clarification']['properties']['proposal'])
+                nested = variants['proposal']['properties']['proposal']
+                self.assertEqual(True, nested['properties']['needs_review']['const'])
+                if evidence:
+                    self.assertEqual(1, variants['answer']['properties']['source_ids']['minItems'])
+                else:
+                    refs = nested['properties']['chapters']['items']['oneOf'][0]['properties']['source_ids']
+                    self.assertEqual(0, refs['maxItems'])
+                    self.assertNotIn('enum', refs['items'])
+
+    def test_empty_chapter_bundle_and_following_request_have_independent_schemas(self):
+        empty = bundle(evidence=False)
+        empty['chapters'] = []
+        result = narrative()
+        result['chapters'] = []
+        model, seen = self.narrator(provider_body('qwen-local', json.dumps(result)))
+        model.narrative(empty)
+        chapter_schema = json.loads(seen[0].content)['format']['properties']['chapters']
+        self.assertEqual((0, 0), (chapter_schema['minItems'], chapter_schema['maxItems']))
+        self.assertNotIn('oneOf', chapter_schema['items'])
+        # The first schema's chapter set cannot become a process-wide cache.
+        model, seen = self.narrator(provider_body('qwen-local', json.dumps(narrative())))
+        model.narrative(bundle())
+        chapters = json.loads(seen[0].content)['format']['properties']['chapters']
+        self.assertEqual(1, chapters['minItems'])
+        self.assertEqual('chapter-1', chapters['items']['oneOf'][0]['properties']['id']['const'])
 
     def test_narrative_request_is_loopback_json_and_treats_source_injection_as_data(self):
         src = bundle()

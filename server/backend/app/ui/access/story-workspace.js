@@ -16,7 +16,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
       bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',bookRefsRetry:'重试核实来源',bookRefsAvailable:n=>`本章已核实 ${n} 条家人回忆来源链接；引用资料仍需核对。`,bookRefsAvailableNone:'本章没有已保存的家人回忆来源链接；如需依赖画面资料，请先核对素材来源。',
       unknown:'拍摄时间待补充',filename:'文件名日期 · 非拍摄证明',received:'收到日期 · 非拍摄证明',capture:'记录的拍摄日期',
-      read:'沉浸预览',export:'下载故事草稿',exported:'已下载草稿；这不会保存到相册库或发布到电视。',empty:'请先选择至少一个画面。',
+      read:'沉浸预览',savedDraftingHandoff:'打开已保存故事并查看整理建议',export:'下载故事草稿',exported:'已下载草稿；这不会保存到相册库或发布到电视。',empty:'请先选择至少一个画面。',
       error:'暂时无法整理故事，请重试。',close:'返回',previous:'上一章',next:'下一章',video:'播放此视频',photo:'照片',choiceVideo:'视频',choiceFrame:'画面',
       onlyFirst:'默认选中前 24 个画面。取消一项后，可以换选这个相册里的其他画面。',selectionTotal:n=>`共 ${n} 个可选画面`,framesPrevious:'上一组画面',framesNext:'下一组画面',framesPage:(first,last,total)=>`画面 ${first}–${last} / ${total}`,clearFrames:'清空选择',startWithFrame:'设为开头',selectFirst:'选择前 24 个画面',selectionLimit:'每个故事最多 24 个画面；请先取消一项，再选择其他画面。',moveEarlier:'向前移动',moveLater:'向后移动',chooseTheme:'从一个主题开始',ready:'章节提纲已准备好，可以编辑、预览或下载。',questionTitle:'让故事更像你们',
       previewMissing:'这个画面的预览暂不可用',retryPreview:'重试预览',previewChecking:'正在检查画面预览…',previewReady:'画面预览已载入。',selectionEmpty:'这页还没有可用的照片或视频。',leave:'草稿尚未下载，确定清除草稿并离开？'},
@@ -32,7 +32,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
       bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',bookRefsRetry:'Retry source check',bookRefsAvailable:n=>`${n} saved family-memory source link${n===1?'':'s'} checked for this chapter. The cited material still needs review.`,bookRefsAvailableNone:'No saved family-memory source links were found for this chapter. Review any frame references before relying on them.',
       unknown:'Capture date to add',filename:'Filename date · not proof of capture',received:'Received date · not proof of capture',capture:'Recorded capture date',
-      read:'Immersive preview',export:'Download story draft',exported:'Draft downloaded; it was not saved to the library or published to TV.',empty:'Choose at least one frame first.',
+      read:'Immersive preview',savedDraftingHandoff:'Open the saved story and check drafting suggestions',export:'Download story draft',exported:'Draft downloaded; it was not saved to the library or published to TV.',empty:'Choose at least one frame first.',
       error:'The story could not be arranged. Please try again.',close:'Back',previous:'Previous chapter',next:'Next chapter',video:'Play this video',photo:'Photo',choiceVideo:'Video',choiceFrame:'Moment',
       onlyFirst:'The first 24 frames are selected. Uncheck one to choose another frame from this album.',selectionTotal:n=>`${n} available frames`,framesPrevious:'Previous frames',framesNext:'Next frames',framesPage:(first,last,total)=>`Frames ${first}–${last} / ${total}`,clearFrames:'Clear selection',startWithFrame:'Start here',selectFirst:'Select the first 24 frames',selectionLimit:'A story can contain up to 24 frames. Uncheck one before selecting another.',moveEarlier:'Move earlier',moveLater:'Move later',chooseTheme:'Start with a theme',ready:'Your outline is ready to edit, preview or download.',questionTitle:'Make the story yours',
       previewMissing:'This frame’s preview is unavailable',retryPreview:'Retry preview',previewChecking:'Checking the frame preview…',previewReady:'Frame preview loaded.',selectionEmpty:'There are no available photos or videos on this page.',leave:'This draft has not been downloaded. Clear it and leave?'}
@@ -163,7 +163,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(!result||Object.keys(result).sort().join(',')!=='needs_review,selection_revision,titles,version'||result.version!==1||result.selection_revision!==story.selection_revision||result.needs_review!==true||!Array.isArray(result.titles)||result.titles.length>3||new Set(result.titles.map(t=>t?.text)).size!==result.titles.length||result.titles.some(t=>!t||Object.keys(t).sort().join(',')!=='source_ids,text'||!validText(t.text,160)||!t.text.trim()||/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(t.text)||new TextEncoder().encode(t.text).length>640||!Array.isArray(t.source_ids)||!t.source_ids.length||new Set(t.source_ids).size!==t.source_ids.length||t.source_ids.some(id=>!refs.has(id))))throw new Error('Invalid title suggestions');
       view.status.textContent=text(result.titles.length?'titleAssistReview':'titleAssistEmpty');
       for(const candidate of result.titles){const row=node('div'),choose=button(candidate.text,()=>{
-        if(!valid())return;$('story-workspace-title').value=candidate.text;story.title=candidate.text;dirty=true;downloaded=false;invalidateTitles();$('story-workspace-title').focus();
+        if(!valid())return;$('story-workspace-title').value=candidate.text;story.title=candidate.text;dirty=true;downloaded=false;invalidateTitles();syncLocalControls();$('story-workspace-title').focus();
       });choose.className='quiet story-title-choice';const sources=node('details',undefined,'story-title-sources');sources.append(node('summary',text('titleAssistSources')));for(const id of candidate.source_ids){const draftChapter=story.chapters.find(c=>'draft-'+c.id===id),item=story.items.find(i=>i.evidence.some(e=>e.id===id)),evidence=item?.evidence.find(e=>e.id===id);const label=draftChapter?`${text('titleAssistDraft')} · ${story.chapters.indexOf(draftChapter)+1}`:`${text(evidence.source==='family'?'family':'ai')} · ${text('titleAssistFrame')} ${item.id}`;const entry=node('article');entry.dataset.titleSourceId=id;entry.append(node('small',label),node('p',Array.from(draftChapter?.narration||evidence.text).slice(0,180).join(''),'fine'));sources.append(entry);}row.append(choose,sources);view.choices.append(row);}
     }catch(error){if(valid())view.status.textContent=text('titleAssistFailed');}
     finally{if(titleView===view&&titleEpoch===epoch){view.busy=false;view.action.disabled=frozen()||sourceRefreshPending||titleComposing;syncChapterStructureAvailability();}}
@@ -282,6 +282,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function syncLocalControls(){
     ensureLocalControls();
+    syncStoryPreviewLabel();
     const eligible=Boolean(localStore&&shelfReady&&canCreate&&!scope().locked&&scope().account&&scope().library);
     $('story-local-draft').hidden=!eligible||(!localRecord&&!localError&&!localBusy);
     $('story-local-resume').hidden=!localRecord;
@@ -806,6 +807,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return text('unknown');
   }
   function setSelectionCount() {
+    syncStoryPreviewLabel();
     $('story-selection-count').textContent=`${selected.size} / 24 · ${text('selected')} · ${text('selectionTotal')(items.length)}`;
     syncChapterStructureAvailability();
     syncLocalControls();
@@ -831,6 +833,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     renderRelated();
     syncGuide();
   }
+  function syncStoryPreviewLabel(){const preview=$('story-preview');if(!preview)return;preview.dataset.storyWord=draft?.saved&&draft.can_edit&&!dirty&&!pendingSave?'savedDraftingHandoff':'read';preview.textContent=text(preview.dataset.storyWord);}
   function replaceSelection(next) {
     if(frozen()||sourceRefreshPending||!canDiscard())return;
     clearRelated();selectionPage=0;selected=new Set(next);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
@@ -1029,7 +1032,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(!sourceReviewOptedIn){
       const enable=button(text('chooseSources'),()=>{
         if(!current(ticket,owner)||draft!==story||frozen()||sourceRefreshPending||sourceRefreshRequired||!dictationGuard())return;
-        sourceReviewOptedIn=true;dirty=true;downloaded=false;invalidateTitles();refreshSourceControls();
+        sourceReviewOptedIn=true;dirty=true;downloaded=false;invalidateTitles();syncLocalControls();refreshSourceControls();
         const card=Array.from($('story-chapter-editor').querySelectorAll('.story-chapter-card')).find(value=>value.dataset.chapterId===c.id);card?.querySelector('.story-source-choice input')?.focus();
       },'quiet story-source-opt-in');enable.disabled=frozen()||sourceRefreshPending||sourceRefreshRequired;selection.append(enable);return selection;
     }
@@ -1158,6 +1161,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(!draft)return;
     const renderedStory=draft,renderedOwner={...scope()},renderedTicket=generation;
     document.querySelector('[data-story-word=draftHelp]').textContent=text(readOnly()?'readOnly':draft.saved?'savedHelp':'draftHelp');
+    syncStoryPreviewLabel();
     $('story-workspace-title').value=draft.title;
     mountOpeningTitle(root);
     mountTitleAssistance(root);
@@ -1343,7 +1347,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-reader-previous').disabled=chapter===0;$('story-reader-next').disabled=chapter===draft.chapters.length-1;
     const communityRoot=$('story-reader-community');
     communityRoot.hidden=!draft.saved;
-    if(draft.saved&&community)void community.attach(communityRoot,{...structuredClone(draft),type:'story'});
+    if(draft.saved&&community)void community.attach(communityRoot,{...structuredClone(draft),type:'story',draftingContextCurrent:!dirty&&!pendingSave});
   }
   function exportDraft() {
     if(!draft||scope().locked||!dictationGuard())return;

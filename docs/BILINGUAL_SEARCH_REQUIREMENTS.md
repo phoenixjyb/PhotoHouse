@@ -652,6 +652,8 @@ because of internal `her`/`she`, despite their explicit fresh-search opening. Th
 return `refine_without_context` before a provider call. The queries remain in the
 suite; they are not simplified to hide the gap. A deliberately refusing test
 planner checks report behavior only and supplies no native quality measurement.
-The following native trial was not started because read-only readiness found a
-pre-existing provider process. It was preserved; the optional production intent
-provider remains unconfigured.
+No following native trial was performed. The broad readiness probe observed an
+Ollama-named process; a later ownership check identified the desktop app. That
+observation alone does not establish an active inference worker or exclusive
+model admission. The process was preserved and production intent remains
+unconfigured. See the current [story completion boundary](AI_STORY_COMPLETION.md).

@@ -15,7 +15,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   const idOK = value => typeof value==='string'&&/^[1-9][0-9]{0,18}$/.test(value);
   const scopeNow = () => typeof scope === 'function' ? scope() : scope;
   const targetKey = value => JSON.stringify([value?.type, value?.id, value?.revision]);
-  const targetScopeFingerprint=(owner,value)=>JSON.stringify(value?.type==='memoir'?[owner,targetKey(value),Array.isArray(value.stories)?value.stories.map(story=>[story.id,String(story.revision)]):null]:[owner,targetKey(value)]);
+  const targetScopeFingerprint=(owner,value)=>JSON.stringify(value?.type==='memoir'?[owner,targetKey(value),Array.isArray(value.stories)?value.stories.map(story=>[story.id,String(story.revision)]):null]:[owner,targetKey(value),value?.draftingContextCurrent!==false]);
   const accountKey = value => JSON.stringify([value?.account, value?.library]);
   const membershipRevision = value => Number.isSafeInteger(value?.membership_revision)&&value.membership_revision>0?value.membership_revision:null;
   const conversationHintScope = () => {
@@ -66,7 +66,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       memoirForm:'回忆录整理方式',memoirFormPrompt:'选一种整理方式',memoirFormExisting:'按现有文字整理',memoirFormChronicle:'忠实纪事',memoirFormEssay:'家庭散文',memoirFormLong:'长篇回忆录',
       editorialContextLabel:'结合已保存的开篇与衔接',editorialContextHelp:'先检查已保存的内容，再由你确认发送或生成建议。',editorialContextChecking:'正在检查已保存的开篇、章节过渡和整本内容范围…',editorialContextReady:'已核对当前开篇与章节过渡。本轮将使用整本已保存内容。',editorialContextUnavailable:'当前无法核对已保存的开篇与章节过渡，请稍后重试。',editorialContextChanged:'已保存的开篇、章节过渡或故事版本已变化。请刷新后再试。',editorialContextSmaller:'内容超过本次处理范围，请缩小回忆册范围或明确选择仅使用故事。',editorialContextContinueBasic:'继续使用现有回忆上下文',editorialContextBasicConfirmed:'本轮将使用现有回忆上下文，不加入已保存的开篇与章节过渡。',editorialContextChoose:'请先重新检查已保存内容，或明确选择继续使用现有回忆上下文。',
       ideaVoice:'口述整理要求',ideaVoiceHelp:'停止后核对转写，再加入上方要求。录音不保存，转写记录保留30天；加入后再明确生成建议。',ideaVoiceRecord:'录一段说明',ideaVoiceStop:'结束录音并识别',ideaVoiceWaiting:'正在等待麦克风…',ideaVoiceTranscribing:'正在识别说明…',ideaVoiceTranscript:'识别结果（可编辑）',ideaVoiceInsert:'加入整理说明',ideaVoiceDiscard:'丢弃识别结果',ideaVoiceInserted:'已加入上方说明。检查后再明确生成建议。',ideaVoiceConfirmLeave:'离开整理建议会停止录音并丢弃尚未加入的识别结果。整理说明会保留在此阅读器中。仍要离开吗？',ideaVoiceOverflow:'说明过长；两部分已保留，请缩短后再加入。',ideaVoiceInvalid:'部分字符无法使用，请检查文字。两份草稿仍保留。',ideaVoiceCaptureFailed:'录音没有开始或完成。说明草稿仍保留。',ideaVoiceAsrFailed:'识别未完成。说明草稿仍保留；可重新录音。',ideaVoicePermissionFailed:'无法使用麦克风。请检查浏览器权限后重试。',ideaVoiceReviewRequired:'请先加入或丢弃待处理的识别结果，再生成建议。',ideaVoiceTooLong:'整理说明过长。请缩短后重试；当前内容仍保留。',
-      instruction:'你希望整理什么？（可留空）',generate:'生成待核实建议', retryJob:'重试同一份建议请求',
+      storyDraftingHandoff:'故事已保存。只有明确提交整理说明后才会创建请求。',storyDraftingReady:'此相册库已开启整理建议。只有明确提交整理说明后才会创建请求。',storyDraftingOpen:'打开整理建议表单',storyDraftingCheck:'重新检查 AI 整理',storyDraftingDisabled:'此相册库暂未开启 AI 整理建议。你仍可自行编辑故事。',storyDraftingUnavailable:'暂时无法确认 AI 整理功能是否可用。请重试检查。',storyDraftingChecking:'正在重新检查当前相册库的整理功能…',storyDraftingOpened:'整理建议表单已打开。检查文字后再明确提交。',storyDraftingFinishWork:'请先结束当前录音或处理待核对的转写，再切换整理建议。',storyDraftingUnsaved:'此预览包含尚未保存的修改。AI 整理会读取相册库中的已保存版本；请先保存并重新打开故事。',
+      instruction:'你希望整理什么？（可留空）',generate:'生成待核实建议', retryJob:'重试同一份建议请求',newAttempt:'用这段说明重新生成',
       queued:'已排队', running:'正在整理', ready:'已收到回复', failed:'整理暂未完成', cancelled:'已取消', stale:'故事或资料已更新，请重新打开故事再试。',
       proposal:'整理建议 · 待核实', proposalReview:'AI建议 · 待核对', savedProposalReview:'已保存的 AI 整理稿 · 待核对', savedChapter:'已保存章节', savedMemoirDirectory:'已保存整理稿章节目录', savedMemoirCurrent:n=>`当前查看的已保存章节：${n}`, compareChapter:'查看章节对照', currentChapter:'当前阅读的章节', unchangedChapter:'与当前阅读的章节文字相同', memoirDraftDirectory:'回忆录草稿章节目录', memoirDraftCurrent:n=>`当前待核对草稿章节：${n}`, questions:'还可以问问家人', refs:'参考来源', adopt:'将建议带入编辑',
       chapterNumber:'章节', sourceCount:'条参考资料', sourceFamily:'家人提供的回忆', sourceTranscript:'家人口述的转写', sourceEditorial:'已保存的故事正文', sourceBookOpening:'回忆录开场 · 编辑文字', sourceAI:'AI 观察 · 需核实', sourceMetadata:'资料中的记录', sourceOther:'参考资料', sourceNotLoaded:'可在原始回忆或资料中核对',
@@ -116,7 +117,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       ideaVoice:'Voice instructions',ideaVoiceHelp:'Stop to review the transcript, then add it above and explicitly request a draft. Audio is not saved; transcript records remain for 30 days.',ideaVoiceRecord:'Record instructions',ideaVoiceStop:'Stop and transcribe',ideaVoiceWaiting:'Waiting for microphone…',ideaVoiceTranscribing:'Transcribing instructions…',ideaVoiceTranscript:'Transcript (editable)',ideaVoiceInsert:'Add to instructions',ideaVoiceDiscard:'Discard transcript',ideaVoiceInserted:'Added to the instructions above. Review them before explicitly generating suggestions.',ideaVoiceConfirmLeave:'Leaving Draft suggestions will stop recording and discard the transcript if it has not been added. Your instructions will stay in this reader. Leave anyway?',ideaVoiceOverflow:'The instructions are too long. Both parts are kept; shorten them before adding the transcript.',ideaVoiceInvalid:'Some characters cannot be used. Check the text; both drafts are kept.',ideaVoiceCaptureFailed:'Recording did not start or finish. Your instruction draft is still here.',ideaVoiceAsrFailed:'Transcription did not finish. Your instruction draft is still here; you can record again.',ideaVoicePermissionFailed:'Microphone access failed. Check browser permission and try again.',ideaVoiceReviewRequired:'Add or discard the pending transcript before generating suggestions.',ideaVoiceTooLong:'Instructions are too long. Shorten them and try again; your text is still here.',
       memoirForm:'Memoir form',memoirFormPrompt:'Choose a form',memoirFormExisting:'Existing voice',memoirFormChronicle:'Chronicle',memoirFormEssay:'Family essay',memoirFormLong:'Memoir',
       editorialContextLabel:'Use saved opening and links',editorialContextHelp:'Check saved content first; you decide when to send or create a suggestion.',editorialContextChecking:'Checking the saved opening, transitions, and whole-book scope…',editorialContextReady:'The current opening and transitions are checked. This request will use the saved whole-book content.',editorialContextUnavailable:'The saved opening and transitions cannot be checked right now. Try again later.',editorialContextChanged:'The saved opening, transitions, or story versions changed. Refresh before trying again.',editorialContextSmaller:'This content exceeds the current scope. Narrow the memoir or explicitly continue with the existing story context.',editorialContextContinueBasic:'Continue with the existing memoir context',editorialContextBasicConfirmed:'This request will use the existing memoir context without the saved opening and transitions.',editorialContextChoose:'Recheck saved content or explicitly choose the existing memoir context before sending.',
-      instruction:'What would you like help arranging? (optional)',generate:'Create a reviewable suggestion', retryJob:'Retry the same suggestion request',
+      storyDraftingHandoff:'This story is saved. A request starts only after you submit drafting instructions.',storyDraftingReady:'Drafting suggestions are enabled for this library. A request starts only after you submit instructions.',storyDraftingOpen:'Open drafting form',storyDraftingCheck:'Check AI drafting availability',storyDraftingDisabled:'AI drafting suggestions are disabled for this library. You can still edit the story yourself.',storyDraftingUnavailable:'Current drafting availability could not be checked. Try checking again.',storyDraftingChecking:'Checking the current library drafting setting…',storyDraftingOpened:'The drafting form is open. Review the wording before you submit.',storyDraftingFinishWork:'Finish the current recording or resolve its transcript before switching to drafting.',storyDraftingUnsaved:'This preview includes unsaved edits. AI drafting reads the version saved in the library; save and reopen the story first.',
+      instruction:'What would you like help arranging? (optional)',generate:'Create a reviewable suggestion', retryJob:'Retry the same suggestion request',newAttempt:'Create a new attempt with these instructions',
       queued:'Queued', running:'Arranging', ready:'Reply received', failed:'The draft could not be completed', cancelled:'Cancelled', stale:'The story or its sources changed. Reopen the story before trying again.',
       proposal:'Draft suggestion · review', proposalReview:'AI suggestion · review', savedProposalReview:'Saved AI manuscript · review', savedChapter:'Saved chapter', savedMemoirDirectory:'Saved manuscript chapter directory', savedMemoirCurrent:n=>`Current saved manuscript chapter: ${n}`, compareChapter:'Compare chapter wording', currentChapter:'Current chapter in this reader', unchangedChapter:'Matches the wording in this reader', memoirDraftDirectory:'Memoir draft chapter directory', memoirDraftCurrent:n=>`Current draft chapter to review: ${n}`, questions:'Questions for your family', refs:'Sources', adopt:'Bring suggestion into editor',
       chapterNumber:'Chapter', sourceCount:'sources to review', sourceFamily:'Family memory', sourceTranscript:'Transcript of a family voice', sourceEditorial:'Saved editorial story', sourceBookOpening:'Memoir opening · editorial wording', sourceAI:'AI observation · review', sourceMetadata:'Recorded metadata', sourceOther:'Source', sourceNotLoaded:'Check this in the original memory or media details',
@@ -139,7 +141,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   };
   let epoch=0, panelRenderEpoch=0, chatAnnouncementKey='', chatComposition=null, chatRenderDeferred=null, bookEpoch=0, currentScope=null, target=null, targetFingerprint='', activeTab='voice';
   let caps=null, capsIdentity='', contributionList=[], contributionDetails=new Map(), canReview=false, canDelete=false, contributionPage=1, contributionsHasMore=false, contributionsBusy=false;
-  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, conversationFullRetry=null, chatTextDraft='', activeJob=null, pendingJob=null;
+  let conversation=null,conversationList=[],conversationDrafts=new Map(),conversationSelectionEpoch=0,conversationLoading=false,conversationCreating=false,conversationDeleting=false,conversationCreateToken=null,conversationDeleteToken=null,conversationLoadToken=null, turns=[], turnPage=1, turnsHasMore=false, turnsBusyToken=null, assistantInflightToken=null, recentTurn=null, messageDraft=null, conversationFullRetry=null, chatTextDraft='', activeJob=null, pendingJob=null, activeNarrativeAttempt=null, draftingHandoff=null;
   const conversationHints=new Map(),conversationHintLimit=16;
   let editorialContextChoice=null,editorialContextPreflight=null,editorialContextGeneration=0,editorialContextNeedsDecisionKey='',editorialContextBasicConfirmedKey='',editorialContextDecisionStatusKey='';
   let chatRecoveryGeneration=0,pendingChatRecovery=null,activeChatJobFence=null,jobVisibilityEpoch=0;
@@ -267,7 +269,14 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     const tabs=el('nav','','memory-community-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',lang()==='zh'?'家庭回忆':'Family memories');
     const content=el('div','','memory-community-content');content.id=panelId;content.setAttribute('role','tabpanel');content.tabIndex=0;
     const status=el('p','','memory-community-status');status.setAttribute('role','status');
-    root.prepend(heading);
+    root.append(heading);
+    if(target?.type==='story'&&canEdit()){
+      const handoff=el('section','','memory-story-drafting-handoff');
+      const help=el('p',t('storyDraftingHandoff'),'memory-community-help');
+      const state=el('p',t('storyDraftingChecking'),'memory-story-drafting-status');state.dataset.copy='storyDraftingChecking';state.setAttribute('role','status');state.setAttribute('aria-live','polite');
+      const action=btn(t('storyDraftingCheck'),()=>void openStoryDraftingHandoff(handoff,action,state),'memory-community-primary memory-story-drafting-open');
+      handoff.append(help,action,state);root.append(handoff);draftingHandoff={root:handoff,help,state,action};
+    }else draftingHandoff=null;
     if(target?.type==='memoir'){const context=el('p',`${t('memoirScope')} · ${targetLabel()}`,'memory-community-memoir-context memory-community-meta');context.setAttribute('role','note');context.style.overflowWrap='anywhere';root.append(context);}
     if(target?.type==='memoir'){
       planButton=btn(t('viewPlan'),()=>void toggleBookPlan(),'memory-book-plan-toggle');planButton.id=`memory-book-plan-toggle-${instanceId}-${attachmentId}`;planButton.setAttribute('aria-expanded','false');root.append(planButton);
@@ -278,8 +287,51 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(planPanelNode){planPanelNode.hidden=true;planPanelNode.id=`memory-book-plan-${instanceId}-${attachmentId}`;planPanelNode.setAttribute('role','region');planPanelNode.setAttribute('aria-labelledby',planButton.id);root.append(planPanelNode);planButton.setAttribute('aria-controls',planPanelNode.id);}
     container.replaceChildren(root);mount=root;statusNode=status;panelNode=content;return root;
   }
-  function visibleTabs(){const list=[];if(target?.type==='story'&&caps?.contributions_enabled)list.push('voice');if(caps?.generation_enabled){list.push('chat');if(canEdit())list.push('ideas');}return list;}
-  function selectTab(key){if(activeTab===key)return;if(activeTab==='ideas'&&!leaveEditionForNextAction())return;if(activeTab==='ideas'&&editionReview?.composing){showStatus(t('chatFollowupImeBlocked'),'pending');return;}if(activeTab==='ideas'&&key!=='ideas'&&ideaVoicePending()&&!window.confirm(t('ideaVoiceConfirmLeave')))return;invalidateEditorialContextPreflight();clearChatComposition();clearIdeaComposition();stopFamilyListening();if(activeTab==='chat'&&key!=='chat'){void clearChatCapture();chatTranscript='';chatVoiceError='';}if(activeTab==='voice'&&key!=='voice'){void clearCapture(false);}if(activeTab==='ideas'&&key!=='ideas')void clearIdeaVoice(true);activeTab=key;renderTabs();void renderPanel();}
+  function setStoryDraftingHandoffStatus(key){if(!draftingHandoff)return;draftingHandoff.state.dataset.copy=key;draftingHandoff.state.textContent=t(key);}
+  function paintStoryDraftingHandoff(){
+    if(!draftingHandoff||draftingHandoff.root.isConnected===false)return;
+    if(target?.draftingContextCurrent===false){draftingHandoff.help.textContent=t('storyDraftingUnsaved');draftingHandoff.action.textContent=t('storyDraftingCheck');draftingHandoff.action.disabled=true;setStoryDraftingHandoffStatus('storyDraftingUnsaved');return;}
+    const enabled=Boolean(caps?.enabled&&caps?.generation_enabled);
+    draftingHandoff.help.textContent=t(caps?(enabled?'storyDraftingHandoff':'storyDraftingDisabled'):'storyDraftingHandoff');
+    setStoryDraftingHandoffStatus(enabled?'storyDraftingReady':caps?'storyDraftingDisabled':'storyDraftingChecking');
+    draftingHandoff.action.textContent=t(enabled?'storyDraftingOpen':'storyDraftingCheck');draftingHandoff.action.disabled=false;
+  }
+  async function openStoryDraftingHandoff(root,action,state){
+    const ticket=epoch,owner=accountKey(scopeNow()),selected=target,fingerprint=targetFingerprint;
+    if(!draftingHandoff||root!==draftingHandoff.root||!current(ticket,owner)||selected?.type!=='story'||!canEdit()||!validStoryTarget(selected))return;
+    if(selected.draftingContextCurrent===false){setStoryDraftingHandoffStatus('storyDraftingUnsaved');return;}
+    if(isCapturing()||ideaVoicePending()||activeTab==='chat'&&(chatComposition?.composing||chatRenderDeferred)||activeTab==='voice'&&panelNode?.querySelector('input[type="file"]')?.files?.length){
+      setStoryDraftingHandoffStatus('storyDraftingFinishWork');return;
+    }
+    action.disabled=true;setStoryDraftingHandoffStatus('storyDraftingChecking');
+    try{
+      const fresh=await api(`${API}/capabilities`);
+      if(!current(ticket,owner)||target!==selected||targetFingerprint!==fingerprint||draftingHandoff?.root!==root)return;
+      if(!fresh||fresh.version!==1||typeof fresh.enabled!=='boolean'||typeof fresh.contributions_enabled!=='boolean'||typeof fresh.generation_enabled!=='boolean')throw new Error('Invalid family memory capabilities');
+      caps=fresh;capsIdentity=JSON.stringify([scopeNow()?.account,scopeNow()?.library,membershipRevision(scopeNow())]);
+      renderTabs();paintStoryDraftingHandoff();
+      if(!fresh.enabled||!fresh.generation_enabled){setStoryDraftingHandoffStatus('storyDraftingDisabled');return;}
+      if(activeTab!=='ideas'){
+        if(activeTab==='chat'&&(chatCaptureStarting||chatCaptureHandle||chatCaptureReady||chatRecordingBusy||chatTranscribing||chatComposition?.composing||chatRenderDeferred)||
+           activeTab==='voice'&&(captureStarting||captureHandle||recording||panelNode?.querySelector('input[type="file"]')?.files?.length)||
+           activeTab==='ideas'&&ideaVoicePending()){
+          setStoryDraftingHandoffStatus('storyDraftingFinishWork');return;
+        }
+        activeTab='ideas';renderTabs();await renderPanel();
+      }
+      if(!current(ticket,owner)||target!==selected||targetFingerprint!==fingerprint||draftingHandoff?.root!==root)return;
+      const input=panelNode?.querySelector('.memory-community-ideas-instructions');
+      if(!input){setStoryDraftingHandoffStatus('storyDraftingUnavailable');return;}
+      if(!current(ticket,owner)||target!==selected||targetFingerprint!==fingerprint||input.isConnected===false||input.parentNode===null){setStoryDraftingHandoffStatus('storyDraftingUnavailable');return;}
+      setStoryDraftingHandoffStatus('storyDraftingOpened');input.scrollIntoView({block:'center',inline:'nearest'});input.focus({preventScroll:true});
+    }catch(error){
+      if(current(ticket,owner)&&target===selected&&targetFingerprint===fingerprint&&draftingHandoff?.root===root){draftingHandoff.help.textContent=t('storyDraftingUnavailable');draftingHandoff.action.textContent=t('storyDraftingCheck');setStoryDraftingHandoffStatus('storyDraftingUnavailable');notifyError(error);}
+    }finally{
+      if(current(ticket,owner)&&draftingHandoff?.root===root)action.disabled=false;
+    }
+  }
+  function visibleTabs(){const list=[];if(target?.type==='story'&&caps?.contributions_enabled)list.push('voice');if(caps?.generation_enabled){list.push('chat');if(canEdit()&&target?.draftingContextCurrent!==false)list.push('ideas');}return list;}
+  function selectTab(key){if(activeTab===key)return;if(activeTab==='ideas'&&!leaveEditionForNextAction())return;if(activeTab==='ideas'&&editionReview?.composing){showStatus(t('chatFollowupImeBlocked'),'pending');return;}if(activeTab==='ideas'&&key!=='ideas'&&ideaVoicePending()){showStatus(t('ideaVoiceReviewRequired'),'pending');return;}if(activeTab==='chat'&&key!=='chat'&&(chatCaptureStarting||chatCaptureHandle||chatCaptureReady||chatRecordingBusy||chatTranscribing)){showStatus(t('storyDraftingFinishWork'),'pending');return;}if(activeTab==='chat'&&key!=='chat'&&(chatComposition?.composing||chatRenderDeferred)){showStatus(t('chatFollowupImeBlocked'),'pending');return;}if(activeTab==='voice'&&key!=='voice'&&(captureStarting||captureHandle||recording||panelNode?.querySelector('input[type="file"]')?.files?.length)){showStatus(t('storyDraftingFinishWork'),'pending');return;}invalidateEditorialContextPreflight();clearChatComposition();clearIdeaComposition();stopFamilyListening();if(activeTab==='voice'&&key!=='voice')void clearCapture(false);if(activeTab==='ideas'&&key!=='ideas')void clearIdeaVoice(true);activeTab=key;renderTabs();return renderPanel();}
   function renderTabs(){
     if(!mount)return;const tabs=mount.querySelector('.memory-community-tabs');if(!tabs)return;tabs.replaceChildren();
     if(!visibleTabs().includes(activeTab))activeTab=visibleTabs()[0]||'voice';
@@ -320,12 +372,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     clearReplySpeech();clearChatComposition();clearIdeaComposition();epoch++;stopFamilyListening();stopRequests();stopPoll();void clearCapture(false);void clearChatCapture();void clearIdeaVoice(true);chatTranscript='';chatVoiceError='';conversationRestorationNotice=false;forgetUrls();
     targetFingerprint=fingerprint;currentScope={account:s.account,library:s.library,membership_revision:membershipRevision(s)};target={...nextTarget};conversationRestorationNotice=false;memoirFormChoice='existing';
     planData=null;planPanelNode=null;planButton=null;
-    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
+    invalidateChatRecovery();contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeJob=null;pendingJob=null;activeNarrativeAttempt=null;pendingContribution=null;recording=null;
     renderShell(container);
     if(priorJob&&['queued','running'].includes(priorJobState)&&priorScope&&accountKey(s)===JSON.stringify([priorScope.account,priorScope.library]))void request(`${API}/jobs/${priorJob}`,{method:'DELETE'}).catch(()=>{});
     const ticket=epoch,owner=accountKey(s);
     try {
       const capability=await ensureCapabilities();if(!current(ticket,owner))return;
+      paintStoryDraftingHandoff();
       if(!capability.enabled){mount.dataset.state='disabled';panelNode.replaceChildren(el('p',t('disabled')));return;}
       if(target.type==='memoir')void loadSavedEditions(ticket,owner);
       if(target.type==='memoir'&&!capability.generation_enabled){mount.dataset.state='readonly';mount.querySelector('.memory-community-heading')?.remove();mount.querySelector('.memory-community-tabs')?.remove();panelNode.setAttribute('role','region');panelNode.setAttribute('aria-label',lang()==='zh'?'回忆录阅读提示':'Memoir reading information');renderMemoirSummary(panelNode,target);return;}
@@ -335,7 +388,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       if(!current(ticket,owner))return;
       await renderPanel();
       if(restoredConversation&&current(ticket,owner)){conversationRestorationNotice=true;showStatus(t('conversationRestored'),'success');}
-    } catch(error){if(current(ticket,owner)){mount.dataset.state='unavailable';panelNode.replaceChildren(el('p',t('unavailable')));notifyError(error);}}
+    } catch(error){if(current(ticket,owner)){mount.dataset.state='unavailable';panelNode.replaceChildren(el('p',t('unavailable')));if(draftingHandoff){draftingHandoff.help.textContent=t('storyDraftingUnavailable');draftingHandoff.action.textContent=t('storyDraftingCheck');draftingHandoff.state.textContent=t('storyDraftingUnavailable');}notifyError(error);}}
     listenVisibility();
   }
   function listenVisibility(){
@@ -1391,8 +1444,13 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   async function renderIdeas(root,ticket,owner){
     ideaRecordButton=null;
     root.append(el('p',t('ideasHelp'),'memory-community-help'));
-    const frozen=pendingJob,formChoice=frozen?.formChoice??memoirFormChoice,baseInstructions=ideaDraft;
-    const busy=Boolean(frozen||assistantInflightToken||editorialContextPreflight||ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||ideaTranscript);
+    const frozen=pendingJob,attempt=activeNarrativeAttempt&&activeJob?.kind==='narrative'&&activeJob.id===activeNarrativeAttempt.jobId?activeNarrativeAttempt:null;
+    const narrativePending=activeJob?.kind==='narrative'&&['queued','running'].includes(activeJob.state);
+    const terminalAttempt=Boolean(attempt&&['failed','cancelled','stale'].includes(activeJob.state));
+    if(terminalAttempt&&!attempt.terminalDraftRestored){ideaDraft=attempt.baseInstructions;memoirFormChoice=attempt.formChoice;attempt.terminalDraftRestored=true;}
+    const formChoice=frozen?.formChoice??(attempt&&narrativePending?attempt.formChoice:memoirFormChoice);
+    const baseInstructions=frozen?.baseInstructions??(attempt&&narrativePending?attempt.baseInstructions:ideaDraft);
+    const busy=Boolean(frozen||narrativePending||assistantInflightToken||editorialContextPreflight||ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||ideaTranscript);
     const form=el('form','','memory-community-form');
     if(target?.type==='memoir'){
       const formDetails=el('details','','memory-memoir-form-choice'),summary=el('summary',t('memoirForm'));
@@ -1400,10 +1458,10 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       for(const [value,key] of [['existing','memoirFormExisting'],['chronicle','memoirFormChronicle'],['essay','memoirFormEssay'],['long_memoir','memoirFormLong']]){const option=el('option',t(key));option.value=value;formSelect.append(option);}
       formSelect.value=formChoice;formSelect.addEventListener('change',()=>{if(!ideaEditorCurrent(formSelect,ticket,owner,root)||pendingJob||assistantInflightToken||editorialContextPreflight||ideaVoicePending()||!['existing','chronicle','essay','long_memoir'].includes(formSelect.value)){formSelect.value=formChoice;return;}memoirFormChoice=formSelect.value;});formLabel.append(formSelect);formDetails.append(summary,formLabel);form.append(formDetails);
     }
-    const label=el('label',t('instruction'));const input=el('textarea');input.name='instructions';input.rows=3;input.value=baseInstructions;input.className='memory-community-ideas-instructions';input.setAttribute('aria-label',t('instruction'));input.disabled=Boolean(assistantInflightToken||editorialContextPreflight);input.addEventListener('input',()=>ideaDraft=input.value);bindIdeaComposition(input,'instructions',ticket,owner,root);label.append(input);form.append(label);const voiceSlot=el('div','','memory-community-ideas-voice-slot');form.append(voiceSlot);
+    const label=el('label',t('instruction'));const input=el('textarea');input.name='instructions';input.rows=3;input.value=baseInstructions;input.className='memory-community-ideas-instructions';input.setAttribute('aria-label',t('instruction'));input.disabled=Boolean(frozen||narrativePending||assistantInflightToken||editorialContextPreflight);input.addEventListener('input',()=>ideaDraft=input.value);bindIdeaComposition(input,'instructions',ticket,owner,root);label.append(input);form.append(label);const voiceSlot=el('div','','memory-community-ideas-voice-slot');form.append(voiceSlot);
     const editorialChoiceControl=renderEditorialContextChoice(form,'ideas',ticket,owner);
-    const submit=el('button',pendingJob?t('retryJob'):t('generate'));submit.type='submit';submit.className='memory-community-primary';submit.disabled=!canEdit()||Boolean(editorialContextPreflight||assistantInflightToken||ideaVoicePending());form.append(submit);editorialChoiceControl?.sync();
-    form.addEventListener('submit',event=>{event.preventDefault();void generateSuggestion(input,ticket,owner);});root.append(form);const recordButton=await renderIdeaVoiceControls(voiceSlot,ticket,owner,root,input);if(editorialChoiceControl)editorialChoiceControl.recordButton=recordButton;
+    const submit=el('button',pendingJob?t('retryJob'):terminalAttempt?t('newAttempt'):t('generate'));submit.type='submit';submit.className='memory-community-primary';submit.disabled=!canEdit()||Boolean(narrativePending||editorialContextPreflight||assistantInflightToken||ideaVoicePending());form.append(submit);editorialChoiceControl?.sync();
+    form.addEventListener('submit',event=>{event.preventDefault();void generateSuggestion(input,ticket,owner,root);});root.append(form);const recordButton=await renderIdeaVoiceControls(voiceSlot,ticket,owner,root,input);if(editorialChoiceControl)editorialChoiceControl.recordButton=recordButton;
     if(activeJob?.kind==='narrative')renderNarrativeJob(root,activeJob,ticket,owner);
   }
   function ideaEditorCurrent(node,ticket,owner,root){return current(ticket,owner)&&target&&activeTab==='ideas'&&root.parentNode===panelNode&&node.isConnected!==false;}
@@ -1447,15 +1505,18 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     catch(error){if(ideaCaptureCurrent(ticket,owner,voiceTicket)){ideaTranscribing=false;ideaVoiceError=error?.name==='AbortError'?'':'ideaVoiceAsrFailed';if(error?.name!=='AbortError')notifyError(error);await renderPanel();}}
   }
   function ideaCaptureCurrent(ticket,owner,voiceTicket){return current(ticket,owner)&&voiceTicket===ideaVoiceEpoch&&activeTab==='ideas'&&targetFingerprint===targetScopeFingerprint(owner,target);}
-  async function generateSuggestion(input,ticket,owner){
+  async function generateSuggestion(input,ticket,owner,root){
+    if(!ideaEditorCurrent(input,ticket,owner,root))return;
+    if(target?.type==='story'&&target.draftingContextCurrent===false){showStatus(t('storyDraftingUnsaved'),'pending');return;}
     if(!canEdit()||assistantInflightToken)return;
+    if(activeJob?.kind==='narrative'&&['queued','running'].includes(activeJob.state)){showStatus(t(activeJob.state),'pending');return;}
     if(ideaCaptureStarting||ideaCaptureHandle||ideaTranscribing||ideaTranscript){showStatus(t('ideaVoiceReviewRequired'),'error');return;}
     if(editorialContextPreflight){showStatus(t('editorialContextChecking'),'pending');return;}
     if(editorialContextNeedsDecision()){showStatus(t('editorialContextChoose'),'pending');return;}
     if(!leaveEditionForNextAction())return;
     if(!pendingJob){const baseInstructions=input.value,formChoice=target?.type==='memoir'?memoirFormChoice:'existing',instructions=frozenIdeaInstructions(baseInstructions,formChoice);if(!boundedText(instructions,4096)){const invalid=!wellFormed(instructions)||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(instructions);showStatus(t(invalid?'ideaVoiceInvalid':'ideaVoiceTooLong'),'error');return;}pendingJob={id:uuid(),baseInstructions,formChoice,instructions,editorialContext:editorialContextSelected()};if(!pendingJob.id)return;}
     const pending=pendingJob,form=input.parentNode?.parentNode,submit=form?.querySelector('button[type="submit"]'),inflightToken={ticket,owner};assistantInflightToken=inflightToken;if(submit)submit.disabled=true;const contextToggle=form?.querySelector('.memory-editorial-context-toggle');if(contextToggle)contextToggle.disabled=true;const formSelect=form?.querySelector('select[name="memoir_form"]');if(formSelect)formSelect.disabled=true;input.disabled=true;if(ideaRecordButton)ideaRecordButton.disabled=true;
-    try{const job=await api(`${API}/jobs${pending.editorialContext?'?editorial_context=1':''}`,{method:'POST',body:{target_type:targetType(),target_id:target.id,revision:String(target.revision),mutation_id:pending.id,instructions:pending.instructions}});if(!current(ticket,owner))return;activeJob=job;pendingJob=null;if(ideaDraft===pending.baseInstructions){ideaDraft='';memoirFormChoice='existing';}pollCount=0;if(assistantInflightToken===inflightToken)assistantInflightToken=null;await renderPanel();if(['queued','running'].includes(job.state))schedulePoll(ticket,owner);}
+    try{const job=await api(`${API}/jobs${pending.editorialContext?'?editorial_context=1':''}`,{method:'POST',body:{target_type:targetType(),target_id:target.id,revision:String(target.revision),mutation_id:pending.id,instructions:pending.instructions}});if(!current(ticket,owner)||pendingJob!==pending)return;activeJob=job;activeNarrativeAttempt={jobId:job.id,baseInstructions:pending.baseInstructions,instructions:pending.instructions,mutationId:pending.id,formChoice:pending.formChoice,editorialContext:pending.editorialContext,terminalDraftRestored:false};pendingJob=null;if(ideaDraft===pending.baseInstructions){ideaDraft='';memoirFormChoice='existing';}pollCount=0;if(assistantInflightToken===inflightToken)assistantInflightToken=null;await renderPanel();if(['queued','running'].includes(job.state))schedulePoll(ticket,owner);}
     catch(error){if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(current(ticket,owner)){if(error?.status===409||error?.status===422){pendingJob=null;if(error?.status===409&&pending.editorialContext)requireEditorialContextDecision('editorialContextChanged');}await renderPanel();report(error,owner,ticket);}}
     finally{if(assistantInflightToken===inflightToken)assistantInflightToken=null;if(submit)submit.disabled=false;}
   }
@@ -2312,7 +2373,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     mount=null;panelNode=null;statusNode=null;target=null;targetFingerprint='';currentScope=oldScope;
     contributionList=[];contributionDetails.clear();canReview=false;canDelete=false;contributionPage=1;contributionsHasMore=false;contributionsBusy=false;
     conversation=null;conversationList=[];conversationDrafts.clear();conversationSelectionEpoch++;conversationLoading=false;conversationCreating=false;conversationDeleting=false;conversationCreateToken=null;conversationDeleteToken=null;conversationLoadToken=null;turns=[];turnPage=1;turnsHasMore=false;turnsBusyToken=null;assistantInflightToken=null;recentTurn=null;messageDraft=null;conversationFullRetry=null;chatTextDraft='';activeJob=null;pendingJob=null;pendingContribution=null;recording=null;
-    contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeTab='voice';
+    contributionDraft={mode:'text',text:'',byline:'',chapter_id:'',consent:false};ideaDraft='';memoirFormChoice='existing';activeNarrativeAttempt=null;activeTab='voice';
   }
   function clear({cancelJobs=true}={}){
     suspend({cancelJobs});conversationHints.clear();bookEpoch++;stopRequests(true);unloadVisibility();
@@ -2344,7 +2405,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(savedEditionState)clearSavedEditionSource(savedEditionState,{resetList:true,status:'idle'});
     const saved=[];
     for(const field of panelNode?.querySelectorAll('input,textarea,select')||[]){if(field.type==='file')continue;saved.push({type:field.type,value:field.value,checked:field.checked,selectedIndex:field.selectedIndex});}
-    if(mount&&target){const heading=mount.querySelector('.memory-community-heading');if(heading)heading.textContent=target?.type==='memoir'?(lang()==='zh'?'聊聊这本回忆录':'Talk about this memoir'):targetLabel();const context=mount.querySelector('.memory-community-memoir-context');if(context)context.textContent=`${t('memoirScope')} · ${targetLabel()}`;renderTabs();await renderPanel();if(conversationRestorationNotice)showStatus(t('conversationRestored'),'success');if(savedEditionState)renderSavedEditionShelf(savedEditionState,epoch,accountKey(scopeNow()));
+    if(mount&&target){const heading=mount.querySelector('.memory-community-heading');if(heading)heading.textContent=target?.type==='memoir'?(lang()==='zh'?'聊聊这本回忆录':'Talk about this memoir'):targetLabel();const context=mount.querySelector('.memory-community-memoir-context');if(context)context.textContent=`${t('memoirScope')} · ${targetLabel()}`;paintStoryDraftingHandoff();renderTabs();await renderPanel();if(conversationRestorationNotice)showStatus(t('conversationRestored'),'success');if(savedEditionState)renderSavedEditionShelf(savedEditionState,epoch,accountKey(scopeNow()));
       const fields=panelNode?.querySelectorAll('input,textarea,select')||[];let index=0;for(const field of fields){if(field.type==='file')continue;const prior=saved[index++];if(!prior)continue;field.value=prior.value;if(prior.type==='checkbox'||prior.type==='radio')field.checked=prior.checked;if(prior.selectedIndex!==undefined)field.selectedIndex=prior.selectedIndex;}}
     const outsideEditorialSources=field=>!field.closest('.memory-book-editorial-sources');
     for(const container of bookContainers){const savedFields=[...(container.querySelectorAll?.('input,textarea,select')||[])].filter(field=>field.type!=='file'&&outsideEditorialSources(field)).map(field=>({type:field.type,value:field.value,checked:field.checked}));await books(container);const fields=[...(container.querySelectorAll?.('input,textarea,select')||[])].filter(field=>field.type!=='file'&&outsideEditorialSources(field));let index=0;for(const field of fields){const prior=savedFields[index++];if(!prior)continue;field.value=prior.value;if(prior.type==='checkbox'||prior.type==='radio')field.checked=prior.checked;}}
