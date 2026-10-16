@@ -22614,6 +22614,20 @@
       "read_only_session_offline_retry_attempts": 1,
       "apk_published": false,
       "physical_upload_acceptance": false
+    },
+    {
+      "feature": "phone-v69-remembered-session-recovery-test-timing",
+      "source_commit": "0d89d1948fd2184df3aae4abddbef742398752ff",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/RememberedSessionStoreTest.kt",
+          "before_sha256": "4e50e4a61a6c46d5599689bfddbfaa1e4ebf5eacddb07ff16b56f581dc03725f",
+          "sha256": "72a598c599800bd53c898203d4b6e5d8673ce7622e39bff33eae2d15b04c6bb6"
+        }
+      ],
+      "test_only": true,
+      "runtime_source_changed": false,
+      "apk_rebuilt": false
     }
   ]
 }
