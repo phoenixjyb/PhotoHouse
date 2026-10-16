@@ -682,6 +682,27 @@ client guards complement server ownership checks; recovered history cannot
 trigger playback. The private panel and central phone workspace share one player.
 
 
+## Source-bound section continuation (following Web/phone source)
+
+[Section narration](ASSISTANT_SEGMENT_READING.md) uses a separate protected
+segment route to read the first saved story chapter or memoir introduction.
+Manual playback stays tap-by-tap. A distinct foreground **语音继续** action after
+a completed segment grants listening for exact continuation commands. One command
+loads one next segment; actual successful playback and its owned completion
+report gate relistening. The last segment pauses without advancing chapters.
+
+On phone, `ConnectedStore` issues an opaque completed-player selection tied to
+its current saved-reference cohort. `AssistantVoiceSessionStore` retains that
+selection through ASR/playback; the permission UI must return the same selected
+object, and initial admission rejects even a structurally equal replay progress
+instance. `VoiceSessionController` owns deterministic phases and bounded segment
+position, while `ConnectedStore` retains source/transport/receipt authority.
+Pause/End, foreground/source/capability loss, normal questions and failed playback
+clear intent. General Start/Resume cannot recover it. Private and central phone
+surfaces share one playback owner; controls stay outside the private scroll area.
+This source does not change providers, recording retention, routes or schema,
+and is separate from Windows delivery and a new signed phone release.
+
 ## Contextual voice actions in v58
 
 The [fluid experience contract](ASSISTANT_FLUID_EXPERIENCE.md) adds explicitly

@@ -60,7 +60,9 @@ Following Web source adds a separate opt-in
 It retains the exact current result, card, source revision, completed segment
 and segment count, and requests only one next segment after actual successful
 playback. It binds the completed player to an explicit foreground session;
-ordinary voice opening and manual playback keep their separate contracts. Phone
-parity remains future work. Do not treat a new voice session as permission to
+ordinary voice opening and manual playback keep their separate contracts. The
+[following phone source](ASSISTANT_SEGMENT_READING.md#phone-voice-continuation-october-16-following-source)
+adds the same explicit opt-in and exact continuation vocabulary, retaining the
+completed-player selection across microphone permission. Do not treat a new voice session as permission to
 reuse old progress, advance chapters or restart recovered speech. See
 [segmented reading](ASSISTANT_SEGMENT_READING.md) and [the roadmap](ROADMAP.md).

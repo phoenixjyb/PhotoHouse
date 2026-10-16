@@ -320,6 +320,11 @@ data class AssistantMemorySegmentProgress(
     val segmentCount: Int?,
     val completedSegmentIndex: Int? = null,
 )
+/** Opaque fresh-source selection, captured by an explicit microphone action (including permission UI). */
+class AssistantMemoryVoiceSelection internal constructor(
+    val progress: AssistantMemorySegmentProgress,
+    internal val source: Any,
+)
 data class GroupedStoryCreationState(
     val checking: Boolean = false, val canCreate: Boolean? = null, val guided: Boolean = false,
     val editor: StoryWorkspaceStore? = null, val gallery: Gallery? = null,
@@ -5302,6 +5307,35 @@ class ConnectedStore(
             progress.ordinal == ordinal && progress.sourceKind == anchor.card.kind && progress.completedSegmentIndex == progress.segmentIndex &&
             progress.segmentCount != null && segment == progress.segmentIndex + 1 && segment < progress.segmentCount &&
             assistant.speechAudio == null && !assistant.speechBusy
+    }
+
+    /** Only a completed, released section with another segment may grant voice continuation. */
+    fun assistantMemoryVoiceSelection(ordinal: Int): AssistantMemoryVoiceSelection? {
+        val progress = state.value.assistant?.speechMemorySegmentProgress ?: return null
+        val count = progress.segmentCount ?: return null
+        if (progress.ordinal != ordinal || progress.completedSegmentIndex != progress.segmentIndex ||
+            count !in 1..128 || progress.segmentIndex !in 0 until count - 1 ||
+            !canReadAssistantMemorySegment(ordinal, progress.segmentIndex + 1)) return null
+        val source = memorySegmentSpeechReference(ordinal) ?: return null
+        if (assistantSpeechSegmentReference != source) return null
+        return AssistantMemoryVoiceSelection(progress, source)
+    }
+
+    /** Revalidate source and cohort; initial admission also requires the exact completed player fact. */
+    internal fun memoryVoiceSelectionCurrent(selection: AssistantMemoryVoiceSelection,
+                                             requireCompletedProgress: Boolean = true): Boolean {
+        val source = memorySegmentSpeechReference(selection.progress.ordinal) ?: return false
+        if (source != selection.source || assistantSpeechSegmentReference != source) return false
+        if (!requireCompletedProgress) return true
+        return state.value.assistant?.speechMemorySegmentProgress === selection.progress &&
+            canReadAssistantMemorySegment(selection.progress.ordinal, selection.progress.segmentIndex + 1)
+    }
+
+    /** Cleanup cannot erase a newer section/reply owner's work. */
+    internal fun clearCompletedMemoryVoiceProgress(progress: AssistantMemorySegmentProgress) {
+        val assistant = state.value.assistant ?: return
+        if (assistant.speechMemorySegmentProgress === progress && !assistant.speechBusy && assistant.speechAudio == null)
+            clearAssistantMemoryOpeningSpeech()
     }
 
     /** One-shot speech for the saved opening bound to the latest fresh card result. */

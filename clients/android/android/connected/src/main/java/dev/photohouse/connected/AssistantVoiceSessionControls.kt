@@ -26,6 +26,9 @@ internal data class AssistantVoiceControls(
     val finishTurn: () -> Unit,
     val permissionDenied: Boolean,
     val canUseManualControls: () -> Boolean,
+    val canStartMemoryReading: (AssistantMemoryVoiceSelection) -> Boolean,
+    val startMemoryReading: (AssistantMemoryVoiceSelection) -> Boolean,
+    val memoryReadingReady: Boolean,
 )
 
 /** Mounting does not listen. Only Start/Resume and their exact permission callback can do so. */
@@ -51,15 +54,20 @@ internal fun rememberAssistantVoiceControls(
     }
     val voice by owner.state.collectAsState()
     var permissionWanted by remember(owner) { mutableStateOf(false) }
+    var pendingMemorySelection by remember(owner) { mutableStateOf<AssistantMemoryVoiceSelection?>(null) }
     var denied by remember(owner) { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (permissionWanted) {
+        if (permissionWanted || pendingMemorySelection != null) {
+            val capturedSelection = pendingMemorySelection
             permissionWanted = false
+            pendingMemorySelection = null
             val current = store.state.value
             if (granted && !current.covered && current.generation == voiceScope.appGeneration &&
                 current.library == voiceScope.libraryId && current.session?.account_id == voiceScope.accountId) {
                 denied = false
-                owner.start()
+                if (capturedSelection != null) {
+                    if (owner.canStartMemoryReading(capturedSelection)) owner.startMemoryReading(capturedSelection)
+                } else owner.start()
             } else denied = !granted
         }
     }
@@ -67,12 +75,14 @@ internal fun rememberAssistantVoiceControls(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
                 permissionWanted = false
+                pendingMemorySelection = null
                 owner.backgrounded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             permissionWanted = false
+            pendingMemorySelection = null
             lifecycleOwner.lifecycle.removeObserver(observer)
             owner.close()
         }
@@ -80,8 +90,23 @@ internal fun rememberAssistantVoiceControls(
     val available = store.privateAssistantConversationAvailable() && live.assistant?.capabilities?.let {
         it.enabled && it.text && it.transcribe && it.speech && it.maxAudioSeconds in 1..30
     } == true
+    val readingPosition = voice.readingSegment?.let { it + 1 }
+    val readingCount = voice.readingSegmentCount
+    val readingPositionDetail = if (voice.readingContinuation && readingPosition != null && readingCount != null) {
+        if (zh) "第${readingPosition}/${readingCount}段；麦克风已关闭。"
+        else "Segment $readingPosition of $readingCount. Microphone off."
+    } else null
     val detail = when (voice.reason) {
-        VoiceSessionStopReason.USER_PAUSED -> if (zh) "点击继续后才会再次聆听。" else "Resume when you are ready to listen again."
+        VoiceSessionStopReason.READING_FINISHED -> if (zh)
+            "这段已保存内容已读完。打开回忆可浏览后续章节；点“继续”会返回语音查找。"
+        else "This saved section is complete. Open the memory to browse later sections; Resume returns to voice search."
+        VoiceSessionStopReason.READING_NEEDS_SELECTION -> if (zh)
+            "请选择已完成内容卡片上的“语音继续”，再开始朗读下一段。"
+        else "Choose Continue by voice on a completed saved section to read the next section."
+        VoiceSessionStopReason.READING_UNAVAILABLE -> if (zh)
+            "朗读下一段暂不可用。请回到已保存内容卡片重新选择。"
+        else "The next saved section is unavailable. Choose it again from the saved memory card."
+        VoiceSessionStopReason.USER_PAUSED -> if (zh) "点击继续后将重新开始语音查找。" else "Resume starts voice search again."
         VoiceSessionStopReason.REVIEW_REQUIRED -> if (zh) "请查看当前回复或结果；更改需要单独确认。" else "Review the current reply or result; changes need separate confirmation."
         VoiceSessionStopReason.UNCERTAIN_REQUEST -> if (zh) "结果尚不确定，请先查询回执；不会自动重发。" else "The outcome is uncertain. Check the receipt; no request is resent."
         VoiceSessionStopReason.BACKGROUNDED, VoiceSessionStopReason.CONTEXT_CHANGED -> if (zh) "离开前台或切换资料库后，聆听已停止。" else "Listening stopped when the foreground context changed."
@@ -90,16 +115,22 @@ internal fun rememberAssistantVoiceControls(
         VoiceSessionStopReason.TRANSCRIPTION_FAILED, VoiceSessionStopReason.REQUEST_FAILED, VoiceSessionStopReason.SPEECH_FAILED ->
             if (zh) "本轮未能完成，已暂停；请查看回复或回执。" else "This turn could not finish. Review its reply or receipt before continuing."
         else -> when (voice.phase) {
-            VoiceSessionPhase.LISTENING -> if (voice.captureStarted) {
+            VoiceSessionPhase.LISTENING -> if (voice.readingContinuation && voice.captureStarted) {
+                if (zh) "麦克风已开启，正在等待你的指令。"
+                else "Microphone is on and waiting for your instruction."
+            } else if (voice.captureStarted) {
                 assistantVoiceListeningDetail(zh)
             } else if (zh) "正在开启麦克风；出现“正在聆听”后再开始说话。" else "The microphone is opening. Speak when Listening appears."
-            VoiceSessionPhase.TRANSCRIBING -> if (zh) "麦克风已关闭，正在识别你刚才说的话。" else "Microphone off. Recognizing what you said."
+            VoiceSessionPhase.TRANSCRIBING -> if (voice.readingContinuation) {
+                if (zh) "麦克风已关闭，正在识别你的朗读指令。" else "Microphone off. Recognizing your reading instruction."
+            } else if (zh) "麦克风已关闭，正在识别你刚才说的话。" else "Microphone off. Recognizing what you said."
             VoiceSessionPhase.REQUESTING -> if (zh) "麦克风已关闭，正在查找相关回忆。" else "Microphone off. Searching for matching memories."
             VoiceSessionPhase.SPEAKING -> if (voice.playbackStarted) {
-                if (store.privateReplySpeechEnabled()) {
+                if (voice.readingContinuation) readingPositionDetail
+                else if (store.privateReplySpeechEnabled()) {
                     if (zh) "麦克风已关闭，正在播报。暂停或结束请点屏幕按钮。" else "Microphone off. Playing the reply; use Pause or End."
                 } else if (zh) "麦克风已关闭，正在播报。暂停或结束请点屏幕按钮。" else "Microphone off. Reading results; use Pause or End."
-            } else if (zh) "麦克风已关闭，正在准备语音。暂停或结束请点屏幕按钮。"
+            } else readingPositionDetail ?: if (zh) "麦克风已关闭，正在准备语音。暂停或结束请点屏幕按钮。"
             else "Microphone off. Preparing speech; use Pause or End."
             else -> null
         }
@@ -114,14 +145,41 @@ internal fun rememberAssistantVoiceControls(
             else -> AssistantVoiceSessionStage.PAUSED
         }, detail, canResume = available && live.assistant?.pendingTurn == null,
             microphoneActive = voice.phase == VoiceSessionPhase.LISTENING && voice.captureStarted,
-            clientTiming = voice.clientTiming)
+            clientTiming = voice.clientTiming, readingContinuation = voice.readingContinuation,
+            readingSegment = voice.readingSegment, readingSegmentCount = voice.readingSegmentCount,
+            reason = voice.reason)
     }
     return AssistantVoiceControls(session,
         start = if (!available) null else ({
-            denied = false
-            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) owner.start()
-            else { permissionWanted = true; permission.launch(Manifest.permission.RECORD_AUDIO) }
+            if (permissionWanted || pendingMemorySelection != null) {
+                // A general Start cancels a pending section-specific permission action.
+                permissionWanted = false
+                pendingMemorySelection = null
+            } else {
+                denied = false
+                if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) owner.start()
+                else { permissionWanted = true; permission.launch(Manifest.permission.RECORD_AUDIO) }
+            }
         }),
-        pause = { owner.pause() }, resume = { owner.resume() },
-        end = { permissionWanted = false; owner.end() }, finishTurn = { owner.finishTurn() }, permissionDenied = denied, canUseManualControls = owner::canUseManualControls)
+        pause = { permissionWanted = false; pendingMemorySelection = null; owner.pause() },
+        resume = { permissionWanted = false; pendingMemorySelection = null; owner.resume() },
+        end = { permissionWanted = false; pendingMemorySelection = null; owner.end() },
+        finishTurn = { owner.finishTurn() }, permissionDenied = denied,
+        canUseManualControls = owner::canUseManualControls,
+        canStartMemoryReading = owner::canStartMemoryReading,
+        startMemoryReading = { selection ->
+            if (!available || permissionWanted || pendingMemorySelection != null ||
+                voice.phase !in setOf(VoiceSessionPhase.IDLE, VoiceSessionPhase.ENDED) ||
+                !owner.canStartMemoryReading(selection)) return@AssistantVoiceControls false
+            denied = false
+            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                owner.startMemoryReading(selection)
+            } else {
+                permissionWanted = false
+                pendingMemorySelection = selection
+                permission.launch(Manifest.permission.RECORD_AUDIO)
+                true
+            }
+        }, memoryReadingReady = available && !permissionWanted && pendingMemorySelection == null &&
+            voice.phase in setOf(VoiceSessionPhase.IDLE, VoiceSessionPhase.ENDED))
 }
