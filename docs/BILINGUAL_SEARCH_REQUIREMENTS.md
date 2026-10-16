@@ -596,9 +596,14 @@ content words, ambiguous partial-word spans and incomplete constructions do not
 receive this grammar treatment. Dates, media, reviewed identities, quoted text,
 negation and previous-search filters retain their existing checks. This adds no
 identity binding, relationship inference, tool action or dialect recognition.
-The conservative compound-prefix check can still clarify valid object names
-such as `手套`; resolving those word boundaries remains a limitation of this
-narrow construction support.
+A closed set of exact, complete first-object spans disambiguates the prefixes
+shared with `把手` and `把玩`: `手套`, `手帕`, `手表`, `手链`, `手环`,
+`手电筒`, `手提包`, `手提袋`, `玩具` and `玩偶`. These are lexical boundary
+exceptions, not caption synonyms. Partial spans, unconsumed suffixes and unlisted
+ambiguous objects still require clarification; this is not general Chinese word
+segmentation. All person, action, hard-filter and residual-content checks above
+remain required. Protected API fixtures also verify that an unresolved follow-up
+retains the previous results and search scope.
 
 The provider view also hides existing recognized literal-content introducers
 when they directly precede a paired quoted literal, with only whitespace or

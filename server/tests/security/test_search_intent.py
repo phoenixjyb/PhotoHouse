@@ -70,6 +70,46 @@ class SearchIntentTests(unittest.TestCase):
                                               result.filters['descriptive']['concepts']])
                 self.assertEqual(1, len(planner.calls))
 
+    def test_exact_object_surfaces_override_only_the_ba_content_prefix_veto(self):
+        # These complete object nouns begin with characters that also occur
+        # in 把手/把玩. They are covered only as exact first-object spans in a
+        # complete disposal construction, with the usual hard filters intact.
+        objects = ('手套', '手帕', '手表', '手链', '手环', '手电筒', '手提包', '手提袋',
+                   '玩具', '玩偶')
+        for item in objects:
+            query = f'找Mira把{item}放进纸盒的2031年6月视频包含“spring fair”'
+            clues = (item, '放进', '纸盒')
+            with self.subTest(item=item):
+                planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
+                result = plan_query(query, now=NOW,
+                                    entities=entities(labels=['Mira'], people=['301']),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual('ready', result.status, result)
+                self.assertEqual({'media': ['video'],
+                                  'people': {'ids': ['301'], 'match': 'any'},
+                                  'date': {'from': '2031-06-01', 'to': '2031-06-30'},
+                                  'text': 'spring fair'},
+                                 {k: v for k, v in result.filters.items()
+                                  if k != 'descriptive'})
+                self.assertEqual(list(clues), [concept['surface'] for concept in
+                                               result.filters['descriptive']['concepts']])
+                self.assertEqual(1, len(planner.calls))
+
+        query = 'find Mira 把玩具放进 paper box 的 videos in June 2031 containing "spring fair"'
+        clues = ('玩具', '放进', 'paper box')
+        planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
+        result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                            previous_filters=None, planner=planner)
+        self.assertEqual('ready', result.status, result)
+        self.assertEqual({'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                          'date': {'from': '2031-06-01', 'to': '2031-06-30'},
+                          'text': 'spring fair'},
+                         {k: v for k, v in result.filters.items()
+                          if k != 'descriptive'})
+        self.assertEqual(list(clues), [concept['surface'] for concept in
+                                       result.filters['descriptive']['concepts']])
+        self.assertEqual(1, len(planner.calls))
+
     def test_disposal_grammar_never_consumes_missing_actions_objects_or_quantities(self):
         cases = (
             ('找Mira把绿色卡片放进纸盒的视频', ('绿色卡片', '纸盒')),
@@ -78,11 +118,47 @@ class SearchIntentTests(unittest.TestCase):
             ('找Mira把绿色卡片悄悄放进纸盒的视频', ('绿色卡片', '放进', '纸盒')),
             ('找Mira把绿色卡片放进纸盒旁边的视频', ('绿色卡片', '放进', '纸盒')),
             ('找Mira把绿色卡片的视频', ('绿色卡片',)),
+            # Exact permitted nouns inside longer unconsumed words do not
+            # authorize the remaining characters to disappear.
+            ('找Mira把手套箱放进纸盒的视频', ('手套', '放进', '纸盒')),
+            ('找Mira把玩具偷偷放进纸盒的视频', ('玩具', '放进', '纸盒')),
         )
         for query, clues in cases:
             with self.subTest(query=query, clues=clues):
                 planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
                 result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                                    previous_filters=None, planner=planner)
+                self.assertEqual(('clarification', 'unsupported_condition'),
+                                 (result.status, result.reason))
+                self.assertEqual({}, result.filters)
+                self.assertEqual(1, len(planner.calls))
+
+        query = '找Mira不要把手套放进纸盒的视频'
+        planner = Proposal(ready(query, [(x, [x]) for x in ('手套', '放进', '纸盒')]))
+        result = plan_query(query, now=NOW, entities=entities(labels=['Mira'], people=['301']),
+                            previous_filters=None, planner=planner)
+        self.assertEqual(('clarification', 'unsupported_negation'),
+                         (result.status, result.reason))
+        self.assertEqual({}, result.filters)
+        self.assertEqual([], planner.calls)
+
+    def test_object_allowlist_does_not_expand_partial_or_compound_surfaces(self):
+        cases = (
+            # A partial object span leaves a source character behind.
+            ('找Mira把手提包放进纸盒的视频', ('手提', '放进', '纸盒')),
+            # The full object noun cannot be borrowed from a longer unknown
+            # word after 把.
+            ('找Mira把大手套放进纸盒的视频', ('手套', '放进', '纸盒')),
+            # Existing 把手/把玩 content words stay whole when they are not
+            # followed by a separately covered disposal object.
+            ('找Mira把手放进纸盒的视频', ('手', '放进', '纸盒')),
+            ('找Mira把玩具丝带放进纸盒的视频', ('玩具', '放进', '纸盒')),
+        )
+        for query, clues in cases:
+            with self.subTest(query=query, clues=clues):
+                planner = Proposal(ready(query, [(clue, [clue]) for clue in clues]))
+                result = plan_query(query, now=NOW,
+                                    entities=entities(labels=['Mira'], people=['301']),
                                     previous_filters=None, planner=planner)
                 self.assertEqual(('clarification', 'unsupported_condition'),
                                  (result.status, result.reason))
