@@ -21592,6 +21592,81 @@
       "translation_quality_qualified": false
     },
     {
+      "feature": "exact-reviewed-scene-provider-with-original-query-identity",
+      "source_commit": "0c554ee47b4fc0e2a9f7156de18a19d90b781642",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "a79b307822d8c6901115308761aadbba810ab5b135dc92d0d964eeb2b370323f",
+          "sha256": "67f8ec3ed142a661989e3d659768dce93264e81585de092427876690ae12608b"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "804da0a2cf23faa0d251f4698d4f1d5e69eee338ed982b97915d00cced5cd4c2",
+          "sha256": "61f10dfc2e0e4defaa0f87479f0a824fe86fe3764eed55908d0de16f53b3dbfc"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_PROVIDER.md",
+          "before_sha256": null,
+          "sha256": "51c6aafc1cee29ce393ea1e069d253d722867409dfe7d4deeb5d3f49c68d9a3a"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "a0b33446a87b46784129ef0474a98896d62f2b54ad5c2c3083f5ecbf903b4565",
+          "sha256": "16f514114e93b6afaad386a79f5f43c7e7b1f97191462725cd4fba24614c9cd7"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "be9cdcaa3a86a995aa5f296f1b10e63e1880edba054d7277679180bf36dc3a09",
+          "sha256": "c7e8cbd8e3cee8c233f3b205ee0703b5b0b402a3ff87fd9ad8dc8fee31ad0e2d"
+        },
+        {
+          "path": "server/scripts/semantic_reviewed_projection.py",
+          "before_sha256": null,
+          "sha256": "7bc2082e1e2ca3cd5e3246bcfbdd2a2d8f62a6cf5486c63869594412c0566917"
+        },
+        {
+          "path": "server/scripts/serve_reviewed_semantic_text.py",
+          "before_sha256": null,
+          "sha256": "0d923b0bee9831ecfc6b285ca0baf1f6e066fccdac02f52e35533411204abb5b"
+        },
+        {
+          "path": "server/scripts/serve_semantic_text.py",
+          "before_sha256": "75f78f074af0dafef91e18d9a5ef2319bdabd09ef2c7c79bf8020cccd81c1c42",
+          "sha256": "50cf0824ec83cc3728bb3affde025f94f6cb418e9b470482bc2e68bba98b3676"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_semantic_provider_integration.py",
+          "before_sha256": null,
+          "sha256": "cab9076cc095602bc63bd47e99ef73ed8ecdf9803917d201ea33ed679eed8967"
+        },
+        {
+          "path": "server/tests/security/test_semantic_reviewed_projection.py",
+          "before_sha256": null,
+          "sha256": "c677d6c16fc6f9c618b62a70c392eb3cbdb1e669afb3f21ddc767e56db38631e"
+        },
+        {
+          "path": "server/tests/security/test_serve_reviewed_semantic_text.py",
+          "before_sha256": null,
+          "sha256": "1fc25aa8963b0135020899525ab4986bd50337913c528b7ddd4ac013209f687d"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "d1931622e203b5797c829f908a3d2d7b142bdfa1827f1f05f203284b6e9649c3",
+          "sha256": "1c4b90363cb6e4b0715f55c80d095cc5e6d33dd7d9458f393030b0f09f335762"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7eb72b544a9576ea16adfa3febf09b3980134ec5a51870c7ce5ecb8ddca554b6",
+          "sha256": "9712f6a506199fe84e4f1a02c0e9b411430eedda654e4219a51ef789e6d52879"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
+    },
+    {
       "feature": "phone-v67-voice-reading-release-candidate",
       "source_commit": "3810eaf69b16badacce43d85de4aae004a3f351d",
       "files": [
