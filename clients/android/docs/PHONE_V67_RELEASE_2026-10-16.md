@@ -27,10 +27,12 @@ APK SHA-256 above. An independent Mac HTTPS stream verified the same complete
 APK digest without saving a second APK copy. The TV v30 pointer and manifest
 remained unchanged.
 
-Postflight confirmed the API task, process, configuration and listener binding
-and update root were unchanged. These operations did not restart the API,
-change scheduled tasks or access the production database. The postflight
-compared the API binding; other host services were not inventoried.
+The phone-publication postflight confirmed that the API task, process,
+configuration and listener binding and update root were unchanged at that time;
+the TV v30 pointer and manifest were unchanged. A separate API/Web cutover
+followed later that day and is summarized below. The phone operation did not
+restart the API or change scheduled tasks. The phone postflight compared the API
+binding; other host services were not inventoried.
 
 ## Source and API qualification
 
@@ -52,15 +54,19 @@ workers, or change services or tasks. The oral-history schema in this check was
 experimental fixture schema only; production admission and live schema
 application were not qualified.
 
-The API/Web candidate was not switched live. The live API remained on its
-previous `f476c5e` binding. Scene search and story/model generation remain
-default-off; no model activation or worker execution is part of this release.
+At phone publication time, the API/Web candidate had not been switched and the
+live API remained on its previous `f476c5e` binding. Later on October 16, a
+separate API/Web operation deployed source `88de08e`. Its native and HTTPS
+readback passed, the stopped-writer backup passed integrity checks, and all five
+writer workers were restored. The schema stayed `a0c9d2e4f817`; no migration or
+configuration change occurred. Scene search and story/model generation remain
+default-off; no model activation was part of either release operation.
 
 ## Acceptance boundary
 
-The phone OTA and package readbacks do not establish physical-device or family
-acceptance. No physical phone installation, real microphone/ASR/TTS session, or
-family trial was recorded for this release. Follow the
+The signed v67 app was installed and launched on a Samsung phone. This does not
+establish voice behavior, real microphone/ASR/TTS quality or family acceptance;
+no real voice session or family trial was recorded. Follow the
 [Chinese v67 post-release acceptance guide](PHONE_V67_TEST_GUIDE_ZH.md) and record
 those outcomes separately. The historical candidate scope and source notes are
 in [PHONE_V67_CANDIDATE_2026-10-16.md](PHONE_V67_CANDIDATE_2026-10-16.md).

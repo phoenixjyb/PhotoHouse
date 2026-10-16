@@ -7,16 +7,17 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 
 ## 现在在哪里
 
-截至 **2026-10-15 13:56（北京时间）**，API/Web 源码 `8f46905` 已部署，手机
-**v61 / 0.61-guided-stories** 已用原证书签名并发布到 Windows HTTPS OTA，
-完整 APK 下载核验通过；TV 保持 **v30**，原图标保留。
+截至 **2026-10-16 16:12（北京时间）**，API/Web 源码 `88de08e` 已部署，手机
+**v67 / 0.67-voice-reading** 已用原证书签名并发布到 Windows HTTPS OTA，
+完整 APK 下载核验通过；已确认在 Samsung 实体手机安装并启动；TV 保持 **v30**。
 
-本轮增加手机/Web **讲一个故事**：挑选画面 → 讲述回忆 → 检查保存。
-[发布与试用说明](clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md)记录确切包、
-模拟器和 Windows 证据；实体手机安装、家庭语音与投影仪体验仍需实际验证。
+v67 增加手机语音暂停/结束和保存正文分段朗读后的明确语音继续；配套 Web/API
+源码也已部署。实体语音与家人体验、TV 投影仪体验仍需实际验证。详见
+[v67 发布记录](clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md)和
+[验收指南](clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md)。
 
 [当前状态](docs/PROJECT_STATUS.md)区分源码、服务与家庭验收。
-搜索 v2 后端契约已包含，Web/手机/私人会话的 v2 客户端改造留待后续发布。
+搜索 v2 Web/手机客户端已在 v62 交付；当前 API/Web 与手机版本见状态页。
 托管 CI 的结果应绑定各 PR 的确切提交；本地和运行服务记录不能替代它。
 [源码同步与部署边界](docs/REPOSITORY_SYNC_2026-10-15.md)说明 main、功能分支和公开安装工具的状态。
 
