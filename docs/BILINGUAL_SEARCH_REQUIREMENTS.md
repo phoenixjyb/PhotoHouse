@@ -177,7 +177,8 @@ The optional v3 path accepts natural openings such as `I'm looking for`,
 planner proposes exact input spans and bounded Chinese/English alternatives.
 The server, rather than the model, resolves reviewed people and hard filters.
 The planner receives a view of the query with resolved names/labels, recognized
-dates, media terms and quoted literals replaced by spaces, plus the civil date
+dates, media terms and quoted literals marked by explicit redaction boundaries,
+plus the civil date
 and a previous-search flag. It receives no roster, captions, credentials or
 database access. Code-point offsets stay fixed, including complete Unicode
 normalization clusters; unsafe partial mappings refuse provider invocation.
@@ -522,3 +523,29 @@ reorder words or expand synonyms. Ambiguous hard conditions inside the phrase,
 multiple cues, unsupported actions, negation and malformed quotes still ask
 for clarification. Quotation marks remain available for intentional literal
 wording that would otherwise be treated as search syntax.
+
+## Explicit redaction boundaries for intent proposals
+
+The optional provider view marks hidden conditions and leading commands with
+`█` at unchanged Python code-point offsets. This makes a hidden name/date/media
+condition or quoted literal distinguishable from ordinary whitespace between
+scene words, including Chinese and mixed text with no surrounding spaces.
+Quoted spans and the server-owned resolved pending-date slot are marked
+throughout; visible scene spelling and ordinary spacing remain intact. The
+original request stays capped at 1024 UTF-8 bytes. The provider view is capped at
+1024 code points and 3072 UTF-8 bytes to accommodate the marker encoding. The
+original request still determines all hard filters.
+
+The local adapter prompt treats the marker as an uncrossable boundary. The
+shared validator rejects surfaces or alternatives containing it, and the compiler
+still verifies exact original substrings and all retained hard conditions. A
+proposal cannot remove a boundary, guess a hidden word, or bridge hidden content
+by replacing the marker with spaces. Reserved-marker wording in a descriptive
+proposal asks for clarification; literal quoted-text search is unchanged.
+
+Generated view/transport/compiler tests verify these boundaries with no model or
+network. They do not measure recall or translation quality. Previous private
+native measurements apply to their pinned earlier candidates; a new bounded
+installed-provider cohort is required before activating this changed prompt.
+The provider remains optional and off by default; schema, public wire protocol,
+matching requirements, model selection and runtime configuration are unchanged.

@@ -584,7 +584,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     if continuation is not None:
         from .assistant_query_plan import _valid_previous
         if (not search_v2 or previous is not None or type(continuation) is not dict
-                or set(continuation) != {'binding', 'date'}
+                or set(continuation) not in ({'binding', 'date'},
+                                             {'binding', 'date', 'redacted_span'})
                 or type(continuation['binding']) is not str
                 or re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None
                 or not _valid_previous({'date': continuation['date']})):
@@ -763,7 +764,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             from .search_intent import plan_query as plan_intent
             plan = plan_intent(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None,
-                               planner=engine.intent_planner)
+                               planner=engine.intent_planner,
+                               redacted_span=continuation.get('redacted_span')
+                               if continuation is not None else None)
             # Inference can outlive source or membership changes. Withhold
             # even a clarification until the same authorized snapshot replays.
             engine.call('presentation', token, library, lambda: False, {'binding': binding})
