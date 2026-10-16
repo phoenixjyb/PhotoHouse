@@ -20965,153 +20965,61 @@
       "apk_changed": false
     },
     {
-      "feature": "foreground-voice-exact-spoken-pause-end",
-      "source_commit": "722211a9a645074195267072140c6a8785f68e42",
+      "feature": "private-natural-scene-matched-language-qualification",
+      "source_commit": "9fe0c9645b29517da2c8a50144b57e8c82231a2b",
       "files": [
         {
-          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
-          "before_sha256": "722fbf0ff6216143096cc5d38483737bf7d3528e7d2dd758b9ef5017361230ce",
-          "sha256": "7bf3c0390515cfc6c44ef549e23ccbcaf1a18fbfa02f098f62ec52d715c28759"
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "f8a54f4fe7c397a8454e26258721121ce863623c97bd0a3ec0602d4c8e389fa8",
+          "sha256": "428e65947b8e0a521ee3f904769ee3291e9360f470bb6f567fbc01be60f92058"
         },
         {
-          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
-          "before_sha256": "d494082a529b6763fbfbba0f5f8d0f582940a822bf5dad41f191acbe58ce54f4",
-          "sha256": "40940d6c672a836e3030337ea24626b7125330198f0d27a6b7b9708474836791"
+          "path": "docs/README.md",
+          "before_sha256": "9109c85ba7ee52ae6fb48b92f71ca8cc6fbb15d2d0404c1f950f3d23cda882c7",
+          "sha256": "3fd757fb80c0182247044865d94dcd6cf78fb28a17e68e99c407e1767a0e83e8"
         },
         {
-          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStore.kt",
-          "before_sha256": "0a863204604b8868c54eadf9d4b1827a2d92ae60e5e405c918b5d78d74f454fe",
-          "sha256": "64cf07a44e798adf5fb9df73486866dff336c2f33021f4d95ffe5e18b913a997"
+          "path": "docs/SEMANTIC_PAIR_QUALIFICATION.md",
+          "before_sha256": "6848e9d66061a5709ed90b4cbf0bc7f8ba7aaad4504e0b4a1904a0f117067788",
+          "sha256": "bf02369d1aa7aef540c6225d9d8ca727ee07bae8a2f6ae18366376a4b25da950"
         },
         {
-          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
-          "before_sha256": "8bb92731b0643992796b0b6b5c4c94d7b5252c6e2a3bd7608f2b3c0520115afc",
-          "sha256": "b67f9c073b54415b091e167cfd5f8d7f9f8e1559f4f039cf0c1a9815c1ee36d2"
-        },
-        {
-          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionController.kt",
-          "before_sha256": "5bb661c1214e8dc74db8e29e29b50e5c5547d0f967d25e85088b2e34931138e8",
-          "sha256": "5aeb28ce7f08942cda9d05da46c0474354c7d1fa0d631767efd16c7c91421e52"
-        },
-        {
-          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/VoiceSessionSpokenControl.kt",
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
           "before_sha256": null,
-          "sha256": "4302fff939d54bebf0c727e606656630aa8edafa511d8a269515bc7adfb79f22"
+          "sha256": "79f8c5bda3b67d6e5e0baee43176933f7723c9b110d3e3797b888e98671b53b0"
         },
         {
-          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantVoiceSessionStoreTest.kt",
-          "before_sha256": "ae8baca46bdc53cb2abe5c159a2309497e72ed35673d674c82b12c1c875d1225",
-          "sha256": "d8e2129f325845ac7160c516e55ac061c446928061bb3be3d2fe35a9470be696"
-        },
-        {
-          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceSessionControllerTest.kt",
-          "before_sha256": "ad4d45fecbfa2cb4396b6073c4519bfb3cdf2b96e733132d51c27719461e6b6a",
-          "sha256": "147277e904718bf87b4554f568c3bced769227ef23f515e241a8020f2889a921"
-        },
-        {
-          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/VoiceSessionSpokenControlTest.kt",
+          "path": "server/scripts/qualify_semantic_scenes.py",
           "before_sha256": null,
-          "sha256": "19d79627a456c386470ecbf4c92026870ad3d5d87eeb9526a0eb90ceb938778e"
+          "sha256": "f9f047cc755d4fe70c24185698494ee6881fa0ac54722f512371e6f78374db0a"
         },
         {
-          "path": "docs/FEATURES.md",
-          "before_sha256": "d8d21e6d9a45ca5fc2a4428372f748f1a28561f715f7298cf119bff05ea11b8f",
-          "sha256": "2dbb5cc1d2b72ca7ab20ef3e0db9ca34dd734c5ed88f00b6818fde4242154ba2"
-        },
-        {
-          "path": "docs/PROJECT_STATUS.md",
-          "before_sha256": "386c4737dd7a7c01c176228a41fa04aa1d225efcc555eb362acaec8729a568b3",
-          "sha256": "3ab8c9fcbf4fc879f1cd2608419c10b0e53d314ad70a4b0b73ac978282c18edb"
-        },
-        {
-          "path": "docs/ROADMAP.md",
-          "before_sha256": "cd4c0cada572fdf5b2333008a9345692b51cf646a6dcfcaeaf3053105d9656ac",
-          "sha256": "1567d647894eb945f12d39ec9661f16d9947f9c5bdbacd316dca2ea298626f88"
-        },
-        {
-          "path": "docs/VOICE_SESSION_SPOKEN_CONTROLS.md",
+          "path": "server/scripts/semantic_scene_cases.py",
           "before_sha256": null,
-          "sha256": "dc58dbde68f34460cbbdfab9c7e1823c41ed6c87b5b75e918a26dd1ca9808337"
+          "sha256": "9043a1434ec1042c3312566a673b19ed61a611bdfad0c1758debb2a8a13a37bf"
         },
         {
-          "path": "server/backend/app/access/boundary.py",
-          "before_sha256": "93240f2b3a2616ff5a4e220bb0bded6f29d63e6351b8274b809e5864a0499d37",
-          "sha256": "1e949651c515b3180c43d3423370d4f830d90895e94c99e61ef2d07cedd19246"
-        },
-        {
-          "path": "server/backend/app/routers/ui.py",
-          "before_sha256": "a5a266d4fb8b8f769279046129a10731e0e2333a33de42c89fdda2e3a9a75f64",
-          "sha256": "ed54c9827446530d787120d0c7ea2a54b2757ac91bf16e67abdacb56f9ab229b"
-        },
-        {
-          "path": "server/backend/app/ui/access/app.js",
-          "before_sha256": "83f0ff6c1f527d87fbf850ea0fc9bad84e01e6357b5c8bd4bd24ee3fa95c3808",
-          "sha256": "4de1b0243140e741305e294b32803bfefaafeadbef3bb6c8cbcd50fb4642a9e5"
-        },
-        {
-          "path": "server/backend/app/ui/access/index.html",
-          "before_sha256": "9f41b77309bf122b192c55c0f77a8c704f94068a0e927bfae758e82b82abdb7c",
-          "sha256": "7f0b7661ef1a75eda200fcc148eddbeb1df40c0051c6e6276f3dd260261589bf"
-        },
-        {
-          "path": "server/backend/app/ui/access/voice-session-control.js",
+          "path": "server/tests/security/test_qualify_semantic_scenes.py",
           "before_sha256": null,
-          "sha256": "65799afbbd0ada61b7d5bafcfe385b996d70868d1cee7481df34ec18340a97c5"
+          "sha256": "9027d2a189cdac29b71439b9bafbbbfaa4415bc4ca434472d4b7c22c7cac0439"
         },
         {
-          "path": "server/scripts/access_ui_overlay.py",
-          "before_sha256": "8945c3b16aeb6bd43136057924a9aee5f978ae25f10c6840b2dc4246fb156d42",
-          "sha256": "b8df04b19cc9487316411dcdc5ae2611cebdb798ec6e4ec739da0aed0043487e"
-        },
-        {
-          "path": "server/scripts/build_access_ui_overlay.py",
-          "before_sha256": "1daa592fd05f15d7d92c2386aaf28c0edf8d210e21c8f3879763aee43309bba5",
-          "sha256": "d175289c3d3d550c1f60bbdd0eb5c436fe6033962515dfd05cf4354660d12aa6"
-        },
-        {
-          "path": "server/scripts/build_staging_package.py",
-          "before_sha256": "ef06019f19c1497d5d3776fc11bce619bafa812643b01d68b34e81dda09321fb",
-          "sha256": "8d474210efe6949297b18fc83f35911abc98c9ed79d0c7d1d67ced67f336caf8"
-        },
-        {
-          "path": "server/tests/security/test_access_ui_overlay.py",
-          "before_sha256": "3d0936658d1d46850e46bc68280810f9b0b9e695c7f904b8cd47d1e7e6ff7324",
-          "sha256": "c1cc954da39b059cce75a334aab40c7654ed2d34376d9192cf51c822f31aff32"
-        },
-        {
-          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
-          "before_sha256": "ebf30660617307975439967e2655cf7f16a23e11b7da8c7ced4fde681b1e7935",
-          "sha256": "cf67fa6900452e819815e3b6640a173d57fa96ff0a0fedb5a8b8e3059b0a93a7"
-        },
-        {
-          "path": "server/tests/security/test_closed_application.py",
-          "before_sha256": "1f7441ec32cea28629a108c6cf72fb039c79d86f97347555dfa12a4f73a00ec1",
-          "sha256": "f072249651264113fca750d639c8b439c91a988201f798157fd97243fb86d90e"
-        },
-        {
-          "path": "server/tests/security/test_staging_package.py",
-          "before_sha256": "5fb62948ab11c5080ba26e8fcca56c6338c37ec1b9bf97b2a09e4ba51884928b",
-          "sha256": "afa9a1836c095a98f8a68b11f9b91e688c85c67eb1e5831370665025f541d5b9"
-        },
-        {
-          "path": "server/tests/ui/voice-session-control.test.mjs",
+          "path": "server/tests/security/test_semantic_scene_cases.py",
           "before_sha256": null,
-          "sha256": "a7c0c432d1ec8319f574538ed33fdb3d6bc59d99d9b8b9cbae4e4bc966b691ac"
+          "sha256": "6ca525a1fe0fee5090b234bbfcc1c5524ab71abb3133dc345b7b17ec902d213a"
         },
         {
           "path": "tools/check.py",
           "before_sha256": "cf039beb3888903cea076ef11d088e0dd7ba9111c304a6952eb101cacdcefa30",
-          "sha256": "ab0b952e880c6a01217ccdc208690470858cedf354aa5554decbbe09461d9e65"
+          "sha256": "a1c1c342813d3b414211d5d87cbfd918dd73f2c837597a88a2eac8c5690b962f"
         }
       ],
-      "routes_added": [
-        "GET /ui/voice-session-control.js"
-      ],
+      "runtime_changed": false,
       "schema_changed": false,
       "models_activated": false,
-      "apk_published": false,
-      "runtime_changed": false,
-      "microphone_speaker_overlap": false
+      "household_data_included": false,
+      "native_relevance_measured": false,
+      "implementation_commit": "7e00f37a43d86157c3925de2f42724ade64cfe1b"
     }
   ]
 }
