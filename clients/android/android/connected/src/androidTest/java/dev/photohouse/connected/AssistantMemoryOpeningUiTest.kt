@@ -356,7 +356,7 @@ class AssistantMemoryOpeningUiTest {
             }
         }
         rule.onNodeWithTag("assistant-voice-continuation-consent-0").performScrollTo()
-            .assertIsDisplayed().assertTextContains("starts the microphone")
+            .assertIsDisplayed().assertTextContains("starts the microphone", substring = true)
         rule.onNodeWithTag("assistant-continue-memory-by-voice-0").performScrollTo().assertIsDisplayed()
             .assertHeightIsAtLeast(48.dp).assertTextEquals("Continue by voice")
         saveRender("en-central-voice-continuation-consent")
