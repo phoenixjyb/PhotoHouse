@@ -53,6 +53,46 @@ class LocalIntentPlannerTests(unittest.TestCase):
         return LocalIntentPlanner(url, 'intent-local',
                                   transport=httpx.MockTransport(handler), **kwargs)
 
+    def test_grammar_only_concepts_refuse_the_complete_proposal_without_dropping_them(self):
+        query = '整理绿色围巾的'
+        valid = {'surface': '绿色围巾', 'alternatives': ['绿色围巾', 'green scarf']}
+        for endpoint in ('/api/chat', '/api/generate'):
+            for alternatives in (['的'], ['的', "'s", 'possessive'],
+                                 ['的', 'blue scarf'], ['的', 1]):
+                with self.subTest(endpoint=endpoint, alternatives=alternatives):
+                    calls = []
+                    def handler(request):
+                        calls.append(request)
+                        proposal = {'version': 1, 'status': 'ready', 'question': None,
+                                    'concepts': [valid, {'surface': '的',
+                                                         'alternatives': alternatives}]}
+                        content = json.dumps(proposal, ensure_ascii=False)
+                        envelope = {'model': 'intent-local', 'done': True}
+                        if endpoint == '/api/chat':
+                            envelope['message'] = {'role': 'assistant', 'content': content}
+                        else:
+                            envelope['response'] = content
+                        return httpx.Response(200, json=envelope)
+                    with self.assertRaises(IntentUnavailable):
+                        self.planner(handler, url='http://127.0.0.1:11434' + endpoint).propose(
+                            query, '2032-09-14', False)
+                    self.assertEqual(1, len(calls))
+
+    def test_content_words_containing_a_grammar_character_keep_their_exact_surfaces(self):
+        query = '绿色的士'
+        for endpoint in ('/api/chat', '/api/generate'):
+            with self.subTest(endpoint=endpoint):
+                calls = []
+                def handler(request):
+                    calls.append(request)
+                    response = model_chat_response if endpoint == '/api/chat' else model_response
+                    return response(query, surface=query, alternatives=[query, 'green taxi'])
+                proposal = self.planner(handler, url='http://127.0.0.1:11434' + endpoint).propose(
+                    query, '2032-09-14', False)
+                self.assertEqual([{'start': 0, 'end': len(query),
+                                   'alternatives': [query, 'green taxi']}], proposal['concepts'])
+                self.assertEqual(1, len(calls))
+
     def test_multiword_conversational_opener_keeps_spaces_between_boundaries(self):
         for opener in ('I would like to see', 'I am looking for', 'Please show me'):
             with self.subTest(opener=opener):
