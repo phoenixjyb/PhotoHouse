@@ -47,10 +47,19 @@ def load_review(directory: Path):
                   'output_sha256', 'configuration_identity_sha256', 'provider_configuration',
                   'started_at', 'ended_at', 'duration_seconds', 'timeout_seconds', 'quality',
                   'quality_evaluated', 'activation_performed', 'resource_limits_verified'}
-        if (type(record) is not dict or set(record) != fields or
+        record_fields = fields | ({'ollama_metrics'} if type(record) is dict and
+                                   'ollama_metrics' in record else set())
+        if (type(record) is not dict or set(record) != record_fields or
                 type(record['schema']) is not int or record['schema'] != 1 or
                 record['status'] != 'captured_for_human_review'):
             raise ValueError()
+        if 'ollama_metrics' in record:
+            from app.access.memory_narrative import _clean_ollama_metrics
+            metrics = record['ollama_metrics']
+            clean_metrics = _clean_ollama_metrics(metrics)
+            if (type(metrics) is not dict or not metrics or clean_metrics != metrics or
+                    any(type(value) is not int for value in metrics.values())):
+                raise ValueError()
         case, criteria = canary._case_plan(record['case_id'])
         role, task = canary.CASE_BINDINGS[record['case_id']]
         if (record['role'] != role or record['task'] != task or

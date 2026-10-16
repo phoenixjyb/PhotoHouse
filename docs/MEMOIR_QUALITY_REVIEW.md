@@ -52,6 +52,10 @@ quality/activation/provider-request flags.
   application contracts, including chapter order, per-chapter citation scope,
   cited answers and review-required proposals. Invalid/failed captures do not
   produce a page. Fixing a hash cannot bypass these checks.
+- Older records remain readable. An optional nonempty `ollama_metrics` map
+  accepts only the six known bounded integer fields; malformed metadata is
+  refused. The canonical record hash includes it, while the page and public
+  report omit these timings. See [private timing evidence](AI_STORY_COMPLETION.md#private-provider-timing-evidence).
 - A second read detects content replacement across the three files. The output
   is created exclusively with private permissions and is limited to 1 MiB.
 - Model wording is escaped as literal text. Citation links are generated from
