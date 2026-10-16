@@ -15,6 +15,10 @@ A subsequent scene turn takes those conditions from the current server-owned
 thread revision. It accepts visual wording separately; it never derives a
 person, kinship relationship, date or access permission from that wording.
 Changes to hard conditions require a complete ordinary search first.
+The immediately preceding completed turn at that revision must contain resolved
+results. Retained results underneath a clarification do not authorize ignoring
+its unresolved conditions. This admission check and lease acquisition share
+one store transaction; rejected attempts leave the clarification intact.
 
 Scene ranking supports photos only. A missing media condition becomes
 `["image"]` as part of this explicit photo-search action. An existing video,

@@ -20578,6 +20578,37 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "require-resolved-search-scope-before-scene-turn-lease",
+      "source_commit": "e440c251a9b6303a1e0ea161fba123659bc962be",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "f4d1eb0185815f2b1175ab6bef31c97671f9e8646355b528835ba2df22c8b4ee",
+          "sha256": "28583ded95a99311e94c6ee7fda8fc81c3bcace39a8ebfc5100590b6f71982fc"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "a9373e15463748ef125d656683c000b935bb053c5082d45b11c1bf33d6c56364",
+          "sha256": "269ed187bfd1a57b2a486709c7768d6ac140c78bb6a8775f08c50a5426788263"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "fcac362aa22f57234fcce2b54f69df862af063fd5ddc7ef463449d004d564dcd",
+          "sha256": "4360cb62af6cb35623b492fc216c0e9775d518e0c1d40fae8f1c46b985a296ed"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "before_sha256": "142b81ef29409e1ae55e49f10749a38b80ca0ab13a3cb7aed643d46f3bfcecf1",
+          "sha256": "e35a7539513e43f5e47191099416f45d34d3a4e4270e1451ac7a3ba852f9ef26"
+        }
+      ],
+      "unresolved_conditions_preserved": true,
+      "admission_is_revision_atomic": true,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }

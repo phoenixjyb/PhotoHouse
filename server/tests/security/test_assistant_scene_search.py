@@ -131,7 +131,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(self.read(response.json()['request_id']).status_code, 200)
 
     def test_unreviewed_scope_media_and_unnegotiated_body_are_refused(self):
-        self.assertEqual(self.send('a bright kite', scene=True).status_code, 400)
+        self.assertEqual(self.send('a bright kite', scene=True).status_code, 409)
         self.scope('find videos')
         self.assertEqual(self.send('a bright kite', 1, scene=True).status_code, 400)
         self.assertEqual(self.send('a bright kite', 1, headers=self.headers).status_code, 400)
@@ -143,6 +143,21 @@ class AssistantSceneSearchTests(unittest.TestCase):
         direct = self.client.post('/assistant/v1/turns', headers=self.headers,
             json={'library_id': 'family-a', 'text': 'find photos', 'context': None})
         self.assertEqual(direct.status_code, 400)
+
+    def test_unresolved_hard_conditions_cannot_be_bypassed_with_scene_search(self):
+        base = self.scope()
+        pending = self.send('only photos of Unknown Stranger', 1)
+        self.assertEqual(pending.status_code, 200, pending.text)
+        self.assertEqual(pending.json()['result']['kind'], 'clarification')
+        self.assertEqual(pending.json()['result']['context'], base['context'])
+        scene = self.send('a kite', 2, scene=True)
+        self.assertEqual(scene.status_code, 409, scene.text)
+        self.assertEqual(self.pilot.calls, [])
+        resolved = self.send('find photos of Sample Child in September 2032', 2)
+        self.assertEqual(resolved.status_code, 200, resolved.text)
+        resumed = self.send('a kite', 3, scene=True)
+        self.assertEqual(resumed.status_code, 200, resumed.text)
+        self.assertEqual(len(self.pilot.calls), 1)
 
     def test_membership_precedes_metadata_and_encoder(self):
         self.scope()

@@ -815,8 +815,9 @@ class AssistantWorkspaceStore:
         return row
 
     def begin_turn(self, account_id, library_id, thread_id, request_id,
-                   expected_revision, input_text, *, existing_only=False):
-        if type(existing_only) is not bool:
+                   expected_revision, input_text, *, existing_only=False,
+                   require_resolved_scope=False):
+        if type(existing_only) is not bool or type(require_resolved_scope) is not bool:
             raise ValueError('Invalid existing request lookup')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
@@ -851,6 +852,23 @@ class AssistantWorkspaceStore:
                 raise WorkspaceStoreMissing()
             if thread['revision'] != expected_revision:
                 raise WorkspaceStoreConflict()
+            if require_resolved_scope:
+                # A clarification can retain an older visible result without
+                # resolving the user's new hard conditions. Admit scene ranking
+                # only from resolved results at this exact CAS revision. This
+                # read and the lease acquisition share the same transaction;
+                # failed attempts cannot masquerade as completed scope reviews.
+                previous = db.execute('''SELECT result_summary FROM turn_requests
+                    WHERE thread_id=? AND account_id=? AND library_id=? AND revision=?
+                    AND status='completed' AND expires_at>?''',
+                    (thread_id, account_id, library_id, expected_revision, now)).fetchone()
+                resolved = (None if previous is None else
+                            _stored_summary(previous['result_summary'], library_id))
+                if (resolved is None or resolved['kind'] != 'results' or
+                        resolved['version'] not in (2, 3, 4) or resolved['context'] is None or
+                        'pending_intent' in resolved or resolved['context'] !=
+                        self._context_for(db, thread_id, account_id, library_id, now)):
+                    raise WorkspaceStoreConflict()
             pending = db.execute("SELECT * FROM turn_requests WHERE thread_id=? AND status='pending'",
                                  (thread_id,)).fetchone()
             if pending is not None:

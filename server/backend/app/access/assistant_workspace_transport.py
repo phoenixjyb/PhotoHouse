@@ -981,7 +981,9 @@ async def create_turn(request: Request, thread_id: str):
             raise WorkspaceInvalid()
         memory_actions_opt_in = body['accepts'] == ['saved_memory_cards_v1', 'saved_memory_actions_v1']
         _saved_memory_enabled(request)
-    row = await _call(store, 'begin_turn', account, library, selected, ident, revision, words)
+    begin_options = {'require_resolved_scope': True} if scene_opt_in else {}
+    row = await _call(store, 'begin_turn', account, library, selected, ident, revision, words,
+                      **begin_options)
     if row['replayed']:
         return await _turn_envelope(request, account, library, row, recovered=True)
     lease = row['lease_id']
