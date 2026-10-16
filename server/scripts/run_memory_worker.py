@@ -27,6 +27,7 @@ MAX_CONFIG_BYTES = 16 * 1024
 MAX_ITEMS = 32
 MAX_SECONDS = 1800
 PROVIDER_TIMEOUT = 30
+MAX_NARRATIVE_PROVIDER_TIMEOUT = 120
 MEMORY_TABLES = frozenset({
     'access_memory_contributions', 'access_memory_contribution_derivations',
     'access_memory_books', 'access_memory_book_revisions',
@@ -94,10 +95,16 @@ def validate_config(config):
                                             'memory_groups_enabled',
                                             'asr_timeout_seconds', 'ollama_timeout_seconds'}):
         raise WorkerConfigurationError('Invalid worker configuration')
-    for key in ('asr_timeout_seconds', 'ollama_timeout_seconds'):
-        timeout = config.get(key, PROVIDER_TIMEOUT)
-        if type(timeout) not in (int, float) or not 0 < timeout <= PROVIDER_TIMEOUT:
-            raise WorkerConfigurationError('Invalid worker configuration')
+    asr_timeout = config.get('asr_timeout_seconds', PROVIDER_TIMEOUT)
+    ollama_timeout = config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT)
+    if (type(asr_timeout) not in (int, float) or
+            not 0 < asr_timeout <= PROVIDER_TIMEOUT):
+        raise WorkerConfigurationError('Invalid worker configuration')
+    ollama_limit = (MAX_NARRATIVE_PROVIDER_TIMEOUT
+                    if config.get('mode') == 'narrative' else PROVIDER_TIMEOUT)
+    if (type(ollama_timeout) not in (int, float) or
+            not 0 < ollama_timeout <= ollama_limit):
+        raise WorkerConfigurationError('Invalid worker configuration')
     if type(config.get('memory_editorial_enabled', False)) is not bool:
         raise WorkerConfigurationError('Invalid worker configuration')
     if type(config.get('memory_groups_enabled', False)) is not bool:
@@ -228,7 +235,8 @@ def validate_storage(config, *, read_only):
 def _adapters(config, *, timeout=PROVIDER_TIMEOUT, phase=None):
     if config['mode'] == 'narrative':
         return LocalMemoryNarrator(config['ollama_url'], config['ollama_model'],
-            timeout=min(timeout, config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT), PROVIDER_TIMEOUT))
+            timeout=min(timeout, config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT),
+                        MAX_NARRATIVE_PROVIDER_TIMEOUT))
     limits = [timeout, PROVIDER_TIMEOUT]
     if phase != 'polish':
         limits.append(config.get('asr_timeout_seconds', PROVIDER_TIMEOUT))
@@ -251,7 +259,9 @@ def _run(config, *, maximum_items, maximum_seconds, once, clock=time.monotonic):
             return {'status': 'unavailable', 'mode': config['mode'], 'processed': 0, 'states': {}}
         while processed < maximum_items and (deadline is None or clock() < deadline):
             if config['mode'] == 'narrative':
-                remaining = PROVIDER_TIMEOUT if deadline is None else min(PROVIDER_TIMEOUT, deadline-clock())
+                requested = min(config.get('ollama_timeout_seconds', PROVIDER_TIMEOUT),
+                                MAX_NARRATIVE_PROVIDER_TIMEOUT)
+                remaining = requested if deadline is None else min(requested, deadline-clock())
                 if remaining <= 0:
                     break
                 adapter = _adapters(config, timeout=remaining)

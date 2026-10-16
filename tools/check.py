@@ -123,6 +123,7 @@ WEB_TESTS = (
     "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
     "server/tests/security/test_memory_book_edition_sources_browser.cjs",
     "server/tests/security/test_memory_community_browser.cjs",
+    "server/tests/security/test_memory_narrative_recovery_browser.cjs",
     "server/tests/security/test_story_proposal_wording_browser.cjs",
     "server/tests/security/test_memoir_review_page_browser.cjs",
     "server/tests/security/test_memory_conversation_navigation_browser.cjs",

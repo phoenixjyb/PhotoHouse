@@ -25,7 +25,7 @@ const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(
 const countTurnPosts=()=>requests.filter(item=>item.method==='POST'&&/\/conversations\/[^/]+\/turns/.test(item.path)).length;
 const countAudioRequests=()=>requests.filter(item=>item.path.includes('/audio?')||item.path.includes('/contributions/audio')).length;
 const countBookDetailReads=()=>requests.filter(item=>item.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(item.path)).length;
-let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,bookDetailGate=null,pendingTurnFixture=false,malformedPreviewOnce=false;
+let browser,context,page;const pageErrors=[],external=[],checks=[],failures=[],memoirEvidence=new Map();let bookStoryIds=[],memoirBookId=null,bookNavigationMismatch=null,pollGate=null,bookDetailGate=null,capabilityGate=null,pendingTurnFixture=false,malformedPreviewOnce=false,capabilityDisabledOnce=false,narrativePostUncertainOnce=false,narrativeQueuedOnce=false,narrativeFailedOnce=null;const narrativePostBodies=[];
 const gateBookDetail=(status=200)=>{let arrivedResolve,releaseResolve;const arrived=new Promise(resolve=>{arrivedResolve=resolve;}),releasePromise=new Promise(resolve=>{releaseResolve=resolve;});bookDetailGate={status,arrivedResolve,releasePromise};return {arrived,release:releaseResolve};};
 const awaitGate=(gate,label)=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error(`${label} did not reach protected detail request`)),8000);gate.arrived.then(()=>{clearTimeout(timeout);resolve();},reject);});
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
@@ -49,12 +49,18 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     const entry={method:request.method(),path:url.pathname+url.search};requests.push(entry);
     let gatedBookDetailStatus=null;
     if(bookDetailGate&&entry.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}\?/.test(entry.path)){const gate=bookDetailGate;bookDetailGate=null;gate.arrivedResolve();await gate.releasePromise;gatedBookDetailStatus=gate.status;}
+    if(capabilityGate&&entry.method==='GET'&&url.pathname==='/memory-community/v1/capabilities'){const gate=capabilityGate;capabilityGate=null;gate.arrivedResolve();await gate.releasePromise;}
     let bridgePath=entry.path;const selectedEditorialPlan=entry.method==='GET'&&url.pathname.endsWith('/plan')&&url.searchParams.get('editorial_context')==='1';
     const selectedEditorialPost=entry.method==='POST'&&url.searchParams.get('editorial_context')==='1';
     if(selectedEditorialPlan)bridgePath=`${url.pathname}?library=${encodeURIComponent(url.searchParams.get('library')||'')}`;
     else if(selectedEditorialPost)bridgePath=url.pathname;
     let result=await rpc({method:entry.method,path:bridgePath,headers,
       body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
+    if(entry.method==='POST'&&url.pathname==='/memory-community/v1/jobs'){
+      narrativePostBodies.push(JSON.parse((request.postDataBuffer()||Buffer.from('{}')).toString()));
+      if(narrativePostUncertainOnce){narrativePostUncertainOnce=false;result={...result,status:503,body:Buffer.from(JSON.stringify({detail:'Synthetic uncertain response'})).toString('base64')};}
+      else if(narrativeQueuedOnce&&result.status===200){narrativeQueuedOnce=false;const payload=JSON.parse(Buffer.from(result.body,'base64').toString());payload.state='queued';payload.result=null;result={...result,body:Buffer.from(JSON.stringify(payload)).toString('base64')};narrativeFailedOnce={id:payload.id,state:'queued'};}
+    }
     if(gatedBookDetailStatus!==null)result={...result,status:gatedBookDetailStatus,body:Buffer.from(JSON.stringify({detail:'Synthetic stale memoir shelf denial'})).toString('base64')};
     entry.status=result.status;
     if(result.worker_job)entry.worker_job=result.worker_job;
@@ -62,10 +68,12 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     let responseBody=Buffer.from(result.body,'base64');
     if(selectedEditorialPlan&&result.status===200){const payload=JSON.parse(responseBody.toString());payload.context_profile='memoir_editorial_v1';payload.whole={state:'within_limits',can_draft:false,source_count:0,source_kinds:{},context_bytes:1024};responseBody=Buffer.from(JSON.stringify(payload));}
     else if(entry.method==='GET'&&url.pathname.endsWith('/plan')&&result.status===200){const payload=JSON.parse(responseBody.toString());payload.whole={state:'smaller_scope_required',can_draft:false,source_count:null,source_kinds:null};responseBody=Buffer.from(JSON.stringify(payload));}
+    if(entry.method==='GET'&&url.pathname==='/memory-community/v1/capabilities'&&capabilityDisabledOnce&&result.status===200){capabilityDisabledOnce=false;const payload=JSON.parse(responseBody.toString());payload.generation_enabled=false;responseBody=Buffer.from(JSON.stringify(payload));}
     if(entry.method==='POST'&&/^\/memory-community\/v1\/conversations\/[0-9a-f-]{36}\/turns$/.test(url.pathname)&&result.status===200)pendingTurnFixture=true;
     if(entry.method==='GET'&&/^\/memory-community\/v1\/conversations\/[0-9a-f-]{36}\/turns$/.test(url.pathname)&&pendingTurnFixture){const payload=JSON.parse(responseBody.toString()),turn=payload.items?.at(-1);if(turn){turn.state='running';turn.reply_text=null;turn.reply_kind=null;responseBody=Buffer.from(JSON.stringify(payload));}pendingTurnFixture=false;}
     if(entry.method==='GET'&&url.pathname==='/memory-community/v1/conversations'&&url.searchParams.get('preview')==='1'&&malformedPreviewOnce&&result.status===200){const payload=JSON.parse(responseBody.toString());const item=payload.items?.[0]||{id:'11111111-1111-4111-8111-111111111111',created_at:1,expires_at:2000000000};item.first_message_preview='malformed\npreview';payload.items=[item];responseBody=Buffer.from(JSON.stringify(payload));malformedPreviewOnce=false;}
     if(entry.method==='GET'&&/^\/memory-community\/v1\/jobs\/[0-9a-f-]{36}/.test(url.pathname)&&pollGate){const gate=pollGate;pollGate=null;gate.arrived(entry.path);await gate.releasePromise;const payload=JSON.parse(responseBody.toString());payload.state=gate.state;if(['queued','running'].includes(gate.state))payload.result=null;responseBody=Buffer.from(JSON.stringify(payload));}
+    if(entry.method==='GET'&&/^\/memory-community\/v1\/jobs\/[0-9a-f-]{36}/.test(url.pathname)&&narrativeFailedOnce?.id===url.pathname.split('/').at(-1)){const payload=JSON.parse(responseBody.toString());payload.state=narrativeFailedOnce.state;payload.result=null;if(narrativeFailedOnce.state==='failed')payload.error_code='synthetic_failure';narrativeFailedOnce=narrativeFailedOnce.state==='queued'?{...narrativeFailedOnce,state:'failed'}:null;responseBody=Buffer.from(JSON.stringify(payload));}
     if(entry.method==='GET'&&/^\/memory-community\/v1\/books\/[0-9a-f-]{36}$/.test(url.pathname)&&result.status===200){
       const payload=JSON.parse(responseBody.toString());memoirBookId=payload.id;bookStoryIds=(payload.stories||[]).map(story=>story.id);
       if(bookNavigationMismatch==='parent'){payload.revision='999';responseBody=Buffer.from(JSON.stringify(payload));bookNavigationMismatch=null;}
@@ -492,6 +500,53 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     'book-reader close must preserve the saved family collection');
   assert.deepEqual(homeState.visibleDialogs,[],'book-reader close leaves no story or book dialog open');
   await reader();
+  const storyWritesBeforeDirtyPreview=requests.filter(item=>['POST','PUT','DELETE'].includes(item.method)&&item.path.startsWith('/memory-stories/')).length;
+  await page.locator('#story-reader-edit').click();await page.locator('#story-workspace').waitFor({state:'visible'});
+  await page.locator('#story-chapter-editor .story-chapter-card textarea').first().fill('尚未保存的编辑文字，不应被误认为相册库里的故事。');
+  assert.equal(await page.locator('#story-preview').innerText(),'沉浸预览','dirty saved edits keep the ordinary preview label');
+  await page.locator('#story-preview').click();await page.locator('#story-reader-community .memory-community[data-state=ready]').waitFor();
+  const dirtyHandoff=page.locator('#story-reader-community .memory-story-drafting-handoff');
+  assert.equal(await dirtyHandoff.getByRole('button').isDisabled(),true,'AI handoff is disabled for a preview with unsaved story edits');
+  assert.match(await dirtyHandoff.locator('.memory-story-drafting-status').innerText(),/尚未保存|未保存/,'dirty preview explains that drafting reads the saved library version');
+  assert.equal(await page.locator('#story-reader-community [role=tab]').filter({hasText:'整理建议'}).count(),0,'dirty saved preview cannot open the narrative generation form');
+  assert.equal(requests.filter(item=>['POST','PUT','DELETE'].includes(item.method)&&item.path.startsWith('/memory-stories/')).length,storyWritesBeforeDirtyPreview,'dirty preview and disabled handoff do not save story edits');
+  await closeStoryDialogs();await reader();
+  pass('Unsaved edits to a saved story retain ordinary preview and cannot enter a saved-context AI drafting flow');
+  const handoff=page.locator('#story-reader-community .memory-story-drafting-handoff'),handoffButton=handoff.getByRole('button');
+  assert.match(await handoffButton.innerText(),/打开整理建议表单/,'saved reader exposes a direct drafting-form handoff');
+  assert.equal(await handoffButton.isDisabled(),false,`reopening the saved story restores the saved-context handoff: ${await handoff.locator('.memory-story-drafting-status').innerText()}`);
+  const handoffWritesBefore=requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length;
+  capabilityDisabledOnce=true;await handoffButton.click();await handoff.locator('.memory-story-drafting-status').filter({hasText:'此相册库暂未开启 AI 整理建议。你仍可自行编辑故事。'}).waitFor();
+  assert.equal(await page.locator('#story-reader-community [role=tab][aria-selected="true"]').innerText(),'家人的声音','a fresh disabled capability check does not open the drafting form');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,handoffWritesBefore,'disabled handoff creates no drafting request');
+  await page.setViewportSize({width:390,height:844});await handoffButton.click();await page.locator('#story-reader-community textarea[name=instructions]').waitFor();
+  assert.equal(await page.locator('#story-reader-community textarea[name=instructions]').evaluate(node=>document.activeElement===node),true,'enabled handoff opens and focuses the existing instructions field');
+  assert.equal(await page.locator('#story-reader-community textarea[name=instructions]').evaluate(node=>{const rect=node.getBoundingClientRect();return rect.top>=0&&rect.bottom<=window.innerHeight;}),true,'enabled handoff scrolls the editable instructions into the 390px viewport');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,handoffWritesBefore,'opening the drafting form never submits, generates, or saves');
+  await page.setViewportSize({width:390,height:844});await handoff.scrollIntoViewIfNeeded();
+  assert.equal(await handoff.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'Chinese saved-story handoff fits a 390px viewport');
+  await page.screenshot({path:path.join(artifacts,'story-drafting-handoff-zh-390.png')});
+  const handoffFonts=await handoff.evaluate(root=>[...root.querySelectorAll('*')].map((node,index)=>{const style=getComputedStyle(node),row={index,size:parseFloat(style.fontSize),height:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldHeight:node.style.lineHeight};node.dataset.handoffFont=String(index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.height))node.style.lineHeight=`${row.height*1.5}px`;return row;}));
+  assert.equal(await handoff.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'Chinese saved-story handoff fits 390px at 150% text');await page.screenshot({path:path.join(artifacts,'story-drafting-handoff-zh-390-text150.png')});
+  await handoff.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelector(`[data-handoff-font="${row.index}"]`);if(node){node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldHeight;delete node.dataset.handoffFont;}}),handoffFonts);
+  await page.evaluate(()=>window.__translateCommunityForTest('en'));await page.waitForFunction(()=>document.querySelector('#story-reader-community .memory-story-drafting-handoff')?.textContent.includes('This story is saved'));
+  const enHandoff=page.locator('#story-reader-community .memory-story-drafting-handoff');await enHandoff.scrollIntoViewIfNeeded();
+  const enHandoffFonts=await enHandoff.evaluate(root=>[...root.querySelectorAll('*')].map((node,index)=>{const style=getComputedStyle(node),row={index,size:parseFloat(style.fontSize),height:parseFloat(style.lineHeight),oldSize:node.style.fontSize,oldHeight:node.style.lineHeight};node.dataset.handoffFont=String(index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.height))node.style.lineHeight=`${row.height*1.5}px`;return row;}));
+  assert.equal(await enHandoff.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'English saved-story handoff fits 390px at 150% text');await page.screenshot({path:path.join(artifacts,'story-drafting-handoff-en-390-text150.png')});
+  await enHandoff.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelector(`[data-handoff-font="${row.index}"]`);if(node){node.style.fontSize=row.oldSize;node.style.lineHeight=row.oldHeight;delete node.dataset.handoffFont;}}),enHandoffFonts);
+  await page.evaluate(()=>window.__translateCommunityForTest('zh'));await page.setViewportSize({width:1440,height:1000});
+  await tab('一起聊回忆');if(await page.getByRole('button',{name:'新建讨论',exact:true}).count())await page.getByRole('button',{name:'新建讨论',exact:true}).click();
+  const handoffChatDraft=page.locator('#story-reader-community .memory-community-form textarea[name=message]');await handoffChatDraft.waitFor();await handoffChatDraft.fill('切换到整理建议时保留这条未发送聊天草稿。');
+  const handoffMutationCount=()=>requests.filter(item=>['POST','PUT','DELETE'].includes(item.method)).length,handoffMutationsBefore=handoffMutationCount();await handoffButton.click();
+  await page.locator('#story-reader-community textarea[name=instructions]').waitFor();await tab('一起聊回忆');assert.equal(await handoffChatDraft.inputValue(),'切换到整理建议时保留这条未发送聊天草稿。','handoff preserves unsent chat text when switching tabs');
+  assert.equal(handoffMutationCount(),handoffMutationsBefore,'handoff and tab switching issue no mutating request');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,handoffWritesBefore,'handoff and tab switching remain read-only');
+  await page.getByRole('button',{name:'结束并删除这段对话',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#story-reader-community .memory-community-form textarea[name="message"]'));
+  let capabilityArrival,releaseCapability;const capabilityArrived=new Promise(resolve=>capabilityArrival=resolve),capabilityRelease=new Promise(resolve=>releaseCapability=resolve);capabilityGate={arrivedResolve:capabilityArrival,releasePromise:capabilityRelease};
+  void handoffButton.click();await capabilityArrived;await closeStoryDialogs();await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});releaseCapability();await page.waitForTimeout(100);await login('+12025550100');await page.locator('.saved-memory-cover').first().waitFor();await reader();
+  assert.equal(await page.locator('#story-reader-community [role=tab][aria-selected="true"]').innerText(),'家人的声音','a late capability response from the prior account cannot switch the newly attached story');
+  assert.equal(requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,handoffWritesBefore,'stale handoff completion creates no drafting request');
+  pass('Saved-story handoff rechecks capability, remains read-only, focuses visible instructions, preserves unsent chat, rejects stale-scope completion, and fits bilingual 390px/150% layouts');
   assert.equal(await page.locator('#story-reader-community .memory-community-tab').count(),3);
   const communityIds=await page.locator('.memory-community').evaluateAll(roots=>roots.filter(root=>root.querySelector('[role="tablist"]')).map(root=>{const tabs=[...root.querySelectorAll('[role="tab"]')],panel=root.querySelector('[role="tabpanel"]');return {ids:[...tabs.map(tab=>tab.id),panel?.id].filter(Boolean),valid:tabs.every(tab=>tab.getAttribute('aria-controls')===panel?.id)&&tabs.some(tab=>tab.id===panel?.getAttribute('aria-labelledby'))};}));
   const linkedCommunityIds=communityIds.flatMap(item=>item.ids);assert.equal(new Set(linkedCommunityIds).size,linkedCommunityIds.length,'all mounted memoir and story companion tab/panel ids are unique');assert(communityIds.every(item=>item.valid),'each companion panel links only to a tab in its own component');
@@ -818,7 +873,23 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
   const ideaTranscript=page.getByLabel('识别结果（可编辑）');await ideaTranscript.waitFor();assert.equal(await ideaTranscript.inputValue(),'合成口述：湖边的家庭回忆。');await ideaTranscript.fill('请保留家人对湖边散步的说法，并标出还要核对的细节。');
   await page.setViewportSize({width:390,height:844});const ideaVoiceControls=page.locator('.memory-community-ideas-voice');await ideaVoiceControls.scrollIntoViewIfNeeded();assert.equal(await ideaVoiceControls.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'the ideas dictation review fits a 390px reader');await page.screenshot({path:path.join(artifacts,'memory-ideas-dictation-mobile.png')});const ideaFonts=await ideaVoiceControls.evaluate(root=>[...root.querySelectorAll('*')].map((node,index)=>{const style=getComputedStyle(node),item={index,size:node.style.fontSize,lineHeight:node.style.lineHeight,fontSize:parseFloat(style.fontSize),computedLineHeight:parseFloat(style.lineHeight)};node.style.fontSize=`${item.fontSize*1.5}px`;if(Number.isFinite(item.computedLineHeight))node.style.lineHeight=`${item.computedLineHeight*1.5}px`;return item;}));assert.equal(await ideaVoiceControls.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'dictation controls remain within 390px at 150% text');await page.screenshot({path:path.join(artifacts,'memory-ideas-dictation-mobile-text150.png')});await ideaVoiceControls.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelectorAll('*')[row.index];node.style.fontSize=row.size;node.style.lineHeight=row.lineHeight;}),ideaFonts);await page.setViewportSize({width:1440,height:1000});
   await page.getByRole('button',{name:'加入整理说明',exact:true}).click();const insertedIdeas=page.locator('.memory-community-form textarea[name=instructions]');await insertedIdeas.waitFor();assert.equal(await insertedIdeas.inputValue(),'保留家人的说法，并把时间线整理清楚。\n请保留家人对湖边散步的说法，并标出还要核对的细节。');assert.equal(await page.locator('.memory-community-ideas-transcript').count(),0,'explicit insertion consumes the separate transcript review field');assert.equal(requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,ideaPostsBeforeDictation,'dictation and insertion do not submit a drafting job');assert.equal(countTurnPosts(),turnPostsBeforeIdeaDictation,'ideas dictation never creates a chat turn');assert.equal(countAudioRequests(),originalPostsBeforeIdeaDictation,'ideas dictation never saves an original family recording');
+  const expectedNarrativeInstructions='保留家人的说法，并把时间线整理清楚。\n请保留家人对湖边散步的说法，并标出还要核对的细节。';
+  assert.equal(await insertedIdeas.inputValue(),expectedNarrativeInstructions);
+  const firstNarrativePostIndex=narrativePostBodies.length;narrativePostUncertainOnce=true;
   await page.getByRole('button',{name:'生成待核实建议'}).click();
+  await page.getByRole('button',{name:'重试同一份建议请求'}).waitFor();
+  const retryBodyBefore=narrativePostBodies[firstNarrativePostIndex];assert.equal(retryBodyBefore.instructions,expectedNarrativeInstructions,'uncertain POST keeps the exact author wording in its immutable payload');
+  narrativeQueuedOnce=true;await page.getByRole('button',{name:'重试同一份建议请求'}).click();
+  await page.locator('.memory-community-job-status').filter({hasText:'已排队'}).waitFor({timeout:10000});
+  const pendingInstructions=page.locator('.memory-community-form textarea[name=instructions]');assert.equal(await pendingInstructions.inputValue(),expectedNarrativeInstructions,'queued attempt keeps the exact author wording visible');assert.equal(await pendingInstructions.isDisabled(),true,'instructions cannot change while the accepted job is pending');
+  await page.getByRole('button',{name:'用这段说明重新生成'}).waitFor({timeout:10000});
+  const sameMutationRetry=narrativePostBodies[firstNarrativePostIndex+1];assert.equal(sameMutationRetry.mutation_id,retryBodyBefore.mutation_id,'uncertain POST retry reuses the same mutation id');assert.equal(sameMutationRetry.instructions,retryBodyBefore.instructions,'uncertain POST retry reuses the same immutable payload');
+  assert.equal(await page.locator('.memory-community-form textarea[name=instructions]').inputValue(),expectedNarrativeInstructions,'the author wording remains available after the accepted job fails');
+  assert.equal(await page.locator('.memory-community-job-status').innerText(),'整理暂未完成','terminal failure is shown before a new attempt');
+  const terminalInstructions=page.locator('.memory-community-form textarea[name=instructions]');await terminalInstructions.fill('');await page.evaluate(()=>window.__translateCommunityForTest('en'));await page.waitForFunction(()=>document.querySelector('.memory-community-form textarea[name="instructions"]')?.isConnected);assert.equal(await page.locator('.memory-community-form textarea[name=instructions]').inputValue(),'','a deliberate clear after failure survives a rerender');await page.evaluate(()=>window.__translateCommunityForTest('zh'));await page.waitForFunction(()=>document.querySelector('.memory-community-form textarea[name="instructions"]')?.isConnected);assert.equal(await page.locator('.memory-community-form textarea[name=instructions]').inputValue(),'','rerendering does not restore terminal instructions a second time');await page.locator('.memory-community-form textarea[name=instructions]').fill(expectedNarrativeInstructions);
+  const explicitAttemptIndex=narrativePostBodies.length;await page.getByRole('button',{name:'用这段说明重新生成'}).click();
+  await page.locator('.memory-community-proposal').filter({hasText:'需要核对的家庭回忆建议'}).waitFor({timeout:10000});
+  const explicitAttempt=narrativePostBodies[explicitAttemptIndex];assert.notEqual(explicitAttempt.mutation_id,retryBodyBefore.mutation_id,'deliberate generation after terminal failure gets a new mutation id');assert.equal(explicitAttempt.instructions,expectedNarrativeInstructions,'deliberate new attempt reuses the restored author wording');
   await page.locator('.memory-community-proposal').filter({hasText:'需要核对的家庭回忆建议'}).waitFor({timeout:10000});
   const proposal=page.locator('.memory-community-proposal');
   assert.equal(await page.locator('.memory-community-job-status').innerText(),'已收到回复');
@@ -840,6 +911,7 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     `proposal was not applied; requests=${JSON.stringify(requests.filter(item=>item.path.includes('/jobs/')))}`);
   assert.equal(requests.some(item=>item.path.startsWith('/memory-stories/')&&item.method==='PUT'),false);
   assert.equal(afterAdopt.state.story_revision,1);assert.equal(afterAdopt.state.story_content,savedContent);
+  pass('Narrative POST uncertainty retries its immutable mutation; terminal failure restores exact instructions for an explicit new attempt');
   pass('Ideas dictation uses explicit capture, editable review, explicit insertion and submit; proposal remains review-only until adoption');
 
   // Return to reader for library/privacy and responsive checks after editing state
