@@ -21354,6 +21354,41 @@
       "models_activated": false,
       "household_data_included": false,
       "translation_quality_qualified": false
+    },
+    {
+      "feature": "offline-scene-rank-comparison-by-frozen-intent-cohort",
+      "source_commit": "d47cbda8ff90face1e14ed1ebd10dc3ddd2717d1",
+      "files": [
+        {
+          "path": "server/scripts/semantic_scene_comparison.py",
+          "before_sha256": null,
+          "sha256": "b487ce6fe510601550edf1d8f3cf98c7aa9e534bdd2e214572b617124d8ec97a"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_comparison.py",
+          "before_sha256": null,
+          "sha256": "2ec66d302fdfc9f515a937896961d33dda75e3038137fdb638c6f702c40024d6"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "d8986c1eba242efeb3d6a0875704a0032445f604551670461c663f31f35961d9",
+          "sha256": "be9cdcaa3a86a995aa5f296f1b10e63e1880edba054d7277679180bf36dc3a09"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "8cdfae3cf80150ea83e7ba082329557c1e1273507385fbdae4b902e7f3a63f57",
+          "sha256": "d1931622e203b5797c829f908a3d2d7b142bdfa1827f1f05f203284b6e9649c3"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0d0c2799b0d2acb8bc1f3d38113cf1464c1cb70f909adf519a22b16c21dc39f1",
+          "sha256": "7eb72b544a9576ea16adfa3febf09b3980134ec5a51870c7ce5ecb8ddca554b6"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
     }
   ]
 }
