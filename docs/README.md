@@ -14,7 +14,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |
 | Backend/Web entry | [Server README](../server/README.md), [Web development](WEB_DEVELOPMENT.md) |
 | Phone/TV entry | [Android README](../clients/android/README.md) |
-| Family trial | [Delivered v60 guide](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md), [assistant scenarios](../clients/android/docs/PHONE_V59_TEST_GUIDE_ZH.md), [v60 release](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md) |
+| Family trial | [Delivered v67 voice guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md), [v67 release](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
 | Private manifest and model quality gates | [Deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md), [qualification](MODEL_QUALIFICATION.md) |
