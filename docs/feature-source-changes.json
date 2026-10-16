@@ -21171,6 +21171,25 @@
       "apk_published": false,
       "runtime_changed": false,
       "microphone_speaker_overlap": false
+    },
+    {
+      "feature": "include-offline-scene-evaluator-in-source-package",
+      "source_commit": "aa339a2ffa5f92e562acf5a8205b5dc0da8b3295",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8d474210efe6949297b18fc83f35911abc98c9ed79d0c7d1d67ced67f336caf8",
+          "sha256": "abb611f25a08cace3646a7bd194668b51bc1085978e7659f98c361bd4f126f75"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "afa9a1836c095a98f8a68b11f9b91e688c85c67eb1e5831370665025f541d5b9",
+          "sha256": "9a18bb1272f9335c0bb89149c905e7ba723dfb5c0f53df7b091eddc59e5c2f3f"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }
