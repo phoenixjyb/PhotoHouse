@@ -41,6 +41,7 @@ class GroupedStoryCreationStoreTest {
         var contributionReferenceFailures = 0
         var contributionReferenceFailureStatus: Int? = null
         var contributionReferenceRevisionOffset = 0L
+        var linkedContributionIds: List<String> = emptyList()
         var contributionReferencesGate: CompletableDeferred<Unit>? = null
         var voiceEnabled = false
         var assistantCapabilityFailure: ApiFailure? = null
@@ -50,6 +51,11 @@ class GroupedStoryCreationStoreTest {
         val thumbnailBuffers = mutableListOf<ByteArray>()
         var previewGate: CompletableDeferred<Unit>? = null
         var latePreview: ByteArray? = null
+        var proposalJobGate: CompletableDeferred<Unit>? = null
+        var proposalJobFailure: ApiFailure? = null
+        var proposalJobReads = 0
+        var proposalWords = "Suggested chapter wording"
+        var proposalSource: String? = null
         var textGate: CompletableDeferred<Unit>? = null
         var audioGate: CompletableDeferred<Unit>? = null
         val textRequests = mutableListOf<String>()
@@ -144,7 +150,7 @@ class GroupedStoryCreationStoreTest {
                 throw ApiFailure(FailureKind.HTTP, 503)
             }
             return SavedMemoryStoryContributionReferences(storyId, library, revision + contributionReferenceRevisionOffset,
-                chapterIds.map { SavedMemoryChapterContributionReferences(it, emptyList()) })
+                chapterIds.map { SavedMemoryChapterContributionReferences(it, linkedContributionIds.toList()) })
         }
 
         override suspend fun storyPreview(token: Bearer, library: String, json: String): ByteArray {
@@ -160,7 +166,29 @@ class GroupedStoryCreationStoreTest {
         }
 
         override suspend fun capabilities(token: Bearer, library: String) =
-            """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
+            """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":true,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}""".toByteArray()
+
+        fun proposalResponse(): ByteArray = buildJsonObject {
+            put("version", 1); put("id", "55555555-5555-4555-8555-555555555555")
+            put("kind", "narrative"); put("state", "ready"); put("created_at", 1); put("updated_at", 2)
+            put("expires_at", 99999); put("error_code", JsonNull); put("needs_review", true); put("base_revision", "2")
+            put("result", buildJsonObject {
+                put("version", 1); put("title", "Suggested title"); put("needs_review", true)
+                put("chapters", buildJsonArray { add(buildJsonObject {
+                    put("id", "chapter-1"); put("narration", proposalWords)
+                    put("source_ids", buildJsonArray { add(proposalSource ?: "editorial-$storyId-chapter-1") })
+                }) })
+                put("questions", buildJsonArray { add("Was this spring?") })
+            })
+        }.toString().toByteArray()
+
+        override suspend fun queueNarrative(token: Bearer, library: String, json: String) = proposalResponse()
+        override suspend fun getJob(token: Bearer, library: String, jobId: String): ByteArray {
+            proposalJobReads++
+            proposalJobGate?.let { withContext(NonCancellable) { it.await() } }
+            proposalJobFailure?.let { throw it }
+            return proposalResponse()
+        }
 
         override suspend fun listContributions(token: Bearer, library: String, storyId: String, page: Int) =
             """{"version":1,"story_id":"$storyId","page":$page,"page_size":16,"has_more":false,"can_review":false,"can_delete":false,"items":[]}""".toByteArray()
@@ -264,6 +292,154 @@ class GroupedStoryCreationStoreTest {
         assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
         assertTrue(store.readCreatedGroupedStory())
         runCurrent()
+    }
+
+    private suspend fun TestScope.prepareStoryProposal(api: FakeApi): Triple<ConnectedStore, Long, String> {
+        val store = newStore(api, community = true)
+        createReceiptAndOpenReader(store)
+        store.requestMemoryNarrative("Keep original sources")
+        runCurrent()
+        val community = store.state.value.savedMemoryStories!!.community!!
+        assertEquals("ready", community.narrativeJob?.state)
+        return Triple(store, community.readerScopeId, community.narrativeJob!!.id)
+    }
+
+    @Test fun proposalAdoptionFreshReadsAndOpensUnsavedEditorWithoutWriting() = runTest {
+        val api = FakeApi()
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        val oldStory = store.state.value.savedMemoryStories!!.detail!!
+        val reads = api.freshStoryReads
+        assertTrue(store.canAdoptSavedStoryProposal(readerScope, jobId, listOf("chapter-1"), false))
+        assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), false))
+        runCurrent()
+        val creation = store.state.value.groupedStoryCreation!!
+        val editor = creation.editor!!
+        assertEquals(reads + 1, api.freshStoryReads)
+        assertEquals(1, api.proposalJobReads)
+        assertEquals(oldStory.title, editor.state.value.title)
+        assertEquals("Suggested chapter wording", editor.state.value.editableChapters.single().narration)
+        assertEquals(oldStory.chapters.single().evidenceIds, editor.state.value.editableChapters.single().evidenceIds)
+        assertEquals(oldStory.chapters.single().assetIds, editor.state.value.editableChapters.single().assetIds)
+        assertFalse(editor.state.value.reviewed)
+        assertTrue(editor.state.value.dirty)
+        assertNotNull(editor.state.value.proposalImportReview)
+        assertNull(creation.proposalAdoption)
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+        assertEquals(oldStory, store.state.value.savedMemoryStories!!.detail)
+        assertFalse(editor.save())
+    }
+
+    @Test fun proposalRetryKeepsSelectionAndTitleIntentWithoutOrdinaryEditFallback() = runTest {
+        val api = FakeApi()
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        api.proposalJobFailure = ApiFailure(FailureKind.OFFLINE)
+        assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), true))
+        runCurrent()
+        assertNull(store.state.value.groupedStoryCreation!!.editor)
+        assertNotNull(store.state.value.groupedStoryCreation!!.proposalAdoption)
+        assertFalse(store.state.value.groupedStoryCreation!!.checking)
+        api.proposalJobFailure = null
+        assertTrue(store.retrySavedGroupedStoryEdit())
+        runCurrent()
+        assertEquals("Suggested title", store.state.value.groupedStoryCreation!!.editor!!.state.value.title)
+        assertEquals(2, api.proposalJobReads)
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+    }
+
+    @Test fun changedProposalOrNewStoryRevisionRefusesImportRatherThanMixingSnapshots() = runTest {
+        for (changeStory in listOf(false, true)) {
+            val api = FakeApi()
+            val (store, readerScope, jobId) = prepareStoryProposal(api)
+            if (changeStory) api.freshStoryRevision = 3 else api.proposalWords = "Changed server proposal"
+            assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), true))
+            runCurrent()
+            val creation = store.state.value.groupedStoryCreation!!
+            assertNull(creation.editor)
+            assertNotNull(creation.problem)
+            assertNotNull(creation.proposalAdoption)
+            assertTrue(store.retrySavedGroupedStoryEdit())
+            runCurrent()
+            assertNull(store.state.value.groupedStoryCreation!!.editor)
+            assertTrue(api.groupedUpdateRequests.isEmpty())
+        }
+    }
+
+    @Test fun proposalEntryRejectsUnlinkedCitationsStaleScopeAndUnsentFamilyInput() = runTest {
+        val api = FakeApi().apply { proposalSource = "contribution-11111111-1111-4111-8111-111111111111" }
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        assertFalse(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), false))
+        assertNull(store.state.value.groupedStoryCreation)
+        assertEquals(0, api.proposalJobReads)
+        api.proposalSource = null
+        store.requestMemoryNarrative("Fresh proposal")
+        runCurrent()
+        assertFalse(store.beginSavedStoryProposalEdit(readerScope + 1, jobId, listOf("chapter-1"), false))
+        store.updateMemoryContributionDraft("Unsent memory")
+        assertFalse(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), false))
+        assertEquals("Unsent memory", store.state.value.savedMemoryStories!!.community!!.contributionDraft)
+    }
+
+    @Test fun proposalImportDoesNotDropFamilyInputTypedDuringFreshJobRead() = runTest {
+        val api = FakeApi()
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        val gate = CompletableDeferred<Unit>()
+        api.proposalJobGate = gate
+        assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), false))
+        runCurrent()
+        store.updateMemoryContributionDraft("A newer unsent memory")
+        gate.complete(Unit)
+        runCurrent()
+        val creation = store.state.value.groupedStoryCreation!!
+        assertNull(creation.editor)
+        assertFalse(creation.checking)
+        assertNotNull(creation.problem)
+        assertEquals("A newer unsent memory", store.state.value.savedMemoryStories!!.community!!.contributionDraft)
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+    }
+
+    @Test fun importedProposalRequiresExplicitReviewAndSaveAndPreservesOriginalFamilyLinks() = runTest {
+        val linkedId = "77777777-7777-4777-8777-777777777777"
+        val api = FakeApi().apply {
+            updateResponseRevision = 3L
+            linkedContributionIds = listOf(linkedId)
+            proposalSource = "contribution-$linkedId"
+        }
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        val references = store.state.value.savedMemoryStories!!.contributionReferences!!
+        assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), true))
+        runCurrent()
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+        assertTrue(editor.editChapterNarration(0, "Reviewed family wording"))
+        assertTrue(editor.confirmReviewed(true))
+        assertTrue(editor.save())
+        runCurrent()
+        val request = Json.parseToJsonElement(api.groupedUpdateRequests.single().second).jsonObject
+        assertEquals("Suggested title", request.getValue("title").jsonPrimitive.content)
+        val chapters = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals("Reviewed family wording", chapters.single().jsonObject.getValue("narration").jsonPrimitive.content)
+        val familyLinks = Json.parseToJsonElement(request.getValue("contribution_refs").jsonPrimitive.content).jsonArray
+        assertEquals(references.chapters.map { it.chapterId }, familyLinks.map { it.jsonObject.getValue("chapter_id").jsonPrimitive.content })
+        assertEquals(listOf(linkedId), familyLinks.single().jsonObject.getValue("contribution_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
+    }
+
+    @Test fun closedProposalImportIgnoresLateJobAndDenialCannotInvalidateReader() = runTest {
+        val api = FakeApi()
+        val (store, readerScope, jobId) = prepareStoryProposal(api)
+        val gate = CompletableDeferred<Unit>()
+        api.proposalJobGate = gate
+        assertTrue(store.beginSavedStoryProposalEdit(readerScope, jobId, listOf("chapter-1"), true))
+        runCurrent()
+        assertNull(store.state.value.groupedStoryCreation!!.editor)
+        assertTrue(store.closeGroupedStoryCreation(discard = true))
+        api.proposalJobFailure = ApiFailure(FailureKind.HTTP, 403)
+        gate.complete(Unit)
+        runCurrent()
+        assertNull(store.state.value.groupedStoryCreation)
+        assertNotNull(store.state.value.savedMemoryStories!!.detail)
+        assertFalse(store.state.value.covered)
+        assertTrue(api.groupedUpdateRequests.isEmpty())
     }
 
     private suspend fun TestScope.prepareNewDraftForSave(store: ConnectedStore): StoryWorkspaceStore {

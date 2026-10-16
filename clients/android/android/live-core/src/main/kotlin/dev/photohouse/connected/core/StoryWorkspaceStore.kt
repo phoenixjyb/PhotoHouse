@@ -39,6 +39,13 @@ data class StoryChapterOpeningTitleCandidate internal constructor(
     val accountId: String?,
 )
 
+/** Volatile review context for wording imported from a family AI proposal. */
+data class StoryProposalImportReview internal constructor(
+    val chapterIds: List<String>,
+    val sourceCount: Int,
+    val questions: List<String>,
+)
+
 data class StoryWorkspaceStoreState(
     val status: StoryWorkspaceStoreStatus = StoryWorkspaceStoreStatus.SELECTION,
     val selectedAssetIds: List<String> = emptyList(),
@@ -48,6 +55,7 @@ data class StoryWorkspaceStoreState(
     val draft: ProtectedStoryWorkspaceDraft? = null,
     val editableChapters: List<SavedMemoryStoryChapter> = emptyList(),
     val savedStory: SavedMemoryStory? = null,
+    val proposalImportReview: StoryProposalImportReview? = null,
     val titleCapabilities: ProtectedStoryWorkspaceTitleCapabilities? = null,
     val sourceCapabilities: ProtectedStoryWorkspaceSourceCapabilities? = null,
     val sourceCapabilitiesChecked: Boolean = false,
@@ -606,6 +614,71 @@ class StoryWorkspaceStore(
             dirty = false, invalidInput = !valid,
         )
         epoch++
+        return true
+    }
+
+    /** Applies reviewed proposal wording to a fresh saved-story editor without submitting a write. */
+    fun applyReviewedStoryProposal(draft: StoryProposalAdoptionDraft): Boolean {
+        if (!ensureCurrent() || !editorReady()) return false
+        val live = state.value
+        val base = savedEditStory ?: return false
+        val references = savedEditReferences ?: return false
+        val editorDraft = live.draft ?: return false
+        val expected = bound ?: return false
+        if (live.status != StoryWorkspaceStoreStatus.EDITING || live.dirty || live.busy || live.composing ||
+            live.invalidInput || live.hasPendingSave || pending != null || operation != null || hasUnfinishedChapterDictation ||
+            chapterDictationBinding != null || mutableChapterDictation.value != null ||
+            live.guideStep != null || live.reviewed ||
+            !sameBinding(snapshotBinding(), expected) || expected.libraryId != base.libraryId ||
+            base.canEdit.not() || draft.storyId != base.id || draft.libraryId != base.libraryId ||
+            draft.revision != base.revision || draft.selectionRevision != base.selectionRevision ||
+            editorDraft.libraryId != base.libraryId || editorDraft.selectionRevision != base.selectionRevision ||
+            references.id != base.id || references.libraryId != base.libraryId || references.revision != base.revision ||
+            live.editableChapters.map { it.id } != base.chapters.map { it.id } ||
+            draft.jobKind !in setOf("narrative", "chat") ||
+            runCatching { UUID.fromString(draft.jobId).toString() == draft.jobId }.getOrDefault(false).not()) return false
+
+        val baseChapterIds = base.chapters.map { it.id }
+        val importedIds = draft.chapters.map { it.id }
+        if (importedIds.isEmpty() || importedIds.distinct().size != importedIds.size ||
+            importedIds != baseChapterIds.filter { it in importedIds }) return false
+        if (references.chapters.map { it.chapterId } != baseChapterIds) return false
+        val referencesByChapter = references.chapters.associateBy { it.chapterId }
+        var sourceCount = 0
+        for (candidate in draft.chapters) {
+            if (!validText(candidate.narration, 6000, allowNewline = true) || candidate.sourceIds.size > 96 ||
+                candidate.sourceIds.distinct().size != candidate.sourceIds.size ||
+                candidate.sourceIds.any { !validText(it, 128, allowNewline = false, allowBlank = false) }) return false
+            val baseChapter = base.chapters.firstOrNull { it.id == candidate.id } ?: return false
+            val linkedContributions = referencesByChapter[candidate.id]?.contributionIds.orEmpty().map { "contribution-$it" }.toSet()
+            val allowedSources = baseChapter.evidenceIds.toSet() + linkedContributions + "editorial-${base.id}-${candidate.id}"
+            if (candidate.sourceIds.any { it !in allowedSources }) return false
+            sourceCount += candidate.sourceIds.size
+        }
+        if (draft.questions.size > 6 || draft.questions.any {
+                !validText(it, 512, allowNewline = true, allowBlank = false)
+            }) return false
+        if (draft.title != null && (!validText(draft.title, 640, maxCodePoints = 160,
+                allowNewline = false, allowBlank = false) || draft.title.any { it == '\u2028' || it == '\u2029' })) return false
+
+        val imported = draft.chapters.associateBy { it.id }
+        val updatedChapters = immutable(live.editableChapters.map { current ->
+            imported[current.id]?.let { current.copy(narration = it.narration) }?.let(::detachChapter)
+                ?: detachChapter(current)
+        })
+        val updatedTitle = draft.title ?: live.title
+        val updatedDraft = detachDraft(editorDraft).copy(title = updatedTitle, chapters = updatedChapters)
+        mutable.value = live.copy(
+            title = updatedTitle,
+            draft = updatedDraft,
+            editableChapters = updatedChapters,
+            reviewed = false,
+            dirty = true,
+            invalidInput = false,
+            proposalImportReview = StoryProposalImportReview(
+                chapterIds = immutable(importedIds), sourceCount = sourceCount, questions = immutable(draft.questions),
+            ),
+        )
         return true
     }
 
