@@ -20771,6 +20771,27 @@
       "windows_runtime_changed": false,
       "apk_published": false,
       "original_attribution_and_links_preserved": true
+    },
+    {
+      "feature": "phone-v66-proposal-review-release-source",
+      "source_commit": "1dd5d3252090b3e5a407bf6ec075801d2530634b",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "34e39651a81157607ec793e252865451efd4dc7a23fe577918615597d48b39a9",
+          "sha256": "eb16b5454da582e79356b78b30d90586d31b524fbf24724caf79eb993771d8ca"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "c1e1a3516e969c6e3d5a1510b8896e489c5239c44673de2e4002589b1d98f20d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "phone_version_code": 66,
+      "apk_published": false,
+      "models_activated": false
     }
   ]
 }
