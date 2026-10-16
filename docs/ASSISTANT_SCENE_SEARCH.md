@@ -227,3 +227,8 @@ retrieved a relevant image first in 15/16 English, 2/16 Chinese and 11/16 mixed
 cases over 32 public photos. It is a small assistant-curated diagnostic with
 possible training overlap, not family acceptance. The Chinese deficit keeps
 direct bilingual activation unqualified; serving/vector coverage gates remain.
+
+The subsequent [offline local translation comparison](SEMANTIC_SCENE_TRANSLATION_2026-10-16.md)
+raised Chinese/mixed diagnostic top-one to 14/16 and 15/16 while retaining
+15/16 English. A translation meaning shift and the small public-image set
+keep general translation quality unqualified. No serving path or gate changed.
