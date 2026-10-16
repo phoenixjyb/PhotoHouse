@@ -22308,6 +22308,31 @@
       "runtime_changed": false,
       "physical_installation_performed": false,
       "physical_audio_family_acceptance": false
+    },
+    {
+      "feature": "phone-v68-current-acceptance-summary-reconciliation",
+      "source_commit": "c303b9ba7c4323dbfa3d286f329ee8347a9b548d",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "48db26d4aae30b973bf86784e17f94a8a0ba0d06fd73417dd2733f99577d3da9",
+          "sha256": "964a094ceb2bf57c33ca6d7c62b30e3d728f6429f86097ef5084fc1f83c59f04"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "3e0b70d73fda45f7229677bcb46565d8932a142b616eaf90e30a1e560dd761ec",
+          "sha256": "a456873600f16204123db1e32602aa6de1efb03d7cb95eadaada36ac74dc2ccb"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "24e631af13475ca3e973afb12bd322297b9c8afa8e65b4d3c98501bf73ab708c",
+          "sha256": "3a242ce57c31bccaac1a8ccec42e26eaca76343c8cbc556d052afc0081489821"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "physical_audio_family_acceptance": false
     }
   ]
 }
