@@ -73,6 +73,9 @@ class HttpsAssistantWorkspaceApiTest {
     private fun result(kind: String = "results", effect: String = "null") =
         """{"version":1,"kind":"$kind","reply":"Found one.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1},"filters":{},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}],"total":1,"has_more":false,"effect":$effect}"""
 
+    private fun sceneResult() =
+        """{"version":4,"kind":"results","reply":"Found one scene.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{"media":["image"]},"visible_ids":["123"],"total":1,"search_version":4,"scene":{"version":1,"query":"a child by a blue bridge","scope":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1,"search_version":2},"scores":[0.75]}},"filters":{"media":["image"]},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a","semantic_score":0.75}],"total":1,"has_more":false,"effect":null,"interpretation":{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null},"semantic":{"mode":"text_to_image","score_kind":"cosine","candidate_count":1,"coverage":"complete_eligible_images","needs_review":true}}"""
+
     private fun envelope(status: String, result: String = "null", recovered: Boolean = false, error: String = "null") =
         """{"version":1,"thread_id":"$thread","request_id":"$request","status":"$status","revision":1,"recovered":$recovered,"error":$error,"result":$result}"""
 
@@ -156,6 +159,81 @@ class HttpsAssistantWorkspaceApiTest {
             try { f.api().capabilities(token, "family-a"); fail("generic invalid_request was downgraded") }
             catch (failure: ApiFailure) { assertEquals(400, failure.status) }
             assertEquals(1, f.server.requestCount)
+        }
+    }
+
+    @Test fun optionalSceneProbeHandlesMissingMalformedAndLegacyForbiddenRoutesSafely() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(response("{}", 404))
+            assertFalse(f.api().sceneSearchCapabilities(token, "family-a").available)
+            val missing = f.server.takeRequest()
+            assertEquals("/assistant/workspace/v1/scene-search-capabilities?library_id=family-a", missing.path)
+            assertProtected(missing)
+        }
+        Fixture().use { f ->
+            f.server.enqueue(response("{}"))
+            assertFalse(f.api().sceneSearchCapabilities(token, "family-a").available)
+            f.server.takeRequest()
+        }
+        Fixture().use { f ->
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("""{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true}"""))
+            assertFalse(f.api().sceneSearchCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/scene-search-capabilities?library_id=family-a", f.server.takeRequest().path)
+            assertEquals("/assistant/workspace/v1/capabilities?library_id=family-a", f.server.takeRequest().path)
+        }
+        Fixture().use { f ->
+            f.server.enqueue(response("{}", 403))
+            f.server.enqueue(response("{}", 403))
+            try { f.api().sceneSearchCapabilities(token, "family-a"); fail("base workspace denial was hidden") }
+            catch (failure: ApiFailure) { assertEquals(403, failure.status) }
+            assertEquals(2, f.server.requestCount)
+        }
+    }
+
+    @Test fun sceneWithDisabledTrackingAcceptsNoReceiptHeaders() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(response(envelope("completed", sceneResult(), recovered = false))
+                .setHeader("X-PhotoHouse-Tracking", "disabled"))
+            val result = f.api().submitSceneTurn(token, "family-a", thread, request, 1, "a child by a blue bridge")
+            assertEquals("disabled", result.receipt!!.tracking)
+            assertEquals(4, result.result!!.searchVersion)
+            assertEquals("POST", f.server.takeRequest().method)
+        }
+    }
+
+    @Test fun dedicatedScenePostAndV4RecoveryKeepTheirOwnNegotiation() = runBlocking {
+        Fixture().use { f ->
+            val api = f.api()
+            f.server.enqueue(response("""{"version":1,"available":true,"search_version":4,"media":["image"]}"""))
+            assertTrue(api.sceneSearchCapabilities(token, "family-a").available)
+            assertEquals("/assistant/workspace/v1/scene-search-capabilities?library_id=family-a", f.server.takeRequest().path)
+
+            f.server.enqueue(response(envelope("completed", sceneResult(), recovered = false)))
+            val submitted = api.submitSceneTurn(token, "family-a", thread, request, 1, "a child by a blue bridge")
+            assertEquals(4, submitted.result!!.searchVersion)
+            val post = f.server.takeRequest()
+            assertEquals("POST", post.method)
+            assertEquals("4", post.getHeader("X-PhotoHouse-Search-Version"))
+            assertNull(post.getHeader("X-PhotoHouse-Parent-Request-Id"))
+            assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts"),
+                Json.parseToJsonElement(post.body.readUtf8()).jsonObject.keys)
+
+            f.server.enqueue(response(envelope("completed", result(), recovered = true)))
+            val restoredLegacy = api.getTurn(token, "family-a", thread, request, searchVersion = 4)
+            assertEquals(1, restoredLegacy.result!!.searchVersion)
+            assertEquals("4", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+
+            f.server.enqueue(response(envelope("completed", sceneResult(), recovered = true)))
+            val restoredScene = api.getTurn(token, "family-a", thread, request, searchVersion = 4)
+            assertEquals(4, restoredScene.result!!.searchVersion)
+            assertEquals("4", f.server.takeRequest().getHeader("X-PhotoHouse-Search-Version"))
+
+            try {
+                api.submitTurn(token, "family-a", thread, request, 1, "not dedicated", null, false, null, false, 4)
+                fail("ordinary submit accepted v4")
+            } catch (failure: IllegalArgumentException) { }
+            assertEquals(4, f.server.requestCount)
         }
     }
 

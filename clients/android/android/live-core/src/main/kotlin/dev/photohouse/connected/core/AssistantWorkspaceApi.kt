@@ -86,6 +86,12 @@ data class AssistantWorkspaceTurn(
 data class AssistantWorkspaceDeletedThread(val threadId: String, val deleted: Boolean)
 
 data class SavedMemoryReaderCapabilities(val version: Int, val available: Boolean)
+data class AssistantSceneSearchCapabilities(
+    val version: Int,
+    val available: Boolean,
+    val searchVersion: Int = 4,
+    val media: List<String> = listOf("image"),
+)
 /** One bounded source segment synthesized for the exact selected fresh memory-card turn. */
 data class AssistantMemorySegmentSpeechResult(
     val bytes: ByteArray,
@@ -163,6 +169,13 @@ interface AssistantWorkspaceApi {
     /** Optional explicit reader handoff. Legacy adapters conservatively keep this feature unavailable. */
     suspend fun savedMemoryReaderCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)
+    /** Separate opt-in probe; legacy adapters conservatively keep scene search unavailable. */
+    suspend fun sceneSearchCapabilities(token: Bearer, library: String): AssistantSceneSearchCapabilities =
+        AssistantSceneSearchCapabilities(1, false)
+    /** Dedicated server-owned scene turn; never falls through to ordinary turn submission. */
+    suspend fun submitSceneTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                expectedRevision: Long, text: String): AssistantWorkspaceTurn =
+        throw ApiFailure(FailureKind.INVALID_INPUT)
     /** Older servers/adapters keep the new search result disabled unless this exact probe is available. */
     suspend fun savedMemoryCardsCapabilities(token: Bearer, library: String): SavedMemoryReaderCapabilities =
         SavedMemoryReaderCapabilities(1, false)

@@ -23,6 +23,65 @@ class AssistantWorkspaceWireTest {
     private fun savedMemoryResult(kind: String = "story", contextId: String = "11111111-1111-4111-8111-111111111111") =
         """{"version":1,"kind":"memory_cards","reply":"Found a saved memory.","context":{"kind":"saved_memory","library_id":"family-a","source_revision":"${"a".repeat(64)}","references":[{"kind":"$kind","id":"11111111-1111-4111-8111-111111111111","revision":"2","source_revision":"${"b".repeat(64)}"}]},"filters":null,"items":[],"total":1,"has_more":false,"effect":null,"memory_cards":[{"kind":"$kind","id":"$contextId","revision":"2","source_revision":"${"b".repeat(64)}","title":"Garden day","excerpt":"The family walked by the lake."}]}"""
 
+    private fun sceneResult(query: String = "a child beside a blue bridge", score: String = "0.75") =
+        """{"version":4,"kind":"results","reply":"Found one scene.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{"media":["image"]},"visible_ids":["123"],"total":1,"search_version":4,"scene":{"version":1,"query":"$query","scope":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1,"search_version":2},"scores":[$score]}},"filters":{"media":["image"]},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a","semantic_score":$score}],"total":1,"has_more":false,"effect":null,"interpretation":{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null},"semantic":{"mode":"text_to_image","score_kind":"cosine","candidate_count":1,"coverage":"complete_eligible_images","needs_review":true}}"""
+
+    @Test fun sceneCapabilityAndSingleLineQueryAreStrict() {
+        val parsed = AssistantWorkspaceWire.sceneSearchCapabilities(
+            """{"version":1,"available":true,"search_version":4,"media":["image"]}""".toByteArray())
+        assertTrue(parsed.available)
+        assertEquals(4, parsed.searchVersion)
+        assertEquals(listOf("image"), parsed.media)
+        invalid { AssistantWorkspaceWire.sceneSearchCapabilities("""{"version":1,"available":true,"search_version":3,"media":["image"]}""".toByteArray()) }
+        invalid { AssistantWorkspaceWire.sceneSearchCapabilities("""{"version":1,"available":true,"search_version":4,"media":["image","video"]}""".toByteArray()) }
+        assertTrue(AssistantWorkspaceWire.validSceneQuery("中 English 😀"))
+        assertFalse(AssistantWorkspaceWire.validSceneQuery("line\nbreak"))
+        assertFalse(AssistantWorkspaceWire.validSceneQuery("\uD800"))
+        assertFalse(AssistantWorkspaceWire.validSceneQuery("x".repeat(513)))
+        assertTrue(AssistantWorkspaceWire.validSceneQuery("中".repeat(170)))
+    }
+
+    @Test fun sceneTurnHasASeparateExactBodyAndResultContract() {
+        val body = kotlinx.serialization.json.Json.parseToJsonElement(
+            AssistantWorkspaceWire.sceneTurnRequest("family-a", exchangeA, 7, "a child beside a blue bridge")).jsonObject
+        assertEquals(setOf("library_id", "request_id", "expected_revision", "text", "accepts"), body.keys)
+        assertEquals(listOf("scene_search_v1"), body.getValue("accepts").jsonArray.map { it.jsonPrimitive.content })
+        invalidInput { AssistantWorkspaceWire.sceneTurnRequest("family-a", exchangeA, 7, "two\nlines") }
+
+        val fresh = AssistantWorkspaceWire.turn(turn(sceneResult(), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4).result!!
+        assertEquals(4, fresh.searchVersion)
+        assertEquals("a child beside a blue bridge", fresh.sceneRanking!!.query)
+        assertEquals(mapOf("123" to 0.75), fresh.sceneRanking!!.scores)
+        assertEquals(1, fresh.sceneRanking!!.candidateCount)
+        assertEquals(listOf("123"), fresh.items.map { it.id })
+
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult(score = "0.5").replace("\"semantic_score\":0.5", "\"semantic_score\":0.4"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"coverage\":\"complete_eligible_images\"", "\"coverage\":\"partial\""),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"media\":[\"image\"]", "\"media\":[\"video\"]"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"effect\":null", "\"effect\":{\"type\":\"open_asset\",\"asset_id\":\"123\"}"),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+    }
+
+    @Test fun sceneResultCannotHideVideoCardsUnderPhotoFilters() {
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"kind\":\"image\"", "\"kind\":\"video\""),
+            recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+    }
+
+    @Test fun v4ReaderCanRecoverLegacySearchButFreshV4CannotDowngrade() {
+        val legacy = result().replace("\"kind\":\"results\"", "\"kind\":\"results\"")
+        val oldRead = AssistantWorkspaceWire.turn(turn(legacy).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 4).result!!
+        assertEquals(1, oldRead.searchVersion)
+        invalid { AssistantWorkspaceWire.turn(turn(legacy, recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4) }
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult()).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3) }
+    }
+
     @Test fun savedMemoryCardsRequireFreshNegotiatedTurnAndExactReferenceBindings() {
         val fresh = AssistantWorkspaceWire.turn(turn(savedMemoryResult(), recovered = false, error = "null").toByteArray(),
             "family-a", thread, request, fromGet = false, acceptSavedMemoryCards = true)

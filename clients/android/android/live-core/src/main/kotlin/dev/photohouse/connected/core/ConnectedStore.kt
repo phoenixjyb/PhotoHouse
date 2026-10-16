@@ -5502,6 +5502,7 @@ class ConnectedStore(
             completed.status != AssistantWorkspaceRequestStatus.COMPLETED || completed.revision != thread.revision ||
             completed.recovered || exchange.turn.recovered || completed.requestId != exchange.localRequestId ||
             exchange.turn.reply != result.reply || exchange.turn.kind != result.kind || result.effect != null ||
+            result.searchVersion !in 1..3 || result.sceneRanking != null ||
             result.kind !in setOf("results", "clarification", "unsupported") || result.reply.isBlank() ||
             result.reply.toByteArray(Charsets.UTF_8).size !in 1..600) return null
         return PrivateReplySpeechReference(thread.threadId, completed.requestId, completed.revision, result.kind, result.reply,
@@ -5514,7 +5515,7 @@ class ConnectedStore(
             current.capabilities?.let { it.enabled && it.speech } != true || current.speechBusy || !allowed() || coolingDown()) return false
         if (privateReplySpeechEnabled()) return privateReplySpeechReference() != null
         val latest = current.turns.lastOrNull()?.turn
-        return current.context != null && latest?.kind == "results" && latest.items.isNotEmpty()
+        return current.context != null && latest?.kind == "results" && latest.searchVersion in 1..3 && latest.sceneRanking == null && latest.items.isNotEmpty()
     }
 
     /** Records playback only while this exact speech result still owns the account/library generation. */

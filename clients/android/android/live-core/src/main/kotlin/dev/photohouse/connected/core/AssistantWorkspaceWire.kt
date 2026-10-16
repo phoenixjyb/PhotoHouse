@@ -178,6 +178,33 @@ object AssistantWorkspaceWire {
             if (hasSearch) "capture" else null, searchPerspectiveLabel)
     }
 
+    /** Exact descriptor for the separately negotiated scene-search route. */
+    fun sceneSearchCapabilities(bytes: ByteArray): AssistantSceneSearchCapabilities = guarded {
+        check(bytes.size in 1..4096)
+        val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available", "search_version", "media"))
+        check(o.getValue("version").count(1) == 1)
+        check(o.getValue("search_version").count(4) == 4)
+        val media = o.getValue("media").array(1).map { it.str(8) }
+        check(media == listOf("image"))
+        AssistantSceneSearchCapabilities(1, o.getValue("available").bool(), 4, media)
+    }
+
+    /** A scene query is one nonempty UTF-8 line with no Unicode control characters. */
+    fun validSceneQuery(text: String): Boolean {
+        if (text.isBlank()) return false
+        val bytes = runCatching { strictUtf8(text) }.getOrNull() ?: return false
+        try {
+            if (bytes.size > 512) return false
+        } finally { bytes.fill(0) }
+        var offset = 0
+        while (offset < text.length) {
+            val cp = text.codePointAt(offset)
+            if (Character.getType(cp) == Character.CONTROL.toInt()) return false
+            offset += Character.charCount(cp)
+        }
+        return true
+    }
+
     fun savedMemoryReaderCapabilities(bytes: ByteArray): SavedMemoryReaderCapabilities = guarded {
         check(bytes.size in 1..4096)
         val o = DiscoveryJson.parse(bytes).obj(setOf("version", "available"))
@@ -438,16 +465,34 @@ object AssistantWorkspaceWire {
             .toString().also { if (it.toByteArray(Charsets.UTF_8).size > 20 * 1024) throw ApiFailure(FailureKind.INVALID_INPUT) }
     }
 
+    /** Exact request body for an explicit scene-search turn. */
+    fun sceneTurnRequest(library: String, requestId: String, expectedRevision: Long, text: String): String {
+        if (!PhoneDiscoveryWire.validLibrary(library) || !validUuid4(requestId) ||
+            expectedRevision !in 0..REVISION_MAX || !validSceneQuery(text))
+            throw ApiFailure(FailureKind.INVALID_INPUT)
+        return buildJsonObject {
+            put("library_id", library)
+            put("request_id", requestId)
+            put("expected_revision", expectedRevision)
+            put("text", text)
+            put("accepts", buildJsonArray { add("scene_search_v1") })
+        }.toString()
+    }
+
     private fun validateResult(bytes: ByteArray, library: String, recovered: Boolean,
                                acceptSavedMemoryCards: Boolean, acceptSavedMemoryActions: Boolean,
                                searchVersion: Int): AssistantTurn {
         val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT) as? JsonObject ?: bad()
         if (raw["version"] == JsonPrimitive(2) || raw["version"] == JsonPrimitive(3)) {
             val resultVersion = raw.getValue("version").count(3)
-            check(searchVersion in 2..3 && resultVersion <= searchVersion && (resultVersion == searchVersion || recovered))
+            check(searchVersion in 2..4 && resultVersion <= searchVersion && (resultVersion == searchVersion || recovered))
             return validateV2Result(bytes, library, recovered, resultVersion)
         }
-        check(searchVersion in 1..3)
+        if (raw["version"] == JsonPrimitive(4)) {
+            check(searchVersion == 4)
+            return validateSceneResult(bytes, library)
+        }
+        check(searchVersion in 1..4 && (searchVersion < 4 || recovered))
         if ("memory_cards" in raw || raw["kind"]?.let { (it as? JsonPrimitive)?.content } == "memory_cards") {
             check(bytes.size in 1..SAVED_MEMORY_RESPONSE_LIMIT && acceptSavedMemoryCards && !recovered)
             return savedMemoryResult(raw, library, acceptSavedMemoryActions)
@@ -474,6 +519,82 @@ object AssistantWorkspaceWire {
         }
         if (recovered) check(result.kind != "open" && result.effect == null)
         return result
+    }
+
+    private fun validateSceneResult(bytes: ByteArray, library: String): AssistantTurn {
+        val raw = DiscoveryJson.parse(bytes, RESPONSE_LIMIT).obj(setOf("version", "kind", "reply", "context", "filters",
+            "items", "total", "has_more", "effect", "interpretation", "semantic"))
+        check(raw.getValue("version").count(4) == 4 && raw.getValue("kind").str(24) == "results")
+        check(raw.getValue("effect") == JsonNull)
+        val context = raw.getValue("context").obj(setOf("library_id", "binding", "fingerprint", "filters",
+            "visible_ids", "total", "search_version", "scene"))
+        check(context.getValue("library_id").str(128) == library)
+        check(context.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
+        check(context.getValue("fingerprint").str(64).matches(Regex("[0-9a-f]{64}")))
+        check(context.getValue("search_version").count(4) == 4)
+        val scene = context.getValue("scene").obj(setOf("version", "query", "scope", "scores"))
+        check(scene.getValue("version").count(1) == 1)
+        val queryPrimitive = scene.getValue("query") as? JsonPrimitive ?: bad()
+        check(queryPrimitive.isString)
+        val query = queryPrimitive.content
+        check(query.codePointCount(0, query.length) <= 512 && validSceneQuery(query))
+
+        val scope = scene.getValue("scope").obj(setOf("library_id", "binding", "fingerprint", "filters",
+            "visible_ids", "total", "search_version"))
+        val scopeVersion = scope.getValue("search_version").count(3)
+        check(scopeVersion in 2..3 && scope.getValue("library_id").str(128) == library)
+        check(scope.getValue("binding").str(64).matches(Regex("[0-9a-f]{64}")))
+        check(scope.getValue("fingerprint").str(64).matches(Regex("[0-9a-f]{64}")))
+        val scopeFilters = scope.getValue("filters") as? JsonObject ?: bad()
+        validateFilters(scopeFilters, scopeVersion)
+        check("descriptive" !in scopeFilters)
+        val scopeMedia = scopeFilters["media"]?.array(3)?.map { it.str(8) }
+        check(scopeMedia == null || scopeMedia == listOf("image"))
+        val scopeIds = scope.getValue("visible_ids").array(20).map { it.str(19).also { id -> check(PhoneDiscoveryWire.validId(id)) } }
+        check(scopeIds.distinct().size == scopeIds.size)
+        val scopeTotal = scope.getValue("total").integer(100000).toInt()
+        check(scopeIds.size == minOf(20, scopeTotal))
+
+        val ids = context.getValue("visible_ids").array(20).map { it.str(19).also { id -> check(PhoneDiscoveryWire.validId(id)) } }
+        check(ids.distinct().size == ids.size)
+        val total = raw.getValue("total").count(512)
+        check(context.getValue("total").integer(512).toInt() == total && total <= scopeTotal)
+        val scores = scene.getValue("scores").array(20).map { score ->
+            val primitive = score as? JsonPrimitive ?: bad()
+            check(!primitive.isString)
+            val value = primitive.doubleOrNull ?: bad()
+            check(value.isFinite() && value in -1.0..1.0)
+            value
+        }
+        check(scores.size == ids.size && scores.zipWithNext().all { (a, b) -> a >= b })
+
+        val expectedFilters = JsonObject(scopeFilters + ("media" to JsonArray(listOf(JsonPrimitive("image")))))
+        val filters = raw.getValue("filters") as? JsonObject ?: bad()
+        check(filters == expectedFilters)
+        val semantic = raw.getValue("semantic").obj(setOf("mode", "score_kind", "candidate_count", "coverage", "needs_review"))
+        check(semantic.getValue("mode").str(32) == "text_to_image" &&
+            semantic.getValue("score_kind").str(16) == "cosine" &&
+            semantic.getValue("candidate_count").count(512) == total &&
+            semantic.getValue("coverage").str(32) == "complete_eligible_images" &&
+            semantic.getValue("needs_review").bool())
+
+        val rawItems = raw.getValue("items").array(20)
+        check(rawItems.size == ids.size && rawItems.size == minOf(20, total) &&
+            raw.getValue("has_more").bool() == (total > rawItems.size))
+        val stripped = rawItems.mapIndexed { index, value ->
+            val item = value as? JsonObject ?: bad()
+            check("semantic_score" in item)
+            val primitive = item.getValue("semantic_score") as? JsonPrimitive ?: bad()
+            check(!primitive.isString && primitive.doubleOrNull == scores[index])
+            JsonObject(item - "semantic_score")
+        }
+        val legacyContext = JsonObject(context - "scene" + ("search_version" to JsonPrimitive(2)))
+        val legacyResult = JsonObject(raw - "semantic" + ("version" to JsonPrimitive(2)) +
+            ("context" to legacyContext) + ("filters" to JsonObject(expectedFilters)) + ("items" to JsonArray(stripped)))
+        val ordinary = validateV2Result(legacyResult.toString().toByteArray(Charsets.UTF_8), library, false, 2)
+        check(ordinary.kind == "results" && ordinary.items.all { it.kind == "image" } && ordinary.items.map { it.id } == ids && ordinary.filters == expectedFilters)
+        return ordinary.copy(context = context, searchVersion = 4,
+            sceneRanking = AssistantSceneRanking(query, ids.zip(scores).toMap(), total))
     }
 
     /** Validate the persisted form emitted by PhoneFilters.json without display metadata. */
