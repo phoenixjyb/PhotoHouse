@@ -75,6 +75,45 @@ library isolation, server-side validation and explicit review/save behavior.
 Neither engine determines language understanding by itself; model quality and
 the authorized evidence supplied to it remain separate acceptance questions.
 
+## Private provider timing evidence
+
+The narrative/companion adapter now retains a detached copy of six allowlisted
+[Ollama response metrics](https://docs.ollama.com/api/generate): `total_duration`,
+`load_duration`, `prompt_eval_duration`, `eval_duration`, `prompt_eval_count` and
+`eval_count`. Durations remain provider-reported nanoseconds; counts are tokens.
+Only exact nonnegative signed-64-bit integers are retained. Missing or malformed
+fields are omitted. Metadata resets at each request, including a refused input,
+and a valid envelope can retain timing even when the generated wording fails
+validation. This metadata never changes the story/companion return value.
+
+The quality canary writes a nonempty `ollama_metrics` map only into its private
+`record.json`, including failed requests when available. Public reports, proposal
+bytes and output hashes remain unchanged. The review reader accepts old records
+and strictly validates the optional metrics; its existing record hash binds them.
+Metrics are not added to the rendered review page or family UI.
+
+These values separate reported loading, prompt evaluation and output evaluation;
+they do not establish factual quality, measured peak resources, first-token
+latency or a warm service. Warm evidence requires another explicit request while
+the same verified model remains resident. No extra request, retry, preload or
+model invocation is introduced by collecting metadata.
+
+## October 17 Windows runtime maintenance
+
+The owner-approved update replaced the installed Ollama 0.40.0 application with
+[official stable 0.40.5](https://github.com/ollama/ollama/releases/tag/v0.40.5).
+The cached installer matched its published SHA-256 and a valid Ollama Inc.
+signature. An independent readback confirmed the new client version and binary
+identity. The desktop app reopened in its original interactive session; no
+Windows restart was required. Eight model-manifest identities, 66 PhotoHouse task
+definitions, the API process and checked configuration hashes matched the
+pre-update baseline. The prior application remains available for recovery.
+
+This maintenance made no model inference request and changed no family-generation
+flag. API/Web delivery, native schema/prose/latency qualification and family
+acceptance remain open. The installed client being current does not establish an
+active or qualified inference service.
+
 ## Remaining completion gates
 
 - Run all eight pinned fictional quality cases with a qualified installed model;
@@ -91,7 +130,8 @@ the authorized evidence supplied to it remain separate acceptance questions.
 
 The retained trial profile uses a conservative 24 GiB free-system-RAM admission
 floor. That is an operator test policy, not an intrinsic Ollama requirement.
-The current read-only check found about 8.5 GiB free, so that profile cannot run.
+The October 16 read-only check found about 8.5 GiB free; the October 17
+post-update readback found about 5.7 GiB. Both are below that profile.
 A measured resource profile is needed before revising its budget. A desktop
 Ollama process alone does not establish an active inference worker. No running
 application is stopped to make a trial fit.

@@ -64,10 +64,11 @@ class MemoirQualityCanaryTests(unittest.TestCase):
         }
 
     class FakeNarrator:
-        def __init__(self, url, model, *, timeout, calls, fail=None):
+        def __init__(self, url, model, *, timeout, calls, fail=None, metrics=None):
             calls.append({"url": url, "model": model, "timeout": timeout, "methods": []})
             self.entry = calls[-1]
             self.fail = fail
+            self.ollama_metrics = metrics
 
         def narrative(self, bundle):
             self.entry["methods"].append("narrative")
@@ -102,13 +103,14 @@ class MemoirQualityCanaryTests(unittest.TestCase):
                 "proposal": MemoirQualityCanaryTests.narrative_output(bundle),
             }
 
-    def run_fake(self, case_id, output, *, calls, fail=None):
+    def run_fake(self, case_id, output, *, calls, fail=None, metrics=None):
         case, criteria = self.case(case_id)
         config = {"ollama_url": "http://127.0.0.1:11434",
                   "ollama_model": "synthetic-fixture-model", "timeout_seconds": 12.0}
 
         def factory(url, model, *, timeout):
-            return self.FakeNarrator(url, model, timeout=timeout, calls=calls, fail=fail)
+            return self.FakeNarrator(url, model, timeout=timeout, calls=calls,
+                                     fail=fail, metrics=metrics)
 
         report = canary._run_case(case, criteria, config, output, narrator_factory=factory)
         return report, case, criteria
@@ -292,6 +294,57 @@ class MemoirQualityCanaryTests(unittest.TestCase):
                 self.assertFalse(record["quality_evaluated"])
                 self.assertFalse(record["activation_performed"])
                 self.assertFalse(record["resource_limits_verified"])
+
+    def test_private_record_keeps_only_cleaned_metrics_without_changing_story_output(self):
+        baseline, _case, _criteria = self.run_fake(
+            "synthetic-coherence", self.root / "timing-baseline", calls=[])
+        calls = []
+        metrics = {'load_duration': 11, 'prompt_eval_duration': 22, 'eval_duration': 33,
+                   'total_duration': 66, 'prompt_eval_count': True, 'eval_count': 9,
+                   'extra': 'private-marker'}
+        output = self.root / "timing-run"
+        report, _case, _criteria = self.run_fake(
+            "synthetic-coherence", output, calls=calls, metrics=metrics)
+        record = json.loads((output / "record.json").read_text(encoding="utf-8"))
+        captured = json.loads((output / "output.json").read_text(encoding="utf-8"))
+        self.assertEqual({'load_duration': 11, 'prompt_eval_duration': 22,
+                          'eval_duration': 33, 'total_duration': 66,
+                          'eval_count': 9}, record['ollama_metrics'])
+        self.assertEqual(report['output_sha256'], canary._sha256(canary._canonical(captured)))
+        self.assertEqual(baseline['output_sha256'], report['output_sha256'])
+        self.assertNotIn('ollama_metrics', captured)
+        self.assertNotIn('private-marker', json.dumps(report))
+
+    def test_metrics_from_failed_provider_response_remain_private(self):
+        calls = []
+        metrics = {'load_duration': 4, 'eval_duration': 5}
+        output = self.root / "timing-failure-run"
+        report, _case, _criteria = self.run_fake(
+            "synthetic-conflict", output, calls=calls,
+            fail=memory_narrative.LocalMemoryNarrativeError("invalid_response"),
+            metrics=metrics)
+        record = json.loads((output / "record.json").read_text(encoding="utf-8"))
+        self.assertEqual('request_failed', report['status'])
+        self.assertEqual(metrics, record['ollama_metrics'])
+        self.assertFalse((output / "output.json").exists())
+
+    def test_metrics_property_failure_does_not_change_capture_success(self):
+        case, criteria = self.case("synthetic-coherence")
+        class Provider:
+            @property
+            def ollama_metrics(self):
+                raise RuntimeError('private metrics access marker')
+            def narrative(self, bundle):
+                return MemoirQualityCanaryTests.narrative_output(bundle)
+        output = self.root / 'metrics-property-failure'
+        report = canary._run_case(case, criteria,
+            {"ollama_url": "http://127.0.0.1:11434", "ollama_model": "fixture",
+             "timeout_seconds": 12.0}, output,
+            narrator_factory=lambda *_args, **_kwargs: Provider())
+        record = json.loads((output / 'record.json').read_text(encoding='utf-8'))
+        self.assertEqual('captured_for_human_review', report['status'])
+        self.assertNotIn('ollama_metrics', record)
+        self.assertNotIn('private metrics access marker', json.dumps(record))
 
     def test_case_task_or_pinned_hash_mismatch_refuses_before_execution(self):
         plan = canary.planner.build_plan()
