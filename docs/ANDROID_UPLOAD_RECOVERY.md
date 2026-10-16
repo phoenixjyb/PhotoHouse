@@ -39,6 +39,28 @@ These are intake constraints, not decode or playback acceptance. HEIC and other
 formats are not silently converted. The app shows the batch format/size limits
 on the review card.
 
+## Returning from Android’s folder picker
+
+The folder/file picker backgrounds PhotoHouse, which covers private content and
+revalidates the session on return. Previously a single transient connection
+failure could show the global connection error, and a picker result arriving
+during revalidation could be discarded. This is a matching source failure path
+for the v68 report, not a device-log-confirmed network diagnosis.
+
+Foreground session validation now retries its read-only GET once after 350 ms,
+only for an OFFLINE transport failure. Both attempts keep private content
+covered. Authentication, TLS, malformed responses and HTTP failures are not
+retried; a second offline failure keeps explicit Retry available. Background,
+logout and generation changes cancel the retry; a different account is rejected.
+
+An opaque picker result retains its original account and destination while
+session/gallery recovery is busy. It does not enumerate files until the same
+account and destination membership are confirmed. Logout, account changes or
+revoked destinations discard it; lifecycle changes cancel late provider results.
+A successful recovery opens batch review, never starts a transfer automatically.
+Native synthetic tests exercise this shared effect for both picker paths; real
+Samsung SAF/network/upload acceptance remains a separate check.
+
 ## Restoring an interrupted transfer
 
 An on-disk `uploading` record is restored as `paused`. Its transfer ID, digest,

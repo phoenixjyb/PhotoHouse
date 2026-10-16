@@ -547,9 +547,14 @@ class ConnectedStoreTest {
         val api = FakeApi(); val store = store(api); signIn(store)
         store.selectLibrary("second"); runCurrent(); store.background()
         assertNull(store.state.value.library)
+        val sessionReadsBeforeRetry = api.sessionReads
         api.sessionError = ApiFailure(FailureKind.OFFLINE)
+        api.sessionFailures = 2
         store.foreground(); runCurrent()
-        assertTrue(store.state.value.covered); assertNull(store.state.value.gallery)
+        assertTrue(store.state.value.covered); assertTrue(store.state.value.busy); assertNull(store.state.value.gallery)
+        advanceTimeBy(350); runCurrent()
+        assertEquals(sessionReadsBeforeRetry + 2, api.sessionReads)
+        assertTrue(store.state.value.covered); assertFalse(store.state.value.busy); assertNull(store.state.value.gallery)
         api.sessionError = null
         store.retry(); runCurrent()
         assertEquals("second", store.state.value.gallery?.library_id)
@@ -662,6 +667,7 @@ class ConnectedStoreTest {
         var admissionError: Exception? = null
         var thumbnailGate: CompletableDeferred<Unit>? = null
         var sessionError: Exception? = null
+        var sessionFailures: Int? = null
         var galleryError: Exception? = null
         var galleryFailures: Int? = null
         var galleryResult: Gallery? = null
@@ -699,7 +705,10 @@ class ConnectedStoreTest {
         override suspend fun session(token: Bearer): Session {
             sessionReads++; val response = currentSession
             sessionGate?.let { withContext(NonCancellable) { it.await() } }
-            sessionError?.let { throw it }; return response
+            if (sessionFailures != null) {
+                if (sessionFailures!! > 0) { sessionFailures = sessionFailures!! - 1; sessionError?.let { throw it } }
+            } else sessionError?.let { throw it }
+            return response
         }
         override suspend fun acceptInvitation(token: Bearer, code: String) { accepts++ }
         override suspend fun logout(token: Bearer) { logouts++; logoutGate?.let { withContext(NonCancellable) { it.await() } }; logoutError?.let { throw it } }
@@ -1241,6 +1250,103 @@ class ConnectedStoreTest {
         assertTrue(store.hasSession); assertTrue(store.state.value.covered); assertTrue(store.canRetry())
         api.sessionError = ApiFailure(FailureKind.HTTP, 401); store.retry(); runCurrent()
         assertFalse(store.hasSession); assertEquals(Message.SESSION_ENDED, store.state.value.problem?.message)
+    }
+    @Test fun foregroundSessionRetriesOneOfflineFailureBeforeUncovering() = runTest {
+        val api = FakeApi(); val store = store(api); signIn(store)
+        store.selectLibrary("second"); runCurrent(); store.background()
+        val sessionReadsBeforeRetry = api.sessionReads
+        api.sessionError = ApiFailure(FailureKind.OFFLINE); api.sessionFailures = 1
+
+        store.foreground(); runCurrent()
+        assertEquals(sessionReadsBeforeRetry + 1, api.sessionReads)
+        assertTrue(store.state.value.covered); assertTrue(store.state.value.busy)
+        assertNull(store.state.value.session); assertNull(store.state.value.gallery)
+
+        advanceTimeBy(349); runCurrent()
+        assertEquals(sessionReadsBeforeRetry + 1, api.sessionReads)
+        assertTrue(store.state.value.covered)
+        advanceTimeBy(1); runCurrent()
+        assertEquals(sessionReadsBeforeRetry + 2, api.sessionReads)
+        assertFalse(store.state.value.covered); assertNotNull(store.state.value.session)
+        assertEquals("second", store.state.value.gallery?.library_id)
+        assertNull(store.state.value.problem)
+    }
+
+    @Test fun foregroundSessionOfflineRecoveryIsBoundedAndExplicitRetryStillWorks() = runTest {
+        val api = FakeApi(); val store = store(api); signIn(store); store.background()
+        val sessionReadsBeforeRetry = api.sessionReads
+        api.sessionError = ApiFailure(FailureKind.OFFLINE); api.sessionFailures = 2
+
+        store.foreground(); runCurrent(); assertTrue(store.state.value.covered); assertTrue(store.state.value.busy)
+        advanceTimeBy(350); runCurrent()
+        assertEquals(sessionReadsBeforeRetry + 2, api.sessionReads)
+        assertTrue(store.state.value.covered); assertFalse(store.state.value.busy)
+        assertEquals(Message.NETWORK_UNAVAILABLE, store.state.value.problem?.message)
+        assertTrue(store.canRetry())
+
+        api.sessionError = null
+        store.retry(); runCurrent()
+        assertFalse(store.state.value.covered); assertNotNull(store.state.value.session)
+        assertNotNull(store.state.value.gallery)
+        assertEquals(sessionReadsBeforeRetry + 3, api.sessionReads)
+    }
+
+    @Test fun foregroundSessionOfflineRecoveryIsCancelledByBackgroundAndLogout() = runTest {
+        val backgroundApi = FakeApi(); val backgroundStore = store(backgroundApi); signIn(backgroundStore)
+        backgroundStore.background(); val backgroundReadsBeforeRetry = backgroundApi.sessionReads
+        backgroundApi.sessionError = ApiFailure(FailureKind.OFFLINE); backgroundApi.sessionFailures = 1
+        backgroundStore.foreground(); runCurrent()
+        assertEquals(backgroundReadsBeforeRetry + 1, backgroundApi.sessionReads)
+        backgroundStore.background(); advanceTimeBy(350); runCurrent()
+        assertEquals(backgroundReadsBeforeRetry + 1, backgroundApi.sessionReads)
+        assertTrue(backgroundStore.state.value.covered); assertNull(backgroundStore.state.value.session)
+
+        val logoutApi = FakeApi(); val logoutStore = store(logoutApi); signIn(logoutStore)
+        logoutStore.background(); val logoutReadsBeforeRetry = logoutApi.sessionReads
+        logoutApi.sessionError = ApiFailure(FailureKind.OFFLINE); logoutApi.sessionFailures = 1
+        logoutStore.foreground(); runCurrent()
+        assertEquals(logoutReadsBeforeRetry + 1, logoutApi.sessionReads)
+        logoutStore.logout(); advanceTimeBy(350); runCurrent()
+        assertEquals(logoutReadsBeforeRetry + 1, logoutApi.sessionReads)
+        assertFalse(logoutStore.hasSession); assertNull(logoutStore.state.value.session)
+    }
+
+    @Test fun foregroundSessionDoesNotRetryAuthTlsMalformedOrRateLimitFailures() = runTest {
+        val failures = listOf(
+            ApiFailure(FailureKind.HTTP, 401),
+            ApiFailure(FailureKind.TLS),
+            ApiFailure(FailureKind.INVALID_RESPONSE),
+            ApiFailure(FailureKind.HTTP, 429, 1000),
+        )
+        for (failure in failures) {
+            val api = FakeApi(); val store = store(api); signIn(store); store.background()
+            val sessionReadsBeforeRetry = api.sessionReads
+            api.sessionError = failure
+            store.foreground(); runCurrent()
+            assertEquals(sessionReadsBeforeRetry + 1, api.sessionReads)
+            if (failure.status == 401) {
+                assertFalse(store.hasSession)
+                assertEquals(Message.SESSION_ENDED, store.state.value.problem?.message)
+            } else {
+                assertTrue(store.state.value.covered)
+                assertNotNull(store.state.value.problem)
+            }
+        }
+    }
+
+    @Test fun foregroundOfflineRetryRejectsChangedIdentityAndStaysCovered() = runTest {
+        val api = FakeApi(); val store = store(api); signIn(store); store.background()
+        val galleryReadsBeforeRetry = api.galleryReads
+        val sessionReadsBeforeRetry = api.sessionReads
+        api.sessionError = ApiFailure(FailureKind.OFFLINE); api.sessionFailures = 1
+        store.foreground(); runCurrent()
+        api.currentSession = api.currentSession.copy(account_id = "account-b")
+        advanceTimeBy(350); runCurrent()
+
+        assertEquals(sessionReadsBeforeRetry + 2, api.sessionReads)
+        assertEquals(galleryReadsBeforeRetry, api.galleryReads)
+        assertTrue(store.state.value.covered); assertNull(store.state.value.session)
+        assertEquals(Message.INVALID_RESPONSE, store.state.value.problem?.message)
     }
     @Test fun rateLimitSurvivesNavigationAndRequiresExplicitRetry() = runTest {
         val api = FakeApi().apply { galleryError = ApiFailure(FailureKind.HTTP, 429, 7000) }; val store = store(api); signIn(store)

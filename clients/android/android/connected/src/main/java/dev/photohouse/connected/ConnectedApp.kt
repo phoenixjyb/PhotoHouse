@@ -225,8 +225,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var pickerAccount by remember { mutableStateOf<String?>(null) }
     var pendingUpload by remember { mutableStateOf<Pair<String, Uri>?>(null) }
     var batchPickerAccount by remember { mutableStateOf<String?>(null) }
-    var batchUris by remember { mutableStateOf<Pair<String, List<Uri>>?>(null) }
-    var batchTree by remember { mutableStateOf<Pair<String, Uri>?>(null) }
+    var batchUris by remember { mutableStateOf<BatchPickerSelection<List<Uri>>?>(null) }
+    var batchTree by remember { mutableStateOf<BatchPickerSelection<Uri>?>(null) }
     var batchReview by remember(state.generation, state.session?.account_id) { mutableStateOf<List<BatchUploadSource>>(emptyList()) }
     var batchSkipped by remember(state.generation, state.session?.account_id) { mutableIntStateOf(0) }
     var batchApproved by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -374,32 +374,41 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     }
     val pickBatch = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
-        batchUris = batchPickerAccount?.let { it to uris }; batchReviewDestination = batchPickerDestination
+        batchUris = batchPickerAccount?.takeIf { uris.isNotEmpty() }?.let { BatchPickerSelection(it, batchPickerDestination, uris) }
         batchPickerAccount = null; batchPickerDestination = null; batchApproved = false
     }
     val pickBatchFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        uri?.let { selected -> runCatching { context.contentResolver.takePersistableUriPermission(selected, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }; batchTree = batchPickerAccount?.let { it to selected } }
-        batchReviewDestination = batchPickerDestination
+        batchTree = uri?.let { selected ->
+            runCatching { context.contentResolver.takePersistableUriPermission(selected, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            batchPickerAccount?.let { BatchPickerSelection(it, batchPickerDestination, selected) }
+        }
         batchPickerAccount = null; batchPickerDestination = null; batchApproved = false
     }
-    LaunchedEffect(batchUris, state.session?.account_id, state.generation) {
-        val selected = batchUris ?: return@LaunchedEffect
-        if (selected.first != state.session?.account_id || state.covered) { batchUris = null; batchReview = emptyList(); batchReviewDestination = null; return@LaunchedEffect }
-        val sources = withContext(Dispatchers.IO) { selected.second.take(100).mapNotNull { runCatching { batchUploadSource(context, it) }.getOrNull() } }
-        if (selected.first != store?.state?.value?.session?.account_id || store?.state?.value?.covered != false) { batchUris = null; batchReviewDestination = null; return@LaunchedEffect }
-        var total = 0L
-        val accepted = sources.filter { source ->
-            if (source.bytes > 64L * 1024 * 1024 * 1024 - total) false else { total += source.bytes; true }
-        }
-        batchSkipped = selected.second.size - accepted.size; batchReview = accepted; batchUris = null
-    }
-    LaunchedEffect(batchTree, state.session?.account_id, state.generation) {
-        val selected = batchTree ?: return@LaunchedEffect
-        if (selected.first != state.session?.account_id || state.covered) { batchTree = null; batchReview = emptyList(); batchReviewDestination = null; return@LaunchedEffect }
-        val result = withContext(Dispatchers.IO) { runCatching { batchUploadTree(context, selected.second) }.getOrElse { BatchTreeResult(emptyList(), 1, 0) } }
-        if (selected.first != store?.state?.value?.session?.account_id || store?.state?.value?.covered != false) { batchTree = null; batchReviewDestination = null; return@LaunchedEffect }
-        batchSkipped = result.skipped; batchReview = result.sources; batchTree = null
-    }
+    val uploadLibraries = availableMemberships.map { it.library_id }.toSet()
+    BatchPickerSelectionEffect(batchUris, state.session?.account_id, state.covered, state.busy,
+        state.generation, uploadLibraries,
+        load = { uris -> withContext(Dispatchers.IO) {
+            uris.take(100).mapNotNull { runCatching { batchUploadSource(context, it) }.getOrNull() }
+        } },
+        onReady = { selected, sources ->
+            var total = 0L
+            val accepted = sources.filter { source ->
+                if (source.bytes > 64L * 1024 * 1024 * 1024 - total) false else { total += source.bytes; true }
+            }
+            batchReviewDestination = selected.destination
+            batchSkipped = selected.value.size - accepted.size; batchReview = accepted; batchUris = null
+        },
+        onDiscard = { batchUris = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
+    BatchPickerSelectionEffect(batchTree, state.session?.account_id, state.covered, state.busy,
+        state.generation, uploadLibraries,
+        load = { uri -> withContext(Dispatchers.IO) {
+            runCatching { batchUploadTree(context, uri) }.getOrElse { BatchTreeResult(emptyList(), 1, 0) }
+        } },
+        onReady = { selected, result ->
+            batchReviewDestination = selected.destination
+            batchSkipped = result.skipped; batchReview = result.sources; batchTree = null
+        },
+        onDiscard = { batchTree = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
     LaunchedEffect(pendingUpload, state.covered, state.session?.account_id, state.busy) {
         val pending = pendingUpload ?: return@LaunchedEffect
         if (state.covered || state.busy) return@LaunchedEffect
