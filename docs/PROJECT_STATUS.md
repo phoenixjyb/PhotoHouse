@@ -35,9 +35,9 @@ The provider/model story generation path remains off. The synthetic 9B
 cold-capture sample took 80.422 seconds and has not had human quality review;
 see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
-PR #50 subsequently merged the [gated scene-search workspace source](ASSISTANT_SCENE_SEARCH.md)
-at `93c80aa`. That merge is following source, outside the v65 release and the
-last verified live API revision above; it does not establish a deployment.
+PR #50 and #51 subsequently merged the [gated scene-search workspace and Web source](ASSISTANT_SCENE_SEARCH.md)
+through `a4e6ccb`. They are following source, outside the v65 release and the
+last verified live API revision above; merging does not establish deployment.
 
 ## Delivery and acceptance
 
