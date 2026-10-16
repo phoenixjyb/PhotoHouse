@@ -6504,7 +6504,7 @@ class ConnectedStore(
         mutable.value = state.value.copy(busy = true)
         launch { generation ->
             try {
-                val session = api.session(credential)
+                val session = sessionReadWithOfflineRecovery(credential, generation)
                 if (!active(generation)) return@launch
                 validateSession(session, identity?.account_id)
                 identity = session
@@ -6518,6 +6518,16 @@ class ConnectedStore(
                 if (e is ApiFailure && e.status == 401) expire()
                 else { mutable.value = state.value.copy(busy = false, problem = problem(e)); retry = { foreground() } }
             }
+        }
+    }
+    private suspend fun sessionReadWithOfflineRecovery(credential: Bearer, generation: Long): Session {
+        try {
+            return api.session(credential)
+        } catch (failure: ApiFailure) {
+            if (failure.kind != FailureKind.OFFLINE) throw failure
+            delay(SESSION_RECOVERY_DELAY_MILLIS)
+            if (!active(generation)) throw CancellationException("Session revalidation is no longer active")
+            return api.session(credential)
         }
     }
     fun logout() {
@@ -6600,6 +6610,7 @@ class ConnectedStore(
     companion object {
         const val CACHE_LIMIT = 8 * 1024 * 1024
         private const val GALLERY_RECOVERY_DELAY_MILLIS = 350L
+        private const val SESSION_RECOVERY_DELAY_MILLIS = 350L
     }
 }
 
