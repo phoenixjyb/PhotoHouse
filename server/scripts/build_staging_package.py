@@ -252,6 +252,7 @@ FILES = (
     'scripts/semantic_reviewed_projection.py',
     'scripts/serve_reviewed_semantic_text.py',
     'scripts/qualify_semantic_scenes.py',
+    'scripts/qualify_reviewed_semantic_scenes.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
 )
