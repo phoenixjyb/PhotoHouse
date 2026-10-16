@@ -435,6 +435,16 @@ assistant requests a complete search again, including the scene and any person
 or date. It does not promise that a short answer will carry the original query
 forward. Date-only pending questions retain their separate supported flow.
 
+Scene questions ask what was happening and which distinctive object or place
+the user remembers. Unmatched-condition and unavailable-understanding replies
+offer a supported literal-caption example: `find photos containing "red kite"`
+or `找包含“红风筝”的照片`. The complete resubmitted request must also state any
+desired reviewed person, capture date, tag or place. The examples work with the
+optional intent provider off; quoted text is literal and does not gain inferred
+translations or synonyms. Existing results retain their current filters while
+clarification is shown. This wording adds no pending scene slot or implicit
+short-answer continuation.
+
 ## Retaining original scene wording
 
 After validating a local provider's complete proposal, the adapter keeps each

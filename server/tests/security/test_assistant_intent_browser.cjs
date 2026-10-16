@@ -333,6 +333,30 @@ async function openPrivateWorkspace(){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:path.join(artifacts,'intent-v2-provider-off-pending-date-recovered-phone-390-font150.png'),fullPage:false});
 
+  // Unsupported scene details give usable literal-search guidance while the
+  // existing result scope stays visible. A complete resubmission supplies all
+  // intended filters explicitly, with no model or implicit pending scene slot.
+  const unclear=await send('find photos of Sample Child in September 2032 purple dragon');
+  assert.equal(unclear.response.result.kind,'clarification');
+  assert.match(unclear.response.result.reply,/complete (?:query|search)/);
+  assert.ok(unclear.response.result.reply.includes('containing "red kite"'));
+  for(const key of ['context','filters','items'])assert.deepEqual(unclear.response.result[key],v2Answer.response.result[key]);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:path.join(artifacts,'intent-v2-clarification-guidance-en-phone-390-font150.png'),fullPage:false});
+  const unclearZh=await send('找示例儿童2032年9月紫色飞龙的照片');
+  assert.equal(unclearZh.response.result.kind,'clarification');
+  assert.match(unclearZh.response.result.reply,/完整查找句/);
+  assert.ok(unclearZh.response.result.reply.includes('包含“红风筝”'));
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:path.join(artifacts,'intent-v2-clarification-guidance-zh-phone-390-font150.png'),fullPage:false});
+  const clarified=await send('find photos of Sample Child in September 2032 containing "secret memory phrase"',{keyboard:true});
+  assert.equal(clarified.response.result.kind,'results');assert.equal(clarified.response.result.version,2);
+  assert.deepEqual(clarified.response.result.filters,v2Answer.response.result.filters);
+  assert.deepEqual(clarified.response.result.items.map(item=>item.id),['101','103']);
+  assert.equal(await plannerCalls(),callsBeforeV2Pending);
+
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   const evidence={nativeBrowser:true,syntheticBackend:true,externalRequests:0,checkpoints:[
     'v3 descriptive query keeps image media, reviewed person, date, and exact quoted text filters',
@@ -346,7 +370,8 @@ async function openPrivateWorkspace(){
     'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history',
     'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call',
     'a Chinese why-result question explains current filters and edited-caption evidence while preserving result order and invoking no model or open action',
-    'with the planner off, v2 preserves a mixed-language date question through history, resolves a short Chinese answer, and recovers a lost reply with GET only'],
+    'with the planner off, v2 preserves a mixed-language date question through history, resolves a short Chinese answer, and recovers a lost reply with GET only',
+    'provider-off English and Chinese scene clarification renders at phone width/150% and a complete quoted-text resubmission preserves every explicit hard filter without a model call'],
     plannerCalls:await plannerCalls(),headers:turnEntries().map(entry=>entry.headers['x-photohouse-search-version']),pageErrors,blockedOrigins};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2));
   for(const checkpoint of evidence.checkpoints)console.log('PASS '+checkpoint);
