@@ -22699,8 +22699,75 @@
       "household_data_included": false
     },
     {
+      "feature": "phone-v69-release-and-upload-acceptance-documentation",
+      "source_commit": "e963d292ddb9f9eb7dc918e6d40cba6fc04bbb49",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "sha256": "103ee1a59c2a213920a3a455b57163fd8cd09321388a26d2efd460a0cbff0bd2",
+          "before_sha256": "964a094ceb2bf57c33ca6d7c62b30e3d728f6429f86097ef5084fc1f83c59f04"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V69_CANDIDATE_2026-10-16.md",
+          "sha256": "d2a38d17299154b03ea927e152d71cfdceb6b5ac5dba8530dd7265a208100a64",
+          "before_sha256": "e4488975029e4584f413b72ef60783d8e28e2c5f7ae4e0a104c8b9e091df14ac"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md",
+          "sha256": "8f4dc501432781016b841eb3f4aca2ce69e76b30ac5b13228e396f8d6f7231eb"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md",
+          "sha256": "3023a8e946d405acc107d4d1895b25b11242beb400a33534e09d7ca97cf1adb5"
+        },
+        {
+          "path": "docs/ANDROID_UPLOAD_RECOVERY.md",
+          "sha256": "09b15b416db433530458c9dbb5ce5f16ed210deaed8e027aa65bdb1155c120c0",
+          "before_sha256": "4f36d7f86c347a456811f55c342c8816050c3b4ad165e35b9cd531afd939e5ed"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "cdce9aa85bd5b3fc6181628b9024b1635deec51d2a1d29d82b922bdaccba8f2a",
+          "before_sha256": "366dfa2b7d5e7d23248a44aa1dce0fefabcaae2cfcda38aabcdd3b974385c3c9"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "469fe595c8e6fe47393a8be135f850ed42a2bc26c7a4895aef266cc00d5b59aa",
+          "before_sha256": "30ab1e4515364fc17a4be788080ae3ac73a3ac7f685c3256dd75364eeea9f4eb"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "f44c7d94032e0e86de48340cfc5199e08495a59bfa9c486995e688af1f663723",
+          "before_sha256": "9296db1a11322e0efe5ee3ffbeb1e099091b7f0b0c25e7ca24e4ee627a171a50"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "97aee598392803e2fb379135ed7f527741482b0423b92df0b856ee27071c9fb7",
+          "before_sha256": "de514d7696456392d326cb4bf21e841666cb672c1ea7df4b4e85793cebba5206"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "physical_upload_acceptance": false
+    },
+    {
+      "feature": "plan-unified-evidence-backed-import-status",
+      "source_commit": "2fc27ac07ac761b131d9944bbcd10c4f2cfc5d6c",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "97aee598392803e2fb379135ed7f527741482b0423b92df0b856ee27071c9fb7",
+          "sha256": "247aa2d5a801e7a65764dc216349b0bc3babb1282107c3388b699ef2f3aa4414"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false
+    },
+    {
       "feature": "guarded-saved-story-drafting-and-explicit-request-recovery",
-      "source_commit": "77529b107ebe21ca741b11c5b45351fd2de41daf",
+      "source_commit": "f0cb7458430b7efd946ede03146c79eddf1a4402",
       "files": [
         {
           "path": "docs/AI_STORY_COMPLETION.md",
@@ -22714,8 +22781,8 @@
         },
         {
           "path": "docs/README.md",
-          "before_sha256": "9296db1a11322e0efe5ee3ffbeb1e099091b7f0b0c25e7ca24e4ee627a171a50",
-          "sha256": "bdba7b42a084541a902f823f853c7874ed3ed322c8d0908ddcd6c31793f6c564"
+          "before_sha256": "f44c7d94032e0e86de48340cfc5199e08495a59bfa9c486995e688af1f663723",
+          "sha256": "41fcb8964f068d09f365d00a5f49174437be3bdd889226deef4786af67813d8f"
         },
         {
           "path": "server/backend/app/access/memory_narrative.py",

@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 16 phone v68 and API/Web deliveries**. [Features](FEATURES.md)
+Active priorities after the **October 16 phone v69 and API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
@@ -17,13 +17,22 @@ installed and launched on a Samsung phone; real voice and family acceptance
 remain open. TV OTA remains v30, with v31 source unpublished. See the
 [v67 release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md).
 
-Phone v68 (`0.68-voice-recovery`) is now signed and published, with clearer
+Phone v68 (`0.68-voice-recovery`) was signed and published, with clearer
 Chinese/English recognition/request/playback recovery guidance. The original
 certificate, icon and configuration are preserved. Windows and independent Mac
 full HTTPS APK verification passed. Its publication preserved API/TV bindings;
 no physical v68 install or real audio trial occurred. The separate search
 session deployed API/Web `54394ed` after `88de08e`; later main is still source.
 See the [v68 delivery record](../clients/android/docs/PHONE_V68_RELEASE_2026-10-16.md).
+
+Phone v69 (`0.69-upload-recovery`) is now signed and published. It preserves
+folder/file selections through covered session recovery, bounds an OFFLINE
+session-GET retry, explains rejected batches and keeps upload/network consent
+explicit. All five CI jobs, 1,095 live-core cases, nine native synthetic cases,
+configured build/lint and full Windows/independent HTTPS readback passed.
+The APK input source was unchanged by a later JVM test-timing correction.
+Real Samsung folder upload is unconfirmed; the user has not retried yet.
+See the [v69 delivery record](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md).
 
 Phone v66 delivers [reviewed adoption of a chapter proposal](PHONE_STORY_PROPOSAL_ADOPTION.md)
 into an unsaved existing story. The proposal-adoption source qualification
@@ -37,9 +46,16 @@ APK and are included in phone v67 with server capability negotiation. Scene
 search remains default-off; no scene provider or story-generation model was
 activated by the phone or API/Web releases.
 
-## Current priority: validate delivered voice, family search and story linking
+## Current priority: accept folder upload, then voice, search and story linking
 
-Update to v68 and run its recovery/voice continuation trial on the physical
+Update to v69 and follow the [folder-upload trial](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md).
+Check return from the system picker, transient recovery and explicit Retry,
+reviewed destination/count/size, metered-network consent and Start. Confirm a
+fresh accepted receipt before diagnosing approval or preparation. A read-only
+14:48 UTC check still had no newer accepted transfer; this does not rule out
+rejected requests. Keep the real Samsung result open until observed.
+
+Using v69, also run the retained v68 recovery/voice continuation trial on the physical
 phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
 the delivered bilingual search clarification, v65 chapter-source chooser and
 v66 proposal adoption. Confirm source attribution, explicit
@@ -47,6 +63,22 @@ transcript/original review, proposal and title choices, unsaved editor behavior,
 save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
+
+## Next source slice: make import status truthful and coherent
+
+Unify the existing upload queue and upload history presentation. A completed
+transfer means the server received the bytes; it must not always say “awaiting
+review” when selected-member auto approval may already have assigned the item.
+Show received, awaiting approval, preparing and ready only when supported by
+current authorized server evidence. Display unknown/unavailable status honestly
+when a stage is not exposed; do not infer preview/playback readiness from receipt
+or membership alone. Keep the existing per-library fences, explicit upload Start
+and bounded explicit recovery. Do not create a second upload queue.
+
+**Exit:** generated manual-review, auto-approved, delayed-preparation, failed and
+access-changed journeys; Chinese/English large-text UI; native full package checks;
+then a real phone upload receipt and final visible result. This is planned work,
+not a capability delivered in v69.
 
 ## 1. Accept the delivered experience
 

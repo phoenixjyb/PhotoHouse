@@ -1,8 +1,8 @@
 # Android batch upload validation and restart recovery
 
-Following source, October 16, 2026. These changes are not included in the
-published phone v68 APK. A later signed package and physical phone acceptance
-are separate delivery gates.
+Delivered in [phone v69](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md),
+October 16, 2026. Installed v68 lacks these fixes. Signing, OTA and full HTTPS
+readback passed; physical Samsung folder-upload acceptance remains open.
 
 ## Review before starting
 
