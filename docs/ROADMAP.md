@@ -90,6 +90,10 @@ selection across microphone permission, pinned Pause/End and owned cleanup.
 still needs signed delivery and physical listening acceptance. Later chapters
 and hands-free chapter advancement remain future work.
 
+First deliver the merged controls and segment continuation as phone v67 and
+paired API/Web candidates, then run the [real voice trial](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md).
+Candidate preparation does not establish signing, Windows delivery or family acceptance.
+
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.
 Reuse the existing manual chapter reader's guards; do not duplicate playback
