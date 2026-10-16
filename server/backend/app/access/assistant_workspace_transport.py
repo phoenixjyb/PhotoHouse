@@ -359,6 +359,9 @@ def _turn_result(engine, token, library, summary, *, recovered):
 
 
 async def _turn_envelope(request, account, library, row, *, recovered, memory_outcome=None):
+    if (row.get('error_code') == 'scene_query_unsupported'
+            and _single(request, 'x-photohouse-search-version') != '4'):
+        raise TransportError(400, 'Search version is not supported on this endpoint')
     result = None
     revision = row['revision']
     if row['status'] == 'completed':
@@ -421,6 +424,8 @@ async def _reply_speech_available(request, account):
 
 
 def _error_code(exc):
+    if isinstance(exc, discovery_engine.DiscoveryQueryUnsupported):
+        return 'scene_query_unsupported'
     if isinstance(exc, (assistant_engine.AssistantChanged, discovery_engine.DiscoveryChanged)):
         return 'context_changed'
     if isinstance(exc, AccessDenied):
@@ -1066,21 +1071,37 @@ async def create_turn(request: Request, thread_id: str):
             response.headers['X-PhotoHouse-Receipt-Status'] = 'succeeded' if committed else 'failed'
         return response
     except BaseException as exc:
+        failed = None
         if not committed:
             try:
-                await asyncio.shield(_call(store, 'fail_turn', account, library, selected,
+                failed = await asyncio.shield(_call(store, 'fail_turn', account, library, selected,
                                            ident, lease, _error_code(exc)))
             except Exception:
                 # A hard shutdown leaves a bounded lease, not permission to
                 # regenerate the same request. Readback reconciles its expiry.
                 pass
+        unsupported_receipt = (scene_opt_in and isinstance(exc, discovery_engine.DiscoveryQueryUnsupported)
+            and failed is not None and failed['status'] == 'failed'
+            and failed['error_code'] == 'scene_query_unsupported')
+        journal_failure_confirmed = False
         if journal_started and not committed:
             try:
                 await asyncio.shield(run_in_threadpool(journal.finish, ident, 'failed',
-                    http_status=499 if isinstance(exc, asyncio.CancelledError) else 503,
+                    http_status=499 if isinstance(exc, asyncio.CancelledError) else 200 if unsupported_receipt else 503,
                     error=_error_code(exc)))
+                journal_failure_confirmed = True
             except Exception:
                 pass
+        if unsupported_receipt:
+            # Only the durable terminal receipt resolves this attempt. An
+            # unconfirmed failure keeps the normal recovery path instead.
+            response = await _turn_envelope(request, account, library, failed, recovered=False)
+            if journal is not None:
+                response.headers['X-PhotoHouse-Request-Id'] = ident
+            response.headers['X-PhotoHouse-Tracking'] = 'enabled' if journal is not None else 'disabled'
+            if journal_started:
+                response.headers['X-PhotoHouse-Receipt-Status'] = 'failed' if journal_failure_confirmed else 'received'
+            return response
         raise
 
 

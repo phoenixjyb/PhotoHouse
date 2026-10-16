@@ -82,6 +82,8 @@ class DiscoveryRoute(APIRoute):
                 response = failure(429, 'discovery_busy', 'Discovery busy', {'Retry-After':'2'})
             except d.DiscoveryCancelled:
                 response = failure(499, 'request_cancelled', 'Request cancelled')
+            except d.DiscoveryQueryUnsupported:
+                response = failure(422, 'scene_query_unsupported', 'Reword the scene description')
             except Exception:
                 # Never expose SQL, paths, provider exceptions or request contents.
                 response = failure(503, 'discovery_unavailable', 'Discovery unavailable')

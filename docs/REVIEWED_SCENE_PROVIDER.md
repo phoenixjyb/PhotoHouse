@@ -3,7 +3,8 @@
 This optional provider serves a finite set of exact, privately reviewed query
 mappings. It supports a Chinese, English or mixed original mapped to an English
 model input without running a translator during a request. Unlisted queries
-receive the existing unavailable response; there is no guessed mapping, queue,
+produce an explicitly negotiated [rewording refusal](SCENE_QUERY_REWORDING.md);
+older callers receive the existing unavailable response. There is no guessed mapping, queue,
 retry or fallback. Ordinary application defaults and scene-search gates remain
 unchanged.
 

@@ -21826,6 +21826,167 @@
       "prior_records_preserved_in_ref": "backup/phone-v67-delivery-before-scene-measurement-20261016"
     },
     {
+      "feature": "bound-scene-query-refusal-and-explicit-bilingual-rewording",
+      "source_commit": "752ad029ed4955000e17236437cc5e5fab8f9cac",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScenePanel.kt",
+          "before_sha256": "70ebc8748760279e2ece8f5ee8b4e78a4456cd4c9880b53f7f93eae73af47ad7",
+          "sha256": "04055f931c7eda937454623fa93046dd015c26b15402323068482c61d0148d1b"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "00b8d6d0bfa12bec3520c14b2af571f79e3a5b677aa71c9ab28fb12735df6704",
+          "sha256": "6323e3010a6b4968c5ae4fac0219814360b027d96d8932717c9a8bab7bb0a9db"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "before_sha256": "5025822c3707f0fe0835d51e1c1bf0b912d44e5f80d0ed8bc666bbb1f3c34499",
+          "sha256": "308c57b113fcf27c6b7c6330a87e1704ab2ffd0ee16dd8e2ca2a9643997bcb02"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceStore.kt",
+          "before_sha256": "d1e78451b811e68e3d4f605ebd8bcb653da0d220f1c07923e731a2fea46f27ff",
+          "sha256": "95d01c8d16759f5d524cbe65b9742482c8d601bb7bc4f8a4dee624ad32cf3857"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWire.kt",
+          "before_sha256": "f661aa291e7564077468e9d14a4d4ec7f5e2c3529fa4862dc56e6d6b6acb2387",
+          "sha256": "ac1126fa336660fc4f832f31de80c84e58d1bc679bd4851bdf577b881af029d0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantSceneWorkspaceStoreTest.kt",
+          "before_sha256": "645e3ce48f9da0d1a4643a84350748c08435894fb10acea7996cba5f40692e3c",
+          "sha256": "785901bd0164b224be4b2211ade0cfbe87291f8ce3ea6e5d226928970ba9ff97"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "5d28e94cf9449bbdd72b87bff8a8f2f1fd58dd4844fcc1f007ed50ec12612286",
+          "sha256": "ce55b92d5a8ad6203373b1d53db954ded11dc608623d6885e4d36395488f714f"
+        },
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "67f8ec3ed142a661989e3d659768dce93264e81585de092427876690ae12608b",
+          "sha256": "60d01e7cfd902617790b5eff20f4bd14df7ccace88e31fe0e1f203b5833ffc6d"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_MEASUREMENT.md",
+          "before_sha256": "60cb6fecb755ed095f4a9b727a72d10b5b3881d51742e4aeac3aa2ad56824651",
+          "sha256": "1f34ad355f9dcb68497e5c80947a2a44df0e6d926393f92978ac23218e23d7c2"
+        },
+        {
+          "path": "docs/REVIEWED_SCENE_PROVIDER.md",
+          "before_sha256": "4bbf085c056ed110d8db0be935d485f45ecc7c8dd4d73129a66ad4cff5ce463d",
+          "sha256": "13abfe3d6751a62cb124f4d01a5095f1151fe796bc31685169f911711fb2dcd3"
+        },
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "before_sha256": null,
+          "sha256": "572551cfff01f38872e67ff951971b4985cc9947a41272daee2c7fb2303f7afa"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "269ed187bfd1a57b2a486709c7768d6ac140c78bb6a8775f08c50a5426788263",
+          "sha256": "43400ddc82d7077a79d5188ba19b666909d614d0c57513ad72be676efa245f2e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "348758a578ec5a4d50a8972d3e5a6303e990b112fcf9e7de94eb8808ea40d3fb",
+          "sha256": "02715d5597501de4e3ef52ef84353eaf9af704c7f464821382992504f83ce635"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "953fa882e22d026146aca9ecb29b70a1d2022a0e78f2eff251e172f7dd5f890d",
+          "sha256": "07fde7a1518f9f1e631c66773e7b1d3f69c1947b81a9b757e539d9c5ec7741cd"
+        },
+        {
+          "path": "server/backend/app/access/discovery_transport.py",
+          "before_sha256": "7762e74bdb112eec415db91f9ae922064d49bba1e5b4d2545ade145c3763812b",
+          "sha256": "cf96b131b7ad58c871bcedd12ebed716a22c26b74d5e52eaac6c0c6c83f8a7ce"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": "da9731a5044165304e8144085aa9208e5cd81ab3d7a6fa43cee6b63d636cce0d",
+          "sha256": "b6011d47ae32a2ed81f8977a8fa5a0cb9e6a906fd21a3b274f90c634bb15ebdf"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "before_sha256": "93dcd1d0e1e9cadd0e3be487db36554830685112c9b26e8fa86606d87e79679c",
+          "sha256": "1368eea62f858183e0e3383a524834314a2b347a6e6b4fe2375f9be7988f866b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "dbe9530674201cb3de7d85e0669157f4cf0f13b80ac513c2612d977d799d56cb",
+          "sha256": "848a2c4f7ccc68eb58a3c765de67866cceab68bc86a41cb42709ce1e60f5a3e9"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "e708936db0a35b1a184317d54cd7c57acf1182b4e7e99824f7288b084b0403b3",
+          "sha256": "0b0d43a25997be6282f105cbf437baea3260990a590b97997fe5afba9636d0e3"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "446e64c2fcc85d82c0e79d3dba0e9cc745152f6a423aa6043ff46ff5edc066aa",
+          "sha256": "7ebddbeac10846483514bbb593b3c5871157e25287cb8a2d5c94c6b8588dc55e"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "7f0b7661ef1a75eda200fcc148eddbeb1df40c0051c6e6276f3dd260261589bf",
+          "sha256": "654b7a33553cd0bf5b013c6f0d38d3f2e5ad6672062367cea840a16f692bc633"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "1cfbfba816275016865010ecac02e8bff87ba91f628e3120b8aab95a9d6769bb",
+          "sha256": "ecf2f279d3b40c0cf6d86e8b2f9e0b1394f0d20e609f6a30e6a4463ae0fcc8f7"
+        },
+        {
+          "path": "server/scripts/semantic_reviewed_projection.py",
+          "before_sha256": "7bc2082e1e2ca3cd5e3246bcfbdd2a2d8f62a6cf5486c63869594412c0566917",
+          "sha256": "880f768df81a99216e5fcc036de126740594f6e0477a45a61dd1ae14921a3e1d"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "97e692d1228fd3cf70ac1c7c7e6b27110bf060ff93b1979e9e338f73a60628f9",
+          "sha256": "02b2e020511f3917f9e7b352983044eacc0dbaec19fb2cd57e582e9aa35f8a09"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "f4d413737d620c412ec319f222fb443d1332dfcd197bd8fd30f383e5a64e3b81",
+          "sha256": "0e2a6c9017d2fcfa237b7e92d3543973a62ff095994319fd862f62f90e0b9d92"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_semantic_provider_integration.py",
+          "before_sha256": "cab9076cc095602bc63bd47e99ef73ed8ecdf9803917d201ea33ed679eed8967",
+          "sha256": "30b610ed7490d9eafad1b9d98c83b89dcab9b412337e7eb8bb3bd9636a07e1f6"
+        },
+        {
+          "path": "server/tests/security/test_scene_query_refusal.py",
+          "before_sha256": null,
+          "sha256": "3d27d1f5609212ce19861778e1e767f82fdb196a2d8fd0b09e8de8c34db62380"
+        },
+        {
+          "path": "server/tests/security/test_semantic_refusal_protocol.py",
+          "before_sha256": null,
+          "sha256": "f5438bffa20bc5dbcfa5f326c20dccd37c3cafbe42116f8bf610af54a75c152b"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": "2742fcecd6e2cb0d8d06987eaf26b57cfadb4363ab5d646bce5f8a6d35e58530",
+          "sha256": "ba9c36515e7900f0ea11f78018fc57bb8664af3046527805b44c40f3911bd3e1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "88e17cb7a6d38196c01c2df6a44d84c86808e5fb6636347a4134a1cbcd28ac30",
+          "sha256": "e9ad5d77b18d531ee48b344e1de2009d1614b82d161d9f65b19eab66ac6ed2db"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "semantic_relevance_qualified": false,
+      "pair_binding_created": false
+    },
+    {
       "feature": "api-web-v67-live-delivery-and-device-install-record",
       "source_commit": "eb8ec58b0388456796d81b9992f18c4926f70ff1",
       "files": [

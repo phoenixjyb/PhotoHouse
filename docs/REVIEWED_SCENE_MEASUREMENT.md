@@ -32,8 +32,9 @@ receipts cannot be substituted. Use a current
 [unbound scene measurement](SEMANTIC_SCENE_QUALIFICATION.md) to observe the current
 recipe, then complete the separate operator qualification process before
 supplying matching bindings. A different dataset or source recipe requires
-matching identities again. The existing serving adapter and its implementation
-bundle are unchanged by this round.
+matching identities again. That measurement source slice left the serving
+adapter unchanged. Subsequent [refusal protocol changes](SCENE_QUERY_REWORDING.md)
+require a new matching composite binding; older ones are not migrated.
 
 ## Private inputs and explicit execution
 

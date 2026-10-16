@@ -15,13 +15,14 @@ import dev.photohouse.connected.core.AssistantWorkspaceWire
 @Composable
 internal fun AssistantSceneControls(
     state: AssistantWorkspaceState, zh: Boolean, interactionBlocked: Boolean,
-    onDraft: (String) -> Unit, onSend: () -> Unit, onBack: () -> Unit,
+    onDraft: (String) -> Unit, onSend: () -> Unit, onBack: () -> Unit, onReload: () -> Unit = {},
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     var acknowledged by remember(state.accountId, state.libraryId, state.generation,
-        state.detail?.thread?.threadId, state.detail?.thread?.revision) { mutableStateOf(false) }
+        state.detail?.thread?.threadId, state.detail?.thread?.revision, state.sceneRecoveryRequired) { mutableStateOf(false) }
     val result = state.currentTurn?.result
-    val blocked = !state.sceneReady || interactionBlocked
+    val blocked = !state.sceneReady && !state.sceneRecoveryRequired || interactionBlocked
+    val submissionBlocked = !state.sceneReady || interactionBlocked
     Card(Modifier.fillMaxWidth().testTag("private-assistant-scene-editor")) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(t("Find a scene within these conditions", "在当前条件内按画面查找"), style = MaterialTheme.typography.titleMedium)
@@ -34,9 +35,19 @@ internal fun AssistantSceneControls(
                     if (result.filters?.containsKey("media") != true) Text(t("Media: photos", "媒体：照片"))
                 }
             }
-            if (!state.sceneReady) Text(t("First finish a photo search with resolved conditions. Clarifications, video searches and caption-description searches must be resolved through full search first.",
+            if (!state.sceneReady && !state.sceneRecoveryRequired) Text(t("First finish a photo search with resolved conditions. Clarifications, video searches and caption-description searches must be resolved through full search first.",
                 "请先完成条件明确的照片查找。待确认的条件、视频查找和说明文字描述查找需要先返回完整查找处理。"),
                 Modifier.testTag("private-assistant-scene-unready"), style = MaterialTheme.typography.bodySmall)
+            if (state.sceneRecoveryRequired) {
+                Text(t("This scene description could not be used. Reword it, then reload the previous search conditions before trying again.",
+                    "这段画面描述无法用于查找。请换一种说法，并先重新载入之前的查找条件，再试一次。"),
+                    Modifier.testTag("private-assistant-scene-reword"), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error)
+                OutlinedButton(onClick = onReload, enabled = !interactionBlocked,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("private-assistant-scene-reload")) {
+                    Text(t("Reload previous conditions", "重新载入之前的条件"))
+                }
+            }
             OutlinedTextField(value = state.sceneDraft, onValueChange = onDraft, enabled = !blocked,
                 modifier = Modifier.fillMaxWidth().testTag("private-assistant-scene-composer"),
                 label = { Text(t("What does the scene look like?", "想找什么样的画面？")) },
@@ -49,8 +60,8 @@ internal fun AssistantSceneControls(
                 Text(t("Keep these conditions; I am only adding a scene description.", "保留这些条件，我只补充画面描述。"),
                     Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             }
-            Button(onClick = { if (!blocked && acknowledged && AssistantWorkspaceWire.validSceneQuery(state.sceneDraft)) onSend() },
-                enabled = !blocked && acknowledged && AssistantWorkspaceWire.validSceneQuery(state.sceneDraft),
+            Button(onClick = { if (!submissionBlocked && acknowledged && AssistantWorkspaceWire.validSceneQuery(state.sceneDraft)) onSend() },
+                enabled = !submissionBlocked && acknowledged && AssistantWorkspaceWire.validSceneQuery(state.sceneDraft),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("private-assistant-scene-send")) {
                 Text(t("Rank photos by scene similarity", "按画面相似度排列照片"))
             }

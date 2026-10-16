@@ -33,6 +33,7 @@ scene_fixture = os.environ.get('PH_SCENE_FIXTURE') == '1'
 search_fixture = os.environ.get('PH_SEARCH_FIXTURE') == '1' or scene_fixture
 scene_calls = []
 scene_encoder_off = False
+scene_unsupported_next = False
 if scene_fixture:
     import hashlib
     import httpx
@@ -56,10 +57,16 @@ if scene_fixture:
             vector_files.append(path)
     pair = JointSpaceBinding(IDENTITY, replace(IDENTITY, artifact_sha256='c'*64, preprocessing_sha256='d'*64, model_version='text-v1'), 'e'*64)
     def encode(request):
+        global scene_unsupported_next
         if scene_encoder_off:
             raise AssertionError('Scene recovery invoked the encoder')
         body = json.loads(request.content)
         scene_calls.append(body['query'])
+        if scene_unsupported_next:
+            scene_unsupported_next = False
+            return httpx.Response(422, json={'version': 1, 'error': 'unsupported_query',
+                'binding_sha256': pair.binding_sha256,
+                'query_sha256': hashlib.sha256(body['query'].encode()).hexdigest()})
         vector = [1.0, 0.0]
         return httpx.Response(200, json={'version': 1, 'binding_sha256': pair.binding_sha256,
             'query_sha256': hashlib.sha256(body['query'].encode()).hexdigest(), 'vector': vector,
@@ -142,6 +149,14 @@ try:
             continue
         if scene_fixture and message.get('command') == 'scene-encoder-off':
             scene_encoder_off = True
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if scene_fixture and message.get('command') == 'scene-encoder-on':
+            scene_encoder_off = False
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if scene_fixture and message.get('command') == 'scene-unsupported-next':
+            scene_unsupported_next = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
             continue
         if scene_fixture and message.get('command') == 'scene-off':
