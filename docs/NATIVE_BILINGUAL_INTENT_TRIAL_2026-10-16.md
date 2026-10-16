@@ -56,5 +56,38 @@ older candidate cannot isolate a prompt-only effect. The source improvement that
 follows this baseline sends only [safe visible fragments](BILINGUAL_SEARCH_REQUIREMENTS.md#explicit-redaction-boundaries-for-intent-proposals),
 removing marker copying as an input representation problem while retaining strict
 validation. Its design uses the public-suite failure mechanism, with no held-out
-phrase or expectation added to the prompt. This report does not claim that the
-new payload improves model recall; it needs a new source-pinned native trial.
+phrase or expectation added to the prompt. The following fixed-suite measurement tests that input change separately; it
+does not establish broader recall.
+
+## Follow-up: safe visible fragments
+
+A separate source-pinned trial measured the fragment adapter at
+`cd20f47927641ab089fc16101b161c65a2a5ef06` with the same installed binary/model,
+fixed public fixture and inference settings. The raw surface/alternatives schema,
+original-offset checks, required concepts and hard filters were retained.
+
+| Language | Fixed-suite expectations met |
+| --- | ---: |
+| English | 4 / 4 |
+| Chinese | 2 / 4 |
+| Mixed | 3 / 4 |
+| Total | 9 / 12 |
+
+All twelve cases completed: nine measured HTTP requests returned 200, six
+proposals were accepted and three were refused; three date questions needed no
+model. Including warm-up, there were ten HTTP requests and no retry. None of the
+ten captured assistant responses contained a redaction marker. The remaining
+three failures each added the standalone grammar particle `的` as a scene clue;
+strict validation rejected it. No validator or match requirement was relaxed to
+make these cases pass.
+
+Model-plus-compiler time was 946 ms median and 8453 ms maximum among measured
+model attempts. Warm-up took 79005 ms. GPU residency and owned-process cleanup
+were verified. These observations describe this development fixture and source,
+not full API/voice latency or general language quality.
+
+The 24-case held-out suite was not rerun on this following source. Its earlier
+2/60 positive result remains evidence of the broader gap; the 9/12 public-suite
+result does not establish held-out recall. Provider activation remains unsupported.
+Remaining work includes Chinese grammar-only proposal handling and multilingual
+retrieval/ranking quality, with source-pinned evaluation and unchanged hard filters.

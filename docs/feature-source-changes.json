@@ -22244,6 +22244,32 @@
       "native_relevance_qualified": false,
       "recorded_native_baseline_source_commit": "23466bece2e7f46009eb92d0396d238bfa06e989",
       "recorded_live_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
+      "feature": "safe-fragment-fixed-cohort-native-measurement-record",
+      "source_commit": "cd20f47927641ab089fc16101b161c65a2a5ef06",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "a77dc7562abea94cd5938bf8385015463a36c7b5a55b614b9e07329baa83e2f3",
+          "sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "5d04b5191c06004d7fcef301f4fb751cc190c619003917102fca0a0274ec281a",
+          "sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "32bfc940ad3003b3f8c4137271344959a9acecaa57fca57ce87b5edcaea69c3e",
+          "sha256": "f66acb866372f53d3124d2a73c96ebaea3d55cd6e6efcf6b8dfb15bc170ef0b1"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false
     }
   ]
 }

@@ -551,5 +551,6 @@ Literal quoted-text search is unchanged.
 Generated view/transport/compiler checks validate these boundaries without models
 or network access. The [October 16 native baseline](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md)
 measured earlier source `23466be`, whose adapter still sent marker-filled views.
-Those results do not measure this fragment payload. A fresh installed-provider
-trial remains required; the optional provider stays off for users.
+The following fixed-suite trial at `cd20f47` measured the fragment payload and
+met 9/12 expectations. Broader held-out recall for that payload remains unmeasured;
+the optional provider stays off for users.

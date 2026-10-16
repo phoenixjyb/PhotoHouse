@@ -59,8 +59,9 @@ Following source changes mark boundaries internally and send only visible text
 fragments to the optional provider. They are not in this frozen deployment. The
 [native bilingual baseline](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) at source
 `23466be` met 7/12 fixed-suite expectations and retrieved 2/60 held-out positive
-examples. The new fragment payload is not measured by that earlier baseline;
-provider activation remains unsupported by the observed retrieval quality.
+examples. A following fixed-suite trial at `cd20f47` met 9/12 expectations with the fragment
+payload. Its broader held-out recall is unmeasured; provider activation remains
+unsupported by the observed retrieval quality.
 
 ## Other retained capabilities and limits
 
