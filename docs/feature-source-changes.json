@@ -20466,6 +20466,214 @@
       "phone_version_code": 65,
       "apk_published": false,
       "models_activated": false
+    },
+    {
+      "feature": "gated-server-owned-scene-ranking-and-model-free-recovery",
+      "source_commit": "f476c5e16f032eb427e3504997d6e33b5a500d9b",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "93971d985c9955e44bed228538ae7a29651de66e4a727cc0d966a537244c4375",
+          "sha256": "d6a42888b9160ba8155ca3e3e0226f4fdb7d5ff30eb38bb70d4e23446ab1bca3"
+        },
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": null,
+          "sha256": "f4d1eb0185815f2b1175ab6bef31c97671f9e8646355b528835ba2df22c8b4ee"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "781f87328a41406f44e503216c69b989e19b2425dec9d3a8a87f7ed8b1ef6e9c",
+          "sha256": "441faf86a16fe4be7a0a383953184969b2092ef2c2076dd61940f228f28a1331"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "d7e69440ddef0f10296acab9d7cbee8311a7ca397e1d41eca6e29f2af31294fe",
+          "sha256": "3a56f1e91a91b00ce2325ff616d1efbc9216e74e9d9e259f974401449f07bffa"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "4ffdf1bee78e15a3fcb30cc6e2a588c581a9ed268ac2cccbfbdce49a061a03d1",
+          "sha256": "e4f933f2f69051260f3cc4de91e9dcde56d25c8843256066c46aca18fbc0f275"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": null,
+          "sha256": "9a783c0a90489923109a3447b3d4a73181a57c46226ddbbf41c3efb966c737c2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "8db01fca013cda3c7c8aa8fb29fa8757685d7d54960afc8c8fc104cf9ac765fc",
+          "sha256": "a9373e15463748ef125d656683c000b935bb053c5082d45b11c1bf33d6c56364"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "4fbdfd6e9624e46fff80cec0260b1e3f0dcda75ae03805acbd513d50dee506c5",
+          "sha256": "fcac362aa22f57234fcce2b54f69df862af063fd5ddc7ef463449d004d564dcd"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "9c75ea59bd7455af320432a47081465e3224150fc285fc3b2df87433e21ef23c",
+          "sha256": "93240f2b3a2616ff5a4e220bb0bded6f29d63e6351b8274b809e5864a0499d37"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "88b7d5e026f0e3834b993e7217217217a3dd65815e17ab88d1b2aca50c190d94",
+          "sha256": "dbe9530674201cb3de7d85e0669157f4cf0f13b80ac513c2612d977d799d56cb"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "affa1f0a0e5d3f14865734f3977b9d741459271b03ea5e9305597b227547ce15",
+          "sha256": "394b42274f7042179dff0251248bf3bf84d72ff8119c3ad16161922047675e76"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "d63b058da48bb41aa7c1e6ca8c8d9127763a8d22dbcf8d1229fc109e6d9f33e0",
+          "sha256": "ef06019f19c1497d5d3776fc11bce619bafa812643b01d68b34e81dda09321fb"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "before_sha256": null,
+          "sha256": "142b81ef29409e1ae55e49f10749a38b80ca0ab13a3cb7aed643d46f3bfcecf1"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "592341deb7904c352edc7c21bc7ff559277dbf4a1daf785f967189e53807d2d3",
+          "sha256": "1f7441ec32cea28629a108c6cf72fb039c79d86f97347555dfa12a4f73a00ec1"
+        },
+        {
+          "path": "server/tests/ui/assistant-private-workspace.test.mjs",
+          "before_sha256": "d429fa0e2449108c5f5f080c946677e04a754a708f2060884f873e355ccfd183",
+          "sha256": "b9d4bef39fb260204b7b63aba8631b6023d1d0490b6fd6746492785a814be683"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b07264805e167d6cd2e34899a4a4e9d57245263bb0e9060b519a0f1840ba9dcd",
+          "sha256": "dee71d8935fb03bc21e89bdf93eb18bf4859100eba9f331e397d45b17707add1"
+        }
+      ],
+      "routes_added": true,
+      "search_versions_added": [
+        4
+      ],
+      "schema_changed": false,
+      "default_enabled": false,
+      "client_ui_enabled": false,
+      "semantic_quality_qualified": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "apk_published": false
+    },
+    {
+      "feature": "compile-legacy-client-scene-refusal-regressions-with-junit",
+      "source_commit": "6e1a16ddedcc9b7754626e446c056a2f703f6874",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "d6a42888b9160ba8155ca3e3e0226f4fdb7d5ff30eb38bb70d4e23446ab1bca3",
+          "sha256": "85b1e8f9d8b7eb3dccbddda3b482195490b4ead134ce8d566686ab565a1fcff3"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "require-resolved-search-scope-before-scene-turn-lease",
+      "source_commit": "e440c251a9b6303a1e0ea161fba123659bc962be",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "f4d1eb0185815f2b1175ab6bef31c97671f9e8646355b528835ba2df22c8b4ee",
+          "sha256": "28583ded95a99311e94c6ee7fda8fc81c3bcace39a8ebfc5100590b6f71982fc"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "a9373e15463748ef125d656683c000b935bb053c5082d45b11c1bf33d6c56364",
+          "sha256": "269ed187bfd1a57b2a486709c7768d6ac140c78bb6a8775f08c50a5426788263"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "fcac362aa22f57234fcce2b54f69df862af063fd5ddc7ef463449d004d564dcd",
+          "sha256": "4360cb62af6cb35623b492fc216c0e9775d518e0c1d40fae8f1c46b985a296ed"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "before_sha256": "142b81ef29409e1ae55e49f10749a38b80ca0ab13a3cb7aed643d46f3bfcecf1",
+          "sha256": "e35a7539513e43f5e47191099416f45d34d3a4e4270e1451ac7a3ba852f9ef26"
+        }
+      ],
+      "unresolved_conditions_preserved": true,
+      "admission_is_revision_atomic": true,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "explicit-bilingual-web-scene-search-with-safe-recovery",
+      "source_commit": "93c80aab3e52612d39974df9f82f13f0b8b7bc63",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "28583ded95a99311e94c6ee7fda8fc81c3bcace39a8ebfc5100590b6f71982fc",
+          "sha256": "98eac49306fd0601bc61c30e6bdaaf5e826edaa221e51f08d8d7fcfc29448263"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "441faf86a16fe4be7a0a383953184969b2092ef2c2076dd61940f228f28a1331",
+          "sha256": "9109c85ba7ee52ae6fb48b92f71ca8cc6fbb15d2d0404c1f950f3d23cda882c7"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "3a56f1e91a91b00ce2325ff616d1efbc9216e74e9d9e259f974401449f07bffa",
+          "sha256": "a0b33446a87b46784129ef0474a98896d62f2b54ad5c2c3083f5ecbf903b4565"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "8f6fe01dee68b6b4d6a206ba7e4e21bbc9f8e7127cfa5f05f075426d5fb843ad",
+          "sha256": "83f0ff6c1f527d87fbf850ea0fc9bad84e01e6357b5c8bd4bd24ee3fa95c3808"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "04ff4851b4eaaf95b9a1208dc6f1f7c371cbcde8bb5936b79939817913802063",
+          "sha256": "446e64c2fcc85d82c0e79d3dba0e9cc745152f6a423aa6043ff46ff5edc066aa"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "8728d2adb474c96c9a8996f5e6178554876faceda1883c4977c5a9518a70b118",
+          "sha256": "9f41b77309bf122b192c55c0f77a8c704f94068a0e927bfae758e82b82abdb7c"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9cdafe229b1f8e8c45fab356cef05893de7d240be6ae896c60feb66627c745af",
+          "sha256": "0f3b13860701a69a146b86fae976f7394179c68622b0540dfc750d198c3c9465"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "dca56a37bb59eb9980fa6d86b5e206fa9346689d9dcade082c9e08e9a726c900",
+          "sha256": "97e692d1228fd3cf70ac1c7c7e6b27110bf060ff93b1979e9e338f73a60628f9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f4d413737d620c412ec319f222fb443d1332dfcd197bd8fd30f383e5a64e3b81"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": null,
+          "sha256": "2742fcecd6e2cb0d8d06987eaf26b57cfadb4363ab5d646bce5f8a6d35e58530"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dee71d8935fb03bc21e89bdf93eb18bf4859100eba9f331e397d45b17707add1",
+          "sha256": "cf039beb3888903cea076ef11d088e0dd7ba9111c304a6952eb101cacdcefa30"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }

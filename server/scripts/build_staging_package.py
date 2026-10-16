@@ -28,6 +28,7 @@ FILES = (
     'backend/app/access/annotations.py',
     'backend/app/access/assistant.py',
     'backend/app/access/assistant_search.py',
+    'backend/app/access/assistant_scene_search.py',
     'backend/app/access/assistant_query_plan.py',
     'backend/app/access/search_readiness.py',
     'backend/app/access/search_refinement.py',

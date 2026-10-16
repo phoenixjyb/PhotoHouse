@@ -56,7 +56,9 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.media_runtime)
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
-                self.assertEqual(len(main.app.routes), 168)
+                self.assertIsNone(main.app.state.semantic_search_runtime)
+                self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
+                self.assertEqual(len(main.app.routes), 169)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -170,6 +172,7 @@ class ClosedApplicationTests(unittest.TestCase):
         # Workspace history/preferences are the explicitly reviewed additive v1 surface.
         expected |= {
             ('GET', '/assistant/workspace/v1/capabilities'),
+            ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
@@ -197,7 +200,7 @@ class ClosedApplicationTests(unittest.TestCase):
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 168)
+        self.assertEqual(len(actual), 169)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

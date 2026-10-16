@@ -250,6 +250,9 @@ def _filters(value):
 def _context_value(value, library_id):
     if value is None:
         return None
+    if type(value) is dict and value.get('search_version') == 4:
+        from .assistant_scene_search import context_value
+        return context_value(value, library_id)
     fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
     if (type(value) is not dict or set(value) - {'search_version'} != fields or value['library_id'] != library_id or
             ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] not in (2, 3)))):
@@ -283,12 +286,15 @@ def _result_summary(value, library_id):
               'has_more', 'effect'}
     if type(value) is not dict or set(value) - {'pending_intent'} != fields:
         raise ValueError('Invalid result summary')
-    if type(value['version']) is not int or value['version'] not in (1, 2, 3):
+    if type(value['version']) is not int or value['version'] not in (1, 2, 3, 4):
         raise ValueError('Invalid result summary')
     if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
         raise ValueError('Invalid result summary')
     reply = _text(value['reply'], MAX_REPLY_BYTES)
     ctx = _context_value(value['context'], library_id)
+    if value['version'] == 4 and (value['kind'] != 'results' or ctx is None or
+                                  value['effect'] is not None or 'pending_intent' in value):
+        raise ValueError('Invalid scene result summary')
     if ctx is not None and ctx.get('search_version', 1) != value['version']:
         raise ValueError('Invalid result summary')
     filters = None if value['filters'] is None else _filters(value['filters'])
@@ -809,8 +815,9 @@ class AssistantWorkspaceStore:
         return row
 
     def begin_turn(self, account_id, library_id, thread_id, request_id,
-                   expected_revision, input_text, *, existing_only=False):
-        if type(existing_only) is not bool:
+                   expected_revision, input_text, *, existing_only=False,
+                   require_resolved_scope=False):
+        if type(existing_only) is not bool or type(require_resolved_scope) is not bool:
             raise ValueError('Invalid existing request lookup')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
@@ -845,6 +852,23 @@ class AssistantWorkspaceStore:
                 raise WorkspaceStoreMissing()
             if thread['revision'] != expected_revision:
                 raise WorkspaceStoreConflict()
+            if require_resolved_scope:
+                # A clarification can retain an older visible result without
+                # resolving the user's new hard conditions. Admit scene ranking
+                # only from resolved results at this exact CAS revision. This
+                # read and the lease acquisition share the same transaction;
+                # failed attempts cannot masquerade as completed scope reviews.
+                previous = db.execute('''SELECT result_summary FROM turn_requests
+                    WHERE thread_id=? AND account_id=? AND library_id=? AND revision=?
+                    AND status='completed' AND expires_at>?''',
+                    (thread_id, account_id, library_id, expected_revision, now)).fetchone()
+                resolved = (None if previous is None else
+                            _stored_summary(previous['result_summary'], library_id))
+                if (resolved is None or resolved['kind'] != 'results' or
+                        resolved['version'] not in (2, 3, 4) or resolved['context'] is None or
+                        'pending_intent' in resolved or resolved['context'] !=
+                        self._context_for(db, thread_id, account_id, library_id, now)):
+                    raise WorkspaceStoreConflict()
             pending = db.execute("SELECT * FROM turn_requests WHERE thread_id=? AND status='pending'",
                                  (thread_id,)).fetchone()
             if pending is not None:
