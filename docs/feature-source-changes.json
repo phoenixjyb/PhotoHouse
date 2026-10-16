@@ -21477,6 +21477,36 @@
       "application_behavior_changed": false,
       "runtime_changed": false,
       "apk_published": false
+    },
+    {
+      "feature": "phone-voice-reading-truthful-guidance",
+      "source_commit": "b7c504d0ded93984c5c5c4a11cae256acd50c844",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantMemoryOpeningUiTest.kt",
+          "before_sha256": "839f7a9e534902942c1da8e69de947415062b199842cecb87ca3e0c4950f9f44",
+          "sha256": "abd9d3cf1abb4208103ce0574a1e10b3dd19292c71edd60ef1dbe5ef1e3e212a"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScreen.kt",
+          "before_sha256": "dd7c9106ef225ecc29804c61d2da68fca256336791b3438b3aa84269a3af12d4",
+          "sha256": "860814e8c4cb8501c029ab84d83bed748add30ac9372ac20366a54a621c61c4b"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionPanel.kt",
+          "before_sha256": "b93e74c15f4a1dc2e07b464de1982b4707d53db6ce9c001d4c779d2f0b1859cd",
+          "sha256": "bf38913e3ff1caefca53a188518e413679301a04865cded2b42480b27974cf06"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/PrivateAssistantPanel.kt",
+          "before_sha256": "267e17d76fbe5a1c7891bfcc4d0caf8269f478e2832d115bc3799403d6f6bd1d",
+          "sha256": "5025822c3707f0fe0835d51e1c1bf0b912d44e5f80d0ed8bc666bbb1f3c34499"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "apk_published": false
     }
   ]
 }
