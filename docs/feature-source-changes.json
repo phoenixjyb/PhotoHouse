@@ -21665,6 +21665,43 @@
       "models_activated": false,
       "household_data_included": false,
       "translation_quality_qualified": false
+    },
+    {
+      "feature": "phone-v67-voice-reading-release-candidate",
+      "source_commit": "3810eaf69b16badacce43d85de4aae004a3f351d",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "eb16b5454da582e79356b78b30d90586d31b524fbf24724caf79eb993771d8ca",
+          "sha256": "d94cf6aceb420b8d691140d273851108959bc1b07c8f18ee180edd2be4ec3162"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "eed5727f7cc33727269f147daaaaf8d88e7b810a25f347b320b2989fbb5fcafc"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "2b525c04e3648ec0fc992c87d88e50fdc43c7124a18bfd76b00a663335a48f5a"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "d71144b8c769cedd554d680c9cd032a8aff8a8a8334feb3c936fefb30936ae58",
+          "sha256": "4c76b9af0d3be18a3c3ce08865f7b3e406a20741f9eaccb3d327576ae2036cfc"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "5ed5298f79faab78a787b0e508d6c58f3a3f357b31aa3dffa02435e5a70be302",
+          "sha256": "255da8cb493fde480aeaedb0951f1ec10eed6bafb849013ce3dc2b86f694ed7c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "models_activated": false,
+      "apk_signed": false,
+      "apk_published": false
     }
   ]
 }

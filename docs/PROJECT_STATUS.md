@@ -68,6 +68,13 @@ change the frozen v66 release or claim a new signed APK/Windows delivery.
 
 ## Delivery and acceptance
 
+Release preparation now targets **phone v67 / `0.67-voice-reading`** and a
+paired API/Web candidate from the merged source. The [v67 candidate record](../clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md)
+and [Chinese trial guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md)
+describe voice continuation, exact artifact checks and the separate delivery
+gates. A version bump is not an OTA publication or live Web switch. The latest
+verified delivery rows below remain historical runtime evidence until refreshed.
+
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
 | API/Web | Live source `f476c5e`; bilingual search clarification is deployed; Windows postflight matched the active API task/configuration/process and listener binding, with `update_root` unchanged; v66 did not restart the API | Real owner/member search, voice and UX acceptance |
