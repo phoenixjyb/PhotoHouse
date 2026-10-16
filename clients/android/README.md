@@ -2,16 +2,18 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v68 / `0.68-voice-recovery`**. Its signed
+The phone release baseline is **v69 / `0.69-upload-recovery`**. Its signed
 artifact, native/full HTTPS readback and source evidence are in the
-[v68 release record](docs/PHONE_V68_RELEASE_2026-10-16.md). Recognition, request
-and playback failures have distinct Chinese/English recovery guidance; existing
-v67 spoken Pause/End and saved-section voice continuation remain available.
-Original certificate, icon and connection settings are retained.
+[v69 release record](docs/PHONE_V69_RELEASE_2026-10-16.md). Folder/file picker
+results wait through covered session revalidation; an OFFLINE session GET has
+one bounded retry, and batch/network review remains explicit. Original
+certificate, icon and connection settings are retained. Earlier voice recovery,
+spoken Pause/End and saved-section continuation remain available.
 
 Windows and an independent Mac verified the complete OTA APK. No physical
-phone was installed in the v68 delivery; real ASR/TTS and family acceptance
-remain open. Use the [Chinese v68 trial guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
+phone was installed in the v69 delivery; actual folder upload, ASR/TTS and family
+acceptance remain open. Use the [Chinese v69 upload guide](docs/PHONE_V69_TEST_GUIDE_ZH.md)
+and [retained voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
 TV OTA remains v30; v31 source is unpublished. See the dated
 [project status](../../docs/PROJECT_STATUS.md) for delivery/runtime evidence.
 
@@ -118,12 +120,12 @@ signing, OTA delivery and family acceptance remain separate gates.
 
 Source checks, debug APK assembly, a signed release, OTA publication,
 installation, and family/device acceptance are separate evidence. The
-[v68 release record](docs/PHONE_V68_RELEASE_2026-10-16.md) documents the signed
+[v69 release record](docs/PHONE_V69_RELEASE_2026-10-16.md) documents the signed
 phone APK, native Windows and independent Mac full HTTPS readback, and preserved
-API/TV bindings. No physical v68 installation occurred in that delivery. The
+API/TV bindings. No physical v69 installation occurred in that delivery. The
 earlier v67 Samsung install/launch remains historical evidence. Use the
-[Chinese v68 guide](docs/PHONE_V68_TEST_GUIDE_ZH.md) for recovery, continuation
-and interruption checks, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
+[Chinese v69 guide](docs/PHONE_V69_TEST_GUIDE_ZH.md) for folder upload,
+the [v68 voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md) for retained recovery/continuation checks, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
 for retained proposal review and explicit saving. TV OTA remains v30; physical
 TV/projector acceptance remains open. Do not treat a local check or APK assembly
 as release signing, installation or family acceptance.

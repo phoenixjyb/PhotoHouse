@@ -14,7 +14,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |
 | Backend/Web entry | [Server README](../server/README.md), [Web development](WEB_DEVELOPMENT.md) |
 | Phone/TV entry | [Android README](../clients/android/README.md) |
-| Family trial | [Delivered v67 voice guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md), [v67 release](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
+| Family trial | [Delivered v69 upload guide](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md), [v69 release](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md), [retained voice guide](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
 | Private manifest and model quality gates | [Deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md), [qualification](MODEL_QUALIFICATION.md) |
@@ -40,7 +40,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest delivery: [phone v64 and API/Web story review](../clients/android/docs/PHONE_V64_RELEASE_2026-10-15.md).
+Latest phone delivery: [v69 folder-upload recovery](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md).
+API/Web delivery is tracked separately in [Project Status](PROJECT_STATUS.md).
 
 Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
 [v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).

@@ -1,8 +1,8 @@
 # Phone v69 candidate: folder selection and upload recovery
 
 Version **69 / `0.69-upload-recovery`**, prepared from the upload recovery branch.
-This document describes source scope; it is not a signing or publication receipt.
-The installed/published v68 does not contain these changes.
+Historical preparation record. v69 has since been signed and published; see the
+[release record](PHONE_V69_RELEASE_2026-10-16.md). Installed v68 lacks these fixes.
 
 ## What changes
 
@@ -28,10 +28,10 @@ covers the same pending-selection effect used by actual picker callbacks, plus
 Chinese/English review states at 150% text size. These checks do not exercise a
 Samsung document provider or establish the exact transport cause of the report.
 
-Prepare the configured unsigned APK from a clean pinned source, verify its native
-version, all embedded settings and original icon, then obtain operation authority
+The preparation plan was to build the configured unsigned APK from a clean pinned
+source, verify its native version, all embedded settings and original icon, then obtain operation authority
 for original-certificate signing and Windows phone OTA publication. Full HTTPS
-readback and a real Samsung folder upload are separate delivery/acceptance gates.
+readback has since passed; a real Samsung folder upload remains unconfirmed.
 Do not use a physical phone for emulator QA.
 
 ## Samsung acceptance after publication
