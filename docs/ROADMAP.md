@@ -1,69 +1,48 @@
 # Product roadmap
 
-Active priorities after the **October 15 v64 delivery**. [Features](FEATURES.md)
-lists existing capabilities, [Project Status](PROJECT_STATUS.md) distinguishes
-live gates and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
-records maintainability findings. Dated history is preserved below.
+Active priorities after the **October 16 phone v65 delivery**. [Features](FEATURES.md)
+lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
+release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
+records maintainability findings. Dated implementation and delivery history is
+preserved below.
 
-October 16 [native storytelling findings](STORY_MODEL_TRIAL_2026-10-16.md) now
-include an initial valid synthetic 9B capture with failed natural helper drain,
-then a separately authorized revised capture passing declared owned-job teardown.
-The revised output has zero follow-up questions; human quality and remaining
-cases are unreviewed. Cold canary duration is still 80.422 seconds. Next qualify
-broader source fidelity and latency; do not enable generation from these samples.
+PR #47 delivered the Android chapter family-memory chooser in phone v65. PR #48
+merged bilingual search clarification, and API/Web source
+`f476c5e16f032eb427e3504997d6e33b5a500d9b` is live. PR #49 delivered phone v65
+(`0.65-chapter-memory`) with the original signing certificate and icon. All five
+CI jobs passed. Separate release verification published the signed APK and
+confirmed it through native and independent full-stream HTTPS readback. Physical
+phone installation and family acceptance remain open. TV OTA
+remains v30, with v31 source unpublished. See the [v65 release record](../clients/android/docs/PHONE_V65_RELEASE_2026-10-16.md).
 
-The next [Web chapter source chooser](CHAPTER_FAMILY_MEMORY_CHOOSER.md) closes a
-manual collaboration gap: editors can select an existing accepted, consented
-family contribution, review the linked original and explicitly save its chapter
-reference. This uses metadata-only choices and the current save/schema contract.
-Web source is merged through PR #30. Android chooser parity is the current
-following slice; local UI/state qualification and paired delivery remain distinct.
+The phone story-editor implementation now adds [reviewed adoption of a chapter
+proposal](PHONE_STORY_PROPOSAL_ADOPTION.md) into an unsaved existing story. Its 74 focused JVM
+tests, build/lint and eight explicit QA-emulator journeys passed, with inspected
+Chinese/English 150% renders. It is following source, outside v65; later APK
+delivery and physical family acceptance remain separate.
+Provider/model story generation remains off. The synthetic 9B cold-capture
+sample took 80.422 seconds and has not had human quality review; see the
+[story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
-## Current priority: make natural-language search useful
+## Current priority: validate delivered family search and story linking
 
-The owner's October 15 feedback makes retrieval a priority. Search redesign and
-guided story creation now proceed in separate source worktrees. Fix ordinary
-query forms, connect existing text/confirmed people to scoped retrieval, restore
-useful video-date evidence and then qualify typed local language understanding
-and relevance ranking. See the [search diagnosis and implementation plan](ASSISTANT_SEARCH_REVIEW_2026-10-15.md).
-The parser/coverage-message patch and completed negotiated backend are deployed
-with v61; negotiated Web/phone search v2 is now delivered in v62. Family relevance qualification remains open;
-the broader sections below retain the backlog.
-
-The [first negotiated text/person API slice](ASSISTANT_JOINT_SEARCH_V2.md) now
-joins current photo notes/captions and reviewed identities in a protected,
-source-bound request-time projection. The local Web/phone integration now shows
-the chosen perspective, interpreted conditions and match reasons, and preserves
-the original search version through private-workspace recovery. The current
-qualification and delivery boundaries are recorded in [Project Status](PROJECT_STATUS.md).
-The next local source round adds a [private readiness/relevance runner](SEARCH_READINESS_AND_RELEVANCE.md)
-and conservative explicit QuickTime capture-date propagation for newly processed
-videos. Next use the read-only report on the data-owning host, admit a reviewed
-person/text index for a real library and qualify a small owner-reviewed query
-set. Prepare a separately approved historical date repair only after measuring
-the missing-date cohort. Then improve local semantic understanding/ranking
-against those cases. Source checks and synthetic results do not establish
-real-library readiness or relevance. Private kinship activation still requires
-verified account/library/person bindings; future-account approvals grant no
-access until those bindings are confirmed.
-
-The next acceptance set should cover a named person and the equivalent relative
-chain, two people together with a scene, a follow-up year/media restriction,
-opening the second current result, short names overlapping place words, unknown
-dates, no matches and an account without kinship permission. Keep household
-queries and relevance judgments in the private operator record. Record expected
-people and hard filters, top-result relevance, missing-source explanations and
-observed latency separately; improve
-ranking only after incorrect identity/date/filter behavior is resolved.
+Run owner/member acceptance journeys for the delivered bilingual search
+clarification and v65 chapter-source chooser on an installed physical phone.
+After a later APK release, add proposal adoption to that trial. Confirm source
+attribution, explicit transcript/original review, unsaved link changes, save and
+reopen, and behavior at large text. Keep search relevance, physical interaction
+and family acceptance separate from CI, APK and HTTPS evidence. Do not infer
+family acceptance from publication or emulator journeys.
 
 ## 1. Accept the delivered experience
 
-Run the [v61 guided-story trial](../clients/android/docs/PHONE_V61_RELEASE_2026-10-15.md),
-then the still-relevant [voice/reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
-with owner and member accounts: fresh saved-story search, opening the right card,
-reading its saved sections, actual playback before Continue/relistening, Pause/End,
-account/library change and recovery. Complete TV v30's physical named-library and playback
-check when the desktop/projector is available.
+Use the [v65 chapter-source guide](../clients/android/docs/PHONE_V65_TEST_GUIDE_ZH.md)
+with owner and member accounts: choose and review an eligible source, preserve
+unsaved links, save and reopen, remove a link, and confirm the original record
+remains. Also run the still-relevant [voice/reading trial](../clients/android/docs/PHONE_V60_TEST_GUIDE_ZH.md)
+for saved-section playback, Pause/End, account/library change and recovery.
+Complete TV v30's physical named-library and playback check when the
+desktop/projector is available.
 
 **Exit:** device version and scenario-specific observations/receipts, including
 Chinese clarity and large-text/remote usability. Source/emulator results and

@@ -332,6 +332,8 @@ data class GroupedStoryCreationState(
     val relatedPreviews: Map<String, ByteArray> = emptyMap(), val relatedPreviewBusy: Boolean = false,
     val reviewPreviews: Map<String, ByteArray> = emptyMap(), val reviewPreviewsBusy: Boolean = false,
     val isSavedEdit: Boolean = false, val savedEditStoryId: String? = null, val savedEditRequestId: Long = 0,
+    val proposalAdoption: StoryProposalAdoptionDraft? = null,
+    val proposalReaderScopeId: Long? = null, val proposalJob: MemoryJob? = null,
     val problem: LiveProblem? = null,
 )
 data class LiveState(
@@ -1009,6 +1011,50 @@ class ConnectedStore(
         return true
     }
 
+    /** A proposal can only enter a clean, current reader's unsaved editor after explicit selection. */
+    fun canAdoptSavedStoryProposal(
+        readerScopeId: Long, jobId: String, selectedChapterIds: List<String>, adoptTitle: Boolean,
+    ): Boolean = eligibleSavedStoryProposal(readerScopeId, jobId, selectedChapterIds, adoptTitle) != null
+
+    fun beginSavedStoryProposalEdit(
+        readerScopeId: Long, jobId: String, selectedChapterIds: List<String>, adoptTitle: Boolean,
+    ): Boolean {
+        val (draft, job) = eligibleSavedStoryProposal(readerScopeId, jobId, selectedChapterIds, adoptTitle) ?: return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val readerEpoch = savedMemoryReaderEpoch
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(
+            checking = true, isSavedEdit = true, savedEditStoryId = draft.storyId, savedEditRequestId = request,
+            proposalAdoption = draft, proposalReaderScopeId = readerScopeId, proposalJob = job))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, draft.libraryId, draft.storyId,
+            draft.revision, readerEpoch, request)
+        return true
+    }
+
+    private fun eligibleSavedStoryProposal(
+        readerScopeId: Long, jobId: String, selectedChapterIds: List<String>, adoptTitle: Boolean,
+    ): Pair<StoryProposalAdoptionDraft, MemoryJob>? {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return null
+        val story = reading.detail ?: return null
+        val references = reading.contributionReferences ?: return null
+        val community = reading.community ?: return null
+        if (!groupedStoryCreationAvailable || api !is StoryWorkspaceApi || memoryCommunity == null ||
+            !allowed() || live.busy || coolingDown() || reading.library != live.library ||
+            reading.detailBusy || reading.contributionReferencesBusy || reading.contributionReferencesUnavailable ||
+            savedStoryReaderSwitchBlocked(reading) || live.groupedStoryCreation != null || live.memoryBooks != null ||
+            community.readerScopeId != readerScopeId || community.storyId != story.id) return null
+        val job = currentSavedStoryProposalJob(community, jobId) ?: return null
+        val draft = storyProposalAdoptionDraft(story, references, job, selectedChapterIds, adoptTitle) ?: return null
+        return draft to job
+    }
+
+    private fun currentSavedStoryProposalJob(community: MemoryCommunityStoryState, jobId: String): MemoryJob? =
+        listOfNotNull(community.narrativeJob?.takeIf { it.kind == "narrative" },
+            community.job?.takeIf { it.kind == "chat" }).filter { it.id == jobId }.singleOrNull()
+
     /** Retries a fresh detail/link read after an edit entry failure. */
     fun retrySavedGroupedStoryEdit(): Boolean {
         val creation = state.value.groupedStoryCreation ?: return false
@@ -1050,6 +1096,10 @@ class ConnectedStore(
             maxOf(story.revision, editorBaseRevision), readerEpoch, request)
         return true
     }
+
+    private fun sameStoryProposalJob(current: MemoryJob, expected: MemoryJob?): Boolean = expected != null &&
+        current.id == expected.id && current.kind == expected.kind && current.state == "ready" &&
+        current.needsReview && current.baseRevision == expected.baseRevision && current.result == expected.result
 
     private fun completeContributionReferences(
         story: SavedMemoryStory,
@@ -1127,9 +1177,13 @@ class ConnectedStore(
         readerEpoch: Long,
         request: Long,
     ) {
-        val preservedEditor = state.value.groupedStoryCreation?.takeIf {
+        val entry = state.value.groupedStoryCreation?.takeIf {
             it.isSavedEdit && it.savedEditStoryId == storyId && it.savedEditRequestId == request
-        }?.editor
+        }
+        val preservedEditor = entry?.editor
+        val proposal = entry?.proposalAdoption
+        val proposalJob = entry?.proposalJob
+        val proposalReaderScope = entry?.proposalReaderScopeId
         launch { generation ->
             fun valid(expectedEditor: StoryWorkspaceStore? = preservedEditor): Boolean {
                 val live = state.value
@@ -1142,7 +1196,22 @@ class ConnectedStore(
                     creation.isSavedEdit && creation.savedEditStoryId == storyId && creation.savedEditRequestId == request &&
                     creation.editor === expectedEditor
             }
+            fun proposalCurrent(): Boolean {
+                if (proposal == null) return true
+                val reading = state.value.savedMemoryStories ?: return false
+                val community = reading.community ?: return false
+                val localStory = reading.detail ?: return false
+                val localReferences = reading.contributionReferences ?: return false
+                val currentJob = currentSavedStoryProposalJob(community, proposal.jobId) ?: return false
+                return community.readerScopeId == proposalReaderScope && community.storyId == storyId &&
+                    !reading.detailBusy && !reading.contributionReferencesBusy &&
+                    !reading.contributionReferencesUnavailable && !savedStoryReaderSwitchBlocked(reading) &&
+                    sameStoryProposalJob(currentJob, proposalJob) &&
+                    storyProposalAdoptionDraft(localStory, localReferences, currentJob,
+                        proposal.chapters.map { it.id }, proposal.title != null) == proposal
+            }
             try {
+                validResponse(proposalCurrent())
                 val sourceCapabilities = try {
                     val bytes = api.sourceCapabilities(credential, library)
                     try { ProtectedStoryWorkspaceWire.decodeSourceCapabilities(bytes) } finally { bytes.fill(0) }
@@ -1158,6 +1227,15 @@ class ConnectedStore(
                     credential, library, storyId, fresh.revision, fresh.chapters.map { it.id })
                 if (!valid()) return@launch
                 validResponse(completeContributionReferences(fresh, references))
+                if (proposal != null) {
+                    validResponse(proposalCurrent())
+                    val repository = memoryCommunity ?: error("Proposal repository unavailable")
+                    val freshJob = repository.job(proposal.jobId) { valid() }
+                    if (!valid()) return@launch
+                    validResponse(proposalCurrent() && sameStoryProposalJob(freshJob, proposalJob) &&
+                        storyProposalAdoptionDraft(fresh, references, freshJob,
+                            proposal.chapters.map { it.id }, proposal.title != null) == proposal)
+                }
                 lateinit var editor: StoryWorkspaceStore
                 val binding = {
                     val live = state.value
@@ -1191,7 +1269,8 @@ class ConnectedStore(
                             retry = { foreground() }
                         }
                     })
-                if (!editor.seedSavedStoryForEdit(fresh, references) || !valid()) {
+                if (!editor.seedSavedStoryForEdit(fresh, references) ||
+                    (proposal != null && !editor.applyReviewedStoryProposal(proposal)) || !valid()) {
                     editor.clear()
                     if (valid()) {
                         val currentCreation = state.value.groupedStoryCreation ?: return@launch
@@ -1203,7 +1282,8 @@ class ConnectedStore(
                 val currentCreation = state.value.groupedStoryCreation ?: return@launch
                 preservedEditor?.clear()
                 mutable.value = state.value.copy(groupedStoryCreation = currentCreation.copy(
-                    checking = false, canCreate = true, editor = editor, problem = null))
+                    checking = false, canCreate = true, editor = editor, problem = null,
+                    proposalAdoption = null, proposalReaderScopeId = null, proposalJob = null))
             } catch (failure: CancellationException) { throw failure }
             catch (failure: Exception) {
                 if (!valid()) return@launch

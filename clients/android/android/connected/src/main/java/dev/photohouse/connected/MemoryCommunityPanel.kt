@@ -918,6 +918,12 @@ private fun StoryChatPanel(
                     tagPrefix = "memory-chat-proposal-${job.id}", readerScopeId = readerScopeId,
                     story = detail.takeIf { it.id == community.storyId }, community = community,
                     job = job, proposal = proposal, bindOriginals = canBindOriginals, zh = zh,
+                    canAdopt = { chapterIds, adoptTitle ->
+                        store.canAdoptSavedStoryProposal(readerScopeId, job.id, chapterIds, adoptTitle)
+                    },
+                    onAdopt = { chapterIds, adoptTitle ->
+                        store.beginSavedStoryProposalEdit(readerScopeId, job.id, chapterIds, adoptTitle)
+                    },
                 )
                 Text(t("This AI proposal is for review only; it has not been applied or saved.",
                     "这份 AI 建议仅供核对，尚未应用或保存。"), modifier = Modifier.testTag("memory-chat-proposal-review-only"))
@@ -1426,7 +1432,13 @@ private fun NarrativePanel(store: ConnectedStore, reading: SavedMemoryStoriesRea
                 val bindOriginals = story != null && job.kind == "narrative" && job.state == "ready" &&
                     job.baseRevision == story.revision
                 StoryProposalReview("memory-narrative", community.readerScopeId, story, community, job, proposal,
-                    bindOriginals, zh)
+                    bindOriginals, zh,
+                    canAdopt = { chapterIds, adoptTitle ->
+                        store.canAdoptSavedStoryProposal(community.readerScopeId, job.id, chapterIds, adoptTitle)
+                    },
+                    onAdopt = { chapterIds, adoptTitle ->
+                        store.beginSavedStoryProposalEdit(community.readerScopeId, job.id, chapterIds, adoptTitle)
+                    })
                 Text(t("Review this proposal before any manual use. It has not been applied or saved.", "使用前请检查这份建议。它尚未应用或保存。"),
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.testTag("memory-narrative-review-only"))
@@ -1475,6 +1487,8 @@ internal fun StoryProposalReview(
     proposal: StoryProposal,
     bindOriginals: Boolean,
     zh: Boolean,
+    canAdopt: ((selectedChapterIds: List<String>, adoptTitle: Boolean) -> Boolean)? = null,
+    onAdopt: ((selectedChapterIds: List<String>, adoptTitle: Boolean) -> Boolean)? = null,
 ) {
     val t = { en: String, cn: String -> if (zh) cn else en }
     val boundStory = story?.takeIf {
@@ -1484,6 +1498,12 @@ internal fun StoryProposalReview(
         boundStory?.id, boundStory?.revision, job.id, job.kind, job.state, job.baseRevision,
         boundStory?.chapters, proposal.title, proposal.chapters, proposal.questions)
     var focusChangedOnly by remember(*scopeKeys) { mutableStateOf(false) }
+    var selectedChapterIds by remember(*scopeKeys) { mutableStateOf(emptySet<String>()) }
+    var adoptTitle by remember(*scopeKeys) { mutableStateOf(false) }
+    var adoptionAcknowledged by remember(*scopeKeys) { mutableStateOf(false) }
+    var adoptionRejected by remember(*scopeKeys) { mutableStateOf(false) }
+    val currentCanAdopt by rememberUpdatedState(canAdopt)
+    val currentOnAdopt by rememberUpdatedState(onAdopt)
     val originalChaptersById = boundStory?.chapters.orEmpty().groupBy { it.id }
     val proposalIdCounts = proposal.chapters.groupingBy { it.id }.eachCount()
     val originals = proposal.chapters.map { chapter ->
@@ -1501,6 +1521,12 @@ internal fun StoryProposalReview(
     val changedCount = comparisons.count { it == false }
     val sameCount = comparisons.count { it == true }
     val unavailableCount = comparisons.count { it == null }
+    val selectedIdsInProposalOrder = proposal.chapters.map { it.id }.distinct().filter { it in selectedChapterIds }
+    val adoptionAvailable = boundStory?.canEdit == true && job.kind in setOf("narrative", "chat") &&
+        currentCanAdopt != null && currentOnAdopt != null
+    val selectedProposalEligible = adoptionAvailable && selectedIdsInProposalOrder.isNotEmpty() &&
+        currentCanAdopt?.invoke(selectedIdsInProposalOrder, adoptTitle) == true
+    val adoptionEligible = selectedProposalEligible && adoptionAcknowledged
     Column(Modifier.fillMaxWidth().testTag("$tagPrefix-review"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(t("AI suggestion · review required", "AI 建议 · 待核对"),
             style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
@@ -1520,6 +1546,7 @@ internal fun StoryProposalReview(
         proposal.chapters.forEachIndexed { index, chapter ->
             val original = originals[index]
             val sameWording = comparisons[index] == true
+            val uniqueProposalChapter = proposalIdCounts[chapter.id] == 1
             var comparisonExpanded by remember(*scopeKeys, chapter.id) {
                 mutableStateOf(false)
             }
@@ -1530,6 +1557,32 @@ internal fun StoryProposalReview(
                 Text(original?.title ?: t("Suggested section ${index + 1}", "建议段落 ${index + 1}"),
                     style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif,
                     modifier = Modifier.testTag("$tagPrefix-chapter-title-$index"))
+                if (adoptionAvailable) {
+                    val selectable = uniqueProposalChapter && original != null
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("$tagPrefix-adopt-chapter-row-$index"),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = chapter.id in selectedChapterIds,
+                            enabled = selectable,
+                            onCheckedChange = { checked ->
+                                selectedChapterIds = if (checked) selectedChapterIds + chapter.id
+                                    else selectedChapterIds - chapter.id
+                                adoptionRejected = false
+                                adoptionAcknowledged = false
+                            },
+                            modifier = Modifier.testTag("$tagPrefix-adopt-chapter-$index"),
+                        )
+                        Text(
+                            t("Include this chapter", "采用本篇建议"),
+                            Modifier.weight(1f),
+                            color = if (selectable) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 if (sameWording && focusChangedOnly) {
                     Text(t("Wording matches the current story", "正文与当前故事相同"),
                         style = MaterialTheme.typography.bodySmall,
@@ -1580,6 +1633,66 @@ internal fun StoryProposalReview(
             questions.forEachIndexed { index, question ->
                 Text("• $question", modifier = Modifier.testTag("$tagPrefix-question-$index"))
             }
+        }
+        if (adoptionAvailable) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag("$tagPrefix-adopt-title-row"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = adoptTitle,
+                    onCheckedChange = { checked -> adoptTitle = checked; adoptionRejected = false; adoptionAcknowledged = false },
+                    modifier = Modifier.testTag("$tagPrefix-adopt-title"),
+                )
+                Text(t("Also use this suggested title", "同时采用建议标题"), Modifier.weight(1f))
+            }
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag("$tagPrefix-adopt-acknowledgment-row"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = adoptionAcknowledged,
+                    onCheckedChange = { checked -> adoptionAcknowledged = checked; adoptionRejected = false },
+                    modifier = Modifier.testTag("$tagPrefix-adopt-acknowledgment"),
+                )
+                Text(
+                    t("I reviewed the selected wording, references and questions.",
+                        "我已核对所选正文、来源和待确认问题。"),
+                    Modifier.weight(1f),
+                )
+            }
+            if (selectedIdsInProposalOrder.isNotEmpty() && !selectedProposalEligible) {
+                Text(
+                    t("Import is not ready. Finish any unsent memory or recording, check that the story is current and each source is linked to its chapter, or keep the existing title. Then review the proposal again.",
+                        "暂时无法导入。请先处理未发送的回忆或录音，核对故事是否为最新版本、来源是否已关联到对应篇章，或保留原有标题，再重新检查建议。"),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("$tagPrefix-adopt-source-warning"),
+                )
+            }
+            if (adoptionRejected) Text(
+                t("The story changed or this proposal is no longer eligible. Recheck the suggestions and sources before trying again.",
+                    "故事内容已变化，或这份建议已不符合采用条件。请重新核对建议与来源后再试。"),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("$tagPrefix-adopt-rejected"),
+            )
+            Button(
+                onClick = {
+                    val ids = selectedIdsInProposalOrder
+                    val stillEligible = currentCanAdopt?.invoke(ids, adoptTitle) == true
+                    val accepted = stillEligible && currentOnAdopt?.invoke(ids, adoptTitle) == true
+                    adoptionRejected = !accepted
+                },
+                enabled = adoptionEligible,
+                modifier = Modifier.fillMaxWidth().testTag("$tagPrefix-adopt-import"),
+            ) { Text(t("Import selected wording into an unsaved edit", "将所选建议导入未保存的编辑稿")) }
+            Text(
+                t("This opens an unsaved edit. Existing family source links stay attached to their chapters; nothing is saved until you review and save it.",
+                    "这会打开未保存的编辑稿。现有家人回忆来源仍关联在原篇章；核对并保存前不会写入。"),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("$tagPrefix-adopt-unsaved-note"),
+            )
         }
     }
 }

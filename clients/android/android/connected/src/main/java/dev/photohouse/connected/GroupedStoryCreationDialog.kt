@@ -91,12 +91,21 @@ internal fun GroupedStoryCreationDialog(store: ConnectedStore, creation: Grouped
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Header(flowTitle, t("Close", "关闭"), ::requestClose)
-                        Text(t("The saved story or its complete chapter memory links could not be verified. Retry before editing.",
-                            "无法核对已保存故事或完整的篇章回忆关联，请重试后再编辑。"), color = MaterialTheme.colorScheme.error)
+                        Text(
+                            if (creation.proposalAdoption != null) t(
+                                "This proposal could not be verified. Retry keeps your chapter and title choices. You can also close this draft and review the latest story and sources. No changes have been saved.",
+                                "暂时无法核对这份建议。重试会保留所选篇章和标题；也可以关闭后，重新查看最新故事与来源。尚未保存任何更改。",
+                            ) else t(
+                                "The saved story or its complete chapter memory links could not be verified. Retry before editing.",
+                                "无法核对已保存故事或完整的篇章回忆关联，请重试后再编辑。",
+                            ),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("saved-grouped-story-edit-error"),
+                        )
                         creation.problem?.let { Text(words.message(it.message), color = MaterialTheme.colorScheme.error) }
                         Button(onClick = store::retrySavedGroupedStoryEdit,
                             modifier = Modifier.fillMaxWidth().testTag("saved-grouped-story-edit-retry")) {
-                            Text(t("Retry", "重试"))
+                            Text(if (creation.proposalAdoption != null) t("Retry same proposal", "重试此建议") else t("Retry", "重试"))
                         }
                     }
                     creation.checking -> Column(
