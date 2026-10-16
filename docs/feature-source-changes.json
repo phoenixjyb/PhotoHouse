@@ -21702,6 +21702,59 @@
       "models_activated": false,
       "apk_signed": false,
       "apk_published": false
+    },
+    {
+      "feature": "phone-v67-delivery-and-native-web-qualification-record",
+      "source_commit": "2e218e5d20fa1e5ce77a875d52cd886cae98fdf4",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "before_sha256": "ca92e4469e371f834dabec73ee9af2699658e1434228e84296057f1466015c87",
+          "sha256": "0c5a237651c303863ab220f6b59acf3a9660ad7c1af3a8c0c0ae5e953ffbb5fb"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md",
+          "before_sha256": "eed5727f7cc33727269f147daaaaf8d88e7b810a25f347b320b2989fbb5fcafc",
+          "sha256": "2f8cb62ca8cd41c463d938a97245532d446b1716c1eed2282bef0a0b3905c45e"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "feae14bf313b18354825eb17fea9e791a472e4a5736d1541622b2ca15b7fb351"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md",
+          "before_sha256": "2b525c04e3648ec0fc992c87d88e50fdc43c7124a18bfd76b00a663335a48f5a",
+          "sha256": "7dda611c47e051ba23ee8c4daab213b7f7a4296451c9d1b3cfd7ac7667eac452"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "d796e2af0482d4023546caeec3ad3b05af8a41abe9f6ef68b798932c43981274",
+          "sha256": "89a4bc2a01034cbe61eb8e49d5f3787c2831f74073ce45e195f8e27ea9c29f4d"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "4c76b9af0d3be18a3c3ce08865f7b3e406a20741f9eaccb3d327576ae2036cfc",
+          "sha256": "b024375733b9c5e67b9216a2a7dc95b268276cbadf51584db506f52b537b3597"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "61f10dfc2e0e4defaa0f87479f0a824fe86fe3764eed55908d0de16f53b3dbfc",
+          "sha256": "f3f1cd96678626521744da2025ff08fa524737bb7f2857f4d9da6cbb5f59d102"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "255da8cb493fde480aeaedb0951f1ec10eed6bafb849013ce3dc2b86f694ed7c",
+          "sha256": "fc36903fbfabcdf4a407ecb59fff29227b10ce3c670dcf54965c83305900de87"
+        }
+      ],
+      "documentation_only": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "recorded_phone_ota_version": 67,
+      "recorded_api_candidate_only": true
     }
   ]
 }
