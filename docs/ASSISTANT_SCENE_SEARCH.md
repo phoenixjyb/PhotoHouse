@@ -232,3 +232,9 @@ The subsequent [offline local translation comparison](SEMANTIC_SCENE_TRANSLATION
 raised Chinese/mixed diagnostic top-one to 14/16 and 15/16 while retaining
 15/16 English. A translation meaning shift and the small public-image set
 keep general translation quality unqualified. No serving path or gate changed.
+
+The subsequent [reviewed scene-query provider](REVIEWED_SCENE_PROVIDER.md) adds
+an explicit serving adapter for exact private operator-reviewed mappings. It
+preserves original query identity under a distinct composite recipe, refuses
+unlisted mappings and retains existing scope, deadline and recovery contracts.
+This source support creates no real binding or live activation.

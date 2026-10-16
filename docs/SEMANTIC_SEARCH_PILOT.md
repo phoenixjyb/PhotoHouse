@@ -134,3 +134,8 @@ artifacts, verify the native runtime and resource bounds, and measure relevance
 against reviewed examples. Runtime configuration/client wiring and deployment
 remain separate explicit work. No family account or face binding is inferred
 or activated by this pilot.
+
+The optional [reviewed scene-query provider](REVIEWED_SCENE_PROVIDER.md) composes
+an exact private mapping with an existing qualified encoder under a distinct
+binding. It preserves original request identity and rejects unlisted inputs.
+Its source support does not change these default-off or qualification gates.

@@ -25,9 +25,9 @@ class ConfigurationError(ValueError):
         super().__init__('invalid_semantic_provider_configuration')
 
 
-def load_configuration(path, *, source_root=ROOT.parent, serving=False):
+def configuration_document(value, *, source_root=ROOT.parent, serving=False):
+    """Validate one already-read document; keep its caller's snapshot separate."""
     try:
-        value = _load_private_document(path, source_root=source_root)
         if (type(value) is not dict or set(value) != {'schema', 'architecture', 'checkpoint', 'bpe',
                 'device', 'package_versions', 'binding', 'port', 'credential_file'}
                 or value['schema'] != 'photohouse.semantic_text_provider.v1'
@@ -68,7 +68,8 @@ def load_configuration(path, *, source_root=ROOT.parent, serving=False):
             raise ConfigurationError()
         if serving and (binding is None or type(value['credential_file']) is not str):
             raise ConfigurationError()
-        value = dict(value, binding=binding)
+        value = dict(value, binding=binding, checkpoint=dict(value['checkpoint']),
+                     bpe=dict(value['bpe']), package_versions=dict(value['package_versions']))
         if serving:
             credential = _load_private_document(value['credential_file'], source_root=source_root)
             if (type(credential) is not dict or set(credential) != {'token'} or
@@ -77,6 +78,16 @@ def load_configuration(path, *, source_root=ROOT.parent, serving=False):
                 raise ConfigurationError()
             value['bearer_token'] = credential['token']
         return value
+    except ConfigurationError:
+        raise
+    except Exception:
+        raise ConfigurationError() from None
+
+
+def load_configuration(path, *, source_root=ROOT.parent, serving=False):
+    try:
+        document = _load_private_document(path, source_root=source_root)
+        return configuration_document(document, source_root=source_root, serving=serving)
     except ConfigurationError:
         raise
     except Exception:
