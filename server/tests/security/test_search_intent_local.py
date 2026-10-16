@@ -1,6 +1,6 @@
 """Offline transport and lifecycle checks for the opt-in local intent adapter."""
 import json
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 import sys
 import threading
@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from app.access.search_intent import IntentUnavailable, plan_query
 from app.access.search_intent_local import (INTENT_CONTEXT_TOKENS, LocalIntentPlanner,
                                             MAX_PROVIDER_BYTES)
+from app.access.search_intent_view import REDACTION_MARKER, scene_view
 
 
 def model_response(query, *, surface='red cake', alternatives=None, model='intent-local', done=True):
@@ -42,6 +43,43 @@ class LocalIntentPlannerTests(unittest.TestCase):
     def planner(self, handler, *, url='http://127.0.0.1:11434', **kwargs):
         return LocalIntentPlanner(url, 'intent-local',
                                   transport=httpx.MockTransport(handler), **kwargs)
+
+    def test_multiword_conversational_opener_keeps_spaces_between_boundaries(self):
+        for opener in ('I would like to see', 'I am looking for', 'Please show me'):
+            with self.subTest(opener=opener):
+                query = opener + ' photos red cake'
+                calls = []
+                def handler(request):
+                    calls.append(request)
+                    body = json.loads(request.content)
+                    visible = json.loads(body['messages'][1]['content'])['query']
+                    self.assertEqual(''.join(' ' if char == ' ' else REDACTION_MARKER
+                                             for char in opener), visible[:len(opener)])
+                    return model_chat_response(query)
+                result = plan_query(query, now=datetime(2032, 9, 14), previous_filters=None,
+                    entities={'binding': 'a' * 64, 'enabled': ['media'],
+                              'groups': {'people': [], 'tags': [], 'locations': []},
+                              'labels': [], 'ambiguous': False},
+                    planner=self.planner(handler, url='http://127.0.0.1:11434/api/chat'))
+                self.assertEqual('ready', result.status, result)
+                self.assertEqual({'media': ['image']},
+                                 {k: v for k, v in result.filters.items() if k != 'descriptive'})
+                self.assertEqual(1, len(calls))
+
+    def test_marker_utf8_expansion_preserves_the_original_codepoint_limit(self):
+        query = REDACTION_MARKER * 1000 + ' red cake'
+        calls = []
+        def handler(request):
+            calls.append(request)
+            self.assertGreater(len(query.encode('utf-8')), 1024)
+            return model_response(query)
+        planner = self.planner(handler)
+        proposal = planner.propose(query, '2032-09-14', False)
+        self.assertEqual(query.index('red cake'), proposal['concepts'][0]['start'])
+        self.assertEqual(1, len(calls))
+        with self.assertRaisesRegex(ValueError, '^Invalid intent input$'):
+            planner.propose(REDACTION_MARKER * 1025, '2032-09-14', False)
+        self.assertEqual(1, len(calls))
 
     def test_compiler_sends_only_visible_scenes_and_retains_original_hard_conditions(self):
         query = 'find videos of Mira on 2031-12-04 carrying a yellow suitcase containing "secret notes"'
@@ -75,6 +113,117 @@ class LocalIntentPlannerTests(unittest.TestCase):
                          {key: value for key, value in result.filters.items() if key != 'descriptive'})
         self.assertEqual(['carrying', 'yellow suitcase'],
                          [c['surface'] for c in result.filters['descriptive']['concepts']])
+
+    def test_bilingual_compiler_marks_redactions_and_retains_hard_conditions(self):
+        cases = (
+            {
+                'query': 'find videos of Mira on 2031-12-04 carrying a yellow suitcase containing "secret notes"',
+                'label': 'Mira', 'date': '2031-12-04', 'media': 'videos',
+                'literal': 'secret notes',
+                'clues': ('carrying', 'yellow suitcase'),
+                'alternatives': (['carrying', 'carried', '提着'],
+                                 ['yellow suitcase', '黄色行李箱']),
+                'hard': {'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                         'date': {'from': '2031-12-04', 'to': '2031-12-04'},
+                         'text': 'secret notes'},
+            },
+            {
+                'query': '找测试人物2031年12月04日视频雪地玩耍包含“秘密笔记”',
+                'label': '测试人物', 'date': '2031年12月04日', 'media': '视频',
+                'literal': '秘密笔记', 'clues': ('雪地', '玩耍'),
+                'alternatives': (['雪地', 'snow'], ['玩耍', 'playing']),
+                'hard': {'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                         'date': {'from': '2031-12-04', 'to': '2031-12-04'},
+                         'text': '秘密笔记'},
+            },
+            {
+                'query': 'find 测试人物 yesterday videos wearing red 拿着蛋糕 "family day"',
+                'label': '测试人物', 'date': 'yesterday', 'media': 'videos',
+                'literal': 'family day', 'clues': ('wearing red', '拿着蛋糕'),
+                'alternatives': (['wearing red', '穿红色衣服'],
+                                 ['拿着蛋糕', 'holding a cake']),
+                'hard': {'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+                         'date': {'from': '2032-09-13', 'to': '2032-09-13'},
+                         'text': 'family day'},
+            },
+        )
+        for case in cases:
+            query = case['query']
+            with self.subTest(query=query):
+                seen = []
+
+                def handler(request):
+                    body = json.loads(request.content)
+                    visible = json.loads(body['messages'][1]['content'])['query']
+                    seen.append(visible)
+                    self.assertEqual(len(query), len(visible))
+                    for hidden in (case['label'], case['date'], case['media'], case['literal']):
+                        self.assertNotIn(hidden, visible)
+                    self.assertIn(REDACTION_MARKER, visible)
+                    self.assertIn(REDACTION_MARKER, body['messages'][0]['content'])
+                    for clue in case['clues']:
+                        start = query.index(clue)
+                        self.assertEqual(clue, visible[start:start + len(clue)])
+                    proposal = {'version': 1, 'status': 'ready', 'question': None, 'concepts': [
+                        {'surface': surface, 'alternatives': alternatives}
+                        for surface, alternatives in zip(case['clues'], case['alternatives'])]}
+                    return httpx.Response(200, json={'model': 'intent-local', 'done': True,
+                        'message': {'role': 'assistant', 'content': json.dumps(proposal, ensure_ascii=False)}})
+
+                planner = self.planner(handler, url='http://127.0.0.1:11434/api/chat')
+                result = plan_query(query, now=datetime(2032, 9, 14), previous_filters=None,
+                    entities={'binding': 'a' * 64, 'enabled': ['people', 'date', 'media', 'text'],
+                              'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                              'labels': [case['label']], 'ambiguous': False}, planner=planner)
+                self.assertEqual('ready', result.status, result)
+                self.assertEqual(1, len(seen))
+                self.assertEqual(case['hard'], {key: value for key, value in result.filters.items()
+                                                 if key != 'descriptive'})
+                self.assertEqual(list(case['clues']),
+                                 [concept['surface'] for concept in result.filters['descriptive']['concepts']])
+
+    def test_marker_bridging_surfaces_and_marker_alternatives_refuse_once_on_both_endpoints(self):
+        query = 'find red Mira coat photos'
+        for endpoint in ('/api/chat', '/api/generate'):
+            for marker_kind in ('surface', 'alternative', 'joined'):
+                with self.subTest(endpoint=endpoint, marker_kind=marker_kind):
+                    calls = []
+
+                    def handler(request):
+                        calls.append(request)
+                        body = json.loads(request.content)
+                        if endpoint == '/api/chat':
+                            visible = json.loads(body['messages'][1]['content'])['query']
+                        else:
+                            start = body['prompt'].index('{"query":')
+                            finish = body['prompt'].index('}', start) + 1
+                            visible = json.loads(body['prompt'][start:finish])['query']
+                        self.assertIn(REDACTION_MARKER, visible)
+                        if marker_kind == 'surface':
+                            surface = visible[visible.index('red'):visible.index('coat') + len('coat')]
+                            alternatives = [surface]
+                        elif marker_kind == 'alternative':
+                            surface = 'red'
+                            alternatives = ['red', 'red' + REDACTION_MARKER + 'coat']
+                        else:
+                            surface = 'red coat'
+                            alternatives = [surface]
+                        proposal = {'version': 1, 'status': 'ready', 'question': None,
+                                    'concepts': [{'surface': surface, 'alternatives': alternatives}]}
+                        content = json.dumps(proposal, ensure_ascii=False)
+                        if endpoint == '/api/chat':
+                            envelope = {'model': 'intent-local', 'done': True,
+                                        'message': {'role': 'assistant', 'content': content}}
+                        else:
+                            envelope = {'model': 'intent-local', 'done': True, 'response': content}
+                        return httpx.Response(200, json=envelope)
+
+                    with self.assertRaises(IntentUnavailable):
+                        self.planner(handler, url='http://127.0.0.1:11434' + endpoint).propose(
+                            scene_view(query, date(2032, 9, 14), ['Mira']),
+                            '2032-09-14', False)
+                    self.assertEqual(1, len(calls))
+                    self.assertEqual([endpoint], [request.url.path for request in calls])
 
     def test_provider_cannot_choose_person_date_scope_or_actions(self):
         for endpoint in ('/api/chat', '/api/generate'):

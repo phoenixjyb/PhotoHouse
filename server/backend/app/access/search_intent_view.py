@@ -12,6 +12,7 @@ from .assistant_query_plan import (_MEDIA, _QUOTE, _REFINE_OPEN, _SEARCH_OPEN,
 
 
 _ERROR = 'Invalid scene view'
+REDACTION_MARKER = '\u2588'
 
 
 def _fold_boundary_map(raw: str, folded: str) -> dict[int, int]:
@@ -49,7 +50,7 @@ def _changed_runs(before: str, after: str) -> list[tuple[int, int]]:
 
 
 def scene_view(words: str, today: date, labels) -> str:
-    """Mask hard conditions and a recognized leading command with spaces.
+    """Mask hard conditions and a recognized command with visible boundaries.
 
     ``labels`` must be the request's already-resolved public label strings; it
     is used locally and is never included in the returned view. Any date parse
@@ -114,8 +115,10 @@ def scene_view(words: str, today: date, labels) -> str:
                 merged.append((start, end))
 
         result = list(outside)
+        for match in _QUOTE.finditer(words):
+            result[match.start():match.end()] = REDACTION_MARKER * (match.end() - match.start())
         for start, end in merged:
-            result[start:end] = ' ' * (end - start)
+            result[start:end] = REDACTION_MARKER * (end - start)
         view = ''.join(result)
         if len(view) != len(words):
             raise ValueError

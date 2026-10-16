@@ -5,6 +5,7 @@ import unittest
 import uuid
 
 from app.access.assistant_workspace_store import initialize_v2
+from app.access.search_intent_view import REDACTION_MARKER
 from phone_discovery_fixture import NOW, TOKEN, OTHER, SECOND, RELOGIN
 import test_assistant_intent_search as intent_fixture
 
@@ -122,11 +123,12 @@ class AssistantPendingIntentTests(unittest.TestCase):
                 self.assertEqual([concept['surface'] for concept in
                                   result['filters']['descriptive']['concepts']],
                                  surfaces)
-                expected = query.replace(phrase, ' ' * len(phrase), 1)
+                expected = query.replace(phrase, REDACTION_MARKER * len(phrase), 1)
                 command = 'find' if expected.startswith('find') else '找'
-                expected = ' ' * len(command) + expected[len(command):]
+                expected = REDACTION_MARKER * len(command) + expected[len(command):]
                 for protected in ('Sample Child', '示例儿童', 'photos', '照片'):
-                    expected = expected.replace(protected, ' ' * len(protected))
+                    expected = expected.replace(protected, ''.join(
+                        ' ' if char == ' ' else REDACTION_MARKER for char in protected))
                 self.assertEqual(len(self.planner.calls), 1)
                 self.assertEqual(self.planner.calls[0][0], expected)
                 self.assertFalse(self.planner.calls[0][2])

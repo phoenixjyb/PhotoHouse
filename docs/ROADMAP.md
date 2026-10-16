@@ -83,9 +83,11 @@ microphone and playback separate; later chapters and spoken interruption of play
 remain future work.
 
 The paired [Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source)
-source `88de08e` passed Windows candidate-only qualification (12 assistant,
-12 oral-history and 26 planner assertions), then was deployed in the separate
-API/Web cutover. That synthetic qualification is not a real voice trial. Use the
+source is retained in API/Web `54394ed`, which passed Windows candidate-only
+qualification (12 assistant, 12 oral-history and 40 planner assertions) and was
+deployed at 17:20 Beijing on October 16. Optional intent and scene providers
+remain off; new redaction-boundary source still needs installed-model measurement.
+That synthetic qualification is not a real voice trial. Use the
 [v67 test guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md) on the
 installed phone and served Web. Real ASR/TTS, latency, owner/member and family
 acceptance remain open ahead of broader narration or microphone/speaker overlap.

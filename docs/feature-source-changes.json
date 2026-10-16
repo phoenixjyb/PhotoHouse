@@ -22128,6 +22128,79 @@
       "runtime_changed": false
     },
     {
+      "feature": "explicit-offset-preserving-intent-redaction-boundaries",
+      "source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "8fe74f9ad982eb4f824f7539c0b87ce7e3b97b738a058fe8f9b0c4e0526dc605",
+          "sha256": "fde2b0a4203d8ae4bb6cfa578572b205261ec4f4a8d7509834559f80f8d31a13"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "055eff304c14715240fbbca2f5bcb82f8695c2aad8452f9851bcbaf4f97344a6",
+          "sha256": "e58e868a8b15f95f9138d8f80c2291ae983661c3cd090a5571c518cada9b08ca"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "1f3fc5d0f9f6984865593d3524a786ebebe303a16ec04efc7b2cbe7dc2b8186f",
+          "sha256": "8858cf4be735fc4786c1077628a565c95eb97ac1bc39af42bb3a49ec704481ae"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "d662958b888709a2942ea671801c3d8c2d19eb4a81364777f0344c312bd31a21",
+          "sha256": "dd6f387b9ff3a275180726e9f298948a62a7b73bae560f0b185578ac6aee3e1a"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "02715d5597501de4e3ef52ef84353eaf9af704c7f464821382992504f83ce635",
+          "sha256": "729233c9adae4dd373c7faa379e5f88a96bf59ff1ab40b0eb4ae2e397418aada"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "1c6f065247e87109802bf75ab1053ba615a5331a2ef28b22cc8f53cec79c477a",
+          "sha256": "d3079cf21892a44e17a1d1544550f677b8758154d558d6bd9bebef6cebdda021"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "31696a5adce6ae79fbefe79f703cdddfab5cb433c1cd7b674086b6c2987af64e",
+          "sha256": "ad36072a2739d3f57a4a3faee79a00ddf9d48288af8f9d9d7f6664379fabc065"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_view.py",
+          "before_sha256": "fe154ee3c9f17d358ecf6a1ac2ae18ec56f7ce7e81ba107c0880df84c553c2fe",
+          "sha256": "f81049451f70171030a6daf67027a420f6df60c53532a24430e9bab0eb651a79"
+        },
+        {
+          "path": "server/tests/security/test_assistant_pending_intent.py",
+          "before_sha256": "adb9b9b9bcb81aabf053c0e652e78caf4d807bd7ce1add1abb5cd505ef46ea28",
+          "sha256": "fb1c11c58afa89577729dfe0b044f2b5ca468241413ad49d684700eab7408aa6"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "24e79f8527b89041fe3d9e858148735a6ebb3fe354249a69eb2a60365c44d937",
+          "sha256": "4816ff19add36ffd37e3a0c57764d55e0d0d7c5936cf7d53855c83fc50b96e44"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "4f53be6bd535998974b014bd8567ccd8868ee2c83993e906e2201deb4fb9d1e0",
+          "sha256": "ee7b7239e7041a380f99b7c6b23418f9101f7716e2a535eea3f5a904725aea95"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_view.py",
+          "before_sha256": "70b0c7f9d3f174a87fef747b9d6c8f304170e59b4e4821d29447e9c61bdcf8d8",
+          "sha256": "7060e2833b0bdc24e48a2da9a1c32c34cf4ddae745d1811f41119cca8498c594"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "routes_added": false,
+      "models_activated": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false,
+      "recorded_api_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
       "feature": "phone-v68-voice-recovery-release-candidate",
       "source_commit": "7b7484726112d693535e0bb21568b68ecc74dbad",
       "files": [
