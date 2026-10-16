@@ -64,6 +64,22 @@ save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
 
+## Next source slice: make import status truthful and coherent
+
+Unify the existing upload queue and upload history presentation. A completed
+transfer means the server received the bytes; it must not always say “awaiting
+review” when selected-member auto approval may already have assigned the item.
+Show received, awaiting approval, preparing and ready only when supported by
+current authorized server evidence. Display unknown/unavailable status honestly
+when a stage is not exposed; do not infer preview/playback readiness from receipt
+or membership alone. Keep the existing per-library fences, explicit upload Start
+and bounded explicit recovery. Do not create a second upload queue.
+
+**Exit:** generated manual-review, auto-approved, delayed-preparation, failed and
+access-changed journeys; Chinese/English large-text UI; native full package checks;
+then a real phone upload receipt and final visible result. This is planned work,
+not a capability delivered in v69.
+
 ## 1. Accept the delivered experience
 
 Use the [v65 chapter-source guide](../clients/android/docs/PHONE_V65_TEST_GUIDE_ZH.md)
