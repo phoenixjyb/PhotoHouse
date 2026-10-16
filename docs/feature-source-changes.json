@@ -20773,17 +20773,36 @@
       "original_attribution_and_links_preserved": true
     },
     {
+      "feature": "phone-v66-proposal-review-release-source",
+      "source_commit": "1dd5d3252090b3e5a407bf6ec075801d2530634b",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "34e39651a81157607ec793e252865451efd4dc7a23fe577918615597d48b39a9",
+          "sha256": "eb16b5454da582e79356b78b30d90586d31b524fbf24724caf79eb993771d8ca"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "c1e1a3516e969c6e3d5a1510b8896e489c5239c44673de2e4002589b1d98f20d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "phone_version_code": 66,
+      "apk_published": false,
+      "models_activated": false
+    },
+    {
       "feature": "android-scene-workspace-controls-and-version-bound-recovery",
-      "source_commit": "de29356a6d006b2abe578136dcfddebd82e16856",
+      "source_commit": "752be3abd318052178d263bd32613e059b0c504e",
       "files": [
         {
           "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantSceneUiTest.kt",
-          "before_sha256": null,
           "sha256": "713b1db0b0dc0b1445fd33e3a6918c66647eba845e2104a60c4094957b34e6ff"
         },
         {
           "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScenePanel.kt",
-          "before_sha256": null,
           "sha256": "70ebc8748760279e2ece8f5ee8b4e78a4456cd4c9880b53f7f93eae73af47ad7"
         },
         {
@@ -20833,7 +20852,6 @@
         },
         {
           "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantSceneWorkspaceStoreTest.kt",
-          "before_sha256": null,
           "sha256": "645e3ce48f9da0d1a4643a84350748c08435894fb10acea7996cba5f40692e3c"
         },
         {
