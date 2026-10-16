@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
 
-from app.access.search_intent_view import scene_view
+from app.access.search_intent_view import REDACTION_MARKER, scene_view
 
 
 TODAY = date(2032, 9, 14)
@@ -17,7 +17,7 @@ class SearchIntentViewTests(unittest.TestCase):
     def assert_same_offsets(self, source, view):
         self.assertEqual(len(source), len(view))
         for original, visible in zip(source, view):
-            self.assertTrue(original == visible or visible == ' ')
+            self.assertTrue(original == visible or visible == REDACTION_MARKER)
 
     def test_masks_quotes_resolved_label_dates_and_media_without_shifting_scene_spans(self):
         query = ('find photos of Mira in September 2032 wearing a red coat '
@@ -38,7 +38,8 @@ class SearchIntentViewTests(unittest.TestCase):
             with self.subTest(command=command):
                 view = scene_view(query, TODAY, [])
                 self.assert_same_offsets(query, view)
-                self.assertEqual(' ' * len(command), view[2:2 + len(command)])
+                self.assertEqual(''.join(' ' if char == ' ' else REDACTION_MARKER for char in command),
+                                 view[2:2 + len(command)])
                 start = query.index('carrying')
                 self.assertEqual(query[start:], view[start:])
         for query in ('2032 photos find shells', 'photos show animals',
@@ -56,9 +57,9 @@ class SearchIntentViewTests(unittest.TestCase):
         view = scene_view(query, TODAY, ['全角１２号人'])
         self.assert_same_offsets(query, view)
         self.assertEqual('玩雪', view[query.index('玩雪'):query.index('的照片')])
-        self.assertEqual(' ' * len('全角１２号人'), view[query.index('全角'):query.index('２０３２')])
-        self.assertEqual(' ' * len('２０３２年９月'), view[query.index('２０３２'):query.index('玩雪')])
-        self.assertEqual(' ' * len('照片'), view[-2:])
+        self.assertEqual(REDACTION_MARKER * len('全角１２号人'), view[query.index('全角'):query.index('２０３２')])
+        self.assertEqual(REDACTION_MARKER * len('２０３２年９月'), view[query.index('２０３２'):query.index('玩雪')])
+        self.assertEqual(REDACTION_MARKER * len('照片'), view[-2:])
 
     def test_normalization_expansions_mask_only_complete_original_codepoints(self):
         for source, label in (
@@ -71,7 +72,7 @@ class SearchIntentViewTests(unittest.TestCase):
                 self.assert_same_offsets(source, view)
                 start = source.index('of ') + 3
                 end = source.index(' wearing')
-                self.assertEqual(' ' * (end - start), view[start:end])
+                self.assertEqual(REDACTION_MARKER * (end - start), view[start:end])
                 self.assertEqual('wearing a red coat', view[end + 1:])
 
     def test_refuses_a_label_match_that_splits_one_normalized_source_character(self):
@@ -86,6 +87,30 @@ class SearchIntentViewTests(unittest.TestCase):
         self.assertNotIn('Mira', view)
         self.assertIn('Jordan', view)
         self.assertEqual(2, view.count('red coat'))
+
+    def test_hard_conditions_are_boundaries_even_without_surrounding_spaces(self):
+        for query, label, left, right in (
+                ('find carrying Mira red suitcase photos', 'Mira', 'carrying', 'red suitcase'),
+                ('找提着米拉红箱子的照片', '米拉', '提着', '红箱子'),
+                ('找carrying米拉red suitcase的照片', '米拉', 'carrying', 'red suitcase')):
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, [label])
+                self.assert_same_offsets(query, view)
+                start = query.index(label)
+                self.assertEqual(REDACTION_MARKER * len(label), view[start:start + len(label)])
+                self.assertIn(left, view)
+                self.assertIn(right, view)
+                self.assertNotIn(label, view)
+
+    def test_original_spaces_and_literal_quote_boundary_remain_distinct(self):
+        query = 'find photos carrying  a red bag "private words" beside a bench'
+        view = scene_view(query, TODAY, [])
+        self.assert_same_offsets(query, view)
+        self.assertIn('carrying  a red bag', view)
+        start = query.index('"')
+        end = query.index('"', start + 1) + 1
+        self.assertEqual(REDACTION_MARKER * (end - start), view[start:end])
+        self.assertEqual(query[end:], view[end:])
 
     def test_invalid_or_conflicting_dates_fail_closed(self):
         for query in ('find photos in 2032年13月 wearing red coat',

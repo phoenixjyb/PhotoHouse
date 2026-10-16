@@ -896,7 +896,8 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
             return question(state), state
         masked, date_filter = resolved
         result = assistant_engine._turn(engine, token, library, masked, None, clock,
-            language=language, continuation={'binding': state['binding'], 'date': date_filter})
+            language=language, continuation={'binding': state['binding'], 'date': date_filter,
+                                            'redacted_span': (state['start'], state['end'])})
         # A temporary planner failure can be retried with the same date answer;
         # the original question's expiry is never extended by an invalid answer.
         return result, state if result['kind'] == 'clarification' else None

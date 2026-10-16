@@ -45,6 +45,25 @@ def ready(query, spans):
 
 
 class SearchIntentTests(unittest.TestCase):
+    def test_additional_provider_boundary_only_accepts_an_already_blank_slot(self):
+        query = 'find photos carrying    red bag'
+        gap = (query.index('    '), query.index('    ') + 4)
+        for invalid in ((0, 4), (gap[0], gap[1] + 1), (-1, 2), (2, 1),
+                        (True, 2), [*gap], 'gap', (gap[0],), (0, len(query) + 1)):
+            with self.subTest(span=invalid):
+                planner = Proposal(None)
+                result = plan_query(query, now=NOW, entities=entities(), previous_filters=None,
+                                    planner=planner, redacted_span=invalid)
+                self.assertEqual(('clarification', 'invalid_query'), (result.status, result.reason))
+                self.assertEqual([], planner.calls)
+
+        planner = Proposal(ready(query, [('carrying', ['carrying']), ('red bag', ['red bag'])]))
+        result = plan_query(query, now=NOW, entities=entities(), previous_filters=None,
+                            planner=planner, redacted_span=gap)
+        self.assertEqual('ready', result.status)
+        self.assertEqual('█' * 4, planner.calls[0][0][gap[0]:gap[1]])
+        self.assertEqual(len(query), len(planner.calls[0][0]))
+
     def test_about_approximate_time_is_not_an_unquoted_content_cue(self):
         for query in ('find photos about two years ago',
                       'find photos about a few winters ago'):

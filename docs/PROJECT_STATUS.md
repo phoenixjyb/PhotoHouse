@@ -35,21 +35,28 @@ changes clear reading intent. Pause/End remain reachable on both reader surfaces
 The microphone stays off during playback. Spoken interruption of playback and
 automatic later-chapter advancement remain future work.
 
-The paired API/Web source `88de08ef03a6a3be91e02a02941fd57b223e48c4` passed
+The current API/Web source `54394ed2487ab85336b39c9ac5cb63dbe18b0d25` passed
 Windows **candidate-only** synthetic qualification: 12 assistant cases, 12
-oral-history cases and 26 planner assertions. Its 237-file ZIP was pinned and
-source-verified. That qualification used generated stores and did not exercise
+oral-history cases and 40 planner assertions (26 retained and 14 visual-clue
+checks). Its 238-file ZIP was pinned and source-verified. That qualification used generated stores and did not exercise
 production data, models, listeners, workers or services. The synthetic oral
 fixture does not enable production oral intake.
 
-At **2026-10-16 16:12 Beijing time**, a separate API/Web cutover deployed
-`88de08e`. The stopped-writer backup passed four database/journal integrity
-checks, the API/Web readback accepted the new source, and all five writer workers
+At **2026-10-16 17:20 Beijing time**, a separate API/Web cutover deployed
+`54394ed`, superseding `88de08e`. The stopped-writer backup passed four
+database/journal integrity checks, the API/Web readback accepted the new source, and all five writer workers
 were restored. The configured schema remained `a0c9d2e4f817`; no migration or
 configuration change occurred. Native and HTTPS readback verified nine UI
 assets, the icon, phone v67 and TV v30; nine anonymous protected-route checks
 returned 401. This is service and source evidence, not real voice or family
 acceptance.
+
+The deployed source includes explicit bilingual visual-clue addition and guarded
+rewording of unsupported reviewed scene queries. The optional local intent
+provider remains unconfigured and scene search remains off. These source paths
+therefore do not establish live broad natural-language or visual retrieval.
+The following redaction-boundary source improvement is not part of this frozen
+deployment and still needs a new installed-provider quality measurement.
 
 ## Other retained capabilities and limits
 
@@ -70,7 +77,7 @@ story-generation model was activated by v67 signing/publication or qualification
 The phone OTA postflight checked the then-current API binding and unchanged TV
 v30 pointer before the separate API/Web cutover. The API/Web delivery then
 changed only the API task action; its non-action task fields and `PT30S` startup
-trigger were preserved. Native readback accepted source `88de08e`, all five
+trigger were preserved. Native readback accepted source `54394ed`, all five
 writer workers were restored, ASR/TTS and OCR remained in place, and the TV v30
 pointer remained unchanged. The stopped-writer backup verified the
 primary database, assistant journal, deletion journal and assistant workspace;
@@ -79,11 +86,11 @@ ran. These checks did not inventory model health or video progress.
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Source `88de08e` deployed at 16:12 Beijing time; native and HTTPS readback passed; stopped-writer backup verified; five writer workers restored | Real ASR/TTS, voice UX and owner/member/family acceptance |
+| API/Web | Source `54394ed` deployed at 17:20 Beijing time; native and HTTPS readback passed; stopped-writer backup verified; five writer workers restored | Real ASR/TTS, voice UX and owner/member/family acceptance |
 | Primary database | Same configured database and schema `a0c9d2e4f817`; stopped-writer backup integrity checks passed; no migration or configuration change | Later feature/schema activation and paired recovery qualification |
 | Phone | v67 original-certificate/icon APK published and installed/launched on a Samsung phone; native plus independent full-HTTPS readback passed | Real ASR/TTS voice flow and family acceptance |
 | TV | v30 pointer and manifest verified unchanged; v31 source unpublished | Projector/library/playback check |
-| Public source | PR #64 feature source and PR #66 release records merged; phone continuation delivered in v67; API/Web `88de08e` deployed after synthetic qualification | Scene/provider and story-generation model activation stay separate |
+| Public source | PR #64 feature source and PR #66 release records merged; phone continuation delivered in v67; API/Web `54394ed` deployed after synthetic qualification | Scene/provider and story-generation model activation stay separate |
 | Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 

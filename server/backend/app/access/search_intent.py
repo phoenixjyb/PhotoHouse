@@ -17,7 +17,7 @@ from .kinship import SELECTORS
 from .search_refinement import _operations, plan_query as literal_plan, query_mode
 from .search_description import MAX_CONCEPTS, normalize_description
 from .search_pending import _AGE_PHRASE
-from .search_intent_view import scene_view
+from .search_intent_view import REDACTION_MARKER, scene_view
 
 POLICY_VERSION = 1
 QUESTIONS = frozenset(('date', 'person', 'description', 'scope', 'unsupported_action'))
@@ -114,11 +114,16 @@ def validate_proposal(value, query):
         if type(start) is not int or type(stop) is not int or not end <= start < stop <= len(query):
             raise _invalid()
         surface = query[start:stop]
+        if REDACTION_MARKER in surface:
+            raise _invalid()
         if not _GRAMMAR.sub('', _strip_prefix(d.fold(surface))).strip():
             raise _invalid()
         concepts.append({'surface': surface, 'alternatives': item['alternatives']})
         end = stop
     description = normalize_description({'version': 1, 'concepts': concepts})
+    if any(REDACTION_MARKER in alternative for concept in description['concepts']
+           for alternative in concept['alternatives']):
+        raise _invalid()
     return {**value, 'concepts': [dict(raw, surface=clean['surface'], alternatives=clean['alternatives'])
                                 for raw, clean in zip(value['concepts'], description['concepts'])]}
 
@@ -250,7 +255,7 @@ def _correction_consumes_label(words, entities):
 
 
 def _compile_plan(words, *, now, entities, previous_search, hard_previous,
-                  refine, kept, planner):
+                  refine, kept, planner, redacted_span=None):
     """Compile one source query through the closed descriptive-span checks."""
     grammar_words = _INTENT_OPEN.sub(lambda match: ' ' * len(match.group(0)), words)
     original = literal_plan(grammar_words, now=now, entities=entities,
@@ -282,6 +287,15 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
         return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
     try:
         provider_words = scene_view(grammar_words, now.date(), entities.get('labels', []))
+        # The conversational opener was hidden before literal parsing. Give it
+        # the same explicit boundary as conditions masked by scene_view.
+        provider_words = ''.join(REDACTION_MARKER if original != grammar else visible
+                                 for original, grammar, visible in
+                                 zip(words, grammar_words, provider_words))
+        if redacted_span is not None:
+            start, end = redacted_span
+            provider_words = (provider_words[:start] + REDACTION_MARKER * (end - start)
+                              + provider_words[end:])
         suggestion = validate_proposal(
             planner.propose(provider_words, now.date().isoformat(), previous_search), provider_words)
     except IntentUnavailable:
@@ -437,7 +451,8 @@ def _plan_descriptive_addition(words, *, now, entities, previous,
     return QueryPlan(3, 'ready', {**(hard_previous or {}), 'descriptive': description})
 
 
-def plan_query(words, *, now: datetime, entities, previous_filters, planner):
+def plan_query(words, *, now: datetime, entities, previous_filters, planner,
+               redacted_span=None):
     """Plan v3 through current authorized entities and a separately supplied LLM.
 
     A supplied planner implements ``propose(query, today, has_previous_search)``.
@@ -452,6 +467,15 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     try:
         if len(words.encode('utf-8', errors='strict')) > 1024:
             raise _invalid()
+        # Only a server-owned, already blanked pending-date slot may supply
+        # an additional provider boundary. Never hide visible query content.
+        if redacted_span is not None:
+            if (type(redacted_span) is not tuple or len(redacted_span) != 2 or
+                    any(type(offset) is not int for offset in redacted_span) or
+                    not 0 <= redacted_span[0] < redacted_span[1] <= len(words) or
+                    words[redacted_span[0]:redacted_span[1]] !=
+                    ' ' * (redacted_span[1] - redacted_span[0])):
+                raise _invalid()
     except (UnicodeError, ValueError):
         return QueryPlan(3, 'clarification', {}, 'invalid_query')
     if previous is not None:
@@ -531,4 +555,4 @@ def plan_query(words, *, now: datetime, entities, previous_filters, planner):
     return _compile_plan(words, now=now, entities=entities,
                          previous_search=previous is not None,
                          hard_previous=hard_previous, refine=refine,
-                         kept=kept, planner=planner)
+                         kept=kept, planner=planner, redacted_span=redacted_span)
