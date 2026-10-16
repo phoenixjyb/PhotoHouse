@@ -162,3 +162,28 @@ The [offline local translation experiment](SEMANTIC_SCENE_TRANSLATION_2026-10-16
 uses a separate derived dataset and adaptation receipt with this evaluator.
 Its improved Chinese/mixed diagnostic scores do not approve translation
 faithfulness or a serving binding; the original inputs remain separate.
+
+## Compare frozen intent cohorts
+
+`server/scripts/semantic_scene_comparison.py` provides a pure
+`compare_evaluations(before_metrics, after_metrics, cohorts)` helper. Supply the
+`metrics` objects from two scene measurements and a private dictionary mapping
+stable labels such as `literal`, `vague` and `contrast` to case-ID lists. Freeze
+that partition before model inspection. Every case must occur exactly once;
+there may be at most eight nonempty cohorts.
+
+The helper validates the evaluator report shape, case sets, candidate counts,
+review declarations and internal rank aggregates. It reports before/after
+top-one, top-five and mean reciprocal rank, rank gains/regressions/ties, lost
+top-one results and regressing case IDs, separately by language and cohort.
+Its fingerprint binds exact cohort membership independently of dictionary or
+member order. The language tags still identify original query cohorts when
+translated English was supplied to the encoder.
+
+This compares the rank of the first relevant image. It cannot reconstruct
+subset recall over all relevant images, so it emits no cohort recall figure.
+It does not read images, open files, run providers or approve activation or
+semantic faithfulness. The caller must separately verify unchanged image
+identities/vectors, relevance labels, English inputs and encoder/preprocessing
+identity, and bind any adaptation receipt to the source and derived datasets.
+Matching candidate counts alone cannot establish those properties.

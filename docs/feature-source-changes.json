@@ -21507,6 +21507,89 @@
       "schema_changed": false,
       "runtime_changed": false,
       "apk_published": false
+    },
+    {
+      "feature": "offline-scene-rank-comparison-by-frozen-intent-cohort",
+      "source_commit": "d47cbda8ff90face1e14ed1ebd10dc3ddd2717d1",
+      "files": [
+        {
+          "path": "server/scripts/semantic_scene_comparison.py",
+          "before_sha256": null,
+          "sha256": "b487ce6fe510601550edf1d8f3cf98c7aa9e534bdd2e214572b617124d8ec97a"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_comparison.py",
+          "before_sha256": null,
+          "sha256": "2ec66d302fdfc9f515a937896961d33dda75e3038137fdb638c6f702c40024d6"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "d8986c1eba242efeb3d6a0875704a0032445f604551670461c663f31f35961d9",
+          "sha256": "be9cdcaa3a86a995aa5f296f1b10e63e1880edba054d7277679180bf36dc3a09"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "8cdfae3cf80150ea83e7ba082329557c1e1273507385fbdae4b902e7f3a63f57",
+          "sha256": "d1931622e203b5797c829f908a3d2d7b142bdfa1827f1f05f203284b6e9649c3"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0d0c2799b0d2acb8bc1f3d38113cf1464c1cb70f909adf519a22b16c21dc39f1",
+          "sha256": "7eb72b544a9576ea16adfa3febf09b3980134ec5a51870c7ce5ecb8ddca554b6"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
+    },
+    {
+      "feature": "bind-scene-comparison-to-exact-cohort-membership",
+      "source_commit": "8332b84075e9731c80320bdcc6e469cbff969d91",
+      "files": [
+        {
+          "path": "server/scripts/semantic_scene_comparison.py",
+          "before_sha256": "b487ce6fe510601550edf1d8f3cf98c7aa9e534bdd2e214572b617124d8ec97a",
+          "sha256": "d7e30e3ad11ac8d52f4523fd553079e89cbb96862ca87f5908d52d4b3486a831"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_comparison.py",
+          "before_sha256": "2ec66d302fdfc9f515a937896961d33dda75e3038137fdb638c6f702c40024d6",
+          "sha256": "1fcd5d5d65c3d5e37b29a6c990a11d7d7391aa3410cbeda198203b3d87dbc51f"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false
+    },
+    {
+      "feature": "untouched-photo-intent-diagnostic-and-independent-meaning-review",
+      "source_commit": "b6c9525165b2519baac19f5f684ba2dfdd3da0a4",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SCENE_INTENT_EVALUATION_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "217d484251515a71250694f29edce959e19a8ac30cea1ee901359bba26027c6e"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "before_sha256": "6e1d8789259467bf2cc2255ae406776c49aa7bd6936cc2cb943fd9b50dcb792c",
+          "sha256": "a325ef36b0bcf0c6a3f12b7859b10d95b85c6c18a2dbfd7798331334dedacb8b"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_TRANSLATION_2026-10-16.md",
+          "before_sha256": "1216f9ec41c0136453c5a95c8a8e73bb294ec6abc3ca63707acfe9b340ca8148",
+          "sha256": "71c217175d19c2484700dcda3514328b7ce063d935467207cbe7e327b82ee00c"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "b279c642c71a98047f9d1bfc2c32070a3e40d7d2691d6b905b2aff7c62667e04",
+          "sha256": "804da0a2cf23faa0d251f4698d4f1d5e69eee338ed982b97915d00cced5cd4c2"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
     }
   ]
 }

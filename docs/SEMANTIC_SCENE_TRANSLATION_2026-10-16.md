@@ -137,3 +137,8 @@ translation-faithfulness and retrieval review. Include number, readiness,
 negation and relationship distinctions that this sample cannot settle. Any
 serving proposal still needs an adaptation-aware binding, compatible immutable
 image-vector coverage, measured native serving limits and family/device review.
+
+The subsequent [untouched-photo intent diagnostic](SEMANTIC_SCENE_INTENT_EVALUATION_2026-10-16.md)
+tests this unchanged recipe on 32 different images and 32 literal, vague and
+contrast cases. It reports meaning-review findings and rank regressions
+separately from the aggregate retrieval gains.
