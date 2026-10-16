@@ -20447,6 +20447,27 @@
       "household_data_included": false
     },
     {
+      "feature": "phone-v65-chapter-memory-release-source",
+      "source_commit": "d5d860397ec2869d8fa6f7f72ad82e9ad3ffa590",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "facdfa29e851d49974d4a1ac8768977a3618cf49c447428f656ad2615bd4879a",
+          "sha256": "34e39651a81157607ec793e252865451efd4dc7a23fe577918615597d48b39a9"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V65_TEST_GUIDE_ZH.md",
+          "before_sha256": null,
+          "sha256": "60e8f7c97423f4b3b857c57b345183740c018e12a0cf407b733977194e1afddb"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "phone_version_code": 65,
+      "apk_published": false,
+      "models_activated": false
+    },
+    {
       "feature": "gated-server-owned-scene-ranking-and-model-free-recovery",
       "source_commit": "f476c5e16f032eb427e3504997d6e33b5a500d9b",
       "files": [
