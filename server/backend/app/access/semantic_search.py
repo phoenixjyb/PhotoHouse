@@ -20,12 +20,14 @@ from .visual_vector_schema import verify_visual_vector_schema
 
 
 class SemanticSearchReads(AssistantSearchReads):
-    def __init__(self, access, provider, budget, *, vector_root, encoder, query):
+    def __init__(self, access, provider, budget, *, vector_root, encoder, query,
+                 server_snapshot=None):
         super().__init__(access, provider, budget)
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}
         self._candidate_count = 0
+        self._server_snapshot = server_snapshot
 
     def _extra_source(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
@@ -53,7 +55,7 @@ class SemanticSearchReads(AssistantSearchReads):
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
 
-    def _rank(self, found):
+    def _vectors(self, found):
         check = self._check
         check()
         self._candidate_count = len(found)
@@ -91,6 +93,27 @@ class SemanticSearchReads(AssistantSearchReads):
             except (ValueError, TypeError, OverflowError):
                 raise d.DiscoveryUnavailable() from None
             vectors.append(record)
+        return vectors
+
+    def _rank(self, found):
+        vectors = self._vectors(found)
+        check = self._check
+        if self._server_snapshot is not None:
+            # Only the private workspace's validated server-owned summary can
+            # supply this snapshot. Neither public API accepts a ranking. A
+            # recovery verifies the complete current vector cohort without
+            # repeating the model call or inventing scores for later pages.
+            by_id = {item['id']: item for item in found}
+            snapshot = self._server_snapshot
+            if (len(snapshot) != min(20, len(found)) or
+                    len({aid for aid, _score in snapshot}) != len(snapshot) or
+                    any(aid not in by_id for aid, _score in snapshot)):
+                raise d.DiscoveryChanged()
+            selected = {aid for aid, _score in snapshot}
+            return ([dict(by_id[aid], semantic_score=score) for aid, score in snapshot] +
+                    [by_id[aid] for aid in sorted(set(by_id) - selected, key=int)])
+        if not found:
+            return []
         query_vector = self.encoder.encode(self.query, check=check)
         ranked = rank_semantic(query_vector, self.encoder.binding, tuple(vectors), check=check)
         by_id = {item['id']: item for item in found}
@@ -123,6 +146,15 @@ class SemanticSearchRuntime:
         self.discovery.authorize(token, library)
 
     def call(self, operation, token, library, cancelled, values):
+        return self._call(operation, token, library, cancelled, values)
+
+    def _restore_server_snapshot(self, token, library, cancelled, values, snapshot):
+        """Internal first-page recovery from trusted workspace state, not wire input."""
+        d.require(type(snapshot) is tuple and values.get('page', 1) == 1
+                  and values.get('page_size', 20) == 20)
+        return self._call('search', token, library, cancelled, values, server_snapshot=snapshot)
+
+    def _call(self, operation, token, library, cancelled, values, *, server_snapshot=None):
         # Authorization precedes query validation, metadata and provider I/O
         # for direct callers as well as the HTTP admission check.
         self.authorize(token, library)
@@ -151,7 +183,7 @@ class SemanticSearchRuntime:
         with self.access.connection_factory() as connection:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
                 self.discovery.provider, self.discovery.budget, vector_root=self.vector_root,
-                encoder=self.encoder, query=query)
+                encoder=self.encoder, query=query, server_snapshot=server_snapshot)
             binding = values.get('binding')
             if binding is None:
                 # presentation intentionally omits the internal binding; use

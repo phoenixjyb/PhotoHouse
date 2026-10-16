@@ -1,5 +1,11 @@
 # Explicit local semantic search pilot
 
+The separately gated [conversation scene-search backend](ASSISTANT_SCENE_SEARCH.md)
+now reuses this runtime for server-owned workspace v4 turns and model-free
+first-page recovery. Existing clients and the default application remain on
+their original search behavior; client integration and runtime activation are
+still separate gates.
+
 This source-only pilot provides a separate protected text-to-image API. The
 ordinary assistant v1/v2 continues to use its existing literal text contract.
 No local model, service, image-vector preparation, schema migration, private
@@ -39,8 +45,9 @@ For example, a synthetic caller may submit:
 
 The API does not infer identities or date filters from `query`. The query is
 the semantic scene description; callers must supply intended hard conditions
-separately. Natural-language planning and assistant/client integration are
-future work. This distinction prevents an unqualified model from silently
+separately. Natural-language planning and client UI integration remain
+separate work. The gated conversation backend reuses server-owned hard
+conditions instead. This distinction prevents an unqualified model from silently
 replacing a reviewed person or date restriction.
 
 The pilot searches images only. An omitted media filter becomes `['image']`

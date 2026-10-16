@@ -216,6 +216,22 @@ test('search v2 validation binds interpretations and match reasons to exact sele
   assert.throws(()=>validateResult({...retainedClarification,context:{...retainedClarification.context,search_version:undefined}},library,false,false,false,2),e=>e.code==='invalid_response','every nonnull v2 context keeps its version tag');
 });
 
+test('pre-v4 Web client rejects scene-search negotiation and payload extensions it cannot preserve',()=>{
+  const current=searchResult();
+  const v3={...current,version:3,context:{...current.context,search_version:3}};
+  assert.equal(validateResult(v3,library,false,false,false,3).version,3,'existing v3 payloads remain readable');
+  assert.throws(()=>validateCapabilities(workspaceCaps({search:{version:4,date_basis:'capture',perspective:null}})),
+    e=>e.code==='invalid_response','the v3 client cannot negotiate a v4 turn through the old capability grammar');
+  assert.throws(()=>validateCapabilities(workspaceCaps({scene_search:{version:1,available:true}})),
+    e=>e.code==='invalid_response','the old base capability grammar rejects unsolicited scene-search capability fields');
+  assert.throws(()=>validateResult({...v3,version:4,context:{...v3.context,search_version:4}},library,false,false,false,3),
+    e=>e.code==='invalid_response','an unsolicited v4 result is rejected');
+  assert.throws(()=>validateResult({...v3,context:{...v3.context,scene_search:{version:1,mode:'semantic_scene'}}},library,false,false,false,3),
+    e=>e.code==='invalid_response','v3 context cannot silently discard semantic source and ranking state');
+  assert.throws(()=>validateResult({...v3,items:[{...v3.items[0],semantic_score:0.91}]},library,false,false,false,3),
+    e=>e.code==='invalid_response','v3 item validation rejects an unmodeled ranking score');
+});
+
 test('search v2 is probed explicitly, sent once, and retained on GET recovery',async()=>{
   const calls=[];let capReads=0,turnPosts=0;
   const h=harness(async(path,options)=>{

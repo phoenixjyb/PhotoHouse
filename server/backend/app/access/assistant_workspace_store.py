@@ -250,6 +250,9 @@ def _filters(value):
 def _context_value(value, library_id):
     if value is None:
         return None
+    if type(value) is dict and value.get('search_version') == 4:
+        from .assistant_scene_search import context_value
+        return context_value(value, library_id)
     fields = {'library_id', 'binding', 'fingerprint', 'filters', 'visible_ids', 'total'}
     if (type(value) is not dict or set(value) - {'search_version'} != fields or value['library_id'] != library_id or
             ('search_version' in value and (type(value['search_version']) is not int or value['search_version'] not in (2, 3)))):
@@ -283,12 +286,15 @@ def _result_summary(value, library_id):
               'has_more', 'effect'}
     if type(value) is not dict or set(value) - {'pending_intent'} != fields:
         raise ValueError('Invalid result summary')
-    if type(value['version']) is not int or value['version'] not in (1, 2, 3):
+    if type(value['version']) is not int or value['version'] not in (1, 2, 3, 4):
         raise ValueError('Invalid result summary')
     if value['kind'] not in ('results', 'open', 'clarification', 'unsupported'):
         raise ValueError('Invalid result summary')
     reply = _text(value['reply'], MAX_REPLY_BYTES)
     ctx = _context_value(value['context'], library_id)
+    if value['version'] == 4 and (value['kind'] != 'results' or ctx is None or
+                                  value['effect'] is not None or 'pending_intent' in value):
+        raise ValueError('Invalid scene result summary')
     if ctx is not None and ctx.get('search_version', 1) != value['version']:
         raise ValueError('Invalid result summary')
     filters = None if value['filters'] is None else _filters(value['filters'])

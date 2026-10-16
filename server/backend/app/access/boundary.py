@@ -181,6 +181,7 @@ class ClosedBoundary:
             return True
         if (method, path) in {
                 ('GET', '/assistant/workspace/v1/capabilities'),
+                ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),

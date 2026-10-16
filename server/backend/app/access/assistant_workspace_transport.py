@@ -58,7 +58,9 @@ class WorkspaceRoute(APIRoute):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
                 version = _single(request, 'x-photohouse-search-version')
-                if version not in (None, '1', '2', '3') or (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)):
+                if (version not in (None, '1', '2', '3', '4') or
+                        (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)) or
+                        (version == '4' and not assistant_engine._scene_endpoint(request))):
                     raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
@@ -311,6 +313,13 @@ def _turn_text(value):
 
 def _turn_result(engine, token, library, summary, *, recovered):
     from .assistant_search import SearchRuntime
+    from .assistant_scene_search import SceneSearchRuntime
+    if summary['version'] == 4:
+        if type(engine) is not SceneSearchRuntime:
+            raise assistant_engine.AssistantChanged()
+        return engine.restore(token, library, summary)
+    if type(engine) is SceneSearchRuntime:
+        engine = engine.base_engine({'search_version': summary['version'] if summary['version'] in (2, 3) else 2})
     if summary['version'] in (2, 3) and not isinstance(engine, SearchRuntime):
         raise assistant_engine.AssistantChanged()
     if summary['version'] == 3 and engine.search_version != 3:
@@ -832,6 +841,11 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
     from .search_pending import (current_pending, find_date_slot, make_pending,
                                  resolve_date_answer)
 
+    if (type(previous) is dict and previous.get('search_version') == 4 and
+            not isinstance(engine, SearchRuntime)):
+        if not re.match(assistant_engine.SEARCH_PREFIX, words.strip().casefold()):
+            raise assistant_engine.AssistantChanged()
+        previous = None
     if not isinstance(engine, SearchRuntime) or engine.search_version not in (2, 3):
         return assistant_engine._turn(engine, token, library, words, previous, clock,
                                        language=language), None
@@ -839,6 +853,13 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
     now = datetime.fromtimestamp(stamp)
     lang = language if language in ('zh', 'en') else assistant_engine._language(words)
     new_search = (intent_mode(words) if engine.search_version == 3 else query_mode(words)) == 'search'
+    if type(previous) is dict and previous.get('search_version') == 4:
+        if not new_search:
+            # A legacy refinement cannot silently discard semantic order or
+            # reinterpret it as literal caption evidence. A complete new search
+            # deliberately leaves the old scene scope behind.
+            raise assistant_engine.AssistantChanged()
+        previous = None
 
     def question(state, *, expired=False):
         presentation = engine.call('presentation', token, library, lambda: False,
@@ -912,7 +933,10 @@ async def create_turn(request: Request, thread_id: str):
     body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts', 'memory_parent'},
                        required={'library_id', 'request_id', 'expected_revision', 'text'},
                        maximum=20 * 1024)
-    memory_opt_in = 'accepts' in body
+    scene_opt_in = _single(request, 'x-photohouse-search-version') == '4'
+    if scene_opt_in and (body.get('accepts') != ['scene_search_v1'] or 'memory_parent' in body):
+        raise WorkspaceInvalid()
+    memory_opt_in = 'accepts' in body and not scene_opt_in
     memory_actions_opt_in = False
     library, selected = _library(body['library_id']), _thread_id(thread_id)
     ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
@@ -993,10 +1017,15 @@ async def create_turn(request: Request, thread_id: str):
             memory_outcome = (await run_in_threadpool(_memory_command, memory_access, token, library,
                                words, preferences['locale']) if memory_opt_in else None)
         if memory_outcome is None:
-            result, pending_intent = await run_in_threadpool(_workspace_search_turn,
-                engine, token, library, words, row['context'], access.clock,
-                language=preferences['locale'], pending_intent=row.get('pending_intent'))
-            summary = {key: value for key, value in result.items() if key not in ('items', 'interpretation')}
+            if scene_opt_in:
+                result = await run_in_threadpool(engine.search, token, library, words,
+                    row['context'], language=preferences['locale'])
+                pending_intent = None
+            else:
+                result, pending_intent = await run_in_threadpool(_workspace_search_turn,
+                    engine, token, library, words, row['context'], access.clock,
+                    language=preferences['locale'], pending_intent=row.get('pending_intent'))
+            summary = {key: value for key, value in result.items() if key not in ('items', 'interpretation', 'semantic')}
             if pending_intent is not None:
                 summary['pending_intent'] = pending_intent
             context = result['context']
@@ -1353,6 +1382,20 @@ async def saved_memory_segment_speech(request: Request, thread_id: str,
 router.add_api_route(
     '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}/segments/{segment}/speech',
     saved_memory_segment_speech, methods=['POST'], route_class_override=PrivateReplySpeechRoute)
+
+
+@router.get('/assistant/workspace/v1/scene-search-capabilities')
+async def scene_search_capabilities(request: Request):
+    from .semantic_search import SemanticSearchRuntime
+    query = _query(request, {'library_id'}, {'library_id'})
+    await _principal(request, _library(query['library_id']))
+    _workspace(request)
+    semantic = getattr(request.app.state, 'semantic_search_runtime', None)
+    available = (getattr(request.app.state, 'assistant_semantic_search_enabled', False) is True
+                 and type(semantic) is SemanticSearchRuntime
+                 and semantic.discovery is getattr(request.app.state, 'discovery_runtime', None))
+    return JSONResponse({'version': 1, 'available': available,
+                         'search_version': 4, 'media': ['image']}, headers=PRIVACY_HEADERS)
 
 
 @router.get('/assistant/workspace/v1/capabilities')
