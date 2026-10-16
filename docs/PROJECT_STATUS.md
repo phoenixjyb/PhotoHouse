@@ -38,7 +38,9 @@ review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
 PR #50 and #51 merged the [gated scene-search workspace and Web source](ASSISTANT_SCENE_SEARCH.md)
 through `a4e6ccb`. Their source remains preserved and is not claimed as part of
-the v66 phone delivery or as deployed API/Web work.
+the v66 phone delivery or as deployed API/Web work. PR #54 subsequently merged
+Android scene-search controls at `c5536bc`; that is following source and is not
+included in the fixed v66 APK.
 
 ## Delivery and acceptance
 
@@ -48,7 +50,7 @@ the v66 phone delivery or as deployed API/Web work.
 | Primary database | No schema migration or data change in the v66 operation | Later feature/schema activation and paired recovery qualification |
 | Phone | v66 original-certificate/icon APK published; five CI jobs, configured release build/lint, native full-HTTPS readback and independent Mac full-stream digest passed | Physical installation and family/device acceptance remain open |
 | TV | v30 pointer and manifest verified unchanged in postflight; v31 source unpublished | Projector/library/playback check |
-| Public source | PRs #47–53 merged; phone v66 proposal adoption delivered; API/Web search clarification remains the last verified live source | Physical phone and family acceptance; PR #50/#51 scene-search source is not claimed deployed |
+| Public source | PRs #47–54 merged; phone v66 proposal adoption delivered; API/Web search clarification remains the last verified live source | Physical phone and family acceptance; PR #50/#51 scene-search server/Web source is not claimed deployed; PR #54 Android controls await a later APK |
 | Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before any activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 

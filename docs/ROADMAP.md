@@ -24,6 +24,10 @@ Chinese/English 150% renders. Provider/model story generation remains off. The
 synthetic 9B cold-capture sample took 80.422 seconds and has not had human
 quality review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
+PR #54 subsequently merged Android scene-search controls as following source.
+They are not included in the fixed v66 APK. Keep the optional model/runtime
+qualification and a later phone release separate from this delivered artifact.
+
 ## Current priority: validate delivered family search and story linking
 
 Run owner/member acceptance journeys for the delivered bilingual search

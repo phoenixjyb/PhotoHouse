@@ -9,6 +9,8 @@ reviewed adoption of selected story chapter proposals into an unsaved editor;
 story generation remains off. Physical phone installation and family
 acceptance remain open. TV OTA remains v30; v31 source is unpublished. See the dated
 [project status](../../docs/PROJECT_STATUS.md) for the current delivery state.
+PR #54's Android scene-search controls are later source; they are not in the
+fixed v66 APK and need a later release.
 
 ## Projects
 
