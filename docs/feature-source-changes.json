@@ -21284,6 +21284,41 @@
       "models_activated": false,
       "apk_published": false,
       "microphone_speaker_overlap": false
+    },
+    {
+      "feature": "offline-scene-query-translation-and-derived-input-provenance",
+      "source_commit": "2e1d76829878db67e871f257219c3c755106ccb7",
+      "files": [
+        {
+          "path": "server/scripts/semantic_scene_translation.py",
+          "before_sha256": null,
+          "sha256": "7a45a78cb4e882b9a6c7b872ae718a09b478a3152e4e460fb645a12b56ece6c9"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_translation.py",
+          "before_sha256": null,
+          "sha256": "7da3b7547558146c7a6aaab7b9768d7b65659e2e4075ddd807ef060f2ff39f71"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "abb611f25a08cace3646a7bd194668b51bc1085978e7659f98c361bd4f126f75",
+          "sha256": "d8986c1eba242efeb3d6a0875704a0032445f604551670461c663f31f35961d9"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "9a18bb1272f9335c0bb89149c905e7ba723dfb5c0f53df7b091eddc59e5c2f3f",
+          "sha256": "8cdfae3cf80150ea83e7ba082329557c1e1273507385fbdae4b902e7f3a63f57"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b85b37a6973ac3d30fc25b815c4d0053200de821596e70cd9cf783bb6cc0e6c6",
+          "sha256": "0d0c2799b0d2acb8bc1f3d38113cf1464c1cb70f909adf519a22b16c21dc39f1"
+        }
+      ],
+      "runtime_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "translation_quality_qualified": false
     }
   ]
 }
