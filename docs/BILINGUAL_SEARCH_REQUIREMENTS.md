@@ -271,6 +271,39 @@ is stored as the user's turn; recovery replays its stored result without asking
 the provider again. This flow changes search conditions only, not captions,
 memories or family facts.
 
+## Adding one scene clue
+
+An explicit v3 follow-up can add one visual detail while keeping the current
+search: `also with a blue hat`, `also add blue hat`, `add blue hat clue`,
+`please add 蓝帽子 as a clue`, `再加上蓝帽子` or `请添加blue hat这条线索`.
+The user must already have a current search; it can have only hard conditions
+or existing descriptive clues. The new concept is appended after the old ones.
+Every old concept and all people, capture dates, media, literal text, tags and
+places remain required. This is caption/photo-memory evidence matching, separate
+from the gated v4 image-vector scene search.
+
+Only the new phrase goes through the existing bounded, redacted intent compiler.
+It must produce exactly one descriptive concept and no hard condition, even
+when a proposed date or media value repeats the current filter. Quoted literals,
+commands, private relationship selectors, references to selected people,
+reviewed-label collisions and compound changes require clarification. These
+follow-ups do not select a new person or resolve a kinship relationship. Explicit
+conjunctions such as `and`, `or` and `和` require separate additions; the server
+does not let a single combined model span bypass the one-clue operation.
+
+A duplicate normalized surface keeps the current search and explains that the
+clue is already present; alternative phrases are not used to guess equivalence.
+The existing six-concept limit still applies. Failed proposals and provider
+outages keep the prior conditions. The original follow-up is stored as the
+user's turn, and receipt recovery does not rerun the planner or append a second
+copy. Current membership and source bindings are rechecked as usual.
+
+Generated tests cover bilingual and mixed input, actual narrowing under the
+existing lexical evidence rules, empty results, retained conditions, refusals
+and durable replay. They do not qualify a model's new-word understanding,
+translation faithfulness, dialect handling or native runtime quality. No
+provider, scene-search gate or deployed client is activated by this source work.
+
 ## Removing one scene clue
 
 When a v3 search is too narrow, `remove the "red coat" clue`, `drop "red coat" clue`

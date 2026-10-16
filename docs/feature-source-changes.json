@@ -22036,6 +22036,48 @@
       "recorded_live_api_delivery_verified": true,
       "recorded_phone_installation_verified": true,
       "real_voice_family_acceptance": false
+    },
+    {
+      "feature": "explicit-bilingual-additive-visual-clue-refinement",
+      "source_commit": "f99f73810988b5bbd9309115cf28fd8a75a58cd6",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "1c1b46bc28470d732658bd8bab7a6cb16135522feeb7c504dd274966bae43831",
+          "sha256": "8fe74f9ad982eb4f824f7539c0b87ce7e3b97b738a058fe8f9b0c4e0526dc605"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "e4f933f2f69051260f3cc4de91e9dcde56d25c8843256066c46aca18fbc0f275",
+          "sha256": "d662958b888709a2942ea671801c3d8c2d19eb4a81364777f0344c312bd31a21"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "4125d038cb39588350650cd003326ee289609bf136370b1f60a606ee5fd4bceb",
+          "sha256": "1c6f065247e87109802bf75ab1053ba615a5331a2ef28b22cc8f53cec79c477a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "3a34e9947caabacbaa3a21c221f34957f4645e50ddcc28e3404101dc224ab6dd",
+          "sha256": "21f5c54863ce9c7be49f3cc59ae8fed461dd0041fdf3f6eede650d808e6f771b"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_clue_addition.py",
+          "before_sha256": null,
+          "sha256": "b222afc4eb06f8fc641e40cf5ea86faaab69e6a8ae0c82a4fc85a003c6cb5fb9"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e9ad5d77b18d531ee48b344e1de2009d1614b82d161d9f65b19eab66ac6ed2db",
+          "sha256": "7476c5481f68dafc903b8ccd2a17b5ba772322357f9c9b2e5976acd5eecec1b4"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "routes_added": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "native_relevance_qualified": false
     }
   ]
 }
