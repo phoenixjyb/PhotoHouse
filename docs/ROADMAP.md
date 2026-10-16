@@ -76,8 +76,12 @@ v60 includes [temporary reading-size controls](READER_TEXT_SIZE.md),
 navigation and a [first-story guide](FIRST_STORY_GUIDE_ZH.md). Assistant
 [saved-section narration](ASSISTANT_SEGMENT_READING.md) reads a first chapter or
 memoir introduction in explicit segments. Successful playback enables Continue;
-Stop and source/scope changes clear progress. Voice-requested continuation and
-hands-free advancement to later chapters remain future work.
+Stop and source/scope changes clear progress. The following local source adds
+exact [spoken Pause/End controls](VOICE_SESSION_SPOKEN_CONTROLS.md), recognized
+after ASR during the opted-in Listening phase. Resume stays explicit and playback
+keeps the microphone off; this is not in the frozen v66 APK or claimed live.
+Voice-requested continuation and hands-free advancement to later chapters remain
+future work.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.

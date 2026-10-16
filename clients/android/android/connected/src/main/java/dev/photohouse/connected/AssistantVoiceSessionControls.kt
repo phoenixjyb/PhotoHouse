@@ -11,6 +11,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import dev.photohouse.connected.core.*
 
+internal fun assistantVoiceListeningDetail(zh: Boolean): String = if (zh) {
+    "请说出想查找的内容；也可说“暂停”或“结束语音”。麦克风已开启。"
+} else {
+    "Say what you would like to find, or say “pause” or “end voice chat.” Microphone is on."
+}
+
 internal data class AssistantVoiceControls(
     val session: AssistantVoiceSessionUiState?,
     val start: (() -> Unit)?,
@@ -85,15 +91,16 @@ internal fun rememberAssistantVoiceControls(
             if (zh) "本轮未能完成，已暂停；请查看回复或回执。" else "This turn could not finish. Review its reply or receipt before continuing."
         else -> when (voice.phase) {
             VoiceSessionPhase.LISTENING -> if (voice.captureStarted) {
-                if (zh) "请说出想查找的内容。麦克风已开启。" else "Say what you would like to find. Microphone is on."
+                assistantVoiceListeningDetail(zh)
             } else if (zh) "正在开启麦克风；出现“正在聆听”后再开始说话。" else "The microphone is opening. Speak when Listening appears."
             VoiceSessionPhase.TRANSCRIBING -> if (zh) "麦克风已关闭，正在识别你刚才说的话。" else "Microphone off. Recognizing what you said."
             VoiceSessionPhase.REQUESTING -> if (zh) "麦克风已关闭，正在查找相关回忆。" else "Microphone off. Searching for matching memories."
             VoiceSessionPhase.SPEAKING -> if (voice.playbackStarted) {
                 if (store.privateReplySpeechEnabled()) {
-                    if (zh) "麦克风已关闭，正在播报助手回复。" else "Microphone off. Playing the assistant reply."
-                } else if (zh) "麦克风已关闭，正在播报当前查找结果。" else "Microphone off. Reading the current search results."
-            } else if (zh) "麦克风已关闭，正在准备语音回复。" else "Microphone off. Preparing the spoken reply."
+                    if (zh) "麦克风已关闭，正在播报。暂停或结束请点屏幕按钮。" else "Microphone off. Playing the reply; use Pause or End."
+                } else if (zh) "麦克风已关闭，正在播报。暂停或结束请点屏幕按钮。" else "Microphone off. Reading results; use Pause or End."
+            } else if (zh) "麦克风已关闭，正在准备语音。暂停或结束请点屏幕按钮。"
+            else "Microphone off. Preparing speech; use Pause or End."
             else -> null
         }
     }

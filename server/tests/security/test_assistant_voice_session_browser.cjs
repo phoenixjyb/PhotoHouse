@@ -101,6 +101,8 @@ let browser,context,page;
   await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='listening','actual capture marks listening');
   assert.equal(await page.locator('#assistant-voice-title').textContent(),'轮到你了，我在听');
   assert.equal(await page.locator('#assistant-voice-mic-state').textContent(),'麦克风开启');
+  assert.match(await page.locator('#assistant-voice-session-status').textContent(),/暂停.*结束语音/);
+  const spokenControlsZhCapture=path.join(artifacts,'assistant-spoken-controls-zh-phone-text150.png');await page.screenshot({path:spokenControlsZhCapture,fullPage:false});fs.chmodSync(spokenControlsZhCapture,0o600);
 
   assert.equal(await page.locator('#assistant-voice-pause').isVisible(),true);assert.equal(await page.locator('#assistant-mic').isVisible(),false,'one-shot dictation is hidden during continuous session');
   const heldAsr=gate();let asrGate=heldAsr;await context.route('**/assistant/v1/transcribe',async route=>{const headers=route.request().headers(),id=headers['x-photohouse-request-id'];transcriptionRequests.push({id,headers});asrGate.arrive();await asrGate.released;const code=asrErrorCode;asrErrorCode=null;const statuses={speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503};try{await route.fulfill(code?{status:statuses[code],contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify({error:code,detail:'safe fixture detail'})}:{status:200,contentType:'application/json',headers:{'cache-control':'no-store',...tracking(id)},body:JSON.stringify({version:1,text:'找最近的照片',language:'zh'})});}catch{}asrGate.finish();gates.delete(asrGate);});
@@ -242,6 +244,67 @@ let browser,context,page;
   privateReplyMode='results';await voiceStart.click();await waitFor(expected=>window.__phGetUserMediaCalls===expected,'English private voice starts explicitly after current restore',englishVoiceBase+1);await makeUtterance();await page.waitForFunction(()=>document.querySelector('#assistant-reply').textContent==='Private results reply');await waitForNode(()=>privateSpeechRequests.length===englishSpeechBase+1,'English timing loop requests synthetic speech');await page.waitForFunction(()=>document.querySelector('#assistant-voice-session').dataset.phase==='speaking');assert.equal(await page.locator('#assistant-voice-timing').isHidden(),true,'English timings remain hidden during playback');await page.evaluate(()=>window.__phVoicePlayers.at(-1).dispatchEvent(new Event('ended')));await waitFor(expected=>window.__phGetUserMediaCalls===expected,'English timing loop awaits completed playback',englishVoiceBase+2);await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='listening','English timing loop reaches ready capture');
   assert.deepEqual(await page.locator('#assistant-voice-timing dt').allTextContents(),['Recognition','Assistant request','Prepare speech','Playback']);const englishTimingValues=await page.locator('#assistant-voice-timing dd').allTextContents();assert.equal(englishTimingValues.length,4);assert(englishTimingValues.every(value=>/^\d+\.\d+s$/.test(value)),'English timings contain four numeric client-observed durations: '+JSON.stringify(englishTimingValues));assert.doesNotMatch(englishTimingValues.join(' '),/Private results|family-a|800|801/,'English timing values contain no source, library, or result identifiers');assert.equal(await page.locator('#assistant-voice-timing').evaluate(node=>node.open),false,'English summary also defaults collapsed');
   await page.setViewportSize({width:1280,height:900});const englishRequestCount=requests.length;await page.locator('#assistant-voice-timing summary').click();assert.equal(requests.length,englishRequestCount,'expanding English timing makes no network request');for(const selector of ['#assistant-voice-pause','#assistant-voice-end'])assert.equal(await page.locator(selector).isVisible(),true,`${selector} remains visible with English timing expanded on desktop`);const timingDesktopCapture=path.join(artifacts,'assistant-voice-timing-en-desktop.png');await page.screenshot({path:timingDesktopCapture,fullPage:false});fs.chmodSync(timingDesktopCapture,0o600);await page.locator('#assistant-voice-end').click();await page.waitForFunction(()=>document.querySelector('#assistant-voice-timing').hidden);assert.equal(await page.locator('#assistant-voice-timing-values dd').count(),0,'English End clears every timing value');
+  // Exact spoken controls are local session actions after protected ASR. They
+  // must not become turns, TTS or the parent transcript of a future request.
+  let controlText='暂停。',controlGate=null;
+  await context.route('**/assistant/v1/transcribe',async route=>{
+    const text=controlText,held=controlGate;controlGate=null;
+    const id=route.request().headers()['x-photohouse-request-id'];
+    if(held){held.arrive();await held.released;}
+    try{await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store',...tracking(id)},body:JSON.stringify({version:1,text,language:'mixed'})});}
+    catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}
+    finally{if(held){held.finish();gates.delete(held);}}
+  });
+  const turnCount=()=>requests.filter(entry=>entry.method==='POST'&&(entry.path==='/assistant/v1/turns'||/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(entry.path))).length;
+  const beforeControls={mic:await calls(),turns:turnCount(),speech:privateSpeechRequests.length};
+  await page.locator('#assistant-text').fill('Keep this unsent draft');
+  await page.locator('#assistant-voice-start').click();await makeUtterance();
+  await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='paused','Chinese spoken pause');
+  assert.equal(await page.locator('#assistant-voice-mic-state').textContent(),'Microphone off');
+  assert.match(await page.locator('#assistant-voice-session-status').textContent(),/Paused by voice/);
+  assert.equal(await calls(),beforeControls.mic+1,'spoken pause does not recapture');
+  assert.equal(turnCount(),beforeControls.turns,'spoken pause submits no turn');
+  assert.equal(privateSpeechRequests.length,beforeControls.speech,'spoken pause produces no reply audio');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'Keep this unsent draft');
+  assert.equal(await page.locator('#assistant-voice-timing').isHidden(),true,'local pause clears timing');
+
+  // A delayed recognized End cannot affect the explicitly resumed generation.
+  const staleControl=gate();controlText='结束语音';controlGate=staleControl;
+  await page.locator('#assistant-voice-resume').click();await makeUtterance();await staleControl.arrived;
+  await page.locator('#assistant-voice-pause').click();await page.locator('#assistant-voice-resume').click();
+  await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='listening','explicit resume owns a new capture');
+  staleControl.release();await staleControl.finished;await page.waitForTimeout(80);
+  assert.equal(await page.locator('#assistant-voice-session').getAttribute('data-phase'),'listening','stale spoken End cannot stop resumed session');
+  controlText='STOP LISTENING!';await makeUtterance();
+  await waitFor(()=>document.querySelector('#assistant-voice-start').hidden===false,'English spoken End returns to explicit Start');
+  assert.equal(await page.locator('#assistant-voice-mic-state').textContent(),'Microphone off');
+  assert.equal(turnCount(),beforeControls.turns);assert.equal(privateSpeechRequests.length,beforeControls.speech);
+  assert.equal(await page.locator('#assistant-text').inputValue(),'Keep this unsent draft','local End preserves an unrelated draft');
+  assert.equal(await calls(),beforeControls.mic+3,'neither stale nor current control reopens capture');
+
+  // Negation remains a normal assistant request; controls have no substring rule.
+  controlText='不要暂停，找最近的照片';privateReplyMode='results';
+  await page.locator('#assistant-voice-start').click();
+  await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='listening','new session waits for utterance');
+  assert.match(await page.locator('#assistant-voice-session-status').textContent(),/Say.*pause/);
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#assistant-voice-session').scrollIntoViewIfNeeded();
+  const spokenControlsCapture=path.join(artifacts,'assistant-spoken-controls-en-phone-text150.png');await page.screenshot({path:spokenControlsCapture,fullPage:false});fs.chmodSync(spokenControlsCapture,0o600);
+  await makeUtterance();await waitForNode(()=>turnCount()===beforeControls.turns+1,'negated pause is an ordinary turn');
+  await waitForNode(()=>privateSpeechRequests.length===beforeControls.speech+1,'ordinary request reaches reply speech');
+  const ordinaryControlTurn=requests.filter(entry=>entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(entry.path)).at(-1);
+  assert.equal(JSON.parse(ordinaryControlTurn.body).text,controlText);
+  await page.locator('#assistant-voice-end').click();
+  // Outside the opted-in session, the same words remain editable dictation.
+  controlText='暂停';
+  await page.locator('#assistant-mic').evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));
+  await waitFor(()=>document.querySelector('#assistant-stop').hidden===false&&typeof window.__phAudioProcessors.at(-1)?.onaudioprocess==='function','manual capture ready');
+  await feed(.35,5120);await page.locator('#assistant-stop').click();
+  await page.locator('#assistant-transcript-review').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-transcript').inputValue(),'暂停','manual dictation never interprets session controls');
+  assert.equal(turnCount(),beforeControls.turns+1,'manual control words do not auto-submit');
+  assert.equal(await page.locator('#assistant-voice-start').isVisible(),true);
+  console.log('PASS spoken Pause/End, explicit resume, stale ASR fence, negation, manual dictation, no control turn/TTS/recapture, preserved draft');
   assert.deepEqual(origins,[],'no external origins were contacted');assert.deepEqual(errors,[],'browser session has no uncaught errors');
   console.log('PASS explicit start, delayed ASR pause fence, same-scope resume, result turns, actual TTS ended gate, clarification and zero-result reply relisten gate, compact private management, private speaking desktop/phone captures, stale playback rejection, playback failure pause, VAD false-start/silence rejection, uncertain turn pause, workspace composer/footer, focus/draft/thread reuse, story handoff, sticky controls, Escape end, privacy/account boundary');console.log('DESKTOP_LAYOUT '+JSON.stringify(desktopLayout));console.log('PHONE_LAYOUT_TEXT150 '+JSON.stringify(layout));console.log('WORKSPACE_FOOTER '+JSON.stringify(footerLayout));console.log('WORKSPACE_CONTROLS '+JSON.stringify(workspaceControls));console.log('SUCCESS_WORKSPACE_SCREENSHOTS '+successWorkspaceDesktopCapture+' '+successWorkspacePhoneCapture);console.log('PRIVATE_REPLY_SPEAKING_SCREENSHOTS '+privateSpeakingDesktopCapture+' '+privateSpeakingCapture);console.log('SCREENSHOTS '+desktopCapture+' '+phoneCapture+' '+workspaceDesktopCapture+' '+workspaceTopCapture+' '+workspaceCapture);
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;}).finally(async()=>{for(const item of gates)item.release();if(browser)await browser.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();});

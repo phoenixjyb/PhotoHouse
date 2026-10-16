@@ -70,6 +70,11 @@ async def ui_assistant_private_workspace():
     return _ui_file_response(UI_DIR / "assistant-private-workspace.js", "application/javascript")
 
 
+@router.get("/ui/voice-session-control.js")
+async def ui_voice_session_control():
+    return _ui_file_response(UI_DIR / "voice-session-control.js", "application/javascript")
+
+
 @router.get("/ui/voice-turn-timing.js")
 async def ui_voice_turn_timing():
     return _ui_file_response(UI_DIR / "voice-turn-timing.js", "application/javascript")

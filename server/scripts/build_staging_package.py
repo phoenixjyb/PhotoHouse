@@ -160,6 +160,7 @@ FILES = (
     'backend/app/tasks.py',
     'backend/app/ui/access/app.js',
     'backend/app/ui/access/assistant-private-workspace.js',
+    'backend/app/ui/access/voice-session-control.js',
     'backend/app/ui/access/voice-turn-timing.js',
     'backend/app/ui/access/index.html',
     'backend/app/ui/access/memory-community.js',

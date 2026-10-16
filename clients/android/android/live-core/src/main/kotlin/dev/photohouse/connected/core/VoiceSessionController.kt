@@ -151,6 +151,11 @@ class VoiceSessionController {
         if (text.codePointCount(0, text.length) > MAX_TRANSCRIPT_CODE_POINTS || utf8Bytes > MAX_TRANSCRIPT_UTF8_BYTES) {
             return pauseInternal(VoiceSessionStopReason.TRANSCRIPT_TOO_LONG)
         }
+        when (classifyVoiceSessionSpokenControl(text)) {
+            VoiceSessionSpokenControl.PAUSE -> return pauseInternal(VoiceSessionStopReason.USER_PAUSED)
+            VoiceSessionSpokenControl.END -> return stopInternal(VoiceSessionPhase.ENDED, VoiceSessionStopReason.USER_ENDED)
+            null -> Unit
+        }
         val next = rotateBinding()
         state = state.copy(phase = VoiceSessionPhase.REQUESTING, operationGeneration = next.operationGeneration,
             captureStarted = false, playbackStarted = false)

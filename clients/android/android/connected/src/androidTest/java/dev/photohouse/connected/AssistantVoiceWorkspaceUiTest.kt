@@ -46,7 +46,7 @@ class AssistantVoiceWorkspaceUiTest {
                             "The microphone is opening. Speak when Listening appears.") },
                         onPauseVoiceSession = { pauses++; voice.value = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.PAUSED) },
                         onResumeVoiceSession = { voice.value = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.LISTENING,
-                            if (zh) "请说出想查找的内容。麦克风已开启。" else "Say what you would like to find. Microphone is on.",
+                            assistantVoiceListeningDetail(zh),
                             microphoneActive = true) },
                         onEndVoiceSession = { ends++; voice.value = null },
                         onFinishVoiceTurn = { finishes++; voice.value = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.TRANSCRIBING) })
@@ -66,7 +66,7 @@ class AssistantVoiceWorkspaceUiTest {
         rule.onNodeWithTag("assistant-voice-activity-indicator")
             .assertContentDescriptionEquals(if (zh) "正在开启麦克风" else "Opening microphone")
         voice.value = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.LISTENING,
-            if (zh) "请说出想查找的内容。麦克风已开启。" else "Say what you would like to find. Microphone is on.",
+            assistantVoiceListeningDetail(zh),
             microphoneActive = true)
         rule.onNodeWithTag("assistant-voice-session-status").assertTextEquals(if (zh) "正在聆听" else "Listening")
         rule.onNodeWithTag("assistant-voice-microphone-state").assertTextEquals(if (zh) "麦克风已开启" else "MICROPHONE ON")
@@ -84,6 +84,10 @@ class AssistantVoiceWorkspaceUiTest {
         rule.onNodeWithTag("assistant-voice-finish-turn").assertIsDisplayed().performClick()
         rule.onNodeWithTag("assistant-voice-pause").performClick()
         rule.onNodeWithTag("assistant-voice-resume").assertIsDisplayed().performClick()
+        rule.onNodeWithTag("assistant-voice-session-detail")
+            .assertTextContains(if (zh) "暂停”或“结束语音" else "pause” or “end voice chat", substring = true)
+        rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed()
+        rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
         saveRender(if (zh) "assistant-voice-zh-150.png" else "assistant-voice-en-150.png")
         rule.onNodeWithTag("assistant-voice-end").performClick()
         rule.onNodeWithTag("assistant-voice-ready").assertIsDisplayed()

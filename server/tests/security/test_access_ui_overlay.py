@@ -17,6 +17,7 @@ import build_access_ui_overlay as builder
 
 SYNTHETIC_FILES = {
     'backend/app/ui/access/assistant-private-workspace.js': b'window.syntheticAssistant = true;\n',
+    'backend/app/ui/access/voice-session-control.js': b'window.syntheticControl = true;\n',
     'backend/app/ui/access/voice-turn-timing.js': b'window.syntheticTiming = true;\n',
     'backend/app/ui/access/story-draft-store.js': b'window.syntheticStoryDraftStore = true;\n',
     'backend/app/ui/access/app.js': b'window.syntheticOverlay = true;\n',
@@ -197,6 +198,7 @@ class OverlayBindTests(unittest.TestCase):
                 '/ui': ('backend/app/ui/access/index.html', 'text/html'),
                 '/ui/app.js': ('backend/app/ui/access/app.js', 'application/javascript'),
                 '/ui/assistant-private-workspace.js': ('backend/app/ui/access/assistant-private-workspace.js', 'application/javascript'),
+                '/ui/voice-session-control.js': ('backend/app/ui/access/voice-session-control.js', 'application/javascript'),
                 '/ui/voice-turn-timing.js': ('backend/app/ui/access/voice-turn-timing.js', 'application/javascript'),
                 '/ui/story-draft-store.js': ('backend/app/ui/access/story-draft-store.js', 'application/javascript'),
                 '/ui/story-workspace.js': ('backend/app/ui/access/story-workspace.js', 'application/javascript'),

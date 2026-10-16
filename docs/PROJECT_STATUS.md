@@ -42,6 +42,18 @@ the v66 phone delivery or as deployed API/Web work. PR #54 subsequently merged
 Android scene-search controls at `c5536bc`; that is following source and is not
 included in the fixed v66 APK.
 
+## Following source: spoken session controls
+
+Web and phone source now add [exact spoken Pause/End](VOICE_SESSION_SPOKEN_CONTROLS.md)
+during an explicitly started foreground voice session. These are local controls
+after protected ASR, with no extra assistant turn or reply audio. Resume requires
+a tap; manual dictation remains editable text, and playback keeps the microphone
+off. This increment is not in the fixed v66 APK and is not claimed as live API/Web.
+
+A fresh October 16 read-only Windows check found the expected API task/process
+and listener bound with unchanged entry/config pins, phone OTA v66 and TV OTA
+v30. It did not inventory all services, workers, model health or video progress.
+
 ## Delivery and acceptance
 
 | Area | Latest verified evidence | Still open |

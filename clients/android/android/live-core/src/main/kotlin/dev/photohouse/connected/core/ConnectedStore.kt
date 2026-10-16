@@ -5619,6 +5619,15 @@ class ConnectedStore(
         job.start()
         return true
     }
+    /** Consume this exact voice-control transcript without losing its ASR receipt or creating a parent turn. */
+    internal fun discardAssistantVoiceControlTranscript(expected: AssistantTranscript): Boolean {
+        val current = state.value.assistant ?: return false
+        if (!allowed() || current.library != state.value.library || current.generation != state.value.generation ||
+            current.transcript !== expected || current.transcribing) return false
+        mutable.value = state.value.copy(assistant = current.copy(transcript = null, confirmedTranscriptRequestId = null))
+        return true
+    }
+
     fun clearAssistantTranscript() {
         val current = state.value.assistant ?: return
         if (current.library == state.value.library && current.generation == state.value.generation)

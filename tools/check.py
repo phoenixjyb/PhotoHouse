@@ -95,6 +95,7 @@ ANDROID_TASKS = (
     ":connected:lintDebug", ":tv:lintDebug", ":connected:assembleDebug", ":tv:assembleDebug",
 )
 WEB_TESTS = (
+    "server/tests/ui/voice-session-control.test.mjs",
     "server/tests/ui/voice-turn-timing.test.mjs",
     "server/tests/ui/assistant-private-workspace.test.mjs",
     "server/tests/ui/assistant-scene-workspace.test.mjs",
