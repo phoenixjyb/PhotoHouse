@@ -22171,6 +22171,22 @@
       "apk_rebuilt": false,
       "apk_published": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "phone-v68-search-api-baseline-reconciliation",
+      "source_commit": "730c9cd714072b93e4f86dd5abf8cdb7c58bee8f",
+      "files": [
+        {
+          "path": "clients/android/docs/PHONE_V68_CANDIDATE_2026-10-16.md",
+          "before_sha256": "6b28f3cc7136b92ab8572ae6d13bb435081cdb6a542d92feb7f5c016bbb0d53f",
+          "sha256": "f71670f7d62a97de4276424effb1e756507761697b95f142bd5ec42daf546ee2"
+        }
+      ],
+      "documentation_only": true,
+      "apk_rebuilt": false,
+      "apk_published": false,
+      "runtime_changed": false,
+      "recorded_live_api_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
     }
   ]
 }
