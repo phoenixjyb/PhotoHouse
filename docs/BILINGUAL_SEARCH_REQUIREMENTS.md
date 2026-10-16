@@ -579,3 +579,36 @@ while retaining complete content words. Strict validation still rejects a
 grammar-only concept even when other concepts are valid; no concept is silently
 dropped. Source checks do not establish that the installed model follows this
 instruction. See the [native trial record](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md).
+
+## Covered Chinese disposal constructions
+
+The optional v3 compiler recognizes a narrow person-led 把 construction, for
+example `找示例儿童把绿色卡片放进纸盒的视频`. One reviewed person with one
+matched nonempty label must immediately precede 把; tag/location selections and
+multiple person labels are not inferred into this form. The model must supply
+separate exact spans for a multi-character object and a following action from
+the compiler's closed supported set. The compiler can then treat that single 把
+as grammar while compiling the remaining original words normally.
+
+All descriptive concepts remain required. Missing actions, destination words,
+quantities and other unhandled content still require clarification. Known 把
+content words, ambiguous partial-word spans and incomplete constructions do not
+receive this grammar treatment. Dates, media, reviewed identities, quoted text,
+negation and previous-search filters retain their existing checks. This adds no
+identity binding, relationship inference, tool action or dialect recognition.
+The conservative compound-prefix check can still clarify valid object names
+such as `手套`; resolving those word boundaries remains a limitation of this
+narrow construction support.
+
+The provider view also hides existing recognized literal-content introducers
+when they directly precede a paired quoted literal, with only whitespace or
+colons between them. Handled syntax such as `containing "spring fair"` therefore
+cannot become a required visual clue. The exact literal remains an independent
+hard filter. Unquoted and nonadjacent cue-like words remain visible; no new
+content aliases or translations are added.
+
+Generated compiler, both-endpoint transport and protected API fixtures cover
+these changes, including mixed English/Chinese input and rejection of evidence
+missing a required action. A retained-proposal replay is compiler evidence,
+not a new native-model measurement or general retrieval qualification. The
+optional provider remains unconfigured for users.

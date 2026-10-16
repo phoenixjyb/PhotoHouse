@@ -112,6 +112,74 @@ class SearchIntentViewTests(unittest.TestCase):
         self.assertEqual(REDACTION_MARKER * (end - start), view[start:end])
         self.assertEqual(query[end:], view[end:])
 
+    def test_masks_only_content_introducers_directly_before_paired_literals(self):
+        cases = (
+            ('Find photos containing: "paper moon" with Mira holding a red kite',
+             'holding a red kite'),
+            ('找Mira在公园里包含：“红色的球”玩耍的照片', '在公园里'),
+            ('show Mira carrying a red bag about "private phrase" beside a bench',
+             'carrying a red bag'),
+            ('photos with the words "snow day" of Mira making a snowman',
+             'making a snowman'),
+        )
+        for query, visible_scene in cases:
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, ['Mira'])
+                self.assert_same_offsets(query, view)
+                cue = next((cue for cue in ('containing', '包含', 'about', 'with the words')
+                            if cue in query), None)
+                self.assertIsNotNone(cue)
+                start = query.index(cue)
+                expected_cue = ''.join(' ' if char.isspace() else REDACTION_MARKER for char in cue)
+                self.assertEqual(expected_cue, view[start:start + len(cue)])
+                self.assertIn(visible_scene, view)
+                self.assertNotIn('paper moon', view)
+                self.assertNotIn('红色的球', view)
+                self.assertNotIn('private phrase', view)
+                self.assertNotIn('snow day', view)
+
+    def test_leaves_nonadjacent_unquoted_and_quoted_cue_words_alone(self):
+        queries = (
+            'find photos about children building a fort "red coat"',
+            'find photos containing a red coat wearing a blue hat',
+            'find photos "about" Mira wearing a red coat',
+            'find photos about children, "red coat"',
+        )
+        for query in queries:
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, [])
+                self.assert_same_offsets(query, view)
+                if '"about"' in query:
+                    start = query.index('about')
+                    self.assertEqual(REDACTION_MARKER * len('"about"'),
+                                     view[start - 1:start + len('about') + 1])
+                elif 'containing a red coat' in query:
+                    self.assertIn('containing a red coat', view)
+                else:
+                    start = query.index('about')
+                    self.assertEqual('about', view[start:start + len('about')])
+
+    def test_intro_mask_uses_source_offsets_after_unicode_folding(self):
+        for query, cue in (
+                ('ﬁnd photos ＣＯＮＴＡＩＮＩＮＧ： “snow day” beside a bench', 'ＣＯＮＴＡＩＮＩＮＧ'),
+                ('找e\u0301朋友关于：“春游”在公园里', '关于')):
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, [])
+                self.assert_same_offsets(query, view)
+                start = query.index(cue)
+                self.assertEqual(REDACTION_MARKER * len(cue), view[start:start + len(cue)])
+                literal = 'snow day' if 'snow day' in query else '春游'
+                self.assertNotIn(literal, view)
+
+    def test_content_intro_without_a_paired_quote_is_not_masked(self):
+        for query in ('find photos containing a red coat',
+                      'find photos containing "an unfinished literal'):
+            with self.subTest(query=query):
+                view = scene_view(query, TODAY, [])
+                self.assert_same_offsets(query, view)
+                self.assertIn('containing', view)
+                self.assertIn('red coat' if 'red coat' in query else 'unfinished literal', view)
+
     def test_invalid_or_conflicting_dates_fail_closed(self):
         for query in ('find photos in 2032年13月 wearing red coat',
                       'find photos in September 2032 and February 2032 wearing red coat'):

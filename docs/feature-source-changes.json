@@ -22464,6 +22464,60 @@
       "models_activated": false,
       "native_quality_measured": false,
       "household_data_included": false
+    },
+    {
+      "feature": "person-led-disposal-grammar-and-quoted-content-cue-boundaries",
+      "source_commit": "6ab9c523d4a28152a5951b7c775613394ff787fa",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "d3079cf21892a44e17a1d1544550f677b8758154d558d6bd9bebef6cebdda021",
+          "sha256": "2ecc81031d40c8dce97fa238a551887956f4cc42416dbb0e06fcae4f27ea5454"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_view.py",
+          "before_sha256": "f81049451f70171030a6daf67027a420f6df60c53532a24430e9bab0eb651a79",
+          "sha256": "f5495f53b7e9e0f5eb341ef49798e69d63f32f42332e00ad1fb1e60dcce0cf87"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "21f5c54863ce9c7be49f3cc59ae8fed461dd0041fdf3f6eede650d808e6f771b",
+          "sha256": "9fac233809e23807e97b388f76184b5f877254d893f5869a5c17d724008caf58"
+        },
+        {
+          "path": "server/tests/security/test_search_intent.py",
+          "before_sha256": "4816ff19add36ffd37e3a0c57764d55e0d0d7c5936cf7d53855c83fc50b96e44",
+          "sha256": "657c65617c93b8ee6a152e108036ed7b8895c7c6b568062b1d9167597d4ed7c5"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "f31ebf4ef40086da3a68472552dcdf14d086e97323ca3efe8f796af2931ae4c2",
+          "sha256": "05fa9af66031e5ed01e16614e8879fa3638e997fbb33fdd4897f76f054c0b7c8"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_view.py",
+          "before_sha256": "7060e2833b0bdc24e48a2da9a1c32c34cf4ddae745d1811f41119cca8498c594",
+          "sha256": "8c6834ded15d6a63cba33c0de7a5f192e471cd0c82901618ca48a7871473ac62"
+        },
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "ec43303a33df7fc74c7e07976d2f3955693a4d0dd514d24e7b76adbd48905a56",
+          "sha256": "29dd07a31ceb4b28028640a6516ea1cf76c87fecf8a48a9e5df74d7fd1b30500"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "564f017a10ca095fe6a3ff97d732731e349246e41d19ae4b61381594ceb04c46",
+          "sha256": "3953d3956826cfedd7f920c96bdc9e6cd04f06c8facbf0cd723485fb6cfc3a23"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "native_fixture_changed": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false,
+      "retained_proposal_replay_model_calls": 0
     }
   ]
 }

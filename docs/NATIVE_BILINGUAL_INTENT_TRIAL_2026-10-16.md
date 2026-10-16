@@ -8,6 +8,10 @@ Each trial had one separately counted warm-up. No production database, media,
 family roster or user request was used.
 
 **The results do not support enabling the optional intent provider.**
+The frozen scores below are historical observations. A later
+[condition-obligation audit](#compiler-replay-and-condition-obligation-audit)
+found incomplete positive fixtures; these scores alone are not a calibrated
+measure of general retrieval recall.
 
 | Language | Fixed-suite expectations met | Held-out positive matches | Held-out negative false positives |
 | --- | ---: | ---: | ---: |
@@ -121,3 +125,31 @@ that call, the API, voice transport or device experience. The full native
 measurement already retained detailed qualifier rows under `qualification`;
 the new diagnostics summarize those stages without adding raw invalid responses
 or pretending to observe separate uninstrumented validation steps.
+
+## Compiler replay and condition-obligation audit
+
+Replaying the retained validated proposals through the original compiler
+reproduced all 24 earlier statuses and reasons without model or network calls.
+A following narrow person-led 把 grammar change made one additional expected
+descriptive case ready, preserving its exact expected hard filters. Ready
+descriptive plans changed from 4/15 to 5/15. The replayed provider views were
+identical; the other 23 statuses/reasons were unchanged. Substantive omitted
+actions, relations and objects still required clarification. This isolates a
+compiler change on an inspected regression set, not new model generalization
+or a native quality pass.
+
+The caption audit also found a fixture defect: one original query explicitly
+requires a wall, but all four of that case's positive evidence pairs omit wall
+evidence. A model retaining that requested condition is correct. Separately,
+one proposal treats an exact-note introducer as a scene clue even though quoted
+text is an independent hard filter. Other paraphrase cases need a full audit
+of every requested qualifier before their positive expectations can qualify
+retrieval. None of these findings justifies dropping a user's condition or
+weakening the all-concepts matcher.
+
+The original fixture, captures and numerical scores remain unchanged. The set
+has been inspected and now serves as regression evidence. Later acceptance
+needs independently reviewed fictional evidence covering every requested
+condition, with compiler-blocked cases distinguished from eligible caption
+matches. No provider was activated or native measurement performed by this
+compiler/view change.

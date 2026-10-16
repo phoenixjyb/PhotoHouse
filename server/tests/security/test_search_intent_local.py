@@ -78,6 +78,30 @@ class LocalIntentPlannerTests(unittest.TestCase):
                             query, '2032-09-14', False)
                     self.assertEqual(1, len(calls))
 
+    def test_handled_quoted_content_syntax_cannot_become_a_required_scene_clue(self):
+        query = 'find photos carrying a green bag containing "spring fair"'
+        for endpoint in ('/api/chat', '/api/generate'):
+            for surface in ('carrying', 'containing'):
+                with self.subTest(endpoint=endpoint, surface=surface):
+                    calls = []
+                    def handler(request):
+                        calls.append(request)
+                        payload = request_payload(request, endpoint)
+                        self.assertNotIn('containing', '\n'.join(payload['segments']))
+                        self.assertNotIn('spring fair', '\n'.join(payload['segments']))
+                        response = model_chat_response if endpoint == '/api/chat' else model_response
+                        return response(query, surface=surface, alternatives=[surface])
+                    # The compiler supplies the offset-preserving protected view.
+                    view = scene_view(query, date(2032, 9, 14), [])
+                    planner = self.planner(handler, url='http://127.0.0.1:11434' + endpoint)
+                    if surface == 'containing':
+                        with self.assertRaises(IntentUnavailable):
+                            planner.propose(view, '2032-09-14', False)
+                    else:
+                        result = planner.propose(view, '2032-09-14', False)
+                        self.assertEqual(query.index(surface), result['concepts'][0]['start'])
+                    self.assertEqual(1, len(calls))
+
     def test_content_words_containing_a_grammar_character_keep_their_exact_surfaces(self):
         query = '绿色的士'
         for endpoint in ('/api/chat', '/api/generate'):
