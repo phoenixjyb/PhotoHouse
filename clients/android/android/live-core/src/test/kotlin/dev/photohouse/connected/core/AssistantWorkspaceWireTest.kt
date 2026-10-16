@@ -272,6 +272,32 @@ class AssistantWorkspaceWireTest {
             true, searchVersion = 2) }
     }
 
+    @Test fun preV4ClientRejectsSceneSearchNegotiationAndUnmodeledSemanticPayloads() {
+        val capabilities = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":true,"search":{"version":4,"date_basis":"capture","perspective":null}}"""
+        invalid { AssistantWorkspaceWire.capabilities(capabilities.toByteArray()) }
+        val unsolicitedCapability = capabilities.replace("\"search\":{\"version\":4,\"date_basis\":\"capture\",\"perspective\":null}",
+            "\"scene_search\":{\"version\":1,\"available\":true}")
+        invalid { AssistantWorkspaceWire.capabilities(unsolicitedCapability.toByteArray()) }
+
+        val interpretation = """{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null}"""
+        val context = """{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1,"search_version":3}"""
+        val item = """{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a"}"""
+        val v3 = """{"version":3,"kind":"results","reply":"Found one.","context":$context,"filters":{},"items":[$item],"total":1,"has_more":false,"effect":null,"interpretation":$interpretation}"""
+        val parsed = AssistantWorkspaceWire.turn(turn(v3).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3).result!!
+        assertEquals("existing v3 results remain readable", 3, parsed.searchVersion)
+        val v4 = v3.replace("\"version\":3", "\"version\":4").replace("\"search_version\":3", "\"search_version\":4")
+        invalid { AssistantWorkspaceWire.turn(turn(v4).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3) }
+        val semanticContext = v3.replace("\"search_version\":3}", "\"search_version\":3,\"scene_search\":{\"version\":1,\"mode\":\"semantic_scene\"}}")
+        invalid { AssistantWorkspaceWire.turn(turn(semanticContext).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3) }
+        val semanticScore = v3.replace("\"thumbnail_url\":\"/assets/123/thumbnail?library=family-a\"",
+            "\"thumbnail_url\":\"/assets/123/thumbnail?library=family-a\",\"semantic_score\":0.91")
+        invalid { AssistantWorkspaceWire.turn(turn(semanticScore).toByteArray(), "family-a", thread, request,
+            fromGet = true, searchVersion = 3) }
+    }
+
     @Test fun privateReplySpeechCapabilityAndRequestStayOptionalAndNarrow() {
         val legacy = """{"version":1,"available":true,"threads":true,"preferences":false,"preferences_applied":false,"server_owned_turns":false}"""
         assertFalse(AssistantWorkspaceWire.capabilities(legacy.toByteArray()).replySpeech)

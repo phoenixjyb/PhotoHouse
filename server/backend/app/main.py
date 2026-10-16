@@ -45,12 +45,17 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
                assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
-               assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False):
+               assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False,
+               assistant_semantic_search_enabled=False):
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
             semantic_search_runtime.discovery is not discovery_runtime):
         raise ValueError('Explicit matching semantic search runtime required')
+    if (type(assistant_semantic_search_enabled) is not bool or
+            (assistant_semantic_search_enabled and
+             (not assistant_enabled or semantic_search_runtime is None))):
+        raise ValueError('Explicit assistant and semantic runtime opt-in required')
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
     if memory_group_vectors is not None and (not memory_groups_enabled or
@@ -170,6 +175,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.media_runtime = media_runtime
     app.state.discovery_runtime = discovery_runtime
     app.state.semantic_search_runtime = semantic_search_runtime
+    app.state.assistant_semantic_search_enabled = assistant_semantic_search_enabled
     app.state.assistant_enabled = assistant_enabled
     app.state.memory_groups_enabled = memory_groups_enabled
     app.state.memory_group_vectors = memory_group_vectors

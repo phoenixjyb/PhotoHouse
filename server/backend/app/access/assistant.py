@@ -155,6 +155,12 @@ def _search_v2_endpoint(request):
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
 
 
+def _scene_endpoint(request):
+    # The stateless assistant and speech routes never accept server-owned v4 state.
+    return re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
+                        request.url.path) is not None
+
+
 def _engine(request):
     access = _runtime(request, allow_query=request.method == 'GET')
     discovery = getattr(request.app.state, 'discovery_runtime', None)
@@ -163,6 +169,15 @@ def _engine(request):
             or not isinstance(discovery, DiscoveryRuntime) or discovery.access is not access):
         return access, None
     version = _single(request, 'x-photohouse-search-version')
+    if version == '4':
+        from .assistant_scene_search import SceneSearchRuntime
+        from .semantic_search import SemanticSearchRuntime
+        semantic = getattr(request.app.state, 'semantic_search_runtime', None)
+        if (not _scene_endpoint(request) or
+                not getattr(request.app.state, 'assistant_semantic_search_enabled', False) or
+                type(semantic) is not SemanticSearchRuntime or semantic.discovery is not discovery):
+            raise TransportError(400, 'Search version is not supported on this endpoint')
+        return access, SceneSearchRuntime(semantic, getattr(request.app.state, 'assistant_kinship_provider', None))
     if version not in (None, '1', '2', '3'):
         raise AssistantInvalid()
     if version in ('2', '3'):
