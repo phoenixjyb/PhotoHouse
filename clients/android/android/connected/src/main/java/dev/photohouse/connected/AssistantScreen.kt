@@ -86,7 +86,7 @@ private fun ordinalSuffix(value: Int): String = when (value % 100) {
     else -> when (value % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
 }
 
-private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean): List<String> {
+internal fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean): List<String> {
     fun t(en: String, cn: String) = if (zh) cn else en
     val interpretation = turn.searchInterpretation ?: return emptyList()
     val filters = turn.filters
@@ -105,7 +105,7 @@ private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean)
         val names = interpretation.locations.joinToString(if (zh) "、" else ", ") { it.label }
         lines.add(t("Places: $names", "地点：$names"))
     }
-    val text = (filters?.get("text") as? kotlinx.serialization.json.JsonPrimitive)
+    val text = ((filters?.get("text") ?: filters?.get("caption")) as? kotlinx.serialization.json.JsonPrimitive)
         ?.takeIf { it.isString }?.content
     if (!text.isNullOrBlank()) lines.add(t("Text: $text", "文字：$text"))
     val descriptive = filters?.get("descriptive") as? kotlinx.serialization.json.JsonObject
@@ -135,6 +135,7 @@ private fun assistantSearchInterpretationLines(turn: AssistantTurn, zh: Boolean)
         val cn = media.joinToString("、") { kind -> when (kind) { "image" -> "照片"; "video" -> "视频"; else -> "其他" } }
         lines.add(t("Media: $en", "媒体：$cn"))
     }
+    interpretation.perspective?.let { lines.add(t("Search perspective: ${it.label}", "检索视角：${it.label}")) }
     return lines
 }
 

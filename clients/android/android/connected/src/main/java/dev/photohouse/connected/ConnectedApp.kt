@@ -159,6 +159,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     LaunchedEffect(assistantOpen, state.generation, state.library) {
         if (assistantOpen && !state.covered && state.session != null && privateAssistant != null) {
             if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSceneSearchCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
@@ -170,6 +171,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         if (!privateAssistantOpen) store?.clearAssistantMemoryOpeningSpeech()
         if (privateAssistantOpen && privateAssistant != null) {
             if (privateAssistant.refreshCapabilities()) privateAssistant.state.first { !it.busy }
+            if (privateAssistant.refreshSceneSearchCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryCardsCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryFollowupCapabilities()) privateAssistant.state.first { !it.busy }
             if (privateAssistant.refreshSavedMemoryReaderCapabilities()) privateAssistant.state.first { !it.busy }
@@ -662,6 +664,21 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                             if (current() && rendered?.threadId == liveThread?.threadId && rendered?.revision == liveThread?.revision)
                                 runCatching { privateAssistant.setDraft(text) }
                         },
+                        sceneInteractionBlocked = voice?.session != null || assistantRecording || assistantPendingCapture != null ||
+                            state.assistant?.let { it.busy || it.transcribing || it.speechBusy || it.speechAudio != null || it.transcript != null } == true,
+                        onSceneDraft = { text ->
+                            val rendered = privateAssistantState.detail?.thread
+                            val live = privateAssistant.state.value.detail?.thread
+                            if (current() && rendered?.threadId == live?.threadId && rendered?.revision == live?.revision)
+                                privateAssistant.setSceneDraft(text)
+                        },
+                        onSceneSend = { privateAssistantState.detail?.thread?.let { thread ->
+                            val live = store.state.value.assistant
+                            if (renderedAndLiveThreadCurrent(thread.threadId, thread.revision) && voice?.session == null &&
+                                !assistantRecording && assistantPendingCapture == null &&
+                                live?.let { it.busy || it.transcribing || it.speechBusy || it.speechAudio != null || it.transcript != null } != true)
+                                privateAssistant.sendSceneTurn()
+                        } },
                         onSend = { privateAssistantState.detail?.thread?.let { thread ->
                             if (renderedAndLiveThreadCurrent(thread.threadId, thread.revision)) privateAssistant.sendTurn()
                         } },

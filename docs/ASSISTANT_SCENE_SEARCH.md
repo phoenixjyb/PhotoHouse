@@ -5,9 +5,9 @@ pilot](SEMANTIC_SEARCH_PILOT.md) to the private assistant workspace. It is a
 separately negotiated, server-owned v4 turn, not a new default language planner.
 Ordinary Web and Android search continues to negotiate v1–v3 and rejects
 unsolicited v4 contexts or semantic scores. The Web client separately probes
-scene availability and provides an explicit scene-search flow. Android has no
-scene controls yet. The runtime switch remains default off; no live model
-activation is included.
+scene availability and provides an explicit scene-search flow. Android adds
+the same explicit flow in its private conversation panel. The runtime switch
+remains default off; no live model activation is included.
 
 ## Scope and explicit opt-in
 
@@ -159,6 +159,51 @@ artifact to check stale-card concealment, and renders Chinese/English enlarged
 phone and desktop layouts. These checks establish the UI/transport behavior;
 they do not establish natural-scene model quality.
 
+## Android private-conversation flow
+
+The optional `sceneSearchCapabilities` API defaults unavailable in older adapters.
+Its HTTPS implementation checks the exact separate descriptor, rechecks ordinary
+capabilities after an optional-route 403, and preserves ordinary v1–v3 negotiation.
+Only `submitSceneTurn` sends the v4 body/header; ordinary submission and speech
+reject v4. The workspace reader alone accepts v4 recovery, including earlier
+v1–v3 results under their original binding rules.
+
+The private panel offers **Find a scene within these conditions** after the
+separate capability probe. Its scene editor shows reviewed scope, a separate
+single-line 512-byte UTF-8 draft and an acknowledgement that conditions remain
+fixed. Only current resolved photo results enable submission. Clarifications,
+video/mixed media and descriptive-caption scopes remain unavailable. Capture,
+transcript review, speech and active voice sessions also block the action.
+**Return to full search** restores the ordinary composer; neither abandoning nor
+recovering a scene turn inserts visual wording into the ordinary draft.
+
+The in-memory coordinator reserves the original request UUID, revision, query,
+reader version and source scope before starting I/O. It verifies the exact query,
+original scope and next revision on completion. A restored scene is also checked
+against the original saved exchange input when present. Lost/ambiguous POSTs use
+GET-only readback, retaining v4 across capability loss. Definitive 400/409 refusals
+clear the local pending marker, keep the scene draft and require history refresh.
+History uses a v4 reader only after a successful fresh optional probe; a disabled
+or older API cannot authorize blind v4 negotiation. Failed saved-result validation
+withholds old cards and permits a complete new ordinary search. Membership,
+account, library and foreground changes discard private state and late replies.
+
+The native parser independently checks the closed image-only result grammar,
+original v2/v3 scope, card IDs, finite descending scores and complete eligible
+coverage. The panel renders approximate rank and query separately from factual
+conditions, with first-20 narrowing guidance only when necessary. Scene results
+cannot create automatic navigation or speech. Generic reply speech also rejects
+v4, including any stateless fallback.
+
+When request tracking is disabled, the workspace POST response contains no
+receipt identity/status headers; its immutable request ID remains in the JSON
+workspace envelope. This matches the strict native receipt contract. Enabled
+tracking retains its normal correlated headers.
+
+Generated JVM store/transport tests and the QA-only Compose fixtures use fictional
+identities and results. A QA emulator render is distinct from a signed release,
+physical phone test, natural-scene model measurement or family acceptance.
+
 ## Remaining delivery gates
 
 The generated HTTP/vector tests establish routing, hard-condition composition,
@@ -168,8 +213,7 @@ reject the unmodeled v4 extension. These are source checks with fictional
 vectors and a mock encoder, not natural-scene relevance, native GPU or family
 acceptance.
 
-Android scene-search controls, meaningful English/Chinese/mixed natural-scene
-pair qualification, complete immutable-vector coverage, native resource
+Meaningful English/Chinese/mixed natural-scene pair qualification, complete immutable-vector coverage, native resource
 qualification and explicit runtime activation remain separate work. The
 [pair measurement guide](SEMANTIC_PAIR_QUALIFICATION.md) distinguishes the
 existing generated shape canary from those relevance requirements.

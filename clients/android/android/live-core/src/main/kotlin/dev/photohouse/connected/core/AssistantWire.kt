@@ -28,6 +28,11 @@ data class AssistantSearchInterpretation(
     val locations: List<AssistantSearchFacetSelection>,
     val perspective: AssistantSearchPerspective?,
 )
+data class AssistantSceneRanking(
+    val query: String,
+    val scores: Map<String, Double>,
+    val candidateCount: Int,
+)
 sealed interface AssistantMatchReason {
     data class PhotoMemory(val sourceId: String) : AssistantMatchReason
     data class Caption(val generated: Boolean, val sourceId: String) : AssistantMatchReason
@@ -51,6 +56,7 @@ data class AssistantTurn(
     val searchVersion: Int = 1,
     val searchInterpretation: AssistantSearchInterpretation? = null,
     val matchReasons: Map<String, List<AssistantMatchReason>> = emptyMap(),
+    val sceneRanking: AssistantSceneRanking? = null,
 )
 data class AssistantTranscript(
     val text: String, val language: String, val receipt: AssistantRequestReceipt? = null,

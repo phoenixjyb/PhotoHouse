@@ -1059,7 +1059,8 @@ async def create_turn(request: Request, thread_id: str):
                 total=summary['total'] if committed else None)
         response = await _turn_envelope(request, account, library, row, recovered=False,
             memory_outcome=memory_outcome if committed else None)
-        response.headers['X-PhotoHouse-Request-Id'] = ident
+        if journal is not None:
+            response.headers['X-PhotoHouse-Request-Id'] = ident
         response.headers['X-PhotoHouse-Tracking'] = 'enabled' if journal is not None else 'disabled'
         if journal_started:
             response.headers['X-PhotoHouse-Receipt-Status'] = 'succeeded' if committed else 'failed'

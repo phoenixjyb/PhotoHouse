@@ -130,6 +130,15 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(self.pilot.calls, [])
         self.assertEqual(self.read(response.json()['request_id']).status_code, 200)
 
+    def test_disabled_tracking_has_no_receipt_identity_header(self):
+        self.scope()
+        response = self.send('a blue bridge', 1, scene=True)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['X-PhotoHouse-Tracking'], 'disabled')
+        self.assertNotIn('X-PhotoHouse-Request-Id', response.headers)
+        self.assertNotIn('X-PhotoHouse-Receipt-Status', response.headers)
+        self.assertIn('request_id', response.json())
+
     def test_unreviewed_scope_media_and_unnegotiated_body_are_refused(self):
         self.assertEqual(self.send('a bright kite', scene=True).status_code, 409)
         self.scope('find videos')
