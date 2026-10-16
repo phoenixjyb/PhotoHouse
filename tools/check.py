@@ -22,6 +22,7 @@ API_TESTS = (
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
     "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
     "test_semantic_scene_cases.py", "test_qualify_semantic_scenes.py",
+    "test_semantic_scene_translation.py",
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",

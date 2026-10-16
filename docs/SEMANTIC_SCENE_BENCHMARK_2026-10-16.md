@@ -95,3 +95,8 @@ the original encoder recipe, turn an impression into a factual filter, or
 weaken people/date/place/text scope or library authorization. Native serving
 resources, compatible immutable image-vector coverage and family/device
 acceptance remain separate gates.
+
+The subsequent [local translation experiment](SEMANTIC_SCENE_TRANSLATION_2026-10-16.md)
+kept this dataset and encoder frozen. It improved Chinese/mixed retrieval while
+exposing a meaning shift, and remains offline with a separate derived-input
+receipt.

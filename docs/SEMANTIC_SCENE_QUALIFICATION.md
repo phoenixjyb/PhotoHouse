@@ -157,3 +157,8 @@ measurement. Before enabling a family pilot, review that actual measurement,
 qualify compatible immutable image-vector coverage, establish native serving
 latency/memory limits, and review runtime activation. Family/device acceptance,
 hard-filter authorization, and dialect/ASR quality remain separate evidence.
+
+The [offline local translation experiment](SEMANTIC_SCENE_TRANSLATION_2026-10-16.md)
+uses a separate derived dataset and adaptation receipt with this evaluator.
+Its improved Chinese/mixed diagnostic scores do not approve translation
+faithfulness or a serving binding; the original inputs remain separate.
