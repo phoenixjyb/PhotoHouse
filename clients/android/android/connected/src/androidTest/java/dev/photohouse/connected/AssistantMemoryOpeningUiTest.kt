@@ -302,6 +302,7 @@ class AssistantMemoryOpeningUiTest {
         rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed()
         rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed()
         rule.onNodeWithTag("private-assistant-continue-memory-by-voice-0").assertDoesNotExist()
+        rule.onNodeWithTag("private-assistant-memory-segment-guidance-0").assertDoesNotExist()
         saveRender("zh-voice-continuation")
         rule.runOnUiThread {
             session = AssistantVoiceSessionUiState(AssistantVoiceSessionStage.SPEAKING,
@@ -326,6 +327,9 @@ class AssistantMemoryOpeningUiTest {
     }
 
     @Test fun centralVoiceContinuationShowsEnglishConsentAndTappableLargeTarget() {
+        rule.activity.runOnUiThread {
+            rule.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
         var session by mutableStateOf<AssistantVoiceSessionUiState?>(null)
         var ready by mutableStateOf(true)
         val starts = mutableListOf<Pair<Int, AssistantMemorySegmentProgress>>()
@@ -365,6 +369,7 @@ class AssistantMemoryOpeningUiTest {
         rule.waitForIdle()
         rule.onNodeWithTag("assistant-voice-pause").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("assistant-memory-segment-guidance-0").assertDoesNotExist()
         saveRender("en-central-voice-continuation")
     }
 

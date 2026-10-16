@@ -148,8 +148,8 @@ internal fun AssistantVoiceSessionPanel(
                         .testTag("assistant-voice-session-detail"))
             }
             if (state.readingContinuation && state.reason != VoiceSessionStopReason.READING_FINISHED) {
-                Text(t("Say “continue reading” for the next segment. Use Pause or End to stop.",
-                    "说“继续朗读”收听下一段；点“暂停”或“结束”可停止。"),
+                Text(t("One segment per request. Voice pauses after the final segment.",
+                    "每次朗读一段，最后一段读完后会暂停语音。"),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("assistant-voice-reading-context"))
             } else if (!state.readingContinuation) {

@@ -553,7 +553,7 @@ internal fun PrivateAssistantPanel(
                                                         }
                                                     }
                                                 }
-                                                if (canReadMemorySegments) Text(
+                                                if (canReadMemorySegments && voiceSessionState == null) Text(
                                                     t("One segment at a time; continue after it finishes. The microphone stays off.",
                                                         "每次只朗读一段；播放结束后可继续，麦克风不会开启。"),
                                                         style = MaterialTheme.typography.bodySmall,
