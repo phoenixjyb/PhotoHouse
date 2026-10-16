@@ -22078,6 +22078,54 @@
       "models_activated": false,
       "household_data_included": false,
       "native_relevance_qualified": false
+    },
+    {
+      "feature": "phone-stage-specific-voice-failure-recovery-guidance",
+      "source_commit": "63ff580928796077d304aab74b026299cb70688f",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/AssistantVoiceWorkspaceUiTest.kt",
+          "before_sha256": "7bf3c0390515cfc6c44ef549e23ccbcaf1a18fbfa02f098f62ec52d715c28759",
+          "sha256": "5e21f73023b00ddfdc7a1f9e09f8952844bc1dae84be2aeff38cbf4f3957638d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantVoiceSessionControls.kt",
+          "before_sha256": "a9aaaf15c4e4dab7a5dddec20904e12754268331eace07478833f04f4c0ce7a1",
+          "sha256": "6cea71b44c1c894b9464ed6b5ff3feec61e2636b22b0f9c7102126425d4ae6d3"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_PRESENCE.md",
+          "before_sha256": "37a5e75881bfd8904c7af36b4fb5bce6338bbc6c60e3a0a911a1af53100ac503",
+          "sha256": "e940df95ebef821b85ba184d57d6e4e353896a7b6431644cad91ee96995210f9"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_changed": false,
+      "microphone_consent_changed": false,
+      "automatic_retries_added": false,
+      "apk_published": false,
+      "physical_audio_acceptance": false
+    },
+    {
+      "feature": "emulator-qa-file-based-installation",
+      "source_commit": "be9f04da385a0b89549cb66ec437cdae6daac0e6",
+      "files": [
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": "13ffbda7eda8449fb3727fc3e4cfdd6481e119185309caa1b1a25731134f7c3d",
+          "sha256": "3c5fdbf3fb7d7d761f054ea66e6981f0a3eaf9539e018f9b03d178017615742f"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": "bd6cc86cf5c4fcdceffa2416b80269002976f55112aaa279b08b12699c1a8ee6",
+          "sha256": "42f7a628abad98bb7ab3262fa71997ca88eb65948ec75aa7d8426f938595f20e"
+        }
+      ],
+      "qa_emulator_only": true,
+      "physical_devices_allowed": false,
+      "apk_published": false,
+      "runtime_changed": false
     }
   ]
 }

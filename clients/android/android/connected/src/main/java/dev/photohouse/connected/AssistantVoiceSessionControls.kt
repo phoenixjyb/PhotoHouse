@@ -17,6 +17,20 @@ internal fun assistantVoiceListeningDetail(zh: Boolean): String = if (zh) {
     "Say what you would like to find, or say “pause” or “end voice chat.” Microphone is on."
 }
 
+/** Stage-specific recovery guidance; it does not retry or resume the session. */
+internal fun assistantVoiceFailureDetail(reason: VoiceSessionStopReason?, zh: Boolean): String? = when (reason) {
+    VoiceSessionStopReason.TRANSCRIPTION_FAILED -> if (zh)
+        "这段语音未能识别。准备好后点“继续”，再说一次。"
+    else "Could not recognize that recording. Resume when ready and say it again."
+    VoiceSessionStopReason.REQUEST_FAILED -> if (zh)
+        "这次请求未能完成。请查看屏幕提示，再决定是否继续。"
+    else "The request could not finish. Check the on-screen message before resuming."
+    VoiceSessionStopReason.SPEECH_FAILED -> if (zh)
+        "语音播放未完成。可以先查看屏幕内容；点“继续”会返回语音查找。"
+    else "Audio playback did not finish. Read the on-screen reply; Resume returns to voice search."
+    else -> null
+}
+
 internal data class AssistantVoiceControls(
     val session: AssistantVoiceSessionUiState?,
     val start: (() -> Unit)?,
@@ -113,7 +127,7 @@ internal fun rememberAssistantVoiceControls(
         VoiceSessionStopReason.AUDIO_FOCUS_LOST -> if (zh) "音频被其他应用使用，已停止聆听。" else "Another app took audio focus; listening stopped."
         VoiceSessionStopReason.EMPTY_TRANSCRIPT, VoiceSessionStopReason.CAPTURE_FAILED -> if (zh) "没有收到可用语音。准备好后可继续。" else "No usable speech was captured. Resume when ready."
         VoiceSessionStopReason.TRANSCRIPTION_FAILED, VoiceSessionStopReason.REQUEST_FAILED, VoiceSessionStopReason.SPEECH_FAILED ->
-            if (zh) "本轮未能完成，已暂停；请查看回复或回执。" else "This turn could not finish. Review its reply or receipt before continuing."
+            assistantVoiceFailureDetail(voice.reason, zh)
         else -> when (voice.phase) {
             VoiceSessionPhase.LISTENING -> if (voice.readingContinuation && voice.captureStarted) {
                 if (zh) "麦克风已开启，正在等待你的指令。"

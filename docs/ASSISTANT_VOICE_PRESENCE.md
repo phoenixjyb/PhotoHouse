@@ -45,3 +45,19 @@ Android core output reports 915 passing tests, connected unit checks report 17,
 and three emulator voice-workspace fixtures pass with English/Chinese 150%
 renders inspected. These cohorts overlap earlier checks and are not a native
 ASR/TTS or physical microphone/speaker test.
+
+## Following phone source: failure recovery guidance (October 16)
+
+The phone status card now distinguishes three paused failures in Chinese and
+English: a recording that could not be recognized, a request that could not
+finish, and audio playback that did not finish. Recognition guidance invites an
+explicit Resume and a fresh utterance; request guidance directs the user to the
+on-screen message; playback guidance keeps the visible content useful and says
+that Resume returns to voice search.
+
+This is display-only guidance. Rendering never starts recording, submits or
+retries a request, replays speech, or restores the previous reading intent.
+The existing uncertain-request receipt check and its blocked Resume action stay
+unchanged. Shared paused controls keep the microphone-off label and explicit
+Resume/End actions. This following source is not included in the released v67
+APK; signing, publication and real audio/family acceptance remain separate.

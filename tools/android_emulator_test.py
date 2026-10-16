@@ -49,9 +49,11 @@ def execute(args, run=subprocess.run):
             raise Refused("The selected device is not an emulator")
 
     ensure_emulator()
+    # The streamed install can time out after the emulator has already committed
+    # the APK. Use ADB's separate push/install path for a clear bounded result.
     planned = [
-        prefix + ["install", "-r", str(args.apk)],
-        prefix + ["install", "-r", str(args.test_apk)],
+        prefix + ["install", "--no-streaming", "-r", str(args.apk)],
+        prefix + ["install", "--no-streaming", "-r", str(args.test_apk)],
         prefix + ["shell", "am", "instrument", "-w", "-r", "-e", "class", args.test_class, RUNNER],
     ]
     if args.dry_run:
