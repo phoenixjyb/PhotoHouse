@@ -22846,6 +22846,62 @@
       "narrative_explicit_max_timeout_seconds": 120,
       "contribution_provider_max_timeout_seconds": 30,
       "household_data_included": false
+    },
+    {
+      "feature": "phone-unified-import-status-workspace",
+      "source_commit": "80bc2dd526e9cd9661e31c82c39e6ad87d23128e",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "sha256": "e66f9a4776df133597e14a12bbde008c88e300218232c3c1ff59ec32ac10fe83",
+          "before_sha256": "bab42f01ea8b3ee879968ba17ed47a2d66b114f66572824a155dedfc5784e378"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ImportStatusUiTest.kt",
+          "sha256": "8e478404c939a8c949d6923b7ab59c7d720da4da0ab5dd7363b846224b7b9ac4"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "2fd7b8952fadb85f2ad3f8d320530a6bca15601b784bde5c99602b8dc8f412fa",
+          "before_sha256": "03006ce1965c885af4cd62e8fc758aca800f9f258c5b5c147daa3120cb2fb347"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ImportStatusPanel.kt",
+          "sha256": "a0dda2f59ddad6b8b77f8455e526712b2e4e2a74c79a72db1c206296cb7b71ce"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadImportStatus.kt",
+          "sha256": "3e73122622efc7f2c44f4469e5670f1ba10d78257a4176486935587d2f312b4d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadImportStatusTest.kt",
+          "sha256": "65d9b387f53bd46e281ebfb29b66da2aaa7591e8d2c32d3fd2f0732ef5e47647"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "178f1d3794b0cabbb4c468a003c90c1c3fe455717fdb6d703ce1efc3d9517cea",
+          "before_sha256": "cdce9aa85bd5b3fc6181628b9024b1635deec51d2a1d29d82b922bdaccba8f2a"
+        },
+        {
+          "path": "docs/PHONE_IMPORT_STATUS.md",
+          "sha256": "cded5452f03978b04d4adfcc5bd0b94ee88d5c6996f19aabee4a71f71d2ad59b"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "8c8e886940101db63658eefa8b02a0d29d16fbe293a368dac66f6aed816a5a36",
+          "before_sha256": "41fcb8964f068d09f365d00a5f49174437be3bdd889226deef4786af67813d8f"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "59ac4a649469c3d0e1be6766895b54b9d18fdd38a14e242f19ed8f522bb2da29",
+          "before_sha256": "247aa2d5a801e7a65764dc216349b0bc3babb1282107c3388b699ef2f3aa4414"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "wire_changed": false,
+      "release_apk_published": false,
+      "physical_upload_acceptance": false
     }
   ]
 }
