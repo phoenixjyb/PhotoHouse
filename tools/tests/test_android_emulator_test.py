@@ -68,6 +68,19 @@ class EmulatorBoundaryTests(unittest.TestCase):
         self.assertTrue(all(argv[1:3] == ["-s", "emulator-5554"] for argv in adb_calls))
         self.assertEqual(4, sum(argv[-1] == "ro.kernel.qemu" for argv in adb_calls))
 
+    def test_qa_installs_use_file_transfer_without_changing_identity_guards(self):
+        for dry_run in (False, True):
+            with self.subTest(dry_run=dry_run):
+                self.calls.clear()
+                result = execute(self.args(dry_run=dry_run), self.run_command)
+                commands = result["commands"] if dry_run else self.calls
+                installs = [argv for argv in commands if "install" in argv]
+                self.assertEqual(2, len(installs))
+                for argv in installs:
+                    self.assertEqual(["adb", "-s", "emulator-5554", "install", "--no-streaming", "-r"], argv[:-1])
+                    self.assertNotIn("--streaming", argv)
+                    self.assertNotIn("-d", argv)
+
     def test_dry_run_never_installs_or_runs_instrumentation(self):
         result = execute(self.args(dry_run=True), self.run_command)
         self.assertEqual("qa_emulator_preflight_passed", result["status"])
