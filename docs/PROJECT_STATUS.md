@@ -1,93 +1,85 @@
 # Current project status
 
-Source and delivery records refreshed **2026-10-16**. PR #53 merged phone v66
-at `752be3abd318052178d263bd32613e059b0c504e`; tree-equal build/review evidence
-is `6d11ac1d1dbb5fab248cf4d5f26055687d0be39c`. The Windows HTTPS phone feed
-publishes **v66 / `0.66-proposal-review`**. The original signing certificate
-and icon were retained; signing left DEX bytes unchanged. The signed APK is
-11,684,216 bytes with SHA-256
-`eedc499fad5fe8e9abe0ce7ed159cbda9d46a59bc5695f113d36f692a6c3d262`.
-Native package/signature verification and full HTTPS APK readback passed. The
-[v66 release record](../clients/android/docs/PHONE_V66_RELEASE_2026-10-16.md)
-has the artifact and qualification details.
+Source and delivery records refreshed **2026-10-16**. The Windows HTTPS phone
+feed publishes **v67 / `0.67-voice-reading`**. Build source is
+`4c2731277ad005ae61e10ddbe665734ee6551db2`; PR #64 merged at
+`cad2572458522e9d57dc7da8a0e14b4005435bc4` with an identical Android subtree.
+The signed APK is **11,716,984 bytes**, SHA-256
+`17cbfa7b5c644d31c880a18850e3efc9db804fa454c7d134f35957ddc4bd6589`.
+The original certificate and icon were preserved; signing left DEX bytes
+unchanged. Native signature/alignment, Windows full-HTTPS readback and an
+independent Mac trusted HTTPS stream passed. The Mac saved no second APK copy.
+See the [v67 release record](../clients/android/docs/PHONE_V67_RELEASE_2026-10-16.md)
+and [Chinese trial guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md).
 
-All five source CI jobs passed in run `38843947505`. Configured release
-build/lint and the 17 embedded-field, original-icon, package and unsigned-APK
-checks passed. Signing verification confirmed the original certificate,
-alignment, unchanged DEX and icon bytes. Five signing fixtures, 15 publication
-fixtures and one synthetic plan-graph check passed. The preceding Android
-source qualification recorded 74 focused JVM checks, eight emulator journeys
-and six inspected Chinese/English renders at 150% text size. Native Windows
-readback and independent Mac trusted HTTPS streaming both matched all
-11,684,216 bytes to the signed APK digest; the Mac check did not save a second
-APK copy. Windows postflight matched the active API task/configuration/process
-and listener binding, retained `update_root`, and verified the v30 TV pointer
-and manifest unchanged. This was not a check of all eight root tasks. The
-publication operation did not restart the API or change schema, database,
-scheduled tasks, TV feed or model configuration. Physical phone installation
-and family/device acceptance remain open.
+All five source CI jobs passed at the integrated review source `88de08e` in run
+`38863300472`, after one targeted API retry for an unchanged optional Node
+fixture. All 166 local source-tool tests passed. Configured release build/lint,
+17 embedded-setting checks, package identity, unsigned state and original-icon
+checks passed. The preceding PR #61 feature source passed 86 focused JVM cases,
+18 emulator cases and inspected Chinese/English renders at 150% text size.
+Those checks do not establish physical microphone, ASR/TTS, latency or family
+acceptance. The v67 operation did not install an APK on a physical device.
 
-PR #53 delivers the [reviewed chapter-proposal adoption flow](PHONE_STORY_PROPOSAL_ADOPTION.md)
-into an unsaved existing-story editor. Selected chapter text and an optional
-title require explicit review; fresh story, job and source-link checks retain
-existing links and leave saving to the user. The release does not enable
-provider/model generation. The [Chinese v66 test guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md)
-covers the delivered flow and its separation from source, OTA and family
-acceptance. The synthetic 9B cold-capture sample has not had human quality
+## Voice controls: phone delivered, Web candidate qualified
+
+Phone v67 delivers [exact spoken Pause/End](VOICE_SESSION_SPOKEN_CONTROLS.md)
+after ASR during an opted-in foreground Listening phase, and explicit
+[saved-section voice continuation](ASSISTANT_SEGMENT_READING.md#phone-voice-continuation-october-16-following-source).
+After exact completed playback, **语音继续** starts reading consent; one
+“继续朗读” requests one next existing segment. Actual playback and its owned
+completion receipt gate relistening. The final segment pauses with the
+microphone off. Resume returns to voice search; source/account/library/lifecycle
+changes clear reading intent. Pause/End remain reachable on both reader surfaces.
+The microphone stays off during playback. Spoken interruption of playback and
+automatic later-chapter advancement remain future work.
+
+The paired API/Web source `88de08ef03a6a3be91e02a02941fd57b223e48c4` passed
+Windows **candidate-only** synthetic qualification: 12 assistant cases, 12
+oral-history cases and 26 planner assertions. Its 237-file ZIP was pinned and
+source-verified. The operation used generated stores, opened no production
+database or family media, invoked no model, started no listener and changed no
+service/task. The synthetic oral fixture does not enable production oral intake.
+The live API/Web switch still needs its own stopped-writer backup, exact
+cutover/rollback qualification and operation-specific authority.
+
+## Other retained capabilities and limits
+
+The earlier [v66 proposal-adoption flow](PHONE_STORY_PROPOSAL_ADOPTION.md)
+remains in v67: reviewed chapter/title choices enter an unsaved editor while
+retaining existing source links; saving stays explicit. Provider/model story
+generation remains off. The synthetic 9B cold sample still needs human quality
 review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
 
-PR #50 and #51 merged the [gated scene-search workspace and Web source](ASSISTANT_SCENE_SEARCH.md)
-through `a4e6ccb`. Their source remains preserved and is not claimed as part of
-the v66 phone delivery or as deployed API/Web work. PR #54 subsequently merged
-Android scene-search controls at `c5536bc`; that is following source and is not
-included in the fixed v66 APK.
-
-## Following source: spoken session controls
-
-Web and phone source now add [exact spoken Pause/End](VOICE_SESSION_SPOKEN_CONTROLS.md)
-during an explicitly started foreground voice session. These are local controls
-after protected ASR, with no extra assistant turn or reply audio. Resume requires
-a tap; manual dictation remains editable text, and playback keeps the microphone
-off. This increment is not in the fixed v66 APK and is not claimed as live API/Web.
-
-A fresh October 16 read-only Windows check found the expected API task/process
-and listener bound with unchanged entry/config pins, phone OTA v66 and TV OTA
-v30. It did not inventory all services, workers, model health or video progress.
-
-The next Web source increment adds explicit [saved-section voice continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source)
-after an exact completed segment. Saying “继续朗读” requests one next segment
-without a new chat turn, and only actual playback completion can reopen the
-microphone. The final segment pauses; Pause/End, failures and source replacement
-clear intent. It is not claimed live and does not change the phone APK.
-
-Following phone source adds the same explicit continuation to both reader
-surfaces, preserving the exact completed-playback selection across microphone
-permission. One spoken command requests one next segment; successful completion
-alone can relisten. Pause/End and source replacement clear intent. This does not
-change the frozen v66 release or claim a new signed APK/Windows delivery.
+The APK also includes PR #54's negotiated scene-search controls. Publishing
+those controls does not activate a scene provider or the following API/Web scene
+workspace. PR #62/#63's evaluation/provider source remains separately gated;
+see the [scene-search contract](ASSISTANT_SCENE_SEARCH.md). No scene provider or
+story-generation model was activated by v67 signing/publication or qualification.
 
 ## Delivery and acceptance
 
-Release preparation now targets **phone v67 / `0.67-voice-reading`** and a
-paired API/Web candidate from the merged source. The [v67 candidate record](../clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md)
-and [Chinese trial guide](../clients/android/docs/PHONE_V67_TEST_GUIDE_ZH.md)
-describe voice continuation, exact artifact checks and the separate delivery
-gates. A version bump is not an OTA publication or live Web switch. The latest
-verified delivery rows below remain historical runtime evidence until refreshed.
+Windows postflight matched the API task/action/configuration, process and
+listener binding to the prepublication snapshot, retained `update_root`, and
+verified the TV v30 pointer and manifest unchanged. This was not an inventory of
+all services, workers, model health or video progress. No API restart, task
+change, live schema migration or production-database change was part of either
+approved operation.
 
 | Area | Latest verified evidence | Still open |
 | --- | --- | --- |
-| API/Web | Live source `f476c5e`; bilingual search clarification is deployed; Windows postflight matched the active API task/configuration/process and listener binding, with `update_root` unchanged; v66 did not restart the API | Real owner/member search, voice and UX acceptance |
-| Primary database | No schema migration or data change in the v66 operation | Later feature/schema activation and paired recovery qualification |
-| Phone | v66 original-certificate/icon APK published; five CI jobs, configured release build/lint, native full-HTTPS readback and independent Mac full-stream digest passed | Physical installation and family/device acceptance remain open |
-| TV | v30 pointer and manifest verified unchanged in postflight; v31 source unpublished | Projector/library/playback check |
-| Public source | PRs #47–54 merged; phone v66 proposal adoption delivered; API/Web search clarification remains the last verified live source | Physical phone and family acceptance; PR #50/#51 scene-search server/Web source is not claimed deployed; PR #54 Android controls await a later APK |
-| Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before any activation |
+| API/Web | Last verified live source `f476c5e`; API binding/configuration/process/listener unchanged by v67; source `88de08e` passed private Windows synthetic qualification | Separate live cutover/backup/rollback approval; real owner/member voice and UX acceptance |
+| Primary database | No live migration or production-database access in these operations | Later feature/schema activation and paired recovery qualification |
+| Phone | v67 original-certificate/icon APK published; release build/lint and native plus independent full-HTTPS readback passed | Physical update and real ASR/TTS/family acceptance |
+| TV | v30 pointer and manifest verified unchanged; v31 source unpublished | Projector/library/playback check |
+| Public source | PRs through #64 merged; phone continuation delivered in v67; API/Web candidate `88de08e` qualified | API/Web source is not claimed deployed; scene/model activation stays separate |
+| Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 
 Earlier dated source, test and release records below retain their exact scope.
-Their versions and pending statements do not override the current summary.
-v59 remains an unused earlier frozen proposal; it was not published.
+Their versions and pending statements do not override this summary. The
+[v67 preparation record](../clients/android/docs/PHONE_V67_CANDIDATE_2026-10-16.md)
+is historical candidate evidence. v59 remains an unpublished earlier proposal.
 
 ## Earlier search checkpoints (historical)
 
