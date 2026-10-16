@@ -22333,6 +22333,82 @@
       "runtime_changed": false,
       "apk_rebuilt": false,
       "physical_audio_family_acceptance": false
+    },
+    {
+      "feature": "safe-visible-fragment-intent-provider-input-and-native-baseline",
+      "source_commit": "23466bece2e7f46009eb92d0396d238bfa06e989",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "fde2b0a4203d8ae4bb6cfa578572b205261ec4f4a8d7509834559f80f8d31a13",
+          "sha256": "a77dc7562abea94cd5938bf8385015463a36c7b5a55b614b9e07329baa83e2f3"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": null,
+          "sha256": "5d04b5191c06004d7fcef301f4fb751cc190c619003917102fca0a0274ec281a"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "abb904e2ee203dc94f5382e2511036df5b237119013e681fcbcb7713a6aa9278",
+          "sha256": "9296db1a11322e0efe5ee3ffbeb1e099091b7f0b0c25e7ca24e4ee627a171a50"
+        },
+        {
+          "path": "server/backend/app/access/search_intent_local.py",
+          "before_sha256": "ad36072a2739d3f57a4a3faee79a00ddf9d48288af8f9d9d7f6664379fabc065",
+          "sha256": "9010b3a9f5452a4f045949232c1f87c75452c6412cd58f2337fd7a919fd3deed"
+        },
+        {
+          "path": "server/tests/security/test_search_intent_local.py",
+          "before_sha256": "ee7b7239e7041a380f99b7c6b23418f9101f7716e2a535eea3f5a904725aea95",
+          "sha256": "3e3ff3036156553ab36e36acde73cad3db9c7f5f5ff02a7888dc3ff797723303"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "routes_added": false,
+      "public_wire_changed": false,
+      "models_activated": false,
+      "household_data_included": false,
+      "native_relevance_qualified": false,
+      "recorded_native_baseline_source_commit": "23466bece2e7f46009eb92d0396d238bfa06e989",
+      "recorded_live_source_commit": "54394ed2487ab85336b39c9ac5cb63dbe18b0d25"
+    },
+    {
+      "feature": "safe-fragment-fixed-cohort-native-measurement-record",
+      "source_commit": "cd20f47927641ab089fc16101b161c65a2a5ef06",
+      "files": [
+        {
+          "path": "docs/BILINGUAL_SEARCH_REQUIREMENTS.md",
+          "before_sha256": "a77dc7562abea94cd5938bf8385015463a36c7b5a55b614b9e07329baa83e2f3",
+          "sha256": "1b3aebb2b34e105dfc8e2b8454cdf9a357b5c9070997ea3ce4686c5514c363ca"
+        },
+        {
+          "path": "docs/NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md",
+          "before_sha256": "5d04b5191c06004d7fcef301f4fb751cc190c619003917102fca0a0274ec281a",
+          "sha256": "6e0ff8e8cb7ad389d5b6b708fb01b45976a3ec930b09bb1f95d6ba3dcd468c1f"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false,
+      "native_relevance_qualified": false,
+      "household_data_included": false
+    },
+    {
+      "feature": "safe-fragment-trial-and-phone-v68-status-integration",
+      "source_commit": "007edd4b542ec96d9d4d6dd30bb8f47c0b405464",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3a242ce57c31bccaac1a8ccec42e26eaca76343c8cbc556d052afc0081489821",
+          "sha256": "30ab1e4515364fc17a4be788080ae3ac73a3ac7f685c3256dd75364eeea9f4eb"
+        }
+      ],
+      "integrated_search_record_source_commit": "9022f38e095e899aa4f4c500324e151702946904",
+      "documentation_only": true,
+      "runtime_changed": false,
+      "models_activated": false
     }
   ]
 }
