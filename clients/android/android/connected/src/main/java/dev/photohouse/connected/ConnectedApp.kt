@@ -187,6 +187,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
+    var importProgressExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadHistoryExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var contributeExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -432,6 +433,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             val queued = queue.enqueue(batchReview, destination)
             if (queued.isNotEmpty()) {
                 queue.resume()
+                importProgressExpanded = true
                 batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null; batchApproved = false
             }
         } catch (rejected: BatchUploadEnqueueRejected) {
@@ -1113,11 +1115,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Card(Modifier.fillMaxWidth().testTag("contribute-panel")) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(t("Add to your album", "为相册添加内容"), style = MaterialTheme.typography.titleMedium)
-                                    Text(t("Choose a photo, or open more ways to add a batch and review uploads.", "选择一张照片，或展开更多方式以添加一批文件及查看上传记录。"),
+                                    Text(t("Add a photo, or open more options to choose a folder. Check import progress at any time.", "添加照片，或展开更多方式选择文件夹。可随时查看导入进度。"),
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Button(onClick = { selectionError = false; store.openUpload() }, enabled = !state.busy,
                                             modifier = Modifier.testTag("open-upload")) { Text(t("Add a photo", "添加照片")) }
+                                        OutlinedButton(onClick = { importProgressExpanded = true; store.loadUploadHistory(1) }, enabled = !state.busy && state.uploadHistory?.busy != true,
+                                            modifier = Modifier.testTag("open-upload-history")) { Text(t("Import progress", "导入进度")) }
                                         TextButton(onClick = { contributeExpanded = !contributeExpanded },
                                             modifier = Modifier.testTag("contribute-toggle").semantics {
                                                 stateDescription = t(if (contributeExpanded) "Expanded" else "Collapsed", if (contributeExpanded) "已展开" else "已收起")
@@ -1126,8 +1130,6 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     if (contributeExpanded) {
                                         HorizontalDivider()
                                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            OutlinedButton(onClick = { store.loadUploadHistory(1) }, enabled = !state.busy && state.uploadHistory?.busy != true,
-                                                modifier = Modifier.testTag("open-upload-history")) { Text(t("Upload history", "上传记录")) }
                                             if (batchQueue != null) OutlinedButton(onClick = {
                                                 batchPickerAccount = state.session?.account_id
                                                 batchPickerDestination = selectedUploadLibrary
@@ -1167,156 +1169,25 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         onDiscard = { batchReview = emptyList(); batchReviewDestination = null; batchSkipped = 0; batchApproved = false },
                                     )
                                 }
-                                if (batchItems.isNotEmpty()) Card(Modifier.fillMaxWidth().testTag("batch-queue")) {
-                                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        val uploadingCount = batchItems.count { it.record.status == "uploading" }
-                                        val waitingCount = batchItems.count { it.record.status in setOf("needs_hash", "queued", "paused") }
-                                        val failedCount = batchItems.count { it.record.status == "failed" }
-                                        val completedCount = batchItems.count { it.record.status == "complete" }
-                                        val transferred = batchItems.sumOf { item ->
-                                            when (item.record.status) {
-                                                "complete" -> item.record.bytes.coerceAtLeast(0)
-                                                "uploading" -> item.record.offset.coerceAtLeast(0)
-                                                else -> 0L
-                                            }
-                                        }
-                                        val totalBytes = batchItems.sumOf { it.record.bytes.coerceAtLeast(0) }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Text(t("Upload queue", "上传队列"), style = MaterialTheme.typography.titleMedium)
-                                                val summary = t(
-                                                    "${batchItems.size} ${if (batchItems.size == 1) "item" else "items"} · $uploadingCount uploading · $waitingCount waiting · $completedCount done${if (failedCount > 0) " · $failedCount failed" else ""}",
-                                                    "${batchItems.size} 项 · 上传中 $uploadingCount · 等待中 $waitingCount · 已完成 $completedCount${if (failedCount > 0) " · 失败 $failedCount" else ""}"
-                                                )
-                                                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.testTag("batch-queue-summary"))
-                                            }
-                                            TextButton(onClick = { batchQueueExpanded = !batchQueueExpanded },
-                                                modifier = Modifier.testTag("batch-queue-toggle").semantics {
-                                                    stateDescription = t(if (batchQueueExpanded) "Expanded" else "Collapsed", if (batchQueueExpanded) "已展开" else "已收起")
-                                                }) {
-                                                Text(if (batchQueueExpanded) t("Hide", "收起") else t("Show", "展开"))
-                                            }
-                                        }
-                                        if (totalBytes > 0) {
-                                            LinearProgressIndicator(progress = { (transferred.toFloat() / totalBytes).coerceIn(0f, 1f) },
-                                                modifier = Modifier.fillMaxWidth().testTag("batch-queue-progress"))
-                                        }
-                                        if (!batchQueueExpanded && failedCount > 0) OutlinedButton(
-                                            onClick = { batchQueueExpanded = true }, modifier = Modifier.testTag("batch-review-failures")) {
-                                            Text(t("Review $failedCount failed uploads", "查看 $failedCount 个失败上传"))
-                                        }
-                                        if (batchQueueExpanded) batchItems.filter { it.record.status == "complete" && it.record.destinationLibraryId != null }
-                                            .groupBy { it.record.batch }.forEach { (batch, items) ->
-                                                val destination = items.first().record.destinationLibraryId!!
-                                                OutlinedButton(onClick = { beginAnnotation(destination, batch, "", items.firstNotNullOfOrNull { it.record.assetId } ?: "") },
-                                                    modifier = Modifier.testTag("batch-describe-$batch")) {
-                                                    Text(t("Describe this batch", "描述这批上传内容"))
-                                                }
-                                            }
-                                        if (batchQueueExpanded) batchItems.forEach { item ->
-                                            val status = when (item.record.status) {
-                                                "needs_hash" -> t("needs_hash", "等待校验")
-                                                "queued" -> t("queued", "等待上传")
-                                                "uploading" -> t("uploading", "上传中")
-                                                "paused" -> t("paused", "已暂停")
-                                                "failed" -> t("failed", "上传中断")
-                                                "cancelling" -> t("cancelling", "正在取消")
-                                                "cancelled" -> t("cancelled", "已取消")
-                                                "complete" -> t("complete", "已收到，等待审核")
-                                                else -> t("unknown", "状态未知")
-                                            }
-                                            Text("${item.record.filename}: $status ${item.record.offset}/${item.record.bytes}", modifier = Modifier.testTag("batch-status-${item.record.localId}"))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                val itemDestination = item.record.destinationLibraryId
-                                                val completedAssetId = item.record.assetId
-                                                if (item.record.status == "complete" && itemDestination != null && completedAssetId != null)
-                                                    OutlinedButton(onClick = { beginAnnotation(itemDestination, item.record.batch, completedAssetId) },
-                                                        modifier = Modifier.testTag("batch-describe-item-${item.record.localId}")) { Text(t("Describe photo", "描述照片")) }
-                                                if (item.record.status == "uploading") OutlinedButton(onClick = { batchQueue!!.pause() }, modifier = Modifier.testTag("batch-pause")) { Text(t("Pause", "暂停")) }
-                                                if (item.record.status in setOf("paused", "failed", "queued", "needs_hash")) OutlinedButton(onClick = { batchQueue!!.resume(item.record.localId) }, modifier = Modifier.testTag("batch-resume")) { Text(t("Resume", "继续")) }
-                                                if (item.record.status == "failed") OutlinedButton(onClick = { batchQueue!!.retry(item.record.localId) }, modifier = Modifier.testTag("batch-retry")) { Text(t("Retry", "重试")) }
-                                                if (item.record.status !in setOf("complete", "cancelled")) OutlinedButton(onClick = { batchQueue!!.cancel(item.record.localId) }, modifier = Modifier.testTag("batch-cancel")) { Text(t("Cancel", "取消")) }
-                                            }
-                                        }
-                                    }
-                                }
-                                state.uploadHistory?.let { history ->
-                                    Card(Modifier.fillMaxWidth().testTag("upload-history")) {
-                                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                    Text(t("My uploads", "我的上传记录"), style = MaterialTheme.typography.titleMedium)
-                                                    val historySummary = when {
-                                                        history.busy -> t("Loading upload history", "正在加载上传记录")
-                                                        history.unavailable -> t("History unavailable", "记录暂不可用")
-                                                        else -> t("${history.total} uploads · page ${history.page}", "共 ${history.total} 条 · 第 ${history.page} 页")
-                                                    }
-                                                    Text(historySummary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.testTag("upload-history-summary"))
-                                                }
-                                                TextButton(onClick = { uploadHistoryExpanded = !uploadHistoryExpanded },
-                                                    modifier = Modifier.testTag("upload-history-toggle").semantics {
-                                                        stateDescription = t(if (uploadHistoryExpanded) "Expanded" else "Collapsed", if (uploadHistoryExpanded) "已展开" else "已收起")
-                                                    }) {
-                                                    Text(if (uploadHistoryExpanded) t("Hide", "收起") else t("Show", "展开"))
-                                                }
-                                                TextButton(onClick = store::closeUploadHistory) { Text(t("Close", "关闭")) }
-                                            }
-                                            if (history.busy) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("upload-history-progress"))
-                                            if (history.unavailable) {
-                                                Text(t("Upload history is unavailable right now. Regular uploads remain available.", "上传记录暂不可用，仍可继续普通上传。"),
-                                                    color = MaterialTheme.colorScheme.error)
-                                                if (!uploadHistoryExpanded) OutlinedButton(onClick = { store.loadUploadHistory(history.page) }, enabled = !history.busy,
-                                                    modifier = Modifier.testTag("upload-history-refresh-collapsed")) { Text(t("Retry", "重试")) }
-                                            }
-                                            if (uploadHistoryExpanded && !history.busy && !history.unavailable && history.items.isEmpty()) Text(t("No uploads yet.", "还没有上传记录。"))
-                                            if (uploadHistoryExpanded && !history.busy && !history.unavailable) history.items.forEach { item ->
-                                                val locale = if (words.zh) java.util.Locale.SIMPLIFIED_CHINESE else java.util.Locale.ENGLISH
-                                                val uploadedAt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, locale).format(java.util.Date(item.createdAt * 1000))
-                                                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                                                        verticalAlignment = Alignment.CenterVertically) {
-                                                        Text("#${item.assetId}", style = MaterialTheme.typography.titleSmall)
-                                                        Text(when (item.state) {
-                                                            "available" -> t("Available", "可浏览")
-                                                            "awaiting_review" -> t("Awaiting review", "等待审核")
-                                                            else -> t("Unavailable", "暂不可用")
-                                                        }, style = MaterialTheme.typography.bodySmall,
-                                                            color = if (item.state == "available") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                                                    }
-                                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                                                        verticalAlignment = Alignment.CenterVertically) {
-                                                        Text("$uploadedAt · ${String.format(locale, "%.1f KiB", item.bytes / 1024.0)}",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                            modifier = Modifier.weight(1f))
-                                                        if (item.state == "available") TextButton(onClick = { store.openUploadHistory(item) }) {
-                                                            Text(t("Open", "打开"))
-                                                        }
-                                                        item.libraryId?.takeIf { item.state == "available" }?.let { libraryId ->
-                                                            TextButton(onClick = { beginAnnotation(libraryId, "", item.assetId) },
-                                                                modifier = Modifier.testTag("upload-history-descriptions-${item.assetId}")) {
-                                                                Text(t("Descriptions", "描述"))
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                HorizontalDivider()
-                                            }
-                                            if (uploadHistoryExpanded) {
-                                                if (!history.busy && !history.unavailable && history.total > 0) Text(t("Page ${history.page} of ${(history.total + 9L) / 10}", "第 ${history.page} / ${(history.total + 9L) / 10} 页"), style = MaterialTheme.typography.bodySmall)
-                                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    OutlinedButton(onClick = { store.loadUploadHistory(history.page) }, enabled = !history.busy,
-                                                        modifier = Modifier.testTag("upload-history-refresh")) { Text(t("Refresh", "刷新")) }
-                                                    OutlinedButton(onClick = { store.loadUploadHistory(history.page - 1) }, enabled = !history.busy && !history.unavailable && history.page > 1,
-                                                        modifier = Modifier.testTag("upload-history-previous")) { Text(t("Previous", "上一页")) }
-                                                    OutlinedButton(onClick = { store.loadUploadHistory(history.page + 1) }, enabled = !history.busy && !history.unavailable && history.page * 10 < history.total,
-                                                        modifier = Modifier.testTag("upload-history-next")) { Text(t("Next", "下一页")) }
-                                                }
-                                            }
-                                        }
-                                    }
+                                key(state.generation, state.session?.account_id) {
+                                    ImportStatusPanel(
+                                        queueItems = batchItems, history = state.uploadHistory,
+                                        availableLibraries = availableMemberships.map { it.library_id }.toSet(),
+                                        zh = words.zh, actionsEnabled = !state.busy,
+                                        queueExpanded = batchQueueExpanded, historyExpanded = uploadHistoryExpanded,
+                                        onToggleQueue = { batchQueueExpanded = !batchQueueExpanded },
+                                        onToggleHistory = { uploadHistoryExpanded = !uploadHistoryExpanded },
+                                        onCheckServer = { uploadHistoryExpanded = true; store.loadUploadHistory(1) },
+                                        onHistoryPage = store::loadUploadHistory, onCloseHistory = store::closeUploadHistory,
+                                        onPause = { batchQueue?.pause() }, onResume = { batchQueue?.resume(it) },
+                                        onRetry = { batchQueue?.retry(it) }, onCancel = { batchQueue?.cancel(it) },
+                                        onDescribeBatch = { destination, batch, asset -> beginAnnotation(destination, batch, "", asset) },
+                                        onDescribeItem = { destination, batch, asset -> beginAnnotation(destination, batch, asset) },
+                                        onOpenHistory = store::openUploadHistory,
+                                        onDescribeHistory = { item -> item.libraryId?.let { beginAnnotation(it, "", item.assetId) } },
+                                        workspaceExpanded = importProgressExpanded,
+                                        onToggleWorkspace = { importProgressExpanded = !importProgressExpanded },
+                                    )
                                 }
                                 }
                             }
