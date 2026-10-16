@@ -171,6 +171,25 @@ class HttpsAssistantWorkspaceApi internal constructor(
         throw ApiFailure(FailureKind.HTTP, 400)
     }
 
+    override suspend fun sceneSearchCapabilities(token: Bearer, library: String): AssistantSceneSearchCapabilities {
+        fun unavailable() = AssistantSceneSearchCapabilities(1, false)
+        return try {
+            decoded(send(token, "/assistant/workspace/v1/scene-search-capabilities", library,
+                responseLimit = 4096), AssistantWorkspaceWire::sceneSearchCapabilities)
+        } catch (failure: ApiFailure) {
+            when {
+                failure.status == 403 -> {
+                    // An old optional route may return 403. Recheck ordinary access before
+                    // deciding this is only a missing scene feature.
+                    capabilities(token, library)
+                    unavailable()
+                }
+                failure.status == 404 || failure.status == 503 || failure.kind == FailureKind.INVALID_RESPONSE -> unavailable()
+                else -> throw failure
+            }
+        }
+    }
+
     private fun explicitUnsupportedSearchVersion(bytes: ByteArray): Boolean = runCatching {
         val error = DiscoveryJson.parse(bytes) as? JsonObject ?: return@runCatching false
         if (error.keys != setOf("error", "detail")) return@runCatching false
@@ -265,6 +284,18 @@ class HttpsAssistantWorkspaceApi internal constructor(
         return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
     }
 
+    override suspend fun submitSceneTurn(token: Bearer, library: String, threadId: String, requestId: String,
+                                         expectedRevision: Long, text: String): AssistantWorkspaceTurn {
+        require(AssistantWorkspaceWire.validUuid4(threadId) && AssistantWorkspaceWire.validUuid4(requestId))
+        val body = AssistantWorkspaceWire.sceneTurnRequest(library, requestId, expectedRevision, text)
+        val packet = send(token, "/assistant/workspace/v1/threads/$threadId/turns", method = "POST", json = body,
+            extraHeaders = mapOf("X-PhotoHouse-Request-Id" to requestId, "X-PhotoHouse-Search-Version" to "4"))
+        val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId,
+            fromGet = false, searchVersion = 4) }
+        val receipt = AssistantWire.requestReceipt(packet.assistantHeaders, requestId)
+        return turn.copy(receipt = receipt, result = turn.result?.copy(receipt = receipt))
+    }
+
     override suspend fun submitTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                     expectedRevision: Long, text: String, parentRequestId: String?, acceptSavedMemoryCards: Boolean,
                                     memoryParent: AssistantSavedMemoryParent?): AssistantWorkspaceTurn {
@@ -308,7 +339,7 @@ class HttpsAssistantWorkspaceApi internal constructor(
     override suspend fun getTurn(token: Bearer, library: String, threadId: String, requestId: String,
                                  searchVersion: Int): AssistantWorkspaceTurn {
         require(AssistantWorkspaceWire.validUuid4(threadId) && AssistantWorkspaceWire.validUuid4(requestId))
-        require(searchVersion in 1..3)
+        require(searchVersion in 1..4)
         val packet = send(token, "/assistant/workspace/v1/threads/$threadId/requests/$requestId", library,
             extraHeaders = if (searchVersion >= 2) mapOf("X-PhotoHouse-Search-Version" to searchVersion.toString()) else emptyMap())
         val turn = decoded(packet) { AssistantWorkspaceWire.turn(it, library, threadId, requestId, fromGet = true,

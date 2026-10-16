@@ -79,6 +79,9 @@ internal fun PrivateAssistantPanel(
     onStopMemoryOpening: () -> Unit = {},
     onMemoryOpeningPlaybackOutcome: (ProtectedAnnotationAudio, String) -> Unit = { _, _ -> },
     onSavedMemoryFollowupDraft: (String) -> Boolean = { false },
+    onSceneDraft: (String) -> Unit = {},
+    onSceneSend: () -> Unit = {},
+    sceneInteractionBlocked: Boolean = false,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val capabilities = state.capabilities
@@ -91,6 +94,8 @@ internal fun PrivateAssistantPanel(
     val draftValid = state.draft.isNotBlank() && draftBytes in 1..1024
     val detail = state.detail
     val currentTurn = state.currentTurn
+    var sceneExpanded by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) { mutableStateOf(false) }
+    val sceneEditorOpen = sceneExpanded && state.sceneSearchAvailable && detail != null
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     var showDeleteDialog by remember(state.accountId, state.libraryId, state.generation, detail?.thread?.threadId) {
@@ -405,6 +410,7 @@ internal fun PrivateAssistantPanel(
                         }
 
                         currentTurn?.takeIf { it.status == AssistantWorkspaceRequestStatus.COMPLETED }?.result?.let { result ->
+                            if (result.sceneRanking != null) AssistantSceneRankingInfo(result, zh)
                             val freshMemoryResult = state.savedMemoryCardsAvailable && !currentTurn.recovered && result.kind == "memory_cards" &&
                                 result.memoryCards.isNotEmpty() && currentTurn.threadId == detail.thread.threadId &&
                                 currentTurn.revision == detail.thread.revision && result.savedMemoryContext?.libraryId == state.libraryId
@@ -548,7 +554,7 @@ internal fun PrivateAssistantPanel(
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("private-assistant-grounded-results")) {
                                     Text(t("Available results · open only when you choose", "可查看的结果 · 仅在你选择时打开"),
                                         style = MaterialTheme.typography.titleSmall)
-                                    result.items.forEach { asset ->
+                                    result.items.forEachIndexed { ordinal, asset ->
                                         OutlinedButton(
                                             onClick = { onOpenAsset(asset.id) },
                                             enabled = scopeAvailable && !state.busy,
@@ -556,7 +562,8 @@ internal fun PrivateAssistantPanel(
                                                 .testTag("private-assistant-open-asset-${asset.id}"),
                                         ) {
                                             Text(
-                                                listOfNotNull(asset.taken_at ?: asset.date_hint?.value,
+                                                listOfNotNull(if (result.sceneRanking != null) t("Scene rank #${ordinal + 1}", "画面排序第${ordinal + 1}项") else null,
+                                                    asset.taken_at ?: asset.date_hint?.value,
                                                     if(asset.kind == "video") t("Video", "视频") else t("Photo", "照片"))
                                                     .joinToString(" · "),
                                             )
@@ -630,11 +637,24 @@ internal fun PrivateAssistantPanel(
                         }
                     }
 
+                    if (state.sceneSearchAvailable && detail != null) {
+                        if (!sceneEditorOpen) OutlinedButton(onClick = { sceneExpanded = true },
+                            enabled = !state.busy && state.pendingTurn == null && !sceneInteractionBlocked,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("private-assistant-scene-expand")) {
+                            Text(t("Find a scene within these conditions", "在当前条件内按画面查找"))
+                        }
+                        else AssistantSceneControls(state, zh, sceneInteractionBlocked, onSceneDraft, {
+                            keyboard?.hide(); focusManager.clearFocus(); onSceneSend()
+                        }, { sceneExpanded = false })
+                    }
                     if (detail == null) {
                         Text(t("Choose a saved conversation or start a new one. Each conversation is private to your account and library.",
                             "选择已有对话或开始新对话。每段对话仅属于你的账号和资料库。"),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
+                    } else if (!sceneEditorOpen) {
+                        if (currentTurn?.result?.sceneRanking != null) Text(t(
+                            "To change people, dates or other conditions, enter a complete new search.",
+                            "要更改人物、日期或其他条件，请输入完整的新查找。"), style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(
                             value = state.draft,
                             onValueChange = onDraft,
@@ -734,7 +754,7 @@ internal fun PrivateAssistantPanel(
                     onClick = {
                         val pendingTurn = state.pendingTurn
                         if (pendingTurn == null) return@TextButton
-                        preservedPendingQuestion = pendingTurn.text
+                        preservedPendingQuestion = if (pendingTurn.scene) null else pendingTurn.text
                         preservedLocalDraft = state.draft
                         showAbandonDialog = false
                         abandonAcknowledged = false
