@@ -238,3 +238,9 @@ an explicit serving adapter for exact private operator-reviewed mappings. It
 preserves original query identity under a distinct composite recipe, refuses
 unlisted mappings and retains existing scope, deadline and recovery contracts.
 This source support creates no real binding or live activation.
+
+The [scene rewording flow](SCENE_QUERY_REWORDING.md) distinguishes an explicitly
+bound unsupported-query refusal from an outage. Web and Android preserve the
+drafts, clear old cards and require an explicit, authorized reload of the prior
+conditions before another scene submission. Failed-receipt recovery performs no
+encoder replay; unsupported phrases never relax person/date filters.

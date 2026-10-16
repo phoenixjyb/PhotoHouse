@@ -21,7 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.access.semantic_encoder import (JointSpaceBinding, TextVector, _query_digest,
-                                         _unique_object, _valid_query)
+                                         _unique_object, _valid_query, SemanticUnsupported)
 from app.access.visual_candidates import VectorRecord, _canonical_components
 
 
@@ -227,6 +227,10 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             return JSONResponse({"error": "invalid_request"}, status_code=400)
         query = data["query"]
         query_sha256 = _query_digest(query)
+        refusal_headers = request.headers.getlist('x-photohouse-semantic-refusal')
+        if refusal_headers not in ([], ['1']):
+            return JSONResponse({'error': 'invalid_request'}, status_code=400)
+        refusal_opt_in = refusal_headers == ['1']
 
         with lock:
             if lease["active"]:
@@ -301,6 +305,13 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             check()
             try:
                 result = wrapped.result()
+            except SemanticUnsupported:
+                check()
+                if refusal_opt_in and getattr(provider, 'binding', None) == binding:
+                    return JSONResponse({'version': 1, 'error': 'unsupported_query',
+                        'binding_sha256': binding.binding_sha256,
+                        'query_sha256': query_sha256}, status_code=422)
+                return JSONResponse({'error': 'provider_unavailable'}, status_code=503)
             except Exception:
                 return JSONResponse({"error": "provider_unavailable"}, status_code=503)
             if type(result) is not TextVector:

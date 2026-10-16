@@ -836,8 +836,9 @@ object AssistantWorkspaceWire {
         val rawResult = o.getValue("result")
         check(if (status == AssistantWorkspaceRequestStatus.COMPLETED) rawResult != JsonNull && error == null
               else rawResult == JsonNull)
+        val unsupportedScene = status == AssistantWorkspaceRequestStatus.FAILED && searchVersion == 4 && error == "scene_query_unsupported"
         check(if (status == AssistantWorkspaceRequestStatus.FAILED || status == AssistantWorkspaceRequestStatus.INTERRUPTED)
-            error in ERROR_CODES else error == null)
+            error in ERROR_CODES || unsupportedScene else error == null)
         val result = if (rawResult == JsonNull) null else validateResult(rawResult.toString().toByteArray(Charsets.UTF_8), library, recovered,
             acceptSavedMemoryCards, acceptSavedMemoryActions, searchVersion)
         AssistantWorkspaceTurn(1, threadId, requestId, status, revision, recovered, error, result)

@@ -45,7 +45,7 @@ fun isCurrentFreshMemoryOpeningSelection(
 
 enum class AssistantWorkspaceError {
     UNAVAILABLE, ACCESS_DENIED, INVALID_REQUEST, CONTEXT_CHANGED,
-    NETWORK, INVALID_RESPONSE, TURN_FAILED, TURN_INTERRUPTED, UNKNOWN,
+    NETWORK, INVALID_RESPONSE, TURN_FAILED, TURN_INTERRUPTED, SCENE_REWORD, UNKNOWN,
 }
 
 data class AssistantWorkspacePendingTurn(
@@ -66,6 +66,7 @@ data class AssistantWorkspaceState(
     val generation: Long? = null,
     val capabilities: AssistantWorkspaceCapabilities? = null,
     val sceneSearchAvailable: Boolean = false,
+    val sceneRecoveryRequired: Boolean = false,
     val sceneDraft: String = "",
     val savedMemoryCardsAvailable: Boolean = false,
     val savedMemoryActionsAvailable: Boolean = false,
@@ -102,7 +103,7 @@ data class AssistantWorkspaceState(
         val filters = result.filters ?: return false
         val thread = detail?.thread ?: return false
         val media = (filters["media"] as? JsonArray)?.map { (it as? JsonPrimitive)?.content }
-        return sceneSearchAvailable && capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true &&
+        return sceneSearchAvailable && !sceneRecoveryRequired && capabilities?.let { it.available && it.threads && it.serverOwnedTurns } == true &&
             thread.threadId == turn.threadId && thread.revision == turn.revision &&
             continuationEnabled && !busy && !uncertain && pendingTurn == null && pendingCreationId == null && !historyRefreshRequired &&
             turn.status == AssistantWorkspaceRequestStatus.COMPLETED && result.kind == "results" &&
@@ -373,6 +374,7 @@ class AssistantWorkspaceStore(
     fun createThread(acknowledgeUncertainTurnMayCommit: Boolean = false): Boolean = launchAction {
         val scope = requireUsableCapabilities()
         prepareThreadSwitch(acknowledgeUncertainTurnMayCommit)
+        mutableState.value = mutableState.value.copy(sceneRecoveryRequired = false)
         // An explicit retry first checks the exact owned identity. A paged
         // list cannot prove that a previously submitted creation is absent.
         mutableState.value.pendingCreationId?.let { existing ->
@@ -393,6 +395,7 @@ class AssistantWorkspaceStore(
                 pendingCreationId = null,
                 detail = AssistantWorkspaceThreadDetail(1, created.thread, emptyList()),
                 currentTurn = null, uncertain = false, continuationEnabled = true, error = null, historyRefreshRequired = false,
+                sceneRecoveryRequired = false,
                 memoryFollowupDraftParent = null,
                 memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
                 threads = mutableState.value.threads?.let { list ->
@@ -436,7 +439,7 @@ class AssistantWorkspaceStore(
         val scope = requireUsableCapabilities()
         prepareThreadSwitch(acknowledgeUncertainTurnMayCommit)
         if (!AssistantWorkspaceWire.validUuid4(threadId)) throw ApiFailure(FailureKind.INVALID_INPUT)
-        mutableState.value = mutableState.value.copy(currentTurn = null, continuationEnabled = false,
+        mutableState.value = mutableState.value.copy(currentTurn = null, continuationEnabled = false, sceneRecoveryRequired = false,
             historyRefreshRequired = true, memoryReaderHandoff = null, memoryReaderOrdinal = null)
         val detail = api.readThread(scope.bearer, scope.libraryId, threadId)
         requireCurrent(scope)
@@ -535,6 +538,7 @@ class AssistantWorkspaceStore(
                 current.capabilities?.searchVersion ?: 1,
             )
             mutableState.value = current.copy(pendingTurn = pending, uncertain = true, busy = true, error = null,
+                sceneRecoveryRequired = false,
                 memoryFollowupDraftParent = null,
                 memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
             launchReservedTurn(scope, pending, detail, acceptMemoryCards, acceptMemoryActions)
@@ -560,7 +564,7 @@ class AssistantWorkspaceStore(
             val pending = AssistantWorkspacePendingTurn(detail.thread.threadId, request, detail.thread.revision,
                 current.sceneDraft, searchVersion = 4, scene = true, sceneScope = original)
             mutableState.value = current.copy(pendingTurn = pending, currentTurn = null, uncertain = true, busy = true,
-                error = null, historyRefreshRequired = true, memoryFollowupDraftParent = null,
+                error = null, sceneRecoveryRequired = false, historyRefreshRequired = true, memoryFollowupDraftParent = null,
                 memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null)
             launchReservedTurn(scope, pending, detail)
             return true
@@ -672,6 +676,43 @@ class AssistantWorkspaceStore(
         recoverInternal(scope, pending, mutableState.value.detail)
     }
 
+    /** Explicitly reloads the previous completed conditions after a terminal scene rejection. */
+    fun reloadPreviousSceneConditions(): Boolean = launchAction {
+        val scope = requireUsableCapabilities()
+        val before = mutableState.value
+        if (!before.sceneRecoveryRequired || before.pendingTurn != null) throw ApiFailure(FailureKind.INVALID_INPUT)
+        val oldDetail = before.detail ?: throw ApiFailure(FailureKind.INVALID_INPUT)
+        val threadId = oldDetail.thread.threadId
+        val revision = oldDetail.thread.revision
+        val fresh = api.readThread(scope.bearer, scope.libraryId, threadId)
+        requireCurrent(scope)
+        if (fresh.thread.threadId != threadId || fresh.thread.libraryId != scope.libraryId || fresh.thread.revision != revision)
+            throw ApiFailure(FailureKind.HTTP, 409)
+        val latest = fresh.latestRequestId ?: throw ApiFailure(FailureKind.HTTP, 409)
+        val latestExchange = fresh.exchanges.firstOrNull { it.requestId == latest } ?: throw ApiFailure(FailureKind.HTTP, 409)
+        if (latestExchange.revision != revision) throw ApiFailure(FailureKind.HTTP, 409)
+        val savedInput = latestExchange.inputText
+        val pending = AssistantWorkspacePendingTurn(threadId, latest, (revision - 1).coerceAtLeast(0), savedInput,
+            searchVersion = 4)
+        val recovered = api.getTurn(scope.bearer, scope.libraryId, threadId, latest, pending.searchVersion)
+        requireCurrent(scope)
+        if (!recovered.recovered || recovered.status != AssistantWorkspaceRequestStatus.COMPLETED ||
+            recovered.threadId != threadId || recovered.requestId != latest || recovered.revision != revision)
+            throw ApiFailure(FailureKind.HTTP, 409)
+        val latestDetail = api.readThread(scope.bearer, scope.libraryId, threadId)
+        requireCurrent(scope)
+        if (latestDetail.thread.threadId != threadId || latestDetail.thread.libraryId != scope.libraryId ||
+            latestDetail.thread.revision != revision || latestDetail.latestRequestId != latest)
+            throw ApiFailure(FailureKind.HTTP, 409)
+        val latestDrafts = mutableState.value
+        applyTurn(scope, pending, recovered, latestDetail, oldDetail)
+        if (mutableState.value.currentTurn?.requestId != latest || mutableState.value.currentTurn?.status != AssistantWorkspaceRequestStatus.COMPLETED ||
+            mutableState.value.detail?.thread?.revision != revision)
+            throw ApiFailure(FailureKind.HTTP, 409)
+        mutableState.value = mutableState.value.copy(draft = latestDrafts.draft, sceneDraft = latestDrafts.sceneDraft,
+            sceneRecoveryRequired = false)
+    }
+
     /** Clears local blocking state only after the user acknowledges that the server may still commit. */
     fun abandonPendingTurn(acknowledgeServerMayCommit: Boolean): Boolean {
         onScopeChanged()
@@ -692,6 +733,7 @@ class AssistantWorkspaceStore(
         if (deleted.deleted && mutableState.value.detail?.thread?.threadId == detail.thread.threadId) {
             mutableState.value = mutableState.value.copy(
                 detail = null, currentTurn = null, draft = "", sceneDraft = "", pendingCreationId = null, historyRefreshRequired = false,
+                sceneRecoveryRequired = false,
                 memoryFollowupDraftParent = null,
                 pendingTurn = null, uncertain = false, continuationEnabled = false, error = null,
                 memoryReaderHandoff = null, memoryReaderOrdinal = null, memoryReaderError = null, memoryReaderErrorOrdinal = null,
@@ -758,6 +800,15 @@ class AssistantWorkspaceStore(
         if (turn.recovered && (turn.result?.effect != null || turn.result?.kind == "open")) {
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
         }
+        if (turn.error == "scene_query_unsupported") {
+            if (!pending.scene || pending.searchVersion != 4 || turn.status != AssistantWorkspaceRequestStatus.FAILED ||
+                turn.result != null || turn.revision != pending.expectedRevision)
+                throw ApiFailure(FailureKind.INVALID_RESPONSE)
+            mutableState.value = mutableState.value.copy(detail = detail ?: oldDetail ?: mutableState.value.detail,
+                currentTurn = null, pendingTurn = null, uncertain = false, continuationEnabled = true,
+                historyRefreshRequired = false, sceneRecoveryRequired = true, error = AssistantWorkspaceError.SCENE_REWORD)
+            return
+        }
         if (pending.scene && turn.status == AssistantWorkspaceRequestStatus.COMPLETED) {
             val result = turn.result ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
             val scene = result.context?.get("scene") as? JsonObject
@@ -778,6 +829,7 @@ class AssistantWorkspaceStore(
             AssistantWorkspaceRequestStatus.FAILED -> mutableState.value = mutableState.value.copy(
                 pendingTurn = null, currentTurn = safeTurn, uncertain = false,
                 continuationEnabled = detail?.thread?.revision == safeTurn.revision,
+                sceneRecoveryRequired = false,
                 error = AssistantWorkspaceError.TURN_FAILED,
             )
             AssistantWorkspaceRequestStatus.INTERRUPTED -> mutableState.value = mutableState.value.copy(

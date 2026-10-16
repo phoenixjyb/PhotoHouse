@@ -679,6 +679,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                 live?.let { it.busy || it.transcribing || it.speechBusy || it.speechAudio != null || it.transcript != null } != true)
                                 privateAssistant.sendSceneTurn()
                         } },
+                        onSceneReload = { privateAssistantState.detail?.thread?.let { thread ->
+                            val live = privateAssistant.state.value.detail?.thread
+                            val liveAssistant = store.state.value.assistant
+                            if (current() && privateAssistantState.sceneRecoveryRequired && live?.threadId == thread.threadId &&
+                                live.revision == thread.revision && !privateAssistantState.busy && privateAssistantState.pendingTurn == null &&
+                                voice?.session == null && !assistantRecording && assistantPendingCapture == null &&
+                                liveAssistant?.let { it.busy || it.transcribing || it.speechBusy || it.speechAudio != null || it.transcript != null } != true)
+                                privateAssistant.reloadPreviousSceneConditions()
+                        } },
                         onSend = { privateAssistantState.detail?.thread?.let { thread ->
                             if (renderedAndLiveThreadCurrent(thread.threadId, thread.revision)) privateAssistant.sendTurn()
                         } },

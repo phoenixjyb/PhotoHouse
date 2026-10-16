@@ -46,6 +46,13 @@ class SemanticUnavailable(Exception):
         super().__init__("semantic_unavailable")
 
 
+class SemanticUnsupported(SemanticUnavailable):
+    """A bound provider explicitly refused the exact query's supported meaning."""
+
+    def __init__(self) -> None:
+        Exception.__init__(self, "semantic_query_unsupported")
+
+
 class SemanticInvalid(Exception):
     """Fixed safe failure for invalid caller-supplied query text."""
 
@@ -208,12 +215,17 @@ class LocalSemanticEncoder:
             timeout = httpx.Timeout(remaining)
             with httpx.Client(transport=self._transport, timeout=timeout,
                               follow_redirects=False, trust_env=False) as client:
-                headers = {"content-type": "application/json"}
+                headers = {"content-type": "application/json",
+                           "x-photohouse-semantic-refusal": "1"}
                 if self._bearer_token is not None:
                     headers['authorization'] = 'Bearer ' + self._bearer_token
                 with client.stream("POST", self._url, content=request_body, headers=headers) as response:
                     _checked(check)
-                    if response.status_code != 200:
+                    status = response.status_code
+                    if status not in (200, 422):
+                        raise SemanticUnavailable()
+                    if status == 422 and response.headers.get('content-type', '').lower().replace(' ', '') not in (
+                            'application/json', 'application/json;charset=utf-8'):
                         raise SemanticUnavailable()
                     content_encoding = response.headers.get("content-encoding")
                     if (content_encoding is not None
@@ -232,6 +244,15 @@ class LocalSemanticEncoder:
                               parse_constant=_reject_json_constant)
             _checked(check)
             check_deadline()
+            if status == 422:
+                if (type(data) is not dict
+                        or set(data) != {'version', 'error', 'binding_sha256', 'query_sha256'}
+                        or type(data['version']) is not int or data['version'] != 1
+                        or data['error'] != 'unsupported_query'
+                        or data['binding_sha256'] != self._binding.binding_sha256
+                        or data['query_sha256'] != query_sha256):
+                    raise SemanticUnavailable()
+                raise SemanticUnsupported()
             if (type(data) is not dict
                     or set(data) != {"version", "binding_sha256", "query_sha256", "vector", "checksum_sha256"}
                     or type(data["version"]) is not int or data["version"] != 1

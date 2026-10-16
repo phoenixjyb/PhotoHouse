@@ -83,6 +83,7 @@ async function installSyntheticTransport(targetContext){
     await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);return turns().at(-1);
   };
   await ordinary('找示例儿童在2026年的照片');
+  await page.locator('#assistant-text').fill('unsent main search draft');
   await page.locator('#assistant-scene').waitFor({state:'visible'});await page.locator('#assistant-scene > summary').click();
   assert.match(await page.locator('#assistant-scene-scope').innerText(),/示例儿童/);assert.match(await page.locator('#assistant-scene-scope').innerText(),/2026-01-01/);
   await page.locator('#assistant-scene-text').fill('孩子 flying a kite 蓝桥旁');assert.equal(await page.locator('#assistant-scene-send').isDisabled(),true);
@@ -99,6 +100,45 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-desktop-zh.png'),fullPage:false});
   checkpoint('Explicit mixed-language scene turn preserves hard filters, shows approximate ranking separately, and performs no speech/open action');
   const english=await submitScene('a child flying a kite beside a blue bridge');assert.equal(english.response.result.context.scene.query,'a child flying a kite beside a blue bridge');
+  // A durable semantic refusal clears old cards and requires a deliberate GET reload before rewording.
+  const encoderBeforeRefusal=(await rpc({command:'scene-stats'})).calls,turnsBeforeRefusal=turns().length;
+  await rpc({command:'scene-unsupported-next'});
+  const refusal=await submitScene('孩子在紫色桥边放风筝');
+  assert.equal(refusal.status,200);assert.equal(refusal.response.status,'failed');assert.equal(refusal.response.error,'scene_query_unsupported');assert.equal(refusal.response.result,null);
+  await page.locator('#assistant-scene-reword').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),'孩子在紫色桥边放风筝');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'unsent main search draft');
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);assert.equal(await page.locator('#assistant-scene-send').isDisabled(),true);
+  assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeRefusal+1);assert.equal(turns().length,turnsBeforeRefusal+1);
+  await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-reword-phone-zh-150.png'),fullPage:false});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+  await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-reword-zh.png'),fullPage:false});
+  const beforeReload=browserRequests.length;
+  await page.locator('#assistant-scene-reload').click();await page.locator('#assistant-scene-reword').waitFor({state:'hidden'});
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),'孩子在紫色桥边放风筝');
+  assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeRefusal+1);assert.equal(turns().length,turnsBeforeRefusal+1);
+  const reloadRequests=browserRequests.slice(beforeReload);assert(reloadRequests.some(x=>x.method==='GET'&&/\/threads\/[0-9a-f-]+\?/.test(x.path)));
+  assert(reloadRequests.some(x=>x.method==='GET'&&/\/requests\//.test(x.path)));assert.equal(reloadRequests.some(x=>x.method==='POST'),false);
+  await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-reword-reloaded-zh.png'),fullPage:false});
+  const reworded=await submitScene('孩子在桥边牵着红色风筝');assert.equal(reworded.response.status,'completed');
+  assert.equal(reworded.response.result.context.scene.query,'孩子在桥边牵着红色风筝');
+  assert.deepEqual(reworded.response.result.context.scene.scope,english.response.result.context.scene.scope);
+  checkpoint('Unsupported scene wording is retained for editing; explicit GET reload restores the previous scope, then a deliberate reworded POST succeeds');
+  // Lose the response after a second semantic refusal; recovery must return that receipt with GET only.
+  const encoderBeforeLostRefusal=(await rpc({command:'scene-stats'})).calls,turnsBeforeLostRefusal=turns().length;
+  await rpc({command:'scene-unsupported-next'});loseNextTurn=true;
+  const lostRefusal=page.waitForEvent('requestfailed',{predicate:r=>r.method()==='POST'&&/\/turns$/.test(new URL(r.url()).pathname)});
+  await page.locator('#assistant-scene-text').fill('孩子在雾中的木桥旁');await page.locator('#assistant-scene-confirm').check();await page.locator('#assistant-scene-send').click();await lostRefusal;
+  await page.locator('#assistant-private-recover').waitFor({state:'visible'});const unsupportedRequestId=turns().at(-1).response.request_id;
+  assert.equal(turns().length,turnsBeforeLostRefusal+1);assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeLostRefusal+1);
+  await page.locator('#assistant-private-recover').click();await page.locator('#assistant-scene-reword').waitFor({state:'visible'});
+  const replay=browserRequests.filter(x=>x.method==='GET'&&x.path.includes('/requests/'+unsupportedRequestId)).at(-1);
+  assert(replay);assert.equal(replay.headers['x-photohouse-search-version'],'4');assert.equal(replay.response.status,'failed');assert.equal(replay.response.error,'scene_query_unsupported');
+  assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeLostRefusal+1);assert.equal(turns().length,turnsBeforeLostRefusal+1);
+  await page.locator('#assistant-scene-reload').click();await page.locator('#assistant-scene-reword').waitFor({state:'hidden'});
+  checkpoint('Lost unsupported response replays the same failed code through v4 GET without another POST or encoder call');
   // Start another explicit scene request, lose its response, then disable encoding.
   loseNextTurn=true;const before=turns().length;
   const failed=page.waitForEvent('requestfailed',{predicate:r=>r.method()==='POST'&&/\/turns$/.test(new URL(r.url()).pathname)});
@@ -128,6 +168,22 @@ async function installSyntheticTransport(targetContext){
   await page.locator('[href="#assistant-panel"]').first().click();await reopen(savedThread);
   await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-phone-en-ranking-150.png'),fullPage:false});
   assert.match(await page.locator('#assistant-scene-ranking').innerText(),/approximate ranking/);
+  const englishPriorScene=await page.locator('#assistant-scene-query').innerText(),englishEncoderBefore=(await rpc({command:'scene-stats'})).calls,englishTurnsBefore=turns().length;
+  await rpc({command:'scene-encoder-on'});
+  await rpc({command:'scene-unsupported-next'});const englishRefusal=await submitScene('a child in a red coat beneath falling snow');
+  assert.equal(englishRefusal.response.status,'failed');assert.equal(englishRefusal.response.error,'scene_query_unsupported');
+  await page.locator('#assistant-scene-reword').waitFor({state:'visible'});
+  await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-reword-phone-en-150.png'),fullPage:false});
+  assert.match(await page.locator('#assistant-scene-reword-help').innerText(),/could not be used/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),'a child in a red coat beneath falling snow');
+  assert.equal((await rpc({command:'scene-stats'})).calls,englishEncoderBefore+1);assert.equal(turns().length,englishTurnsBefore+1);
+  await page.locator('#assistant-scene-reload').click();await page.locator('#assistant-scene-reword').waitFor({state:'hidden'});
+  assert.equal(await page.locator('#assistant-scene-query').innerText(),englishPriorScene);
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),'a child in a red coat beneath falling snow');
+  assert.equal((await rpc({command:'scene-stats'})).calls,englishEncoderBefore+1);assert.equal(turns().length,englishTurnsBefore+1);
+  await rpc({command:'scene-encoder-off'});
   await page.locator('#assistant-scene-text').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-phone-en-150.png'),fullPage:false});
   await page.locator('#assistant-scene-back').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-phone-en-actions-150.png'),fullPage:false});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
@@ -135,7 +191,7 @@ async function installSyntheticTransport(targetContext){
   // Revalidate the actual latest owned scene after synthetic artifact damage.
   await rpc({command:'scene-corrupt'});
   await reopen();await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
-  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);assert.equal((await rpc({command:'scene-stats'})).calls,calls);
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);assert.equal((await rpc({command:'scene-stats'})).calls,calls+1);
   checkpoint('Corrupt artifact readback withholds old result cards without model replay');
   // Current conditions can only be changed through a full ordinary search.
   const ordinaryScope=await ordinary('find photos of Sample Child in 2026');assert.equal(ordinaryScope.response.result.kind,'results');

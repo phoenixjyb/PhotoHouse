@@ -195,7 +195,8 @@ class ReviewedSemanticProviderIntegrationTests(unittest.TestCase):
     def test_unreviewed_foreign_and_unauthenticated_requests_fail_before_model_use(self):
         unknown = "unreviewed private query"
         denied = self._query(unknown)
-        self.assertEqual(denied.status_code, 503, denied.text)
+        self.assertEqual(denied.status_code, 422, denied.text)
+        self.assertEqual(denied.json()['error'], 'scene_query_unsupported')
         self.assertEqual(self.model_inputs, [])
         self.assertNotIn(unknown, denied.text)
         self.assertNotIn(MODEL_INPUT, denied.text)
