@@ -109,6 +109,62 @@ class AssistantVoiceWorkspaceUiTest {
 
     @Test fun englishTurnTimingIsCollapsedAndKeepsPauseEndVisibleAt150Percent() = turnTimingRender(false)
 
+    @Test fun chineseVoiceFailureRecoveryAt150Percent() = voiceFailureRecoveryRender(true)
+
+    @Test fun englishVoiceFailureRecoveryAt150Percent() = voiceFailureRecoveryRender(false)
+
+    private fun voiceFailureRecoveryRender(zh: Boolean) {
+        val failures = listOf(
+            VoiceSessionStopReason.TRANSCRIPTION_FAILED to "recognition",
+            VoiceSessionStopReason.REQUEST_FAILED to "request",
+            VoiceSessionStopReason.SPEECH_FAILED to "playback",
+        )
+        val selectedReason = mutableStateOf(failures.first().first)
+        var resumes = 0
+        var ends = 0
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                PhotoHouseTheme {
+                    AssistantVoiceSessionPanel(
+                        AssistantVoiceSessionUiState(
+                            AssistantVoiceSessionStage.PAUSED,
+                            detail = requireNotNull(assistantVoiceFailureDetail(selectedReason.value, zh)),
+                            canResume = true,
+                            microphoneActive = false,
+                            reason = selectedReason.value,
+                        ), zh,
+                        onPause = {}, onResume = { resumes++ }, onEnd = { ends++ },
+                    )
+                }
+            }
+        }
+        for ((reason, stage) in failures) {
+            rule.runOnIdle {
+                resumes = 0
+                ends = 0
+                selectedReason.value = reason
+            }
+            val detail = requireNotNull(assistantVoiceFailureDetail(reason, zh))
+            rule.onNodeWithTag("assistant-voice-session-status")
+                .assertTextEquals(if (zh) "语音对话已暂停" else "Voice conversation paused")
+            rule.onNodeWithTag("assistant-voice-session-detail").assertTextEquals(detail)
+            rule.onNodeWithTag("assistant-voice-microphone-state")
+                .assertTextEquals(if (zh) "麦克风已关闭" else "MICROPHONE OFF")
+            rule.onNodeWithTag("assistant-voice-resume").assertIsDisplayed().assertIsEnabled()
+            rule.onNodeWithTag("assistant-voice-end").assertIsDisplayed().assertIsEnabled()
+            rule.runOnIdle {
+                assertEquals("Rendering a failure state must not invoke controls", 0, resumes)
+                assertEquals("Rendering a failure state must not end the session", 0, ends)
+            }
+            saveRender("voice-failure-$stage-${if (zh) "zh" else "en"}-150.png")
+            rule.onNodeWithTag("assistant-voice-resume").performClick()
+            rule.runOnIdle { assertEquals(1, resumes) }
+            rule.onNodeWithTag("assistant-voice-end").performClick()
+            rule.runOnIdle { assertEquals(1, ends) }
+        }
+    }
+
     private fun turnTimingRender(zh: Boolean) {
         rule.setContent {
             val density = LocalDensity.current
