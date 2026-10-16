@@ -80,8 +80,11 @@ Stop and source/scope changes clear progress. The following local source adds
 exact [spoken Pause/End controls](VOICE_SESSION_SPOKEN_CONTROLS.md), recognized
 after ASR during the opted-in Listening phase. Resume stays explicit and playback
 keeps the microphone off; this is not in the frozen v66 APK or claimed live.
-Voice-requested continuation and hands-free advancement to later chapters remain
-future work.
+Following Web source adds an explicit **语音继续** choice after a completed
+segment and accepts “继续朗读” for exactly one next segment. Actual completion
+returns to listening; the final segment pauses with the microphone off. See
+[Web continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source).
+Phone parity, later chapters and hands-free chapter advancement remain future work.
 
 Add bounded chapter narration/continuation with explicit progress and resume,
 source citations, current story/book/chapter revisions and robust cancellation.

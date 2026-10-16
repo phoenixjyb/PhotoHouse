@@ -55,10 +55,12 @@ control boundaries, retained drafts, normal search after negation and manual
 transcript review. Chinese/English 150% layouts are checked separately from
 provider and physical listening quality.
 
-Saved-section continuation remains a separate feature. A later voice-owned
-continuation must retain the exact current result, card, source revision,
-completed segment and segment count, and request only one next segment after
-actual successful playback. Current voice opening playback and manual segmented
-playback have different owners. Do not treat a new voice session as permission
-to reuse old progress, advance chapters or restart recovered speech. See
+Following Web source adds a separate opt-in
+[saved-section continuation](ASSISTANT_SEGMENT_READING.md#web-voice-continuation-october-16-following-source).
+It retains the exact current result, card, source revision, completed segment
+and segment count, and requests only one next segment after actual successful
+playback. It binds the completed player to an explicit foreground session;
+ordinary voice opening and manual playback keep their separate contracts. Phone
+parity remains future work. Do not treat a new voice session as permission to
+reuse old progress, advance chapters or restart recovered speech. See
 [segmented reading](ASSISTANT_SEGMENT_READING.md) and [the roadmap](ROADMAP.md).

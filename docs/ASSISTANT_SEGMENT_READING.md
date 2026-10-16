@@ -7,11 +7,13 @@ in the ordinary reader. This does not generate, polish or replace saved words.
 
 ## Interaction contract
 
-One explicit tap requests one segment. The client shows preparation, actual
+In the default manual flow, one explicit tap requests one segment. The client shows preparation, actual
 playback, Stop and the segment position. Only the exact player's successful
 completion can offer **Continue / 继续朗读**. Another tap requests the next
 segment; nothing automatically starts the next segment, changes chapter or
 opens the microphone. The final segment shows completion instead of Continue.
+The separate Web opt-in continuation below can accept a spoken request for one
+next segment; manual controls and the phone behavior stay explicit per segment.
 
 Stop, failure, foreground/lifecycle interruption, account/library/result/source
 replacement, capability refresh or recovered history invalidates continuation.
@@ -112,3 +114,64 @@ that restore completes and shows a localized setup state with the microphone
 off. Its focused voice and recovery journeys pass. Complete integrated profiles,
 native TTS, live API delivery, physical-device and family acceptance remain
 separate evidence.
+
+## Web voice continuation (October 16 following source)
+
+This Web-only increment follows the published phone v66 and last verified live
+API/Web. It is not an APK, Windows deployment or provider-quality claim. Phone
+voice continuation and automatic advancement to later chapters remain future work.
+
+1. Retrieve a fresh saved story or memoir and play its first manual segment.
+2. After that exact player's successful completion, if another segment remains,
+   the card offers **语音继续 / Continue by voice**. Its adjacent explanation
+   explicitly says that it turns on the microphone. The button is absent from
+   the visible controls while preparing/playing or when voice is unavailable.
+3. Select that button to start foreground listening for this exact current
+   memory. No audio or chat request starts from that selection alone.
+4. Say **继续朗读** or **continue reading**. This consumes the recognized command
+   locally and requests exactly one next segment through the existing protected
+   segment endpoint. It adds no assistant search/chat turn or generated reply.
+5. Only actual successful playback completion returns to listening. The last
+   segment pauses the session with the microphone off. Later chapters stay in
+   the ordinary story reader; Resume returns to general voice search.
+
+The complete continuation vocabulary is 继续朗读, 继续读, 读下一段,
+continue reading, read the next part and read the next segment. Normalization is
+limited to the [existing exact-control rules](VOICE_SESSION_SPOKEN_CONTROLS.md).
+A bare “继续”, negation, quoted text or additional words is not this command.
+An exact continuation without the eligible source pauses with selection guidance;
+it does not guess a story, synthesize a new opening or submit a search.
+
+The anchor contains the current account/library/generation, exact result and
+card/ordinal, thread revision, completed segment and expected count. Existing
+server validation checks the saved source and full reference cohort again before
+and after synthesis. An observed source/capability replacement or rejected/stale
+response withholds playback and pauses. Retained history cannot create an anchor.
+
+Selecting the explicit voice action brings Pause into focus and scrolls its
+status panel into view, clear of the inline sticky navigation. Pause and End
+keep a minimum 48 px target. Conversation management is disabled during active or
+paused voice and becomes available again after End; it does not wait for a new
+server response to update those controls.
+
+The shared microphone adapter may retain only this completed, released player's
+source identity when it starts the next capture. It must still stop unrelated
+playback; it cannot preserve an active speaker or overlap microphone and audio.
+The existing Pause, End, local Stop, permission/lifecycle and scope fences clear
+the anchor and progress. Resume never restores that old reading intent. Starting
+ordinary voice or asking an ordinary question also clears it. There is no audio
+cache, persistent bookmark or automatic chapter navigation.
+
+The protected ASR request follows existing input/receipt retention. Its exact
+control transcript is consumed locally and cannot become the parent of a later
+chat turn. No new server endpoint, schema, provider or recording retention is
+introduced. Source/UI fixtures and CI, immutable package qualification, Windows
+ASR/TTS behavior, live delivery and family listening remain separate evidence.
+
+Local qualification for this increment: all 31 synthetic saved-memory browser
+checkpoints, the standard voice-session browser regression, five exact-control
+Node groups and the shared microphone/WAV checks passed. Chinese/English active
+listening at 390 px and 150% text was inspected, including the Chinese assistant
+workspace; status hit-testing checks that sticky navigation does not cover the
+instructions. These fixtures do not exercise a live ASR/TTS provider or family
+audio. No Android source or installed device changed in this increment.

@@ -23,7 +23,7 @@ const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(
 const requests=[],errors=[],external=[],checks=[];
 let probeMode='live',speechProbeMode='live',readingProbeMode='live',segmentReadingProbeMode='live',readerProbeMode='live',dropNextTurnResponse=false,readerGate=null,turnGate=null,openingSpeechGate=null,segmentSpeechGate=null;
 let lateReaderCapabilityGate=null,lateReadingCapabilityGate=null,lateSegmentCapabilityGate=null;
-let followupProbeMode='live',followupProbeGate=null,voiceTranscript='',reloadRequestStart=0;
+let followupProbeMode='live',followupProbeGate=null,voiceTranscript='',voiceAsrGate=null,reloadRequestStart=0;
 let browser,context,page;
 const pass=label=>{checks.push(label);console.log('PASS '+label);};
 const deferredGate=()=>{let arrive,release;const reached=new Promise(resolve=>{arrive=resolve;}),waiting=new Promise(resolve=>{release=resolve;});return {reached,arrive,release,waiting};};
@@ -75,9 +75,11 @@ async function installTransport(target){
       try{await route.fulfill({status:200,contentType:'audio/wav',headers:item.responseHeaders,body:segmentAudio()});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
     }
     if(item.method==='POST'&&url.pathname==='/assistant/v1/transcribe'&&voiceTranscript){
+      if(voiceAsrGate){const gate=voiceAsrGate;voiceAsrGate=null;gate.arrive();await gate.waiting;}
       item.status=200;
       item.syntheticTranscription=true;item.responseHeaders={'cache-control':'no-store','x-photohouse-tracking':'disabled','x-photohouse-receipt-status':'disabled'};
-      await route.fulfill({status:200,contentType:'application/json',headers:item.responseHeaders,body:JSON.stringify({version:1,text:voiceTranscript,language:'zh'})});return;
+      try{await route.fulfill({status:200,contentType:'application/json',headers:item.responseHeaders,body:JSON.stringify({version:1,text:voiceTranscript,language:'zh'})});}
+      catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
     }
     if(item.method==='GET'&&url.pathname===routeMemoryPath&&probeMode==='missing'){
       item.syntheticMissingProbe=true;item.status=404;
@@ -189,6 +191,20 @@ async function waitForOptional403Recheck(probeReads,featureStateKey,label){
   return {probe,recheck};
 }
 const fakeTtsCalls=async()=>{const response=await rpc({command:'tts-calls'});assert.equal(response.ok,true);return response.calls;};
+async function installVoiceCaptureFixture(){
+  await page.evaluate(()=>{
+    const devices=navigator.mediaDevices;
+    devices.getUserMedia=async()=>{window.__phMicCalls++;const track={stopped:false,stop(){this.stopped=true;window.__phTrackStopped=true;}};window.__phVoiceTrack=track;return {getTracks:()=>[track]};};
+    window.__phTrackStopped=false;window.__phAudioProcessors=[];
+    window.__phAudioContextCloseDeferred=false;window.__phAudioContextCloseStarted=false;window.__phAudioContextCloseRelease=null;
+    window.AudioContext=class{constructor(){this.sampleRate=16000;this.destination={};}createMediaStreamSource(){return {connect(){},disconnect(){}};}createScriptProcessor(){const processor={onaudioprocess:null,connect(){},disconnect(){}};window.__phAudioProcessors.push(processor);return processor;}resume(){return Promise.resolve();}close(){if(window.__phAudioContextCloseDeferred){window.__phAudioContextCloseStarted=true;return new Promise(resolve=>{window.__phAudioContextCloseRelease=()=>{window.__phAudioContextCloseDeferred=false;resolve();};});}return Promise.resolve();}};
+    window.__phFeed=(value,count)=>{const processor=window.__phAudioProcessors.at(-1);if(!processor?.onaudioprocess)return false;const data=new Float32Array(count);data.fill(value);processor.onaudioprocess({inputBuffer:{getChannelData:()=>data}});return true;};
+  });
+}
+async function waitForSavedMemorySectionCapabilities(){
+  await page.waitForFunction(()=>{const state=window.__privateAssistantController?.state();
+    return state?.savedMemoryAvailable===true&&state.savedMemorySpeechAvailable===true&&state.savedMemorySegmentReadingAvailable===true;},{},{timeout:10000});
+}
 async function waitForTurnCount(before){
   const deadline=Date.now()+10000;
   while(turns().length<=before&&Date.now()<deadline)await page.waitForTimeout(20);
@@ -338,7 +354,7 @@ async function reloadAndLogin(){
   assert.equal(await storyCard.locator('.assistant-memory-kind').innerText(),'已保存的故事');
   assert.equal(await storyCard.locator('h3').innerText(),fixtureInfo.story_title);
   assert.equal(await storyCard.locator('.assistant-memory-excerpt').innerText(),fixtureInfo.story_excerpt);
-  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),6,'the card exposes explicit reader, opening, section-read and local Stop actions plus two draft-only followups');
+  assert.equal(await storyCard.locator('button,a,input,img,audio,video').count(),7,'the card exposes reader, opening, section-read, hidden voice continuation and Stop controls plus two draft-only followups');
   assert.equal(await storyCard.locator('.assistant-memory-followup').count(),2,'ordinal followup chips are attached to the current source card');
   const allMemoriesChip=page.getByRole('button',{name:'全部回忆. 介绍这些回忆',exact:true});
   const summaryChip=storyCard.getByRole('button',{name:'讲了什么. 第1段回忆讲了什么',exact:true});
@@ -350,7 +366,7 @@ async function reloadAndLogin(){
   assert.equal(await chaptersChip.innerText(),'章节','chapter prompt uses a compact localized visible label');
   assert.equal(await chaptersChip.getAttribute('aria-label'),'章节. 第1段回忆有哪些章节','chapter accessible name starts with its visible label and keeps its exact ordinal prompt');
   const primaryActions=storyCard.locator('.assistant-memory-primary-actions');
-  assert.equal(await primaryActions.locator('button').count(),4,'reader and speech controls share one primary action row');
+  assert.equal(await primaryActions.locator('button').count(),5,'reader and speech controls share one primary action row with its dormant voice-continuation control');
   assert.match(await storyCard.locator('.assistant-memory-open').innerText(),/打开已保存的故事|Open saved story/);
   assert.equal(await page.evaluate(()=>window.__savedMemoryXss),0,'hostile source text executes no markup');
   assert.equal(storyTurn.body&&JSON.parse(storyTurn.body).text,storyQuery,'fresh story request is recorded');
@@ -367,6 +383,7 @@ async function reloadAndLogin(){
   assert.equal(speechCalls().length,0,'no private speech route is called before explicit playback');
   assert.equal(openingSpeechCalls().length,0,'no opening speech route is called before explicit playback');
   assert.equal(segmentSpeechCalls().length,0,'no section audio is requested before the explicit section-reading tap');
+  assert.equal(await storyCard.locator('.assistant-memory-segment-voice').isVisible(),false,'voice continuation is hidden before any segment completes successfully');
   await page.evaluate(()=>{const card=document.querySelector('#assistant-results .assistant-memory-card');if(card){card.querySelector('h3').textContent='湖边的家庭散步';card.querySelector('.assistant-memory-excerpt').textContent='野餐后，一家人在湖边散步，记录了共同度过的时光。';}});
   const sectionButton=storyCard.locator('.assistant-memory-segment-reading');assert.match(await sectionButton.innerText(),/分段朗读故事第一章|Read the first chapter in sections/);
   assert.match(await storyCard.locator('.assistant-memory-segment-help').innerText(),/每次朗读一段|Reads one section at a time/);
@@ -383,6 +400,7 @@ async function reloadAndLogin(){
   assert.equal(firstSection.headers['x-photohouse-reading-segment'],undefined,'segment index comes from the exact route path, not an extra request header');
   await page.waitForFunction(()=>/朗读第 1\/3 段|Reading segment 1\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
   assert.equal(await sectionButton.isDisabled(),true,'the card cannot request another segment during playback');
+  assert.equal(await storyCard.locator('.assistant-memory-segment-voice').isVisible(),false,'voice continuation stays hidden while the first segment is playing');
   assert.equal(segmentSpeechCalls().length,1,'Continue is unavailable until playback ends');
   assert.equal(firstSection.responseHeaders['x-photohouse-reading-segment'],'0');assert.equal(firstSection.responseHeaders['x-photohouse-reading-segment-count'],'3');
   assert.equal(firstSection.responseHeaders['x-photohouse-playback-tracking'],'enabled','section audio carries the required playback outcome tracking contract');
@@ -401,8 +419,15 @@ async function reloadAndLogin(){
   await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
   await page.waitForFunction(()=>/继续第 2\/3 段|Continue segment 2\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
   assert.equal(segmentSpeechCalls().length,1,'successful playback completion exposes an explicit Continue without auto-requesting it');
+  const voiceContinue=storyCard.locator('.assistant-memory-segment-voice');
+  assert(await voiceContinue.isVisible(),'voice continuation appears only after the exact first segment completes');
+  assert.match(await voiceContinue.innerText(),/语音继续|Continue by voice/);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'section progress fits the 390px Chinese page at 150% text');
   assert(await storyCard.evaluate(node=>node.scrollWidth<=node.clientWidth),'section progress and controls wrap within the card');
+  const continuePhoneGeometry=await primaryActions.evaluate(row=>({rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:row.closest('.assistant-memory-card').clientWidth,cardScrollWidth:row.closest('.assistant-memory-card').scrollWidth,
+    controls:[...row.querySelectorAll('button')].filter(button=>!button.hidden).map(button=>{const r=button.getBoundingClientRect();return {height:r.height,left:r.left,right:r.right,rowLeft:row.getBoundingClientRect().left,rowRight:row.getBoundingClientRect().right};})}));
+  assert(continuePhoneGeometry.rowScrollWidth<=continuePhoneGeometry.rowWidth&&continuePhoneGeometry.cardScrollWidth<=continuePhoneGeometry.cardWidth,'Chinese voice continuation wraps within the card at 390px and 150% text');
+  assert(continuePhoneGeometry.controls.every(item=>item.height>=48&&item.left>=item.rowLeft-1&&item.right<=item.rowRight+1),'Chinese completed-segment controls retain 48px targets at 390px and 150% text');
   await storyCard.screenshot({path:path.join(artifacts,'assistant-memory-segment-continue-phone-150-zh.png')});
   await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>{document.documentElement.style.fontSize='';});
   for(const expectedSegment of [1,2]){
@@ -848,7 +873,7 @@ async function reloadAndLogin(){
   assert.equal(await memoirCard.locator('.assistant-memory-kind').innerText(),'已保存的回忆录');
   assert.equal(await memoirCard.locator('h3').innerText(),fixtureInfo.memoir_title);
   assert.equal(await memoirCard.locator('.assistant-memory-excerpt').innerText(),'野餐之后，我们记下了家人一起度过的时光。');
-  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),6,'memoir card adds explicit section-read and local Stop actions');
+  assert.equal(await memoirCard.locator('button,a,input,img,audio,video').count(),7,'memoir card adds explicit section-read, hidden voice continuation and local Stop controls');
   assert.match(await memoirCard.locator('.assistant-memory-opening').innerText(),/朗读开篇|Read opening/);
   assert.match(await memoirCard.locator('.assistant-memory-open').innerText(),/打开回忆录|Open memoir/);
   assert(await memoirCard.locator('.assistant-memory-open').isVisible(),'explicit memoir reader action is visible on the card');
@@ -1141,8 +1166,223 @@ async function reloadAndLogin(){
   assert(englishPlayingActions.rowScrollWidth<=englishPlayingActions.rowWidth&&englishPlayingActions.cardScrollWidth<=englishPlayingActions.cardWidth&&englishPlayingActions.stop>=48,'English active Stop wraps in the 48px action row at 390px and 150% text');
   await cards().first().screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150.png')});
   await page.screenshot({path:path.join(artifacts,'assistant-memory-segment-en-phone-150-full.png'),fullPage:true});
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>/Continue segment 2\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  const englishVoiceContinue=cards().first().locator('.assistant-memory-segment-voice');
+  assert(await englishVoiceContinue.isVisible(),'English voice continuation appears after the exact segment completes');
+  assert.equal(await englishVoiceContinue.innerText(),'Continue by voice');
+  const englishContinueGeometry=await englishActionRow.evaluate(row=>({rowWidth:row.clientWidth,rowScrollWidth:row.scrollWidth,cardWidth:row.closest('.assistant-memory-card').clientWidth,cardScrollWidth:row.closest('.assistant-memory-card').scrollWidth,
+    voice:row.querySelector('.assistant-memory-segment-voice').getBoundingClientRect().height,
+    controls:[...row.querySelectorAll('button')].filter(button=>!button.hidden).map(button=>{const r=button.getBoundingClientRect();return {height:r.height,left:r.left,right:r.right,rowLeft:row.getBoundingClientRect().left,rowRight:row.getBoundingClientRect().right};})}));
+  assert(englishContinueGeometry.rowScrollWidth<=englishContinueGeometry.rowWidth&&englishContinueGeometry.cardScrollWidth<=englishContinueGeometry.cardWidth,'English voice continuation wraps within the card at 390px and 150% text');
+  assert(englishContinueGeometry.controls.every(item=>item.height>=48&&item.left>=item.rowLeft-1&&item.right<=item.rowRight+1),'English completed-segment controls retain 48px targets at 390px and 150% text');
+  await cards().first().screenshot({path:path.join(artifacts,'assistant-memory-segment-voice-continue-en-phone-150.png')});
+  await page.screenshot({path:path.join(artifacts,'assistant-memory-segment-voice-continue-en-phone-150-full.png'),fullPage:true});
+
+  await installVoiceCaptureFixture();
+  const capabilityLossSegments=segmentSpeechCalls().length,capabilityLossTurns=turns().length,capabilityLossMic=await page.evaluate(()=>window.__phMicCalls),capabilityLossPlays=await page.evaluate(()=>window.__phAudioPlayCalls);
+  await englishVoiceContinue.click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  await page.waitForFunction(()=>document.activeElement?.id==='assistant-voice-pause');
+  const capabilityLossAsrGate=deferredGate();voiceAsrGate=capabilityLossAsrGate;voiceTranscript='read the next segment';
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});await capabilityLossAsrGate.reached;
+  segmentReadingProbeMode='missing';
+  assert.equal(await page.evaluate(()=>window.__privateAssistantController.savedMemorySegmentReadingCapabilities()),false,'the section-reading capability can be lost during a voice utterance');
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='paused');
+  capabilityLossAsrGate.release();
+  await page.waitForTimeout(150);
+  assert.equal(segmentSpeechCalls().length,capabilityLossSegments,'late ASR after capability loss cannot request segment audio');
+  assert.equal(turns().length,capabilityLossTurns,'late ASR after capability loss cannot create an assistant turn');
+  assert.equal(await page.evaluate(()=>window.__phAudioPlayCalls),capabilityLossPlays,'capability loss pauses before any withheld continuation audio can play');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),capabilityLossMic+1,'capability loss does not resume or recapture the microphone');
+  assert.equal(await page.evaluate(()=>window.__phVoiceTrack?.stopped),true,'capability loss releases the foreground microphone track');
+  assert.equal(await cards().first().locator('.assistant-memory-segment-voice').isVisible(),false,'capability loss removes voice continuation eligibility');
+  voiceTranscript='';segmentReadingProbeMode='live';
+  pass('English voice continuation remains readable at 390px with 150% text; capability loss pauses and fences late ASR');
+
+  await page.locator('#assistant-voice-end').click();
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-start')?.hidden===false);
+  await reloadAndLogin();
+  await ensureThread();
+  await waitForSavedMemorySectionCapabilities();
+  const stopSourceTurn=await submit('搜索故事 野餐');
+  assert.equal(stopSourceTurn.response.result.kind,'memory_cards','a known saved-story fixture restores section capability after reload');
+  assert(stopSourceTurn.response.result.memory_cards.length>0,'the known picnic story query returns a card after capability negotiation');
+  assert(JSON.parse(stopSourceTurn.body).accepts.includes('saved_memory_cards_v1'),'the fresh request includes the negotiated saved-memory card capability');
+  await page.waitForFunction(()=>window.__privateAssistantController?.state()?.savedMemorySegmentReadingAvailable===true&&
+    document.querySelector('#assistant-results .assistant-memory-card .assistant-memory-segment-reading:not([disabled])'));
+  await installVoiceCaptureFixture();
+  const explicitStopSegments=segmentSpeechCalls().length;
+  await cards().first().locator('.assistant-memory-segment-reading').click();
+  const explicitStopDeadline=Date.now()+10000;while(segmentSpeechCalls().length<explicitStopSegments+1&&Date.now()<explicitStopDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===false);
   await cards().first().locator('.assistant-memory-segment-stop').click();
-  pass('English section-reading action remains readable at 390px with 150% text');
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===true&&document.querySelector('.assistant-memory-segment-status')?.hidden===true);
+  assert.equal(segmentSpeechCalls().length,explicitStopSegments+1,'an explicit Stop cancels the fresh section without starting another request');
+  assert.equal(await cards().first().locator('.assistant-memory-segment-voice').isVisible(),false,'Stop clears voice continuation eligibility before successful completion');
+  pass('English section Stop remains explicit and cancels without continuation');
+  const pauseRaceSegments=segmentSpeechCalls().length,pauseRaceTurns=turns().length;
+  await cards().first().locator('.assistant-memory-segment-reading').click();
+  const pauseRacePlayDeadline=Date.now()+10000;while(segmentSpeechCalls().length<pauseRaceSegments+1&&Date.now()<pauseRacePlayDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>document.querySelector('.assistant-memory-segment-voice')?.hidden===false);
+  const pauseRaceMic=await page.evaluate(()=>window.__phMicCalls);
+  await page.locator('.assistant-memory-segment-voice').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  const pauseAsrGate=deferredGate();voiceAsrGate=pauseAsrGate;voiceTranscript='read the next segment';
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});await pauseAsrGate.reached;
+  await page.locator('#assistant-voice-pause').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='paused');
+  pauseAsrGate.release();await page.waitForTimeout(150);
+  assert.equal(segmentSpeechCalls().length,pauseRaceSegments+1,'Pause fences a continuation whose ASR response arrives late');
+  assert.equal(turns().length,pauseRaceTurns,'the fenced paused utterance creates no assistant turn');
+  assert.equal(await page.evaluate(()=>window.__phVoiceTrack?.stopped),true,'Pause releases the opted-in microphone track');
+  const resumedTurns=turns().length,resumedSegments=segmentSpeechCalls().length;
+  voiceTranscript='continue reading';
+  const resumeMic=await page.evaluate(()=>window.__phMicCalls);
+  await page.locator('#assistant-voice-resume').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),resumeMic+1,'explicit Resume starts one fresh capture after Pause');
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='paused');
+  assert.equal(segmentSpeechCalls().length,resumedSegments,'Resume after Pause does not restore the cleared segment anchor');
+  assert.equal(turns().length,resumedTurns,'a continuation phrase without its cleared anchor pauses locally without an assistant turn');
+  await page.locator('#assistant-voice-end').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-start')?.hidden===false);
+  voiceTranscript='';
+  await submit('搜索故事 野餐');
+  await page.waitForFunction(()=>document.querySelector('#assistant-results .assistant-memory-card .assistant-memory-segment-reading'));
+
+  const endRaceSegments=segmentSpeechCalls().length,endRaceTurns=turns().length;
+  await cards().first().locator('.assistant-memory-segment-reading').click();
+  const endRacePlayDeadline=Date.now()+10000;while(segmentSpeechCalls().length<endRaceSegments+1&&Date.now()<endRacePlayDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>document.querySelector('.assistant-memory-segment-voice')?.hidden===false);
+  await page.locator('.assistant-memory-segment-voice').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  const endAsrGate=deferredGate();voiceAsrGate=endAsrGate;voiceTranscript='继续读';
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});await endAsrGate.reached;
+  await page.locator('#assistant-voice-end').click();await page.waitForFunction(()=>document.getElementById('assistant-voice-start')?.hidden===false);
+  endAsrGate.release();await page.waitForTimeout(150);
+  assert.equal(segmentSpeechCalls().length,endRaceSegments+1,'End fences a continuation whose ASR response arrives late');
+  assert.equal(turns().length,endRaceTurns,'the fenced ended utterance creates no assistant turn');
+  assert.equal(await page.evaluate(()=>window.__phVoiceTrack?.stopped),true,'End releases the opted-in microphone track');
+  voiceTranscript='';
+  if(await page.evaluate(()=>document.documentElement.lang)!=='en'){
+    await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');await ensureThread();await waitForSavedMemorySectionCapabilities();
+  }
+  const sourceChangeBefore=turns().length;
+  const sourceChange=await submit('搜索故事 双故事');
+  assert.equal(turns().length,sourceChangeBefore+1,'a normal search after End is a single ordinary assistant turn');
+  assert.equal(sourceChange.response.result.kind,'memory_cards');
+  await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-memory-card').length>0&&
+    [...document.querySelectorAll('.assistant-memory-segment-voice')].every(button=>button.hidden));
+  assert.equal(await cards().locator('.assistant-memory-segment-voice:visible').count(),0,'normal search replaces the source and hides any dormant continuation control');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),pauseRaceMic+3,'each explicit voice opt-in makes one capture and normal search makes none');
+  pass('Pause and End fence late ASR; a later normal search starts from a fresh saved-memory source');
+
+  await installVoiceCaptureFixture();
+  const voiceTarget=cards().first(),voiceTargetSection=voiceTarget.locator('.assistant-memory-segment-reading');
+  const voiceTurnId=JSON.parse(sourceChange.body).request_id,voiceRouteStart=segmentSpeechCalls().length,voiceTurnCount=turns().length;
+  const voiceSpeechCount=speechCalls().length,voiceOpeningCount=openingSpeechCalls().length,voiceReaderCount=readerCalls().length,voiceTtsCount=(await fakeTtsCalls()).length;
+  await voiceTargetSection.click();
+  const voiceFirstDeadline=Date.now()+10000;while(segmentSpeechCalls().length<voiceRouteStart+1&&Date.now()<voiceFirstDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>/继续第 2\/3 段|Continue segment 2\/3/.test(document.querySelector('.assistant-memory-segment-reading')?.textContent||''));
+  const readyVoiceButton=voiceTarget.locator('.assistant-memory-segment-voice');
+  assert(await readyVoiceButton.isVisible(),'the fresh English source enables voice only after segment one ends');
+  const micBeforeVoiceOptIn=await page.evaluate(()=>window.__phMicCalls);
+  await readyVoiceButton.click();await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  await page.waitForFunction(()=>document.activeElement?.id==='assistant-voice-pause');
+  assert.equal(await page.locator('#assistant-private-locale').isDisabled(),true,'voice opt-in immediately disables private locale changes');
+  const englishListeningStatus=(await page.locator('#assistant-voice-session-status').innerText()).replace(/\s+/g,' ');
+  assert.match(englishListeningStatus,/Listening.*continue reading/,`English active voice status explains the next-segment phrase: ${englishListeningStatus}`);
+  const englishListeningGeometry=await page.locator('#assistant-voice-session').evaluate(panel=>{
+    const panelRect=panel.getBoundingClientRect(),controls=['assistant-voice-pause','assistant-voice-end'].map(id=>{
+      const rect=document.getElementById(id).getBoundingClientRect();return {height:rect.height,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
+    });
+    return {viewport:{width:innerWidth,height:innerHeight},panel:{left:panelRect.left,right:panelRect.right,top:panelRect.top,bottom:panelRect.bottom},controls};
+  });
+  assert(englishListeningGeometry.controls.every(item=>item.height>=48&&item.left>=0&&item.right<=390&&item.top>=0&&item.bottom<=1100),
+    `English listening Pause and End controls remain visible with 48px targets at 390px and 150% text: ${JSON.stringify(englishListeningGeometry)}`);
+  await page.locator('#assistant-voice-session').screenshot({path:path.join(artifacts,'assistant-memory-voice-listening-en-phone-150.png')});
+  assert(await page.locator('#assistant-voice-session-status').evaluate(node=>{
+    const r=node.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);
+    return r.top>=0&&r.bottom<=innerHeight&&node.contains(hit);
+  }),'English listening guidance is visible and not covered by sticky navigation');
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micBeforeVoiceOptIn+1,'only the explicit voice-continuation tap opens the microphone');
+  assert.equal(turns().length,voiceTurnCount,'the explicit voice opt-in sends no assistant turn');
+  assert.equal((await fakeTtsCalls()).length,voiceTtsCount,'the explicit voice opt-in starts no TTS');
+  voiceTranscript='继续朗读';
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});
+  const voiceSecondDeadline=Date.now()+10000;while(segmentSpeechCalls().length<voiceRouteStart+2&&Date.now()<voiceSecondDeadline)await page.waitForTimeout(20);
+  assert.equal(segmentSpeechCalls().length,voiceRouteStart+2,'one exact Chinese phrase requests only the next segment');
+  assert.match(segmentSpeechCalls().at(-1).path,new RegExp(`/requests/${voiceTurnId}/memory-cards/0/segments/1/speech$`));
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='speaking');
+  const micWhileSecondPlays=await page.evaluate(()=>window.__phMicCalls);
+  assert.equal(micWhileSecondPlays,micBeforeVoiceOptIn+1,'the microphone stays off while the next segment plays');
+  assert.equal(await page.locator('#assistant-voice-pause').isVisible(),true,'Pause remains available during voice continuation');
+  assert.equal(await page.locator('#assistant-voice-end').isVisible(),true,'End remains available during voice continuation');
+  assert.equal(speechCalls().length,voiceSpeechCount,'continuation requests no assistant reply TTS');
+  assert.equal(openingSpeechCalls().length,voiceOpeningCount,'continuation requests no opening TTS');
+  assert.equal(readerCalls().length,voiceReaderCount,'continuation opens no saved-memory reader');
+  await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.__phMicCalls),micWhileSecondPlays,'no timer starts a microphone capture during playback');
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(before=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening'&&window.__phMicCalls===before+1,micBeforeVoiceOptIn+1);
+  voiceTranscript='read the next part';
+  await page.evaluate(()=>{window.__phFeed(.35,5120);window.__phFeed(0,20480);});
+  const voiceFinalDeadline=Date.now()+10000;while(segmentSpeechCalls().length<voiceRouteStart+3&&Date.now()<voiceFinalDeadline)await page.waitForTimeout(20);
+  assert.equal(segmentSpeechCalls().length,voiceRouteStart+3,'one exact English phrase requests only the final segment');
+  assert.match(segmentSpeechCalls().at(-1).path,new RegExp(`/requests/${voiceTurnId}/memory-cards/0/segments/2/speech$`));
+  assert.equal(turns().length,voiceTurnCount,'voice continuation phrases create no assistant turn');
+  assert.equal(speechCalls().length,voiceSpeechCount,'voice continuation phrases create no reply TTS');
+  assert.equal(openingSpeechCalls().length,voiceOpeningCount,'voice continuation phrases create no opening TTS');
+  assert.equal(readerCalls().length,voiceReaderCount,'voice continuation phrases create no reader request');
+  assert.equal((await fakeTtsCalls()).length,voiceTtsCount,'voice continuation phrases synthesize no reply');
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='speaking');
+  const micWhileFinalPlays=await page.evaluate(()=>window.__phMicCalls);
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='paused'&&
+    /Section finished|本章或序言已读完/.test(document.getElementById('assistant-voice-session-status')?.textContent||''));
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(()=>window.__phMicCalls),micWhileFinalPlays,'final segment completion pauses voice without another capture');
+  assert.equal(segmentSpeechCalls().length,voiceRouteStart+3,'the finished section starts no fourth segment or next chapter');
+  assert.equal(await readyVoiceButton.isVisible(),false,'the completed final segment has no continuation eligibility');
+  voiceTranscript='';
+  pass('Explicit voice continuation reads exactly one next segment per phrase and stops at section completion');
+
+  await page.locator('#assistant-voice-end').click();
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-start')?.hidden===false);
+  assert.equal(await page.locator('#assistant-private-locale').isDisabled(),false,'End immediately re-enables private locale changes');
+  await page.locator('#language').click();
+  await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
+  await ensureThread();
+  await waitForSavedMemorySectionCapabilities();
+  await submit('搜索故事 野餐');
+  await page.waitForFunction(()=>window.__privateAssistantController?.state()?.savedMemorySegmentReadingAvailable===true&&
+    document.querySelector('#assistant-results .assistant-memory-card .assistant-memory-segment-reading:not([disabled])'));
+  await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog[open]').waitFor();
+  const chineseListeningSegments=segmentSpeechCalls().length;
+  await cards().first().locator('.assistant-memory-segment-reading').click();
+  const chineseListeningDeadline=Date.now()+10000;while(segmentSpeechCalls().length<chineseListeningSegments+1&&Date.now()<chineseListeningDeadline)await page.waitForTimeout(20);
+  await page.waitForFunction(()=>document.getElementById('assistant-speech-audio')?.paused===false);
+  await page.locator('#assistant-speech-audio').evaluate(node=>node.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(()=>document.querySelector('.assistant-memory-segment-voice')?.hidden===false);
+  await page.locator('.assistant-memory-segment-voice').click();
+  await page.waitForFunction(()=>document.getElementById('assistant-voice-session')?.dataset.phase==='listening');
+  await page.waitForFunction(()=>document.activeElement?.id==='assistant-voice-pause');
+  assert.match((await page.locator('#assistant-voice-session-status').innerText()).replace(/\s+/g,' '),/正在聆听.*继续朗读/,'Chinese active voice status explains the next-segment phrase');
+  const chineseListeningGeometry=await page.locator('#assistant-voice-session').evaluate(panel=>{
+    const controls=['assistant-voice-pause','assistant-voice-end'].map(id=>{
+      const rect=document.getElementById(id).getBoundingClientRect();return {height:rect.height,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
+    });return controls;
+  });
+  assert(chineseListeningGeometry.every(item=>item.height>=48&&item.left>=0&&item.right<=390&&item.top>=0&&item.bottom<=1100),
+    'Chinese listening Pause and End controls remain visible with 48px targets at 390px and 150% text');
+  await page.locator('#assistant-voice-session').screenshot({path:path.join(artifacts,'assistant-memory-voice-listening-zh-phone-150.png')});
+  assert(await page.locator('#assistant-voice-session-status').evaluate(node=>{
+    const r=node.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);
+    return r.top>=0&&r.bottom<=innerHeight&&node.contains(hit);
+  }),'Chinese listening guidance is visible and not covered by sticky navigation');
+  await page.screenshot({path:path.join(artifacts,'assistant-memory-voice-workspace-zh-phone-150.png')});
+  pass('English and Chinese active voice controls stay visible at 390px and 150% text');
 
   assert.deepEqual(external,[],'browser makes no request outside the synthetic origin');
   assert.deepEqual(errors,[],'browser has no uncaught JavaScript errors');
