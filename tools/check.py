@@ -96,6 +96,8 @@ ANDROID_TASKS = (
 WEB_TESTS = (
     "server/tests/ui/voice-turn-timing.test.mjs",
     "server/tests/ui/assistant-private-workspace.test.mjs",
+    "server/tests/ui/assistant-scene-workspace.test.mjs",
+    "server/tests/security/test_assistant_scene_browser.cjs",
     "server/tests/security/test_assistant_private_workspace_v3.cjs",
     "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",

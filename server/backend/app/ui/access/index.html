@@ -91,6 +91,7 @@
       <p id="assistant-search-perspective" class="assistant-search-perspective fine" hidden></p>
         <div id="assistant-prompts" class="assistant-prompts"><button class="quiet" type="button" data-assistant-prompt="photos" data-i18n="assistantFindPhotos">找照片</button><button class="quiet" type="button" data-assistant-prompt="videos" data-i18n="assistantFindVideos">找视频</button><button class="quiet" type="button" data-assistant-prompt="open" data-i18n="assistantOpenFirst">打开第一个</button></div>
         <span id="assistant-form-placeholder" hidden></span>
+        <p id="assistant-scene-new-search" class="fine" hidden data-i18n="assistantSceneNewSearch">要更改人物、日期或其他条件，请在主输入框输入完整的新查找。</p>
         <form id="assistant-form" class="assistant-form">
           <div id="assistant-voice" class="assistant-voice" hidden>
             <span id="assistant-voice-session-placeholder" hidden></span>
@@ -156,6 +157,26 @@
         <section id="assistant-search-summary" class="assistant-search-summary" hidden aria-labelledby="assistant-search-summary-title">
           <h3 id="assistant-search-summary-title" data-i18n="assistantSearchSummaryTitle">Search conditions</h3>
           <ul id="assistant-search-summary-items"></ul>
+        </section>
+        <details id="assistant-scene" class="assistant-scene" hidden>
+          <summary data-i18n="assistantSceneTitle">在当前条件内按画面查找</summary>
+          <p id="assistant-scene-help" class="fine" data-i18n="assistantSceneHelp">描述动作、颜色或环境，例如“在蓝桥旁放风筝”。人物、日期和其他条件保持如下；要更改这些条件，请先在主输入框完整查找。</p>
+          <ul id="assistant-scene-scope" class="assistant-scene-scope"></ul>
+          <p id="assistant-scene-unready" class="fine" data-i18n="assistantSceneUnready">请先完成一次条件明确的照片查找。待确认的人物或其他条件需要先处理。</p>
+          <form id="assistant-scene-form" class="assistant-form">
+            <label for="assistant-scene-text" data-i18n="assistantSceneLabel">想找什么样的画面？</label>
+            <textarea id="assistant-scene-text" maxlength="512" rows="2" autocomplete="off" aria-describedby="assistant-scene-help assistant-scene-limit"></textarea>
+            <p id="assistant-scene-limit" class="fine"></p>
+            <label class="assistant-scene-confirm"><input id="assistant-scene-confirm" type="checkbox"><span data-i18n="assistantSceneConfirm">保留上面的条件，我只补充画面描述。</span></label>
+            <button id="assistant-scene-send" class="quiet" type="submit" data-i18n="assistantSceneSend">按画面相似度排列照片</button>
+          </form>
+          <button id="assistant-scene-back" class="quiet" type="button" data-i18n="assistantSceneBack">返回完整查找</button>
+          <p id="assistant-scene-status" class="fine" role="status" aria-live="polite"></p>
+        </details>
+        <section id="assistant-scene-ranking" class="assistant-scene-ranking" hidden aria-labelledby="assistant-scene-ranking-title">
+          <h3 id="assistant-scene-ranking-title" data-i18n="assistantSceneRankingTitle">按画面相似度排列 · 请查看确认</h3>
+          <p id="assistant-scene-query"></p>
+          <p id="assistant-scene-ranking-help" class="fine"></p>
         </section>
         <section id="assistant-turn-trail" class="assistant-turn-trail" hidden aria-labelledby="assistant-turn-trail-title">
           <h3 id="assistant-turn-trail-title" data-i18n="assistantTrailTitle">本页最近对话</h3>

@@ -29,7 +29,42 @@ derived.mkdir()
 
 import prepare_access_discovery_index as producer
 from contextlib import closing
-search_fixture = os.environ.get('PH_SEARCH_FIXTURE') == '1'
+scene_fixture = os.environ.get('PH_SCENE_FIXTURE') == '1'
+search_fixture = os.environ.get('PH_SEARCH_FIXTURE') == '1' or scene_fixture
+scene_calls = []
+scene_encoder_off = False
+if scene_fixture:
+    import hashlib
+    import httpx
+    import sqlite3
+    from types import SimpleNamespace
+    from test_visual_vector_loader import VisualVectorLoaderTests, IDENTITY
+    from app.access.visual_vector_schema import create_visual_vector_schema
+    from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
+    from app.access.semantic_search import SemanticSearchRuntime
+    from app.access.visual_candidates import canonical_vector_checksum
+    vector_root = root / 'synthetic-vectors'
+    vector_root.mkdir()
+    vector_files = []
+    with closing(sqlite3.connect(fixture.path)) as db, db:
+        for aid, in db.execute('SELECT id FROM assets').fetchall():
+            db.execute('UPDATE assets SET hash_sha256=? WHERE id=?', (hashlib.sha256(str(aid).encode()).hexdigest(), aid))
+        create_visual_vector_schema(db)
+        holder = SimpleNamespace(db=db, root=vector_root)
+        for aid, vector in ((101, (0.0, 1.0)), (102, (1.0, 0.0))):
+            path, _ = VisualVectorLoaderTests.add_vector(holder, aid, vector, source_hash=hashlib.sha256(str(aid).encode()).hexdigest())
+            vector_files.append(path)
+    pair = JointSpaceBinding(IDENTITY, replace(IDENTITY, artifact_sha256='c'*64, preprocessing_sha256='d'*64, model_version='text-v1'), 'e'*64)
+    def encode(request):
+        if scene_encoder_off:
+            raise AssertionError('Scene recovery invoked the encoder')
+        body = json.loads(request.content)
+        scene_calls.append(body['query'])
+        vector = [1.0, 0.0]
+        return httpx.Response(200, json={'version': 1, 'binding_sha256': pair.binding_sha256,
+            'query_sha256': hashlib.sha256(body['query'].encode()).hexdigest(), 'vector': vector,
+            'checksum_sha256': canonical_vector_checksum(vector)})
+    scene_encoder = LocalSemanticEncoder(pair, 'http://127.0.0.1:43210/v1/encode-text', transport=httpx.MockTransport(encode))
 if search_fixture:
     # Explicit synthetic identities; no face inference or household data.
     import sqlite3
@@ -83,6 +118,10 @@ if search_fixture:
     kinship.install(graph)
     client.app.state.assistant_kinship_provider = kinship
 
+if scene_fixture:
+    client.app.state.semantic_search_runtime = SemanticSearchRuntime(discovery, vector_root, scene_encoder)
+    client.app.state.assistant_semantic_search_enabled = True
+
 def append_synthetic_exchange(store, account_id, thread_id, revision, question, reply):
     request_id = str(uuid.uuid4())
     started = store.begin_turn(account_id, 'family-a', thread_id, request_id,
@@ -98,6 +137,21 @@ try:
         message = json.loads(line)
         if message.get('command') == 'quit':
             break
+        if scene_fixture and message.get('command') == 'scene-stats':
+            print(json.dumps({'id': message['id'], 'calls': len(scene_calls)}), flush=True)
+            continue
+        if scene_fixture and message.get('command') == 'scene-encoder-off':
+            scene_encoder_off = True
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if scene_fixture and message.get('command') == 'scene-off':
+            client.app.state.assistant_semantic_search_enabled = False
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
+        if scene_fixture and message.get('command') == 'scene-corrupt':
+            vector_files[0].write_bytes(b'corrupt synthetic vector')
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            continue
         if message.get('command') == 'discovery-off':
             client.app.state.discovery_runtime = None
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)

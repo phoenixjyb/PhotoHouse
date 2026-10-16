@@ -20609,6 +20609,71 @@
       "schema_changed": false,
       "models_activated": false,
       "household_data_included": false
+    },
+    {
+      "feature": "explicit-bilingual-web-scene-search-with-safe-recovery",
+      "source_commit": "93c80aab3e52612d39974df9f82f13f0b8b7bc63",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "28583ded95a99311e94c6ee7fda8fc81c3bcace39a8ebfc5100590b6f71982fc",
+          "sha256": "98eac49306fd0601bc61c30e6bdaaf5e826edaa221e51f08d8d7fcfc29448263"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "441faf86a16fe4be7a0a383953184969b2092ef2c2076dd61940f228f28a1331",
+          "sha256": "9109c85ba7ee52ae6fb48b92f71ca8cc6fbb15d2d0404c1f950f3d23cda882c7"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "3a56f1e91a91b00ce2325ff616d1efbc9216e74e9d9e259f974401449f07bffa",
+          "sha256": "a0b33446a87b46784129ef0474a98896d62f2b54ad5c2c3083f5ecbf903b4565"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "8f6fe01dee68b6b4d6a206ba7e4e21bbc9f8e7127cfa5f05f075426d5fb843ad",
+          "sha256": "83f0ff6c1f527d87fbf850ea0fc9bad84e01e6357b5c8bd4bd24ee3fa95c3808"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "04ff4851b4eaaf95b9a1208dc6f1f7c371cbcde8bb5936b79939817913802063",
+          "sha256": "446e64c2fcc85d82c0e79d3dba0e9cc745152f6a423aa6043ff46ff5edc066aa"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "8728d2adb474c96c9a8996f5e6178554876faceda1883c4977c5a9518a70b118",
+          "sha256": "9f41b77309bf122b192c55c0f77a8c704f94068a0e927bfae758e82b82abdb7c"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9cdafe229b1f8e8c45fab356cef05893de7d240be6ae896c60feb66627c745af",
+          "sha256": "0f3b13860701a69a146b86fae976f7394179c68622b0540dfc750d198c3c9465"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "dca56a37bb59eb9980fa6d86b5e206fa9346689d9dcade082c9e08e9a726c900",
+          "sha256": "97e692d1228fd3cf70ac1c7c7e6b27110bf060ff93b1979e9e338f73a60628f9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f4d413737d620c412ec319f222fb443d1332dfcd197bd8fd30f383e5a64e3b81"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": null,
+          "sha256": "2742fcecd6e2cb0d8d06987eaf26b57cfadb4363ab5d646bce5f8a6d35e58530"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dee71d8935fb03bc21e89bdf93eb18bf4859100eba9f331e397d45b17707add1",
+          "sha256": "cf039beb3888903cea076ef11d088e0dd7ba9111c304a6952eb101cacdcefa30"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_changed": false,
+      "models_activated": false,
+      "household_data_included": false
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Explicit local semantic search pilot
 
-The separately gated [conversation scene-search backend](ASSISTANT_SCENE_SEARCH.md)
+The separately gated [conversation scene-search Web flow and backend](ASSISTANT_SCENE_SEARCH.md)
 now reuses this runtime for server-owned workspace v4 turns and model-free
 first-page recovery. Existing clients and the default application remain on
 their original search behavior; client integration and runtime activation are
