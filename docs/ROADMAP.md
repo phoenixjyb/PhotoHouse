@@ -66,7 +66,12 @@ not infer family acceptance from publication or emulator journeys.
 
 ## Next source slice: make import status truthful and coherent
 
-Unify the existing upload queue and upload history presentation. A completed
+The client-first [import workspace](PHONE_IMPORT_STATUS.md) is now implemented
+in following source, not delivered in v69. It reuses the queue and account-owned
+history, keeps batch lists folded and preserves committed byte progress. A later
+package/device trial is still required.
+
+The next server/client slice should extend that existing presentation. A completed
 transfer means the server received the bytes; it must not always say “awaiting
 review” when selected-member auto approval may already have assigned the item.
 Show received, awaiting approval, preparing and ready only when supported by

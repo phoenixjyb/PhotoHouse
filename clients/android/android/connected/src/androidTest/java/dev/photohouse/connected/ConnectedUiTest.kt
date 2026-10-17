@@ -1091,16 +1091,15 @@ class ConnectedUiTest {
             store.authenticate("+12025550123", "synthetic-password-only")
         }
         awaitLibrary(store)
-        clickTag("contribute-toggle")
-        click("Upload history")
+        clickTag("open-upload-history")
         reveal(hasTestTag("upload-history"))
         rule.waitUntil(5000) { store.state.value.uploadHistory?.busy == false }
         rule.onNodeWithTag("upload-history-summary").assertTextContains("12 uploads", substring = true)
-        rule.onNodeWithText("#1").assertDoesNotExist()
+        rule.onNodeWithTag("import-history-1").assertDoesNotExist()
         rule.onNodeWithTag("upload-history-toggle").assertTextContains("Show")
-        rule.onNodeWithTag("upload-history-toggle").performClick()
-        rule.onAllNodesWithText("Awaiting review").onFirst().assertIsDisplayed()
-        rule.onNodeWithText("Unavailable").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("upload-history-toggle").performScrollTo().performClick()
+        rule.onAllNodes(hasText("Awaiting owner review", substring = true)).onFirst().performScrollTo().assertIsDisplayed()
+        rule.onNode(hasText("Currently unavailable", substring = true)).performScrollTo().assertIsDisplayed()
         val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
         File(rule.activity.filesDir, "upload-history-phone.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         val uploadImageUri = rule.activity.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -1115,10 +1114,10 @@ class ConnectedUiTest {
         }
         bitmap.recycle()
         click("简体中文"); reveal(hasTestTag("upload-history"))
-        rule.onNodeWithText("我的上传记录").assertIsDisplayed()
-        rule.onNodeWithTag("upload-history-toggle").performClick()
-        rule.onNodeWithText("#1").assertDoesNotExist()
-        rule.onNodeWithTag("upload-history-toggle").performClick()
+        rule.onNodeWithText("服务器记录").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("upload-history-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("import-history-1").assertDoesNotExist()
+        rule.onNodeWithTag("upload-history-toggle").performScrollTo().performClick()
         val chinese = rule.onRoot().captureToImage().asAndroidBitmap()
         File(rule.activity.filesDir, "upload-history-phone-zh.png").outputStream().use { chinese.compress(Bitmap.CompressFormat.PNG, 100, it) }
         chinese.recycle(); click("English")
@@ -1129,7 +1128,7 @@ class ConnectedUiTest {
         clickTag("upload-history-previous")
         rule.waitUntil(5000) { store.state.value.uploadHistory?.page == 1 && store.state.value.uploadHistory?.busy == false }
         reveal(hasTestTag("upload-history"))
-        rule.onNode(hasText("Open") and hasClickAction()).performClick()
+        rule.onNode(hasText("Open") and hasClickAction()).performScrollTo().performClick()
         rule.waitUntil(5000) { store.state.value.detail?.asset?.id == "1" }
         assertEquals("synthetic-library", store.state.value.detail?.library_id)
     }
@@ -1140,17 +1139,20 @@ class ConnectedUiTest {
         rule.runOnUiThread { rule.activity.setContent { ConnectedApp(store, initialLanguage = "en") }; store.authenticate("+12025550123", "synthetic-password-only") }
         awaitLibrary(store)
         val queue = requireNotNull(store.batchUploads); val id = queue.enqueue(listOf(source), "synthetic-library").single()
+        reveal(hasTestTag("import-status"))
+        clickTag("import-workspace-toggle")
+        reveal(hasTestTag("batch-queue"))
         rule.onNodeWithTag("batch-queue").assertIsDisplayed()
         rule.onNodeWithTag("batch-queue-summary").assertTextContains("1 item", substring = true)
         rule.onNodeWithTag("batch-status-$id").assertDoesNotExist()
         rule.onNodeWithTag("batch-queue-toggle").assertTextContains("Show")
-        rule.onNodeWithTag("batch-queue-toggle").performClick()
-        rule.onNodeWithTag("batch-status-$id").assertTextContains("needs_hash", substring = true)
+        rule.onNodeWithTag("batch-queue-toggle").performScrollTo().performClick()
+        rule.onNodeWithTag("batch-status-$id").assertTextContains("Waiting for checksum", substring = true)
         rule.runOnUiThread { queue.resume(id) }
-        rule.waitUntil(5000) { runCatching { rule.onNodeWithTag("batch-status-$id").assertTextContains("complete", substring = true) }.isSuccess }
+        rule.waitUntil(5000) { runCatching { rule.onNodeWithTag("batch-status-$id").assertTextContains("Received; approval not confirmed", substring = true) }.isSuccess }
         assertEquals(listOf("synthetic-library"), api.sessionDestinations)
-        rule.onNodeWithTag("batch-queue-summary").assertTextContains("1 done", substring = true)
-        rule.onNodeWithTag("batch-queue-toggle").performClick()
+        rule.onNodeWithTag("batch-queue-summary").assertTextContains("1 received", substring = true)
+        rule.onNodeWithTag("batch-queue-toggle").performScrollTo().performClick()
         rule.onNodeWithTag("batch-status-$id").assertDoesNotExist()
         rule.onNodeWithTag("batch-queue-toggle").assertTextContains("Show")
         val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
