@@ -61,6 +61,19 @@ data class UploadTransferSummary(
     val totalBytes: Long,
 )
 
+fun uploadQueueActivityMessage(activity: UploadQueueActivity, zh: Boolean): String = when (activity.phase) {
+    UploadQueuePhase.HASHING -> if (zh) "正在读取并校验文件" else "Reading and checking the file"
+    UploadQueuePhase.CHECKING -> if (zh) "正在核对服务器已接收的进度" else "Checking progress confirmed by the server"
+    UploadQueuePhase.UPLOADING -> if (zh) "正在传输文件" else "Transferring the file"
+    UploadQueuePhase.FINALIZING -> if (zh) "文件字节已传完，正在等待服务器确认接收" else "All file bytes sent; waiting for the server to confirm receipt"
+    UploadQueuePhase.WAITING_RETRY -> {
+        val seconds = (activity.retryDelayMillis.coerceIn(0, 30_000) + 999) / 1_000
+        val attempt = activity.retryAttempt.coerceIn(1, 3)
+        if (zh) "连接暂不可用，等待 $seconds 秒后自动恢复（$attempt/3），无需重复点击重试"
+        else "Connection temporarily unavailable; retrying after $seconds seconds ($attempt/3). No need to tap Retry again."
+    }
+}
+
 /** Summarizes queue metadata without reading source streams or treating optimistic bytes as committed. */
 fun uploadTransferSummary(items: List<UploadQueueItem>): UploadTransferSummary {
     var uploading = 0

@@ -1,15 +1,13 @@
 # Current project status
 
-**October 17 upload follow-up:** USB inspection confirms the Samsung is now on
-v70; the owner reports “上传中断”. Following source reserves
-[v71](../clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md) to repair the
-phone's rejection of valid library-targeted upload responses and show actionable
-failure explanations. All 1,110 core tests pass. Signing/publication and a real
-retry remain open. Available phone logs contain no detailed failure. A read-only
-Windows audit through the existing trusted relay found seven new library-targeted
-sessions with zero committed bytes and no new completed receipts, matching the
-creation-response rejection; the API binding and v70/TV v30 feeds were verified.
-The delivery evidence below describes the earlier v70 publication operation.
+**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
+and its owner trial produced complete server transfers and receipts after repeated
+Retry taps. Review/assignment and media readiness remain separate. The following
+[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
+foreground recovery, same-batch continuation and clearer final-confirmation feedback.
+It is not published. Earlier delivery snapshots below retain their dated scope.
+
+## Earlier v70 delivery snapshot
 
 Source and delivery records refreshed **2026-10-17**. Windows HTTPS phone OTA
 publishes **v70 / `0.70-import-status`**. Build source is

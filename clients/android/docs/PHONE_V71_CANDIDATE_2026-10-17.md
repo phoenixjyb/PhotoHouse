@@ -1,8 +1,8 @@
 # Phone v71 candidate: library upload response compatibility
 
-Version **71 / `0.71-library-upload-fix`** is reserved for this repair.
-The last published version remains [v70](PHONE_V70_RELEASE_2026-10-17.md).
-This is source qualification, not a publication or real-upload acceptance record.
+Version **71 / `0.71-library-upload-fix`** was published. This historical
+preparation record is superseded for delivery by the
+[v71 release record](PHONE_V71_RELEASE_2026-10-17.md).
 
 ## Defect and repair
 

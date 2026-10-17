@@ -23140,6 +23140,94 @@
       ],
       "runtime_changed": false,
       "test_only": true
+    },
+    {
+      "feature": "phone-v72-bounded-foreground-upload-recovery",
+      "source_commit": "bbe4815a7a51da03830306340079df7ba93af07c",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "067e50641d96253b45ca311b00cd19d89fe577d90a49e9faf4993968afea7fa5",
+          "sha256": "4ea415cdcae787b3dfc50d7f871082637c4d08f0dbf40b93b88cafb6c1b790f1"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ImportStatusUiTest.kt",
+          "before_sha256": "5f7269609102cf86b7ff2bf77820480ed1584369cc3207f80c580662ab5c694d",
+          "sha256": "5397f147b61c99f45a5ad9387f8e2bd412bea0c4e1bc7a658b0686cbf7b1efcb"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "2fd7b8952fadb85f2ad3f8d320530a6bca15601b784bde5c99602b8dc8f412fa",
+          "sha256": "072f23bc16e954ca4983a2e93a639ab5f3d325e930803e715c4721a70823c9ec"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ImportStatusPanel.kt",
+          "before_sha256": "53bde82815c0bf7aeb391dc4ba83d79ad857a303fea93bbb52f8ba1677e237bd",
+          "sha256": "573590b4cda56d6c62832328b20d50737c90d3426ca179f524ee5c97b423f8d5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt",
+          "before_sha256": "aabcf853557633e5518a9e142dc45fd23558941779e2a3459cb2d2f7cc1e3662",
+          "sha256": "d6b45199454972d5020bbc79cb5d7f05c3d83a250f34e376d914305b118a6fe0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "85bec5e95918f2fda6878facaac7aac16124c27fe3a6416360e809c75882ee15",
+          "sha256": "8577b8ce271fc5f61a86e0e026e6bb725885f7aeb31eabeb025096b15a985ca8"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadImportStatus.kt",
+          "before_sha256": "3e73122622efc7f2c44f4469e5670f1ba10d78257a4176486935587d2f312b4d",
+          "sha256": "3ec787f4c7f15235389788008e35f90081eff6ce0b237ab98bee4c087f0f3564"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadTransportTest.kt",
+          "before_sha256": "746a48f17057d7d5bf40dc6624570a3f5f92cc607959c82d592364bc3ff08a5b",
+          "sha256": "decc816d20d1c1c824757ac8bb455208315fe9c42e671c6c761642ecf55dbb5c"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadRecoveryTest.kt",
+          "before_sha256": null,
+          "sha256": "7d2122d0f73429b4396dfcf9f3f786430f72e9d1dad19135cb9010db4174c653"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md",
+          "before_sha256": "166ede27ae7f2b0d0c793580ade91ee9873bc468fcf1e76870376a4a7f3cc45d",
+          "sha256": "f327e22d10876afa6270ca17a1685858532efed4d81ce003e3d8aab25ececd4c"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md",
+          "before_sha256": null,
+          "sha256": "3c954766f98c6ba3e251cd1c42ecad3f08e292dbdde8bedd139102e7e7b7a1e3"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md",
+          "before_sha256": null,
+          "sha256": "f9cfa935a3f56b594ca98e37ebe811c564b4714be43784d155dff938ded02676"
+        },
+        {
+          "path": "docs/PHONE_IMPORT_STATUS.md",
+          "before_sha256": "3d4652f66781931fca4fcee6b531c98296679bad25f6bc6f9903d09d90b6ef24",
+          "sha256": "e6bdb5fe06ae2cfda628395a4ec05cef4902dc3f8890ea3264cd60ce524fdad8"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "7ef7c61e2bb6a6e6ec109d46d788a0ae3b9047450160e3b9c3c43b68b32f75d8",
+          "sha256": "0277626fb3ec431cf2ca5f07779d0835d1bccf5bbcaa0e1ee8b9319fded56582"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "6dbdbe1749d3960be4015a890dd5dd605ed33ac432e634c08d05ba66feb1cb6f",
+          "sha256": "595afa29c17da1834b043b051c9dea809c285ed67f7c69dde04999d2354db980"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "services_restarted": false,
+      "phone_published": false,
+      "foreground_recovery_requires_explicit_run": true,
+      "max_additional_retries_per_file": 3,
+      "restoration_starts_network": false
     }
   ]
 }
