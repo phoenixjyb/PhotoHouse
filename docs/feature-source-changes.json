@@ -22957,6 +22957,30 @@
       "wire_changed": false,
       "release_apk_published": false,
       "physical_upload_acceptance": false
+    },
+    {
+      "feature": "phone-v70-import-status-version-and-candidate-guide",
+      "source_commit": "1f85315992760b0a91dfe0756c93007d8dceb793",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "cb56e725d0322d65791f9d1b6192ace2aa7eac818f284278fd2f68fa21ecd7d4",
+          "before_sha256": "09e22b77128a0a2913a81e5ccb5d6395758b790e24c37f80a8671ae8062335f9"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V70_CANDIDATE_2026-10-17.md",
+          "sha256": "029363d495d3a2d20738eb8f10838777443d82f62fd55f9d23e407e52f2ec94e"
+        },
+        {
+          "path": "docs/PHONE_IMPORT_STATUS.md",
+          "sha256": "b311032f6d06df83420da34301129c8521f5e191e5d82c6efe0e112a861842e6",
+          "before_sha256": "cded5452f03978b04d4adfcc5bd0b94ee88d5c6996f19aabee4a71f71d2ad59b"
+        }
+      ],
+      "runtime_changed": false,
+      "release_apk_signed": false,
+      "release_apk_published": false,
+      "physical_acceptance": false
     }
   ]
 }
