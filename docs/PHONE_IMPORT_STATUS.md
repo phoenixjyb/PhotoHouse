@@ -1,9 +1,8 @@
 # Phone import progress and server status
 
-Following source, October 17, 2026. These UI changes are not in the published
-phone v69 APK. The [v70 candidate](../clients/android/docs/PHONE_V70_CANDIDATE_2026-10-17.md)
-reserves the next version; signing/publication and a physical upload trial
-remain separate gates.
+Delivered in [phone v70](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md),
+October 17, 2026. Signing and full Windows/independent HTTPS readback passed;
+physical folder-upload acceptance remains open.
 
 ## One view of the existing flow
 
@@ -48,8 +47,8 @@ worker or model switch is added. A richer preparation API must be negotiated
 separately so v69 continues to parse its current response. The next server slice
 needs current authorized preparation evidence and an explicit unknown fallback.
 
-The [v69 folder-upload trial](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md)
-remains the baseline for real device acceptance. Generated metadata and emulator
+The [v70 phone trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md) retains
+the v69 folder-upload baseline and adds the new progress/status controls. Generated metadata and emulator
 UI checks do not establish Samsung provider/network/upload behavior.
 
 ## Source qualification
@@ -63,4 +62,5 @@ density; emulator OS overlays are rejected rather than counted as visual passes.
 
 These checks use generated metadata and the separate QA package. They do not
 upload family files, use a live service or establish physical Samsung acceptance.
-No release APK has been signed or published for this following-source UI.
+The delivered v70 package preserves the original certificate, icon and profile.
+See the release record for exact source/package identity and delivery evidence.

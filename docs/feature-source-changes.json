@@ -22981,6 +22981,60 @@
       "release_apk_signed": false,
       "release_apk_published": false,
       "physical_acceptance": false
+    },
+    {
+      "feature": "phone-v70-published-delivery-and-import-trial-documentation",
+      "source_commit": "ffe31fad7fa21b6b3629fb2ef2a5cad3935cd2c0",
+      "files": [
+        {
+          "path": "clients/android/README.md",
+          "sha256": "af04c7e8bd0f5c4133775379b6a1da70a5b55ad64d8a120a5f5b7b8f58c8b167",
+          "before_sha256": "103ee1a59c2a213920a3a455b57163fd8cd09321388a26d2efd460a0cbff0bd2"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V70_CANDIDATE_2026-10-17.md",
+          "sha256": "bf36585ceb0f2231b9e8a46a8a80c8dd60e6d3a58d14dec46b6b30655c1682ff",
+          "before_sha256": "029363d495d3a2d20738eb8f10838777443d82f62fd55f9d23e407e52f2ec94e"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md",
+          "sha256": "c4ca9c8c07c6bc0b81e92919d6392c7578903ce7c92bc42ef04d9a1757e5f2d9"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md",
+          "sha256": "9a20a477adaadb34a6b320619ba6d314245c0018d890d6ecddd72494c834a8b6"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "abc8d0dfd7306d0ab20de34e2e0cabcb64ebb5238c4e0dc2741dfed9c6fed31b",
+          "before_sha256": "178f1d3794b0cabbb4c468a003c90c1c3fe455717fdb6d703ce1efc3d9517cea"
+        },
+        {
+          "path": "docs/PHONE_IMPORT_STATUS.md",
+          "sha256": "cff35c7dad64593f9539a08c8956a0c3f0ca36ba3b1e8882d8fc92342a9f7584",
+          "before_sha256": "b311032f6d06df83420da34301129c8521f5e191e5d82c6efe0e112a861842e6"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "a6b28fb699d46c2f2f77163f5f51f1a058a6a57d15299ec89dcd3ddaa4f29f72",
+          "before_sha256": "469fe595c8e6fe47393a8be135f850ed42a2bc26c7a4895aef266cc00d5b59aa"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "62450d7d188290d65f238b4ee07b9e8b2b9d78833ac0f677098a65e3ac0ad895",
+          "before_sha256": "8c8e886940101db63658eefa8b02a0d29d16fbe293a368dac66f6aed816a5a36"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "17c50e3dd80aa59935a6a7c698aa1e72480eb4a4c858bee4a5962db63a25b6d2",
+          "before_sha256": "59ac4a649469c3d0e1be6766895b54b9d18fdd38a14e242f19ed8f522bb2da29"
+        }
+      ],
+      "documentation_only": true,
+      "runtime_changed": false,
+      "apk_rebuilt": false,
+      "records_completed_phone_ota_publication": true,
+      "physical_phone_acceptance": false
     }
   ]
 }
