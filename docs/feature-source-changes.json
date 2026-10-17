@@ -23385,6 +23385,19 @@
       ],
       "schema_migration_required": false,
       "runtime_deployed": false
+    },
+    {
+      "feature": "native-cpu-budget-and-batch-preview-qualification-record",
+      "source_commit": "e4f12edb9f875fe7b5ce153bccc2aa2465dbe188",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "80c1df58cd86c0e744b83bea8b8ffbc6e80936e07ed9b30c9ab7b90c20b41b8e",
+          "before_sha256": "3dfdb26624c391e5a8e7d53377ad1f75b99c91355df4496ca568ce03d87b8c5e"
+        }
+      ],
+      "runtime_worker_deployed": false,
+      "schema_migration_required": false
     }
   ]
 }
