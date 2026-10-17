@@ -23574,6 +23574,31 @@
       "schema_migration_required": false,
       "http_surface_added": false,
       "previous_native_attempt_passed": false
+    },
+    {
+      "feature": "native-scoped-caption-qualification-record",
+      "source_commit": "38b1ba5513ee3b47aa9fefea43215d479d8d5bad",
+      "qualified_source_commit": "d615583a2a2c98be3daf47e82dfab68fa3186b77",
+      "files": [
+        {
+          "path": "docs/NATIVE_CAPTION_QUALIFICATION_2026-10-18.md",
+          "sha256": "1721715e883153515c234449216f525b51d3913f850ae5ad4696d641df9a02ed"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "6b6f463dadf66ec2b4e216fa0f1a34e2dcc2678a7e072fa9143f1e7d1a40cfe3",
+          "before_sha256": "545a83f4f696cdb71ff122f1524591ecad2d6a1be03a9cbd83a285e79c4c0c6d"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "d403a6b1d637a2da6af70ba7c515a0495ab0535659d2ec8c7d40bd00b859a42a",
+          "before_sha256": "f4ec10825a02b4827df2225252d4ee00d45f903e4887691b36bbee81a5bec1ff"
+        }
+      ],
+      "native_generated_cases_passed": 10,
+      "real_caption_processing_run": false,
+      "runtime_worker_deployed": false,
+      "schema_migration_required": false
     }
   ]
 }
