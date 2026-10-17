@@ -23127,6 +23127,19 @@
       "release_apk_signed": false,
       "release_apk_published": false,
       "physical_upload_acceptance": false
+    },
+    {
+      "feature": "phone-upload-regression-deterministic-owner-dispatcher",
+      "source_commit": "22e04d9483005a8ae7dd67499052ee1ae42ef492",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt",
+          "before_sha256": "3941d2b90e6fbbee8d4cde24fd519c424a56a4651adda9a41bcbef921ef396c8",
+          "sha256": "386dcc51cd9eee756fc074b2a1deaafc3e8e73f06bade54fc990fa4cb33ea113"
+        }
+      ],
+      "runtime_changed": false,
+      "test_only": true
     }
   ]
 }
