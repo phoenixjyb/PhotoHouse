@@ -4,6 +4,16 @@ Delivered in [phone v70](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md
 October 17, 2026. Signing and full Windows/independent HTTPS readback passed;
 physical folder-upload acceptance remains open.
 
+## Library upload repair in following source
+
+The [v71 candidate](../clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md)
+fixes a valid-response rejection in v70: targeted resumable upload responses
+include destination/approval fields that the old exact-six-field parser refused.
+The repaired parser accepts the documented fields and the queue verifies the
+original destination at every response boundary. Interrupted items show safe,
+localized explanations. Explicit retry keeps the existing request and batch;
+restoration and history refresh do not restart uploads. V71 is not yet published.
+
 ## One view of the existing flow
 
 The add-content panel exposes **Import progress / 导入进度** directly. One

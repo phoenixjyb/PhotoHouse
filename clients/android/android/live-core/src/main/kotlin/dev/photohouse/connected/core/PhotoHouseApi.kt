@@ -206,7 +206,11 @@ data class UploadSessionRequest(
     val requestId: String, val batch: String, val filename: String, val bytes: Long,
     val sha256: String, val kind: UploadKind, val destinationLibraryId: String? = null,
 )
-data class UploadSession(val uploadId: String, val bytes: Long, val offset: Long, val chunkBytes: Int, val state: String, val assetId: String?)
+data class UploadSession(
+    val uploadId: String, val bytes: Long, val offset: Long, val chunkBytes: Int,
+    val state: String, val assetId: String?, val destinationLibraryId: String? = null,
+    val approvalState: String? = null, val libraryId: String? = null,
+)
 data class BatchUploadSource(val filename: String, val bytes: Long, val kind: UploadKind, val open: () -> InputStream, val locator: String? = null)
 
 object Admission {

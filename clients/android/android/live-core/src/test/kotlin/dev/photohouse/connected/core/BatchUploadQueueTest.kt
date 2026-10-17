@@ -9,6 +9,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -20,16 +24,20 @@ class BatchUploadQueueTest {
         override val uploadEnabled = true; override val protectedNativeV2Enabled = true
         var offset = 0L; var queried = 0; var chunks = 0; var conflict = true; var cancelled = 0; var remoteComplete = false
         val sessionRequests = mutableListOf<UploadSessionRequest>()
+        var destination: String? = null
+        var forcedDestination: String? = null
+        var chunkDestination: String? = null
         override suspend fun createUploadSession(token: Bearer, request: UploadSessionRequest): UploadSession {
             sessionRequests += request
-            return UploadSession("a".repeat(32), request.bytes, offset, 4 * 1024 * 1024, "uploading", null)
+            destination = request.destinationLibraryId
+            return UploadSession("a".repeat(32), request.bytes, offset, 4 * 1024 * 1024, "uploading", null, forcedDestination ?: destination)
         }
-        override suspend fun uploadSession(token: Bearer, uploadId: String): UploadSession { queried++; return UploadSession(uploadId, 8, if (remoteComplete) 8 else offset, 4 * 1024 * 1024, if (remoteComplete) "complete" else "uploading", if (remoteComplete) "901" else null) }
+        override suspend fun uploadSession(token: Bearer, uploadId: String): UploadSession { queried++; return UploadSession(uploadId, 8, if (remoteComplete) 8 else offset, 4 * 1024 * 1024, if (remoteComplete) "complete" else "uploading", if (remoteComplete) "901" else null, forcedDestination ?: destination) }
         override suspend fun uploadChunk(token: Bearer, uploadId: String, offset: Long, chunk: ByteArray, sha256: String): UploadSession {
-            chunks++; if (conflict) { conflict = false; throw ApiFailure(FailureKind.HTTP, 409) }; this.offset = offset + chunk.size; return UploadSession(uploadId, 8, this.offset, 4 * 1024 * 1024, "uploading", null)
+            chunks++; if (conflict) { conflict = false; throw ApiFailure(FailureKind.HTTP, 409) }; this.offset = offset + chunk.size; return UploadSession(uploadId, 8, this.offset, 4 * 1024 * 1024, "uploading", null, chunkDestination ?: destination)
         }
-        override suspend fun completeUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 8, 8, 4 * 1024 * 1024, "complete", "901")
-        override suspend fun cancelUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 8, offset, 4 * 1024 * 1024, "cancelled", null).also { cancelled++ }
+        override suspend fun completeUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 8, 8, 4 * 1024 * 1024, "complete", "901", forcedDestination ?: destination)
+        override suspend fun cancelUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 8, offset, 4 * 1024 * 1024, "cancelled", null, destination).also { cancelled++ }
         override suspend fun login(phone: String, password: String) = error("unused") as dev.photohouse.protocol.SessionToken
         override suspend fun register(phone: String, password: String, code: String) = error("unused") as dev.photohouse.protocol.SessionToken
         override suspend fun session(token: Bearer) = error("unused") as dev.photohouse.protocol.Session
@@ -170,4 +178,53 @@ class BatchUploadQueueTest {
         assertEquals(listOf("complete", "failed"), queue.state.value.map { it.record.status })
         assertEquals(queue.state.value[0].record.batch, queue.state.value[1].record.batch)
     }
+    @Test fun destinationMismatchStopsBeforeChunksAndExplicitRetryKeepsRequestIdentity() = runBlocking {
+        val api = Api().apply { conflict = false; forcedDestination = "other-library" }
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        try {
+            val queue = BatchUploadQueue(api, scope, InMemoryUploadQueuePersistence(), { source() }, { true }, { token })
+            queue.attach("account-a")
+            val id = queue.enqueue(listOf(source()), "family-a").single()
+            val original = queue.state.value.single().record
+            queue.resume(id)
+            val failed = withTimeout(5_000) { queue.state.first { it.single().record.status == "failed" }.single().record }
+            assertEquals("upload:response", failed.error)
+            assertEquals(0, api.chunks)
+            api.forcedDestination = null
+            queue.retry(id)
+            val completed = withTimeout(5_000) { queue.state.first { it.single().record.status == "complete" }.single().record }
+            assertEquals(original.requestId, completed.requestId)
+            assertEquals(original.batch, completed.batch)
+            assertEquals(listOf(original.requestId, original.requestId), api.sessionRequests.map { it.requestId })
+            assertEquals("family-a", completed.destinationLibraryId)
+        } finally { scope.cancel() }
+    }
+
+    @Test fun changedChunkDestinationDoesNotAdvanceLocalCommitOrFinalize() = runBlocking {
+        val api = Api().apply { conflict = false; chunkDestination = "other-library" }
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        try {
+            val queue = BatchUploadQueue(api, scope, InMemoryUploadQueuePersistence(), { source() }, { true }, { token })
+            queue.attach("account-a"); queue.enqueue(listOf(source()), "family-a"); queue.resume()
+            val failed = withTimeout(5_000) { queue.state.first { it.single().record.status == "failed" }.single().record }
+            assertEquals("upload:response", failed.error)
+            assertEquals(0L, failed.offset)
+            assertNull(failed.assetId)
+        } finally { scope.cancel() }
+    }
+
+    @Test fun completedRecoveryStillRequiresOriginalDestinationWithoutOpeningSource() = runTest {
+        val api = Api().apply { remoteComplete = true; destination = "other-library" }
+        val memory = InMemoryUploadQueuePersistence()
+        memory.save("account-a", listOf(UploadQueueRecord("local", "1".repeat(32), "2".repeat(32), "missing.mp4", "content://missing", 8,
+            UploadKind.VIDEO, "0".repeat(64), "a".repeat(32), 8, "paused", destinationLibraryId = "family-a")))
+        val queue = BatchUploadQueue(api, this, memory, { error("Source must not be read") }, { true }, { token })
+        queue.attach("account-a"); queue.resume("local"); advanceUntilIdle()
+        assertEquals("failed", queue.state.value.single().record.status)
+        assertEquals("upload:response", queue.state.value.single().record.error)
+        api.destination = "family-a"; queue.retry("local"); advanceUntilIdle()
+        assertEquals("complete", queue.state.value.single().record.status)
+        assertEquals("901", queue.state.value.single().record.assetId)
+    }
+
 }

@@ -6,8 +6,13 @@ import kotlinx.serialization.json.*
 object UploadSessionWire {
     private const val MAX_IMAGE = 256L * 1024 * 1024
     private const val MAX_VIDEO = 16L * 1024 * 1024 * 1024
+    private val BASE_FIELDS = setOf("upload_id", "bytes", "offset", "chunk_bytes", "state", "asset_id")
+    private val OPTIONAL_FIELDS = setOf("destination_library_id", "approval_state", "library_id")
+    private val LIBRARY_ID = Regex("[a-z0-9][a-z0-9_-]{2,63}")
     private fun bad(): Nothing = throw ApiFailure(FailureKind.INVALID_RESPONSE)
-    private fun obj(e: JsonElement, keys: Set<String>): JsonObject = (e as? JsonObject ?: bad()).also { if (it.keys != keys) bad() }
+    private fun obj(e: JsonElement): JsonObject = (e as? JsonObject ?: bad()).also {
+        if (!it.keys.containsAll(BASE_FIELDS) || (it.keys - BASE_FIELDS).any { key -> key !in OPTIONAL_FIELDS }) bad()
+    }
     private fun text(o: JsonObject, key: String, regex: Regex): String = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.also { if (!regex.matches(it)) bad() } ?: bad()
     private fun number(o: JsonObject, key: String, range: LongRange): Long {
         val p = o[key] as? JsonPrimitive ?: bad(); if (p.isString || !p.content.matches(Regex("0|[1-9][0-9]*"))) bad()
@@ -27,12 +32,25 @@ object UploadSessionWire {
         }.toString()
     }
     fun parse(bytes: ByteArray): UploadSession = try {
-        val o = obj(DiscoveryJson.parse(bytes, 16 * 1024), setOf("upload_id", "bytes", "offset", "chunk_bytes", "state", "asset_id"))
+        val o = obj(DiscoveryJson.parse(bytes, 16 * 1024))
         val id = text(o, "upload_id", Regex("[0-9a-f]{32}")); val size = number(o, "bytes", 1..MAX_VIDEO)
         val offset = number(o, "offset", 0..size); val chunk = number(o, "chunk_bytes", 4L * 1024 * 1024..4L * 1024 * 1024)
         val state = text(o, "state", Regex("uploading|complete|cancelled"))
         val asset = o["asset_id"].let { if (it == JsonNull) null else text(o, "asset_id", Regex("[1-9][0-9]{0,18}")) }
         if ((state == "complete") != (asset != null) || state == "cancelled" && asset != null || state == "complete" && offset != size) bad()
-        UploadSession(id, size, offset, chunk.toInt(), state, asset)
+        val destination = if ("destination_library_id" in o) text(o, "destination_library_id", LIBRARY_ID) else null
+        val hasApproval = "approval_state" in o
+        val hasLibrary = "library_id" in o
+        if (hasLibrary && !hasApproval) bad()
+        val approval = if (hasApproval) {
+            if (state != "complete" || destination == null) bad()
+            text(o, "approval_state", Regex("automatic|manual|awaiting_review|unavailable"))
+        } else null
+        val library = if (hasLibrary) text(o, "library_id", LIBRARY_ID) else null
+        when (approval) {
+            "automatic", "manual" -> if (library != destination) bad()
+            "awaiting_review", "unavailable" -> if (hasLibrary) bad()
+        }
+        UploadSession(id, size, offset, chunk.toInt(), state, asset, destination, approval, library)
     } catch (e: ApiFailure) { throw e } catch (_: Exception) { bad() }
 }

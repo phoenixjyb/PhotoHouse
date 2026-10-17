@@ -115,6 +115,9 @@ internal fun ImportStatusPanel(
                                             }
                                             Text(record.filename, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                             Text(status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-status-${record.localId}"))
+                                            if (record.status == "failed") Text(uploadFailureMessage(record.error, zh),
+                                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.testTag("batch-error-${record.localId}"))
                                             if (record.status == "complete") Text(t("Preview and playback readiness not confirmed", "预览与播放准备状态未确认"),
                                                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("import-preparation-${record.localId}"))
                                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

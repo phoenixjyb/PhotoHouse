@@ -274,7 +274,10 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         request.destinationLibraryId?.let(::requireDestinationLibraryId)
         val result = packet(url("/upload-sessions"), token, UploadSessionWire.request(request), limit = UPLOAD_JSON_LIMIT, requestLimit = 1024)
         if (result.code != 201 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") throw ApiFailure(FailureKind.INVALID_RESPONSE)
-        return UploadSessionWire.parse(result.bytes)
+        val session = UploadSessionWire.parse(result.bytes)
+        if (session.destinationLibraryId != request.destinationLibraryId || session.bytes != request.bytes)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        return session
     }
 
     private fun requireDestinationLibraryId(value: String) {
