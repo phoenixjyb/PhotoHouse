@@ -4,7 +4,7 @@ Pending bytes stay outside normal media roots. An admin can see uploads only fro
 current members of the selected library; system operator status alone grants no
 family access. No anonymous TV publication, original download, or job retry.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import json
 import re
@@ -57,6 +57,11 @@ class UploadReviewRuntime:
     def database(self):
         return self.upload.access.connection_factory.path
 
+    def _database(self, *, read_only=False):
+        """Reuse the explicitly configured primary guard for every inbox DB access."""
+        factory = self.upload.access.connection_factory
+        return replace(factory, read_only=read_only)
+
     def _service(self, db):
         return AccessService(db, clock=self.upload.access.clock)
 
@@ -71,7 +76,7 @@ class UploadReviewRuntime:
 
     def policies(self, token, library):
         """Owner-only readback; absence from the table means review is required."""
-        with ExistingDatabase(self.database, read_only=True)() as db:
+        with self._database(read_only=True)() as db:
             access = self._service(db)
             with access._transaction():
                 self._owner(access, token, library, operator=False)
@@ -96,7 +101,7 @@ class UploadReviewRuntime:
             raise TransportError(400, 'Invalid member') from None
         from .provisioning import _library
         _library(library)
-        with ExistingDatabase(self.database)() as db:
+        with self._database()() as db:
             access = self._service(db)
             with access._transaction(write=True):
                 owner = self._owner(access, token, library, operator=(mode == 'on'))
@@ -133,7 +138,7 @@ class UploadReviewRuntime:
         if type(asset) is not int or not 1 <= asset <= 2**63 - 1:
             raise TransportError(400, 'Invalid asset')
         try:
-            with ExistingDatabase(self.database, read_only=True)() as db:
+            with self._database(read_only=True)() as db:
                 access = self._service(db)
                 with access._transaction():
                     session = access._session(token)
@@ -178,14 +183,15 @@ class UploadReviewRuntime:
 
             review = PromotionReview(database=self.database, database_identity=_identity(self.database),
                 plan_digest=plan_digest(envelope), authority_reference='owner-auto-upload-v1',
-                incoming_root=self.upload.incoming_root, originals_root=self.upload.original_roots[0])
+                incoming_root=self.upload.incoming_root, originals_root=self.upload.original_roots[0],
+                original_deletions=self.upload.access.connection_factory.original_deletions)
             promote_and_assign(envelope, review=review, clock=self.upload.access.clock,
                                authorize=authorize, approval_mode='automatic')
             return True
         except (AccessDenied, PlanRejected):
             # A policy/audience race can safely fall back to owner review only if
             # the source remains an intact private incoming item after rollback.
-            with ExistingDatabase(self.database, read_only=True)() as db:
+            with self._database(read_only=True)() as db:
                 access = self._service(db)
                 with access._transaction():
                     item = self._item(access, library, asset)
@@ -222,7 +228,7 @@ class UploadReviewRuntime:
         return path
 
     def list(self, token, library, page):
-        with ExistingDatabase(self.database, read_only=True)() as db:
+        with self._database(read_only=True)() as db:
             deadline = time.monotonic() + 3
             db.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
             access = self._service(db)
@@ -245,7 +251,7 @@ class UploadReviewRuntime:
                 return result
 
     def review(self, token, library, asset):
-        with ExistingDatabase(self.database, read_only=True)() as db:
+        with self._database(read_only=True)() as db:
             access = self._service(db)
             with access._transaction():
                 actor = self._owner(access, token, library)
@@ -283,13 +289,14 @@ class UploadReviewRuntime:
 
         review = PromotionReview(database=self.database, database_identity=_identity(self.database),
             plan_digest=plan_digest(envelope), authority_reference='web-upload-review',
-            incoming_root=self.upload.incoming_root, originals_root=self.upload.original_roots[0])
+            incoming_root=self.upload.incoming_root, originals_root=self.upload.original_roots[0],
+            original_deletions=self.upload.access.connection_factory.original_deletions)
         promote_and_assign(envelope, review=review, clock=self.upload.access.clock,
                            authorize=authorize, allow_replay=True)
         return dict(asset_id=str(asset), library_id=library, state='assigned')
 
     def preview(self, token, library, asset):
-        with ExistingDatabase(self.database, read_only=True)() as db:
+        with self._database(read_only=True)() as db:
             access = self._service(db)
             with access._transaction():
                 self._owner(access, token, library)
@@ -305,7 +312,7 @@ class UploadReviewRuntime:
                 raise TransportError(409, 'Upload changed; review again')
             raw = self.photo_cache.render(path, (self.upload.incoming_root,), pin, 'grid')
             # Decoding is outside SQLite; authorize again after the bounded worker completes.
-            with ExistingDatabase(self.database, read_only=True)() as db:
+            with self._database(read_only=True)() as db:
                 access = self._service(db)
                 with access._transaction():
                     self._owner(access, token, library)

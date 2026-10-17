@@ -1,5 +1,10 @@
 # Feature and acceptance matrix
 
+Upload-review maintenance: the [journal-context repair](UPLOAD_REVIEW_JOURNAL_CONTEXT.md)
+preserves the active deletion-journal binding through review and promotion.
+Source qualification and Windows delivery are separate; existing incoming
+receipts still require explicit review or approved recovery.
+
 Maintained summary, reviewed **2026-10-17** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
 binds the exact release/runtime observations; [Roadmap](ROADMAP.md) owns active
 next work. “Implemented” describes source, “enabled” describes an inspected

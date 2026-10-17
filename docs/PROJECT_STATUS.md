@@ -1,11 +1,29 @@
 # Current project status
 
-**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
-and its owner trial produced complete server transfers and receipts after repeated
-Retry taps. Review/assignment and media readiness remain separate. The following
-[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
-foreground recovery, same-batch continuation and clearer final-confirmation feedback.
-It is not published. Earlier delivery snapshots below retain their dated scope.
+**October 17 upload recovery update:** [Phone v72 is published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md)
+with bounded foreground recovery, same-batch continuation and clearer receipt
+confirmation. Full Windows and independent trusted HTTPS package checks passed;
+physical v72 upload and emulator UI acceptance remain open. The earlier v71 owner
+trial confirmed all server receipts after repeated Retry taps.
+
+The subsequent operator recovery accepted that received batch without processing,
+then released its exact held starters only after a separate user request. CPU,
+face and image-vector workers were started or observed running. This is processing
+start evidence, not complete media readiness. The caption lane needs a scoped,
+current-schema worker; the legacy broad caption launcher is incompatible with
+parallel writers. [The journal/release contract](UPLOAD_REVIEW_JOURNAL_CONTEXT.md)
+records the source fix, guards and remaining delivery gates. The general API
+repair remains a source candidate; the offline batch operation did not deploy it.
+Earlier delivery snapshots below retain their dated scope.
+
+The follow-through independently verified all original hashes and both preview
+sizes for the received batch. One missing preview pair was repaired without
+resetting its failed task. Vector and face processing finished; person identity
+was not assigned automatically. Caption tasks remain pending and the configured
+caption service was unreachable at the latest read-only check. The
+[receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+now has generated-media, mock-HTTP and bound-journal qualification. Native package
+qualification, provider recovery and live caption processing remain separate gates.
 
 ## Earlier v70 delivery snapshot
 

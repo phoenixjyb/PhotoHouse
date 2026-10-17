@@ -23228,6 +23228,302 @@
       "foreground_recovery_requires_explicit_run": true,
       "max_additional_retries_per_file": 3,
       "restoration_starts_network": false
+    },
+    {
+      "feature": "upload-review-original-deletion-context",
+      "source_commit": "988dc0ee79840995b5f186841e9afd5df2205b3c",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "aff4688530a08a7f8182f00ec643c1b941a2ff4436a4aabcadd7b7f03bfc497b",
+          "before_sha256": "abc8d0dfd7306d0ab20de34e2e0cabcb64ebb5238c4e0dc2741dfed9c6fed31b"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "de3143c4e691de4ffe6bc8bd05bc3444af240f309e1c79b1318ec16ee56a4a84"
+        },
+        {
+          "path": "server/backend/app/access/library_organization.py",
+          "sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98",
+          "before_sha256": "9cd387945ae2047da9bdbb862f99eb9b7eb16dde6f8170cc19b7eda7b330eaf7"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "sha256": "cc7493b64d2029464d8e75f49e5152a7ecc6e959130620cea9e2a7a8807a676b",
+          "before_sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4"
+        },
+        {
+          "path": "server/backend/app/access/upload_review.py",
+          "sha256": "14316208689de2bbeec8f0a84d650b2acec9a1b8c4638900482007268e718cb5",
+          "before_sha256": "3e477d9bec041b9ed28db38a3d593eb2ce26d4ebb982cc205995424d4ce9ae8e"
+        },
+        {
+          "path": "server/tests/security/test_upload_original_deletion_journal.py",
+          "sha256": "b42bc4a0cafc39c88b9be4faa564104b2eda710e46bd1d683a778bf89f730b15"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a04f8412a6cecd361d16890ebfd127969c7c30610489ec4ae34c8b4f55216b67",
+          "before_sha256": "16455a6c35e501e7632caaf89c7aa87d365b0870b53ee5e48786953993b47871"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_migration_required": false,
+      "existing_receipts_recovered": false
+    },
+    {
+      "feature": "reviewed-upload-deferred-processing",
+      "source_commit": "5f02e31bd08432f3428c0dda01e891b7d2649905",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "f7a309103c01f98503b444291d181b15758f03e9b5ad2fd7a88b4fd5a31bd909",
+          "before_sha256": "de3143c4e691de4ffe6bc8bd05bc3444af240f309e1c79b1318ec16ee56a4a84"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "sha256": "475357df3f1182e63b0f1bc4724294571ad58696a8759f2d8b07e839d9c53a65",
+          "before_sha256": "cc7493b64d2029464d8e75f49e5152a7ecc6e959130620cea9e2a7a8807a676b"
+        },
+        {
+          "path": "server/tests/security/test_upload_processing_deferral.py",
+          "sha256": "0b893de130156245f81096a6153925277107f89ea8dce3b962cd09ec00152648"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "dd4cbbd19184723201e770dc9dbe912059d830d2e0702ac327b5aa7906278eab",
+          "before_sha256": "a04f8412a6cecd361d16890ebfd127969c7c30610489ec4ae34c8b4f55216b67"
+        }
+      ],
+      "schema_migration_required": false,
+      "api_surface_changed": false,
+      "runtime_deployed": false
+    },
+    {
+      "feature": "receipt-bound-deferred-upload-starter-release",
+      "source_commit": "54c7e2ea2bd8202d1e5f658d18eeca9a0820bbf5",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "2c0a29fbf415ee4f9f03bb5d5ef84d03e768549893694385475ac5bc341f5962",
+          "before_sha256": "f7a309103c01f98503b444291d181b15758f03e9b5ad2fd7a88b4fd5a31bd909"
+        },
+        {
+          "path": "server/backend/app/access/upload_processing.py",
+          "sha256": "8365ec58c64c7d8a9f1fa0a32b0168ebe35984f45c7f96b1cd8a9c173eeb8507"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "7c56687a1e2f5fa40d769a050fb8aca12e05497d73bbd37fa137c78e4f1049c3",
+          "before_sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61"
+        },
+        {
+          "path": "server/tests/security/test_upload_processing_release.py",
+          "sha256": "97434fefcbd0c28ad47bfe7d245897bc847814170dc564e185408bac8855d48e"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "bbcdaa660aad0dd52544c1247c4f5c13fa7bc09835ab7b95bdf67a77da397a43",
+          "before_sha256": "dd4cbbd19184723201e770dc9dbe912059d830d2e0702ac327b5aa7906278eab"
+        }
+      ],
+      "schema_migration_required": false,
+      "http_surface_added": false,
+      "service_startup_added": false
+    },
+    {
+      "feature": "upload-recovery-v72-delivery-and-processing-follow-through",
+      "source_commit": "81636402382d5dfffcd072f0caa3d2ba01b24fdd",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "e25fcd57fe5cec0d6ad1238310f531d42bf00bfadade404959d1df2c61330f15",
+          "before_sha256": "595afa29c17da1834b043b051c9dea809c285ed67f7c69dde04999d2354db980"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "db0280dc5c39f1150097f6bb4420241c8a84367a03b2d827270eb8e7ebb2cabe",
+          "before_sha256": "0277626fb3ec431cf2ca5f07779d0835d1bccf5bbcaa0e1ee8b9319fded56582"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "2c2fa2119a492504a851584acbbf3312a0bf208ace93406001f3c9d979bbbfb1",
+          "before_sha256": "2c0a29fbf415ee4f9f03bb5d5ef84d03e768549893694385475ac5bc341f5962"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md",
+          "sha256": "8fddc30abdcc84b33aad9f0dfa579e1975e17cf212b9c024dc8a0fd756d24f6a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md",
+          "sha256": "c55c0854efb2d3cb20178bf6a9c704ee7325a99778707f5d6a1362318e0e0d89",
+          "before_sha256": "f9cfa935a3f56b594ca98e37ebe811c564b4714be43784d155dff938ded02676"
+        }
+      ],
+      "schema_migration_required": false,
+      "runtime_deployed": false
+    },
+    {
+      "feature": "approved-cpu-worker-single-windows-memory-envelope",
+      "source_commit": "f6b80149f420ee0c8eafde71858cebf77869d1d7",
+      "files": [
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "sha256": "7792c1fce1d2cc3be2dbbb8ee618f79145f4290d29bd79eaeeaf08ee5cd2c9ee",
+          "before_sha256": "514076c5bb926ad136af71fe650a732df6881aba3870362ffd24dc96f3291924"
+        },
+        {
+          "path": "server/tests/security/test_approved_cpu_worker.py",
+          "sha256": "647b0c4e869bf0f54932f33fdf7e86947b93b212d5038e4635e5014dc120452d",
+          "before_sha256": "ee2185e3f54a084a62950c66c2c13ab318bacdf8b6f489298ada7f4b5cf5c9d2"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "3dfdb26624c391e5a8e7d53377ad1f75b99c91355df4496ca568ce03d87b8c5e",
+          "before_sha256": "2c2fa2119a492504a851584acbbf3312a0bf208ace93406001f3c9d979bbbfb1"
+        }
+      ],
+      "schema_migration_required": false,
+      "runtime_deployed": false
+    },
+    {
+      "feature": "native-cpu-budget-and-batch-preview-qualification-record",
+      "source_commit": "e4f12edb9f875fe7b5ce153bccc2aa2465dbe188",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "80c1df58cd86c0e744b83bea8b8ffbc6e80936e07ed9b30c9ab7b90c20b41b8e",
+          "before_sha256": "3dfdb26624c391e5a8e7d53377ad1f75b99c91355df4496ca568ce03d87b8c5e"
+        }
+      ],
+      "runtime_worker_deployed": false,
+      "schema_migration_required": false
+    },
+    {
+      "feature": "receipt-selected-captions-bounded-provider-and-generated-qualification",
+      "source_commit": "799717ce01095b2cd9607e0c0087ea7666bdedc9",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "621d96144706411737076973d89f0520f2e14ebcf21908a98b2ee39b88f14c55",
+          "before_sha256": "ac933e5cd1571b3850be1482b799aa250d91c772a2c7ee8b185a726d8e422002"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "545a83f4f696cdb71ff122f1524591ecad2d6a1be03a9cbd83a285e79c4c0c6d",
+          "before_sha256": "db0280dc5c39f1150097f6bb4420241c8a84367a03b2d827270eb8e7ebb2cabe"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "fa612105240a14ee08382a7d6f307cb604ea6fdeebf88fc054aed3bff27db1c2",
+          "before_sha256": "e25fcd57fe5cec0d6ad1238310f531d42bf00bfadade404959d1df2c61330f15"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "1f25d4c48b3c9ac0678bc773deb567aba1d2eff172bc057bb9c6b5b56afc3284",
+          "before_sha256": "80c1df58cd86c0e744b83bea8b8ffbc6e80936e07ed9b30c9ab7b90c20b41b8e"
+        },
+        {
+          "path": "server/backend/app/access/upload_caption_processing.py",
+          "sha256": "522b55719d38f7790c4c691b27dfee12ee347e6b3d3856e03b8f73a7e71cd1d3"
+        },
+        {
+          "path": "server/backend/app/approved_caption_generation.py",
+          "sha256": "1c297e6d3d37d5648551a17d0cada7c57ed02fdfe0523d88521369d9318c4ca0"
+        },
+        {
+          "path": "server/backend/app/approved_caption_http.py",
+          "sha256": "bb803d7f85dbb1558cf70d691a4351d93a0ea6a0df110678b697f295d86478b8"
+        },
+        {
+          "path": "server/config/detailed-caption-prompt.txt",
+          "sha256": "31613a8d538dc6655051de9b9ab9c13dd195d98aa6c835875b08f41ce6e0a5b1"
+        },
+        {
+          "path": "server/docs/security/RELEASED_CAPTION_WORKER.md",
+          "sha256": "16602160c2b6273a6c515b2e88f805f752f643395ee024cfbd7c608c1251dc17"
+        },
+        {
+          "path": "server/scripts/build_released_caption_package.py",
+          "sha256": "9494acced3e89589e08f1bf7e975d8d09613c928d4bf906e267088b41d6434f0"
+        },
+        {
+          "path": "server/scripts/qualify_released_caption_worker.py",
+          "sha256": "3de5a5a77c9516adca24b4f79ff95a6d86793d90ccf1ab6b0e690662343336c2"
+        },
+        {
+          "path": "server/scripts/run_released_caption_worker.py",
+          "sha256": "f88b05cf8e543dcdd6f7cf82504c5056425f1f4f675e643f40762d2e5d5ad66e"
+        },
+        {
+          "path": "server/tests/security/test_approved_caption_generation.py",
+          "sha256": "6163bda46bdbe2dac6f850cec2a3b0dabc8fc9c2b0521b03f3bd763ba88a1521"
+        },
+        {
+          "path": "server/tests/security/test_approved_caption_http.py",
+          "sha256": "01199be80fa9ea1e74a90a88592829d6c803dc6d35898fb970728ce280830f32"
+        },
+        {
+          "path": "server/tests/security/test_qualify_released_caption_worker.py",
+          "sha256": "06cb8314e74178f3a5af0a704b29fc4c5dfc7301a154769fc831db7c997f48f4"
+        },
+        {
+          "path": "server/tests/security/test_released_caption_package.py",
+          "sha256": "323f4e7cfb74f0ee0fb2b08062bf26ff0affa6d5b6f350a8cdef8fa137728f1d"
+        },
+        {
+          "path": "server/tests/security/test_released_caption_worker.py",
+          "sha256": "82d3e83e077304a315993e07023d48b2abff3f9a47103bc0eb35a1168f3f3722"
+        },
+        {
+          "path": "server/tests/security/test_upload_caption_processing.py",
+          "sha256": "85ff731d427cd11e7ae18c2b8b48cfbc464f14eff5e6cfe1f826848b76a76e36"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "1a508d78bd722c4147b003be2b3157d08354864824e21b3a97122bfcd95cc15d",
+          "before_sha256": "bbcdaa660aad0dd52544c1247c4f5c13fa7bc09835ab7b95bdf67a77da397a43"
+        }
+      ],
+      "schema_migration_required": false,
+      "http_surface_added": false,
+      "service_startup_added": false,
+      "runtime_deployed": false,
+      "real_model_inference_run": false,
+      "preserved_prompt_source": {
+        "commit": "0d8b9f66424a6a62b9b1f4c3cea7e6a70bb15316",
+        "path": "config/detailed-caption-prompt.txt",
+        "sha256": "31613a8d538dc6655051de9b9ab9c13dd195d98aa6c835875b08f41ce6e0a5b1"
+      }
+    },
+    {
+      "feature": "upload-history-browser-bound-journal-and-bridge-exit-recovery",
+      "source_commit": "3bb074deb556bf199017ec822e30b29e81980177",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "before_sha256": "1f25d4c48b3c9ac0678bc773deb567aba1d2eff172bc057bb9c6b5b56afc3284",
+          "sha256": "bcab56fa8d75167bea74335bfed09a3f16faf06bf987afcbb94c323c1c0635bd"
+        },
+        {
+          "path": "server/tests/security/test_promotion.py",
+          "before_sha256": "b3a2655466dbd036839bb58c278419090ec63a45b8d3e61e18cf75c82bdb4f86",
+          "sha256": "1032e59768d5d0fb4c83f335ef4c69f97f707c4411443a30fc8c2e6ad838c2b8"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "da6a4bdf66ec3eaede4e5923b083cd7c0d09b5c217efecb338514d445ab8ff00",
+          "sha256": "64e54507a3dc5552c5fde178ce74aef7742c3af9ca151c7e82338b9d85ecc2c7"
+        },
+        {
+          "path": "server/tests/security/upload_history_browser_bridge.py",
+          "before_sha256": "2fefa17277492d4de67f305bd226fb118f7d88f36457fcb79c9343977c5364db",
+          "sha256": "13434ccce27b717de6d6e0595d28f768da9a46a6df555ea74f4d1be940a53b63"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_migration_required": false,
+      "http_surface_added": false
     }
   ]
 }

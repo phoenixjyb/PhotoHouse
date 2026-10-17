@@ -1,8 +1,8 @@
 # Phone v72 candidate: recover and explain foreground batch uploads
 
-Reserved: **72 / `0.72-upload-recovery`**. The published phone remains
-[v71](PHONE_V71_RELEASE_2026-10-17.md). This source is not a signed or published
-APK and does not establish a physical-phone upload or visual acceptance pass.
+**Delivered:** [v72 release record](PHONE_V72_RELEASE_2026-10-17.md). The design
+and source qualification below describe the fixed candidate before publication;
+physical upload and native UI acceptance remain separate gates.
 
 ## Why this follows v71
 

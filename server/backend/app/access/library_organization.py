@@ -8,6 +8,7 @@ import logging
 import sqlite3
 import traceback
 import time
+from dataclasses import replace
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -118,7 +119,7 @@ class LibraryOrganization:
         factory = self.runtime.connection_factory
         if not isinstance(factory, ExistingDatabase):
             raise TransportError(503, 'Library moves unavailable')
-        with ExistingDatabase(factory.path, read_only=True)() as db:
+        with replace(factory, read_only=True)() as db:
             deadline = time.monotonic() + 3
             db.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
             access = AccessService(db, clock=self.runtime.clock)
@@ -165,7 +166,8 @@ class LibraryOrganization:
                 raise AccessDenied('Access denied')
 
         review = PromotionReview(database=factory.path, database_identity=_identity(factory.path),
-            plan_digest=plan_digest(envelope), authority_reference='web-library-move')
+            plan_digest=plan_digest(envelope), authority_reference='web-library-move',
+            original_deletions=factory.original_deletions)
         result = reassign_assets(envelope, review=review, clock=self.runtime.clock,
                                  authorize=authorize, allow_replay=True)
         return dict(state='moved', asset_count=result['asset_count'], library_id=destination)
