@@ -23182,6 +23182,34 @@
       "runtime_changed": false,
       "schema_migration_required": false,
       "existing_receipts_recovered": false
+    },
+    {
+      "feature": "reviewed-upload-deferred-processing",
+      "source_commit": "5f02e31bd08432f3428c0dda01e891b7d2649905",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "f7a309103c01f98503b444291d181b15758f03e9b5ad2fd7a88b4fd5a31bd909",
+          "before_sha256": "de3143c4e691de4ffe6bc8bd05bc3444af240f309e1c79b1318ec16ee56a4a84"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "sha256": "475357df3f1182e63b0f1bc4724294571ad58696a8759f2d8b07e839d9c53a65",
+          "before_sha256": "cc7493b64d2029464d8e75f49e5152a7ecc6e959130620cea9e2a7a8807a676b"
+        },
+        {
+          "path": "server/tests/security/test_upload_processing_deferral.py",
+          "sha256": "0b893de130156245f81096a6153925277107f89ea8dce3b962cd09ec00152648"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "dd4cbbd19184723201e770dc9dbe912059d830d2e0702ac327b5aa7906278eab",
+          "before_sha256": "a04f8412a6cecd361d16890ebfd127969c7c30610489ec4ae34c8b4f55216b67"
+        }
+      ],
+      "schema_migration_required": false,
+      "api_surface_changed": false,
+      "runtime_deployed": false
     }
   ]
 }
