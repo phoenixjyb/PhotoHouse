@@ -16,6 +16,36 @@ class UploadTransportTest {
     private val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
     private val batch = "0123456789abcdef0123456789abcdef"
 
+    @Test fun resumableWritesKeepServerCooldownAndClassifyInterruptedBodiesAsNetworkFailures() = runBlocking {
+        val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val server = MockWebServer().apply {
+            useHttps(HandshakeCertificates.Builder().heldCertificate(cert).build().sslSocketFactory(), false)
+            start(java.net.InetAddress.getByName("127.0.0.1"), 0)
+        }
+        try {
+            val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
+            val client = OkHttpClient.Builder().protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+                .sslSocketFactory(trust.sslSocketFactory(), trust.trustManager).build()
+            val api = HttpsPhotoHouseApi(TrustedOrigin.parse("https://localhost:${server.port}"), client,
+                protectedNativeV2Enabled = true, uploadEnabled = true)
+            val uploadId = "a".repeat(32)
+            server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "12"))
+            val busy = assertThrows(ApiFailure::class.java) { runBlocking { api.completeUploadSession(token, uploadId) } }
+            assertEquals(FailureKind.HTTP, busy.kind)
+            assertEquals(503, busy.status)
+            assertEquals(12_000L, busy.retryAfterMillis)
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("x".repeat(1_024))
+                .setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+            val interrupted = assertThrows(ApiFailure::class.java) { runBlocking {
+                api.uploadChunk(token, uploadId, 0, byteArrayOf(1), "b".repeat(64))
+            } }
+            assertEquals(FailureKind.OFFLINE, interrupted.kind)
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
+            val invalid = assertThrows(ApiFailure::class.java) { runBlocking { api.completeUploadSession(token, uploadId) } }
+            assertEquals(FailureKind.INVALID_RESPONSE, invalid.kind)
+        } finally { server.shutdown() }
+    }
+
     @Test fun uploadSendsProtectedHeadersAndReportsProgress() = runBlocking {
         val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
         val server = MockWebServer().apply { useHttps(HandshakeCertificates.Builder().heldCertificate(cert).build().sslSocketFactory(), false) }

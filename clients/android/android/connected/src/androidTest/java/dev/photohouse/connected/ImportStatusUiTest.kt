@@ -137,6 +137,45 @@ class ImportStatusUiTest {
         rule.runOnIdle { assertEquals(1, retries); assertEquals(0, reads) }
     }
 
+    @Test fun chineseRecoveryStaysVisibleAndPauseableWhenCollapsed() = recoveryStages(true)
+    @Test fun englishRecoveryStaysVisibleAndPauseableWhenCollapsed() = recoveryStages(false)
+    private fun recoveryStages(zh: Boolean) {
+        val activity = mutableStateOf<UploadQueueActivity?>(UploadQueueActivity("one", UploadQueuePhase.WAITING_RETRY,
+            retryAttempt = 1, retryDelayMillis = 2_000))
+        val expanded = mutableStateOf(false)
+        var pauses = 0; var retries = 0
+        val records = listOf(item(status = "uploading", offset = 100), item("failed", status = "failed", offset = 0))
+        rule.setContent { LargeText {
+            ImportStatusPanel(records, null, setOf("family"), zh, true, true, false,
+                {}, {}, {}, {}, {}, { pauses++; activity.value = null }, {}, {}, {},
+                { _, _, _ -> }, { _, _, _ -> }, {}, {},
+                workspaceExpanded = expanded.value, onToggleWorkspace = { expanded.value = !expanded.value },
+                activity = activity.value, onRetryBatch = { retries++ })
+        } }
+        rule.onNodeWithTag("import-active-stage").assertTextEquals(uploadQueueActivityMessage(activity.value!!, zh))
+        rule.onNodeWithTag("import-pause-run").assertIsDisplayed()
+        saveRender("import-recovery-${if (zh) "zh" else "en"}-150.png")
+        rule.onNodeWithTag("import-workspace-toggle").performClick()
+        rule.onNodeWithTag("import-retry-batch-batch-a").performScrollTo().assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(0, retries) }
+        rule.onNodeWithTag("import-pause-run").performScrollTo().performClick()
+        rule.onNodeWithTag("import-retry-batch-batch-a").performScrollTo().assertIsEnabled().performClick()
+        rule.runOnIdle { assertEquals(1, pauses); assertEquals(1, retries) }
+    }
+
+    @Test fun fullByteProgressStillShowsPendingFinalReceipt() {
+        val activity = UploadQueueActivity("one", UploadQueuePhase.FINALIZING)
+        rule.setContent { LargeText {
+            ImportStatusPanel(listOf(item(status = "uploading")), null, setOf("family"), true, true, true, false,
+                {}, {}, {}, {}, {}, {}, {}, {}, {}, { _, _, _ -> }, { _, _, _ -> }, {}, {}, activity = activity)
+        } }
+        rule.onNodeWithTag("import-active-stage").performScrollTo().assertTextEquals(uploadQueueActivityMessage(activity, true))
+        rule.onNodeWithTag("import-confirmation-pending").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("batch-status-one").performScrollTo().assertTextEquals("上传中")
+        rule.onNodeWithTag("batch-describe-item-one").assertDoesNotExist()
+        saveRender("import-final-confirmation-zh-150.png")
+    }
+
     @Composable private fun LargeText(content: @Composable () -> Unit) {
         val density = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {

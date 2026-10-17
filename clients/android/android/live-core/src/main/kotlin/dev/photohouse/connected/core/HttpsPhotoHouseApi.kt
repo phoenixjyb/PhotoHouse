@@ -314,11 +314,17 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
             override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(if (e is SSLException) ApiFailure(FailureKind.TLS) else ApiFailure(FailureKind.OFFLINE)) }
             override fun onResponse(call: Call, response: Response) {
                 try { response.use {
-                    if (it.code != expected) throw ApiFailure(FailureKind.HTTP, it.code, if (it.code == 429) retryAfterMillis(it.header("Retry-After")) else 0)
+                    if (it.code != expected) throw ApiFailure(FailureKind.HTTP, it.code,
+                        if (it.code == 429 || it.code in 500..599) retryAfterMillis(it.header("Retry-After")) else 0)
                     if (it.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase() != "application/json") throw ApiFailure(FailureKind.INVALID_RESPONSE)
                     val body = it.body ?: throw ApiFailure(FailureKind.INVALID_RESPONSE); val bytes = readBody(body, UPLOAD_JSON_LIMIT)
                     if (continuation.isActive) continuation.resume(UploadSessionWire.parse(bytes))
-                } } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(if (e is ApiFailure) e else ApiFailure(FailureKind.INVALID_RESPONSE)) }
+                } } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(when (e) {
+                    is ApiFailure -> e
+                    is SSLException -> ApiFailure(FailureKind.TLS)
+                    is IOException -> ApiFailure(FailureKind.OFFLINE)
+                    else -> ApiFailure(FailureKind.INVALID_RESPONSE)
+                }) }
             }
         })
     }

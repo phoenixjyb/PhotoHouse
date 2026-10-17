@@ -1,5 +1,12 @@
 # Product roadmap
 
+**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
+and its owner trial produced complete server transfers and receipts after repeated
+Retry taps. Review/assignment and media readiness remain separate. The following
+[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
+foreground recovery, same-batch continuation and clearer final-confirmation feedback.
+It is not published. Earlier delivery snapshots below retain their dated scope.
+
 Active priorities after the **October 17 phone v70 and October 16 API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
@@ -57,21 +64,20 @@ activated by the phone or API/Web releases.
 
 ## Current priority: accept folder upload, then voice, search and story linking
 
-First deliver and trial the [v71 upload response repair](../clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md).
-The owner's installed v70 reports interrupted uploads; a confirmed parser/server
-contract mismatch rejects library-targeted responses. Following source corrects
-that contract, retains destination checks and explicit retry identity, and adds
-safe failure explanations. Real transfer/receipt and media readiness must then
-be verified separately; do not reselect the entire folder to recreate its queue.
+V71 repaired the response contract and its owner trial has complete server
+transfers and receipts. Next qualify the [v72 recovery candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md):
+bounded foreground recovery, same-batch continuation and visible receipt confirmation.
+Review/assignment and media readiness must be verified separately. Do not reselect
+the completed folder to recreate its queue.
 
-Update to v70 and follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md).
+Using v71, follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md).
 Check return from the system picker, transient recovery and explicit Retry,
 reviewed destination/count/size, metered-network consent and Start. Confirm a
 fresh accepted receipt before diagnosing approval or preparation. A read-only
 October 16 14:48 UTC check still had no newer accepted transfer; this does not rule out
 rejected requests. Keep the real Samsung result open until observed.
 
-Using v70, also run the retained v68 recovery/voice continuation trial on the physical
+Using v71, also run the retained v68 recovery/voice continuation trial on the physical
 phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
 the delivered bilingual search clarification, v65 chapter-source chooser and
 v66 proposal adoption. Confirm source attribution, explicit
