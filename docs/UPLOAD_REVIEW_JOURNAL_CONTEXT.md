@@ -93,3 +93,24 @@ processing operation; accepting or replaying an upload does not grant it. Expose
 received, accepted-but-held, queued, processing, failed and ready as distinct states
 in the following server/client status slice. Queue release alone is not proof
 that a worker ran, a preview exists or an inference result is available.
+
+## Processing worker follow-through
+
+An explicit release has been qualified locally and with nine native Windows
+synthetic cases, then applied once to the previously accepted batch. The separate
+release receipt and unchanged promotion receipt were independently observed.
+Existing CPU and face workers were started after preflight and task-definition
+checks; the image-vector worker was already running. No API switch, migration or
+scheduled-task definition change was part of that operation.
+
+The portable caption lane is still a gap. The retained legacy caption launcher
+has an older schema allowlist, claims the broad caption queue and requires other
+writers to be fenced. Starting it alongside approved-upload workers would violate
+that contract. A replacement must accept an exact released task selection, retain
+the configured journal on every claim/write, recheck upload/library assignment,
+preserve edited captions, and enforce provider/resource limits. Do not claim
+captions are prepared just because their tasks were released.
+
+A failed task is retained evidence. Verify derived files independently, distinguish
+transient publication failures from damaged sources, and record any bounded repair
+without silently resetting a finished or failed job.
