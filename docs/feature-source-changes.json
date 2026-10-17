@@ -23524,6 +23524,56 @@
       "runtime_changed": false,
       "schema_migration_required": false,
       "http_surface_added": false
+    },
+    {
+      "feature": "caption-explicit-supervisor-query-proof-before-child-work",
+      "source_commit": "2838b9c0b41bdf5c93620ae992cc0554147e2bc7",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "before_sha256": "bcab56fa8d75167bea74335bfed09a3f16faf06bf987afcbb94c323c1c0635bd",
+          "sha256": "f4ec10825a02b4827df2225252d4ee00d45f903e4887691b36bbee81a5bec1ff"
+        },
+        {
+          "path": "server/docs/security/RELEASED_CAPTION_WORKER.md",
+          "before_sha256": "16602160c2b6273a6c515b2e88f805f752f643395ee024cfbd7c608c1251dc17",
+          "sha256": "6c91ca4ee8916eda564e34fafc89c90fcc0c0f7985fda3005c6570427e3a7866"
+        },
+        {
+          "path": "server/scripts/bounded_windows_job.py",
+          "before_sha256": "9ffd012c12afc44a7caa54b8aa40e360640ad8bf390a1b3f547fb162b44d3f79",
+          "sha256": "b444fad198cf7b63349806592d586e9da258b0bb8218c2c0888f463a9515a251"
+        },
+        {
+          "path": "server/scripts/qualify_released_caption_worker.py",
+          "before_sha256": "3de5a5a77c9516adca24b4f79ff95a6d86793d90ccf1ab6b0e690662343336c2",
+          "sha256": "f666fdeb7833f9dae9aae3743726b540a470206ebb0b1f63bca9aa358d359dc3"
+        },
+        {
+          "path": "server/scripts/run_released_caption_worker.py",
+          "before_sha256": "f88b05cf8e543dcdd6f7cf82504c5056425f1f4f675e643f40762d2e5d5ad66e",
+          "sha256": "085c1de1977a74a4f5bb52d42b6b3208a891e8744ab142d104662f3ab7b4987b"
+        },
+        {
+          "path": "server/tests/security/test_bounded_windows_job.py",
+          "before_sha256": "0526ef1106477928b9e34f7e7feaa86776407e15ba2a4a9fc937d9a3bcaca370",
+          "sha256": "ce293986b4062f939d5d07b236647f08af4fb7a37100322b874a06986eb5c6de"
+        },
+        {
+          "path": "server/tests/security/test_qualify_released_caption_worker.py",
+          "before_sha256": "06cb8314e74178f3a5af0a704b29fc4c5dfc7301a154769fc831db7c997f48f4",
+          "sha256": "08110a4c16b8b0172cf32fe9210e6f787f5093114c5ab53acd205378afa74b84"
+        },
+        {
+          "path": "server/tests/security/test_released_caption_worker.py",
+          "before_sha256": "82d3e83e077304a315993e07023d48b2abff3f9a47103bc0eb35a1168f3f3722",
+          "sha256": "b512f262092480f130838b630e012a7c12e32f108f71ca1efcd0caac0a5ed2cf"
+        }
+      ],
+      "runtime_deployed": false,
+      "schema_migration_required": false,
+      "http_surface_added": false,
+      "previous_native_attempt_passed": false
     }
   ]
 }
