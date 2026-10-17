@@ -1,7 +1,8 @@
 # Phone import progress and server status
 
 Following source, October 17, 2026. These UI changes are not in the published
-phone v69 APK. A later package, signing/publication and physical upload trial
+phone v69 APK. The [v70 candidate](../clients/android/docs/PHONE_V70_CANDIDATE_2026-10-17.md)
+reserves the next version; signing/publication and a physical upload trial
 remain separate gates.
 
 ## One view of the existing flow
