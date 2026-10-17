@@ -99,7 +99,13 @@ The supervisor processes only the listed tasks, serially, with one fresh Job per
 item: 2 GiB CPU-process-tree memory, eight processes, five minutes per item and an
 8 GiB free-RAM admission floor. The total supervisor allowance is two hours;
 configuration and report ownership are rechecked between items. The child verifies
-its inherited Job policy before opening the database. The separately operated
+explicit Job membership and policy before opening the database. The supervisor
+holds a query-only, non-inheritable Job handle and provides its process identity
+and handle coordinates. The child obtains a query-only duplicate on demand,
+checks supervisor identity, membership and limits, then closes the temporary
+handles before database work. A NULL-handle query must not stand in for the
+selected Job under an SSH/launcher job hierarchy. No query handle is inherited
+during Python startup. The separately operated
 model server's GPU/RAM are **not** covered by the CPU client's Job.
 
 A stop file prevents new calls/claims and result publication. It cannot cancel a
@@ -133,3 +139,12 @@ not API startup or deployment. Dependencies, private config, weights and media
 are not included. Qualify the extracted package on Windows before preparing a
 separate provider recovery or live scoped processing operation. Local tests are
 not native resource, real inference or family-quality acceptance.
+
+The first Windows attempt staged and verified the source closure but refused
+before creating its synthetic database: its implicit Job lookup observed a
+different Job with no configured memory/process limit. A bounded metadata-only
+diagnostic reproduced the refusal. The following explicit-handle source fix
+requires a newly pinned native qualification; the failed attempt is not a pass.
+The existing candidate and one-shot claims remain retained evidence. See
+[Microsoft's Job query contract](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-queryinformationjobobject)
+and [nested Job rules](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs).

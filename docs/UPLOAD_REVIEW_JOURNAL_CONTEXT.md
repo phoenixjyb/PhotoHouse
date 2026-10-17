@@ -171,3 +171,16 @@ the application began passing the journal explicitly. The browser harness reject
 readiness and pending RPCs when its Python bridge exits, so a fixture error fails
 promptly instead of waiting for the CI job timeout. This is test-infrastructure
 repair, not evidence that a production upload or model inference completed.
+
+### Native caption startup guard follow-through
+
+The first receipt-selected caption package staged and hash-verified on Windows,
+but refused before its generated database was created. An independent bounded
+metadata probe confirmed that the implicit Job query saw a different Job with
+zero memory/process limits. The following source retains the resource limits and
+checks an explicit query-only Job proof from the supervisor instead. It validates
+supervisor creation identity and actual membership, closes temporary handles
+before database work, and does not inherit a query handle during Python startup.
+Other bounded callers keep their existing default path. This repair requires a
+new source pin and native qualification; neither the failed candidate nor green
+CI from its predecessor proves the new Windows path.

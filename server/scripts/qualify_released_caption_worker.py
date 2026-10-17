@@ -557,7 +557,7 @@ def _bounded_windows_report(target: Path) -> dict:
         [executable, '-I', '-B', '-c', program],
         environment, str(target.parent), timeout_seconds=TASK_SECONDS,
         memory_limit=MEMORY_LIMIT, process_limit=PROCESS_LIMIT,
-        minimum_free_ram=FREE_RAM_FLOOR,
+        minimum_free_ram=FREE_RAM_FLOOR, require_child_job_proof=True,
     )
     if exit_code != 0:
         raise CheckRefused('qualification_child_failed')

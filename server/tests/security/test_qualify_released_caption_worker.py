@@ -6,6 +6,7 @@ from io import StringIO
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -71,6 +72,16 @@ class ReleasedCaptionQualificationTests(unittest.TestCase):
             cli_report = json.loads(stdout.getvalue())
             self.assertEqual(cli_report['status'], 'passed')
             self.assertEqual(cli_report['cases_passed'], list(qualifier.CASES))
+
+    def test_direct_child_mode_cannot_create_output_without_a_windows_budget(self):
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory(prefix='released-caption-unbounded-') as temporary:
+            output = Path(temporary).resolve() / 'must-not-exist'
+            with patch.object(qualifier.runner.sys, 'platform', 'darwin'):
+                with self.assertRaisesRegex(qualifier.runner.WorkerRefused, 'windows_required'):
+                    qualifier.main(['--out', str(output), '--bounded-child'])
+            self.assertFalse(output.exists())
 
 
 if __name__ == '__main__':

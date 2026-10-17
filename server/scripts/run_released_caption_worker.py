@@ -7,7 +7,6 @@ The HTTP model service is separately operated and is outside this CPU client's J
 from __future__ import annotations
 
 import argparse
-import ctypes
 import hashlib
 import io
 import json
@@ -28,8 +27,7 @@ from app.access.runtime import ExistingDatabase
 from app.access.private_storage import require_private_directory, require_private_file
 from app.access.upload_caption_processing import (CaptionProcessingRefused,
     inspect_released_captions, process_released_caption_task)
-from bounded_windows_job import (WindowsAPI, run_bounded, _ExtendedLimits,
-    JOB_OBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
+from bounded_windows_job import (WindowsAPI, run_bounded, JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
     JOB_OBJECT_LIMIT_JOB_MEMORY, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)
 
 MEMORY_LIMIT = 2 * 1024**3
@@ -153,14 +151,14 @@ def _update_owned(path, value, nonce):
 
 def verify_child_budget():
     require(sys.platform == 'win32', 'windows_required')
-    api = WindowsAPI(); limits = _ExtendedLimits()
-    require(api.k32.QueryInformationJobObject(None, JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
-        ctypes.byref(limits), ctypes.sizeof(limits), None), 'child_budget_unavailable')
+    api = WindowsAPI()
+    proof = api.consume_job_proof()
     expected = JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_JOB_MEMORY | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-    require(limits.BasicLimitInformation.LimitFlags == expected
-        and limits.JobMemoryLimit == MEMORY_LIMIT
-        and limits.BasicLimitInformation.ActiveProcessLimit == PROCESS_LIMIT, 'child_budget_unavailable')
+    require(type(proof) is dict and set(proof) == {'flags', 'memory_limit', 'process_limit'}
+        and proof['flags'] == expected and proof['memory_limit'] == MEMORY_LIMIT
+        and proof['process_limit'] == PROCESS_LIMIT, 'child_budget_unavailable')
     require(api.free_ram() >= FREE_RAM_FLOOR, 'free_ram_below_minimum')
+    return proof
 
 
 def _provider(config):
@@ -262,7 +260,8 @@ def run(config_path, *, execute=False, report_path=None, api_factory=WindowsAPI,
             argv = [sys.executable, '-I', '-B', str(Path(__file__).resolve()), '--config', str(config_path),
                     '--bounded-task', str(item['task_id']), '--config-sha256', digest, '--result', str(result_path)]
             exit_code = launch(api, sys.executable, argv, env, str(SERVER), timeout_seconds=TASK_SECONDS,
-                memory_limit=MEMORY_LIMIT, process_limit=PROCESS_LIMIT, minimum_free_ram=FREE_RAM_FLOOR)
+                memory_limit=MEMORY_LIMIT, process_limit=PROCESS_LIMIT, minimum_free_ram=FREE_RAM_FLOOR,
+                require_child_job_proof=True)
             require(exit_code == 0, 'child_interrupted_inspect_owned_claim')
             result = _read_result(result_path)
             require(result.get('task_id') == item['task_id'] and

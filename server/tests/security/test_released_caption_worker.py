@@ -110,7 +110,7 @@ class ReleasedCaptionWorkerTests(unittest.TestCase):
         self.assertEqual(self.requests.count('/caption'),1)
         self.assertEqual(len(self.launches),1)
         self.assertEqual(self.launches[0],{'timeout_seconds':300,'memory_limit':2*1024**3,
-            'process_limit':8,'minimum_free_ram':8*1024**3})
+            'process_limit':8,'minimum_free_ram':8*1024**3,'require_child_job_proof':True})
         self.assertNotIn('HTTP_PROXY',self.launch_env)
         source=Path(self.f.rows('SELECT path FROM assets WHERE id=?',(self.asset,))[0][0])
         self.assertEqual(source.read_bytes(),self.raw)
@@ -181,6 +181,37 @@ class ReleasedCaptionWorkerTests(unittest.TestCase):
         with patch.object(worker.sys,'platform','darwin'),patch.object(worker,'read_config',side_effect=AssertionError('No config')):
             with self.assertRaisesRegex(worker.WorkerRefused,'windows_required'):
                 worker.task_child(self.config_path,'bad',self.task,self.f.root/'result.json')
+
+    def test_explicit_job_proof_is_checked_instead_of_an_implicit_outer_job(self):
+        flags = (worker.JOB_OBJECT_LIMIT_ACTIVE_PROCESS | worker.JOB_OBJECT_LIMIT_JOB_MEMORY
+                 | worker.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)
+        class Proven:
+            def consume_job_proof(inner):
+                return {'flags': flags, 'memory_limit': worker.MEMORY_LIMIT,
+                        'process_limit': worker.PROCESS_LIMIT}
+            def free_ram(inner): return worker.FREE_RAM_FLOOR
+        with patch.object(worker.sys, 'platform', 'win32'), patch.object(worker, 'WindowsAPI', Proven):
+            worker.verify_child_budget()
+
+    def test_explicit_job_proof_drift_or_low_memory_refuses_before_database(self):
+        flags = (worker.JOB_OBJECT_LIMIT_ACTIVE_PROCESS | worker.JOB_OBJECT_LIMIT_JOB_MEMORY
+                 | worker.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)
+        valid = {'flags': flags, 'memory_limit': worker.MEMORY_LIMIT, 'process_limit': worker.PROCESS_LIMIT}
+        for changed in ({**valid, 'flags': 12288}, {**valid, 'memory_limit': 0},
+                        {**valid, 'process_limit': 0}, {**valid, 'unexpected': True}):
+            class Drifted:
+                def consume_job_proof(inner): return changed
+                def free_ram(inner): raise AssertionError('No RAM admission after bad proof')
+            with self.subTest(changed=changed), patch.object(worker.sys, 'platform', 'win32'), \
+                    patch.object(worker, 'WindowsAPI', Drifted):
+                with self.assertRaisesRegex(worker.WorkerRefused, 'child_budget_unavailable'):
+                    worker.verify_child_budget()
+        class Low:
+            def consume_job_proof(inner): return valid
+            def free_ram(inner): return worker.FREE_RAM_FLOOR - 1
+        with patch.object(worker.sys, 'platform', 'win32'), patch.object(worker, 'WindowsAPI', Low):
+            with self.assertRaisesRegex(worker.WorkerRefused, 'free_ram_below_minimum'):
+                worker.verify_child_budget()
 
     def test_child_refuses_existing_result_before_provider_or_claim(self):
         digest = hashlib.sha256(self.config_path.read_bytes()).hexdigest()
