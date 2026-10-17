@@ -64,3 +64,16 @@ Run the new regression alone with the existing test environment:
 PYTHONPATH=server/backend:server/tests/security python -m unittest \
   discover -s server/tests/security -p test_upload_original_deletion_journal.py
 ```
+
+## Accept now, process later
+
+A reviewed offline promotion may explicitly set `release_starters=False`. It
+archives and assigns the selected upload as one transaction, leaves every task
+state untouched, and persists `processing_deferred: true` in its receipt. The
+ordinary default still releases existing held starters. An idempotent replay of
+a deferred receipt never starts those jobs, even if the caller uses that default.
+This option adds no HTTP surface, schema migration or automatic scheduler.
+
+A later processing request must separately recheck the exact accepted receipt,
+current owner/library access and held task identities before releasing only those
+starters. Do not reset completed/failed tasks or reupload accepted source files.

@@ -516,7 +516,7 @@ def _file_transaction(access, moves, operation):
 
 
 def promote_and_assign(envelope, *, review, clock=time.time, authorize=None,
-                       allow_replay=False, approval_mode='manual'):
+                       allow_replay=False, approval_mode='manual', release_starters=True):
     """Move each selected upload into the originals root and map it into the library.
 
     One operation, not two. Assigning without promoting would leave `assets.path` pointing
@@ -525,6 +525,8 @@ def promote_and_assign(envelope, *, review, clock=time.time, authorize=None,
     the originals root with no mapping — recoverable by inspection — rather than a row pointing
     at a path that is no longer valid.
     """
+    if type(release_starters) is not bool:
+        raise PlanRejected('release_starters must be a boolean')
     envelope = _checked_envelope(envelope, review, PROMOTE_OPERATION)
     if approval_mode not in {'manual', 'automatic'}:
         raise PlanRejected('Invalid approval mode')
@@ -592,14 +594,17 @@ def promote_and_assign(envelope, *, review, clock=time.time, authorize=None,
                 # create another task or reset an existing task's result here.
                 payloads = (json.dumps({'asset_id': asset_id}, sort_keys=True),
                             json.dumps({'asset_id': asset_id, 'modality': 'image'}, sort_keys=True))
-                db.execute('''UPDATE tasks SET state='pending', scheduled_at=datetime('now')
-                    WHERE state='awaiting_review'
-                    AND type IN ('embed','phash','thumb','caption','face','video_probe')
-                    AND payload_json IN (?,?)''', payloads)
+                if release_starters:
+                    db.execute('''UPDATE tasks SET state='pending', scheduled_at=datetime('now')
+                        WHERE state='awaiting_review'
+                        AND type IN ('embed','phash','thumb','caption','face','video_probe')
+                        AND payload_json IN (?,?)''', payloads)
             receipt = _receipt(state, plan, review, {
                 'library_id': library, 'asset_count': len(rows),
                 'bytes_promoted': sum(row[5] for row in rows),
                 'promoted_folder': PROMOTED_FOLDER, 'media_writes': True})
+            if not release_starters:
+                receipt['processing_deferred'] = True
             if authorize is not None:
                 authorize(state.access, plan)
                 receipt['channel'] = 'auto' if approval_mode == 'automatic' else 'web'
