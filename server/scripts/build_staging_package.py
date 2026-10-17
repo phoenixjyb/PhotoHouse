@@ -132,6 +132,7 @@ FILES = (
     'backend/app/access/transport.py',
     'backend/app/access/upload.py',
     'backend/app/access/upload_review.py',
+    'backend/app/access/upload_processing.py',
     'backend/app/access/upload_schema.py',
     'backend/app/access/upload_transport.py',
     'backend/app/access/visual_candidates.py',

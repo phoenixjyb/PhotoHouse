@@ -77,3 +77,19 @@ This option adds no HTTP surface, schema migration or automatic scheduler.
 A later processing request must separately recheck the exact accepted receipt,
 current owner/library access and held task identities before releasing only those
 starters. Do not reset completed/failed tasks or reupload accepted source files.
+
+### Explicit processing release
+
+`upload_processing.release_deferred_upload_starters` accepts the original sealed
+promotion envelope, its persisted deferred receipt, the configured database
+factory and exact reviewed held-task rows. In one writer transaction it rechecks
+current owner/operator and uploader membership, active assignment and cancellation
+state. It releases only that unchanged selection and records a separate immutable
+release receipt. It preserves the original promotion receipt, journal guard and
+completed/failed results. Duplicate releases fail closed.
+
+No HTTP or startup hook invokes this helper. A user must explicitly request the
+processing operation; accepting or replaying an upload does not grant it. Expose
+received, accepted-but-held, queued, processing, failed and ready as distinct states
+in the following server/client status slice. Queue release alone is not proof
+that a worker ran, a preview exists or an inference result is available.
