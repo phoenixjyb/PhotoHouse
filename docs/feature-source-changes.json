@@ -23140,6 +23140,48 @@
       ],
       "runtime_changed": false,
       "test_only": true
+    },
+    {
+      "feature": "upload-review-original-deletion-context",
+      "source_commit": "988dc0ee79840995b5f186841e9afd5df2205b3c",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "aff4688530a08a7f8182f00ec643c1b941a2ff4436a4aabcadd7b7f03bfc497b",
+          "before_sha256": "abc8d0dfd7306d0ab20de34e2e0cabcb64ebb5238c4e0dc2741dfed9c6fed31b"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "de3143c4e691de4ffe6bc8bd05bc3444af240f309e1c79b1318ec16ee56a4a84"
+        },
+        {
+          "path": "server/backend/app/access/library_organization.py",
+          "sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98",
+          "before_sha256": "9cd387945ae2047da9bdbb862f99eb9b7eb16dde6f8170cc19b7eda7b330eaf7"
+        },
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "sha256": "cc7493b64d2029464d8e75f49e5152a7ecc6e959130620cea9e2a7a8807a676b",
+          "before_sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4"
+        },
+        {
+          "path": "server/backend/app/access/upload_review.py",
+          "sha256": "14316208689de2bbeec8f0a84d650b2acec9a1b8c4638900482007268e718cb5",
+          "before_sha256": "3e477d9bec041b9ed28db38a3d593eb2ce26d4ebb982cc205995424d4ce9ae8e"
+        },
+        {
+          "path": "server/tests/security/test_upload_original_deletion_journal.py",
+          "sha256": "b42bc4a0cafc39c88b9be4faa564104b2eda710e46bd1d683a778bf89f730b15"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a04f8412a6cecd361d16890ebfd127969c7c30610489ec4ae34c8b4f55216b67",
+          "before_sha256": "16455a6c35e501e7632caaf89c7aa87d365b0870b53ee5e48786953993b47871"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_migration_required": false,
+      "existing_receipts_recovered": false
     }
   ]
 }
