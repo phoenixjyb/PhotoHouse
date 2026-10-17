@@ -1,10 +1,15 @@
-# Phone v70 candidate: import progress
+# Phone v70 candidate: historical preparation
 
-Version **70 / `0.70-import-status`** is reserved for the
+This is the historical preparation record for **70 / `0.70-import-status`**.
+The phone package has since been signed and published. See the
+[v70 release record](PHONE_V70_RELEASE_2026-10-17.md) for package and delivery
+evidence, and the [Chinese phone trial guide](PHONE_V70_TEST_GUIDE_ZH.md) for
+the remaining physical-phone checks.
+
+At preparation time, version **70 / `0.70-import-status`** was reserved for the
 [unified import workspace](../../../docs/PHONE_IMPORT_STATUS.md).
-This candidate record does not establish signing, publication or installation.
-The last published phone baseline remains v69 until a separate delivery record
-confirms otherwise.
+This candidate record describes source qualification and preparation; it is
+not the release or family/device acceptance record.
 
 ## What changes
 
@@ -27,9 +32,10 @@ against the preceding delivered release before publication.
 The UI source passed eight focused JVM cases, six synthetic native scenarios and
 seven complete Chinese/English 150% phone-density render inspections. The QA
 package was separate from the family app, and the physical Samsung was untouched.
-The final version reservation needs current CI plus configured unsigned release
-build/lint, package/profile/icon verification and original-certificate delivery.
-These are separate from a real folder upload and family-visible result.
+The source and unsigned-package preparation gates listed here were followed by
+the signed delivery recorded in the [v70 release record](PHONE_V70_RELEASE_2026-10-17.md).
+A real folder upload and family-visible result remain separate acceptance
+stages; use the [Chinese phone trial guide](PHONE_V70_TEST_GUIDE_ZH.md).
 
 ## 手机试用步骤
 

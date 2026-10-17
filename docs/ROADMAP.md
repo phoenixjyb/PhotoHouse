@@ -1,6 +1,6 @@
 # Product roadmap
 
-Active priorities after the **October 16 phone v69 and API/Web deliveries**. [Features](FEATURES.md)
+Active priorities after the **October 17 phone v70 and October 16 API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
@@ -34,6 +34,15 @@ The APK input source was unchanged by a later JVM test-timing correction.
 Real Samsung folder upload is unconfirmed; the user has not retried yet.
 See the [v69 delivery record](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md).
 
+Phone v70 (`0.70-import-status`) now delivers the unified import workspace:
+direct entry, compact summary, independently folded batches, committed byte
+progress and truthful current receipt/review/library labels. All five final CI
+jobs, configured release build/lint, original-certificate signing and full native
+Windows/independent HTTPS readback passed. Preview/playback readiness remains
+unconfirmed by the unchanged history API. API/TV bindings stayed unchanged;
+physical Samsung use remains open. See the
+[v70 release](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md).
+
 Phone v66 delivers [reviewed adoption of a chapter proposal](PHONE_STORY_PROPOSAL_ADOPTION.md)
 into an unsaved existing story. The proposal-adoption source qualification
 recorded 74 focused JVM checks, eight QA-emulator journeys and six inspected
@@ -48,14 +57,14 @@ activated by the phone or API/Web releases.
 
 ## Current priority: accept folder upload, then voice, search and story linking
 
-Update to v69 and follow the [folder-upload trial](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md).
+Update to v70 and follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md).
 Check return from the system picker, transient recovery and explicit Retry,
 reviewed destination/count/size, metered-network consent and Start. Confirm a
 fresh accepted receipt before diagnosing approval or preparation. A read-only
-14:48 UTC check still had no newer accepted transfer; this does not rule out
+October 16 14:48 UTC check still had no newer accepted transfer; this does not rule out
 rejected requests. Keep the real Samsung result open until observed.
 
-Using v69, also run the retained v68 recovery/voice continuation trial on the physical
+Using v70, also run the retained v68 recovery/voice continuation trial on the physical
 phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
 the delivered bilingual search clarification, v65 chapter-source chooser and
 v66 proposal adoption. Confirm source attribution, explicit
@@ -64,12 +73,11 @@ save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
 
-## Next source slice: make import status truthful and coherent
+## Next source slice: expose actual import preparation evidence
 
-The client-first [import workspace](PHONE_IMPORT_STATUS.md) is now implemented
-in following source, not delivered in v69. It reuses the queue and account-owned
-history, keeps batch lists folded and preserves committed byte progress. A later
-package/device trial is still required.
+The client-first [import workspace](PHONE_IMPORT_STATUS.md) is delivered in v70.
+It reuses the queue and account-owned history, keeps batch lists folded and
+preserves committed byte progress. Physical upload acceptance remains open.
 
 The next server/client slice should extend that existing presentation. A completed
 transfer means the server received the bytes; it must not always say “awaiting
@@ -82,8 +90,8 @@ and bounded explicit recovery. Do not create a second upload queue.
 
 **Exit:** generated manual-review, auto-approved, delayed-preparation, failed and
 access-changed journeys; Chinese/English large-text UI; native full package checks;
-then a real phone upload receipt and final visible result. This is planned work,
-not a capability delivered in v69.
+then a real phone upload receipt and final visible result. Preparation evidence
+is planned server/client work, not a capability delivered in v70.
 
 ## 1. Accept the delivered experience
 

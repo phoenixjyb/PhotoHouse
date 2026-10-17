@@ -2,25 +2,26 @@
 
 This directory contains the Android phone and TV apps, their shared Kotlin
 modules, API contract fixtures, and Android-specific design and release notes.
-The phone release baseline is **v69 / `0.69-upload-recovery`**. Its signed
-artifact, native/full HTTPS readback and source evidence are in the
-[v69 release record](docs/PHONE_V69_RELEASE_2026-10-16.md). Folder/file picker
-results wait through covered session revalidation; an OFFLINE session GET has
-one bounded retry, and batch/network review remains explicit. Original
-certificate, icon and connection settings are retained. Earlier voice recovery,
-spoken Pause/End and saved-section continuation remain available.
+The phone release baseline is **v70 / `0.70-import-status`**. The
+[v70 release record](docs/PHONE_V70_RELEASE_2026-10-17.md) binds its source,
+original certificate/icon, configured package and full Windows/independent Mac
+HTTPS verification. **导入进度 / Import progress** combines the existing queue
+and owned server records, folds batches and preserves committed byte progress.
+Received, awaiting review and added to library are separate states; preview and
+playback readiness remain explicitly unconfirmed by the current history API.
 
-Windows and an independent Mac verified the complete OTA APK. No physical
-phone was installed in the v69 delivery; actual folder upload, ASR/TTS and family
-acceptance remain open. Use the [Chinese v69 upload guide](docs/PHONE_V69_TEST_GUIDE_ZH.md)
-and [retained voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md).
-TV OTA remains v30; v31 source is unpublished. See the dated
-[project status](../../docs/PROJECT_STATUS.md) for delivery/runtime evidence.
+V70 retains [v69 folder/session recovery](docs/PHONE_V69_RELEASE_2026-10-16.md),
+explicit upload/network review, voice recovery, spoken Pause/End and saved-section
+continuation. Use the [Chinese v70 trial](docs/PHONE_V70_TEST_GUIDE_ZH.md) and
+[retained voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md). No physical phone was
+installed or operated in this release; real folder upload, ASR/TTS and family
+acceptance remain open. TV OTA stays v30; v31 source is unpublished.
 
-The separate search-session API/Web source `54394ed` is live; later main source
-is not automatically deployed. Android scene controls negotiate server
-capability; this release did not enable an intent/scene provider or story
-model. Reviewed chapter-proposal adoption remains available; generation stays off.
+The latest recorded API/Web delivery remains `54394ed`; this phone publication
+verified the existing task/configuration/listener binding without changing it.
+Later main is not automatically deployed. Scene controls negotiate capability;
+this release did not activate a scene or story model/provider. See the dated
+[project status](../../docs/PROJECT_STATUS.md).
 
 ## Projects
 
@@ -120,15 +121,15 @@ signing, OTA delivery and family acceptance remain separate gates.
 
 Source checks, debug APK assembly, a signed release, OTA publication,
 installation, and family/device acceptance are separate evidence. The
-[v69 release record](docs/PHONE_V69_RELEASE_2026-10-16.md) documents the signed
+[v70 release record](docs/PHONE_V70_RELEASE_2026-10-17.md) documents the signed
 phone APK, native Windows and independent Mac full HTTPS readback, and preserved
-API/TV bindings. No physical v69 installation occurred in that delivery. The
-earlier v67 Samsung install/launch remains historical evidence. Use the
-[Chinese v69 guide](docs/PHONE_V69_TEST_GUIDE_ZH.md) for folder upload,
-the [v68 voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md) for retained recovery/continuation checks, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
-for retained proposal review and explicit saving. TV OTA remains v30; physical
-TV/projector acceptance remains open. Do not treat a local check or APK assembly
-as release signing, installation or family acceptance.
+API/TV bindings. No physical phone action occurred in that delivery. The earlier
+v67 Samsung install/launch remains historical evidence. Use the
+[Chinese v70 guide](docs/PHONE_V70_TEST_GUIDE_ZH.md) for import status and folder
+upload, the [v68 voice guide](docs/PHONE_V68_TEST_GUIDE_ZH.md) for retained
+recovery/continuation checks, and the [v66 guide](docs/PHONE_V66_TEST_GUIDE_ZH.md)
+for retained proposal review and explicit saving. TV OTA stays v30; physical
+TV/projector acceptance remains open.
 
 Keep dated release records as historical evidence. Check the current source,
 release record and device state before making a delivery claim.

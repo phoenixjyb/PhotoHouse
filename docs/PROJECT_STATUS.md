@@ -1,39 +1,47 @@
 # Current project status
 
-Source and delivery records refreshed **2026-10-16**. Windows HTTPS phone OTA
-publishes **v69 / `0.69-upload-recovery`**. Build source is
-`72f2b76bff13fbc950de67b3e682fde31fa67f28`; PR #75 merged at
-`deb83f6a00c7aebfe3b7a911a9ca63fd4d9509c6`. The only later Android change was
-a JVM retry-timing test; APK input source stayed unchanged.
-Signed APK: **11,725,176 bytes**, SHA-256
-`7d957589de64d3456fd95110a4ea138f08ab27613cc2e8e0cc88a7fa1363deed`.
+Source and delivery records refreshed **2026-10-17**. Windows HTTPS phone OTA
+publishes **v70 / `0.70-import-status`**. Build source is
+`71de7b9df21630c3b76d81b8d0f958da4afa211a`, Android tree
+`c6ef733f21d58c9b24afdbd556a6eccf85f81734`. PR #82 merged at
+`590ddd7cb3b68709c7e7d24e8c93c41f4e553834`; its merged tree matches the tested
+head. Signed APK: **11,733,368 bytes**, SHA-256
+`b6ffb652658c2af4c90f3e24cc4c8f1d85d33ed61a312667b4a540cdc43d71a0`.
 Original certificate, icon and all 17 embedded settings were retained; signing
-preserved DEX bytes. Native signature/alignment, Windows full HTTPS and an
-independent Mac full stream at **14:27 UTC** passed, without another APK copy.
+preserved DEX/icon bytes. Native signature/alignment, Windows full HTTPS and an
+independent Mac full stream at **2026-10-17 00:19:33 UTC** passed without saving
+another APK copy.
 
-All five CI jobs passed at review head `0a2fca9` (run `38914467834`). All 1,095
-live-core tests passed. Nine native synthetic emulator tests and eight inspected
-Chinese/English 150% renders cover picker recovery and upload review. The app
-retains a pending folder during covered same-account session recovery, retries
-an OFFLINE session GET once and returns to explicit upload review. These checks
-do not establish real Samsung provider/network/upload or voice acceptance.
-The user has not yet tried v69; no physical phone action occurred in delivery.
-TV OTA remains v30. See the [v69 release record](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md),
-[Chinese upload trial](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md) and
-[retained voice trial](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md).
+All five final CI jobs passed at the exact build/review head (run `38984876123`).
+The import UI passed eight focused JVM cases, six synthetic emulator scenarios
+and seven inspected Chinese/English phone-density renders at 150% text.
+Configured unsigned release build/lint, independent artifact audit, 20 delivery
+fixture checks and native controller parsing/tool pins passed. **导入进度** now
+combines the existing local queue and owned history, folds batches and retains
+committed progress. Current receipt/review/library labels remain separate from
+preview/playback readiness, which the unchanged history API cannot confirm.
 
-At the release checkpoint, pre/postflight matched API/Web source `54394ed`,
-schema `a0c9d2e4f817` and the current task/process/listener/configuration binding.
-Phone publication did not restart the API, alter workers, migrate data or enable
-models/providers. Later merged source is not necessarily live.
+V70 retains v69 picker/session recovery and explicit upload/network consent.
+No physical phone was installed or operated; real folder-upload/provider/network,
+voice and family acceptance remain open. TV OTA remains v30. See the
+[v70 release record](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md),
+[Chinese import/upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md)
+and [retained voice trial](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md).
 
-A **14:48 UTC read-only follow-up** confirmed the v69 phone feed, TV v30 and the
-same database schema. Upload receipts remain 33 assigned and transfer records
-34 complete, with latest asset 28239 received September 23; there are no newer
-accepted or incomplete transfers. This does not establish that no rejected HTTP
-request reached the API. At **14:49 UTC**, all five existing approved-upload
-worker tasks reported Running; that scheduler state is not processing acceptance.
-Real upload acceptance awaits the phone retry.
+This publication's pre/postflight matched the expected API task, process/listener,
+configuration and TV pointer. It did not restart the API, alter workers, migrate
+data, change media or enable models/providers. The latest recorded API/Web
+source deployment remains `54394ed`; later merged server source is not necessarily
+live. Database schema and worker processing were not rechecked by this APK-only
+operation.
+
+The **October 16 14:48 UTC read-only follow-up** retained below confirmed the then
+v69 feed, TV v30 and schema `a0c9d2e4f817`. Upload receipts were 33 assigned and
+transfer records 34 complete, latest asset 28239 received September 23. It found
+no newer accepted or incomplete transfers, but did not rule out rejected HTTP
+requests. At **October 16 14:49 UTC**, five existing upload tasks reported
+Running. Those dated counts and scheduler states are not a fresh inventory or
+physical processing acceptance.
 
 ## Voice controls: phone delivered; Web/API source deployed
 
@@ -79,7 +87,7 @@ unsupported by the observed retrieval quality.
 ## Other retained capabilities and limits
 
 The earlier [v66 proposal-adoption flow](PHONE_STORY_PROPOSAL_ADOPTION.md)
-remains in v69: reviewed chapter/title choices enter an unsaved editor while
+remains in v70: reviewed chapter/title choices enter an unsaved editor while
 retaining existing source links; saving stays explicit. Provider/model story
 generation remains off. The synthetic 9B cold sample still needs human quality
 review; see the [story trial record](STORY_MODEL_TRIAL_2026-10-16.md).
@@ -106,9 +114,9 @@ ran. These checks did not inventory model health or video progress.
 | --- | --- | --- |
 | API/Web | Source `54394ed` deployed at 17:20 Beijing time; native and HTTPS readback passed; stopped-writer backup verified; five writer workers restored | Real ASR/TTS, voice UX and owner/member/family acceptance |
 | Primary database | Same configured database and schema `a0c9d2e4f817`; stopped-writer backup integrity checks passed; no migration or configuration change | Later feature/schema activation and paired recovery qualification |
-| Phone | v69 original-certificate/icon APK published; native and independent full HTTPS readback passed; folder/session recovery and review passed synthetic qualification | v69 installation, real folder upload, ASR/TTS recovery/voice flow and family acceptance |
+| Phone | v70 original-certificate/icon APK published; native and independent full HTTPS readback passed; import workspace and retained folder/session recovery qualified | v70 installation, real folder upload, ASR/TTS recovery/voice flow and family acceptance |
 | TV | v30 pointer and manifest verified unchanged; v31 source unpublished | Projector/library/playback check |
-| Public source | PR #75 upload recovery merged; phone v69 published with [delivery record](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md); API/Web `54394ed` deployed separately | Later server source delivery, scene/provider and story-generation model activation stay separate |
+| Public source | PR #82 v70 import workspace merged; phone v70 published with [delivery record](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md); API/Web `54394ed` deployed separately | Later server source delivery, scene/provider and story-generation model activation stay separate |
 | Story generation | Provider/model path remains off; synthetic 9B cold capture was 80.422 seconds | Human source/coherence review and remaining model cases before activation |
 | Introduction website | Public audience verified with cartoons/fictional examples | Family/design feedback; [delivery record](../website/RELEASE_2026-10-14.md) |
 

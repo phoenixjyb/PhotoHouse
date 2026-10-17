@@ -1,6 +1,6 @@
 # Feature and acceptance matrix
 
-Maintained summary, reviewed **2026-10-16** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
+Maintained summary, reviewed **2026-10-17** (source); live evidence remains dated separately. [Project Status](PROJECT_STATUS.md)
 binds the exact release/runtime observations; [Roadmap](ROADMAP.md) owns active
 next work. “Implemented” describes source, “enabled” describes an inspected
 installation, and family acceptance requires physical use.
@@ -11,8 +11,8 @@ installation, and family acceptance requires physical use.
 | --- | --- | --- |
 | Accounts, library membership, owner review and selected-member auto approval | Protected contracts and per-library policy; upload review enabled | Owner/member/device trial; existing uploads still need review |
 | Photo/video browsing, named libraries/albums, dates and prepared playback | Phone/Web protected readers; Web failed thumbnails show a localized in-card fallback while preserving the label and explicit open action; Home TV uses its separate published catalog; filename/receipt hints remain distinct from capture time | Home TV desktop/listener and physical projector check; original-source failures need independent recovery |
-| Upload queue/history folding and retry/status | [Phone v69 delivered](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md): pending picker recovery, bounded session GET retry, actionable batch validation, visible network consent and paused interrupted transfers; approval, preparation and visibility remain distinct | [Real Samsung folder-upload trial](../clients/android/docs/PHONE_V69_TEST_GUIDE_ZH.md); synthetic cases do not establish physical network/provider acceptance |
-| Unified phone import progress | [Following UI source](PHONE_IMPORT_STATUS.md): direct entry, folded batches, committed progress and current receipt/assignment labels; preparation stays unconfirmed | Later phone release and Samsung acceptance; negotiated preparation status API remains planned |
+| Upload queue/history folding and retry/status | [Phone v70 delivered](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md), retaining v69 recovery: pending picker recovery, bounded session GET retry, actionable batch validation, visible network consent and paused interrupted transfers; approval, preparation and visibility remain distinct | [Real Samsung folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md); synthetic cases do not establish physical network/provider acceptance |
+| Unified phone import progress | [Delivered in phone v70](PHONE_IMPORT_STATUS.md): direct entry, folded batches, committed progress and current receipt/assignment labels; preparation stays unconfirmed; six native scenarios and seven 150% phone-density renders qualified | Samsung acceptance; negotiated preparation status API remains planned |
 | Chinese-first UI and visible voice phases | Phone v60 / Web deployed; source/browser/emulator and large-text checks recorded | Device microphone/audio-focus and user perception |
 | Text/audio original family contributions | Revisioned, attributed original and derivation contracts; collaboration/originals enabled | Family quality/recovery checks; not the assistant's transient audio path |
 | Manually link a family memory to a chapter | [Delivered Web/API and phone v65](CHAPTER_FAMILY_MEMORY_CHOOSER.md): accepted/consented metadata chooser, explicit selection/save and original-source review | Physical owner/member family trial; no schema/model activation |
@@ -44,7 +44,7 @@ installation, and family acceptance requires physical use.
 | Story/memoir preview recovery | Delivered phone v60 / Web: explicit protected-preview retry, corrupt-cache recovery, visible loading and stale-scope fences; focused bilingual emulator/browser checks pass | Signed/served delivery verified; real-device recovery trial remains |
 | Explicit TV preview retry | TV v31 reserved in October 15 source: visible current-page failures, explicit missing-preview retry and persistent focused recovery action; three emulator cases | Signed TV delivery and physical remote/projector trial |
 | Source-only API package inspection | Read-only canonical archive/local Git attestation; 26 generated checks | v60 native qualification and live delivery passed; future candidates retain their own gates |
-| OTA and recovery | [Phone v69](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md) original signature/icon preserved; signed APK published with native and independent Mac full-HTTPS readback; API binding and TV v30 feed unchanged | v69 installation/folder-upload trial, real voice/family acceptance and TV projector check remain open; earlier Samsung installations are historical evidence |
+| OTA and recovery | [Phone v70](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md) original signature/icon preserved; signed APK published with native and independent Mac full-HTTPS readback; API binding and TV v30 feed unchanged | v70 installation/folder-upload trial, real voice/family acceptance and TV projector check remain open; earlier Samsung installations are historical evidence |
 
 See the [v60 delivery record](../clients/android/docs/PHONE_V60_RELEASE_2026-10-15.md)
 for exact artifacts, backup, worker restoration and complete HTTPS APK readback.
