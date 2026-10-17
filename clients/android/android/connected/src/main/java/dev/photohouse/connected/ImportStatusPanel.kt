@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.photohouse.connected.core.*
@@ -27,6 +28,7 @@ internal fun ImportStatusPanel(
     onDescribeBatch: (String, String, String) -> Unit, onDescribeItem: (String, String, String) -> Unit,
     onOpenHistory: (UploadHistoryItem) -> Unit, onDescribeHistory: (UploadHistoryItem) -> Unit,
     workspaceExpanded: Boolean = true, onToggleWorkspace: () -> Unit = {},
+    activity: UploadQueueActivity? = null, onRetryBatch: ((String) -> Unit)? = null,
 ) {
     if (queueItems.isEmpty() && history == null) return
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -39,6 +41,14 @@ internal fun ImportStatusPanel(
                 TextButton(onClick = onToggleWorkspace, modifier = Modifier.testTag("import-workspace-toggle").semantics {
                     stateDescription = t(if (workspaceExpanded) "Expanded" else "Collapsed", if (workspaceExpanded) "已展开" else "已收起")
                 }) { Text(if (workspaceExpanded) t("Hide", "收起") else t("Details", "详情")) }
+            }
+            if (activity != null) {
+                Text(uploadQueueActivityMessage(activity, zh), style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag("import-active-stage").semantics {
+                        liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                    })
+                OutlinedButton(onClick = onPause, enabled = actionsEnabled,
+                    modifier = Modifier.testTag("import-pause-run")) { Text(t("Pause uploads", "暂停上传")) }
             }
             if (!workspaceExpanded) {
                 Text(if (queueItems.isNotEmpty()) t("${summary.total} items · ${summary.received} received · ${summary.failed} interrupted",
@@ -69,6 +79,11 @@ internal fun ImportStatusPanel(
                             modifier = Modifier.fillMaxWidth().testTag("batch-queue-progress"))
                         Text("${importBytes(summary.transferredBytes, zh)} / ${importBytes(summary.totalBytes, zh)}",
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("import-byte-progress"))
+                        if (summary.transferredBytes == summary.totalBytes && summary.received + summary.cancelled < summary.total) {
+                            Text(t("All bytes transferred does not yet confirm receipt of every file. Check the received and interrupted counts.",
+                                "字节已传完不代表每个文件都已确认接收，请查看已上传与中断项数。"),
+                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("import-confirmation-pending"))
+                        }
                     }
                     Text(t("Received means the server has the file; approval and media preparation may still be pending.",
                         "已上传表示服务器已收到文件；审核和影像准备可能尚未完成。"), style = MaterialTheme.typography.bodySmall)
@@ -88,6 +103,12 @@ internal fun ImportStatusPanel(
                                     Text(t("Batch ${index + 1} · ${items.size} ${if (items.size == 1) "item" else "items"}", "第 ${index + 1} 批 · ${items.size} 项"), style = MaterialTheme.typography.titleSmall)
                                     Text(t("${group.received} received · ${group.waiting} waiting · ${group.failed} interrupted",
                                         "已上传 ${group.received} · 等待 ${group.waiting} · 中断 ${group.failed}"), style = MaterialTheme.typography.bodySmall)
+                                    if (group.failed > 0 && onRetryBatch != null) {
+                                        OutlinedButton(onClick = { onRetryBatch(batch) }, enabled = actionsEnabled && activity == null,
+                                            modifier = Modifier.testTag("import-retry-batch-$batch")) {
+                                            Text(t("Retry interrupted files in this batch", "重试本批中断项"))
+                                        }
+                                    }
                                     TextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("import-batch-toggle-$batch").semantics {
                                         stateDescription = t(if (expanded) "Expanded" else "Collapsed", if (expanded) "已展开" else "已收起")
                                     }) { Text(if (expanded) t("Hide files", "收起文件") else t("Show files", "展开文件")) }
@@ -115,6 +136,8 @@ internal fun ImportStatusPanel(
                                             }
                                             Text(record.filename, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                             Text(status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-status-${record.localId}"))
+                                            if (activity?.localId == record.localId) Text(uploadQueueActivityMessage(activity, zh),
+                                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-stage-${record.localId}"))
                                             if (record.status == "failed") Text(uploadFailureMessage(record.error, zh),
                                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
                                                 modifier = Modifier.testTag("batch-error-${record.localId}"))
@@ -127,8 +150,8 @@ internal fun ImportStatusPanel(
                                                     OutlinedButton(onClick = { onDescribeItem(destination, record.batch, asset) }, enabled = actionsEnabled,
                                                         modifier = Modifier.testTag("batch-describe-item-${record.localId}")) { Text(t("Describe photo", "描述照片")) }
                                                 if (record.status == "uploading") OutlinedButton(onClick = onPause, enabled = actionsEnabled, modifier = Modifier.testTag("batch-pause")) { Text(t("Pause", "暂停")) }
-                                                if (record.status in setOf("paused", "queued", "needs_hash")) OutlinedButton(onClick = { onResume(record.localId) }, enabled = actionsEnabled, modifier = Modifier.testTag("batch-resume")) { Text(t("Resume", "继续")) }
-                                                if (record.status == "failed") OutlinedButton(onClick = { onRetry(record.localId) }, enabled = actionsEnabled, modifier = Modifier.testTag("batch-retry")) { Text(t("Retry", "重试")) }
+                                                if (record.status in setOf("paused", "queued", "needs_hash")) OutlinedButton(onClick = { onResume(record.localId) }, enabled = actionsEnabled && activity == null, modifier = Modifier.testTag("batch-resume")) { Text(t("Resume batch", "继续本批")) }
+                                                if (record.status == "failed") OutlinedButton(onClick = { onRetry(record.localId) }, enabled = actionsEnabled && activity == null, modifier = Modifier.testTag("batch-retry")) { Text(t("Retry and continue batch", "重试并继续本批")) }
                                                 if (record.status !in setOf("complete", "cancelled")) OutlinedButton(onClick = { onCancel(record.localId) }, enabled = actionsEnabled, modifier = Modifier.testTag("batch-cancel")) { Text(t("Cancel", "取消")) }
                                             }
                                             HorizontalDivider()

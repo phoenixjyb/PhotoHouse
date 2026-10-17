@@ -1,18 +1,29 @@
 # Phone import progress and server status
 
+**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
+and its owner trial produced complete server transfers and receipts after repeated
+Retry taps. Review/assignment and media readiness remain separate. The following
+[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
+foreground recovery, same-batch continuation and clearer final-confirmation feedback.
+It is not published. Earlier delivery snapshots below retain their dated scope.
+
 Delivered in [phone v70](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md),
 October 17, 2026. Signing and full Windows/independent HTTPS readback passed;
 physical folder-upload acceptance remains open.
 
-## Library upload repair in following source
+## Library upload repair delivered in v71
 
-The [v71 candidate](../clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md)
+The [v71 release](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
 fixes a valid-response rejection in v70: targeted resumable upload responses
 include destination/approval fields that the old exact-six-field parser refused.
 The repaired parser accepts the documented fields and the queue verifies the
 original destination at every response boundary. Interrupted items show safe,
 localized explanations. Explicit retry keeps the existing request and batch;
-restoration and history refresh do not restart uploads. V71 is not yet published.
+restoration and history refresh do not restart uploads. V71 is published.
+
+The [v72 recovery candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md)
+adds bounded recovery within an explicit foreground run and same-batch continuation;
+it is not yet published.
 
 ## One view of the existing flow
 

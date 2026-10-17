@@ -187,6 +187,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var handledAssistantExchangeId by remember(state.session?.account_id, state.library) { mutableStateOf(state.assistant?.turns?.lastOrNull()?.localRequestId) }
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
+    val batchActivity = batchQueue?.activity?.collectAsState()?.value
     var importProgressExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadHistoryExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -1187,6 +1188,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         onDescribeHistory = { item -> item.libraryId?.let { beginAnnotation(it, "", item.assetId) } },
                                         workspaceExpanded = importProgressExpanded,
                                         onToggleWorkspace = { importProgressExpanded = !importProgressExpanded },
+                                        activity = batchActivity, onRetryBatch = { batchQueue?.retryBatch(it) },
                                     )
                                 }
                                 }
