@@ -23495,6 +23495,35 @@
         "path": "config/detailed-caption-prompt.txt",
         "sha256": "31613a8d538dc6655051de9b9ab9c13dd195d98aa6c835875b08f41ce6e0a5b1"
       }
+    },
+    {
+      "feature": "upload-history-browser-bound-journal-and-bridge-exit-recovery",
+      "source_commit": "3bb074deb556bf199017ec822e30b29e81980177",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "before_sha256": "1f25d4c48b3c9ac0678bc773deb567aba1d2eff172bc057bb9c6b5b56afc3284",
+          "sha256": "bcab56fa8d75167bea74335bfed09a3f16faf06bf987afcbb94c323c1c0635bd"
+        },
+        {
+          "path": "server/tests/security/test_promotion.py",
+          "before_sha256": "b3a2655466dbd036839bb58c278419090ec63a45b8d3e61e18cf75c82bdb4f86",
+          "sha256": "1032e59768d5d0fb4c83f335ef4c69f97f707c4411443a30fc8c2e6ad838c2b8"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "da6a4bdf66ec3eaede4e5923b083cd7c0d09b5c217efecb338514d445ab8ff00",
+          "sha256": "64e54507a3dc5552c5fde178ce74aef7742c3af9ca151c7e82338b9d85ecc2c7"
+        },
+        {
+          "path": "server/tests/security/upload_history_browser_bridge.py",
+          "before_sha256": "2fefa17277492d4de67f305bd226fb118f7d88f36457fcb79c9343977c5364db",
+          "sha256": "13434ccce27b717de6d6e0595d28f768da9a46a6df555ea74f4d1be940a53b63"
+        }
+      ],
+      "runtime_changed": false,
+      "schema_migration_required": false,
+      "http_surface_added": false
     }
   ]
 }
