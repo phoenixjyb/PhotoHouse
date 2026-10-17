@@ -93,6 +93,15 @@ save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
 
+## Finish receipt-selected caption preparation
+
+The [new caption lane](../server/docs/security/RELEASED_CAPTION_WORKER.md) has
+transaction, provider and shared-policy source with generated-media/HTTP checks.
+Next qualify its extracted package natively, prepare a reviewed recovery of the
+existing model service, then process only the pending released caption selection.
+The generic legacy worker remains incompatible with the current parallel lanes.
+Do not reset completed work or use downloaded comparison models implicitly.
+
 ## Next source slice: expose actual import preparation evidence
 
 The client-first [import workspace](PHONE_IMPORT_STATUS.md) is delivered in v70.

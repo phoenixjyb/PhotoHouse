@@ -730,3 +730,14 @@ Normal and rollback receipts must match their pinned configurations, including
 providers already enabled on the old release. The
 [v57 recovery record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md)
 documents the count/receipt correction and listener-free staging gate.
+
+## Receipt-selected caption processing candidate
+
+The [scoped caption worker](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+separates three responsibilities: authorized receipt/task transactions, shared
+bilingual generation policy, and an explicit loopback HTTP model adapter. Inference
+runs outside the writer reservation; source, membership, assignment, journal and
+claim are revalidated before one atomic caption/completion write. Concurrent family
+edits are retained. Its bounded CPU client and separately operated GPU model
+service have distinct resource and delivery gates. This source path adds no API
+route or startup hook and does not make the legacy broad worker compatible.

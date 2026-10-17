@@ -33,6 +33,7 @@ API_TESTS = (
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
     "test_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_retry.py", "test_upload_review.py",
+    "test_upload_caption_processing.py", "test_approved_caption_generation.py", "test_approved_caption_http.py", "test_released_caption_worker.py", "test_released_caption_package.py", "test_qualify_released_caption_worker.py",
     "test_upload_original_deletion_journal.py", "test_upload_processing_deferral.py", "test_upload_processing_release.py",
     "test_original_deletions.py", "test_original_deletion_integration.py",
     "test_asset_tombstones.py",

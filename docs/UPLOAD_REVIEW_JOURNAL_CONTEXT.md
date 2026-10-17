@@ -103,7 +103,7 @@ Existing CPU and face workers were started after preflight and task-definition
 checks; the image-vector worker was already running. No API switch, migration or
 scheduled-task definition change was part of that operation.
 
-The portable caption lane is still a gap. The retained legacy caption launcher
+The deployed caption lane is still a gap. The retained legacy caption launcher
 has an older schema allowlist, claims the broad caption queue and requires other
 writers to be fenced. Starting it alongside approved-upload workers would violate
 that contract. A replacement must accept an exact released task selection, retain
@@ -150,3 +150,14 @@ every original. The old failed row is retained as diagnosis evidence.
 The existing caption endpoint was unreachable in a later read-only health check.
 Starting a caption service and running a scoped compatible worker remain distinct
 from the completed preview/vector/face work. No replacement model was activated.
+
+## Following scoped-caption source
+
+The [receipt-selected caption lane](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+now has a separate source implementation. It binds exact released tasks to the
+configured journal and current access on claim and commit, uses immutable source
+bytes, preserves concurrent family edits and enforces explicit local provider/model
+identity. Its default launcher performs metadata-only preflight; execution uses
+serial bounded Windows children. This source does not recover the unavailable
+model service or activate the new worker. Native offline qualification and live
+operation authority remain separate gates.

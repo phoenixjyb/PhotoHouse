@@ -16,6 +16,15 @@ records the source fix, guards and remaining delivery gates. The general API
 repair remains a source candidate; the offline batch operation did not deploy it.
 Earlier delivery snapshots below retain their dated scope.
 
+The follow-through independently verified all original hashes and both preview
+sizes for the received batch. One missing preview pair was repaired without
+resetting its failed task. Vector and face processing finished; person identity
+was not assigned automatically. Caption tasks remain pending and the configured
+caption service was unreachable at the latest read-only check. The
+[receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+now has generated-media, mock-HTTP and bound-journal qualification. Native package
+qualification, provider recovery and live caption processing remain separate gates.
+
 ## Earlier v70 delivery snapshot
 
 Source and delivery records refreshed **2026-10-17**. Windows HTTPS phone OTA
