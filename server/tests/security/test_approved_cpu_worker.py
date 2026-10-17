@@ -1,11 +1,12 @@
 import hashlib
+import io
 import json
 from pathlib import Path
 import sqlite3
 import sys
 import tempfile
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import unittest
 
 from PIL import Image
@@ -74,6 +75,164 @@ class ApprovedCpuWorkerTests(unittest.TestCase):
         self.assertEqual(result['approved_claimable'], 0)
         self.assertFalse(result['activated'])
         self.assertEqual(self.db.execute('SELECT state FROM tasks').fetchone(), before)
+
+    def test_default_preflight_does_not_create_a_windows_job(self):
+        with patch.object(worker, 'WindowsJob', side_effect=AssertionError('preflight must stay inert')):
+            result = worker.run(self.args())
+        self.assertEqual(result['preflight'], 'pass')
+
+    def test_windows_children_share_one_verified_worker_job(self):
+        made = []
+
+        class FakeJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.closed = 0
+                self.summary_calls = 0
+                made.append(self)
+
+            def summary(self):
+                self.summary_calls += 1
+                return {'limit_bytes': self.memory_mib * 1024**2, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        class FakeProcess:
+            returncode = 0
+
+            def __init__(self):
+                self.poll_calls = 0
+                self.stdout = io.StringIO('{"ok":true}')
+
+            def poll(self):
+                self.poll_calls += 1
+                return None if self.poll_calls == 1 else 0
+
+        processes = []
+
+        def popen(*_args, **_kwargs):
+            process = FakeProcess()
+            processes.append(process)
+            return process
+
+        available = worker.MIN_FREE_RAM + 1024**3
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'WindowsJob', FakeJob), \
+             patch.object(worker, 'observe_memory', return_value=(available, 64 * 1024**2)), \
+             patch.object(worker.subprocess, 'CREATE_NO_WINDOW', 0x08000000, create=True), \
+             patch.object(worker.subprocess, 'BELOW_NORMAL_PRIORITY_CLASS', 0x4000, create=True), \
+             patch.object(worker.subprocess, 'Popen', side_effect=popen) as launch, \
+             patch.object(worker.time, 'sleep'):
+            with worker.worker_memory_envelope():
+                self.assertEqual(worker.run_child(['one'], self.root, self.derived,
+                    self.stop, float('inf')), {'ok': True})
+                self.assertEqual(worker.run_child(['two'], self.root, self.derived,
+                    self.stop, float('inf')), {'ok': True})
+                self.assertEqual(len(made), 1)
+                self.assertEqual(made[0].closed, 0)
+            self.assertEqual(made[0].closed, 1)
+        self.assertEqual(len(processes), 2)
+        self.assertEqual(launch.call_count, 2)
+        self.assertGreaterEqual(made[0].summary_calls, 3)
+
+    def test_windows_child_refuses_without_active_worker_job(self):
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM + 1, 0)), \
+             patch.object(worker.subprocess, 'Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run_child(['unbounded'], self.root, self.derived, self.stop, float('inf'))
+        launch.assert_not_called()
+
+    def test_windows_child_refuses_job_bound_to_another_pid(self):
+        job = Mock(summary=Mock(return_value={
+            'limit_bytes': worker.MAX_CHILD_RSS, 'limit_flags': 0x200}))
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, '_ACTIVE_WINDOWS_JOB', job), \
+             patch.object(worker, '_ACTIVE_WINDOWS_JOB_PID', worker.os.getpid() + 1), \
+             patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM + 1, 0)), \
+             patch.object(worker.subprocess, 'Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run_child(['wrong-pid'], self.root, self.derived, self.stop, float('inf'))
+        launch.assert_not_called()
+        job.summary.assert_not_called()
+
+    def test_windows_child_refuses_changed_job_summary(self):
+        for summary in (
+                {'limit_bytes': worker.MAX_CHILD_RSS - 1, 'limit_flags': 0x200},
+                {'limit_bytes': worker.MAX_CHILD_RSS, 'limit_flags': 0}):
+            with self.subTest(summary=summary):
+                job = Mock(summary=Mock(return_value=summary))
+                with patch.object(worker.sys, 'platform', 'win32'), \
+                     patch.object(worker, '_ACTIVE_WINDOWS_JOB', job), \
+                     patch.object(worker, '_ACTIVE_WINDOWS_JOB_PID', worker.os.getpid()), \
+                     patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM + 1, 0)), \
+                     patch.object(worker.subprocess, 'Popen') as launch:
+                    with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                        worker.run_child(['changed-budget'], self.root, self.derived,
+                            self.stop, float('inf'))
+                launch.assert_not_called()
+
+    def test_windows_worker_job_closes_when_initial_verification_fails(self):
+        made = []
+
+        class InvalidJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.closed = 0
+                made.append(self)
+
+            def summary(self):
+                return {'limit_bytes': self.memory_mib * 1024**2 - 1, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'WindowsJob', InvalidJob), \
+             patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM + 1, 0)):
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                with worker.worker_memory_envelope():
+                    self.fail('invalid job budget must prevent execution')
+        self.assertEqual(len(made), 1)
+        self.assertEqual(made[0].closed, 1)
+
+    def test_windows_worker_job_fails_closed_below_ram_floor(self):
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM - 1, 0)), \
+             patch.object(worker, 'WindowsJob') as create_job:
+            with self.assertRaisesRegex(RuntimeError, 'memory_floor'):
+                with worker.worker_memory_envelope():
+                    self.fail('low memory must prevent worker start')
+        create_job.assert_not_called()
+
+    def test_windows_worker_job_closes_after_child_launch_error(self):
+        made = []
+
+        class FakeJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.closed = 0
+                made.append(self)
+
+            def summary(self):
+                return {'limit_bytes': self.memory_mib * 1024**2, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'WindowsJob', FakeJob), \
+             patch.object(worker, 'observe_memory', return_value=(worker.MIN_FREE_RAM + 1, 0)), \
+             patch.object(worker.subprocess, 'CREATE_NO_WINDOW', 0x08000000, create=True), \
+             patch.object(worker.subprocess, 'BELOW_NORMAL_PRIORITY_CLASS', 0x4000, create=True), \
+             patch.object(worker.subprocess, 'Popen', side_effect=OSError('synthetic launch failure')):
+            with self.assertRaisesRegex(OSError, 'synthetic launch failure'):
+                with worker.worker_memory_envelope():
+                    worker.run_child(['failure'], self.root, self.derived,
+                        self.stop, float('inf'))
+        self.assertEqual(len(made), 1)
+        self.assertEqual(made[0].closed, 1)
 
     def test_claim_rejects_unapproved_and_bad_payload(self):
         self.task('thumb')

@@ -114,3 +114,25 @@ captions are prepared just because their tasks were released.
 A failed task is retained evidence. Verify derived files independently, distinguish
 transient publication failures from damaged sources, and record any bounded repair
 without silently resetting a finished or failed job.
+
+### Windows CPU worker lifetime budget
+
+The approved CPU lane used to construct `WindowsJob` for every hash/decode child.
+That helper joins the calling process to the Job; closing its handle does not
+remove the process from the nested Job chain. A native synthetic reproduction
+succeeded 99 times and refused the 100th join with Windows error 50. Three child
+launches per media task explain a batch failing after 33 successful tasks even
+when its next original decodes normally. The old `filesystem_io` task label alone
+cannot distinguish this resource-supervision failure from actual disk trouble.
+
+The source fix binds one verified 1,536 MiB Job to an executing CPU worker and
+checks that same PID-bound envelope before each child launch. It retains the
+8 GiB available-memory floor, child resource monitor and process priority.
+Preflight remains inert and a Windows child cannot launch without the envelope.
+Closing/clearing the envelope happens on worker exit, including errors. Run the
+worker once per process; this is not a reusable in-process service API.
+
+Twenty scoped tests cover real generated-media processing plus shared budget,
+missing/changed budget, PID mismatch, low memory, launch failure and cleanup.
+Native repeated-child qualification and rollout remain separate gates. Existing
+worker payloads are immutable; a source commit does not patch a running worker.
