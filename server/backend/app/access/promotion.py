@@ -54,6 +54,9 @@ class PromotionReview:
     authority_reference: str
     incoming_root: Path = None
     originals_root: Path = None
+    # Optional only for offline/unconfigured callers, which remain fail-closed on
+    # a journal-bound primary. HTTP runtimes pass their active explicit guard.
+    original_deletions: object = None
 
 
 def _directory(path, message):
@@ -530,7 +533,7 @@ def promote_and_assign(envelope, *, review, clock=time.time, authorize=None,
     if incoming.resolve().is_relative_to(originals.resolve()) or originals.resolve().is_relative_to(incoming.resolve()):
         raise PlanRejected('The incoming root must sit outside every original root')
     moved = []
-    with ExistingDatabase(review.database)() as db:
+    with ExistingDatabase(review.database, original_deletions=review.original_deletions)() as db:
         state = _PromotionState(db, clock=clock)
         with _file_transaction(state.access, moved, 'Promotion'):
             if _identity(review.database) != review.database_identity:
@@ -624,7 +627,7 @@ def unassign_assets(envelope, *, review, clock=time.time):
     if incoming.resolve().is_relative_to(originals.resolve()) or originals.resolve().is_relative_to(incoming.resolve()):
         raise PlanRejected('The incoming root must sit outside every original root')
     returned = []
-    with ExistingDatabase(review.database)() as db:
+    with ExistingDatabase(review.database, original_deletions=review.original_deletions)() as db:
         state = _PromotionState(db, clock=clock)
         with _file_transaction(state.access, returned, 'Unassignment'):
             if _identity(review.database) != review.database_identity:
@@ -678,7 +681,7 @@ def reassign_assets(envelope, *, review, clock=time.time, authorize=None, allow_
     still belongs to exactly one library afterwards.
     """
     envelope = _checked_envelope(envelope, review, REASSIGN_OPERATION)
-    with ExistingDatabase(review.database)() as db:
+    with ExistingDatabase(review.database, original_deletions=review.original_deletions)() as db:
         state = _PromotionState(db, clock=clock)
         with state.access._transaction(write=True):
             if _identity(review.database) != review.database_identity:
