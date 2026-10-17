@@ -23398,6 +23398,103 @@
       ],
       "runtime_worker_deployed": false,
       "schema_migration_required": false
+    },
+    {
+      "feature": "receipt-selected-captions-bounded-provider-and-generated-qualification",
+      "source_commit": "799717ce01095b2cd9607e0c0087ea7666bdedc9",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "621d96144706411737076973d89f0520f2e14ebcf21908a98b2ee39b88f14c55",
+          "before_sha256": "ac933e5cd1571b3850be1482b799aa250d91c772a2c7ee8b185a726d8e422002"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "545a83f4f696cdb71ff122f1524591ecad2d6a1be03a9cbd83a285e79c4c0c6d",
+          "before_sha256": "db0280dc5c39f1150097f6bb4420241c8a84367a03b2d827270eb8e7ebb2cabe"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "fa612105240a14ee08382a7d6f307cb604ea6fdeebf88fc054aed3bff27db1c2",
+          "before_sha256": "e25fcd57fe5cec0d6ad1238310f531d42bf00bfadade404959d1df2c61330f15"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "1f25d4c48b3c9ac0678bc773deb567aba1d2eff172bc057bb9c6b5b56afc3284",
+          "before_sha256": "80c1df58cd86c0e744b83bea8b8ffbc6e80936e07ed9b30c9ab7b90c20b41b8e"
+        },
+        {
+          "path": "server/backend/app/access/upload_caption_processing.py",
+          "sha256": "522b55719d38f7790c4c691b27dfee12ee347e6b3d3856e03b8f73a7e71cd1d3"
+        },
+        {
+          "path": "server/backend/app/approved_caption_generation.py",
+          "sha256": "1c297e6d3d37d5648551a17d0cada7c57ed02fdfe0523d88521369d9318c4ca0"
+        },
+        {
+          "path": "server/backend/app/approved_caption_http.py",
+          "sha256": "bb803d7f85dbb1558cf70d691a4351d93a0ea6a0df110678b697f295d86478b8"
+        },
+        {
+          "path": "server/config/detailed-caption-prompt.txt",
+          "sha256": "31613a8d538dc6655051de9b9ab9c13dd195d98aa6c835875b08f41ce6e0a5b1"
+        },
+        {
+          "path": "server/docs/security/RELEASED_CAPTION_WORKER.md",
+          "sha256": "16602160c2b6273a6c515b2e88f805f752f643395ee024cfbd7c608c1251dc17"
+        },
+        {
+          "path": "server/scripts/build_released_caption_package.py",
+          "sha256": "9494acced3e89589e08f1bf7e975d8d09613c928d4bf906e267088b41d6434f0"
+        },
+        {
+          "path": "server/scripts/qualify_released_caption_worker.py",
+          "sha256": "3de5a5a77c9516adca24b4f79ff95a6d86793d90ccf1ab6b0e690662343336c2"
+        },
+        {
+          "path": "server/scripts/run_released_caption_worker.py",
+          "sha256": "f88b05cf8e543dcdd6f7cf82504c5056425f1f4f675e643f40762d2e5d5ad66e"
+        },
+        {
+          "path": "server/tests/security/test_approved_caption_generation.py",
+          "sha256": "6163bda46bdbe2dac6f850cec2a3b0dabc8fc9c2b0521b03f3bd763ba88a1521"
+        },
+        {
+          "path": "server/tests/security/test_approved_caption_http.py",
+          "sha256": "01199be80fa9ea1e74a90a88592829d6c803dc6d35898fb970728ce280830f32"
+        },
+        {
+          "path": "server/tests/security/test_qualify_released_caption_worker.py",
+          "sha256": "06cb8314e74178f3a5af0a704b29fc4c5dfc7301a154769fc831db7c997f48f4"
+        },
+        {
+          "path": "server/tests/security/test_released_caption_package.py",
+          "sha256": "323f4e7cfb74f0ee0fb2b08062bf26ff0affa6d5b6f350a8cdef8fa137728f1d"
+        },
+        {
+          "path": "server/tests/security/test_released_caption_worker.py",
+          "sha256": "82d3e83e077304a315993e07023d48b2abff3f9a47103bc0eb35a1168f3f3722"
+        },
+        {
+          "path": "server/tests/security/test_upload_caption_processing.py",
+          "sha256": "85ff731d427cd11e7ae18c2b8b48cfbc464f14eff5e6cfe1f826848b76a76e36"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "1a508d78bd722c4147b003be2b3157d08354864824e21b3a97122bfcd95cc15d",
+          "before_sha256": "bbcdaa660aad0dd52544c1247c4f5c13fa7bc09835ab7b95bdf67a77da397a43"
+        }
+      ],
+      "schema_migration_required": false,
+      "http_surface_added": false,
+      "service_startup_added": false,
+      "runtime_deployed": false,
+      "real_model_inference_run": false,
+      "preserved_prompt_source": {
+        "commit": "0d8b9f66424a6a62b9b1f4c3cea7e6a70bb15316",
+        "path": "config/detailed-caption-prompt.txt",
+        "sha256": "31613a8d538dc6655051de9b9ab9c13dd195d98aa6c835875b08f41ce6e0a5b1"
+      }
     }
   ]
 }
