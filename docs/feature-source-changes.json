@@ -22848,6 +22848,61 @@
       "household_data_included": false
     },
     {
+      "feature": "private-ollama-phase-metrics-for-story-quality-captures",
+      "source_commit": "0bd1d252c815abec13cffd40cd45215563914f19",
+      "files": [
+        {
+          "path": "docs/AI_STORY_COMPLETION.md",
+          "before_sha256": "041aa36d597fb2e36a21c76d34a98a3c91239e2cf14563402ee612b66bd14642",
+          "sha256": "21fbc3f7250c83734c9c9ee515511e5019f99a84a3f3082ac50f112a63a66deb"
+        },
+        {
+          "path": "docs/MEMOIR_QUALITY_REVIEW.md",
+          "before_sha256": "29934a54c3155d1fd5791e62ffcf2e5f9a7abf40f51cdf1c19c481ceb700449e",
+          "sha256": "2e9975725705ff4a5350aea119051f7fb5b88d5d7684035962942184979f7bb3"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "f6bb98bafe4e5efe735e7b81bc1605b72c583c717ea5118d8b52ad7a472049b5",
+          "sha256": "657bcf8c716e96895b0a32b0e06b71d884341011ff5064094bbc3e5eba187cf8"
+        },
+        {
+          "path": "server/scripts/build_memoir_review_page.py",
+          "before_sha256": "7f562f53b9de4eca6cc0f0a7d89dcff0c49391683b1a79e437be2940fb348dd3",
+          "sha256": "a9ba1cef91c3ee6400f59ee5d4af04c338aa5f278a66d2cdbf90359259a4b0d5"
+        },
+        {
+          "path": "server/scripts/run_memoir_quality_canary.py",
+          "before_sha256": "70df365bb29ffc51dc484b87238702fd06ee036dae5b98dba3008cf656a33d71",
+          "sha256": "fae779245ca588806e93282c26b2613608ee63340aae314bc0fa4b532c3f7ba6"
+        },
+        {
+          "path": "server/tests/security/test_memoir_quality_canary.py",
+          "before_sha256": "ec6bf87bbd6ed595496bbafeecd5961094361e55aaa5673841c0ddf1f054f228",
+          "sha256": "1a5556bb3e2fc6a09862c2dd49acfa7c8b4d41eb37c058d90328d24cec90cfb6"
+        },
+        {
+          "path": "server/tests/security/test_memoir_review_page.py",
+          "before_sha256": "0996504e6a99c6c99a8068e1cf3abcb7a8a3401752206118bc61818f6f9d181a",
+          "sha256": "2c9a21d45f73114bf59aa31acb90d3e8c41ab3177feae9b33be6b3a34b10b6c1"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "6a5796c62df8786d1216f2ec51bb272a2134e8ac192f3287c5c9093fe42a39cf",
+          "sha256": "992c3c1bc871e6d0d014ff3634863252d77a17fd3e26acd6503b63e58e0b2a68"
+        }
+      ],
+      "public_wire_changed": false,
+      "story_output_changed": false,
+      "private_capture_optional_field": "ollama_metrics",
+      "models_activated": false,
+      "quality_fixtures_changed": false,
+      "windows_ollama_application_updated_to": "0.40.5",
+      "api_web_deployed": false,
+      "native_model_inference_performed": false,
+      "household_data_included": false
+    },
+    {
       "feature": "phone-unified-import-status-workspace",
       "source_commit": "80bc2dd526e9cd9661e31c82c39e6ad87d23128e",
       "files": [

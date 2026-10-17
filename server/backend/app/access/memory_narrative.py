@@ -25,6 +25,19 @@ MAX_CHAPTERS = 24
 MAX_SOURCES = 96
 MAX_RECENT_TURNS = 8
 _IDENTIFIER = re.compile(r'\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z', re.ASCII)
+_OLLAMA_METRIC_FIELDS = frozenset({
+    'total_duration', 'load_duration', 'prompt_eval_duration', 'eval_duration',
+    'prompt_eval_count', 'eval_count',
+})
+
+
+def _clean_ollama_metrics(value: Any) -> dict[str, int]:
+    """Return only bounded integer timing/count metadata from an Ollama envelope."""
+    if type(value) is not dict:
+        return {}
+    return {key: number for key, number in value.items()
+            if key in _OLLAMA_METRIC_FIELDS and type(number) is int
+            and 0 <= number <= 2**63 - 1}
 
 
 class LocalMemoryNarrativeError(RuntimeError):
@@ -473,9 +486,15 @@ class LocalMemoryNarrator:
         self.model = model
         self.timeout = timeout
         self.transport = transport
+        self._ollama_metrics = {}
         if monotonic is not None and not callable(monotonic):
             raise ValueError('Invalid monotonic clock')
         self.monotonic = monotonic or time.monotonic
+
+    @property
+    def ollama_metrics(self):
+        """A detached copy of the latest valid response's allowlisted metadata."""
+        return dict(self._ollama_metrics)
 
     def _check_deadline(self, deadline):
         if self.monotonic() >= deadline:
@@ -488,6 +507,7 @@ class LocalMemoryNarrator:
         return self._generate(bundle, 'companion')
 
     def _generate(self, bundle, task):
+        self._ollama_metrics = {}
         clean_bundle = _validate_bundle(bundle)
         instruction = ('Return the narrative schema {"version":1,"title":"...","chapters":'
                        '[{"id":"input chapter id","narration":"...","source_ids":[]}],'
@@ -541,6 +561,7 @@ class LocalMemoryNarrator:
             if (type(envelope) is not dict or envelope.get('model') != self.model or
                     envelope.get('done') is not True or type(envelope.get('response')) is not str):
                 raise LocalMemoryNarrativeError('invalid_response')
+            self._ollama_metrics = _clean_ollama_metrics(envelope)
             result = _strict_loads(envelope['response'].encode('utf-8', errors='strict'))
             self._check_deadline(deadline)
             if task == 'narrative':

@@ -198,6 +198,17 @@ def _public_report(*, status: str, case_id: str | None = None, task: str | None 
     return report
 
 
+def _provider_ollama_metrics(provider, task: str) -> dict[str, int]:
+    """Read optional bounded adapter metadata without affecting capture status."""
+    if task not in {"narrative", "companion"}:
+        return {}
+    try:
+        from app.access.memory_narrative import _clean_ollama_metrics
+        return _clean_ollama_metrics(getattr(provider, "ollama_metrics", None))
+    except Exception:
+        return {}
+
+
 def _run_case(case: dict, criteria: list[str], configuration: dict,
               output_path: Path, *, narrator_factory=None, title_suggester_factory=None) -> dict:
     # Refuse role/task/input substitution before reserving output or constructing
@@ -274,6 +285,7 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
     except Exception as error:
         ended = _utc_now()
         duration = max(0.0, time.monotonic() - start_clock)
+        ollama_metrics = _provider_ollama_metrics(provider, task)
         # Only the adapter's three fixed categories can appear in the record.
         from app.access.memory_narrative import LocalMemoryNarrativeError
         error_code = (error.category if isinstance(error, LocalMemoryNarrativeError)
@@ -299,6 +311,8 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
             "resource_limits_verified": False,
             "failure_category": error_code,
         }
+        if ollama_metrics:
+            record["ollama_metrics"] = ollama_metrics
         _write_exclusive(target, "record.json", _canonical(record) + b"\n")
         return _public_report(status="request_failed", case_id=case_id, task=task,
                               input_sha256=input_hash, error_code=error_code)
@@ -306,6 +320,7 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
     output_hash = _sha256(output_bytes)
     ended = _utc_now()
     duration = max(0.0, time.monotonic() - start_clock)
+    ollama_metrics = _provider_ollama_metrics(provider, task)
     record = {
         "schema": 1,
         "status": "captured_for_human_review",
@@ -325,6 +340,8 @@ def _run_case(case: dict, criteria: list[str], configuration: dict,
         "activation_performed": False,
         "resource_limits_verified": False,
     }
+    if ollama_metrics:
+        record["ollama_metrics"] = ollama_metrics
     # Persistence failures are reported as output failures and are never
     # reclassified as provider failures or followed by a duplicate record write.
     _write_exclusive(target, "output.json", output_bytes)

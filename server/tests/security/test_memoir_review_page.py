@@ -42,13 +42,15 @@ class ReviewPageTests(unittest.TestCase):
         self.network.start()
         self.addCleanup(self.network.stop)
 
-    def capture(self, case_id='synthetic-coherence', companion_kind='answer', prose=None):
+    def capture(self, case_id='synthetic-coherence', companion_kind='answer', prose=None,
+                metrics=None):
+        self.capture_index = getattr(self, 'capture_index', 0) + 1
         case, criteria = page.canary._case_plan(case_id)
         calls = []
 
         class Provider:
             def __init__(self, *args, **kwargs):
-                pass
+                self.ollama_metrics = metrics
 
             def narrative(self, bundle):
                 calls.append('narrative')
@@ -71,7 +73,8 @@ class ReviewPageTests(unittest.TestCase):
                                      'source_ids': [bundle['sources'][0]['id']]}] if bundle['sources'] else []),
                         'needs_review': True}
 
-        target = self.private / ('capture-' + case_id + '-' + companion_kind)
+        target = self.private / ('capture-' + case_id + '-' + companion_kind +
+                                 '-' + str(self.capture_index))
         result = page.canary._run_case(case, criteria, {
             'ollama_url': 'http://127.0.0.1:11434', 'ollama_model': 'private-review-model',
             'timeout_seconds': 30.0}, target, narrator_factory=Provider, title_suggester_factory=Provider)
@@ -124,6 +127,32 @@ class ReviewPageTests(unittest.TestCase):
             self.assertNotIn(value, json.dumps(report))
         if os.name != 'nt':
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+
+    def test_metrics_are_optional_strict_and_included_in_record_identity(self):
+        old_capture = self.capture()
+        self.assertNotIn('ollama_metrics', page._read(old_capture / 'record.json'))
+        self.assertIsNotNone(page.load_review(old_capture))
+
+        target = self.capture(metrics={'load_duration': 10, 'eval_duration': 20})
+        record = page._read(target / 'record.json')
+        review = page.load_review(target)
+        self.assertEqual(page.digest(record), review['record_sha256'])
+        self.assertEqual({'load_duration': 10, 'eval_duration': 20}, record['ollama_metrics'])
+        prior_hash = review['record_sha256']
+        self.rewrite(target, 'record.json',
+                     lambda value: value['ollama_metrics'].update(eval_duration=21))
+        updated_review = page.load_review(target)
+        self.assertNotEqual(prior_hash, updated_review['record_sha256'])
+        self.assertEqual(page.digest(page._read(target / 'record.json')),
+                         updated_review['record_sha256'])
+
+        for metrics in ({}, {'unknown_metric': 1}, {'eval_duration': True},
+                        {'eval_duration': 2**63}, 'not-a-mapping'):
+            with self.subTest(metrics=metrics):
+                bad = self.capture(metrics={'eval_duration': 1})
+                self.rewrite(bad, 'record.json', lambda value: value.update(ollama_metrics=metrics))
+                with self.assertRaisesRegex(page.PageError, '^capture_contract_mismatch$'):
+                    page.load_review(bad)
 
     def test_model_markup_remains_literal_and_csp_only_permits_exact_styles(self):
         malicious = '<script>alert(1)</script><img src="https://example.invalid/" onerror="alert(2)">'

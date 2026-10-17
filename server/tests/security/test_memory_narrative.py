@@ -44,8 +44,11 @@ def companion(*, kind='answer', refs=('ev-1',), proposal=None):
             'source_ids': list(refs), 'questions': [], 'proposal': proposal}
 
 
-def provider_body(model, response, *, done=True):
-    return json.dumps({'model': model, 'done': done, 'response': response}).encode('utf-8')
+def provider_body(model, response, *, done=True, metadata=None):
+    envelope = {'model': model, 'done': done, 'response': response}
+    if metadata is not None:
+        envelope.update(metadata)
+    return json.dumps(envelope).encode('utf-8')
 
 
 class MemoryNarrativeValidationTests(unittest.TestCase):
@@ -193,6 +196,40 @@ class LocalMemoryNarratorTests(unittest.TestCase):
 
         transport = httpx.MockTransport(handler)
         return LocalMemoryNarrator('http://127.0.0.1:11434', 'qwen-local', transport=transport), seen
+
+    def test_ollama_metrics_are_filtered_detached_and_reset_before_invalid_bundle(self):
+        result = narrative()
+        metadata = {
+            'total_duration': 10**9,
+            'load_duration': 2**63 - 1,
+            'prompt_eval_duration': True,
+            'eval_duration': -1,
+            'prompt_eval_count': '12',
+            'eval_count': 12,
+            'unexpected': 99,
+        }
+        model, _seen = self.narrator(provider_body(
+            'qwen-local', json.dumps(result), metadata=metadata))
+        self.assertEqual(result, model.narrative(bundle()))
+        expected = {'total_duration': 10**9, 'load_duration': 2**63 - 1, 'eval_count': 12}
+        self.assertEqual(expected, model.ollama_metrics)
+        detached = model.ollama_metrics
+        detached['eval_count'] = 0
+        self.assertEqual(expected, model.ollama_metrics)
+        with self.assertRaises(ValueError):
+            model.narrative({'invalid': 'bundle'})
+        self.assertEqual({}, model.ollama_metrics)
+
+    def test_ollama_metrics_survive_inner_response_validation_failure(self):
+        invalid = narrative(refs=())
+        metrics = {'load_duration': 7, 'prompt_eval_duration': 8, 'eval_duration': 9,
+                   'total_duration': 24, 'prompt_eval_count': 3, 'eval_count': 4}
+        model, seen = self.narrator(provider_body(
+            'qwen-local', json.dumps(invalid), metadata=metrics))
+        with self.assertRaises(LocalMemoryNarrativeError):
+            model.narrative(bundle())
+        self.assertEqual(metrics, model.ollama_metrics)
+        self.assertEqual(1, len(seen))
 
     def test_request_schema_binds_each_chapter_to_its_current_sources_without_source_text(self):
         src = bundle()
