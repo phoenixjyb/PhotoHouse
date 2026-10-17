@@ -23330,6 +23330,38 @@
       "schema_migration_required": false,
       "http_surface_added": false,
       "service_startup_added": false
+    },
+    {
+      "feature": "upload-recovery-v72-delivery-and-processing-follow-through",
+      "source_commit": "81636402382d5dfffcd072f0caa3d2ba01b24fdd",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "e25fcd57fe5cec0d6ad1238310f531d42bf00bfadade404959d1df2c61330f15",
+          "before_sha256": "595afa29c17da1834b043b051c9dea809c285ed67f7c69dde04999d2354db980"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "db0280dc5c39f1150097f6bb4420241c8a84367a03b2d827270eb8e7ebb2cabe",
+          "before_sha256": "0277626fb3ec431cf2ca5f07779d0835d1bccf5bbcaa0e1ee8b9319fded56582"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "2c2fa2119a492504a851584acbbf3312a0bf208ace93406001f3c9d979bbbfb1",
+          "before_sha256": "2c0a29fbf415ee4f9f03bb5d5ef84d03e768549893694385475ac5bc341f5962"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md",
+          "sha256": "8fddc30abdcc84b33aad9f0dfa579e1975e17cf212b9c024dc8a0fd756d24f6a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md",
+          "sha256": "c55c0854efb2d3cb20178bf6a9c704ee7325a99778707f5d6a1362318e0e0d89",
+          "before_sha256": "f9cfa935a3f56b594ca98e37ebe811c564b4714be43784d155dff938ded02676"
+        }
+      ],
+      "schema_migration_required": false,
+      "runtime_deployed": false
     }
   ]
 }
