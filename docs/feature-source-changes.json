@@ -23298,6 +23298,38 @@
       "schema_migration_required": false,
       "api_surface_changed": false,
       "runtime_deployed": false
+    },
+    {
+      "feature": "receipt-bound-deferred-upload-starter-release",
+      "source_commit": "54c7e2ea2bd8202d1e5f658d18eeca9a0820bbf5",
+      "files": [
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "2c0a29fbf415ee4f9f03bb5d5ef84d03e768549893694385475ac5bc341f5962",
+          "before_sha256": "f7a309103c01f98503b444291d181b15758f03e9b5ad2fd7a88b4fd5a31bd909"
+        },
+        {
+          "path": "server/backend/app/access/upload_processing.py",
+          "sha256": "8365ec58c64c7d8a9f1fa0a32b0168ebe35984f45c7f96b1cd8a9c173eeb8507"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "7c56687a1e2f5fa40d769a050fb8aca12e05497d73bbd37fa137c78e4f1049c3",
+          "before_sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61"
+        },
+        {
+          "path": "server/tests/security/test_upload_processing_release.py",
+          "sha256": "97434fefcbd0c28ad47bfe7d245897bc847814170dc564e185408bac8855d48e"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "bbcdaa660aad0dd52544c1247c4f5c13fa7bc09835ab7b95bdf67a77da397a43",
+          "before_sha256": "dd4cbbd19184723201e770dc9dbe912059d830d2e0702ac327b5aa7906278eab"
+        }
+      ],
+      "schema_migration_required": false,
+      "http_surface_added": false,
+      "service_startup_added": false
     }
   ]
 }
