@@ -23362,6 +23362,29 @@
       ],
       "schema_migration_required": false,
       "runtime_deployed": false
+    },
+    {
+      "feature": "approved-cpu-worker-single-windows-memory-envelope",
+      "source_commit": "f6b80149f420ee0c8eafde71858cebf77869d1d7",
+      "files": [
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "sha256": "7792c1fce1d2cc3be2dbbb8ee618f79145f4290d29bd79eaeeaf08ee5cd2c9ee",
+          "before_sha256": "514076c5bb926ad136af71fe650a732df6881aba3870362ffd24dc96f3291924"
+        },
+        {
+          "path": "server/tests/security/test_approved_cpu_worker.py",
+          "sha256": "647b0c4e869bf0f54932f33fdf7e86947b93b212d5038e4635e5014dc120452d",
+          "before_sha256": "ee2185e3f54a084a62950c66c2c13ab318bacdf8b6f489298ada7f4b5cf5c9d2"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "3dfdb26624c391e5a8e7d53377ad1f75b99c91355df4496ca568ce03d87b8c5e",
+          "before_sha256": "2c2fa2119a492504a851584acbbf3312a0bf208ace93406001f3c9d979bbbfb1"
+        }
+      ],
+      "schema_migration_required": false,
+      "runtime_deployed": false
     }
   ]
 }
