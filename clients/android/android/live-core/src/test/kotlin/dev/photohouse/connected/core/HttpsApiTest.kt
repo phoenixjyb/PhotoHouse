@@ -262,7 +262,7 @@ class HttpsApiTest {
             val bytes = byteArrayOf(1, 2, 3, 4)
             val selected = BatchUploadSource("synthetic.jpg", 4, UploadKind.IMAGE,
                 { java.io.ByteArrayInputStream(bytes) }, "content://synthetic/one")
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val persistence = InMemoryUploadQueuePersistence()
             try {
                 val queue = BatchUploadQueue(api, scope, persistence, { selected }, { true }, { token }, { it == "family-a" })
