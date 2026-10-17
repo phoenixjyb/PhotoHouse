@@ -134,5 +134,19 @@ worker once per process; this is not a reusable in-process service API.
 
 Twenty scoped tests cover real generated-media processing plus shared budget,
 missing/changed budget, PID mismatch, low memory, launch failure and cleanup.
-Native repeated-child qualification and rollout remain separate gates. Existing
-worker payloads are immutable; a source commit does not patch a running worker.
+Native Windows qualification also passed those twenty cases and 120 actual
+child launches inside one 1,536 MiB envelope, with the 8 GiB admission floor.
+It used generated fixtures and opened no production database. Rollout remains a
+separate gate: installed worker payloads are immutable, and a source commit does
+not patch a running worker.
+
+The batch's one missing pair of previews was then generated in a separately
+bounded child, with source hashes and current owner/library assignment rechecked
+under the configured journal guard. Publication created only absent derived
+files without overwriting existing previews or changing the original failed task.
+An independent readback decoded both preview sizes for every item and rehashed
+every original. The old failed row is retained as diagnosis evidence.
+
+The existing caption endpoint was unreachable in a later read-only health check.
+Starting a caption service and running a scoped compatible worker remain distinct
+from the completed preview/vector/face work. No replacement model was activated.
