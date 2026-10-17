@@ -7,10 +7,15 @@ const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'upload-history-browser-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'upload_history_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let next=0,readyResolve;const ready=new Promise(r=>readyResolve=r),pending=new Map();
+let next=0,readyResolve,readyReject,bridgeFailure=null,finishing=false;
+const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;}),pending=new Map();
+function bridgeFailed(error){bridgeFailure=error;readyReject(error);for(const request of pending.values())request.reject(error);pending.clear();}
 bridge.stderr.on('data',v=>process.stderr.write(v));
-createInterface({input:bridge.stdout}).on('line',line=>{const m=JSON.parse(line);if(m.ready)readyResolve(m);else{pending.get(m.id)?.(m);pending.delete(m.id);}});
-function rpc(m){return new Promise(resolve=>{const id=++next;pending.set(id,resolve);bridge.stdin.write(JSON.stringify({...m,id})+'\n');});}
+bridge.once('error',bridgeFailed);
+bridge.once('exit',(code,signal)=>{if(!finishing||pending.size)bridgeFailed(new Error(`Synthetic upload bridge exited: ${code??signal}`));});
+bridge.stdin.on('error',bridgeFailed);
+createInterface({input:bridge.stdout}).on('line',line=>{try{const m=JSON.parse(line);if(m.ready)readyResolve(m);else{pending.get(m.id)?.resolve(m);pending.delete(m.id);}}catch(error){bridgeFailed(error);}});
+function rpc(m){if(bridgeFailure)return Promise.reject(bridgeFailure);return new Promise((resolve,reject)=>{const id=++next;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...m,id})+'\n');});}
 let historyUnavailable=false,holdHistory=false,releaseHistory,historyHeld,holdNoteTextSave=false,releaseNoteTextSave,noteTextSaveHeld,nextNoteTextFailure=false,holdNoteAudioSave=false,releaseNoteAudioSave,noteAudioSaveHeld,nextNoteAudioFailure=false,malformedNoteLimit=false;const errors=[],outside=[],requests=[],noteTextMutations=[],noteAudioMutations=[];
 let browser,guardPage=null,bootstrapCatalogueEnteredResolve,releaseBootstrapCatalogue;
 const bootstrapCatalogueEntered=new Promise(resolve=>bootstrapCatalogueEnteredResolve=resolve);
@@ -192,4 +197,4 @@ const bootstrapCatalogueRelease=new Promise(resolve=>releaseBootstrapCatalogue=r
   assert.equal(await page.locator('#my-uploads-panel').evaluate(panel=>panel.hidden),true,'revocation keeps the history panel unavailable');
   assert.deepEqual(errors,[]);assert.deepEqual(outside,[]);
   console.log(JSON.stringify({passed:['member history distinct from owner review','10 plus 2 pagination','pending has no open','notes load only when dialog opens','real promotion reflected after refresh','folder and item notes saved and scoped through signed-in browser','approved opens authorized viewer','Chinese narrow dialog without overflow','closing clears receipts','503 clears rows while gallery remains usable','late closed-panel response discarded','revocation clears private history'],artifacts}));
-})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');bridge.stdin.end();});
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{finishing=true;if(browser)await browser.close();if(!bridge.stdin.destroyed&&!bridge.stdin.writableEnded){bridge.stdin.end(JSON.stringify({command:'quit'})+'\n');}});

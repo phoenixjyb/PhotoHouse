@@ -161,3 +161,13 @@ identity. Its default launcher performs metadata-only preflight; execution uses
 serial bounded Windows children. This source does not recover the unavailable
 model service or activate the new worker. Native offline qualification and live
 operation authority remain separate gates.
+
+### Browser qualification follows the configured factory
+
+The synthetic upload-history bridge now lets its promotion fixture carry the
+configured factory/journal through planning and review. It no longer replaces the
+runtime constructor globally: that old shim duplicated `original_deletions` once
+the application began passing the journal explicitly. The browser harness rejects
+readiness and pending RPCs when its Python bridge exits, so a fixture error fails
+promptly instead of waiting for the CI job timeout. This is test-infrastructure
+repair, not evidence that a production upload or model inference completed.

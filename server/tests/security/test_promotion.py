@@ -6,6 +6,7 @@ promotion would leave `assets.path` outside the originals root, so the photo wou
 library and still unviewable.
 """
 from contextlib import closing
+from dataclasses import replace
 import json
 from pathlib import Path
 import sqlite3
@@ -120,14 +121,15 @@ class PromotionTests(unittest.TestCase):
         return self.uploads.store(self.member_token, data or png(640, 480), filename, BATCH)
 
     def planned(self, method, **kwargs):
-        with ExistingDatabase(self.path.resolve(), read_only=True)() as db:
+        with replace(self.access.connection_factory, read_only=True)() as db:
             planner = PromotionPlanner(db, clock=lambda: NOW)
             return getattr(planner, method)(**kwargs)
 
     def review(self, envelope, **overrides):
         values = {'database': self.path.resolve(), 'database_identity': None,
                   'plan_digest': plan_digest(envelope), 'authority_reference': 'ticket-0001',
-                  'incoming_root': self.incoming, 'originals_root': self.originals}
+                  'incoming_root': self.incoming, 'originals_root': self.originals,
+                  'original_deletions': self.access.connection_factory.original_deletions}
         values.update(overrides)
         from app.access.provisioning_apply import _identity
         if values['database_identity'] is None:
