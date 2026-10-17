@@ -57,6 +57,13 @@ activated by the phone or API/Web releases.
 
 ## Current priority: accept folder upload, then voice, search and story linking
 
+First deliver and trial the [v71 upload response repair](../clients/android/docs/PHONE_V71_CANDIDATE_2026-10-17.md).
+The owner's installed v70 reports interrupted uploads; a confirmed parser/server
+contract mismatch rejects library-targeted responses. Following source corrects
+that contract, retains destination checks and explicit retry identity, and adds
+safe failure explanations. Real transfer/receipt and media readiness must then
+be verified separately; do not reselect the entire folder to recreate its queue.
+
 Update to v70 and follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md).
 Check return from the system picker, transient recovery and explicit Retry,
 reviewed destination/count/size, metered-network consent and Start. Confirm a

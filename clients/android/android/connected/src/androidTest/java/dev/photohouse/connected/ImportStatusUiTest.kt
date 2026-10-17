@@ -112,6 +112,31 @@ class ImportStatusUiTest {
         rule.runOnIdle { assertEquals(1, resumes); assertEquals(0, cancels) }
     }
 
+    @Test fun chineseInterruptedUploadExplainsFailureAndRequiresExplicitRetry() = interruptedUpload(true)
+    @Test fun englishInterruptedUploadExplainsFailureAndRequiresExplicitRetry() = interruptedUpload(false)
+    private fun interruptedUpload(zh: Boolean) {
+        val record = item(status = "failed", offset = 0).record.copy(error = "upload:response", assetId = null)
+        val items = mutableStateOf(listOf(UploadQueueItem(record)))
+        var retries = 0; var reads = 0
+        rule.setContent { LargeText {
+            ImportStatusPanel(items.value, null, setOf("family"), zh, true, true, false,
+                {}, {}, { reads++ }, {}, {}, {}, {}, { retries++ }, {},
+                { _, _, _ -> }, { _, _, _ -> }, {}, {})
+        } }
+        rule.onNodeWithTag("batch-error-one").performScrollTo()
+            .assertTextEquals(uploadFailureMessage("upload:response", zh)).assertIsDisplayed()
+        saveRender("import-failure-${if (zh) "zh" else "en"}-150.png")
+        rule.runOnIdle { assertEquals(0, retries); assertEquals(0, reads) }
+        rule.onNodeWithTag("batch-retry").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(1, retries)
+            items.value = listOf(UploadQueueItem(record.copy(error = "content://synthetic/private?token=never-show")))
+        }
+        rule.onNodeWithTag("batch-error-one").performScrollTo().assertTextEquals(uploadFailureMessage(null, zh))
+        rule.onNodeWithText("content://synthetic/private?token=never-show", substring = true).assertDoesNotExist()
+        rule.runOnIdle { assertEquals(1, retries); assertEquals(0, reads) }
+    }
+
     @Composable private fun LargeText(content: @Composable () -> Unit) {
         val density = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {

@@ -75,8 +75,8 @@ android {
         minSdk = 26
         targetSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 70
-        versionName = "0.70-import-status"
+        versionCode = 71
+        versionName = "0.71-library-upload-fix"
         buildConfigField("boolean", "PHOTOHOUSE_HOME_DISCOVERY_ENABLED", homeDiscoveryEnabled)
         buildConfigField("String", "PHOTOHOUSE_HOME_ORIGIN", "\"$homeOrigin\"")
         buildConfigField("String", "PHOTOHOUSE_HOME_LAN_ADDRESS", "\"$homeAddress\"")

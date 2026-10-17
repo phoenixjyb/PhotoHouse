@@ -104,14 +104,16 @@ class ConnectedUiTest {
         override suspend fun uploadHistory(token: Bearer, page: Int): UploadHistoryPage =
             uploadHistoryPages[page] ?: UploadHistoryPage(page, 10, 0, emptyList())
         var batchOffset = 0L
+        var batchDestination: String? = null
         override suspend fun createUploadSession(token: Bearer, request: UploadSessionRequest): UploadSession {
             sessionDestinations += request.destinationLibraryId
-            return UploadSession("c".repeat(32), request.bytes, batchOffset, 4194304, "uploading", null)
+            batchDestination = request.destinationLibraryId
+            return UploadSession("c".repeat(32), request.bytes, batchOffset, 4194304, "uploading", null, batchDestination)
         }
-        override suspend fun uploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, batchOffset, 4194304, "uploading", null)
-        override suspend fun uploadChunk(token: Bearer, uploadId: String, offset: Long, chunk: ByteArray, sha256: String): UploadSession { batchOffset = offset + chunk.size; return UploadSession(uploadId, 4, batchOffset, 4194304, "uploading", null) }
-        override suspend fun completeUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, 4, 4194304, "complete", "902")
-        override suspend fun cancelUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, batchOffset, 4194304, "cancelled", null)
+        override suspend fun uploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, batchOffset, 4194304, "uploading", null, batchDestination)
+        override suspend fun uploadChunk(token: Bearer, uploadId: String, offset: Long, chunk: ByteArray, sha256: String): UploadSession { batchOffset = offset + chunk.size; return UploadSession(uploadId, 4, batchOffset, 4194304, "uploading", null, batchDestination) }
+        override suspend fun completeUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, 4, 4194304, "complete", "902", batchDestination)
+        override suspend fun cancelUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, batchOffset, 4194304, "cancelled", null, batchDestination)
         override suspend fun gallery(token: Bearer, library: String, page: Int) = Gallery(library, page, 50, total, false, photos)
         var transientDetailFailures = 0
         override suspend fun detail(token: Bearer, library: String, assetId: String): Detail {

@@ -107,7 +107,7 @@ class BatchUploadQueue(
         job = scope.launch {
             try { processQueue(first, run, localId == null) { activeId = it } }
             catch (_: CancellationException) { if (epoch == run) update(activeId) { it.copy(status = "paused") } }
-            catch (error: Exception) { if (epoch == run) update(activeId) { it.copy(status = "failed", error = error.message ?: "Upload failed") } }
+            catch (error: Exception) { if (epoch == run) update(activeId) { it.copy(status = "failed", error = uploadFailureCode(error)) } }
             finally { if (epoch == run) job = null }
         }
     }
@@ -128,7 +128,8 @@ class BatchUploadQueue(
         scope.launch {
             val confirmed = runCatching { api.cancelUploadSession(bearer, record.uploadId) }.getOrNull()
             if (epoch == run && account == accountAtCancel && bearer === runCatching { token() }.getOrNull()) {
-                if (confirmed?.state == "cancelled" && confirmed.uploadId == record.uploadId && confirmed.bytes == record.bytes)
+                if (confirmed?.state == "cancelled" && confirmed.uploadId == record.uploadId && confirmed.bytes == record.bytes &&
+                    confirmed.destinationLibraryId == record.destinationLibraryId)
                     update(localId) { it.copy(status = "cancelled", error = null) }
                 else update(localId) { it.copy(status = "failed", error = "Cancellation could not be confirmed") }
             }
@@ -146,10 +147,11 @@ class BatchUploadQueue(
     private suspend fun process(initial: UploadQueueRecord, run: Long) {
         var record = initial
         val destinationLibraryId = record.destinationLibraryId
-        require(destinationLibraryId == null || destinationAllowed(destinationLibraryId))
+        if (destinationLibraryId != null && !destinationAllowed(destinationLibraryId)) throw ApiFailure(FailureKind.HTTP, 403)
         var session = record.uploadId?.let { api.uploadSession(token(), it) }
         ensure(run)
         if (session != null) {
+            requireDestination(session, record)
             require(session.uploadId == record.uploadId && session.bytes == record.bytes)
             if (session.state == "complete") {
                 replace(record.copy(offset = session.bytes, status = "complete", error = null, assetId = session.assetId)); return
@@ -166,6 +168,7 @@ class BatchUploadQueue(
         if (session == null) session = api.createUploadSession(token(), UploadSessionRequest(record.requestId, record.batch,
             record.filename, record.bytes, record.sha256, record.kind, record.destinationLibraryId))
         ensure(run)
+        requireDestination(session, record)
         require(session.uploadId == (record.uploadId ?: session.uploadId) && session.bytes == record.bytes)
         if (session.state == "complete") { replace(record.copy(uploadId = session.uploadId, offset = session.bytes, status = "complete", error = null, assetId = session.assetId)); return }
         require(session.state == "uploading")
@@ -175,6 +178,7 @@ class BatchUploadQueue(
         ensure(run)
         val completed = api.completeUploadSession(token(), session.uploadId)
         ensure(run)
+        requireDestination(completed, record)
         require(completed.uploadId == record.uploadId && completed.bytes == record.bytes && completed.offset == record.bytes && completed.state == "complete")
         replace(record.copy(offset = completed.bytes, status = "complete", error = null, assetId = completed.assetId))
     }
@@ -209,16 +213,22 @@ class BatchUploadQueue(
                     if (failure.status != 409 || ++conflicts > 3) throw failure
                     val confirmed = api.uploadSession(bearer, session.uploadId)
                     ensure(run)
+                    requireDestination(confirmed, record)
                     require(confirmed.uploadId == record.uploadId && confirmed.bytes == record.bytes && confirmed.state == "uploading")
                     stream.close(); stream = item.open(); skipTo(confirmed.offset)
                     session = confirmed; continue
                 }
                 ensure(run)
+                requireDestination(session, record)
                 require(session.uploadId == record.uploadId && session.bytes == record.bytes && session.offset > offset && session.offset <= record.bytes)
                 record = record.copy(offset = session.offset); replace(record)
             }
             session
         } finally { stream.close() }
+    }
+    private fun requireDestination(session: UploadSession, record: UploadQueueRecord) {
+        if (session.destinationLibraryId != record.destinationLibraryId)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
     }
     private fun digest(item: BatchUploadSource, run: Long): String {
         val hash = MessageDigest.getInstance("SHA-256"); var total = 0L

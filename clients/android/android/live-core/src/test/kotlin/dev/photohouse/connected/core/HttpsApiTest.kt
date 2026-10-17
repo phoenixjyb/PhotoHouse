@@ -2,6 +2,7 @@ package dev.photohouse.connected.core
 
 import dev.photohouse.protocol.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.*
@@ -220,11 +221,22 @@ class HttpsApiTest {
         }
     }
 
+    @Test fun targetedSessionRejectsMissingOrChangedDestinationAtCreation() = runBlocking {
+        for (extra in listOf("", ",\"destination_library_id\":\"other-library\"")) TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, uploadEnabled = true)
+            val body = """{"upload_id":"${"a".repeat(32)}","bytes":4,"offset":0,"chunk_bytes":4194304,"state":"uploading","asset_id":null$extra}"""
+            f.server.enqueue(json(body).setResponseCode(201))
+            val request = UploadSessionRequest("1".repeat(32), "2".repeat(32), "a.jpg", 4, "3".repeat(64), UploadKind.IMAGE, "family-a")
+            assertEquals(FailureKind.INVALID_RESPONSE, failure { api.createUploadSession(token, request) }.kind)
+            assertEquals(1, f.server.requestCount)
+        }
+    }
+
     @Test fun resumableSessionUsesExactRoutesOffsetsAndChunkHash() = runBlocking {
         TlsFixture().use { f ->
             val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, uploadEnabled = true)
-            val id = "a".repeat(32); val uploading = "{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":0,\"chunk_bytes\":4194304,\"state\":\"uploading\",\"asset_id\":null}"
-            f.server.enqueue(json(uploading).setResponseCode(201)); f.server.enqueue(json(uploading)); f.server.enqueue(json(uploading).setResponseCode(200)); f.server.enqueue(json("{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":4,\"chunk_bytes\":4194304,\"state\":\"complete\",\"asset_id\":\"901\"}")); f.server.enqueue(json("{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":4,\"chunk_bytes\":4194304,\"state\":\"cancelled\",\"asset_id\":null}"))
+            val id = "a".repeat(32); val uploading = "{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":0,\"chunk_bytes\":4194304,\"state\":\"uploading\",\"asset_id\":null,\"destination_library_id\":\"family-a\"}"
+            f.server.enqueue(json(uploading).setResponseCode(201)); f.server.enqueue(json(uploading)); f.server.enqueue(json(uploading).setResponseCode(200)); f.server.enqueue(json("{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":4,\"chunk_bytes\":4194304,\"state\":\"complete\",\"asset_id\":\"901\",\"destination_library_id\":\"family-a\",\"approval_state\":\"automatic\",\"library_id\":\"family-a\"}")); f.server.enqueue(json("{\"upload_id\":\"$id\",\"bytes\":4,\"offset\":4,\"chunk_bytes\":4194304,\"state\":\"cancelled\",\"asset_id\":null,\"destination_library_id\":\"family-a\"}"))
             val request = UploadSessionRequest("1".repeat(32), "2".repeat(32), "a.jpg", 4, "3".repeat(64), UploadKind.IMAGE, "family-a")
             api.createUploadSession(token, request)
             val createRequest = f.server.takeRequest()
@@ -234,6 +246,53 @@ class HttpsApiTest {
             api.uploadChunk(token, id, 0, byteArrayOf(1, 2, 3, 4), "4".repeat(64)); val chunkRequest = f.server.takeRequest(); assertEquals("PUT", chunkRequest.method); assertEquals("0", chunkRequest.getHeader("Upload-Offset")); assertEquals("4".repeat(64), chunkRequest.getHeader("X-Chunk-SHA256"))
             api.completeUploadSession(token, id); assertEquals("/upload-sessions/$id/complete", f.server.takeRequest().requestUrl!!.encodedPath)
             api.cancelUploadSession(token, id); assertEquals("DELETE", f.server.takeRequest().method)
+        }
+    }
+
+    @Test fun libraryQueueCompletesThroughRealTlsAdapterForApprovedAndPendingUploads() = runBlocking {
+        for (approval in listOf("automatic", "awaiting_review")) TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, uploadEnabled = true)
+            val id = "a".repeat(32)
+            fun result(offset: Int, state: String, extra: String = "") =
+                """{"upload_id":"$id","bytes":4,"offset":$offset,"chunk_bytes":4194304,"state":"$state","asset_id":${if (state == "complete") "\"901\"" else "null"},"destination_library_id":"family-a"$extra}"""
+            val approvedLibrary = if (approval == "automatic") ",\"library_id\":\"family-a\"" else ""
+            f.server.enqueue(json(result(0, "uploading")).setResponseCode(201))
+            f.server.enqueue(json(result(4, "uploading")))
+            f.server.enqueue(json(result(4, "complete", ",\"approval_state\":\"$approval\"$approvedLibrary")))
+            val bytes = byteArrayOf(1, 2, 3, 4)
+            val selected = BatchUploadSource("synthetic.jpg", 4, UploadKind.IMAGE,
+                { java.io.ByteArrayInputStream(bytes) }, "content://synthetic/one")
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val persistence = InMemoryUploadQueuePersistence()
+            try {
+                val queue = BatchUploadQueue(api, scope, persistence, { selected }, { true }, { token }, { it == "family-a" })
+                queue.attach("synthetic-account")
+                queue.enqueue(listOf(selected), "family-a")
+                val original = queue.state.value.single().record
+                assertEquals(0, f.server.requestCount)
+                queue.resume()
+                val final = withTimeout(10_000) {
+                    queue.state.first { it.single().record.status in setOf("complete", "failed") }.single().record
+                }
+                assertEquals("complete", final.status)
+                assertEquals("901", final.assetId)
+                assertEquals("family-a", final.destinationLibraryId)
+                assertEquals(original.requestId, final.requestId)
+                assertEquals(original.batch, final.batch)
+                assertEquals(4L, final.offset)
+                assertNull(final.error)
+                assertEquals(final, persistence.load("synthetic-account").single())
+                val create = f.server.takeRequest(2, TimeUnit.SECONDS)!!
+                val chunk = f.server.takeRequest(2, TimeUnit.SECONDS)!!
+                val complete = f.server.takeRequest(2, TimeUnit.SECONDS)!!
+                assertEquals("/upload-sessions", create.path)
+                assertEquals(original.requestId, Json.parseToJsonElement(create.body.readUtf8()).jsonObject.getValue("request_id").jsonPrimitive.content)
+                assertEquals("PUT", chunk.method)
+                assertEquals("/upload-sessions/$id", chunk.path)
+                assertArrayEquals(bytes, chunk.body.readByteArray())
+                assertEquals("/upload-sessions/$id/complete", complete.path)
+                assertEquals(3, f.server.requestCount)
+            } finally { scope.cancel() }
         }
     }
 
