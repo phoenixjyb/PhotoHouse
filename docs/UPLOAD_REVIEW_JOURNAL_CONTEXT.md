@@ -184,3 +184,10 @@ before database work, and does not inherit a query handle during Python startup.
 Other bounded callers keep their existing default path. This repair requires a
 new source pin and native qualification; neither the failed candidate nor green
 CI from its predecessor proves the new Windows path.
+
+The revised `d615583` package subsequently passed a native Job-proof canary and
+all ten generated-data cases under the retained resource limits. The matching
+source CI passed five jobs. [The native qualification record](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
+separates that result from model-service recovery and real caption processing,
+which this operation did not perform. API/configuration and OTA pointer readbacks
+were unchanged.

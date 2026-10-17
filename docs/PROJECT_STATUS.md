@@ -23,7 +23,9 @@ was not assigned automatically. Caption tasks remain pending and the configured
 caption service was unreachable at the latest read-only check. The
 [receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
 now has generated-media, mock-HTTP and bound-journal qualification. Native package
-qualification, provider recovery and live caption processing remain separate gates.
+qualification also [passed on Windows](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
+for source `d615583`, including an explicit Job-proof canary and ten synthetic
+cases. Provider recovery and live caption processing remain separate gates.
 
 ## Earlier v70 delivery snapshot
 
