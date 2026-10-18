@@ -23723,6 +23723,20 @@
       "validation_policy_changed": false,
       "runtime_changed": false,
       "application_order_note": "Upstream blobs are imported after this branch; the subsequent merge overlay retains the combined test profile."
+    },
+    {
+      "feature": "combined-discovery-and-upload-check-profiles",
+      "source_commit": "97dfb7f0757793219f480676cc472c81ad72e070",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "6d433efc7c874a10b2b3c3a13ccbcce9337e4697d07817ee850031a9edd480b1",
+          "sha256": "eeac81264e90cd58834d8c237749ff964a5061a66e7f6317a709a809f171111e"
+        }
+      ],
+      "upstream_main_preserved": true,
+      "upload_socketpair_regression_preserved": true,
+      "application_code_changed_by_resolution": false
     }
   ]
 }
