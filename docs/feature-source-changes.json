@@ -23599,6 +23599,56 @@
       "real_caption_processing_run": false,
       "runtime_worker_deployed": false,
       "schema_migration_required": false
+    },
+    {
+      "feature": "native-caption-provider-and-released-batch-record",
+      "source_commit": "bb65da32dbfb478e38a76d552a6fe450943f3b00",
+      "qualified_runtime_source_commit": "d615583a2a2c98be3daf47e82dfab68fa3186b77",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "20f08474eae5fff72ce686829a08d00f462571df21b43f4e8c2ebfe47e1b7942",
+          "before_sha256": "621d96144706411737076973d89f0520f2e14ebcf21908a98b2ee39b88f14c55"
+        },
+        {
+          "path": "docs/CAPTION_PROVIDER_RECOVERY_2026-10-18.md",
+          "sha256": "cdd803cd2c8801a3a3dae4990ec1631ac55e33e7ac0aae8b708c554ba37cf9d8"
+        },
+        {
+          "path": "docs/NATIVE_CAPTION_QUALIFICATION_2026-10-18.md",
+          "sha256": "2c79d55d2885ee271b6a6427d2a44904a2ee2b76d308804c91cb1b2a9ea93b9a",
+          "before_sha256": "1721715e883153515c234449216f525b51d3913f850ae5ad4696d641df9a02ed"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "b0b651e0899d57628ef0be7078051f8d3f5926dd22e561cfec796bf088e9c991",
+          "before_sha256": "6b6f463dadf66ec2b4e216fa0f1a34e2dcc2678a7e072fa9143f1e7d1a40cfe3"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "da367d5bb8030b854aeab54b11b73e74506023f81a9270f5fcae8c908f12dc6b",
+          "before_sha256": "fa612105240a14ee08382a7d6f307cb604ea6fdeebf88fc054aed3bff27db1c2"
+        },
+        {
+          "path": "docs/UPLOAD_REVIEW_JOURNAL_CONTEXT.md",
+          "sha256": "98496fd842836d2c99a20af1f98f51de7bbd8d784397e0a12db245333fbb4131",
+          "before_sha256": "d403a6b1d637a2da6af70ba7c515a0495ab0535659d2ec8c7d40bd00b859a42a"
+        },
+        {
+          "path": "server/docs/security/RELEASED_CAPTION_WORKER.md",
+          "sha256": "6e824c296f527524e88d88aee0adbdfc74d51b3b86932549f0b30f40443ad819",
+          "before_sha256": "6c91ca4ee8916eda564e34fafc89c90fcc0c0f7985fda3005c6570427e3a7866"
+        }
+      ],
+      "native_synthetic_provider_canary_passed": true,
+      "live_selected_captions_finished": 17,
+      "independent_completion_receipts_verified": 17,
+      "originals_hashes_verified": 17,
+      "jpeg_previews_decoded": 34,
+      "private_controller_checks_passed": 10,
+      "api_or_installed_cpu_worker_switched": false,
+      "persistent_provider_startup_enabled": false,
+      "schema_migration_required": false
     }
   ]
 }
