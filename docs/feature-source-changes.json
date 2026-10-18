@@ -23649,6 +23649,53 @@
       "api_or_installed_cpu_worker_switched": false,
       "persistent_provider_startup_enabled": false,
       "schema_migration_required": false
+    },
+    {
+      "feature": "upload-windows-socketpair-fixture-and-overlay-qualification-record",
+      "source_commit": "a31035810b8a78fdb3eeea250cbe06ed6cf3d973",
+      "files": [
+        {
+          "path": "docs/API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md",
+          "sha256": "8ecc225c1b9a53587a27254205fae4d028257b7e8c16cf5a04f264fb051092d8"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "cc41bc2eb0c454f13a63224ea722cabdbb4ae1529a73e2597e1a6e1c35856b3b",
+          "before_sha256": "b0b651e0899d57628ef0be7078051f8d3f5926dd22e561cfec796bf088e9c991"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "2b106c1ecaa34097a34355e0f48887eebec5cf70f354c0b412d60fe39991a422",
+          "before_sha256": "da367d5bb8030b854aeab54b11b73e74506023f81a9270f5fcae8c908f12dc6b"
+        },
+        {
+          "path": "server/tests/security/test_upload.py",
+          "sha256": "555c8b6de64274d0f2b6fc949a19b1adec2c7aba6deff35f8a8d97fb7f25509a",
+          "before_sha256": "50e0e8f9f3b01ad72f35727a917e51cb0d4169db1597dfa13acd8945901dd0ee"
+        },
+        {
+          "path": "server/tests/security/test_upload_socketpair_guard.py",
+          "sha256": "993aebd3e85063e42eb58bc94492b7eea1d127ecac48c4170f6469b89076e3ba"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "3f1bc907e7ec5171132183ed167436b4d60a6685e718ed8efd8f5eff3a599ec3",
+          "before_sha256": "1a508d78bd722c4147b003be2b3157d08354864824e21b3a97122bfcd95cc15d"
+        }
+      ],
+      "application_code_changed": false,
+      "native_overlay_qualified": false,
+      "native_job_proof_canary_passed": true,
+      "native_api_cohort_tests_run": 129,
+      "native_api_cohort_fixture_failures": 20,
+      "native_cpu_phase_reached": false,
+      "portable_upload_tests_passed": 65,
+      "portable_upload_subtests_passed": 16,
+      "portable_cpu_profile_tests_passed": 96,
+      "portable_cpu_profile_subtests_passed": 66,
+      "check_profile_tests_passed": 13,
+      "schema_migration_required": false,
+      "api_or_installed_cpu_worker_switched": false
     }
   ]
 }
