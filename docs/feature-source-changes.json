@@ -23253,6 +23253,63 @@
       "schema_changed": false,
       "validation_policy_changed": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "bilingual-inclusive-whole-year-search-ranges",
+      "source_commit": "c98ec044044cc723bc6a8fac5c4792bc0e371fcb",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "eff033fca1d03d42ac2ca90d697505296ecf0a34ad7b986f48d749f5c730991b",
+          "sha256": "e1dccaa45e94a0ed2e9a08c20aefb0ab9e7be2ac8483f95964f052bd46e9135f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "552f7953b76a55365d039e20550151692e621832e62d5e27c8144b9ac17720e6",
+          "sha256": "fc61e79d4c12400963394dbd9f6249ce121d2be83728d1198d648c730a898d70"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "14053ea4ec8b51ddb483fc749219fef58ee6bb7c6b0ea7ccc5552e3bc26f16a9",
+          "sha256": "3841036e05ac6c529723dee5284e52e4035ac98b99b6a9befcee140a82705bcb"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "7307bd923072ff4a0d1ea8d20b5d4e88b47ce11aaf128d3940d9424a063b5eeb",
+          "sha256": "924f34df2b2d4080b5b9ad8e8b74424dcc8b3e4f9497723d9f006ba472852f40"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false
+    },
+    {
+      "feature": "ready-intent-plan-final-search-revalidation",
+      "source_commit": "184686b917b99a699f6dae37802f05a2a8f78cd2",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "dd6f387b9ff3a275180726e9f298948a62a7b73bae560f0b185578ac6aee3e1a",
+          "sha256": "d3e4ad3aee7524bb412209d4bb2af4c6c585ccb9f960456476375ed21a2c3bc7"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "83dc82f0ce9a882d2350941eb453ef81bb23ef291f75afd8e7119b1d23385caf",
+          "sha256": "79f2d3e3a4177bb1b1775abbbf45f7dca67bc7549217ea968a106009dd72b00e"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "924f34df2b2d4080b5b9ad8e8b74424dcc8b3e4f9497723d9f006ba472852f40",
+          "sha256": "0779c8b0b6acf002877f1dc0d3938799bdb01297e574abc20d56f9c227451e5f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "cross_request_cache_added": false,
+      "runtime_changed": false
     }
   ]
 }
