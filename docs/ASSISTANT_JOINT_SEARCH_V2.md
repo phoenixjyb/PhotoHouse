@@ -138,6 +138,16 @@ still require clarification. Quoted ranges remain literal content. The shared
 deterministic planner handles these forms for negotiated v2 and v3 without an
 inference request; this source support does not establish live deployment.
 
+For a ready v3 plan, the final bound search also supplies its interpretation;
+the turn does not perform a separate pre-search presentation read. That final
+search still rechecks current membership, index/source validity and the initial
+binding before exposing results. Non-ready plans retain a bound presentation
+read because they return without searching; a conflicting continuation date
+also retains revalidation before its early refusal. No authorization/source projection
+is reused across requests, and existing budgets and workspace response
+revalidation remain unchanged. One fewer discovery pass is a structural saving,
+not a claim about production end-to-end latency.
+
 Existing searches also accept explicit removal of one constraint, for example
 `any date` / `不限日期`, `anyone` / `不限人物`, `anywhere` / `不限地点`,
 `any tag` / `取消标签筛选`, `any text` / `不限内容`, and

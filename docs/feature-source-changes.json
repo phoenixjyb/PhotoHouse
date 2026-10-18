@@ -23284,6 +23284,32 @@
       "authorization_changed": false,
       "provider_calls_added": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "ready-intent-plan-final-search-revalidation",
+      "source_commit": "184686b917b99a699f6dae37802f05a2a8f78cd2",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "dd6f387b9ff3a275180726e9f298948a62a7b73bae560f0b185578ac6aee3e1a",
+          "sha256": "d3e4ad3aee7524bb412209d4bb2af4c6c585ccb9f960456476375ed21a2c3bc7"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_search.py",
+          "before_sha256": "83dc82f0ce9a882d2350941eb453ef81bb23ef291f75afd8e7119b1d23385caf",
+          "sha256": "79f2d3e3a4177bb1b1775abbbf45f7dca67bc7549217ea968a106009dd72b00e"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "924f34df2b2d4080b5b9ad8e8b74424dcc8b3e4f9497723d9f006ba472852f40",
+          "sha256": "0779c8b0b6acf002877f1dc0d3938799bdb01297e574abc20d56f9c227451e5f"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "cross_request_cache_added": false,
+      "runtime_changed": false
     }
   ]
 }

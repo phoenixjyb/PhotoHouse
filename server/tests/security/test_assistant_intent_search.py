@@ -3,13 +3,17 @@ from contextlib import closing
 import sqlite3
 import unittest
 import uuid
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.access.assistant_workspace_store import initialize_v2
 from app.access.discovery_provider import MemoryIndexProvider
 from app.access.search_intent import IntentUnavailable
-from app.access.service import AccessService
+from app.access import search_intent
+from app.access import assistant as assistant_module, discovery as d
+from app.access.assistant_search import SearchRuntime
+from app.access.service import AccessDenied, AccessService
 from app.main import create_app
 from phone_discovery_fixture import NOW, TOKEN, OTHER, reviewed
 import test_assistant_joint_search as joint_fixture
@@ -71,6 +75,100 @@ class AssistantIntentSearchTests(unittest.TestCase):
         return self.client.post('/assistant/v1/turns',
             json={'library_id': 'family-a', 'text': words, 'context': context},
             headers={'Authorization': 'Bearer ' + token, 'X-PhotoHouse-Search-Version': '3'})
+
+    def test_ready_plans_use_final_bound_search_for_revalidation_and_interpretation(self):
+        original_call = SearchRuntime.call
+        for words, expected in (('find photos in September 2032', ['103', '101']),
+                                ('find photos playing in snow', ['101', '103'])):
+            calls = []
+
+            def counted(runtime, operation, *args, **kwargs):
+                calls.append(operation)
+                return original_call(runtime, operation, *args, **kwargs)
+
+            with self.subTest(words=words), patch.object(SearchRuntime, 'call', counted):
+                response = self.intent(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], 'results', body)
+                self.assertEqual([item['id'] for item in body['items']], expected)
+                self.assertIn('interpretation', body)
+                self.assertEqual(calls, ['entities', 'search'])
+
+    def test_ready_and_clarifying_plans_revalidate_after_planning_before_return(self):
+        original_plan = search_intent.plan_query
+        original_call = SearchRuntime.call
+        with self.connection() as db:
+            original_caption = db.execute('SELECT text FROM captions WHERE id=1').fetchone()[0]
+        for ready, words in ((True, 'find photos playing in snow'),
+                             (False, 'find photos in an unknown place')):
+            for changed in ('source', 'membership'):
+                calls = []
+                plans = []
+
+                def counted(runtime, operation, *args, **kwargs):
+                    calls.append(operation)
+                    return original_call(runtime, operation, *args, **kwargs)
+
+                def change_after_plan(*args, **kwargs):
+                    plan = original_plan(*args, **kwargs)
+                    plans.append(plan.status)
+                    if changed == 'source':
+                        self.mutate("UPDATE captions SET text='changed after completed plan' WHERE id=1")
+                    else:
+                        self.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+                    return plan
+
+                with self.subTest(ready=ready, changed=changed):
+                    try:
+                        with patch.object(SearchRuntime, 'call', counted), \
+                             patch.object(search_intent, 'plan_query', change_after_plan):
+                            response = self.intent(words)
+                        self.assertEqual(plans, ['ready' if ready else 'clarification'])
+                        self.assertEqual(response.status_code, 409 if changed == 'source' else 401,
+                                         response.text)
+                        self.assertNotIn('items', response.json())
+                        self.assertEqual(calls, ['entities', 'search' if ready else 'presentation'])
+                    finally:
+                        self.mutate('UPDATE captions SET text=? WHERE id=1', (original_caption,))
+                        self.mutate("UPDATE access_memberships SET status='approved' WHERE account_id='one'")
+
+    def test_conflicting_ready_continuation_revalidates_before_early_refusal(self):
+        original_plan = search_intent.plan_query
+        original_call = SearchRuntime.call
+        with self.connection() as db:
+            original_caption = db.execute('SELECT text FROM captions WHERE id=1').fetchone()[0]
+        runtime = SearchRuntime(self.discovery_runtime, search_version=3, intent_planner=self.planner)
+        binding = self.intent('find photos in September 2032').json()['context']['binding']
+        for changed, error in (('none', assistant_module.AssistantChanged),
+                               ('source', d.DiscoveryChanged), ('membership', AccessDenied)):
+            calls = []
+
+            def counted(engine, operation, *args, **kwargs):
+                calls.append(operation)
+                return original_call(engine, operation, *args, **kwargs)
+
+            def change_after_plan(*args, **kwargs):
+                plan = original_plan(*args, **kwargs)
+                self.assertEqual(plan.status, 'ready')
+                if changed == 'source':
+                    self.mutate("UPDATE captions SET text='changed after continuation plan' WHERE id=1")
+                elif changed == 'membership':
+                    self.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+                return plan
+
+            with self.subTest(changed=changed):
+                try:
+                    with patch.object(SearchRuntime, 'call', counted), \
+                         patch.object(search_intent, 'plan_query', change_after_plan), self.assertRaises(error):
+                        assistant_module._turn(runtime, TOKEN, 'family-a',
+                            'find photos in September 2032', None, lambda: NOW,
+                            continuation={'binding': binding,
+                                          'date': {'from': '2020-01-01', 'to': '2020-12-31'}})
+                    self.assertEqual(calls, ['entities', 'presentation'])
+                finally:
+                    self.mutate('UPDATE captions SET text=? WHERE id=1', (original_caption,))
+                    self.mutate("UPDATE access_memberships SET status='approved' WHERE account_id='one'")
 
     def test_bilingual_concepts_retrieve_current_evidence_under_all_hard_filters(self):
         for query in ('find photos of Sample Child playing in snow red coat in September 2032',
