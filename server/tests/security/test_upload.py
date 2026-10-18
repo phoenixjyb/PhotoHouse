@@ -90,7 +90,9 @@ class UploadTests(unittest.TestCase):
         self.access = AccessRuntime(ExistingDatabase(self.path.resolve()),
                                     'https://photohouse.test', clock=lambda: NOW)
         self.runtime = UploadRuntime(self.access, self.incoming, (self.originals,))
-        for target in ('socket.socket.bind', 'socket.socket.connect', 'subprocess.Popen', 'os.system'):
+        from test_network_guard import install_no_external_sockets
+        install_no_external_sockets(self)
+        for target in ('subprocess.Popen', 'os.system'):
             guard = patch(target, side_effect=AssertionError('External I/O forbidden'))
             guard.start()
             self.addCleanup(guard.stop)

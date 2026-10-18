@@ -1,5 +1,12 @@
 # Current project status
 
+**October 18 API/CPU qualification:** the [offline overlay trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
+passed the native Job-proof canary, then stopped on 20 Windows socketpair fixture
+failures in the resumable-upload cohort. This is not a completed API/CPU rollout;
+the later schema-specific and CPU phases were not reached. Repair the fixture
+and retain the currently observed discovery-latency and invitation overlays when
+preparing a fresh candidate. No family media or production database was used.
+
 **October 18 caption follow-through:** the bounded
 [provider recovery and released-batch trial](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
 passed. All 17 selected captions were generated and committed with 17 completion

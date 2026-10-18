@@ -31,7 +31,7 @@ API_TESTS = (
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
-    "test_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
+    "test_upload.py", "test_upload_socketpair_guard.py", "test_resumable_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_retry.py", "test_upload_review.py",
     "test_upload_caption_processing.py", "test_approved_caption_generation.py", "test_approved_caption_http.py", "test_released_caption_worker.py", "test_released_caption_package.py", "test_qualify_released_caption_worker.py",
     "test_upload_original_deletion_journal.py", "test_upload_processing_deferral.py", "test_upload_processing_release.py",
@@ -91,6 +91,7 @@ MEMORY_TESTS = (
     "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
+    "test_upload_socketpair_guard.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_runtime_adapter.py", "test_staging_package.py",
     "test_approved_worker_package.py", "test_memory_groups_qualification.py",
