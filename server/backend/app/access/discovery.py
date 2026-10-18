@@ -26,6 +26,7 @@ POLICY = 'protected-discovery-service-1'
 FIELDS = ('people', 'date', 'caption', 'tags', 'locations', 'media')
 SOURCES = {'manual':'manual', 'cap':'caption', 'img':'image', 'cap+img':'caption_image', 'rule':'rule'}
 MAX_ID = 2**63-1
+_TEXT_CONTROLS = re.compile(r'[\x00-\x08\x0b-\x1f]')
 SCOPE = " JOIN assets a ON a.id=x.asset_id JOIN access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL)"
 
 
@@ -71,7 +72,9 @@ def text(value, maximum, nonempty=True):
     require(type(value) is str)
     try: require(len(value.encode('utf-8')) <= maximum)
     except UnicodeError: raise DiscoveryInvalid() from None
-    require(not any(ord(c)<32 and c not in '\n\t' for c in value) and (not nonempty or bool(value.strip())))
+    # Scan in the regex engine rather than a Python callback per character.
+    # Keep the exact existing policy: only C0 controls other than LF/TAB fail.
+    require(_TEXT_CONTROLS.search(value) is None and (not nonempty or bool(value.strip())))
     return value
 
 
