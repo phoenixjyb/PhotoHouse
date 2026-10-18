@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+from contextlib import nullcontext
 from pathlib import Path
 import sqlite3
 import sys
@@ -416,20 +417,188 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
                 '--device', 'cpu', '--receipt', str(self.derived / 'absent.json')])
         module.EmbeddingService.assert_not_called()
 
-    def test_windows_supervised_child_gets_hard_job_memory_cap_and_cleanup(self):
-        job = Mock()
-        module = SimpleNamespace(WindowsJob=Mock(return_value=job))
+    def test_windows_supervised_children_share_one_lifetime_job(self):
+        made = []
+
+        class FakeJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.summary_calls = 0
+                self.closed = 0
+                made.append(self)
+
+            def summary(self):
+                self.summary_calls += 1
+                return {'limit_bytes': self.memory_mib * 1024**2, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
         proc = SimpleNamespace(poll=Mock(return_value=0), returncode=0, stdout=None)
-        proc.stdout = None
         popen = Mock(return_value=proc)
-        with patch.dict(sys.modules, {'home_memory_envelope': module}), \
-             patch.object(worker.sys, 'platform', 'win32'), \
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'WindowsJob', FakeJob), \
              patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
              patch.object(worker.subprocess, 'Popen', popen), \
-             patch.object(worker.subprocess, 'CREATE_NO_WINDOW', 0, create=True), \
-             patch.object(worker.subprocess, 'BELOW_NORMAL_PRIORITY_CLASS', 0, create=True):
-            worker.run_supervised(['synthetic-child'], env={}, derived=self.derived,
-                                  deadline=float('inf'))
-        module.WindowsJob.assert_called_once_with(4096)
-        job.close.assert_called_once()
-        self.assertEqual(popen.call_args.kwargs['creationflags'], 0)
+             patch.object(worker.subprocess, 'CREATE_NO_WINDOW', 0x08000000, create=True), \
+             patch.object(worker.subprocess, 'BELOW_NORMAL_PRIORITY_CLASS', 0x4000, create=True):
+            with worker.worker_memory_envelope():
+                worker.run_supervised(['probe-child'], env={}, derived=self.derived,
+                                      deadline=float('inf'))
+                worker.run_supervised(['embed-child'], env={}, derived=self.derived,
+                                      deadline=float('inf'))
+                self.assertEqual(len(made), 1)
+                self.assertEqual(made[0].closed, 0)
+            self.assertEqual(made[0].closed, 1)
+        self.assertEqual(made[0].memory_mib, 4096)
+        self.assertGreaterEqual(made[0].summary_calls, 3)
+        self.assertEqual(popen.call_count, 2)
+        self.assertEqual(popen.call_args.kwargs['creationflags'], 0x08000000 | 0x4000)
+
+    def test_windows_child_refuses_missing_wrong_pid_or_changed_job_before_launch(self):
+        wrong_pid_job = Mock(summary=Mock(return_value={
+            'limit_bytes': worker.MAX_CHILD_RSS, 'limit_flags': 0x200}))
+        changed_summary_job = Mock(summary=Mock(return_value={
+            'limit_bytes': worker.MAX_CHILD_RSS - 1, 'limit_flags': 0x200}))
+        cases = (
+            ('missing', None, None),
+            ('wrong_pid', wrong_pid_job, worker.os.getpid() + 1),
+            ('changed_summary', changed_summary_job, worker.os.getpid()),
+        )
+        for name, job, pid in cases:
+            with self.subTest(name=name):
+                with patch.object(worker.sys, 'platform', 'win32'), \
+                     patch.object(worker, '_ACTIVE_WINDOWS_JOB', job), \
+                     patch.object(worker, '_ACTIVE_WINDOWS_JOB_PID', pid), \
+                     patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+                     patch.object(worker.subprocess, 'Popen') as launch:
+                    with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                        worker.run_supervised(['unbounded'], env={}, derived=self.derived,
+                                              deadline=float('inf'))
+                launch.assert_not_called()
+        wrong_pid_job.summary.assert_not_called()
+        changed_summary_job.summary.assert_called_once()
+
+    def test_windows_worker_envelope_refuses_nested_reentry_without_replacing_job(self):
+        made = []
+
+        class FakeJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.closed = 0
+                made.append(self)
+
+            def summary(self):
+                return {'limit_bytes': self.memory_mib * 1024**2, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+             patch.object(worker, 'WindowsJob', FakeJob):
+            with worker.worker_memory_envelope():
+                with self.assertRaisesRegex(RuntimeError, 'worker_memory_envelope_already_active'):
+                    with worker.worker_memory_envelope():
+                        self.fail('nested worker envelope must be refused')
+                self.assertEqual(len(made), 1)
+                self.assertEqual(made[0].closed, 0)
+            self.assertEqual(made[0].closed, 1)
+
+    def test_windows_job_verification_and_child_launch_errors_close_lifetime_job(self):
+        made = []
+
+        class FakeJob:
+            def __init__(self, memory_mib, *, valid=True):
+                self.memory_mib = memory_mib
+                self.valid = valid
+                self.closed = 0
+                made.append(self)
+
+            def summary(self):
+                size = self.memory_mib * 1024**2 - (0 if self.valid else 1)
+                return {'limit_bytes': size, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+             patch.object(worker, 'WindowsJob', side_effect=lambda mib: FakeJob(mib, valid=False)):
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                with worker.worker_memory_envelope():
+                    self.fail('invalid job policy must prevent execution')
+        self.assertEqual(made[-1].closed, 1)
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+             patch.object(worker, 'WindowsJob', side_effect=lambda mib: FakeJob(mib)), \
+             patch.object(worker.subprocess, 'CREATE_NO_WINDOW', 0x08000000, create=True), \
+             patch.object(worker.subprocess, 'BELOW_NORMAL_PRIORITY_CLASS', 0x4000, create=True), \
+             patch.object(worker.subprocess, 'Popen', side_effect=OSError('synthetic launch failure')):
+            with self.assertRaisesRegex(OSError, 'synthetic launch failure'):
+                with worker.worker_memory_envelope():
+                    worker.run_supervised(['launch-failure'], env={}, derived=self.derived,
+                                          deadline=float('inf'))
+        self.assertEqual(made[-1].closed, 1)
+
+    def test_windows_job_creation_failure_precedes_provider_probe_and_task_claim(self):
+        task_id = self.task()
+        args = self.args()
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+             patch.object(worker, 'WindowsJob', side_effect=OSError('synthetic assignment failure')), \
+             patch.object(worker, '_probe_provider') as probe, \
+             patch.object(worker, '_claim_one') as claim:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run(args)
+        probe.assert_not_called()
+        claim.assert_not_called()
+        self.assertEqual(self.db.execute('SELECT state,retry_count FROM tasks WHERE id=?',
+                                         (task_id,)).fetchone(), ('pending', 0))
+
+    def test_windows_job_is_revalidated_after_provider_probe_before_task_claim(self):
+        task_id = self.task()
+        args = self.args()
+        jobs = []
+
+        class FakeJob:
+            def __init__(self, memory_mib):
+                self.memory_mib = memory_mib
+                self.valid = True
+                self.closed = 0
+                jobs.append(self)
+
+            def summary(self):
+                limit = self.memory_mib * 1024**2 - (0 if self.valid else 1)
+                return {'limit_bytes': limit, 'limit_flags': 0x200}
+
+            def close(self):
+                self.closed += 1
+
+        provider = {
+            'effective_provider': 'open_clip', 'effective_device': 'cpu',
+            'selected_physical_device': 'cpu', 'selected_gpu_uuid': None,
+            'preprocessing_sha256': 'a' * 64, 'checkpoint_sha256': self.checksum,
+            'dimension': 512,
+        }
+
+        def invalidate_after_probe(*_args, **_kwargs):
+            jobs[0].valid = False
+            return provider
+
+        with patch.object(worker.sys, 'platform', 'win32'), \
+             patch.object(worker, 'observe_memory', return_value=(16 * 1024**3, 0)), \
+             patch.object(worker, 'WindowsJob', FakeJob), \
+             patch.object(worker, 'kernel_lock', side_effect=lambda *_a, **_kw: nullcontext()), \
+             patch.object(worker, '_probe_provider', side_effect=invalidate_after_probe), \
+             patch.object(worker, '_claim_one') as claim, \
+             patch.object(worker, 'record_failure') as record_failure:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run(args)
+
+        claim.assert_not_called()
+        record_failure.assert_not_called()
+        self.assertEqual(jobs[0].closed, 1)
+        self.assertEqual(self.db.execute('SELECT state,retry_count FROM tasks WHERE id=?',
+                                         (task_id,)).fetchone(), ('pending', 0))

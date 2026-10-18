@@ -69,6 +69,65 @@ class ApprovedVideoEmbedWorkerTests(unittest.TestCase):
             'model_version': 'synthetic-v1', 'device': 'cpu', 'expected_gpu_uuid': None,
             'stop_file': str(self.stop), 'execute': True, 'once': True})()
 
+    def test_memory_admission_refusal_precedes_probe_and_claim(self):
+        from contextlib import contextmanager
+
+        @contextmanager
+        def refused():
+            raise RuntimeError('hard_child_memory_cap_unavailable')
+            yield
+
+        with patch.object(worker.image_worker, 'worker_memory_envelope', refused), \
+                patch.object(worker.image_worker, '_probe_provider') as probe, \
+                patch.object(worker, '_claim_one') as claim:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run(self.args())
+            probe.assert_not_called()
+            claim.assert_not_called()
+
+    def test_default_provider_probe_stays_inside_one_worker_envelope(self):
+        from contextlib import contextmanager
+        events = []
+
+        @contextmanager
+        def envelope():
+            events.append('enter')
+            try:
+                yield
+            finally:
+                events.append('exit')
+
+        def probe(*_args, **_kwargs):
+            self.assertEqual(events, ['enter'])
+            events.append('probe')
+            return {'effective_provider': 'open_clip', 'effective_device': 'cpu',
+                    'selected_physical_device': 'cpu', 'selected_gpu_uuid': None}
+
+        args = self.args()
+        args.execute = False
+        with patch.object(worker.image_worker, 'worker_memory_envelope', envelope), \
+                patch.object(worker.image_worker, '_probe_provider', side_effect=probe):
+            result = worker.run(args)
+        self.assertFalse(result['activated'])
+        self.assertEqual(events, ['enter', 'probe', 'exit'])
+
+    def test_post_probe_memory_loss_does_not_claim_or_spend_retry(self):
+        from contextlib import nullcontext
+        self.task()
+        with patch.object(worker.image_worker, 'worker_memory_envelope', nullcontext), \
+                patch.object(worker.sys, 'platform', 'win32'), \
+                patch.object(worker.image_worker, '_probe_provider', return_value={}), \
+                patch.object(worker.image_worker, '_require_active_windows_job',
+                             side_effect=RuntimeError('hard_child_memory_cap_unavailable')), \
+                patch.object(worker, '_claim_one') as claim, \
+                patch.object(worker, '_record_failure') as failure:
+            with self.assertRaisesRegex(RuntimeError, 'hard_child_memory_cap_unavailable'):
+                worker.run(self.args())
+            claim.assert_not_called()
+            failure.assert_not_called()
+        self.assertEqual(self.db.execute('SELECT state,retry_count FROM tasks').fetchall(),
+                         [('pending', 0)])
+
     def test_default_preflight_counts_only_approved_videos_with_bounded_frames(self):
         self.assertEqual(worker.REVISIONS,
                          {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304'})

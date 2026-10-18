@@ -27,3 +27,12 @@ The canary output contract requires decoded image derivatives and video metadata
 ## Acceptance boundaries
 
 Synthetic tests use generated records, temporary databases, fake child results and local image tooling. They verify source behavior and refusal paths; they do not establish Windows scheduling, installed dependencies, GPU/model readiness, a live service, family data processing or release activation. Those require their own source-pinned operational and owner acceptance evidence.
+
+## Worker memory lifecycle follow-up
+
+Image, face and video embedding invocations now use one verified Windows Job
+for their lifetime, rather than attaching the supervisor to a new Job for every
+child. See [Approved worker memory lifetime](APPROVED_WORKER_MEMORY_LIFETIME.md)
+for admission rules, the model-free native qualifier and separate recovery /
+service acceptance gates. This source contract does not assert that an existing
+private Windows deployment has been switched.

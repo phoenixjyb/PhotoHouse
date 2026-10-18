@@ -23875,6 +23875,69 @@
       "production_database_opened": false,
       "api_or_installed_cpu_worker_switched": false,
       "candidate_requires_current_search_overlay_rebase_before_rollout": true
+    },
+    {
+      "feature": "approved-worker-lifetime-memory-envelope",
+      "source_commit": "dd67f11e9556d3c849c109dc3b5a85d77a09fff3",
+      "files": [
+        {
+          "path": "server/docs/security/APPROVED_UPLOAD_PROCESSING_V37.md",
+          "sha256": "fa9efaa762df0e616ef008ff2f134ee30975718c36368a20c331c6d14ea481ce",
+          "before_sha256": "7eccfc3118459dd73d7fe32f61af13ef308936f0b5dbb819cad2cce0e829ea3e"
+        },
+        {
+          "path": "server/docs/security/APPROVED_WORKER_MEMORY_LIFETIME.md",
+          "sha256": "27a1ec8be94759431a5b7c94fe6f833c49c31f6d3cf54c5710275707af2f6853",
+          "before_sha256": null
+        },
+        {
+          "path": "server/scripts/qualify_image_worker_memory_lifetime.py",
+          "sha256": "5b6d1fa540ee334e90a70d0a64988a019fdb7286b045558e7e50eb6e05f505ec",
+          "before_sha256": null
+        },
+        {
+          "path": "server/scripts/run_approved_face_pipeline.py",
+          "sha256": "a01376883b81d1339bd98aeba366b132fd3125f320fb1f4906ff15c6ada9078e",
+          "before_sha256": "98581b70e93e617cb7387d30c97290aaf2b4dd5c044d7a0a25e1cff66e1b640b"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "sha256": "29e86bc568f2ec576d8a427e18bffeb15d4e74cb6d68e157ff64a635383fd39e",
+          "before_sha256": "d30f847dbc2265d98b5fdbdde2011410d43fd8eead9a44910224c12be33f83de"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "sha256": "50d9259933f2e5c791d92b34db86f766cadbf9b5f4fe436491c011188aad9557",
+          "before_sha256": "e6f7213e76eb7ee666c68f585427f9af03e7d7ecac608754fa04f71f085c9a3e"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_pipeline.py",
+          "sha256": "dc867ccb54fcda08db6dc9489297fdaa2f507dfe27de6873ca7ad3bc8ff23138",
+          "before_sha256": "45dca330d97ea8ac7878df034270a25ebd52463fb75819819227412df8542c0e"
+        },
+        {
+          "path": "server/tests/security/test_approved_image_embed_worker.py",
+          "sha256": "38ac740992aecfc552e6866eba9168167d0813ee937ee6055d2eb35d1c75fa8f",
+          "before_sha256": "38671842bb2aeac5cefb14bc4d9007ce23db247a29d7f90aac939a255be256d4"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_embed_worker.py",
+          "sha256": "137689c64b54377b3558bdda27652f12f6baab437616656c55a7c0b295b421cc",
+          "before_sha256": "e84abacd937cadaf42611f1903d3601d6dbaa564c92b11757475692250497739"
+        },
+        {
+          "path": "server/tests/security/test_image_worker_memory_lifetime_qualification.py",
+          "sha256": "d71798b4be284fb921f3abd9a33f868c85e56d5d2a2698ed4464491aa4fcfe6a",
+          "before_sha256": null
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "models_changed": false,
+      "current_public_worker_native_qualified": false,
+      "private_frozen_projection_native_children": 120,
+      "windows_services_changed": false,
+      "production_tasks_retried": false
     }
   ]
 }
