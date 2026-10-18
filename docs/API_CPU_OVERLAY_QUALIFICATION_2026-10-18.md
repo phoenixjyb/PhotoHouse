@@ -112,3 +112,47 @@ Portable checks after the lock repair passed 67 upload-related tests; the update
 Windows CPU profile passed 118 tests and 66 subtests on the source Mac, and 13
 check-profile tests passed. These results do not replace native Windows package
 qualification.
+
+## Native R5 passed
+
+All five source CI jobs passed at integrated review head `8fe0ab9`. The fixed
+263-file R5 archive (1,265,273 bytes, SHA-256
+`2cb62eb2439bfd34d587ed4c2703af24852af2a1c60d7a41e11f9b6d317359f6`)
+was then approved for one native synthetic qualification. Its fixed artifact
+source is `102097a`; selected fixture and repair bytes were also checked against
+the integrated review head. R4's consumed operation and failure evidence remain.
+
+The first local transport preflight detected a changed API action and stopped
+before creating a Windows stage. Read-only reconciliation verified a separate
+search-range/revalidation release at `7cf5998`: all 238 current source hashes
+matched, configuration and guard were unchanged, and non-action task settings,
+the other eight tasks and eleven earlier file pins matched. A fresh local
+transport evidence directory retained the original preflight claim/logs and
+continued the **same approved package, operation and limits**. It added four
+current-release preservation pins; the native operation had not yet run.
+
+Transferred archive/controller/operation hashes passed. The explicit native
+startup Job proof passed with flags `0x2208`, 2 GiB and eight processes. Serial
+API and CPU children retained the 8 GiB free-RAM floor and five-/two-minute caps:
+
+- 132 API tests passed, including real concurrent transfer refusal and retry.
+- Three additional bound-journal HTTP tests passed with schema `a0c9d2e4f817`.
+- Five synthetic invitation checks passed.
+- Twenty CPU tests passed, including immutable entry validation.
+
+The native operation and delivery controller exited successfully. Independent
+readback matched the saved native result. Postflight matched all nine task
+bindings and fifteen file pins, including both OTA pointers. A trusted HTTPS
+WebUI request returned 200; this is anonymous availability only. No real database
+or family media was opened, no model was loaded, no application network request
+was sent, and no service, task, configuration or OTA feed was changed by this run.
+
+This qualifies the **fixed R5 synthetic artifact**, not the actual production
+bootstrap, current database, installed CPU payload or family upload behavior.
+Its API payload includes the original invitation/latency overlays, three journal
+repairs and the lock repair; it predates the two-file `7cf5998` search overlay
+observed during preflight. Before any live switch, compose a candidate that
+retains those exact current search files, qualify the resulting bootstrap and
+prepare fresh stopped-writer backup, switch and rollback controls. PR merge and
+API/CPU activation remain separate delivery gates. Do not replay the consumed R5
+operation or start the incompatible legacy caption worker.

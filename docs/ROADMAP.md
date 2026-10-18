@@ -1,12 +1,12 @@
 # Product roadmap
 
-**October 18 API/CPU qualification:** the [R4 offline overlay trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
-passed the native Job-proof canary and 129 of 130 API tests. The socketpair
-fixture repair succeeded; one Windows upload-lock test returned 503 instead of
-retryable 429. The schema-specific and CPU phases were not reached. Repair the
-lock classification and qualify a fresh candidate preserving the live search
-and invitation overlays. Online task/file pins and OTA remain unchanged; this
-is not an API/CPU deployment. No family media or production database was used.
+**October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
+passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
+checks and 20 CPU tests. Independent native result readback and nine-task/fifteen-file
+preservation checks passed. The candidate’s Windows contention fix returns retryable 429.
+The live API was separately updated with a newer search overlay before this trial;
+retain that overlay when composing the next rollout candidate. This operation did
+not switch an API or worker, open family data, migrate a database or publish OTA.
 
 **October 18 follow-through:** [the selected batch's captions are complete](CAPTION_PROVIDER_RECOVERY_2026-10-18.md):
 17 generated results and completion receipts, unchanged original hashes and 34
