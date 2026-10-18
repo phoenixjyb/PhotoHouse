@@ -92,7 +92,7 @@ MEMORY_TESTS = (
     "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
-    "test_upload_socketpair_guard.py",
+    "test_upload_socketpair_guard.py", "test_resumable_upload.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_runtime_adapter.py", "test_staging_package.py",
     "test_approved_worker_package.py", "test_memory_groups_qualification.py",

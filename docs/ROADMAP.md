@@ -1,11 +1,12 @@
 # Product roadmap
 
-**October 18 API/CPU qualification:** the [offline overlay trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
-passed the native Job-proof canary, then stopped on 20 Windows socketpair fixture
-failures in the resumable-upload cohort. This is not a completed API/CPU rollout;
-the later schema-specific and CPU phases were not reached. Repair the fixture
-and retain the currently observed discovery-latency and invitation overlays when
-preparing a fresh candidate. No family media or production database was used.
+**October 18 API/CPU qualification:** the [R4 offline overlay trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
+passed the native Job-proof canary and 129 of 130 API tests. The socketpair
+fixture repair succeeded; one Windows upload-lock test returned 503 instead of
+retryable 429. The schema-specific and CPU phases were not reached. Repair the
+lock classification and qualify a fresh candidate preserving the live search
+and invitation overlays. Online task/file pins and OTA remain unchanged; this
+is not an API/CPU deployment. No family media or production database was used.
 
 **October 18 follow-through:** [the selected batch's captions are complete](CAPTION_PROVIDER_RECOVERY_2026-10-18.md):
 17 generated results and completion receipts, unchanged original hashes and 34

@@ -72,3 +72,43 @@ the consumed native claim, failure log and old package. Do not modify the
 already-staged files or rerun the failed operation. A newly fixed Windows package
 needs a fresh private stage and operation authority. No service switch, queue
 reset, migration, APK publication or model activation is part of this repair.
+
+## Native R4 result and Windows upload contention
+
+The corrected 263-file R4 package was approved after all five CI jobs succeeded
+at review head `9b9dfae`. Its transferred hashes and explicit Job-proof startup
+canary passed. The native API child ran all 130 tests in 59.7 seconds: 129 passed,
+and one failed. The previously failing socketpair cohort now runs successfully.
+
+The remaining failure is `test_same_transfer_busy_lock_refuses_without_waiting`:
+a concurrent request to the same synthetic transfer returned 503 instead of
+retryable 429. Windows CRT nonblocking byte-range locking reports `EACCES` for a
+locking violation; the existing implementation catches only `BlockingIOError`.
+See [Microsoft's `_locking` return values](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/locking?view=msvc-170).
+The repair must classify contention only at lock acquisition, preserve unrelated
+storage/permission failures, and always close the descriptor. Exceptions raised
+inside the protected upload operation must not be relabelled as contention.
+
+R4 stopped before the separate three-test `a0` cohort and CPU phase. It is **not
+natively qualified**. Its operation claim, package and failure log are retained;
+do not replay it or overwrite its staged files. Post-failure readback matched all
+nine task bindings and eleven file pins, including both OTA pointers. A separate
+trusted HTTPS request returned 200 for the Web UI. No production database,
+family media, model, service, task or OTA change occurred.
+
+A subsequent candidate must preserve the current invitation and discovery
+optimizations and add the Windows contention repair to the three journal files.
+Its complete extracted artifact, regression tests and native qualification are
+separate gates before a live API or CPU-worker switch.
+
+The source repair normalizes Windows CRT lock contention at acquisition only,
+keeps other I/O errors intact, and closes the descriptor even if unlock fails.
+Portable regressions cover the CRT busy errno, unrelated storage failures,
+protected-body error propagation, descriptor closure and subsequent retry. The
+unchanged real same-transfer HTTP test is now also in the Windows CPU CI profile,
+so this platform-specific contract is checked before another native package trial.
+
+Portable checks after the lock repair passed 67 upload-related tests; the updated
+Windows CPU profile passed 118 tests and 66 subtests on the source Mac, and 13
+check-profile tests passed. These results do not replace native Windows package
+qualification.
