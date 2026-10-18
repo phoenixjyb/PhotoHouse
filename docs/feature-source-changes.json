@@ -23409,6 +23409,26 @@
       "runtime_changed": false,
       "people_index_enabled": false,
       "kinship_graph_enabled": false
+    },
+    {
+      "feature": "disabled-people-kinship-ambiguity-guidance",
+      "source_commit": "cb8994177235db1a6e309ff94bd6f573028be486",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "36b456b6c4348e1279b4605d378953dbcb61e553ec41a5f91ec64c546bd89fcf",
+          "sha256": "0976e726a848e451df906dcf1760df6bc19f94b53296d9bd7c119cce13adb74b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capability_guidance.py",
+          "before_sha256": "89a8372d2b862ea9560777f008bb5d37649823259c5eff41bf330db47192cc9a",
+          "sha256": "47fc15e1b6385a9e658e4e005b20fbc7c25197c70d61874279e7db481accc15b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "runtime_changed": false
     }
   ]
 }

@@ -822,7 +822,16 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
             reply = _search_clarification_guidance(enabled, lang)
-            if plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
+            if 'people' not in enabled and plan.reason in (
+                    'ambiguous_date_entity', 'ambiguous_media_entity',
+                    'ambiguous_entities', 'ambiguous_people', 'ambiguous',
+                    'people_reference_unavailable', 'ambiguous_people_reference',
+                    'ambiguous_people_answer', 'conflicting_people_reference'):
+                # A private relationship graph can recognize a mention even
+                # while its reviewed people index is unavailable. Asking for
+                # another name cannot make that disabled facet usable.
+                reply = _search_clarification_guidance(enabled, lang)
+            elif plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
                 reply = ('有个词既可能是已登记的名称，也可能是日期或媒体类型。请补充完整名称，或明确日期和类型。'
                          if lang == 'zh' else
                          'A word could mean a reviewed name or a date/media type. Use the full name or specify the date and type.')

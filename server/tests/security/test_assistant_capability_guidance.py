@@ -14,6 +14,8 @@ from app.access.assistant_search import SearchRuntime
 from app.access.discovery_provider import ProjectedIndex
 from app.access.assistant_workspace_store import initialize_v2
 from app.main import create_app
+from test_assistant_kinship import MutableKinshipProvider, assistant_graph
+from app.access.kinship import KinshipGraph
 
 
 class QuestionPlanner:
@@ -120,3 +122,19 @@ class AssistantCapabilityGuidanceTests(unittest.TestCase):
                            'recorded capture dates', 'photo-memory', 'reviewed places', 'reviewed tags'):
                 self.assertNotIn(phrase, reply)
             self.assertLessEqual(len(reply.encode('utf-8')), 600)
+
+    def test_kinship_mentions_cannot_recommend_names_when_people_is_disabled(self):
+        self.app.state.assistant_kinship_provider = MutableKinshipProvider(KinshipGraph(assistant_graph()))
+        for version in ('2', '3'):
+            for words, chinese in (('找妈妈的照片', True), ('find photos of my mother', False)):
+                with self.subTest(version=version, words=words):
+                    response = self.client.post('/assistant/v1/turns', headers=self.auth |
+                        {'X-PhotoHouse-Search-Version': version},
+                        json={'library_id': 'family-a', 'text': words, 'context': None})
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()
+                    self.assert_guidance(result, chinese)
+                    self.assertEqual(result['items'], [])
+                    self.assertIsNone(result['context'])
+                    for phrase in ('补充完整姓名', '谁需要同时出现', 'Use full reviewed names'):
+                        self.assertNotIn(phrase, result['reply'])
