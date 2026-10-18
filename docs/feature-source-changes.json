@@ -23696,6 +23696,33 @@
       "check_profile_tests_passed": 13,
       "schema_migration_required": false,
       "api_or_installed_cpu_worker_switched": false
+    },
+    {
+      "feature": "compiled-discovery-text-validation",
+      "source_commit": "6979c339913e8ecbbe6bd7d87ef938a8fdae7008",
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "07fde7a1518f9f1e631c66773e7b1d3f69c1947b81a9b757e539d9c5ec7741cd",
+          "sha256": "8762b8557e4cd119f0cd53a910a9ecb758935e4c7d16af8965acb72a6b78debc"
+        },
+        {
+          "path": "server/tests/security/test_discovery_text_validation.py",
+          "before_sha256": null,
+          "sha256": "9af618432bf889b1d5b2225d325e50f8a95eaacdd3620aa53d16eefeb031cfec"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3f1bc907e7ec5171132183ed167436b4d60a6685e718ed8efd8f5eff3a599ec3",
+          "sha256": "6d433efc7c874a10b2b3c3a13ccbcce9337e4697d07817ee850031a9edd480b1",
+          "upstream_before_sha256": "16455a6c35e501e7632caaf89c7aa87d365b0870b53ee5e48786953993b47871"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "validation_policy_changed": false,
+      "runtime_changed": false,
+      "application_order_note": "Upstream blobs are imported after this branch; the subsequent merge overlay retains the combined test profile."
     }
   ]
 }
