@@ -121,14 +121,19 @@ def query_mode(words):
         return 'refine'
     # A complete explicit range is also a closed follow-up. A fixed civil
     # date suffices here because supported range endpoints are explicit.
-    if len(value) <= 1024 and re.search(r'(?a:\b)(?:to|through|between)(?a:\b)|到|至|[–—]', value):
+    if len(value) <= 1024 and re.search(r'(?a:\b)(?:to|through|between)(?a:\b)|到|至|[-–—]', value):
         ranges, residue, error = _extract_dates(value, date(2000, 1, 1))
         if ranges and not error and not residue.strip():
             return 'refine'
     media = _DATE_MEDIA.fullmatch(value)
-    if media and (_DATE_ONLY_WORD.fullmatch(media.group('date')) or
-                  _DATE_ONLY_SHAPE.fullmatch(media.group('date'))):
-        return 'refine'
+    if media:
+        date_words = media.group('date')
+        if _DATE_ONLY_WORD.fullmatch(date_words) or _DATE_ONLY_SHAPE.fullmatch(date_words):
+            return 'refine'
+        if len(date_words) <= 1024:
+            ranges, residue, error = _extract_dates(date_words, date(2000, 1, 1))
+            if ranges and not error and not residue.strip():
+                return 'refine'
     return None
 
 
@@ -169,6 +174,11 @@ def _extract_dates(text, today):
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月(?P<d1>\d{1,2})日?\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?P<d2>\d{1,2})日?(?!\d)'), 'numeric_days'),
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<y2>(?:19|20)\d{2})年(?P<m2>\d{1,2})月(?!\d)'), 'numeric_months'),
         (re.compile(r'(?:从\s*)?(?<!\d)(?P<y1>(?:19|20)\d{2})年(?P<m1>\d{1,2})月\s*(?:到|至)\s*(?P<m2>\d{1,2})月(?!\d)'), 'numeric_shared'),
+        # Whole-year endpoints form one inclusive interval. Keep them after
+        # the more precise ranges and refuse a partial month/day endpoint.
+        (re.compile(r'(?a:\b)from\s+(?P<y1>(?:19|20)\d{2})年?\s+(?:to|through)\s+(?P<y2>(?:19|20)\d{2})年?(?![0-9a-z_]|[./-]\d|年|月|日)', re.I), 'years'),
+        (re.compile(r'(?a:\b)between\s+(?P<y1>(?:19|20)\d{2})年?\s+and\s+(?P<y2>(?:19|20)\d{2})年?(?![0-9a-z_]|[./-]\d|年|月|日)', re.I), 'years'),
+        (re.compile(r'(?:从\s*)?(?<![0-9a-z_./-])(?P<y1>(?:19|20)\d{2})年?\s*(?:到|至|[-–—]|(?a:\b)(?:to|through)(?a:\b))\s*(?P<y2>(?:19|20)\d{2})年?(?![0-9a-z_]|[./-]\d|年|月|日)', re.I), 'years'),
     )
     for pattern, kind in range_specs:
         for match in pattern.finditer(text):
@@ -185,6 +195,9 @@ def _extract_dates(text, today):
                 elif kind == 'numeric_days':
                     start = date(int(match.group('y1')), int(match.group('m1')), int(match.group('d1')))
                     end = date(int(match.group('y2')), int(match.group('m2')), int(match.group('d2')))
+                elif kind == 'years':
+                    start = date(int(match.group('y1')), 1, 1)
+                    end = date(int(match.group('y2')), 12, 31)
                 else:
                     y1 = int(match.group('y1'))
                     y2 = int(match.groupdict().get('y2') or y1)

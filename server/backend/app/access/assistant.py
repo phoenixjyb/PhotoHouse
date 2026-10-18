@@ -767,12 +767,17 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                planner=engine.intent_planner,
                                redacted_span=continuation.get('redacted_span')
                                if continuation is not None else None)
-            # Inference can outlive source or membership changes. Withhold
-            # even a clarification until the same authorized snapshot replays.
-            engine.call('presentation', token, library, lambda: False, {'binding': binding})
+            # Ready plans normally proceed to the bound search, which rechecks
+            # current membership/source and supplies its own interpretation.
+            # Clarifications have no final search, so replay their authorized
+            # snapshot here before returning anything after inference.
+            if plan.status != 'ready':
+                engine.call('presentation', token, library, lambda: False, {'binding': binding})
             if continuation is not None and plan.status == 'ready':
                 from .assistant_query_plan import QueryPlan
                 if plan.filters.get('date') not in (None, continuation['date']):
+                    # This early refusal has no final search to revalidate it.
+                    engine.call('presentation', token, library, lambda: False, {'binding': binding})
                     raise AssistantChanged()
                 plan = QueryPlan(3, 'ready', dict(plan.filters, date=continuation['date']))
         else:
