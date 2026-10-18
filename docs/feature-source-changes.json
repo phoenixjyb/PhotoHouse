@@ -23341,6 +23341,74 @@
       "authorization_changed": false,
       "provider_calls_added": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "refreshing-reviewed-people-and-capability-aware-guidance",
+      "source_commit": "d020a868ebe7d568b71778fc420851b8003c7111",
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "8762b8557e4cd119f0cd53a910a9ecb758935e4c7d16af8965acb72a6b78debc",
+          "sha256": "aa2fd75fb77ffaf2d67bf8e2c2c7da093710952b68785bc9406e32a3169bd0f7"
+        },
+        {
+          "path": "server/backend/app/access/discovery_index.py",
+          "before_sha256": "71433b51b464ed8526ba011a82264408ef40ff0aeb7c8c0fac52284a9638ca84",
+          "sha256": "cd686470992cc8559a483b712b33f3c63d8e1f9d896469fb9a7ecc1a9460c0f3"
+        },
+        {
+          "path": "server/backend/app/access/discovery_provider.py",
+          "before_sha256": "6486f518116c60f6d3e91ac5782c7bc143a7cd228cd2d069d90ae1466d31f6df",
+          "sha256": "bbf410a39b1d61ccc09913898633dcf7c651a3c85eff925d30b1fea9bc476a11"
+        },
+        {
+          "path": "server/scripts/prepare_reviewed_people_index.py",
+          "before_sha256": null,
+          "sha256": "11e794987f2dc1fcfff680188b7927aaf3575bf40700c8ba359ab67f2ec58bfb"
+        },
+        {
+          "path": "server/tests/security/test_refreshing_people.py",
+          "before_sha256": null,
+          "sha256": "c19007799bd5b84700093248b540ad4cd82a29088d9a5860f243c66dbad22a6b"
+        },
+        {
+          "path": "server/tests/security/test_refreshing_people_http.py",
+          "before_sha256": null,
+          "sha256": "efaa4f543227e1d45e2a473e4e4ca17a01468e26420a1bed30fbd684692ae25a"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": null,
+          "sha256": "96b5d2ae35eb994628ca13eab3218f9e182009c24d79a2d2c88e3112ef662fad"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "d3e4ad3aee7524bb412209d4bb2af4c6c585ccb9f960456476375ed21a2c3bc7",
+          "sha256": "36b456b6c4348e1279b4605d378953dbcb61e553ec41a5f91ec64c546bd89fcf"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capability_guidance.py",
+          "before_sha256": null,
+          "sha256": "89a8372d2b862ea9560777f008bb5d37649823259c5eff41bf330db47192cc9a"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "0779c8b0b6acf002877f1dc0d3938799bdb01297e574abc20d56f9c227451e5f",
+          "sha256": "7e6b69cfb3262ccdfc8b8d2d9c4c83c3931bcbc2109d3f2e0d7b3e463be14e4a"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "6d433efc7c874a10b2b3c3a13ccbcce9337e4697d07817ee850031a9edd480b1",
+          "sha256": "36a7b98953570226a50d3a3c01d073c9e93116442d70af7c7ed0e0909dca385a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
     }
   ]
 }

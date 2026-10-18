@@ -54,6 +54,20 @@ selected-account, library and explicit-perspective relationship resolution.
 It joins only current reviewed identities; household graph data stays outside
 source and a local draft does not enable the running service.
 
+An optional [refreshing reviewed-people index](REFRESHING_REVIEWED_PEOPLE_SEARCH.md)
+keeps that explicit identity layer while refreshing authorized uploads, dates and
+approved location rules. It reads only the exact reviewed manual face IDs;
+unreviewed detections cannot enter results or exhaust their shared read budget.
+The two-pass operator tool prepares an artifact and never activates it.
+
+When a library lacks search facets, unmatched-query guidance lists only its
+current authorized capabilities. A disabled people index is explained directly;
+repeating a name or providing a complete sentence cannot enable it. Quoted text
+search over current captions/photo memories remains available independently of
+the metadata caption facet. Clarification keeps prior results and filters, and
+never silently runs a date-only search for an unresolved person condition.
+The same guidance is stored and recovered in private workspace conversations.
+
 ## Source adapters and lifecycle
 
 `AssistantSearchReads` extends the protected discovery reader. It first validates
