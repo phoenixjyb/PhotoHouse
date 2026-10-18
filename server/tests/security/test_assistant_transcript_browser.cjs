@@ -11,7 +11,7 @@ fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),
   [path.join(__dirname,'assistant_pending_recovery_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
 let serial=0,readyResolve,readyReject,nextAsr=null,nextTurn=0;
-const pendingRpc=new Map(),requests=[],pageErrors=[],externalOrigins=[],activeGates=new Set();
+const pendingRpc=new Map(),requests=[],pageErrors=[],externalOrigins=[],activeGates=new Set(),receiptReplies=new Map();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready){readyResolve();return;}const call=pendingRpc.get(value.id);if(call){pendingRpc.delete(value.id);call.resolve(value);}});
@@ -65,6 +65,10 @@ let browser,context,page;
       finally{mode.gate?.finish();activeGates.delete(mode.gate);}
       return;
     }
+    if(entry.method==='GET'&&/^\/assistant\/v1\/receipts\/[^/]+$/.test(url.pathname)){
+      const id=decodeURIComponent(url.pathname.split('/').at(-1)),body=receiptReplies.get(id)||{version:1,request_id:id,operation:'transcribe',status:'received'};
+      await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify(body)});return;
+    }
     if(entry.method==='POST'&&url.pathname==='/assistant/v1/turns'){
       nextTurn++;const requestBody=JSON.parse(entry.body),id=String(700+nextTurn),ctx={library_id:requestBody.library_id,binding:'a'.repeat(64),fingerprint:'b'.repeat(64),filters:{},visible_ids:[id],total:1};
       const reply={version:1,kind:'results',reply:`Synthetic reply ${nextTurn}`,context:ctx,filters:{},items:[{id,kind:'image'}],total:1,has_more:false,effect:null};
@@ -87,6 +91,7 @@ let browser,context,page;
   const signIn=async phone=>{await page.locator('#phone').fill(phone);await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();};
   const turns=()=>requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns');
   const transcriptions=()=>requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/transcribe');
+  const receiptChecks=()=>requests.filter(item=>item.method==='GET'&&/^\/assistant\/v1\/receipts\/[^/]+\?/.test(item.path));
   const openAssistant=async()=>{await page.locator('#assistant-panel').evaluate(panel=>{panel.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});};
   const submitText=async text=>{const expected=Math.min(await page.locator('#assistant-turn-trail-list > li').count()+1,8),response=page.waitForResponse(value=>value.url().endsWith('/assistant/v1/turns'));await page.locator('#assistant-text').fill(text);await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-form').evaluate(form=>form.requestSubmit());await response;await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===count,expected);await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,`Synthetic reply ${nextTurn}`);};
   const record=async()=>{const previous=transcriptions().length;await page.locator('#assistant-mic').evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});await page.locator('#assistant-stop').click();return previous+1;};
@@ -131,6 +136,7 @@ let browser,context,page;
   const postCount=turns().length;const getUserMediaBefore=await page.evaluate(()=>window.__phGetUserMediaCalls);
   await record();await Promise.race([held.arrived,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timed out waiting for synthetic ASR route')),15000))]);
   assert.equal(await page.locator('#assistant-send').isDisabled(),true,'transcribing disables visible send');
+  assert.match(await page.locator('#assistant-receipt-status').textContent(),/正在发送录音并等待识别结果|Sending the recording and waiting for recognition/i,'an in-flight transcription is described as awaiting ASR, not as a network failure');
   assert.equal(await page.locator('#assistant-mic').isDisabled(),true,'transcribing disables fresh capture');
   await page.locator('#assistant-form').evaluate(form=>form.requestSubmit());
   assert.equal(turns().length,postCount,'programmatic submit is rejected while ASR is pending');
@@ -202,6 +208,50 @@ let browser,context,page;
   await page.locator('#assistant-form').evaluate(form=>form.requestSubmit());await untrackedResponse;await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===count,untrackedExpected);
   const untrackedTurn=turns().at(-1);assert.equal(untrackedTurn.headers['x-photohouse-parent-request-id'],undefined,'disabled ASR tracking cannot be sent as parent');
   console.log('PASS malformed and tracking-disabled ASR never create a tracked turn parent');
+
+  for(const terminalStatus of ['succeeded','failed','interrupted']){
+    await page.locator('#assistant-clear').click();
+    const draft=`typed draft survives ${terminalStatus}`,late=gate(),lateText=`late ${terminalStatus} transcript`;
+    nextAsr={text:lateText,language:'en',tracking:'enabled',gate:late};
+    await page.locator('#assistant-text').fill(draft);
+    const turnsBeforeReceipt=turns().length,transcriptionsBeforeReceipt=transcriptions().length;
+    await record();await late.arrived;
+    const requestId=transcriptions().at(-1).headers['x-photohouse-request-id'];
+    const checkReceipt=async response=>{
+      receiptReplies.set(requestId,response);
+      await page.locator('#assistant-receipt-check').click();
+      await page.waitForFunction(()=>!document.getElementById('assistant-receipt-check').disabled);
+    };
+    // A nonterminal, malformed, mismatched-ID, or wrong-operation response
+    // must leave the exact POST alive and the manual composer protected.
+    await checkReceipt({version:1,request_id:requestId,operation:'transcribe',status:'received'});
+    await checkReceipt({version:1,request_id:requestId,operation:'transcribe',status:'processing'});
+    await checkReceipt({version:1,request_id:'unrelated-request',operation:'transcribe',status:'succeeded'});
+    await checkReceipt({version:1,request_id:requestId,operation:'turn',status:'succeeded'});
+    assert.equal(await page.locator('#assistant-mic').isDisabled(),true,`${terminalStatus}: nonterminal and invalid receipts do not unlock capture`);
+    assert.equal(await page.locator('#assistant-send').isDisabled(),true,`${terminalStatus}: nonterminal and invalid receipts do not unlock send`);
+
+    await checkReceipt({version:1,request_id:requestId,operation:'transcribe',status:terminalStatus});
+    await page.waitForFunction(()=>!document.getElementById('assistant-mic').disabled&&!document.getElementById('assistant-send').disabled);
+    assert.equal(await page.locator('#assistant-text').inputValue(),draft,'terminal receipt recovery preserves typed composer text');
+    assert.equal(await page.locator('#assistant-transcript-review').isVisible(),false,'a status receipt never fabricates or recovers transcript text');
+    assert.equal(transcriptions().length,transcriptionsBeforeReceipt+1,'terminal receipt recovery never resends the recording');
+    assert.equal(turns().length,turnsBeforeReceipt,'terminal receipt recovery never submits a search turn');
+
+    const newer=gate();nextAsr={text:`new ${terminalStatus} transcript`,language:'en',tracking:'enabled',gate:newer};
+    await record();await newer.arrived;
+    const newerId=transcriptions().at(-1).headers['x-photohouse-request-id'];
+    late.release();await late.finished;
+    await page.waitForFunction(id=>document.getElementById('assistant-receipt-id').value===id,newerId);
+    assert.equal(await page.locator('#assistant-mic').isDisabled(),true,'late response from abandoned POST cannot unlock a newer transcription');
+    assert.equal(await page.locator('#assistant-send').isDisabled(),true,'late response cannot enable send during newer transcription');
+    assert.equal(await page.locator('#assistant-transcript-review').isVisible(),false,'late response cannot display abandoned transcript text');
+    newer.release();await newer.finished;await waitReview();
+    assert.equal(await page.locator('#assistant-transcript').inputValue(),`new ${terminalStatus} transcript`,'only the newer explicit recording can populate review');
+    assert.equal(await page.locator('#assistant-text').inputValue(),draft,'new recording and late response both preserve the typed draft');
+    await page.locator('#assistant-discard-transcript').click();receiptReplies.delete(requestId);
+  }
+  console.log('PASS terminal ASR receipts recover manual UI for all terminal states; invalid receipts do not cancel and late responses cannot replace a newer transcript');
 
   await page.locator('#assistant-clear').click();
   const malformedCount=transcriptions().length,malformedDraft='typed text survives malformed generated audio';
